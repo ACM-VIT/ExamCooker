@@ -1,14 +1,124 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+datasource db {
+  provider = "cockroachdb"
+  url      = env("DATABASE_URL")
+}
 
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+model User {
+  id                   String          @id @default(cuid())
+  email                String          @unique
+  role                 Role
+  notes                Note[]          @relation("UserNotes")
+  das                  DA[]
+  bookmarkedNotes      Note[]          @relation("UserBookmarkedNotes")
+  bookmarkedDAs        DA[]            @relation("UserBookmarkedDAs")
+  bookmarkedPastPapers PastPaper[]     @relation("UserBookmarkedPastPapers")
+  comments             Comment[]
+  recentlyViewed       RecentlyViewed?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  forumPosts           ForumPost[]
+  pastPapers           PastPaper[]     @relation("UserPastPapers")
+}
+
+enum Role {
+  USER
+  MODERATOR
+}
+
+model Note {
+  id           String   @id @default(cuid())
+  title        String
+  author       User     @relation(fields: [authorId], references: [id], name: "UserNotes")
+  authorId     String
+  fileUrl      String
+  isClear      Boolean  @default(false)
+  tags         Tag[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  bookmarkedBy User[]   @relation("UserBookmarkedNotes")
+}
+
+model RecentlyViewed {
+  id        Int      @id @default(sequence())
+  recent    String[]
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DA {
+  id           String   @id @default(cuid())
+  title        String
+  author       User     @relation(fields: [authorId], references: [id])
+  authorId     String
+  fileUrl      String
+  tags         Tag[]
+  isClear      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  bookmarkedBy User[]   @relation("UserBookmarkedDAs")
+}
+
+model Forum {
+  id         String      @id @default(cuid())
+  courseName String
+  tags       Tag[]
+  posts      ForumPost[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model ForumPost {
+  id        String    @id @default(cuid())
+  title     String
+  author    User      @relation(fields: [authorId], references: [id])
+  authorId  String
+  forum     Forum     @relation(fields: [forumId], references: [id])
+  forumId   String
+  comments  Comment[]
+  tags      Tag[]
+  rating    Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Comment {
+  id          String    @id @default(cuid())
+  content     String
+  author      User      @relation(fields: [authorId], references: [id])
+  authorId    String
+  forumPost   ForumPost @relation(fields: [forumPostId], references: [id])
+  forumPostId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model PastPaper {
+  id           String   @id @default(cuid())
+  title        String
+  fileUrl      String
+  tags         Tag[]
+  author       User     @relation(fields: [authorId], references: [id], name: "UserPastPapers")
+  authorId     String
+  isClear      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  bookmarkedBy User[]   @relation("UserBookmarkedPastPapers")
+}
+
+model Tag {
+  id         String      @id @default(cuid())
+  name       String      @unique
+  notes      Note[]
+  forums     Forum[]
+  forumPosts ForumPost[]
+  das        DA[]
+  pastPapers PastPaper[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 }
