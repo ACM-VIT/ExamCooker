@@ -8,20 +8,18 @@ generator client {
 }
 
 model User {
-  id                   String          @id @default(cuid())
-  email                String          @unique
+  id                   String       @id @default(cuid())
+  email                String       @unique
   role                 Role
-  notes                Note[]          @relation("UserNotes")
-  das                  DA[]
-  bookmarkedNotes      Note[]          @relation("UserBookmarkedNotes")
-  bookmarkedDAs        DA[]            @relation("UserBookmarkedDAs")
-  bookmarkedPastPapers PastPaper[]     @relation("UserBookmarkedPastPapers")
+  notes                Note[]       @relation("UserNotes")
+  bookmarkedNotes      Note[]       @relation("UserBookmarkedNotes")
+  bookmarkedPastPapers PastPaper[]  @relation("UserBookmarkedPastPapers")
   comments             Comment[]
-  recentlyViewed       RecentlyViewed?
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  viewHistory          ViewHistory?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
   forumPosts           ForumPost[]
-  pastPapers           PastPaper[]     @relation("UserPastPapers")
+  pastPapers           PastPaper[]  @relation("UserPastPapers")
 }
 
 enum Role {
@@ -42,26 +40,13 @@ model Note {
   bookmarkedBy User[]   @relation("UserBookmarkedNotes")
 }
 
-model RecentlyViewed {
+model ViewHistory {
   id        Int      @id @default(sequence())
   recent    String[]
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model DA {
-  id           String   @id @default(cuid())
-  title        String
-  author       User     @relation(fields: [authorId], references: [id])
-  authorId     String
-  fileUrl      String
-  tags         Tag[]
-  isClear      Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  bookmarkedBy User[]   @relation("UserBookmarkedDAs")
 }
 
 model Forum {
@@ -117,8 +102,22 @@ model Tag {
   notes      Note[]
   forums     Forum[]
   forumPosts ForumPost[]
-  das        DA[]
   pastPapers PastPaper[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
+}
+
+model Subject {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  modules Module[]
+}
+
+model Module {
+  id            String   @id @default(cuid())
+  title         String
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  subjectId     String
+  webReferences String[]
+  youtubeLinks  String[]
 }
