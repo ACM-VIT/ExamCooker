@@ -1,7 +1,6 @@
 //All of the following code is dummy, boilerplate. Replace with relevant material.
 
 
-
 // components/Pagination.tsx
 import React from 'react'
 import Link from 'next/link'

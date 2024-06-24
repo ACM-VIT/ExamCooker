@@ -6,9 +6,11 @@ import SearchBar from '../components/SearchBar'
 import Link from 'next/link'
 
 
-const page = () => {
+const notesPage = () => {
   return (
     <div>
+        <h1 className="text-4xl font-bold text-center">Notes</h1>
+        {/* back button */}
         <Link href={"/"}  className="inline-block px-4 py-2 bg-blue-500 text-white rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600" >Back</Link>
 
          {/* searchbar */}
@@ -56,9 +58,9 @@ const page = () => {
 
 
         {/* pagination */}
-        <Pagination currentPage={1} totalPages={2}></Pagination>
+        <Pagination currentPage={1} totalPages={69}></Pagination>
     </div>
   )
 }
 
-export default page
+export default notesPage
