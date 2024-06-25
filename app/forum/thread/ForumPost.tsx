@@ -12,7 +12,7 @@ export default function ForumPost({ title, desc }: { title: string, desc: string
 
     return (
         <div className="flex justify-center text-black">
-            <div className="bg-[#82BEE9] p-10 size-5/6">
+            <div className="bg-[#82BEE9] p-4 md:p-10 size-full md:size-5/6">
                 <h2 className="font-extrabold">{title}</h2>
                 <hr className="border-0 h-px my-5 bg-black" />
                 <h6>{desc}</h6>
@@ -26,7 +26,13 @@ export default function ForumPost({ title, desc }: { title: string, desc: string
                 </div>
 
                 <br />
-                <NumberOfComments />
+                <div className="flex justify-between">
+                    <NumberOfComments />
+                    <div className="flex md:hidden justify-center p-0.5 bg-none">
+                        <LikeButton />
+                        <DislikeButton />
+                    </div>
+                </div>
                 <CommentField />
                 <CommentContainer />
             </div>

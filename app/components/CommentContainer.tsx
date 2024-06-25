@@ -66,9 +66,8 @@ export function NumberOfComments() {
 }
 
 export default function CommentContainer() {
-
     return (
-        <div className="bg-[#5FC4E7] px-2">
+        <div className="bg-[#5FC4E7] p-0 md:px-2">
             {comments.map((comment: any) => (
                 <Comment
                     key={comment.id}
@@ -89,7 +88,7 @@ export function Comment({ userName, time, content }: { userName: string, time: s
             <div className="flex justify-between">
                 <div>
                     <p className="font-semibold">{userName}</p>
-                    <p>{time}</p>
+                    <p className="text-xs md:text-base">{time}</p>
                 </div>
                 <div className="flex gap-2">
                     <ReplyButton />

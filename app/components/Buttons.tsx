@@ -39,17 +39,27 @@ export function LikeButton() {
         setLikes(likes + 1);
     }
 
-    return <div className="flex gap-1 p-1">
-        <button onClick={handleClick} className="hover:bg-gray-300">
-            <Image
-                src={"/ThumbsUpIcon.svg"}
-                alt="ThumbsUp"
-                width={21}
-                height={21}
-            />
-        </button>
-        {likes}
-    </div>;
+    return <>
+        <div className="flex gap-1 p-1">
+            <button onClick={handleClick} className="hover:bg-gray-300">
+                <Image
+                    src={"/ThumbsUpIcon.svg"}
+                    alt="ThumbsUp"
+                    width={21}
+                    height={21}
+                    className="hidden md:flex"
+                />
+                <Image
+                    src={"/ThumbsUpIcon.svg"}
+                    alt="ThumbsUp"
+                    width={16}
+                    height={16}
+                    className="flex md:hidden"
+                />
+            </button>
+            {likes}
+        </div>
+    </>;
 }
 
 
@@ -60,22 +70,32 @@ export function DislikeButton() {
         setDislikeCount(dislikeCount + 1);
     }
 
-    return <div className="flex gap-1 p-1">
-        <button onClick={handleClick} className="hover:bg-gray-300">
-            <Image
-                src={"/ThumbsDownIcon.svg"}
-                alt="ThumbsDown"
-                width={21}
-                height={21}
-            />
-        </button>
-        {dislikeCount}
-    </div>;
+    return <>
+        <div className="flex gap-1 p-1">
+            <button onClick={handleClick} className="hover:bg-gray-300">
+                <Image
+                    src={"/ThumbsDownIcon.svg"}
+                    alt="ThumbsDown"
+                    width={21}
+                    height={21}
+                    className="hidden md:flex"
+                />
+                <Image
+                    src={"/ThumbsDownIcon.svg"}
+                    alt="ThumbsDown"
+                    width={16}
+                    height={16}
+                    className="flex md:hidden"
+                />
+            </button>
+            {dislikeCount}
+        </div>
+    </>;
 }
 
 export function ReplyButton() {
 
-    function handleClick(){
+    function handleClick() {
         alert("RANDOM BULLSHIT GO"); //yes that's a moonknight reference ;)
     }
 
@@ -86,6 +106,14 @@ export function ReplyButton() {
                 alt="Reply"
                 width={21}
                 height={21}
+                className="hidden md:flex"
+            />
+            <Image
+                src={"/ReplyIcon.svg"}
+                alt="Reply"
+                width={14}
+                height={14}
+                className="flex md:hidden"
             />
         </button>
     </div>;
