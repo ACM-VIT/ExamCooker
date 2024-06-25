@@ -1,61 +1,6 @@
 import { ReplyButton, LikeButton, DislikeButton } from "./Buttons";
 
-//dummy data created using gemini with respect to current schema
-const jsonData = JSON.parse(`{
-  "comments": [
-    {
-      "id": "c1",
-      "content": "This is a helpful post!",
-      "author": {
-        "id": "u1",
-        "email": "olivia.johnson@example.com"
-      },
-      "authorId": "u1",
-      "forumPost": {
-        "id": "p1",
-        "forumId": "f1"
-      },
-      "forumPostId": "p1",
-      "createdAt": "2024-06-25T16:34:00.000Z",
-      "updatedAt": "2024-06-25T16:34:00.000Z"
-    },
-    {
-      "id": "c2",
-      "content": "I agree, the examples are clear!",
-      "author": {
-        "id": "u2",
-        "email": "noah.wright@example.com"
-      },
-      "authorId": "u2",
-      "forumPost": {
-        "id": "p1",
-        "forumId": "f1"
-      },
-      "forumPostId": "p1",
-      "createdAt": "2024-06-25T16:35:00.000Z",
-      "updatedAt": "2024-06-25T16:35:00.000Z"
-    },
-    {
-      "id": "c3",
-      "content": "Thanks for sharing this resource!",
-      "author": {
-        "id": "u3",
-        "email": "ethan.miller@example.com"
-      },
-      "authorId": "u3",
-      "forumPost": {
-        "id": "p1",
-        "forumId": "f1"
-      },
-      "forumPostId": "p1",
-      "createdAt": "2024-06-25T16:36:00.000Z",
-      "updatedAt": "2024-06-25T16:36:00.000Z"
-    }
-  ]
-}`);
-
-const comments: any[] = jsonData.comments;
-let count: number = comments.length;
+let count: number = 0;
 
 export function NumberOfComments() {
     return (
@@ -65,7 +10,9 @@ export function NumberOfComments() {
     );
 }
 
-export default function CommentContainer() {
+export default function CommentContainer({comments}:{comments:any[]}) {
+    count = comments.length;
+    console.log(comments);
     return (
         <div className="bg-[#5FC4E7] p-0 md:px-2">
             {comments.map((comment: any) => (
@@ -77,7 +24,7 @@ export default function CommentContainer() {
                 />
             ))}
         </div>
-                        );
+    );
 }
 
 
