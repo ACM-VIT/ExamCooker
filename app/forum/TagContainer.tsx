@@ -1,8 +1,9 @@
 const TagContainer = ({tags}:{tags:any[]}) => {
-    return <div className="flex gap-1 md:gap-5 items-center">
+    return <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:gap-5 md:items-center">
         {tags.map((tag) => {
-            return (
-                <Tag key={tag.id} tagName={tag.name} />
+            return (<div key={tag.id}>
+                <Tag tagName={tag.name} />
+                </div>
             );
         })}
     </div>
@@ -11,5 +12,5 @@ const TagContainer = ({tags}:{tags:any[]}) => {
 export default TagContainer;
 
 const Tag = ({ tagName }: { tagName: string }) => {
-    return <text className="bg-white text-gray-500 flex text-xs md:text-xs px-0.5 md:p-1">#{tagName}</text>;
+    return <text className="bg-white text-gray-500 text-xs md:text-xs px-0.5 md:p-1">#{tagName}</text>;
 }
