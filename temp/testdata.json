@@ -1,0 +1,105 @@
+{
+  "comments": [
+    {
+      "id": "c1",
+      "content": "This is a helpful post!",
+      "author": {
+        "id": "u1",
+        "email": "olivia.johnson@example.com"
+      },
+      "authorId": "u1",
+      "forumPost": {
+        "id": "p1",
+        "forumId": "f1"
+      },
+      "forumPostId": "p1",
+      "createdAt": "2024-06-25T16:34:00.000Z",
+      "updatedAt": "2024-06-25T16:34:00.000Z"
+    },
+    {
+      "id": "c2",
+      "content": "I agree, the examples are clear!",
+      "author": {
+        "id": "u2",
+        "email": "noah.wright@example.com"
+      },
+      "authorId": "u2",
+      "forumPost": {
+        "id": "p1",
+        "forumId": "f1"
+      },
+      "forumPostId": "p1",
+      "createdAt": "2024-06-25T16:35:00.000Z",
+      "updatedAt": "2024-06-25T16:35:00.000Z"
+    },
+    {
+      "id": "c3",
+      "content": "Thanks for sharing this resource!",
+      "author": {
+        "id": "u3",
+        "email": "ethan.miller@example.com"
+      },
+      "authorId": "u3",
+      "forumPost": {
+        "id": "p1",
+        "forumId": "f1"
+      },
+      "forumPostId": "p1",
+      "createdAt": "2024-06-25T16:36:00.000Z",
+      "updatedAt": "2024-06-25T16:36:00.000Z"
+    }
+  ],
+  "tags": [
+    {
+      "id": "t1",
+      "name": "javascript",
+      "notes": [],
+      "forums": [],
+      "forumPosts": [],
+      "pastPapers": [],
+      "createdAt": "2024-06-26T12:00:00.000Z",
+      "updatedAt": "2024-06-26T12:00:00.000Z"
+    },
+    {
+      "id": "t2",
+      "name": "python",
+      "notes": [],
+      "forums": [],
+      "forumPosts": [],
+      "pastPapers": [],
+      "createdAt": "2024-06-26T12:01:00.000Z",
+      "updatedAt": "2024-06-26T12:01:00.000Z"
+    },
+    {
+      "id": "t3",
+      "name": "machine learning",
+      "notes": [],
+      "forums": [],
+      "forumPosts": [],
+      "pastPapers": [],
+      "createdAt": "2024-06-26T12:02:00.000Z",
+      "updatedAt": "2024-06-26T12:02:00.000Z"
+    },
+    {
+      "id": "t4",
+      "name": "typescript",
+      "notes": [],
+      "forums": [],
+      "forumPosts": [],
+      "pastPapers": [],
+      "createdAt": "2024-06-26T12:02:00.000Z",
+      "updatedAt": "2024-06-26T12:02:00.000Z"
+    },
+    {
+      "id": "t5",
+      "name": "react",
+      "notes": [],
+      "forums": [],
+      "forumPosts": [],
+      "pastPapers": [],
+      "createdAt": "2024-06-26T12:02:00.000Z",
+      "updatedAt": "2024-06-26T12:02:00.000Z"
+    }
+  ]
+}
+
