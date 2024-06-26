@@ -31,13 +31,11 @@ const page = () => {
                 <PastPaperCard
                 imageSrc="https://friendsofus.com/wp-content/uploads/2021/07/image-removebg-preview-9-modified.png"
                 title="Mathematics Past Paper"
-                content="This is a past paper for mathematics."
                 />
 
                 <PastPaperCard
                 imageSrc="https://ipwatchdog.com/wp-content/uploads/2018/03/pepe-the-frog-1272162_640.jpg"
                 title="Physics Past Paper"
-                content="This is a past paper for physics."
                 />
                 {/* Add more PastPaperCard instances as needed */}
             </div>
