@@ -48,7 +48,7 @@ const PastPaperCard: React.FC<PastPaperCardProps> = ({ title, imageSrc }) => {
   };
 
   return (
-    <div className="w-72">
+    <div className="w-[80%]">
       <div className="p-4 w-full text-center bg-[#5fc4e7]" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
         <div className="bg-[#d9d9d9] w-full h-36 mb-4 overflow-hidden">
           <img src={imageSrc} alt={title} className="w-full h-full object-cover" />
@@ -57,7 +57,7 @@ const PastPaperCard: React.FC<PastPaperCardProps> = ({ title, imageSrc }) => {
           {title}
         </div>
         <div className="flex justify-around items-center">
-          <button className="p-1 text-sm flex items-center bg-white text-black hover:bg-gray-200">
+          <button className="py-1 px-2 text-sm flex items-center bg-white text-black hover:bg-gray-200">
             <span className="mr-1 flex items-center justify-center">
               <svg width="24" height="25" viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 5.5C6.55576 5.5 3.53109 9.73425 2.45554 11.6164C2.23488 12.0025 2.12456 12.1956 2.1367 12.4836C2.14885 12.7716 2.27857 12.9598 2.53799 13.3362C3.8182 15.1935 7.29389 19.5 12 19.5C16.7061 19.5 20.1818 15.1935 21.462 13.3362C21.7214 12.9598 21.8511 12.7716 21.8633 12.4836C21.8754 12.1956 21.7651 12.0025 21.5445 11.6164C20.4689 9.73425 17.4442 5.5 12 5.5Z" stroke="black" strokeWidth="2"/>
@@ -84,7 +84,7 @@ const PastPaperCard: React.FC<PastPaperCardProps> = ({ title, imageSrc }) => {
         </div>
       </div>
 
-      <div className={`w-72 h-0.5 bg-white transition-opacity duration-300 ease-in-out ${isHovered ? 'opacity-100 shadow-[0px_5px_14px_0px_rgba(0,0,0,0.75)]' : 'opacity-0'}`}></div>
+      <div className={`w-full h-0.5 bg-white transition-opacity duration-300 ease-in-out ${isHovered ? 'opacity-100 shadow-[0px_5px_14px_0px_rgba(0,0,0,0.75)]' : 'opacity-0'}`}></div>
     </div>
   );
 };
