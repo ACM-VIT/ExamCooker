@@ -46,6 +46,7 @@ const NotesCard: React.FC<NotesCardProps> = ({ imageSrc, title }) => {
   }
 
 
+  
   return (
     <div className="w-[95%]">
       <div className="p-4 w-full text-center bg-[#5fc4e7]" >
