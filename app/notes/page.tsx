@@ -32,16 +32,17 @@ const notesPage = () => {
                         <NotesCard 
                             imageSrc="https://avatars.githubusercontent.com/u/128067781?v=4"
                             title="Sample Note"
-                            content="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+                            //content="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
                         />
                         </div>
                         <div className="flex justify-center items-center">
                         <NotesCard 
                             imageSrc="https://images.moneycontrol.com/static-mcnews/2022/03/pjimage-11-4-770x433.jpg?impolicy=website&width=770&height=431"
                             title="Another Note"
-                            content="Integer congue libero sed augue rutrum lacinia."
+                            //content="Integer congue libero sed augue rutrum lacinia."
                         />
                         </div>
+
                         {/* Add more NotesCard components as needed */}
                 </div>
                 </div>
