@@ -1,4 +1,4 @@
-import { ReplyButton, LikeButton, DislikeButton } from "./Buttons";
+import { ReplyButton, LikeButton, DislikeButton } from "../common/Buttons";
 
 let count: number = 0;
 
@@ -12,7 +12,6 @@ export function NumberOfComments() {
 
 export default function CommentContainer({comments}:{comments:any[]}) {
     count = comments.length;
-    console.log(comments);
     return (
         <div className="bg-[#5FC4E7] p-0 md:px-2">
             {comments.map((comment: any) => (
