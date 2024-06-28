@@ -1,3 +1,4 @@
+import type { Comment } from "@prisma/client";
 import { ReplyButton, LikeButton, DislikeButton } from "../common/Buttons";
 
 let count: number = 0;
@@ -10,14 +11,14 @@ export function NumberOfComments() {
     );
 }
 
-export default function CommentContainer({comments}:{comments:any[]}) {
+export default function CommentContainer({comments}:{comments:Comment[]}) {
     count = comments.length;
     return (
         <div className="bg-[#5FC4E7] p-0 md:px-2">
-            {comments.map((comment: any) => (
+            {comments.map((comment: Comment) => (
                 <Comment
                     key={comment.id}
-                    userName={comment.author.email}
+                    userName={comment.authorId}
                     time={comment.createdAt}
                     content={comment.content}
                 />
