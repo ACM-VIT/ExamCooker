@@ -43,14 +43,14 @@ export function LikeButton() {
         <div className="flex gap-1 p-1">
             <button onClick={handleClick} className="hover:bg-gray-300">
                 <Image
-                    src={"/ThumbsUpIcon.svg"}
+                    src={"/comment/ThumbsUpIcon.svg"}
                     alt="ThumbsUp"
                     width={21}
                     height={21}
                     className="hidden md:flex"
                 />
                 <Image
-                    src={"/ThumbsUpIcon.svg"}
+                    src={"/comment/ThumbsUpIcon.svg"}
                     alt="ThumbsUp"
                     width={16}
                     height={16}
@@ -74,14 +74,14 @@ export function DislikeButton() {
         <div className="flex gap-1 p-1">
             <button onClick={handleClick} className="hover:bg-gray-300">
                 <Image
-                    src={"/ThumbsDownIcon.svg"}
+                    src={"/comment/ThumbsDownIcon.svg"}
                     alt="ThumbsDown"
                     width={21}
                     height={21}
                     className="hidden md:flex"
                 />
                 <Image
-                    src={"/ThumbsDownIcon.svg"}
+                    src={"/comment/ThumbsDownIcon.svg"}
                     alt="ThumbsDown"
                     width={16}
                     height={16}
@@ -102,14 +102,14 @@ export function ReplyButton() {
     return <div className="p-1">
         <button onClick={handleClick} className="hover:bg-gray-300">
             <Image
-                src={"/ReplyIcon.svg"}
+                src={"/comment/ReplyIcon.svg"}
                 alt="Reply"
                 width={21}
                 height={21}
                 className="hidden md:flex"
             />
             <Image
-                src={"/ReplyIcon.svg"}
+                src={"/comment/ReplyIcon.svg"}
                 alt="Reply"
                 width={14}
                 height={14}

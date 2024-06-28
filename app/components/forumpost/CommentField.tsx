@@ -30,7 +30,7 @@ export default function CommentField() {
 export function SubmitCommentButton() {
     return <button type="submit" className="bg-white py-3 px-4 hover:bg-gray-300">
         <Image
-            src={"/SubmitComment.svg"}
+            src={"/comment/SubmitComment.svg"}
             alt="Submit Comment"
             width={24}
             height={24}

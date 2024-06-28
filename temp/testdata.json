@@ -53,50 +53,30 @@
     {
       "id": "t1",
       "name": "javascript",
-      "notes": [],
-      "forums": [],
-      "forumPosts": [],
-      "pastPapers": [],
       "createdAt": "2024-06-26T12:00:00.000Z",
       "updatedAt": "2024-06-26T12:00:00.000Z"
     },
     {
       "id": "t2",
       "name": "python",
-      "notes": [],
-      "forums": [],
-      "forumPosts": [],
-      "pastPapers": [],
       "createdAt": "2024-06-26T12:01:00.000Z",
       "updatedAt": "2024-06-26T12:01:00.000Z"
     },
     {
       "id": "t3",
       "name": "machine learning",
-      "notes": [],
-      "forums": [],
-      "forumPosts": [],
-      "pastPapers": [],
       "createdAt": "2024-06-26T12:02:00.000Z",
       "updatedAt": "2024-06-26T12:02:00.000Z"
     },
     {
       "id": "t4",
       "name": "typescript",
-      "notes": [],
-      "forums": [],
-      "forumPosts": [],
-      "pastPapers": [],
       "createdAt": "2024-06-26T12:02:00.000Z",
       "updatedAt": "2024-06-26T12:02:00.000Z"
     },
     {
       "id": "t5",
       "name": "react",
-      "notes": [],
-      "forums": [],
-      "forumPosts": [],
-      "pastPapers": [],
       "createdAt": "2024-06-26T12:02:00.000Z",
       "updatedAt": "2024-06-26T12:02:00.000Z"
     }
