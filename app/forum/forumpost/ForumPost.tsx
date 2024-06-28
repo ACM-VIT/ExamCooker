@@ -19,7 +19,7 @@ export default function ForumPost({ title, desc }: { title: string, desc: string
 
     return (
         <div className="flex text-black">
-            <div className="bg-[#82BEE9] p-4 md:p-10 size-full h-screen overflow-scroll">
+            <div className="bg-[#82BEE9] p-4 md:p-10 size-full h-screen overflow-auto">
                 <h2 className="font-extrabold">{title}</h2>
                 <hr className="border-0 h-px my-5 bg-black" />
                 <h6>{desc}</h6>
