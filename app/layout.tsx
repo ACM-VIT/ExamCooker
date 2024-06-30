@@ -25,10 +25,7 @@ export default function RootLayout({
                 <main className={`flex-grow p-4 transition-all duration-300 ease-in-out ${isNavOn ? "lg:w-[95vw] md:w-[92vw] sm:w-[92vw]" : "w-[100vw]"}`}>
                     {children}
                 </main>
-                <NavBar />
-                {children}
             </body>
         </html>
     );
 }
-
