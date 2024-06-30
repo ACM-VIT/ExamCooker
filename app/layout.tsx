@@ -18,10 +18,8 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body className={`flex bg-white ${plus_jakarta_sans.className}`}>
-                <main>
-                    <NavBar />
-                    {children}
-                </main>
+                <NavBar />
+                {children}
             </body>
         </html>
     );
