@@ -51,12 +51,12 @@ const NotesCard: React.FC<NotesCardProps> = ({ imageSrc, title }) => {
     <div className="w-[95%]">
       <div className="p-4 w-full text-center bg-[#5fc4e7]" >
         <div className="bg-[#d9d9d9] w-full h-36 mb-4 overflow-hidden">
-          <img src={imageSrc} alt={title} className="w-full h-full object-cover" />
+          <img src={imageSrc} alt={title} className="w-full h-full object-cover"  />
         </div>
         <div className="mb-2 text-black w-full whitespace-nowrap overflow-hidden text-ellipsis">
           {title}
         </div>
-        <div className="flex justify-around items-center">
+        <div className="flex justify-around items-center space-x-4 ">
           <button className="py-[2.605%] px-2 text-sm flex items-center bg-white text-black">
             <span className="mr-1 flex items-center justify-center">
               <FontAwesomeIcon icon={faEye} />
@@ -79,3 +79,6 @@ const NotesCard: React.FC<NotesCardProps> = ({ imageSrc, title }) => {
   )
 };
 export default NotesCard;
+
+
+
