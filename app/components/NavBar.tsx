@@ -5,7 +5,7 @@ import Image from 'next/image';
 
 const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({ isNavOn, toggleNavbar }) => {
   return (
-    <nav className={`absolute top-0 left-0 z-50 flex flex-col justify-between items-center h-screen ${isNavOn ? "bg-[#5fc4e7] lg:w-[5vw] md:w-[8vw] sm:w-[8vw]" : ""} text-white p-1 transition-all duration-300 ease-in-out`}>
+    <nav className={`fixed top-0 left-0 z-50 flex flex-col justify-between items-center h-screen ${isNavOn ? "bg-[#5fc4e7] lg:w-[5vw] md:w-[8vw]" : ""} text-white p-1 transition-all duration-300 ease-in-out`}>
       <div className="mt-4">
         <button onClick={toggleNavbar} className="opacity-100">
           <Image src="/assets/HamburgerIcon.svg" alt="Menu" width={30} height={30} className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1" />
