@@ -1,33 +1,69 @@
-//All of the following code is dummy, boilerplate. Replace with relevant material.
-
-
-// components/Pagination.tsx
-import React from 'react'
-import Link from 'next/link'
+'use client';
+import React from 'react';
+import Link from 'next/link';
 
 interface PaginationProps {
   currentPage: number
   totalPages: number
+  basePath: string
 }
 
-const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages }) => {
+const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePath }) => {
+  const maxVisiblePages = 5
+
+  function getPageNumbers() {
+    const pageNumbers = []
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1)
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i)
+    }
+
+    return { pageNumbers, startPage, endPage }
+  }
+
+  const { pageNumbers, startPage, endPage } = getPageNumbers()
+
+  const PageLink = ({ page, children }: { page: number, children: React.ReactNode }) => (
+    <Link href={`${basePath}?page=${page}`} className={`px-3 py-1 text-sm font-medium rounded-md ${page === currentPage
+      ? 'text-white bg-blue-600 border border-blue-600'
+      : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+      }`}>
+      {children}
+    </Link>
+  )
+
   return (
-    // removed fixed class from pagination because it was clashing with the navbar
-    <div className="bottom-0 left-0 right-0 flex items-center justify-center bg-white py-4 shadow-lg">
+    <div className="flex items-center justify-center space-x-2 py-4">
       {currentPage > 1 && (
-        <Link href={`/?page=${currentPage - 1}`} legacyBehavior>
-          <a className="mx-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 transition duration-300">
-            Previous
-          </a>
-        </Link>
+        <PageLink page={currentPage - 1}>Previous</PageLink>
       )}
-      <span className="text-gray-700 mx-2"> Page {currentPage} of {totalPages} </span>
+
+      {startPage > 1 && (
+        <>
+          <PageLink page={1}>1</PageLink>
+          {startPage > 2 && <span className="text-gray-500">...</span>}
+        </>
+      )}
+
+      {pageNumbers.map((number) => (
+        <PageLink key={number} page={number}>{number}</PageLink>
+      ))}
+
+      {endPage < totalPages && (
+        <>
+          {endPage < totalPages - 1 && <span className="text-gray-500">...</span>}
+          <PageLink page={totalPages}>{totalPages}</PageLink>
+        </>
+      )}
+
       {currentPage < totalPages && (
-        <Link href={`/?page=${currentPage + 1}`} legacyBehavior>
-          <a className="mx-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 transition duration-300">
-            Next
-          </a>
-        </Link>
+        <PageLink page={currentPage + 1}>Next</PageLink>
       )}
     </div>
   )
