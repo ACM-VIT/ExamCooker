@@ -7,12 +7,11 @@ import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
 
 async function notesPage() {
-    
     const prisma = new PrismaClient();
     const notes = await prisma.note.findMany({
-        include : {
-        author : true,
-        }
+        include: {
+            author: true,
+        },
     });
 
     return (
@@ -34,14 +33,13 @@ async function notesPage() {
                 {/* Other content of your page */}
             </div>
 
-            <div className="flex gap-6" >
+            <div className="flex gap-6">
                 {notes.map((eachNote, index) => (
-
-                                    <NotesCard note={eachNote}
-                                        //content="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
-                                    />
-                    ))}
-
+                    <NotesCard
+                        note={eachNote}
+                        //content="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+                    />
+                ))}
             </div>
 
             {/* filter */}
