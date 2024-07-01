@@ -5,14 +5,34 @@ import FilterComponent from "../components/FilterComponent";
 import SearchBar from "../components/SearchBar";
 import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
+import { redirect } from 'next/navigation';
 
-async function pastPaperPage() {
-    
+
+function validatePage(page: string | undefined, totalPages: number): number {
+    const parsedPage = parseInt(page || '', 10);
+    if (isNaN(parsedPage) || parsedPage < 1 || parsedPage > totalPages || page !== parsedPage.toString()) {
+        redirect('/past_papers?page=1');
+    }
+    return parsedPage;
+}
+
+
+async function pastPaperPage({ searchParams }: { searchParams: { page?: string } }) {
     const prisma = new PrismaClient();
+    // change the number of cards loaded with pagesize
+    const pageSize = 9;
+    const totalCount = await prisma.pastPaper.count();
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    const page = validatePage(searchParams.page, totalPages);
+    const skip = (page - 1) * pageSize;
+
     const pastPapers = await prisma.pastPaper.findMany({
-        include : {
-        author : true,
-        }
+        include: {
+            author: true,
+        },
+        skip,
+        take: pageSize,
     });
 
     return (
@@ -27,36 +47,35 @@ async function pastPaperPage() {
             </Link>
 
             {/* searchbar */}
-
             <div className="container mx-auto p-4">
                 <h1 className="text-2xl font-bold mb-4">Search Example</h1>
                 <SearchBar />
-                {/* Other content of your page */}
             </div>
 
-            <div className="flex gap-6" >
-                {pastPapers.map((eachPaper, index) => (
 
-                                    <PastPaperCard note={eachPaper}
-                                        //content="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
-                                    />
-                    ))}
-
-            </div>
-
-            {/* filter */}
-            <div className="container mx-auto p-4">
-                <h1 className="text-2xl font-bold mb-4">Dummy Filter</h1>
-                <div className="flex justify-start">
+            <div className="container mx-auto p-4 flex">
+                {/* filter */}
+                <div className="w-1/4 pr-4">
+                    <h1 className="text-2xl font-bold mb-4">Dummy Filter</h1>
                     <FilterComponent />
                 </div>
-                {/* Other content of your page */}
+
+                {/* cards */}
+                <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {pastPapers.map((eachPaper) => (
+                        <PastPaperCard
+                            key={eachPaper.id}
+                            pastPaper={eachPaper}
+                        />
+                    ))}
+                </div>
             </div>
 
             {/* pagination */}
-            <Pagination currentPage={1} totalPages={69}></Pagination>
+            <Pagination currentPage={page} totalPages={totalPages} basePath="/past_papers" />
         </div>
     );
 }
+
 
 export default pastPaperPage;
