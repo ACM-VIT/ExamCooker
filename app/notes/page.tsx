@@ -4,8 +4,17 @@ import NotesCard from "../components/NotesCard";
 import FilterComponent from "../components/FilterComponent";
 import SearchBar from "../components/SearchBar";
 import Link from "next/link";
+import { PrismaClient } from "@prisma/client";
 
-function notesPage() {
+async function notesPage() {
+    
+    const prisma = new PrismaClient();
+    const notes = await prisma.note.findMany({
+        include : {
+        author : true,
+        }
+    });
+
     return (
         <div>
             <h1 className="text-4xl font-bold text-center">Notes</h1>
@@ -25,28 +34,14 @@ function notesPage() {
                 {/* Other content of your page */}
             </div>
 
-            {/* notescard */}
-            <div className="container mx-auto p-4 flex justify-center">
-                {/* Center horizontally with flex justify-center */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* Center each NotesCard vertically with flex items-center */}
-                    <div className="flex justify-center items-center">
-                        <NotesCard
-                            imageSrc="https://avatars.githubusercontent.com/u/128067781?v=4"
-                            title="Sample Note"
-                            //content="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
-                        />
-                    </div>
-                    <div className="flex justify-center items-center">
-                        <NotesCard
-                            imageSrc="https://images.moneycontrol.com/static-mcnews/2022/03/pjimage-11-4-770x433.jpg?impolicy=website&width=770&height=431"
-                            title="Another Note"
-                            //content="Integer congue libero sed augue rutrum lacinia."
-                        />
-                    </div>
+            <div className="flex gap-6" >
+                {notes.map((eachNote, index) => (
 
-                    {/* Add more NotesCard components as needed */}
-                </div>
+                                    <NotesCard note={eachNote}
+                                        //content="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+                                    />
+                    ))}
+
             </div>
 
             {/* filter */}
