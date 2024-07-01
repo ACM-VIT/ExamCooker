@@ -49,7 +49,6 @@ function PastPaperCard({ note }: {note: Note}) {
           </button>
           <button onClick={FavpeCLick} style={{ color: isFav ? 'red' : 'lightgrey' }}>
             <FontAwesomeIcon icon={faHeart} />
-
           </button>
         </div>
       </div>

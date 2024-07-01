@@ -1,4 +1,4 @@
-//All of the following code is dummy, boilerplate. Replace with relevant material.
+// All of the following code is dummy, boilerplate. Replace with relevant material.
 
 // components/SearchComponent.tsx
 import React from 'react';
@@ -17,3 +17,5 @@ const SearchBar: React.FC = () => {
 };
 
 export default SearchBar;
+
+
