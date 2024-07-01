@@ -57,3 +57,6 @@ function NotesCard({ note }: {note: Note}) {
   )
 };
 export default NotesCard;
+
+
+
