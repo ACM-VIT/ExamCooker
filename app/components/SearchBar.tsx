@@ -1,21 +1,31 @@
-// All of the following code is dummy, boilerplate. Replace with relevant material.
 
-// components/SearchComponent.tsx
-import React from 'react';
+"use client";
+import React, { useState } from 'react';
+import { faSearch } from '@fortawesome/free-solid-svg-icons/faSearch';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const SearchBar: React.FC = () => {
+  const [query, setQuery] = useState<string>('');
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+  };
+
   return (
-    <div className="relative">
-      <input
-        type="text"
-        placeholder="Search..."
-        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-      />
-      <button className="absolute top-0 right-0 px-4 py-2 bg-blue-500 text-white rounded-l-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600"></button>
+    <div className="relative flex items-center w-[950px]">
+      <div className="absolute inset-0 bg-black translate-x-2 translate-y-2  pointer-events-none"></div>
+      <div className="relative flex items-center bg-white border border-black w-full px-4 ">
+        <FontAwesomeIcon icon={faSearch} color='grey' className='ml-4' />
+        <input
+          type="text"
+          className="px-4 py-2 w-full rounded-l-full focus:outline-none"
+          placeholder="Search"
+          value={query}
+          onChange={handleInputChange}
+        />
+      </div>
     </div>
   );
-};
+}
 
 export default SearchBar;
-
-
