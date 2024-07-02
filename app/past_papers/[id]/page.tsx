@@ -2,6 +2,7 @@
 import React from 'react';
 import { PrismaClient } from '@prisma/client';
 import Link from 'next/link';
+import PdfViewer from '@/app/components/pdfviewer';
 
 async function PdfViewerPage({params}: {params : {id : string}}) {
   
@@ -15,22 +16,24 @@ async function PdfViewerPage({params}: {params : {id : string}}) {
     },
   });
 
-  return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6 text-center">PDF Viewer</h1>
-      {/* back button */}
-      <Link
-                href={"/past_papers"}
-                className="inline-block px-4 py-2 bg-blue-500 text-white rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600"
-            >
-                Back
-            </Link>
-        <p>{params.id}</p>
-  
-        {/* the pdf link that has been fetched */}
-        <p>{paper?.fileUrl}</p>
-    </div>
-  );
-};
-
-export default PdfViewerPage;
+return (
+        <div className="container mx-auto bg-[#C2E6EC] min-h-screen">
+            <div className="h-[10vh] w-full bg-[#C2E6EC] text-black text-center flex items-center justify-center">
+                header
+            </div>
+            <div className="grid grid-cols-4 lg:grid-cols-8 h-[90vh] gap-4">
+                <div className="col-span-4 lg:col-span-4 flex flex-col items-center justify-center mx-auto text-black pt-10">
+                    <h1 className="text-center">{paper?.title}</h1><br />
+                    <h2>Slot: Slot </h2><br />
+                    <h2>Year: Year</h2><br />
+                </div>
+                <div className="hidden lg:block w-[85vh] h-0 transform rotate-[90.13deg] origin-top-left border border-black opacity-80"></div>
+                <div className="col-span-4 lg:col-span-3 flex items-center justify-center">
+                  {/* <p>{paper?.fileUrl}</p> */}
+                    <PdfViewer fileUrl={paper?.fileUrl} />
+                </div>
+            </div>
+        </div>
+    );
+  }
+    export default PdfViewerPage;

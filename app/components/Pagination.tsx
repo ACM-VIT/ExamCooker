@@ -30,9 +30,9 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
   const { pageNumbers, startPage, endPage } = getPageNumbers()
 
   const PageLink = ({ page, children }: { page: number, children: React.ReactNode }) => (
-    <Link href={`${basePath}?page=${page}`} className={`px-3 py-1 text-sm font-medium rounded-md ${page === currentPage
-      ? 'text-white bg-blue-600 border border-blue-600'
-      : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+    <Link href={`${basePath}?page=${page}`} className={`px-3 py-1.5 text-sm font-medium ${page === currentPage
+      ? 'bg-[#73E8CC]'
+      : 'bg-[#5fc4e7] hover:bg-opacity-85'
       }`}>
       {children}
     </Link>
@@ -41,7 +41,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
   return (
     <div className="flex items-center justify-center space-x-2 py-4">
       {currentPage > 1 && (
-        <PageLink page={currentPage - 1}>Previous</PageLink>
+        <PageLink page={currentPage - 1}></PageLink>
       )}
 
       {startPage > 1 && (
@@ -63,7 +63,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
       )}
 
       {currentPage < totalPages && (
-        <PageLink page={currentPage + 1}>Next</PageLink>
+        <PageLink page={currentPage + 1}></PageLink>
       )}
     </div>
   )
