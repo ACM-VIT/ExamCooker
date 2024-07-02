@@ -19,7 +19,7 @@ function NotesCard({ note }: NotesCardProps) {
   }
 
   return (
-    <div className="max-w-sm w-full">
+    <div className="max-w-sm w-full ">
       <div className="p-4 w-full text-center bg-[#5fc4e7]">
         <div className="bg-[#d9d9d9] w-full h-36 mb-4 overflow-hidden">
           <img src="https://topperworld.in/media/2022/11/c-sc.png" alt={note.title} className="w-full h-full object-cover" />
