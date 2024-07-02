@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import ResourceCard from '../components/ResourceCard';
 import Pagination from '../components/Pagination';
+import { redirect } from 'next/navigation';
 
 const prisma = new PrismaClient();
 
@@ -19,11 +20,20 @@ async function fetchSubjects(page: number, pageSize: number) {
     return { subjects, totalSubjects };
 }
 
+function validatePage(page: string | undefined, totalPages: number): number {
+    const parsedPage = parseInt(page || '', 10);
+    if (isNaN(parsedPage) || parsedPage < 1 || parsedPage > totalPages || page !== parsedPage.toString()) {
+        redirect('/resources?page=1');
+    }
+    return parsedPage;
+}
+
 export default async function ResourcesPage({ searchParams }: { searchParams: { page?: string } }) {
-    const page = parseInt(searchParams.page || '1', 10);
     const pageSize = 9; // Number of subjects per page 
-    const { subjects, totalSubjects } = await fetchSubjects(page, pageSize);
+    const totalSubjects = await prisma.subject.count();
     const totalPages = Math.ceil(totalSubjects / pageSize);
+    const page = validatePage(searchParams.page, totalPages);
+    const { subjects } = await fetchSubjects(page, pageSize);
 
     return (
         <div className="container mx-auto p-4 flex flex-col min-h-screen">
