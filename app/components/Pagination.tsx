@@ -1,6 +1,9 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faAngleLeft, faAngleRight } from '@fortawesome/free-solid-svg-icons';
+
 
 interface PaginationProps {
   currentPage: number
@@ -41,7 +44,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
   return (
     <div className="flex items-center justify-center space-x-2 py-4">
       {currentPage > 1 && (
-        <PageLink page={currentPage - 1}></PageLink>
+        <PageLink page={currentPage - 1}><FontAwesomeIcon icon={faAngleLeft}/></PageLink>
       )}
 
       {startPage > 1 && (
@@ -63,7 +66,7 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
       )}
 
       {currentPage < totalPages && (
-        <PageLink page={currentPage + 1}></PageLink>
+        <PageLink page={currentPage + 1}><FontAwesomeIcon icon={faAngleRight}/></PageLink>
       )}
     </div>
   )
