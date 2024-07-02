@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import React, { useState, useEffect, useRef } from "react";
 import NavBar from "./components/NavBar";
+import Header from "./components/header"; // Import the Header component
 
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -12,10 +13,15 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     const [isNavOn, setIsNavOn] = useState(false);
+    const [darkMode, setDarkMode] = useState(false); // State for dark mode
     const navbarRef = useRef<HTMLDivElement>(null);
 
     const toggleNavbar = () => {
         setIsNavOn(!isNavOn);
+    };
+
+    const toggleTheme = () => {
+        setDarkMode(!darkMode); // Toggle dark mode state
     };
 
     const handleClickOutside = (event: MouseEvent) => {
@@ -39,7 +45,7 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body
-                className={`relative flex bg-[#c2e6ec] ${plus_jakarta_sans.className}`}
+                className={`relative flex ${darkMode ? 'bg-gray-900 text-white' : 'bg-[#c2e6ec] text-black'} ${plus_jakarta_sans.className}`}
             >
                 <div ref={navbarRef}>
                     <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
@@ -52,7 +58,10 @@ export default function RootLayout({
                         isNavOn ? "lg:w-[95vw] md:w-[92vw]" : "w-[100vw]"
                     }`}
                 >
-                    {children}
+                    <div className={darkMode ? 'dark' : ''}>
+                        <Header toggleTheme={toggleTheme} darkMode={darkMode} />
+                        {children}
+                    </div>
                 </main>
             </body>
         </html>
