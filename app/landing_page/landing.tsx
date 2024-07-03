@@ -1,10 +1,10 @@
 "use client"
 import React from 'react';
 import Image from 'next/image';
-import pastPaper from '/ACM/TEST/ExamCooker-2024/public/assets/PastPapersIcon.svg';
-import forum from '/ACM/TEST/ExamCooker-2024/public/assets/ForumIcon.svg';
-import notes from '/ACM/TEST/ExamCooker-2024/public/assets/NotesIcon.svg';
-import resources from '/ACM/TEST/ExamCooker-2024/public/assets/resourcesIcon.svg';
+import pastPaper from '@/public/assets/PastPapersIcon.svg';
+import forum from '@/public/assets/ForumIcon.svg';
+import notes from '@/public/assets/NotesIcon.svg';
+import resources from '@/public/assets/resourcesIcon.svg';
 
 function Features() {
     const handlePastPapersClick = () => {

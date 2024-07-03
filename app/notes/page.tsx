@@ -38,7 +38,7 @@ async function notesPage({ searchParams }: { searchParams: { page?: string } }) 
 
     return (
         <div>
-            <h1 className="text-4xl font-bold text-center">Notes</h1>
+            <h1 className="text-4xl font-bold text-center pt-4">Notes</h1>
             {/* back button */}
             <Link
                 href={"/"}

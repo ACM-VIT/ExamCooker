@@ -9,7 +9,9 @@ export function SignIn() {
         await signIn("google")
       }}
     >
-      <button type="submit">Signin with Google</button>
+      <button type="submit" className="bg-[#3BF4C7] hover:bg-[#2AAA8B] text-black font-bold py-2 px-4 rounded shadow-lg">
+  Sign in
+</button>
     </form>
   )
 } 
