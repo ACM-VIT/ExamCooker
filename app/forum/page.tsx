@@ -112,6 +112,8 @@ async function forum({ searchParams }: { searchParams: { page?: string } }) {
             desc='some random description'
             createdAt={eachPost.createdAt}
             tags={eachPost.tags}
+                            post={eachPost}
+                            comments={eachPost.comments}
           />
         ))}
       </div>

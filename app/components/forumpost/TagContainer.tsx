@@ -1,8 +1,8 @@
 import type { Tag } from "@prisma/client";
 
-const TagContainer = ({tags}:{tags:Tag[]}) => {
+const TagContainer = ({tags}:{tags:Tag[]|undefined}) => {
     return <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:gap-5 md:items-center">
-        {tags.map((tag) => {
+        {tags?.map((tag) => {
             return (<div key={tag.id}>
                 <Tag tagName={tag.name} />
                 </div>
