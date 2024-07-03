@@ -12,7 +12,7 @@ const SearchBar: React.FC = () => {
   };
 
   return (
-    <div className="relative flex items-center w-[950px]">
+    <div className="relative flex items-center w-[75vw]">
       <div className="absolute inset-0 bg-black translate-x-2 translate-y-2  pointer-events-none"></div>
       <div className="relative flex items-center bg-white border border-black w-full px-4 ">
         <FontAwesomeIcon icon={faSearch} color='grey' className='ml-4' />
