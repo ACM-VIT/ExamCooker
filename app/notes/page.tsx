@@ -46,15 +46,16 @@ async function notesPage({ searchParams }: { searchParams: { page?: string } }) 
             >
                 Back
             </Link>
-
-            {/* searchbar */}
-                <div className="container flex items-center justify-center p-4 space-x-4">
-                    <SearchBar />
-                    <Dropdown />
-                </div>
             
 
-           
+            {/* searchbar */}
+            <div className="container flex items-center justify-center p-4 space-x-4">
+                <SearchBar />
+                <Dropdown />
+            </div>
+
+
+
 
             {/* cards */}
             <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">

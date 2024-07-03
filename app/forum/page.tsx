@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import React from 'react';
 import ForumCard from '../components/ForumCard';
 import SearchBar from '../components/SearchBar';
+import NewForumButton from '../components/NewForumButton';
+
 
 async function forum () {
   const prisma = new PrismaClient();
@@ -15,7 +17,11 @@ async function forum () {
   return (
     <div>
       <h1 className="text-4xl font-bold text-center">Forum</h1>
-      <SearchBar/>
+      <div className="flex items-center space-x-4 justify-center my-4">
+        <SearchBar />
+        <NewForumButton />
+      </div>
+      
       {forumPosts.map((eachPost) => (
                         <ForumCard
                             key={eachPost.id}
@@ -33,3 +39,4 @@ async function forum () {
 };
 
 export default forum;
+
