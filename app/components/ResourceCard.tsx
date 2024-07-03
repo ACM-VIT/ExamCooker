@@ -12,20 +12,32 @@ interface ResourceCardProps {
 
 function ResourceCard({ subject }: ResourceCardProps) {
     const [isFav, setIsFav] = useState(false);
+    //Since the Subject datatype only has a "name" field, I assume that the name has to be something like "COURSECODE - COURSENAME" and 
+    //am hence, using the '-' character to split the string
+    let [courseCode, courseName] = subject.name.split('-');
+
+    courseName = courseName ? courseName : "Subject Name";
 
     const toggleFavorite = () => {
         setIsFav(!isFav);
     };
 
     return (
-        <div className="max-w-sm w-full">
-            <div className="flex items-center justify-between p-4 bg-blue-500 hover:bg-blue-400 transition-colors duration-200">
+        <div className="flex-col justify-between w-full h-full p-4 bg-[#5FC4E7] hover:bg-opacity-80 border-b-2 border-b-[#5FC4E7] hover:border-b-white hover: border-b-2 transition-colors duration-200">
+            <div className='items-start'>
                 <Link href={`/resources/${subject.id}`} className="block w-full text-left">
-                    <h2 className="text-xl font-bold text-white">{subject.name}</h2>
+                    <p>RESOURCES</p>
+                    <h4>{courseName.trim()}</h4>
+                    <h6>Course Code: {courseCode.trim()}</h6>
                 </Link>
-                <button onClick={toggleFavorite} className="ml-4" style={{ color: isFav ? 'red' : 'lightgrey' }}>
-                    <FontAwesomeIcon icon={faHeart} />
-                </button>
+            </div>
+            <div className='items-end'>
+                <div className='flex justify-between'>
+                    <div />
+                    <button onClick={toggleFavorite} className="ml-4" style={{ color: isFav ? 'red' : 'lightgrey' }}>
+                        <FontAwesomeIcon icon={faHeart} />
+                    </button>
+                </div>
             </div>
         </div>
     );

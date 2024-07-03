@@ -29,7 +29,7 @@ function validatePage(page: string | undefined, totalPages: number): number {
 }
 
 export default async function ResourcesPage({ searchParams }: { searchParams: { page?: string } }) {
-    const pageSize = 9; // Number of subjects per page 
+    const pageSize = 12; // Number of subjects per page 
     const totalSubjects = await prisma.subject.count();
     const totalPages = Math.ceil(totalSubjects / pageSize);
     const page = validatePage(searchParams.page, totalPages);
@@ -37,13 +37,14 @@ export default async function ResourcesPage({ searchParams }: { searchParams: { 
 
     return (
         <div className="container mx-auto p-4 flex flex-col min-h-screen">
-            <h1 className="text-3xl font-bold mb-6 text-center">Resource Repo</h1>
+            <h1 className="text-center">Resource Repo</h1>
             <input
                 type="text"
                 placeholder="Search"
                 className="block mx-auto mb-6 p-2 border border-gray-300 rounded w-full max-w-md"
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 flex-grow">
+            <br />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {subjects.map((subject) => (
                     <ResourceCard key={subject.id} subject={subject} />
                 ))}
