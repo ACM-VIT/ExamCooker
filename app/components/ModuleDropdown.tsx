@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { Module } from '@prisma/client';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faAngleRight, faAngleDown } from '@fortawesome/free-solid-svg-icons';
 
 interface ModuleDropdownProps {
     module: Module;
@@ -18,10 +20,12 @@ function ModuleDropdown({ module }: ModuleDropdownProps) {
         <div className="mb-2">
             <button
                 onClick={toggleExpand}
-                className="w-full text-left py-2 px-4 bg-[#82BEE9] border-b-[#82BEE9] border-b-2 hover:bg-opacity-80 hover:border-b-white hover:border-b-2 transition-colors duration-200 "
+                className="flex items-center justify-between w-full text-left py-2 px-4 bg-[#82BEE9] border-b-[#82BEE9] border-b-2 hover:bg-opacity-80 hover:border-b-white hover:border-b-2 transition-colors duration-200 "
                 style={{ borderBottomColor: isExpanded ? 'white' : '#82BEE9' }}
             >
                 <h3>{module.title}</h3>
+                {isExpanded && <FontAwesomeIcon icon={faAngleDown} />}
+                {!isExpanded && <FontAwesomeIcon icon={faAngleRight} />}
             </button>
             {isExpanded && (
                 <div className="sm:grid sm:grid-cols-2 px-4 py-2">
