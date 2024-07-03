@@ -1,10 +1,6 @@
 "use client"
 import React from 'react';
 import Image from 'next/image';
-import pastPaper from '/ACM/TEST/ExamCooker-2024/public/assets/PastPapersIcon.svg';
-import forum from '/ACM/TEST/ExamCooker-2024/public/assets/ForumIcon.svg';
-import notes from '/ACM/TEST/ExamCooker-2024/public/assets/NotesIcon.svg';
-import resources from '/ACM/TEST/ExamCooker-2024/public/assets/resourcesIcon.svg';
 
 function Features() {
     const handlePastPapersClick = () => {
@@ -40,7 +36,7 @@ function Features() {
                     }} className=" bg-opacity-25 backdrop-filter backdrop-blur-lg shadow-md hover:shadow-lg rounded-lg p-6">
                         <div className="flex justify-center mb-4">
                             <Image
-                                src={pastPaper}
+                                src={'./assets/PastPapersIcon.svg'}
                                 alt="Past Papers Icon"
                                 width={50}
                                 height={50}
@@ -61,7 +57,7 @@ function Features() {
                 }} className=" bg-opacity-25 backdrop-filter backdrop-blur-lg shadow-md hover:shadow-lg rounded-lg p-6">
                     <div className="flex justify-center mb-4">
                         <Image
-                            src={forum}
+                            src={'./assets/PastPapersIcon.svg'}
                             alt="Forum Icon"
                             width={50}
                             height={50}
@@ -82,7 +78,7 @@ function Features() {
                 }} className=" bg-opacity-25 backdrop-filter backdrop-blur-lg shadow-md hover:shadow-lg rounded-lg p-6">
                     <div className="flex justify-center mb-4">
                         <Image
-                            src={notes}
+                            src={'./assets/PastPapersIcon.svg'}
                             alt="Notes Icon"
                             width={50}
                             height={50}
@@ -103,7 +99,7 @@ function Features() {
                 }} className=" bg-opacity-25 backdrop-filter backdrop-blur-lg shadow-md hover:shadow-lg rounded-lg p-6">
                     <div className="flex justify-center mb-4">
                         <Image
-                            src={resources}
+                            src={'./assets/PastPapersIcon.svg'}
                             alt="Resource Repo Icon"
                             width={50}
                             height={50}
