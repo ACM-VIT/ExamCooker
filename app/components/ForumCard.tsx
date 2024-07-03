@@ -16,7 +16,7 @@ export default function ForumCard({ post, title, desc, author,  tags, createdAt,
             
                         <div className="flex justify-between items-center">
 
-                            <h2 className="font-extrabold text-3xl md-text-xl">{title}</h2>
+                            <h2 className="font-extrabold lg:text-3xl md:text-xl text-base">{title}</h2>
                             <div className="flex items-center space-x-4">
                                 <div className="bg-white p-1 hidden md:block">
                                     <NumberOfComments commentArray={comments}/>
