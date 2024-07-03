@@ -3,9 +3,12 @@ import Pagination from "../components/Pagination";
 import NotesCard from "../components/NotesCard";
 import FilterComponent from "../components/FilterComponent";
 import SearchBar from "../components/SearchBar";
+//import SearchBar from "../components/filter/SearchBarFilter";
+//import FilterComp from "../components/filter/filteroptions";
 import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
 import { redirect } from 'next/navigation';
+import Dropdown from "../components/FilterComponent";
 
 function validatePage(page: string | undefined, totalPages: number): number {
     const parsedPage = parseInt(page || '', 10);
@@ -34,41 +37,37 @@ async function notesPage({ searchParams }: { searchParams: { page?: string } }) 
     });
 
     return (
-        <div className="flex flex-col min-h-screen">
-            <div className="container mx-auto p-4">
-                <h1 className="text-4xl font-bold text-center mb-4">Notes</h1>
+        <div>
+            <h1 className="text-4xl font-bold text-center">Notes</h1>
+            {/* back button */}
+            <Link
+                href={"/"}
+                className="inline-block px-4 py-2 bg-blue-500 text-white rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600"
+            >
+                Back
+            </Link>
 
-
-                {/* searchbar */}
-                <div className="mb-4">
-                    <h1 className="text-2xl font-bold mb-4">Search Example</h1>
+            {/* searchbar */}
+                <div className="container flex items-center justify-center p-4 space-x-4">
                     <SearchBar />
+                    <Dropdown />
                 </div>
+            
 
-                <div className="flex">
-                    {/* filter */}
-                    <div className="w-1/4 pr-4">
-                        <h1 className="text-2xl font-bold mb-4">Dummy Filter</h1>
-                        <FilterComponent />
-                    </div>
+           
 
-                    {/* cards */}
-                    <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {notes.map((eachNote) => (
-                            <NotesCard
-                                key={eachNote.id}
-                                note={eachNote}
-                            />
-                        ))}
-                    </div>
-                </div>
+            {/* cards */}
+            <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {notes.map((eachNote) => (
+                    <NotesCard
+                        key={eachNote.id}
+                        note={eachNote}
+                    />
+                ))}
             </div>
 
-            {/* pagination */}
-            <div className="mt-auto">
-                <Pagination currentPage={page} totalPages={totalPages} basePath="/notes" />
-            </div>
-        </div>
+            <Pagination currentPage={page} totalPages={totalPages} basePath="/notes" />
+        </div >
     );
 }
 

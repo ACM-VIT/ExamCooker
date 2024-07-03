@@ -1,25 +1,27 @@
-import type { Comment } from "@prisma/client";
+import { PrismaClient, type Comment} from "@prisma/client";
 import { ReplyButton, LikeButton, DislikeButton } from "../common/Buttons";
 
-let count: number = 0;
 
-export function NumberOfComments() {
+let count: number | undefined = 0;
+
+export function NumberOfComments({commentArray} : {commentArray : Comment[] | undefined}) {
     return (
         <div>
-            <text className="bg-none text-black text-base py-4 px-2">{count} Comments</text>
+            <text className="bg-none text-black text-base py-4 px-2">{commentArray?.length} Comments</text>
         </div>
     );
 }
 
-export default function CommentContainer({comments}:{comments:Comment[]}) {
-    count = comments.length;
+export default async function CommentContainer({comments}:{comments:Comment[]|undefined}) {
+    count = comments?.length;
+    
     return (
         <div className="bg-[#5FC4E7] p-0 md:px-2">
-            {comments.map((comment: Comment) => (
+            {comments?.map((comment: Comment) => (
                 <Comment
                     key={comment.id}
                     userName={comment.authorId}
-                    time={comment.createdAt}
+                    time={comment.createdAt.toISOString()}
                     content={comment.content}
                 />
             ))}
@@ -29,7 +31,7 @@ export default function CommentContainer({comments}:{comments:Comment[]}) {
 
 
 
-export function Comment({ userName, time, content }: { userName: string, time: string, content: string }) {
+export function Comment({ userName, time, content }: { userName: string | null | undefined, time: string, content: string }) {
     return (
         <div className="m-0 p-2 border-black border-l w-full">
             <div className="flex justify-between">
@@ -50,3 +52,14 @@ export function Comment({ userName, time, content }: { userName: string, time: s
         </div>
     );
 }
+
+
+// const prisma = new PrismaClient();
+//     const writer = await prisma.comment.findUnique({
+//       where : {
+//         id : comment.authorId,
+//       },
+//       include: {
+//         author: true,
+//       },
+//     });

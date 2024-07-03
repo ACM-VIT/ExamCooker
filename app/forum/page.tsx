@@ -9,6 +9,7 @@ async function forum () {
     include: {
         author: true,
         tags: true,
+        comments: true,
     },
 });
   return (
@@ -23,6 +24,8 @@ async function forum () {
                             desc='some random description'
                             createdAt={eachPost.createdAt}
                             tags={eachPost.tags}
+                            post={eachPost}
+                            comments={eachPost.comments}
                         />
                     ))}
     </div>
