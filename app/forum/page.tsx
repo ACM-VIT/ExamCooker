@@ -4,7 +4,7 @@ import ForumCard from '../components/ForumCard';
 import SearchBar from '../components/SearchBar';
 import Pagination from '../components/Pagination';
 import { redirect } from 'next/navigation';
-
+import NewForumButton from '../components/NewForumButton';
 function validatePage(page: string | undefined, totalPages: number): number {
   const parsedPage = parseInt(page || '', 10);
   if (isNaN(parsedPage) || parsedPage < 1 || parsedPage > totalPages || page !== parsedPage.toString()) {
@@ -41,6 +41,7 @@ async function forum({ searchParams }: { searchParams: { page?: string } }) {
       <h1 className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-center mb-4 sm:mb-6 md:mb-8">Forum</h1>
       <div className="mb-2 sm:mb-3 md:mb-6">
         <SearchBar />
+        <NewForumButton />
       </div>
       <div className="space-y-2 sm:space-y-1 md:space-y-2 lg:space-y-4">
         {forumPosts.map((eachPost) => (
