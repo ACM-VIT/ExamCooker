@@ -310,11 +310,7 @@ const CreateForum: React.FC = () => {
               required
             />
           </div>
-          <div className="border-dotted border-2 border-gray-400 flex flex-col items-center justify-center h-40">
-            <span className="text-3xl">+</span>
-            <span className="text-gray-500">Drag and Drop to add files</span>
-          </div>
-          
+        
           <div className="mb-4">
             <div className="flex items-center mb-2 flex-wrap">
               {tags.map((tag) => (
