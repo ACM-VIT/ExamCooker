@@ -1,4 +1,3 @@
-// components/Header.tsx
 import React from 'react';
 
 interface HeaderProps {
@@ -16,8 +15,8 @@ const Header: React.FC<HeaderProps> = ({ toggleTheme, darkMode }) => {
               <p className="text-lg font-medium text-gray-900">Sam Doe</p>
               <p className="text-sm text-gray-500">samdoe@vitstudent.ac.in</p>
             </div>
-            <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-            <button className="ml-4  px-3 py-1 rounded" onClick={toggleTheme}>
+            <div className="w-10 h-10 bg-gray-300 rounded-full sm:mr-4"></div>
+            <button className="ml-4 px-3 py-1 rounded sm:ml-6" onClick={toggleTheme}>
               {darkMode ? '☀️' : '🌙'} {/* Toggle symbol based on darkMode state */}
             </button>
           </div>
