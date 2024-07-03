@@ -1,8 +1,5 @@
 import React from 'react';
 import Image from 'next/image';
-import acmLogo from '@/public/assets/ACM Logo.svg';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faInstagram, faLinkedin, faTwitter } from '@fortawesome/free-brands-svg-icons';
 
 function Footer() {
   return (
@@ -21,7 +18,7 @@ function Footer() {
         </div>
         <div className="mx-auto max-w-xs sm:max-w-md">
           <Image
-            src={acmLogo}
+            src={'./assets/ACM Logo.svg'}
             alt="ACM VIT Student Chapter"
             width={500}
             height={500}
@@ -29,20 +26,6 @@ function Footer() {
           />
         </div>
       </section>
-      <div className="absolute bottom-4 right-4">
-        <h3 className="text-lg mb-2">Follow Us</h3>
-        <div className="flex space-x-4">
-          <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-            <FontAwesomeIcon icon={faInstagram} size="2x" className="text-black hover:text-gray-800" />
-          </a>
-          <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-            <FontAwesomeIcon icon={faLinkedin} size="2x" className="text-black hover:text-gray-800" />
-          </a>
-          <a href="https://www.twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
-            <FontAwesomeIcon icon={faTwitter} size="2x" className="text-black hover:text-gray-800" />
-          </a>
-        </div>
-      </div>
     </footer>
   );
 }

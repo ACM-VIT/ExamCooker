@@ -6,6 +6,7 @@ import SearchBar from "../components/SearchBar";
 import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
 import { redirect } from 'next/navigation';
+import UploadButtonPaper from "../components/uploadButtonPaper";
 
 
 function validatePage(page: string | undefined, totalPages: number): number {
@@ -46,7 +47,7 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string }
                 >
                     Back
                 </Link>
-
+                <UploadButtonPaper />
                 {/* searchbar */}
                 <div className="mb-4">
                     <h1 className="text-2xl font-bold mb-4">Search Example</h1>
