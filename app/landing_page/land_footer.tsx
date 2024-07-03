@@ -1,6 +1,5 @@
 import React from 'react';
 import Image from 'next/image';
-import acmLogo from '/ACM/TEST/ExamCooker-2024/public/assets/ACM Logo.svg';
 
 function Footer() {
   return (
@@ -15,7 +14,7 @@ function Footer() {
         <p className="text-lg mb-2">Made With <span role="img" aria-label="heart">💙</span></p>
         <div className="mx-auto max-w-xs sm:max-w-md">
           <Image
-            src={acmLogo}
+            src={'./assets/ACM Logo.svg'}
             alt="ACM VIT Student Chapter"
             width={500}
             height={500}
