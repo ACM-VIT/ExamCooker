@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Plus from "@/public/assets/plus.svg"
 import Link from 'next/link';
 
-const UploadFileNotes: React.FC = () => {
+const UploadFilePaper: React.FC = () => {
     const [title, setTitle] = useState('');
     const [year, setYear] = useState('');
     const [subject, setSubject] = useState('');
@@ -193,4 +193,4 @@ const UploadFileNotes: React.FC = () => {
     );
 };
 
-export default UploadFileNotes;
+export default UploadFilePaper;

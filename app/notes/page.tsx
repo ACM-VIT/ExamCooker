@@ -9,6 +9,7 @@ import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
 import { redirect } from 'next/navigation';
 import Dropdown from "../components/FilterComponent";
+import UploadButton from "../components/UploadButton";
 
 function validatePage(page: string | undefined, totalPages: number): number {
     const parsedPage = parseInt(page || '', 10);
@@ -46,7 +47,7 @@ async function notesPage({ searchParams }: { searchParams: { page?: string } }) 
             >
                 Back
             </Link>
-            
+            <UploadButton/>
 
             {/* searchbar */}
             <div className="container flex items-center justify-center p-4 space-x-4">
