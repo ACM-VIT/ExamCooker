@@ -45,4 +45,6 @@ export default function ForumCard({ post, title, desc, author,  tags, createdAt,
             </div>
         </Link>
     );
+
 }
+
