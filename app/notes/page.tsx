@@ -1,15 +1,11 @@
 import React from "react";
 import Pagination from "../components/Pagination";
 import NotesCard from "../components/NotesCard";
-import FilterComponent from "../components/FilterComponent";
 import SearchBar from "../components/SearchBar";
-//import SearchBar from "../components/filter/SearchBarFilter";
-//import FilterComp from "../components/filter/filteroptions";
-import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
 import { redirect } from 'next/navigation';
 import Dropdown from "../components/FilterComponent";
-import UploadButton from "../components/UploadButton";
+import UploadButtonNotes from "../components/UploadButtonNotes";
 
 function validatePage(page: string | undefined, totalPages: number): number {
     const parsedPage = parseInt(page || '', 10);
@@ -50,23 +46,23 @@ async function notesPage({ searchParams }: { searchParams: { page?: string } }) 
 
             {/* searchbar */}
             <div className="flex justify-center">
-            <div className="container flex items-center justify-center p-4 space-x-4">
-                <SearchBar />
-                <Dropdown />
-                <UploadButton/>
-            </div>
+                <div className="container flex items-center justify-center p-4 space-x-4">
+                    <SearchBar />
+                    <Dropdown />
+                    <UploadButtonNotes />
+                </div>
             </div>
 
             {/* cards */}
             <div className="flex justify-center">
-            <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {notes.map((eachNote) => (
-                    <NotesCard
-                        key={eachNote.id}
-                        note={eachNote}
-                    />
-                ))}
-            </div>
+                <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {notes.map((eachNote) => (
+                        <NotesCard
+                            key={eachNote.id}
+                            note={eachNote}
+                        />
+                    ))}
+                </div>
             </div>
 
             <Pagination currentPage={page} totalPages={totalPages} basePath="/notes" />
