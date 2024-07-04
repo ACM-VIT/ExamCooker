@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 
-const UploadButton: React.FC = () => {
+const UploadButtonNotes: React.FC = () => {
     return (
         <Link
             href="/create-notes"
@@ -13,4 +13,4 @@ const UploadButton: React.FC = () => {
     );
 };
 
-export default UploadButton;
+export default UploadButtonNotes;
