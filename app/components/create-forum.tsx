@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 
 import Link from 'next/link';
+import { createForumPost } from '../actions/CreateForumPost';
 
 const CreateForum: React.FC = () => {
   const [title, setTitle] = useState('');
@@ -13,6 +14,9 @@ const CreateForum: React.FC = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [isAddingTag, setIsAddingTag] = useState(false);
+  const authorId = "cly0klo9800006hg6gwc73j5u";
+  const forumId = "cly4bhnc0000df02z5tshuhx7";
+  const rating = 6;
 
   const handleAddTag = () => {
     if (newTag && !tags.includes(newTag)) {
@@ -41,32 +45,22 @@ const CreateForum: React.FC = () => {
     e.preventDefault();
 
     // Validation for required fields
-    if (!title || !year || !subject || !slot) {
-      let errorMessage = 'Please fill in the following fields:\n';
-      if (!title) errorMessage += '- Title\n';
-      if (!year) errorMessage += '- Year\n';
-      if (!subject) errorMessage += '- Subject\n';
-      if (!slot) errorMessage += '- Slot\n';
+    // if (!title || !year || !subject || !slot) {
+    //   let errorMessage = 'Please fill in the following fields:\n';
+    //   if (!title) errorMessage += '- Title\n';
+    //   if (!year) errorMessage += '- Year\n';
+    //   if (!subject) errorMessage += '- Subject\n';
+    //   if (!slot) errorMessage += '- Slot\n';
 
-      alert(errorMessage);
-      return;
-    }
+    //   alert(errorMessage);
 
-    // const response = await fetch('/api/createForum', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({ title, year, subject, slot, description, tags }),
-    // });
-
-    // if (response.ok) {
-    //   console.log('Forum created successfully');
-    //   router.push('/');
-    // } else {
-    //   console.error('Failed to create forum');
-    // }
-  };
+    const result = await createForumPost({title, authorId, forumId, rating})
+    if(result.success) {
+      console.log('New forum post created: ', result.data)
+    } else {
+      console.error("Error: ", result.error)
+    }}
+    
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
