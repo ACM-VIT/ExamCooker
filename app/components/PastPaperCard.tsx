@@ -34,12 +34,7 @@ function PastPaperCard({ pastPaper }: PastPaperCardProps) {
             </span>
             View Paper
           </Link>
-          <button className="py-[2.605%] px-2 text-sm flex items-center bg-white text-black">
-            More
-            <span className="ml-2 flex items-center justify-center">
-              <FontAwesomeIcon icon={faCaretDown} style={{ fontSize: '1.25rem' }} />
-            </span>
-          </button>
+
           <button onClick={FavpeCLick} style={{ color: isFav ? 'red' : 'lightgrey' }}>
             <FontAwesomeIcon icon={faHeart} />
           </button>
