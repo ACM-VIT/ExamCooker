@@ -1,11 +1,11 @@
 import React from "react";
-import UploadFileNotes from "../components/upload-file";
+import UploadFileNotes from "../components/UploadNotes";
 
 
 const NewForumPage = () => {
     return (
-        <div className = "create-foum">
-           
+        <div className="create-notes">
+
             <UploadFileNotes />
 
         </div>
