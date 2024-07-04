@@ -1,9 +1,9 @@
 import React from "react";
-import UploadFilePaper from "../components/upload-file-Paper";
+import UploadFilePaper from "../components/UploadPapers";
 
 const UploadPaperPage = () => {
     return (
-        <div className = "create-forum">
+        <div className="create-papers">
             <UploadFilePaper />
 
         </div>
