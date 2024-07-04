@@ -1,12 +1,62 @@
 "use client";
 import React from "react";
 import Image from "next/image";
-import PastPaper from "@/public/assets/PastPapersIcon.svg";
-import Forum from "@/public/assets/ForumIcon.svg";
-import Notes from "@/public/assets/NotesIcon.svg";
-import Resources from "@/public/assets/ResourcesIcon.svg";
+import PastPaper from "@/public/LandingPage/LandingPagePastPapers.svg";
+import Forum from "@/public/LandingPage/LandingPageForum.svg";
+import Notes from "@/public/LandingPage/LandingPageNotes.svg";
+import Resources from "@/public/LandingPage/LandingPageResourceRepo.svg";
+import ArrowRight from "@/public/LandingPage/ArrowRight.svg"
+import GradientHeart from '@/public/LandingPage/GradientHeart.svg';
+import GradientACMLogo from "@/public/LandingPage/ACM Logo.svg"
 
-function Features() {
+
+function GradientText({ content }: { content: string }) {
+    return (
+        <span className="text-transparent bg-clip-text bg-gradient-to-tr to-[#27BAEC] from-[#253EE0]">{content}</span>
+    );
+}
+
+function WordBetweenLine({ children }: { children: React.ReactNode }) {
+    return (
+        <div className='relative flex items-center justify-between'>
+            <div className='flex-grow border-t border-black'></div>
+            <span className='text-8xl font-extrabold flex-shrink mx-4 text-black'>{children}</span>
+            <div className='flex-grow border-t border-black'></div>
+        </div>
+    );
+}
+
+function BlurredCircle() {
+    return (
+        <div className="rounded-full bg-black w-[400px] h-[400px] blur-[90px] absolute">
+        </div>
+    );
+}
+
+function LandingPageCard({ title, content, imagePath, altOfImage }: { title: string, content: string, imagePath: any, altOfImage: string }) {
+    return (
+        <div className="relative overflow-hidden">
+            <div className="absolute w-[100px] h-[200px] rounded-full  bg-[#3BF4C7]">
+            </div>
+            <div className="absolute w-[100px] h-[200px] rounded-full  bg-[#3BF4C7]">
+            </div>
+            <div className="relative w-fit bg-[#5FC4E7]/20 backdrop-blur-[150px] border-[#5FC4E7] border-[1px] p-4">
+                <div className="flex items-center w-full justify-between">
+                    <Image src={imagePath} alt={altOfImage} width={300} height={300} className="h-[150px] md:h-[300px]" />
+                    <div className="flex-col gap-5">
+                        <span className="text-4xl font-extrabold inline-block">{title}</span>
+                        <span className="text-lg">{content}</span>
+                    </div>
+                </div>
+                <div className="flex justify-between">
+                    <div />
+                    <Image src={ArrowRight} alt="ArrowRight" width={35} height={35} />
+                </div>
+            </div>
+        </div>);
+}
+
+function LandingPageContent() {
     const handlePastPapersClick = () => {
         // Implement logic for what happens when "Past Papers" box is clicked
         alert("Past Papers box clicked!");
@@ -27,128 +77,60 @@ function Features() {
         alert("Past Papers box clicked!");
         // You can add more logic here, like navigating to a different page or displaying more content
     };
+                // <h4 className="drop-shadow-[0_35px_35px_rgba(0,0,0,1)]">Presenting [ExamCooker],your <br /> one-stop solution to Cram before Exams</h4>
 
     return (
-        <section className="text-center py-12 bg-[#CCF3FF]">
-            <h2 className="text-2xl mb-8">For Crammers By Crammers</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                <button
-                    onClick={handlePastPapersClick}
-                    className="focus:outline-none"
-                >
-                    <div
-                        style={{
-                            backgroundImage:
-                                "linear-gradient(135deg, #85E3E0, #92CEEA)",
-                            backgroundColor: "#85E3E0",
-                            opacity: "0.9",
-                        }}
-                        className=" bg-opacity-25 backdrop-filter backdrop-blur-lg shadow-md hover:shadow-lg rounded-lg p-6"
-                    >
-                        <div className="flex justify-center mb-4">
-                            <Image
-                                src={PastPaper}
-                                alt="Past Papers Icon"
-                                width={50}
-                                height={50}
-                            />
-                        </div>
-                        <h3 className="text-xl mb-2">Past Papers</h3>
-                        <p className="text-sm sm:text-base">
-                            Practice makes perfect. Solve Previous Year
-                            Questions and get ready for the exams.
-                        </p>
-                    </div>
-                </button>
-                {/* Repeat the same structure for other boxes */}
-                <button
-                    onClick={handleForumClick}
-                    className="focus:outline-none"
-                >
-                    <div
-                        style={{
-                            backgroundImage:
-                                "linear-gradient(135deg, #85E3E0, #92CEEA)",
-                            backgroundColor: "#85E3E0",
-                            opacity: "0.9",
-                        }}
-                        className=" bg-opacity-25 backdrop-filter backdrop-blur-lg shadow-md hover:shadow-lg rounded-lg p-6"
-                    >
-                        <div className="flex justify-center mb-4">
-                            <Image
-                                src={Forum}
-                                alt="Forum Icon"
-                                width={50}
-                                height={50}
-                            />
-                        </div>
-                        <h3 className="text-xl mb-2">Forum</h3>
-                        <p className="text-sm sm:text-base">
-                            Connect and learn from fellow crammers in our
-                            community forum.
-                        </p>
-                    </div>
-                </button>
-
-                <button
-                    onClick={handleNotesClick}
-                    className="focus:outline-none"
-                >
-                    <div
-                        style={{
-                            backgroundImage:
-                                "linear-gradient(135deg, #85E3E0, #92CEEA)",
-                            backgroundColor: "#85E3E0",
-                            opacity: "0.9",
-                        }}
-                        className=" bg-opacity-25 backdrop-filter backdrop-blur-lg shadow-md hover:shadow-lg rounded-lg p-6"
-                    >
-                        <div className="flex justify-center mb-4">
-                            <Image
-                                src={Notes}
-                                alt="Notes Icon"
-                                width={50}
-                                height={50}
-                            />
-                        </div>
-                        <h3 className="text-xl mb-2">Notes</h3>
-                        <p className="text-sm sm:text-base">
-                            Summarized notes from top performers to help you
-                            revise quickly.
-                        </p>
-                    </div>
-                </button>
-
-                <button
-                    onClick={handleResourcesClick}
-                    className="focus:outline-none"
-                >
-                    <div
-                        style={{
-                            backgroundImage:
-                                "linear-gradient(135deg, #85E3E0, #92CEEA)",
-                            backgroundColor: "#85E3E0",
-                            opacity: "0.9",
-                        }}
-                        className=" bg-opacity-25 backdrop-filter backdrop-blur-lg shadow-md hover:shadow-lg rounded-lg p-6"
-                    >
-                        <div className="flex justify-center mb-4">
-                            <Image
-                                src={Resources}
-                                alt="Resource Repo Icon"
-                                width={50}
-                                height={50}
-                            />
-                        </div>
-                        <h3 className="text-xl mb-2">Resource Repo</h3>
-                        <p className="text-sm sm:text-base">
-                            Access a variety of resources to aid your studies.
-                        </p>
-                    </div>
-                </button>
+        <div className='bg-[#C2E6EC]'>
+            <div className='mx-36 mt-14 mb-96'>
+                <h1 className="text-9xl"><GradientText content="Cramming" /></h1>
+                <br />
+                <h1 className="text-9xl drop-shadow-[0px_5px_rgba(59,244,199,1)]">Made Easy</h1>
+                <br />
+                <div>
+                <h4 >Presenting [ExamCooker],your <br /> one-stop solution to Cram before Exams</h4>
+                    
+                </div>
             </div>
-        </section>
+            <br />
+            <br />
+            <br />
+
+            <WordBetweenLine><div className="drop-shadow-[0px_5px_rgba(59,244,199,1)]">For Crammers By Crammers</div></WordBetweenLine>
+            <div className="mb-32"></div>
+
+            <div className="grid grid-cols-1 md:px-12 sm:grid-cols-2 gap-3 md:gap-[75px] max-w-[1475px] mx-auto mb-96">
+                <LandingPageCard title="Past Papers" content="Conquer Your Exam Anxieties using our plethora of past papers" imagePath={PastPaper} altOfImage="PastPaper" />
+                <LandingPageCard title="Forum" content="Connect with fellow crammers and ignite discussions with our Forum" imagePath={Forum} altOfImage="Forum" />
+                <LandingPageCard title="Notes" content="Access and Contribute to a vibrant collection of notes, created by students like you!" imagePath={Notes} altOfImage="Notes" />
+                <LandingPageCard title="Resource Repo" content="Expand your learning horizon through curated links to top-notch articles and videos" imagePath={Resources} altOfImage="ResourceRepo" />
+            </div>
+
+            <WordBetweenLine >Why Examcooker?</WordBetweenLine>
+
+            <br />
+            <h4 className="px-16 text-center mb-96">
+                Remember the days of desperately searching the web for past papers, only to get lost in a maze of irrelevant links?
+                <br />We do too! Thats why we built this website - a haven for students who are tired of the exam prep struggle.
+                <br />Here, everything you need to cram like a champion is under one roof.
+                <br /> <GradientText content="Let's conquer those exams together!" />
+            </h4>
+
+            <WordBetweenLine >
+                <div className="flex items-center">
+                    Made With
+                    <Image src={GradientHeart} alt="Gradient Heart" width={150} height={150} className="inline" />
+                </div>
+            </WordBetweenLine>
+
+            <br />
+            <br />
+            <br />
+            <div className="flex align-middle justify-center">
+                <Image src={GradientACMLogo} alt="ACM logo" width={816} height={353} />
+            </div>
+
+        </div>
     );
 }
 
-export default Features;
+export default LandingPageContent;
