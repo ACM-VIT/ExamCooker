@@ -58,7 +58,6 @@ export default async function Home() {
                     <Features />
                     <div className="flex flex-col items-center py-12">
                         <span className="text-3xl font-semibold mb-4">Start Cooking Your Academic Success Today</span>
-                        <SignIn />
                     </div>
                     <Footer />
                 </div>
