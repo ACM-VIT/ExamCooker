@@ -97,7 +97,7 @@ function LandingPageContent() {
             <div className="lg:sticky lg:top-0 lg:h-screen space-y-3">
                 <WordBetweenLine><div className="drop-shadow-[0px_5px_rgba(59,244,199,1)]">For Crammers By Crammers</div></WordBetweenLine>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-[5px] md:gap-[20px] md:px-4 max-w-[1475px] mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-[5px] px-1 md:gap-[20px] md:px-4 max-w-[1475px] mx-auto">
                     <LandingPageCard title="Past Papers" content="Conquer Your Exam Anxieties using our plethora of past papers" imagePath={PastPaper} altOfImage="PastPaper" />
                     <LandingPageCard title="Forum" content="Connect with fellow crammers and ignite discussions with our Forum" imagePath={Forum} altOfImage="Forum" />
                     <LandingPageCard title="Notes" content="Access and Contribute to a vibrant collection of notes, created by students like you!" imagePath={Notes} altOfImage="Notes" />
