@@ -1,4 +1,3 @@
-"use client";
 import React from "react";
 import Image from "next/image";
 import PastPaper from "@/public/LandingPage/LandingPagePastPapers.svg";
@@ -77,6 +76,10 @@ function LandingPageContent() {
         // You can add more logic here, like navigating to a different page or displaying more content
     };
     // <h4 className="drop-shadow-[0_35px_35px_rgba(0,0,0,1)]">Presenting [ExamCooker],your <br /> one-stop solution to Cram before Exams</h4>
+    //
+    const handleClick = () => {
+        alert("Clicked!");
+    }
 
     return (
         <div className='bg-[#C2E6EC] space-y-40 md:space-y-96'>
@@ -127,7 +130,9 @@ function LandingPageContent() {
             <div className="lg:sticky lg:h-screen lg:top-0 lg:bg-[#8DCAE9] flex-col content-center">
                 <WordBetweenLine >
                     <div className="flex items-center">
+                        <span className="drop-shadow-[0px_5px_rgba(59,244,199,1)]">
                         Made With
+                        </span>
                         <Image src={GradientHeart} alt="Gradient Heart" className="inline w-[55px] h-[55px] md:w-[150px] md:h-[150px]" />
                     </div>
                 </WordBetweenLine>
