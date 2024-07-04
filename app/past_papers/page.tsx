@@ -40,29 +40,27 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string }
         <div className="flex flex-col min-h-screen">
             <div className="container mx-auto p-4">
                 <h1 className="text-4xl font-bold text-center mb-4">Past Papers</h1>
-                {/* back button */}
-                <Link
+                {/* back button
+                                <Link
                     href="/"
                     className="inline-block px-4 py-2 bg-blue-500 text-white rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600 mb-4"
                 >
                     Back
-                </Link>
-                <UploadButtonPaper />
+                </Link> */}
+
+
                 {/* searchbar */}
-                <div className="mb-4">
-                    <h1 className="text-2xl font-bold mb-4">Search Example</h1>
-                    <SearchBar />
+                <div className="flex justify-center">
+                    <div className="container flex items-center justify-center p-4 space-x-4 pt-2">
+                        <SearchBar />
+                        <FilterComponent />
+                        <UploadButtonPaper />
+                    </div>
                 </div>
 
-                <div className="flex">
-                    {/* filter */}
-                    <div className="w-1/4 pr-4">
-                        <h1 className="text-2xl font-bold mb-4">Dummy Filter</h1>
-                        <FilterComponent />
-                    </div>
-
-                    {/* cards */}
-                    <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {/* cards */}
+                <div className="flex justify-center">
+                    <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
                         {pastPapers.map((eachPaper) => (
                             <PastPaperCard
                                 key={eachPaper.id}
@@ -72,6 +70,7 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string }
                     </div>
                 </div>
             </div>
+
 
             {/* pagination */}
             <div className="mt-auto">

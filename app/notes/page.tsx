@@ -39,26 +39,26 @@ async function notesPage({ searchParams }: { searchParams: { page?: string } }) 
 
     return (
         <div>
-            <h1 className="text-4xl font-bold text-center">Notes</h1>
-            {/* back button */}
-            <Link
+            <h1 className="text-4xl font-bold text-center pt-4">Notes</h1>
+            {/* back button 
+                        <Link
                 href={"/"}
                 className="inline-block px-4 py-2 bg-blue-500 text-white rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600"
             >
                 Back
-            </Link>
-            <UploadButton/>
+            </Link> */}
 
             {/* searchbar */}
+            <div className="flex justify-center">
             <div className="container flex items-center justify-center p-4 space-x-4">
                 <SearchBar />
                 <Dropdown />
+                <UploadButton/>
+            </div>
             </div>
 
-
-
-
             {/* cards */}
+            <div className="flex justify-center">
             <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 {notes.map((eachNote) => (
                     <NotesCard
@@ -66,6 +66,7 @@ async function notesPage({ searchParams }: { searchParams: { page?: string } }) 
                         note={eachNote}
                     />
                 ))}
+            </div>
             </div>
 
             <Pagination currentPage={page} totalPages={totalPages} basePath="/notes" />

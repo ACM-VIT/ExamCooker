@@ -1,5 +1,3 @@
-
-
 "use client";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
@@ -19,17 +17,37 @@ export default function RootLayout({
   const [darkMode, setDarkMode] = useState(false); // State for dark mode
   const navbarRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const savedNavState = localStorage.getItem('isNavOn');
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedNavState !== null) {
+      setIsNavOn(savedNavState === 'true');
+    }
+    if (savedDarkMode !== null) {
+      setDarkMode(savedDarkMode === 'true');
+    }
+  }, []);
+
   const toggleNavbar = () => {
-    setIsNavOn(!isNavOn);
+    setIsNavOn(prevState => {
+      const newState = !prevState;
+      localStorage.setItem('isNavOn', newState.toString());
+      return newState;
+    });
   };
 
   const toggleTheme = () => {
-    setDarkMode(!darkMode); // Toggle dark mode state
+    setDarkMode(prevState => {
+      const newState = !prevState;
+      localStorage.setItem('darkMode', newState.toString());
+      return newState;
+    });
   };
 
   const handleClickOutside = (event: MouseEvent) => {
     if (navbarRef.current && !navbarRef.current.contains(event.target as Node)) {
       setIsNavOn(false);
+      localStorage.setItem('isNavOn', 'false');
     }
   };
 
