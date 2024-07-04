@@ -7,17 +7,19 @@ import path from 'path';
 
 const prisma = new PrismaClient();
 
-const keyFilePath = path.join(process.cwd(), 'gcp.json');
 
-const storageConfig: StorageOptions = {
+const storageOptions: StorageOptions = {
     projectId: process.env.GCP_PROJECT_ID,
     credentials: {
-        client_email: process.env.GCP_CLIENT_EMAIL,
+        type: process.env.GCP_TYPE,
+        project_id: process.env.GCP_PROJECT_ID,
+        private_key_id: process.env.GCP_PRIVATE_KEY_ID,
         private_key: process.env.GCP_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    },
-    scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+        client_email: process.env.GCP_CLIENT_EMAIL,
+        client_id: process.env.GCP_CLIENT_ID,
+        universe_domain: process.env.GCP_UNIVERSE_DOMAIN
+    }
 };
-
 
 export async function generateSignedUploadURL(filename: string) {
     const bucketName = process.env.BUCKET_NAME;
@@ -30,20 +32,11 @@ export async function generateSignedUploadURL(filename: string) {
     let storage: Storage;
 
     try {
-        storage = new Storage(storageConfig);
+        storage = new Storage(storageOptions);
     } catch (error) {
         console.error("Error initializing Storage:", error);
         throw new Error(`Failed to initialize Storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
     };
-
-    try {
-        storage = new Storage({
-            keyFilename: keyFilePath
-        });
-    } catch (error) {
-        console.error("Error initializing Storage:", error);
-        throw new Error(`Failed to initialize Storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
 
     const bucket = storage.bucket(bucketName);
     const file = bucket.file(filename);
