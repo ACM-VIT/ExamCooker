@@ -7,6 +7,7 @@ import Resources from "@/public/LandingPage/LandingPageResourceRepo.svg";
 import ArrowRight from "@/public/LandingPage/ArrowRight.svg"
 import GradientHeart from '@/public/LandingPage/GradientHeart.svg';
 import GradientACMLogo from "@/public/LandingPage/ACM Logo.svg"
+import { SignIn } from "../components/sign-in";
 
 
 function GradientText({ children }: { children: React.ReactNode }) {
@@ -108,11 +109,7 @@ function LandingPageContent() {
                 <WordBetweenLine ><div className="text-center"><GradientText>Start Cooking Your<br /> Academic Success Today </GradientText></div></WordBetweenLine>
                 <br />
                 <div className="grid gap-8 justify-center">
-                    <div className="relative group">
-                        <div className="absolute inset-0 bg-black">
-                        </div>
-                        <button className="border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">Sign In</button>
-                    </div>
+                    <SignIn displayText="Sign In"/>
                 </div>
             </div>
 
