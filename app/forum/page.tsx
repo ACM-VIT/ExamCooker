@@ -39,9 +39,10 @@ async function forum({ searchParams }: { searchParams: { page?: string } }) {
   return (
     <div className="flex flex-col justify-center items-center mx-auto p-4">
       <h1 className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-center mb-4 sm:mb-6 md:mb-8">Forum</h1>
-      <div className="mb-2 sm:mb-3 md:mb-6">
+      <div className="container flex items-center justify-center p-2 space-x-4">
         <SearchBar />
         <NewForumButton />
+
       </div>
       <div className="space-y-2 sm:space-y-1 md:space-y-2 lg:space-y-4">
         {forumPosts.map((eachPost) => (
