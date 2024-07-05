@@ -2,9 +2,7 @@ import Link from "next/link";
 import { SignIn } from "./components/sign-in";
 import { SignOut } from "./components/sign-out";
 import { auth } from "./auth";
-import Header from "./landing_page/landing_header";
-import Features from "./landing_page/landing";
-import Footer from "./landing_page/land_footer";
+import LandingPageContent from "./landing_page/landing";
 
 export default async function Home() {
     const session = await auth();
@@ -13,12 +11,7 @@ export default async function Home() {
             {!session ? (
                 //TODO: Add your landing page here
                 <div className="min-h-screen bg-[#5fc4e7] flex flex-col">
-                    <Header />
-                    <Features />
-                    <div className="flex flex-col items-center py-12 bg-[#CCF3FF]">
-                        <span className="text-3xl font-semibold mb-4">Start Cooking Your Academic Success Today</span>
-                    </div>
-                    <Footer />
+                    <LandingPageContent />
                 </div>
             ) : (
                 //TDOD: Add your home page here
