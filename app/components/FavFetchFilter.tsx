@@ -15,12 +15,14 @@ const FavFetch = ({pastpapers, notes, forumposts, resources} : {pastpapers: Past
   const renderContent = () => {
     switch(activeTab) {
       case 'Past Papers':
-        return pastpapers.map(eachPaper => <PastPaperCard
+        return pastpapers.map((eachPaper, index) => <PastPaperCard
+                                          index={index}
                                           key={eachPaper.id}
                                           pastPaper={eachPaper}
                                       />);
       case 'Notes':
-        return notes.map(eachNote => <NotesCard
+        return notes.map((eachNote, index) => <NotesCard
+                                    index={index}
                                     key={eachNote.id}
                                     note={eachNote}
                                 />);
