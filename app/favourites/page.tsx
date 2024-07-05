@@ -52,31 +52,18 @@ async function favouritesPage({searchParams, params}: {searchParams: { page?: st
 
     console.log(userBookmarks?.bookmarkedResources)
     return (
-        <div>
+        <div className="">
             <h1 className="text-4xl font-bold text-center p-4">Favourites</h1>
-            <Link
-                href="/"
-                className="inline-block px-4 py-2 bg-blue-500 text-white rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600"
-            >
-                Back
-            </Link>
-            <div className="container flex items-center justify-center p-4 space-x-4">
-                {/* WHY IS FAVOURITES NOT AN OPTION HERE */}
-                {/* <SearchBar /> */}
-                <Dropdown />
-            </div>
+                <SearchBar pageType="notes"/>
             <div className="p-5">
+                <div>
                 <FavFetch 
-                pastpapers={userBookmarks.bookmarkedPastPapers}
-                notes={userBookmarks.bookmarkedNotes}
-                forumposts={userBookmarks.bookmarkedForumPosts}
-                resources={userBookmarks.bookmarkedResources}/>
+                    pastpapers={userBookmarks.bookmarkedPastPapers}
+                    notes={userBookmarks.bookmarkedNotes}
+                    forumposts={userBookmarks.bookmarkedForumPosts}
+                    resources={userBookmarks.bookmarkedResources}/>
+                </div>
             </div>
-            {/* <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {favourites.map((item) => (
-                    <NotesCard key={item.id} note={item} />
-                ))}
-            </div> */}
             <Pagination currentPage={page} totalPages={totalPages} basePath="/favourites" />
         </div>
     );
