@@ -17,14 +17,16 @@ model User {
   session              Session[]
   role                 Role         @default(USER)
   notes                Note[]       @relation("UserNotes")
-  bookmarkedNotes      Note[]       @relation("UserBookmarkedNotes")
-  bookmarkedPastPapers PastPaper[]  @relation("UserBookmarkedPastPapers")
   comments             Comment[]
   viewHistory          ViewHistory?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
   forumPosts           ForumPost[]
   pastPapers           PastPaper[]  @relation("UserPastPapers")
+  bookmarkedNotes      Note[]       @relation("UserBookmarkedNotes")
+  bookmarkedPastPapers PastPaper[]  @relation("UserBookmarkedPastPapers")
+  bookmarkedResources  Subject[]    @relation("UserBookmarkedResources")
+  bookmarkedForumPosts ForumPost[]  @relation("UserBookmarkedForumPosts")
 }
 
 model Account {
@@ -94,17 +96,20 @@ model Forum {
 }
 
 model ForumPost {
-  id        String    @id @default(cuid())
-  title     String
-  author    User      @relation(fields: [authorId], references: [id])
-  authorId  String
-  forum     Forum     @relation(fields: [forumId], references: [id])
-  forumId   String
-  comments  Comment[]
-  tags      Tag[]
-  rating    Int
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  title         String
+  author        User      @relation(fields: [authorId], references: [id])
+  authorId      String
+  forum         Forum     @relation(fields: [forumId], references: [id])
+  forumId       String
+  description   String    @default("")
+  comments      Comment[]
+  tags          Tag[]
+  upvoteCount   Int       @default(0)
+  downvoteCount Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  bookmarkedBy  User[]    @relation("UserBookmarkedForumPosts")
 }
 
 model Comment {
@@ -134,6 +139,9 @@ model PastPaper {
 model Tag {
   id         String      @id @default(cuid())
   name       String      @unique
+  CourseCode String?
+  year       Int?
+  slot       String?
   notes      Note[]
   forums     Forum[]
   forumPosts ForumPost[]
@@ -143,9 +151,10 @@ model Tag {
 }
 
 model Subject {
-  id      String   @id @default(cuid())
-  name    String   @unique
-  modules Module[]
+  id           String   @id @default(cuid())
+  name         String   @unique
+  modules      Module[]
+  bookmarkedBy User[]   @relation("UserBookmarkedResources")
 }
 
 model Module {
