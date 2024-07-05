@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState } from "react";
 import Image from "next/image";
@@ -22,9 +23,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ pageType }) => {
     };
 
     return (
-        <form onSubmit={handleSearch} className="relative flex items-center w-[950px]">
-            <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 pointer-events-none"></div>
-            <div className="relative flex items-center bg-white border border-black w-full px-4">
+        <form onSubmit={handleSearch} className="relative flex items-center w-full max-w-lg lg:max-w-xl xl:max-w-2xl">
+            <div className="relative flex items-center bg-white border border-black w-full px-4 py-2 shadow-[5px_5px_0_0_rgba(0,0,0,1)]">
                 <Image src={Seacrh} alt="search" className="" />
                 <input
                     type="text"
