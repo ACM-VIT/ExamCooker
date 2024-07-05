@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SignIn } from "./components/sign-in";
 import { SignOut } from "./components/sign-out";
 import { auth } from "./auth";
-import LandingPageContent from "./landing_page/landing";
+import LandingPageContent from "./components/landing_page/landing";
 
 export default async function Home() {
     const session = await auth();
