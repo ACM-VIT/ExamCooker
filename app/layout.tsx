@@ -5,6 +5,8 @@ import React, { useState, useEffect, useRef } from "react";
 import NavBar from "./components/NavBar";
 import Header from "./components/header"; 
 import Image from 'next/image';
+import { PrismaClient } from "@prisma/client";
+import { redirect } from "next/dist/server/api-utils";
 
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -16,6 +18,10 @@ export default function RootLayout({
   const [isNavOn, setIsNavOn] = useState(false);
   const [darkMode, setDarkMode] = useState(false); // State for dark mode
   const navbarRef = useRef<HTMLDivElement>(null);
+
+  const prisma = new PrismaClient();
+  // const session = await auth();
+  // if(!session || !session.user) return 
 
   useEffect(() => {
     const savedNavState = localStorage.getItem('isNavOn');
