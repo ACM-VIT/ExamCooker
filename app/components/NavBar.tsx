@@ -15,7 +15,13 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({ isNa
           </button>
         </div>
       )}
+
       <div className="flex flex-col items-center mt-8">
+      <Link href="/Home_Page/page" passHref>
+          <div title="Home" className={`m-2 ${isNavOn ? "block" : "hidden"}`}>
+            <Image src="/assets/Home.svg" alt="Home" width={24} height={25} className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]" />
+          </div>
+        </Link>
         <Link href="/notes" passHref>
           <div title="Notes" className={`m-2 ${isNavOn ? "block" : "hidden"}`}>
             <Image src="/assets/NotesIcon.svg" alt="Notes" width={24} height={25} className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]" />
