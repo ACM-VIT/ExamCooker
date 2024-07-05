@@ -65,7 +65,8 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
       <div className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-center mb-8">Forum</h1>
         <div className="flex justify-center mb-8">
-          <div className="w-full md:w-3/4 lg:w-2/3 flex items-center justify-center space-x-4">
+          <div className="w-full md:w-3/4 lg:w-2/3 flex items-center justify-center space-x-[90px] items-baseline">
+          <div className=""></div>
             <SearchBar pageType="forum" />
             <NewForumButton />
           </div>

@@ -65,15 +65,15 @@ const CreateForum: React.FC = () => {
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+      <div className="bg-white p-6 shadow-lg w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
           <Link href={'/forum'}>
-            <button className="text-[#3BF3C7] px-2 py-1 border-2 border-[#3BF3C7] rounded flex items-center justify-center font-bold hover:bg-teal-600">
+            <button className="text-[#3BF3C7] px-2 py-1 border-2 border-[#3BF3C7] flex items-center justify-center font-bold hover:bg-teal-600">
               <span className="mr-0">&larr;</span>
             </button>
           </Link>
           <button
-            className="bg-teal-400 hover:bg-teal-500 text-black px-4 py-2 border-2 border-black rounded font-bold"
+            className="bg-teal-400 hover:bg-teal-500 text-black px-4 py-2 border-2 border-black font-bold"
             onClick={handleSubmit}
           >
             Post
@@ -113,15 +113,26 @@ const CreateForum: React.FC = () => {
             </div>
             <div>
               <select
-                className="p-2 w-2/3 text-black rounded bg-blue-400 cursor-pointer transition-colors duration-300 hover:bg-blue-600"
+                className="p-2 w-2/3 text-black bg-blue-400 cursor-pointer transition-colors duration-300 hover:bg-blue-600"
                 value={slot}
                 onChange={(e) => setSlot(e.target.value)}
                 required
               >
                 <option value="">Slot</option>
-                <option value="morning">Morning</option>
-                <option value="afternoon">Afternoon</option>
-                <option value="evening">Evening</option>
+                <option value="A1">A1</option>
+                <option value="A2">A2</option>
+                <option value="B1">B1</option>
+                <option value="B2">B2</option>
+                <option value="C1">C1</option>
+                <option value="C2">C2</option>
+                <option value="D1">D1</option>
+                <option value="D2">D2</option>
+                <option value="E1">E1</option>
+                <option value="E2">E2</option>
+                <option value="F1">F1</option>
+                <option value="F2">F2</option>
+                <option value="G1">G1</option>
+                <option value="G2">G2</option>
               </select>
             </div>
           </div>
@@ -140,7 +151,7 @@ const CreateForum: React.FC = () => {
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-block text-gray-700 rounded-full px-3 py-1 text-sm font-semibold mr-2 mb-2"
+                  className="inline-block text-gray-700 px-3 py-1 text-sm font-semibold mr-2 mb-2"
                 >
                   #{tag}{' '}
                   <button
@@ -165,7 +176,7 @@ const CreateForum: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddTagClick}
-                  className="bg-white hover:bg-blue-300 text-[#3BF3C7] px-4 py-2 border-2 border-[#3BF3C7] rounded font-bold text-sm cursor-pointer ml-2"
+                  className="bg-white hover:bg-blue-300 text-[#3BF3C7] px-4 py-2 border-2 border-[#3BF3C7] font-bold text-sm cursor-pointer ml-2"
                 >
                   Add tag
                 </button>

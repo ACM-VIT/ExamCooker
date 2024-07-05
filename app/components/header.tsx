@@ -10,7 +10,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ toggleTheme, darkMode }) => {
   return (
-    <header className="bg-[#5fc4e7] shadow-md flex flex-row-reverse">
+    <header className="bg-[#c2e6ec] border-b-[#82BEE9] border-[1px] flex flex-row-reverse">
       <div className="flex items-center text-right m-2">
         <div className="flex flex-col mr-4">
           <p className="text-lg font-medium text-gray-900">Sam Doe</p>
