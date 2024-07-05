@@ -70,7 +70,7 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
             <NewForumButton />
           </div>
         </div>
-        <div className="w-full md:w-3/4 lg:w-2/3 mx-auto">
+        <div className="w-full mx-auto">
           {forumPosts.length > 0 ? (
             <div className="space-y-4">
               {forumPosts.map((eachPost) => (

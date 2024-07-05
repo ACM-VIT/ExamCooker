@@ -1,10 +1,10 @@
-import { PrismaClient, type Comment} from "@prisma/client";
+import { PrismaClient, type Comment } from "@prisma/client";
 import { ReplyButton, LikeButton, DislikeButton } from "../common/Buttons";
 
 
 let count: number | undefined = 0;
 
-export function NumberOfComments({commentArray} : {commentArray : Comment[] | undefined}) {
+export function NumberOfComments({ commentArray }: { commentArray: Comment[] | undefined }) {
     return (
         <div>
             <text className="bg-none text-black text-base py-4 px-2">{commentArray?.length} Comments</text>
@@ -12,9 +12,9 @@ export function NumberOfComments({commentArray} : {commentArray : Comment[] | un
     );
 }
 
-export default function CommentContainer({comments}:{comments:Comment[]|undefined}) {
+export default async function CommentContainer({ comments }: { comments: Comment[] | undefined }) {
     count = comments?.length;
-    
+
     return (
         <div className="bg-[#5FC4E7] p-0 md:px-2">
             {comments?.map((comment: Comment) => (
@@ -42,8 +42,8 @@ export function Comment({ userName, time, content }: { userName: string | null |
                 <div className="flex gap-2">
                     <ReplyButton />
                     <div className="flex-column">
-                        <LikeButton />
-                        <DislikeButton />
+                        {/* <LikeButton />
+                        <DislikeButton /> */}
                     </div>
                 </div>
             </div>

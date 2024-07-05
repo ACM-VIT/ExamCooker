@@ -1,45 +1,22 @@
-//file which contains all ze buttons
+'use client'
 
-// import * as React from "react"
-// import { SVGProps } from "react"
-// const ThumbsUp = (props: SVGProps<SVGSVGElement>) => (
-//   <svg
-//     xmlns="http://www.w3.org/2000/svg"
-//     width={21}
-//     height={21}
-//     fill="none"
-//     {...props}
-//   >
-//     <path
-//       stroke="currentColor"
-//       strokeLinecap="round"
-//       strokeLinejoin="round"
-//       strokeWidth={2}
-//       d="M1.5 8.214a1 1 0 0 1 1-1h3v12h-3a1 1 0 0 1-1-1v-10ZM5.5 9.214v8l1.992 1.328a4 4 0 0 0 2.22.672h5.247a3 3 0 0 0 2.959-2.507l1.194-7.164a2 2 0 0 0-1.973-2.33H12.5"
-//     />
-//     <path
-//       stroke="currentColor"
-//       strokeLinecap="round"
-//       strokeLinejoin="round"
-//       strokeWidth={2}
-//       d="m12.5 7.214.687-3.436A1.807 1.807 0 0 0 9.8 2.615L6.5 9.214h-1"
-//     />
-//   </svg>
-// )
-// export default ThumbsUp
+import { useState } from "react"
+import Image from "next/image"
+import { upvotePost, downvotePost } from '@/app/actions/forumVote'
 
-"use client";
-import { useState } from "react";
-import Image from "next/image";
-export function LikeButton() {
+export function LikeButton({ postId, upvoteCount }: { postId: string, upvoteCount: number }) {
+    const [likes, setLikes] = useState(upvoteCount)
 
-    const [likes, setLikes] = useState(0);
-
-    function handleClick() {
-        setLikes(likes + 1);
+    async function handleClick() {
+        const result = await upvotePost(postId)
+        if (result.success) {
+            setLikes(result.upvoteCount || 0)
+        } else {
+            console.error('Error upvoting post:', result.error)
+        }
     }
 
-    return <>
+    return (
         <div className="flex gap-1 p-1">
             <button onClick={handleClick} className="hover:bg-gray-300">
                 <Image
@@ -59,18 +36,22 @@ export function LikeButton() {
             </button>
             {likes}
         </div>
-    </>;
+    )
 }
 
+export function DislikeButton({ postId, downvoteCount }: { postId: string, downvoteCount: number }) {
+    const [dislikes, setDislikes] = useState(downvoteCount)
 
-export function DislikeButton() {
-    const [dislikeCount, setDislikeCount] = useState(0);
-
-    function handleClick() {
-        setDislikeCount(dislikeCount + 1);
+    async function handleClick() {
+        const result = await downvotePost(postId)
+        if (result.success) {
+            setDislikes(result.downvoteCount || 0)
+        } else {
+            console.error('Error downvoting post:', result.error)
+        }
     }
 
-    return <>
+    return (
         <div className="flex gap-1 p-1">
             <button onClick={handleClick} className="hover:bg-gray-300">
                 <Image
@@ -88,9 +69,9 @@ export function DislikeButton() {
                     className="flex md:hidden"
                 />
             </button>
-            {dislikeCount}
+            {dislikes}
         </div>
-    </>;
+    )
 }
 
 export function ReplyButton() {
