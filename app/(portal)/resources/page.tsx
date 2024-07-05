@@ -1,8 +1,8 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import ResourceCard from '../components/ResourceCard';
-import Pagination from '../components/Pagination';
+import ResourceCard from '../../components/ResourceCard';
+import Pagination from '../../components/Pagination';
 import { redirect } from 'next/navigation';
-import SearchBar from '../components/SearchBar';
+import SearchBar from '../../components/SearchBar';
 
 const prisma = new PrismaClient();
 

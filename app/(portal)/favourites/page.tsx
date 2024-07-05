@@ -1,12 +1,12 @@
 import React from "react";
-import Pagination from "../components/Pagination";
-import NotesCard from "../components/NotesCard";
-import SearchBar from "../components/SearchBar";
+import Pagination from "@/app/components/Pagination";
+import NotesCard from "@/app/components/NotesCard";
+import SearchBar from "@/app/components/SearchBar";
 import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
 import { redirect } from 'next/navigation';
-import Dropdown from "../components/FilterComponent";
-import FavFetch from '../components/FavFetchFilter';
+import Dropdown from "@/app/components/FilterComponent";
+import FavFetch from '@/app/components/FavFetchFilter';
 
 const prisma = new PrismaClient();
 
@@ -67,10 +67,10 @@ async function favouritesPage({searchParams, params}: {searchParams: { page?: st
             </div>
             <div className="p-5">
                 <FavFetch 
-                pastpapers={userBookmarks.bookmarkedPastPapers}
-                notes={userBookmarks.bookmarkedNotes}
-                forumposts={userBookmarks.bookmarkedForumPosts}
-                resources={userBookmarks.bookmarkedResources}/>
+                pastpapers={userBookmarks!.bookmarkedPastPapers}
+                notes={userBookmarks!.bookmarkedNotes}
+                forumposts={userBookmarks!.bookmarkedForumPosts}
+                resources={userBookmarks!.bookmarkedResources}/>
             </div>
             {/* <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 {favourites.map((item) => (

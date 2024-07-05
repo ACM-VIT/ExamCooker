@@ -1,4 +1,4 @@
-// dummy page.tsx to view forumpost page
+// dummy home.tsx to view forumpost page
 
 import { PrismaClient } from "@prisma/client";
 import ForumPost from "./ForumPost";

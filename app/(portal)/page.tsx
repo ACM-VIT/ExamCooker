@@ -1,38 +1,18 @@
 import Link from "next/link";
-import { SignIn } from "./components/sign-in";
-import { SignOut } from "./components/sign-out";
-import { auth } from "./auth";
-import LandingPageContent from "./components/landing_page/landing";
+import { SignOut } from "../components/sign-out";
+import { auth } from "@/app/auth";
+import Home from "@/app/(portal)/home/home";
 
-export default async function Home() {
+
+export default async function Page() {
     const session = await auth();
+
     return (
         <>
-            {!session ? (
-                //TODO: Add your landing page here
-                <div className="min-h-screen bg-[#5fc4e7] flex flex-col">
-                    <LandingPageContent />
-                </div>
+            {session ? (
+                    <Home/>
             ) : (
-                //TDOD: Add your home page here
-                <div className="flex h-screen w-full bg-[#CCF3FF] flex-col items-center justify-between p-24">
-                    <span>ExamCooker 2024</span>
-                    <SignOut />
-                    <Link
-                        href={"/past_papers"}
-                        className="bg-[#CCF3FF] text-white px-4 py-2 rounded-md shadow-md"
-                    >
-                        Append &apos;/past_papers&apos; to localhost link in the
-                        searchbox, or click here.
-                    </Link>
-                    <Link
-                        href={"/notes"}
-                        className="bg-[#CCF3FF] text-white px-4 py-2 rounded-md shadow-md"
-                    >
-                        Append &apos;/notes&apos; to localhost link in the
-                        searchbox, or click here.
-                    </Link>
-                </div>
+                <div>Yahan kya krra h lode</div>
             )}
         </>
     );

@@ -1,5 +1,5 @@
 import React from 'react';
-import SearchBar from '../components/SearchBar';
+import SearchBar from '@/app/components/SearchBar';
 
 function HomeHeader() {
   return (

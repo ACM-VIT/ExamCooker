@@ -1,10 +1,10 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import React from 'react';
-import ForumCard from '../components/ForumCard';
-import SearchBar from '../components/SearchBar';
-import Pagination from '../components/Pagination';
+import ForumCard from '../../components/ForumCard';
+import SearchBar from '../../components/SearchBar';
+import Pagination from '../../components/Pagination';
 import { redirect } from 'next/navigation';
-import NewForumButton from '../components/NewForumButton';
+import NewForumButton from '../../components/NewForumButton';
 
 function validatePage(page: number, totalPages: number): number {
   if (isNaN(page) || page < 1) {
