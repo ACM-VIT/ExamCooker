@@ -38,7 +38,7 @@ const Dropdown: React.FC = () => {
     <div className="relative inline-block text-left ml-4">
       <button
         onClick={toggleDropdown}
-        className="inline-flex items-center justify-center w-full border border-black px-4 py-2 bg-[#5FC4E7] text-sm font-medium text-gray-700"
+        className="inline-flex items-center justify-center w-full border border-black border-2 text-lg font-bold  px-4 py-2 bg-[#5FC4E7]  "
       >
         Filter
         <FontAwesomeIcon icon={faCaretDown} className="ml-2" />
@@ -69,6 +69,5 @@ const Dropdown: React.FC = () => {
 };
 
 export default Dropdown;
-
 
 
