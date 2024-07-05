@@ -1,10 +1,12 @@
 "use client";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import NavBar from "./components/NavBar";
-import Header from "./components/header"; 
+import Header from "./components/header";
 import Image from 'next/image';
+import Loading from "./loading";
+
 
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -14,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const [isNavOn, setIsNavOn] = useState(false);
-  const [darkMode, setDarkMode] = useState(false); // State for dark mode
+  const [darkMode, setDarkMode] = useState(false);
   const navbarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,13 +55,13 @@ export default function RootLayout({
 
   useEffect(() => {
     if (isNavOn) {
-      document.addEventListener("mousedown", handleClickOutside as EventListener);
+      document.addEventListener("mousedown", handleClickOutside);
     } else {
-      document.removeEventListener("mousedown", handleClickOutside as EventListener);
+      document.removeEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside as EventListener);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isNavOn]);
 
@@ -86,10 +88,13 @@ export default function RootLayout({
         >
           <div className={darkMode ? 'dark' : ''}>
             <Header toggleTheme={toggleTheme} darkMode={darkMode} />
-            {children}
+            <Suspense fallback={<Loading />}>
+              {children}
+            </Suspense>
           </div>
         </main>
       </body>
     </html>
   );
 }
+
