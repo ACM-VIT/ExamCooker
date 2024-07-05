@@ -1,4 +1,3 @@
-
 import { NumberOfComments } from "@/app/components/forumpost/CommentContainer";
 import TagContainer from "@/app/components/forumpost/TagContainer";
 import { DislikeButton, LikeButton } from "@/app/components/common/Buttons";
