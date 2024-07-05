@@ -12,7 +12,7 @@ export function NumberOfComments({commentArray} : {commentArray : Comment[] | un
     );
 }
 
-export default async function CommentContainer({comments}:{comments:Comment[]|undefined}) {
+export default function CommentContainer({comments}:{comments:Comment[]|undefined}) {
     count = comments?.length;
     
     return (
