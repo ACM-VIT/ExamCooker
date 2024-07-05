@@ -23,8 +23,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ pageType }) => {
     };
 
     return (
-        <form onSubmit={handleSearch} className="relative flex items-center w-full max-w-lg lg:max-w-xl xl:max-w-2xl">
-            <div className="relative flex items-center bg-white border border-black w-full px-4 py-2 shadow-[5px_5px_0_0_rgba(0,0,0,1)]">
+        <form onSubmit={handleSearch} className="relative flex items-center w-2/3">
+            <div className="relative flex items-center bg-white border border-black w-full px-2 py-0.5 shadow-[5px_5px_0_0_rgba(0,0,0,1)]">
                 <Image src={Seacrh} alt="search" className="" />
                 <input
                     type="text"
