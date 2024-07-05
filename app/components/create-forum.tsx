@@ -16,7 +16,7 @@ const CreateForum: React.FC = () => {
   const [isAddingTag, setIsAddingTag] = useState(false);
   const authorId = "cly0klo9800006hg6gwc73j5u";
   const forumId = "cly4bhnc0000df02z5tshuhx7";
-  const rating = 6;
+
 
   const handleAddTag = () => {
     if (newTag && !tags.includes(newTag)) {
@@ -54,13 +54,14 @@ const CreateForum: React.FC = () => {
 
     //   alert(errorMessage);
 
-    const result = await createForumPost({title, authorId, forumId, rating})
-    if(result.success) {
+    const result = await createForumPost({ title, authorId, forumId })
+    if (result.success) {
       console.log('New forum post created: ', result.data)
     } else {
       console.error("Error: ", result.error)
-    }}
-    
+    }
+  }
+
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
@@ -133,7 +134,7 @@ const CreateForum: React.FC = () => {
               required
             />
           </div>
-        
+
           <div className="mb-4">
             <div className="flex items-center mb-2 flex-wrap">
               {tags.map((tag) => (
@@ -171,7 +172,7 @@ const CreateForum: React.FC = () => {
               )}
             </div>
           </div>
-          
+
         </form>
       </div>
     </div>
