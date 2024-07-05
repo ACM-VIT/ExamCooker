@@ -33,7 +33,7 @@ import type { Tag, Comment, ForumPost } from "@prisma/client";
                         <DislikeButton />
                     </div>
                 </div>
-                <CommentField />
+                <CommentField forumPostId={post.id}/>
                 <CommentContainer comments={commentArray} />
             </div>
         </div>

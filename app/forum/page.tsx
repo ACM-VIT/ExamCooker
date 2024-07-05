@@ -19,7 +19,7 @@ function validatePage(page: number, totalPages: number): number {
 
 async function forum({ searchParams }: { searchParams: { page?: string, search?: string } }) {
   const prisma = new PrismaClient();
-  const pageSize = 9;
+  const pageSize = 5;
   const search = searchParams.search || '';
   const page = parseInt(searchParams.page || '1', 10);
 
@@ -57,7 +57,7 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
     },
     skip,
     take: pageSize,
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: 'asc' },
   });
 
   return (
