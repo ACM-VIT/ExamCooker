@@ -32,7 +32,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
             )}
 
             <div className="flex flex-col items-center mt-8">
-                <Link href="/home" passHref>
+                <Link href="/" passHref>
                     <div
                         title="Home"
                         className={`m-2 ${isNavOn ? "block" : "hidden"}`}
