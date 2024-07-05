@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -46,7 +47,7 @@ const Dropdown: React.FC = () => {
 
       {isOpen && (
         
-        <div className="origin-top-right absolute right-0 mt-2
+        <div className=" absolute right-0 mt-2
          max-w-[90vw] sm:max-w-[400px] md:max-w-[600px] lg:max-w-[1200px] h-auto border-2 border-black bg-[#5FC4E7] overflow-y-auto">
           <div className='py-20'>
           <div className="flex flex-col sm:flex-row sm:space-x-4 justify-center items-center">
