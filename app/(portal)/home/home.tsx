@@ -31,7 +31,7 @@ const Home: React.FC = () => {
                 </section>
                 <section className="mt-4"><div className="flex items-center mb-6">
                     <hr className="flex-grow border-t-3 border-black mr-4" />
-                    <p className="text-2xl pt-2">Favoruites ❤️</p>
+                    <p className="text-2xl pt-2">Favourites ❤️</p>
                     <hr className="flex-grow border-t-3 border-black ml-4" />
                 </div>
                     <div className="flex justify-center">
