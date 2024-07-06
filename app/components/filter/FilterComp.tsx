@@ -1,5 +1,3 @@
-// In your FilterComp.tsx file
-
 interface Option {
   id: string;
   label: string;
@@ -9,7 +7,7 @@ interface Props {
   title: string;
   options: Option[];
   onSelectionChange: (selection: string[]) => void;
-  selectedOptions: string[]; // Add this line
+  selectedOptions: string[];
 }
 
 const FilterComp: React.FC<Props> = ({ title, options, onSelectionChange, selectedOptions }) => {

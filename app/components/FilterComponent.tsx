@@ -18,7 +18,7 @@ interface CheckboxOptions {
 }
 
 interface DropdownProps {
-  pageType: 'notes' | 'past_papers' | 'resources' | 'forum' | 'favourties';
+  pageType: 'notes' | 'past_papers' | 'resources' | 'forum' | 'favourites';
 }
 
 const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
