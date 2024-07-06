@@ -1,11 +1,18 @@
-import React from "react";
+import React from 'react';
+import Fuse from 'fuse.js';
+import { PrismaClient, Prisma, Note, Tag } from "@prisma/client";
+import { redirect } from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import NotesCard from "../../components/NotesCard";
 import SearchBar from "../../components/SearchBar";
-import { PrismaClient, Prisma } from "@prisma/client";
-import { redirect } from 'next/navigation';
 import Dropdown from "../../components/FilterComponent";
 import UploadButtonNotes from "../../components/UploadButtonNotes";
+
+const SCORE_THRESHOLD = 0.6;
+
+type NoteWithTags = Note & {
+    tags: Tag[];
+};
 
 function validatePage(page: number, totalPages: number): number {
     if (isNaN(page) || page < 1) {
@@ -17,54 +24,76 @@ function validatePage(page: number, totalPages: number): number {
     return page;
 }
 
-async function notesPage({ searchParams }: { searchParams: { page?: string, search?: string } }) {
+function performSearch(query: string, dataSet: NoteWithTags[]) {
+    const options = {
+        includeScore: true,
+        keys: [
+            { name: 'title', weight: 2 },
+            { name: 'tags.name', weight: 1 }
+        ],
+        threshold: 0.6,
+        ignoreLocation: true,
+        minMatchCharLength: 2,
+        findAllMatches: true,
+        useExtendedSearch: true,
+    };
+    const fuse = new Fuse(dataSet, options);
+    const searchResults = fuse.search({
+        $or: [
+            { title: query },
+            { 'tags.name': query },
+            { title: `'${query}` }
+        ]
+    });
+    return searchResults
+        .filter((fuseResult) => (fuseResult.score || 1) < SCORE_THRESHOLD)
+        .map((fuseResult) => fuseResult.item);
+}
+
+async function notesPage({ searchParams }: { searchParams: { page?: string, search?: string, tags?: string | string[] } }) {
     const prisma = new PrismaClient();
     const pageSize = 9;
     const search = searchParams.search || '';
     const page = parseInt(searchParams.page || '1', 10);
+    let tags: string[] = Array.isArray(searchParams.tags)
+        ? searchParams.tags
+        : (searchParams.tags ? searchParams.tags.split(',') : []);
 
-    const whereClause: Prisma.NoteWhereInput = search
-        ? {
-            OR: [
-                { title: { contains: search, mode: 'insensitive' } },
-                { author: { name: { contains: search, mode: 'insensitive' } } },
-                { tags: { some: { name: { contains: search, mode: 'insensitive' } } } },
-            ],
-        }
-        : {};
+    const allNotes = await prisma.note.findMany({
+        where: {
+            ...(tags.length > 0 && {
+                tags: {
+                    some: {
+                        name: {
+                            in: tags,
+                        },
+                    },
+                },
+            }),
+        },
+        include: {
+            tags: true,
+        },
+    });
 
-    const totalCount = await prisma.note.count({ where: whereClause });
+    let filteredNotes = allNotes;
+    if (search) {
+        filteredNotes = performSearch(search, filteredNotes);
+    }
+
+    const totalCount = filteredNotes.length;
     const totalPages = Math.ceil(totalCount / pageSize);
 
     let validatedPage = validatePage(page, totalPages);
-    let notes: any[] = [];
 
-    if (totalCount === 0 && search) {
-        validatedPage = 1;
-        notes = await prisma.note.findMany({
-            include: {
-                author: true,
-                tags: true,
-            },
-            take: pageSize,
-            orderBy: { createdAt: 'desc' },
-        });
-    } else {
-        const skip = (validatedPage - 1) * pageSize;
-        notes = await prisma.note.findMany({
-            where: whereClause,
-            include: {
-                author: true,
-                tags: true,
-            },
-            skip,
-            take: pageSize,
-            orderBy: { createdAt: 'desc' },
-        });
-    }
+    const startIndex = (validatedPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedNotes = filteredNotes.slice(startIndex, endIndex);
 
     if (validatedPage !== page) {
-        redirect(`/notes?page=${validatedPage}${search ? `&search=${encodeURIComponent(search)}` : ''}`);
+        const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
+        const tagsQuery = tags.length > 0 ? `&tags=${encodeURIComponent(tags.join(','))}` : '';
+        redirect(`/notes?page=${validatedPage}${searchQuery}${tagsQuery}`);
     }
 
     return (
@@ -74,9 +103,9 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
 
                 <div className="flex justify-center">
                     <div className="container flex flex-col sm:flex-row items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-                        <SearchBar pageType="notes" />
+                        <SearchBar pageType="notes" initialQuery={search} />
                         <div className="flex space-x-4">
-                            <Dropdown />
+                            <Dropdown pageType='notes' />
                             <UploadButtonNotes />
                         </div>
                     </div>
@@ -84,8 +113,8 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
 
                 <div className="flex justify-center">
                     <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-                        {notes.length > 0 ? (
-                            notes.map((eachNote, index) => (
+                        {paginatedNotes.length > 0 ? (
+                            paginatedNotes.map((eachNote, index) => (
                                 <NotesCard
                                     key={eachNote.id}
                                     note={eachNote}
@@ -94,8 +123,8 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
                             ))
                         ) : (
                             <p className="col-span-3 text-center">
-                                {search
-                                    ? "No notes found matching your search. Showing all notes."
+                                {search || tags.length > 0
+                                    ? "No notes found matching your search or selected tags."
                                     : "No notes found."}
                             </p>
                         )}
@@ -110,6 +139,7 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
                         totalPages={totalPages}
                         basePath="/notes"
                         searchQuery={search}
+                        tagsQuery={tags.join(',')}
                     />
                 </div>
             )}

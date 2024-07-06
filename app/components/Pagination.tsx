@@ -9,9 +9,10 @@ interface PaginationProps {
   totalPages: number;
   basePath: string;
   searchQuery?: string;
+  tagsQuery?: string;  // Add this line
 }
 
-const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePath, searchQuery }) => {
+const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePath, searchQuery, tagsQuery }) => {
   const maxVisiblePages = 5;
 
   function getPageNumbers() {
@@ -36,6 +37,9 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
     let url = `${basePath}?page=${page}`;
     if (searchQuery) {
       url += `&search=${encodeURIComponent(searchQuery)}`;
+    }
+    if (tagsQuery) {
+      url += `&tags=${encodeURIComponent(tagsQuery)}`;
     }
     return url;
   };
