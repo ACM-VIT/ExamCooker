@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import ModuleDropdown from '../../components/ModuleDropdown';
+import ModuleDropdown from '../../../components/ModuleDropdown';
 
 const prisma = new PrismaClient();
 

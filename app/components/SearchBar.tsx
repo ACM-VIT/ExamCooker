@@ -1,42 +1,101 @@
+'use client';
 
-"use client";
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from "next/image";
-import { useRouter } from 'next/navigation';
+import debounce from 'lodash/debounce';
 import Seacrh from "@/app/components/assets/seacrh.svg";
 
-interface SearchBarProps {
-    pageType: 'notes' | 'past_papers' | 'resources' | 'forum';
+interface SearchProps {
+    pageType: 'notes' | 'past_papers' | 'resources' | 'forum' | 'favourites';
+    availableTags?: string[];
+    initialQuery?: string;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ pageType }) => {
-    const [query, setQuery] = useState<string>("");
+export default function Search({ pageType, availableTags, initialQuery = '' }: SearchProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const [query, setQuery] = useState(initialQuery || searchParams.get('search') || '');
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setQuery(e.target.value);
+    useEffect(() => {
+        const tags = searchParams.getAll('tags');
+        if (tags.length > 0) {
+            setSelectedTags(tags);
+        }
+    }, [searchParams]);
+
+    const updateURL = useCallback((newQuery: string, newTags: string[]) => {
+        const params = new URLSearchParams(searchParams);
+        params.set('search', newQuery);
+        params.delete('tags');
+        newTags.forEach(tag => params.append('tags', tag));
+        const newURL = `/${pageType}?${params.toString()}`;
+        router.push(newURL);
+    }, [pageType, router, searchParams]);
+
+    const debouncedSearch = useMemo(
+        () => debounce((newQuery: string, newTags: string[]) => updateURL(newQuery, newTags), 300),
+        [updateURL]
+    );
+
+    useEffect(() => {
+        return () => {
+            debouncedSearch.cancel();
+        };
+    }, [debouncedSearch]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newQuery = e.target.value;
+        setQuery(newQuery);
+        debouncedSearch(newQuery, selectedTags);
     };
 
-    const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleTagToggle = (tag: string) => {
+        setSelectedTags(prev => {
+            const newTags = prev.includes(tag)
+                ? prev.filter(t => t !== tag)
+                : [...prev, tag];
+            updateURL(query, newTags);
+            return newTags;
+        });
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        router.push(`/${pageType}?search=${encodeURIComponent(query)}`);
+        updateURL(query, selectedTags);
     };
 
     return (
-        <form onSubmit={handleSearch} className="relative flex items-center w-full max-w-lg lg:max-w-xl xl:max-w-2xl">
-            <div className="relative flex items-center bg-white border border-black w-full px-4 py-2 shadow-[5px_5px_0_0_rgba(0,0,0,1)]">
+        <form onSubmit={handleSubmit} className="relative flex items-center w-2/3">
+            <div className="relative flex items-center bg-white border border-black w-full px-2 py-0.5 shadow-[5px_5px_0_0_rgba(0,0,0,1)]">
                 <Image src={Seacrh} alt="search" className="" />
                 <input
                     type="text"
                     className="px-4 py-2 w-full rounded-l-full focus:outline-none"
                     placeholder="Search"
                     value={query}
-                    onChange={handleInputChange}
+                    onChange={handleChange}
                 />
                 <button type="submit" className="hidden">Search</button>
             </div>
+            {availableTags && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                    {availableTags.map(tag => (
+                        <button
+                            key={tag}
+                            type="button"
+                            onClick={() => handleTagToggle(tag)}
+                            className={`px-3 py-1 rounded-full text-sm ${selectedTags.includes(tag)
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-200 text-gray-700'
+                                }`}
+                        >
+                            {tag}
+                        </button>
+                    ))}
+                </div>
+            )}
         </form>
     );
-};
-
-export default SearchBar;
+}

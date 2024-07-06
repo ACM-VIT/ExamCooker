@@ -8,7 +8,6 @@ type CreateForumPostInput = {
   title: string
   authorId: string
   forumId: string
-  rating: number
 }
 
 export async function createForumPost(data: CreateForumPostInput) {
@@ -20,9 +19,8 @@ export async function createForumPost(data: CreateForumPostInput) {
           connect: { id: data.authorId } // //'cly0klo9800006hg6gwc73j5u'
         },
         forum: {
-          connect: { id: data.forumId } //
+          connect: { id: data.forumId }
         },
-        rating: 0 //data.rating
       },
     })
     return { success: true, data: newForumPost }

@@ -37,6 +37,11 @@ function ForumPost({post, tagArray, commentArray}: {post : ForumPost | null, tag
                     <CommentField forumPostId={post.id}/>
                     <CommentContainer comments={commentArray} />
                 </div>
+<<<<<<< HEAD:app/forum/[id]/ForumPost.tsx
+=======
+                <CommentField forumPostId={post!.id}/>
+                <CommentContainer comments={commentArray} />
+>>>>>>> e47b1a2f0e713e7d8de9efc3dea7842450aaa957:app/(portal)/forum/[id]/ForumPost.tsx
             </div>
         </div>
     );

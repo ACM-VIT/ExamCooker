@@ -1,14 +1,13 @@
 import React from "react";
-import CreateForum from "../components/create-forum";
+import CreateForum from "@/app/components/create-forum";
 
 const NewForumPage = () => {
     return (
-        <div className = "create-foum">
+        <div className="create-foum">
             <h1>Welcome to the Forum</h1>
             <CreateForum />
-
         </div>
-    )
-}
+    );
+};
 
-export default NewForumPage
+export default NewForumPage;
