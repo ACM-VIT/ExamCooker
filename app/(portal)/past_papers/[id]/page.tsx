@@ -5,6 +5,13 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import PDFViewer from '@/app/components/pdfviewer';
 
+function removePdfExtension(filename: string): string {
+  if (filename.endsWith('.pdf')) {
+      return filename.slice(0, -4);
+  }
+  return filename;
+}
+
 async function PdfViewerPage({params }: {params : {id : string}}) {
   
   const prisma = new PrismaClient();
@@ -22,13 +29,13 @@ return (
   <div className="container mx-auto">
       <div className="flex flex-col lg:flex-row h-[90vh]">
           <div className="w-full lg:w-1/2 flex flex-col items-center justify-center mx-auto text-black p-10">
-              <h1 className="text-center">{paper?.title}</h1><br />
+              <h1 className="text-center">{removePdfExtension(paper!.title)}</h1><br />
               <h2>Slot: A1</h2><br />
               <h2>Year: 2024</h2><br />
           </div>
           <div className='flex flex-col w-full lg:w-1/2 items-center justify-center'>
               <div className="h-[90vh] w-full pt-4 flex items-center justify-center lg:pl-24">
-                  <PDFViewer fileUrl={paper?.fileUrl} />
+                  <PDFViewer fileUrl={paper!.fileUrl} />
               </div>
           </div>
       </div>

@@ -9,8 +9,8 @@ export default async function Layout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const session = await auth();
-    if (!session || !session.user) return redirect("/landing");
+    // const session = await auth();
+    // if (!session || !session.user) return redirect("/landing");
 
     return <ClientSide>{children}</ClientSide>;
 }

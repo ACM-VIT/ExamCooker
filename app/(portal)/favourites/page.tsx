@@ -54,12 +54,6 @@ async function favouritesPage({searchParams, params}: {searchParams: { page?: st
     return (
         <div>
             <h1 className="text-4xl font-bold text-center p-4">Favourites</h1>
-            <Link
-                href="/"
-                className="inline-block px-4 py-2 bg-blue-500 text-white rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600"
-            >
-                Back
-            </Link>
             <div className="container flex items-center justify-center p-4 space-x-4">
                 {/* WHY IS FAVOURITES NOT AN OPTION HERE */}
                 {/* <SearchBar /> */}
