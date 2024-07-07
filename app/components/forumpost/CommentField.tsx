@@ -5,7 +5,7 @@ import { useState } from "react";
 import { createComment } from "@/app/actions/CreateComment";
 
 interface AddCommentFormProps {
-  forumPostId: string;
+  forumPostId: string ;
   onCommentAdded?: () => void;
 }
 
