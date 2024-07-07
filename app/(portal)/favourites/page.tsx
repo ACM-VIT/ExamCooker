@@ -74,8 +74,9 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
             <h1 className="text-4xl font-bold text-center p-4">Favourites</h1>
             <div className="container flex items-center justify-center p-4 space-x-4">
                 <SearchBar pageType="favourites" initialQuery={search} />
+
             </div>
-            <div className="p-5">
+            <div className="p-5 flex items-center justify-center p-4 space-x-4">
                 <FavFetch
                     pastpapers={filteredPastPapers}
                     notes={filteredNotes}

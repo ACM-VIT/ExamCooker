@@ -1,3 +1,4 @@
+import React from 'react';
 import TagContainer from "@/app/components/forumpost/TagContainer";
 import CommentField from "@/app/components/forumpost/CommentField";
 import CommentContainer from "@/app/components/forumpost/CommentContainer";
@@ -6,18 +7,24 @@ import { DislikeButton, LikeButton } from "@/app/components/common/Buttons";
 
 import type { Tag, Comment, ForumPost } from "@prisma/client";
 
- function ForumPost({post, tagArray, commentArray}: {post : ForumPost | null, tagArray : Tag[] | undefined, commentArray : Comment[] | undefined}) {
+function ForumPost({post, tagArray, commentArray}: {post : ForumPost | null, tagArray : Tag[] | undefined, commentArray : Comment[] | undefined}) {
     
     return (
-        <div className="flex text-black h-screen">
-            <div className="bg-[#82BEE9] p-4 md:p-10 overflow-auto">
-                <h2 className="font-extrabold">{post?.title}</h2>
-                <hr className="border-0 h-px my-5 bg-black" />
-                <h6>{}UngaBunga</h6>
-                <br />
-                <div className="sm:w-2/3 md:flex md:w-full md:justify-between">
-                    <div>
-                        <TagContainer tags={tagArray} />
+        <div className="flex justify-center p-6">
+            <div className="w-full max-w-[100vh]">
+                <div className="bg-[#82BEE9] p-4 md:p-10">
+                    <h2 className="align-left font-extrabold">{post?.title}</h2>
+                    <hr className="border-0 h-px my-5 bg-black" />
+                    <h6>UngaBunga</h6>
+                    <br />
+                    <div className="sm:w-2/3 md:flex md:w-full md:justify-between">
+                        <div>
+                            <TagContainer tags={tagArray} />
+                        </div>
+                        <div className="hidden md:flex justify-center p-0.5 bg-white">
+                            <LikeButton />
+                            <DislikeButton />
+                        </div>
                     </div>
                     <div className="hidden md:flex justify-center p-0.5 bg-white">
                         <LikeButton postId={post!.id} upvoteCount={post!.upvoteCount} />
@@ -31,10 +38,11 @@ import type { Tag, Comment, ForumPost } from "@prisma/client";
                     <div className="flex md:hidden justify-center p-0.5 bg-none">
                         <LikeButton postId={post!.id} upvoteCount={post!.upvoteCount} />
                         <DislikeButton postId={post!.id} downvoteCount={post!.downvoteCount} />
+
                     </div>
+                    <CommentField forumPostId={post.id}/>
+                    <CommentContainer comments={commentArray} />
                 </div>
-                <CommentField forumPostId={post!.id}/>
-                <CommentContainer comments={commentArray} />
             </div>
         </div>
     );

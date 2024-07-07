@@ -18,7 +18,7 @@ function HomeFooter() {
             />
           </div>
         </div>
-        <div className="text-center flex-2 mr-4">
+        <div className="text-center flex-2 mr-20">
           <h5 className="text-1xl ">Exam Cooker</h5>
         </div>
         <div className="text-right">
