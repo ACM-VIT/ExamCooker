@@ -60,6 +60,13 @@ interface PastPaperCardProps {
 
 const colors = ['#5FC4E7', '#82BEE9'];
 
+function removePdfExtension(filename: string): string {
+  if (filename.endsWith('.pdf')) {
+      return filename.slice(0, -4);
+  }
+  return filename;
+}
+
 function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
   const [isFav, setIsFav] = useState(false);
 
@@ -78,7 +85,7 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
           />
         </div>
         <div className="mb-2 text-black w-full whitespace-nowrap overflow-hidden text-ellipsis">
-          {pastPaper.title}
+          {removePdfExtension(pastPaper.title)}
         </div>
         <div className="flex justify-between items-center space-x-4">
           <div></div>

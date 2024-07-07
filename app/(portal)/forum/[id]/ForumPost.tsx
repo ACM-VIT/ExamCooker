@@ -26,14 +26,19 @@ function ForumPost({post, tagArray, commentArray}: {post : ForumPost | null, tag
                             <DislikeButton />
                         </div>
                     </div>
+                    <div className="hidden md:flex justify-center p-0.5 bg-white">
+                        <LikeButton postId={post!.id} upvoteCount={post!.upvoteCount} />
+                        <DislikeButton postId={post!.id} downvoteCount={post!.downvoteCount} />
+                    </div>
+                </div>
 
-                    <br />
-                    <div className="flex justify-between">
-                        <NumberOfComments commentArray={commentArray}/>
-                        <div className="flex md:hidden justify-center bg-none">
-                            <LikeButton />
-                            <DislikeButton />
-                        </div>
+                <br />
+                <div className="flex justify-between">
+                    <NumberOfComments commentArray={commentArray}/>
+                    <div className="flex md:hidden justify-center p-0.5 bg-none">
+                        <LikeButton postId={post!.id} upvoteCount={post!.upvoteCount} />
+                        <DislikeButton postId={post!.id} downvoteCount={post!.downvoteCount} />
+
                     </div>
                     <CommentField forumPostId={post.id}/>
                     <CommentContainer comments={commentArray} />

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
-
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createForumPost } from '../actions/CreateForumPost';
+import { useRouter } from 'next/navigation';
 
 const CreateForum: React.FC = () => {
   const [title, setTitle] = useState('');
@@ -14,52 +14,42 @@ const CreateForum: React.FC = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [isAddingTag, setIsAddingTag] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const authorId = "cly0klo9800006hg6gwc73j5u";
   const forumId = "cly4bhnc0000df02z5tshuhx7";
 
+  const router = useRouter();
 
-  const handleAddTag = () => {
-    if (newTag && !tags.includes(newTag)) {
-      setTags([...tags, newTag]);
-      setNewTag('');
+  useEffect(() => {
+    if (isSuccess) {
+      const timer = setTimeout(() => {
+        router.push('/forum');
+      }, 2000);
+
+      return () => clearTimeout(timer);
     }
-    setIsAddingTag(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddTag();
-    }
-  };
-
-  const handleAddTagClick = () => {
-    setIsAddingTag(true);
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    setTags(tags.filter(t => t !== tag));
-  };
+  }, [isSuccess, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation for required fields
-    // if (!title || !year || !subject || !slot) {
-    //   let errorMessage = 'Please fill in the following fields:\n';
-    //   if (!title) errorMessage += '- Title\n';
-    //   if (!year) errorMessage += '- Year\n';
-    //   if (!subject) errorMessage += '- Subject\n';
-    //   if (!slot) errorMessage += '- Slot\n';
-
-    //   alert(errorMessage);
-
-    const result = await createForumPost({ title, authorId, forumId })
+    const result = await createForumPost({ title, authorId, forumId });
     if (result.success) {
-      console.log('New forum post created: ', result.data)
+      console.log('New forum post created: ', result.data);
+      setIsSuccess(true);
     } else {
-      console.error("Error: ", result.error)
+      console.error("Error: ", result.error);
     }
+  };
+
+  if (isSuccess) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-100">
+        <div className="bg-white p-6 shadow-lg">
+          <p className="text-green-600 font-bold text-xl">Forum post successfully created!</p>
+        </div>
+      </div>
+    );
   }
 
 
@@ -156,7 +146,7 @@ const CreateForum: React.FC = () => {
                   #{tag}{' '}
                   <button
                     type="button"
-                    onClick={() => handleRemoveTag(tag)}
+                    //onClick={() => handleRemoveTag(tag)}
                     className="ml-2 text-red-500"
                   >
                     &times;
@@ -170,12 +160,12 @@ const CreateForum: React.FC = () => {
                   className={`p-2 border ${newTag ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-lg font-bold`}
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
-                  onKeyDown={handleKeyDown}
+                  //onKeyDown={handleKeyDown}
                 />
               ) : (
                 <button
                   type="button"
-                  onClick={handleAddTagClick}
+                  //onClick={handleAddTagClick}
                   className="bg-white hover:bg-blue-300 text-[#3BF3C7] px-4 py-2 border-2 border-[#3BF3C7] font-bold text-sm cursor-pointer ml-2"
                 >
                   Add tag

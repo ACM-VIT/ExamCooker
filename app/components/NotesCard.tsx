@@ -14,6 +14,13 @@ interface NotesCardProps {
 
 const colors = ['#5FC4E7', '#82BEE9'];
 
+function removePdfExtension(filename: string): string {
+  if (filename.endsWith('.pdf')) {
+      return filename.slice(0, -4);
+  }
+  return filename;
+}
+
 function NotesCard({ note, index }: NotesCardProps) {
   const [isFav, setIsFav] = useState(false);
   
@@ -27,10 +34,10 @@ function NotesCard({ note, index }: NotesCardProps) {
 
       <div className="p-4 w-full text-center" style={{ backgroundColor: colors[index % colors.length] }}>
         <div className="bg-[#d9d9d9] w-full h-36 mb-4 overflow-hidden">
-          <img src="https://topperworld.in/media/2022/11/c-sc.png" alt={note.title} className="w-full h-full object-cover" />
+          <img src="https://topperworld.in/media/2022/11/c-sc.png" alt={removePdfExtension(note.title)} className="w-full h-full object-cover" />
         </div>
-        <div className="mb-2 text-black w-full whitespace-nowrap overflow-hidden text-ellipsis ">
-          {note.title}
+        <div className="mb-2 text-black w-full whitespace-nowrap overflow-hidden text-ellipsis">
+          {removePdfExtension(note.title)}
         </div>
         <div className="flex  justify-between items-center space-x-4">
           <div></div>

@@ -10,7 +10,7 @@ import ForumCard from './ForumCard';
 const FavFetch = ({ pastpapers, notes, forumposts, resources }: { pastpapers: PastPaper[], notes: Note[], forumposts: ForumPost[], resources: Subject[] }) => {
   const [activeTab, setActiveTab] = useState('Past Papers');
 
-  const tabs = ['Past Papers', 'Notes', 'Forum', 'Resource Repo'];
+  const tabs = ['Past Papers', 'Notes', 'Forum', 'Resources'];
 
   const renderContent = () => {
     switch (activeTab) {
@@ -36,16 +36,16 @@ const FavFetch = ({ pastpapers, notes, forumposts, resources }: { pastpapers: Pa
         );
       case 'Forum':
         return forumposts.map(eachPost => <ForumCard
-          key={eachPost.id}
-          title={eachPost.title}
-          author={eachPost.author.name} //ignore issue, it works
-          desc='some random description'
-          createdAt={eachPost.createdAt}
-          tags={eachPost.tags} //this also
-          post={eachPost}
-          comments={eachPost.comments} //as well
-        />);
-      case 'Resource Repo':
+                                            key={eachPost.id}
+                                            title={eachPost.title}
+                                            author={eachPost.author.name} //ignore issue, it works
+                                            desc='some random description'
+                                            createdAt={eachPost.createdAt}
+                                            tags={eachPost.tags} //this also
+                                            post={eachPost}
+                                            comments={eachPost.comments} //as well
+                                          />);
+      case 'Resources':
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
             {resources.map(resource => (
