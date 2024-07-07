@@ -1,13 +1,22 @@
+
+"use client";
+import { useState } from 'react';
 import { NumberOfComments } from "@/app/components/forumpost/CommentContainer";
 import TagContainer from "@/app/components/forumpost/TagContainer";
 import { DislikeButton, LikeButton } from "@/app/components/common/Buttons";
 import { ForumPost, Tag, Comment } from "@prisma/client";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEye, faHeart } from '@fortawesome/free-solid-svg-icons';
 import Link from "next/link";
 
 export default function ForumCard({ post, title, desc, author, tags, createdAt, comments }: { post: ForumPost, title: string, desc: string, author: string | null, tags: Tag[], createdAt: Date, comments: Comment[] | undefined }) {
+    const [isFav, setIsFav] = useState(false);
+    function toggleFav() {
+        setIsFav(!isFav);
+    }
     return (
-        <div className="flex pl-11 pr-7 pt-7 justify-center text-black">
-            <div className="bg-[#5FC4E7] p-5 md:p-10 size-full md:size-5/6">
+        <div className="flex pl-11 pr-7 pt-7 justify-center text-black ">
+            <div className="bg-[#5FC4E7] p-5 md:p-10 size-full md:size-5/6 hover:border-b-white transition-colors duration-200 transform hover:scale-105 hover:shadow-xl ">
                 <div className="flex justify-between items-center">
                     <Link href={`/forum/${post.id}`}>
                         <h2 className="font-extrabold lg:text-3xl md:text-xl text-base">{title}</h2>
@@ -31,10 +40,14 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                     <div className="sm:w-2/3 md:flex md:w-full md:justify-between">
                         <TagContainer tags={tags} />
                     </div>
+                    <button onClick={toggleFav} style={{ color: isFav ? 'red' : 'lightgrey' }}>
+                        <FontAwesomeIcon icon={faHeart} />
+                    </button>
+
                 </div>
+
                 <div className="text-xs text-right">
-                    <p>{author} posted at {createdAt.toISOString()}</p>
-                </div>
+                    <p>{author} posted at {createdAt.toISOString()}</p> </div>
             </div>
         </div>
     );

@@ -1,5 +1,8 @@
 import React from 'react';
 import Image from 'next/image';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faInstagram } from '@fortawesome/free-brands-svg-icons';
+import { faLinkedin } from '@fortawesome/free-brands-svg-icons';
 
 function Footer() {
   return (
@@ -16,6 +19,7 @@ function Footer() {
         <p className="text-4xl">Made With <span className="text-4xl" role="img" aria-label="heart">💙</span></p>
         <hr className="flex-grow border-t-3 border-black ml-4" />
         </div>
+        
         <div className="mx-auto max-w-xs sm:max-w-md">
           <Image
             src={'./assets/ACM Logo.svg'}
@@ -24,6 +28,18 @@ function Footer() {
             height={500}
             className="rounded-full"
           />
+          
+        </div>
+        <div className="text-right">
+          <h6 className="text-1xl mb-2">Find Us</h6>
+          <div className="flex justify-end space-x-4 mr-2.5">
+            <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" className=" hover:text-gray-400">
+              <FontAwesomeIcon icon={faInstagram} size="1x" />
+            </a>
+            <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" className=" hover:text-gray-400">
+              <FontAwesomeIcon icon={faLinkedin} size="1x" />
+            </a>
+          </div>
         </div>
       </section>
     </footer>
