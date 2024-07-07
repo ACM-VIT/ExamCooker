@@ -84,13 +84,13 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
     <div className="relative inline-block text-left">
       <button
         onClick={toggleDropdown}
-        className="inline-flex items-center justify-center w-full border border-black border-2 text-lg font-bold px-4 py-2 bg-[#5FC4E7]"
+        className="inline-flex items-center justify-center w-full border-black dark:border-[#D5D5D5] border-2 text-lg font-bold px-4 py-2 bg-[#5FC4E7] dark:bg-[#7D7467]/20"
       >
         Filter
         <FontAwesomeIcon icon={faCaretDown} className="ml-2" />
       </button>
 
-      <div className={`absolute right-0 mt-2 max-w-[90vw] sm:max-w-[400px] md:max-w-[600px] lg:max-w-[1200px] h-auto border-2 border-black bg-[#5FC4E7] overflow-y-auto ${isOpen ? '' : 'hidden'}`}>
+      <div className={`absolute left-0 mt-2 max-w-[90vw] sm:max-w-[400px] md:max-w-[600px] lg:max-w-[1200px] h-auto border-2 border-black dark:border-[#D5D5D5] bg-[#5FC4E7] dark:bg-[#7D7467]/20 backdrop-blur-xl overflow-y-auto ${isOpen ? '' : 'hidden'}`}>
         <div className='py-20'>
           <div className="flex flex-col sm:flex-row sm:space-x-4 justify-center items-center">
             {(Object.entries(checkboxOptions) as [keyof CheckboxOptions, Option[]][]).map(([category, options]) => (
