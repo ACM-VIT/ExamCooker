@@ -4,8 +4,8 @@ import { auth } from "@/app/auth";
 import { redirect } from "next/navigation";
 
 async function Page() {
-    // const session = await auth();
-    // if (!session) return redirect("/");
+    const session = await auth();
+    if (session) return redirect("/");
     return (
         <div className="min-h-screen bg-[#5fc4e7] flex flex-col">
             <LandingPageContent />

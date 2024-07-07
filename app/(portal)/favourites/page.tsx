@@ -1,77 +1,94 @@
 import React from "react";
+import Fuse from 'fuse.js';
 import Pagination from "@/app/components/Pagination";
-import NotesCard from "@/app/components/NotesCard";
 import SearchBar from "@/app/components/SearchBar";
 import Link from "next/link";
-import { PrismaClient } from "@prisma/client";
-import { redirect } from 'next/navigation';
+import { PrismaClient, ForumPost, Note, PastPaper, Subject } from "@prisma/client";
 import Dropdown from "@/app/components/FilterComponent";
 import FavFetch from '@/app/components/FavFetchFilter';
 
 const prisma = new PrismaClient();
 
-function validatePage(page: string | undefined, totalPages: number): number {
-    const parsedPage = parseInt(page || '', 10);
-    if (isNaN(parsedPage) || parsedPage < 1 || parsedPage > totalPages || page !== parsedPage.toString()) {
-        redirect('/favourites?page=1');
-    }
-    return parsedPage;
+const SCORE_THRESHOLD = 0.6;
+
+function performSearch<T>(query: string, dataSet: T[]): T[] {
+    const options = {
+        includeScore: true,
+        keys: ['title', 'name', 'description', 'content'],
+        threshold: 0.4,
+        ignoreLocation: true,
+        minMatchCharLength: 2,
+    };
+    const fuse = new Fuse(dataSet, options);
+    const searchResults = fuse.search(query);
+    return searchResults
+        .filter((fuseResult) => (fuseResult.score || 1) < SCORE_THRESHOLD)
+        .map((fuseResult) => fuseResult.item);
 }
 
-
-async function favouritesPage({searchParams, params}: {searchParams: { page?: string }; params: { userId: string; category: string };}) {
+async function favouritesPage({ searchParams }: { searchParams: { page?: string, search?: string } }) {
     const pageSize = 9;
-
-    const totalCount = await prisma.note.count();
-    const totalPages = Math.ceil(totalCount / pageSize);
-
-    const page = validatePage(searchParams.page, totalPages);
-    const skip = (page - 1) * pageSize;
-    //const favourites = await fetchFavourites(userId, category, skip, pageSize);
+    const search = searchParams.search || '';
+    const page = parseInt(searchParams.page || '1', 10);
 
     const userBookmarks = await prisma.user.findUnique({
-          where: {
+        where: {
             id: "cly0klo9800006hg6gwc73j5u",
-          },
-          select: {
-            id: true,
-            name: true,
-            email: true,
+        },
+        select: {
             bookmarkedForumPosts: {
-                include : {
-                    author : true,
-                    tags : true,
-                    comments : true,
+                include: {
+                    author: true,
+                    tags: true,
+                    comments: true,
                 },
             },
-            bookmarkedNotes: true, 
+            bookmarkedNotes: true,
             bookmarkedPastPapers: true,
             bookmarkedResources: true,
-          }
-        });
+        }
+    });
 
-    console.log(userBookmarks?.bookmarkedResources)
+    if (!userBookmarks) {
+        throw new Error("User not found");
+    }
+
+    let filteredForumPosts = userBookmarks.bookmarkedForumPosts;
+    let filteredNotes = userBookmarks.bookmarkedNotes;
+    let filteredPastPapers = userBookmarks.bookmarkedPastPapers;
+    let filteredResources = userBookmarks.bookmarkedResources;
+
+    if (search) {
+        filteredForumPosts = performSearch(search, filteredForumPosts);
+        filteredNotes = performSearch(search, filteredNotes);
+        filteredPastPapers = performSearch(search, filteredPastPapers);
+        filteredResources = performSearch(search, filteredResources);
+    }
+
+    const totalCount = filteredForumPosts.length + filteredNotes.length +
+        filteredPastPapers.length + filteredResources.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
     return (
         <div>
             <h1 className="text-4xl font-bold text-center p-4">Favourites</h1>
             <div className="container flex items-center justify-center p-4 space-x-4">
-                {/* WHY IS FAVOURITES NOT AN OPTION HERE */}
-                {/* <SearchBar /> */}
-                <Dropdown />
+                <SearchBar pageType="favourites" initialQuery={search} />
             </div>
             <div className="p-5">
-                <FavFetch 
-                pastpapers={userBookmarks!.bookmarkedPastPapers}
-                notes={userBookmarks!.bookmarkedNotes}
-                forumposts={userBookmarks!.bookmarkedForumPosts}
-                resources={userBookmarks!.bookmarkedResources}/>
+                <FavFetch
+                    pastpapers={filteredPastPapers}
+                    notes={filteredNotes}
+                    forumposts={filteredForumPosts}
+                    resources={filteredResources}
+                />
             </div>
-            {/* <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {favourites.map((item) => (
-                    <NotesCard key={item.id} note={item} />
-                ))}
-            </div> */}
-            <Pagination currentPage={page} totalPages={totalPages} basePath="/favourites" />
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                basePath="/favourites"
+                searchQuery={search}
+            />
         </div>
     );
 }

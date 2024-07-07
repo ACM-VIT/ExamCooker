@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { SessionProvider } from "next-auth/react";
 
 
 export const metadata = {
@@ -19,7 +20,9 @@ export default async function RootLayout({
     return (
         <html lang="en" >
             <body className={`${plus_jakarta_sans.className} antialiased bg-[#ccf3ff]`} style={{ margin: "0" }}>
-                {children}
+                <SessionProvider>
+                    {children}
+                </SessionProvider>
             </body>
         </html>
     );

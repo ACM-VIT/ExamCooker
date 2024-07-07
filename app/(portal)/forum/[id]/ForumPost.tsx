@@ -20,8 +20,8 @@ import type { Tag, Comment, ForumPost } from "@prisma/client";
                         <TagContainer tags={tagArray} />
                     </div>
                     <div className="hidden md:flex justify-center p-0.5 bg-white">
-                        <LikeButton />
-                        <DislikeButton />
+                        <LikeButton postId={post!.id} upvoteCount={post!.upvoteCount} />
+                        <DislikeButton postId={post!.id} downvoteCount={post!.downvoteCount} />
                     </div>
                 </div>
 
@@ -29,8 +29,8 @@ import type { Tag, Comment, ForumPost } from "@prisma/client";
                 <div className="flex justify-between">
                     <NumberOfComments commentArray={commentArray}/>
                     <div className="flex md:hidden justify-center p-0.5 bg-none">
-                        <LikeButton />
-                        <DislikeButton />
+                        <LikeButton postId={post!.id} upvoteCount={post!.upvoteCount} />
+                        <DislikeButton postId={post!.id} downvoteCount={post!.downvoteCount} />
                     </div>
                 </div>
                 <CommentField forumPostId={post!.id}/>

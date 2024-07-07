@@ -5,11 +5,11 @@ import Home from "@/app/(portal)/home/home";
 
 
 export default async function Page() {
-    //const session = await auth();
+    const session = await auth();
 
     return (
         <>
-            {/*session*/true ? (
+            {session ? (
                     <Home/>
             ) : (
                 <div>Yahan kya krra h lode</div>
