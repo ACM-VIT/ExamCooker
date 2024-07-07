@@ -16,19 +16,20 @@ const colors = ['#5FC4E7', '#82BEE9'];
 
 function NotesCard({ note, index }: NotesCardProps) {
   const [isFav, setIsFav] = useState(false);
+  
 
   function toggleFav() {
     setIsFav(!isFav);
   }
-
+  
   return (
-    <div className="max-w-sm w-full">
-     
+    <div className="max-w-sm w-full hover:border-b-white transition-colors duration-200 transform hover:scale-105 hover:shadow-lg">
+
       <div className="p-4 w-full text-center" style={{ backgroundColor: colors[index % colors.length] }}>
         <div className="bg-[#d9d9d9] w-full h-36 mb-4 overflow-hidden">
           <img src="https://topperworld.in/media/2022/11/c-sc.png" alt={note.title} className="w-full h-full object-cover" />
         </div>
-        <div className="mb-2 text-black w-full whitespace-nowrap overflow-hidden text-ellipsis">
+        <div className="mb-2 text-black w-full whitespace-nowrap overflow-hidden text-ellipsis ">
           {note.title}
         </div>
         <div className="flex  justify-between items-center space-x-4">
@@ -37,17 +38,18 @@ function NotesCard({ note, index }: NotesCardProps) {
             <span className="mr-1 flex items-center justify-center">
               <FontAwesomeIcon icon={faEye} />
             </span>
-            View 
-          </Link> 
-          
+            View
+          </Link>
+
           <button onClick={toggleFav} style={{ color: isFav ? 'red' : 'lightgrey' }}>
             <FontAwesomeIcon icon={faHeart} />
           </button>
-          
+
         </div>
       </div>
-      
-    </div>
+  </div>
+
+    
   );
 }
 

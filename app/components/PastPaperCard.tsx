@@ -68,7 +68,7 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
   }
 
   return (
-    <div className="max-w-sm w-full">
+    <div className="max-w-sm w-full hover:border-b-white transition-colors duration-200 transform hover:scale-105 hover:shadow-lg">
       <div className="p-4 w-full text-center" style={{ backgroundColor: colors[index % colors.length] }}>
         <div className="bg-[#d9d9d9] w-full h-36 mb-4 overflow-hidden">
           <img
