@@ -81,7 +81,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
   }, [searchParams, router, pageType]);
 
   return (
-    <div className="relative inline-block text-left ml-4">
+    <div className="relative inline-block text-left">
       <button
         onClick={toggleDropdown}
         className="inline-flex items-center justify-center w-full border border-black border-2 text-lg font-bold px-4 py-2 bg-[#5FC4E7]"
