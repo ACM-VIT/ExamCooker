@@ -100,10 +100,18 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
         <div className="flex flex-col items-center">
             <h1 className="text-center m-4">Notes</h1>
 
-            <div className="flex flex-col w-5/6 lg:w-1/2 md:flex-row items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
+            <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
                 <Dropdown pageType='notes' />
                 <SearchBar pageType="notes" initialQuery={search} />
                 <UploadButtonNotes />
+            </div>
+
+            <div className='flex-col w-5/6 md:hidden space-y-4'>
+                <SearchBar pageType="notes" initialQuery={search} />
+                <div className='flex justify-between'>
+                    <Dropdown pageType='notes' />
+                    <UploadButtonNotes />
+                </div>
             </div>
 
 
