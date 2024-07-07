@@ -97,39 +97,40 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
     }
 
     return (
-        <div className="flex flex-col min-h-screen">
-            <div className="container mx-auto p-4">
-                <h1 className="text-4xl font-bold text-center mb-4">Notes</h1>
+        <div className="flex flex-col items-center">
+            <h1 className="text-center m-4">Notes</h1>
 
-                <div className="flex justify-center">
-                    <div className="container flex flex-col sm:flex-row items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-                        <SearchBar pageType="notes" initialQuery={search} />
-                        <div className="flex space-x-4">
-                            <Dropdown pageType='notes' />
-                            <UploadButtonNotes />
-                        </div>
-                    </div>
-                </div>
+            <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
+                <Dropdown pageType='notes' />
+                <SearchBar pageType="notes" initialQuery={search} />
+                <UploadButtonNotes />
+            </div>
 
-                <div className="flex justify-center">
-                    <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-                        {paginatedNotes.length > 0 ? (
-                            paginatedNotes.map((eachNote, index) => (
-                                <NotesCard
-                                    key={eachNote.id}
-                                    note={eachNote}
-                                    index={index}
-                                />
-                            ))
-                        ) : (
-                            <p className="col-span-3 text-center">
-                                {search || tags.length > 0
-                                    ? "No notes found matching your search or selected tags."
-                                    : "No notes found."}
-                            </p>
-                        )}
-                    </div>
+            <div className='flex-col w-5/6 md:hidden space-y-4'>
+                <SearchBar pageType="notes" initialQuery={search} />
+                <div className='flex justify-between'>
+                    <Dropdown pageType='notes' />
+                    <UploadButtonNotes />
                 </div>
+            </div>
+
+
+            <div className="w-full xl:w-2/3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6 place-content-center place-items-center">
+                {paginatedNotes.length > 0 ? (
+                    paginatedNotes.map((eachNote, index) => (
+                        <NotesCard
+                            key={eachNote.id}
+                            note={eachNote}
+                            index={index}
+                        />
+                    ))
+                ) : (
+                    <p className="col-span-3 text-center">
+                        {search || tags.length > 0
+                            ? "No notes found matching your search or selected tags."
+                            : "No notes found."}
+                    </p>
+                )}
             </div>
 
             {totalPages > 1 && (

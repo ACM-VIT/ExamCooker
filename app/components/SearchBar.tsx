@@ -67,12 +67,12 @@ export default function Search({ pageType, availableTags, initialQuery = '' }: S
     };
 
     return (
-        <form onSubmit={handleSubmit} className="relative flex items-center w-2/3">
-            <div className="relative flex items-center bg-white border border-black w-full px-2 py-0.5 shadow-[5px_5px_0_0_rgba(0,0,0,1)]">
+        <form onSubmit={handleSubmit} className="relative flex items-center w-full">
+            <div className="relative flex items-center bg-white border border-black w-full px-2 py-0.5 shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
                 <Image src={Seacrh} alt="search" className="" />
                 <input
                     type="text"
-                    className="px-4 py-2 w-full rounded-l-full focus:outline-none"
+                    className="px-4 py-2 w-full focus:outline-none"
                     placeholder="Search"
                     value={query}
                     onChange={handleChange}

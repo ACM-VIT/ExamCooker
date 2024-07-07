@@ -75,9 +75,10 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
   }
 
   return (
-    <div className="max-w-sm w-full hover:border-b-white transition-colors duration-200 transform hover:scale-105 hover:shadow-lg">
-      <div className="p-4 w-full text-center" style={{ backgroundColor: colors[index % colors.length] }}>
-        <div className="bg-[#d9d9d9] w-full h-36 mb-4 overflow-hidden">
+    <div className="max-w-sm w-full h-full">
+      <div className="px-5 py-6 w-full text-center" style={{ backgroundColor: colors[index % colors.length] }}>
+        <div className="bg-[#d9d9d9] w-full h-44 overflow-hidden">
+
           <img
             src="https://topperworld.in/media/2022/11/c-sc.png"
             alt={pastPaper.title}
@@ -89,7 +90,7 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
         </div>
         <div className="flex justify-between items-center space-x-4">
           <div></div>
-          <Link href={`past_papers/${pastPaper.id}`} className="py-[2.605%] px-2 text-sm flex items-center bg-white text-black">
+          <Link href={`past_papers/${pastPaper.id}`} className="py-1 px-2 text-sm flex items-center bg-white text-black">
             <span className="mr-1 flex items-center justify-center">
               <FontAwesomeIcon icon={faEye} />
             </span>
