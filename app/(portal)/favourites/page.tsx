@@ -72,14 +72,9 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
     return (
         <div>
             <h1 className="text-4xl font-bold text-center p-4">Favourites</h1>
-            <div className="flex justify-center">
-                <div className="container flex flex-col sm:flex-row items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-                    <SearchBar pageType="favourites" initialQuery={search} />
-                    <div className="flex space-x-4">
-                        <Dropdown pageType='favourites' />
+            <div className="container flex items-center justify-center p-4 space-x-4">
+                <SearchBar pageType="favourites" initialQuery={search} />
 
-                    </div>
-                </div>
             </div>
             <div className="p-5 flex items-center justify-center p-4 space-x-4">
                 <FavFetch

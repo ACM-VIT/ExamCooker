@@ -6,6 +6,7 @@ import { generateSignedUploadURL, storeFileInfoInDatabase } from "../actions/upl
 import cuid from 'cuid';
 
 const UploadFilePaper: React.FC = () => {
+    const [title, setTitle] = useState('');
     const [year, setYear] = useState('');
     const [subject, setSubject] = useState('');
     const [slot, setSlot] = useState('');
@@ -129,6 +130,16 @@ const UploadFilePaper: React.FC = () => {
                     </button>
                 </div>
                 <form onSubmit={handleSubmit}>
+                <div className="mb-4">
+                    <input
+                    type="text"
+                    placeholder="Title"
+                    className={`p-2 border ${title ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-lg font-bold`}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                    />
+                </div>
                     <div className="grid grid-cols-3 gap-4 mb-4">
                         <div>
                             <input

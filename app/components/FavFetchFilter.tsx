@@ -10,7 +10,7 @@ import ForumCard from './ForumCard';
 const FavFetch = ({pastpapers, notes, forumposts, resources} : {pastpapers: PastPaper[], notes: Note[], forumposts: ForumPost[], resources: Subject[]}) => {
   const [activeTab, setActiveTab] = useState('Past Papers');
 
-  const tabs = ['Past Papers', 'Notes', 'Forum', 'Resource Repo'];
+  const tabs = ['Past Papers', 'Notes', 'Forum', 'Resources'];
 
   const renderContent = () => {
     switch(activeTab) {
@@ -45,7 +45,7 @@ const FavFetch = ({pastpapers, notes, forumposts, resources} : {pastpapers: Past
                                             post={eachPost}
                                             comments={eachPost.comments} //as well
                                           />);
-      case 'Resource Repo':
+      case 'Resources':
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
             {resources.map(resource => (

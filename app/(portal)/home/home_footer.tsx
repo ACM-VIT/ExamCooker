@@ -24,10 +24,10 @@ function HomeFooter() {
         <div className="text-right">
           <h6 className="text-1xl mb-2">Find Us</h6>
           <div className="flex justify-end space-x-4 mr-2.5">
-            <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" className=" hover:text-gray-400">
+            <a href="https://www.instagram.com/acmvit" target="_blank" rel="noopener noreferrer" className=" hover:text-gray-400">
               <FontAwesomeIcon icon={faInstagram} size="1x" />
             </a>
-            <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" className=" hover:text-gray-400">
+            <a href="https://www.linkedin.com/company/acmvit/" target="_blank" rel="noopener noreferrer" className=" hover:text-gray-400">
               <FontAwesomeIcon icon={faLinkedin} size="1x" />
             </a>
           </div>

@@ -23,9 +23,9 @@ const Home: React.FC = () => {
                     </div>
                     <div className="flex justify-center">
                         <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-                            {notes.map((note, index) => (
-                                <NotesCard key={note.id} index={index} note={notes} />
-                            ))}
+                            {/* {notes.map((note, index) => (
+                                <NotesCard key={note.id} index={index} note={note} />
+                            ))} */}
                         </div>
                     </div>
                 </section>
@@ -36,9 +36,9 @@ const Home: React.FC = () => {
                 </div>
                     <div className="flex justify-center">
                         <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-                            {notes.map((note, index) => (
+                            {/* {notes.map((note, index) => (
                                 <NotesCard key={note.id} index={index} note={notes} />
-                            ))}
+                            ))} */}
                         </div>
                     </div></section>
                     <HomeFooter/>
