@@ -10,8 +10,8 @@ function HomeHeader() {
         <p className="text-lg mb-4 sm:text-xl">Youve got this! Even if this means a borderline psychotic level of caffeine consumption.</p>
         <div className="flex justify-center">
         <div className="container flex items-center justify-center p-4 space-x-4 pt-2">
-          <SearchBar pageType={'notes'} />
-          <Dropdown/>
+          <SearchBar pageType={''} />
+          <Dropdown pageType={''}/>
         </div>
         </div>
       </div>
