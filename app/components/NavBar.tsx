@@ -1,12 +1,35 @@
+
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import Loading from "../loading";
 
 const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
     isNavOn,
     toggleNavbar,
 }) => {
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const nav = document.querySelector('nav');
+            if (nav && !nav.contains(event.target as Node) && isNavOn) {
+                toggleNavbar();
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isNavOn, toggleNavbar]);
+
+    const handleLinkClick = () => {
+        if (isNavOn) {
+            toggleNavbar();
+        }
+    };
+
     return (
         <nav
             className={`fixed top-0 left-0 z-50 flex flex-col justify-between items-center h-screen ${
@@ -33,10 +56,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
 
             <div className="flex flex-col items-center mt-8">
                 <Link href="/" passHref>
-                    <div
-                        title="Home"
-                        className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                    >
+                    <div onClick={handleLinkClick} className={`m-2 ${isNavOn ? "block" : "hidden"}`}>
                         <Image
                             src="/assets/Home.svg"
                             alt="Home"
@@ -47,10 +67,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                     </div>
                 </Link>
                 <Link href="/notes" passHref>
-                    <div
-                        title="Notes"
-                        className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                    >
+                    <div onClick={handleLinkClick} className={`m-2 ${isNavOn ? "block" : "hidden"}`}>
                         <Image
                             src="/assets/NotesIcon.svg"
                             alt="Notes"
@@ -61,10 +78,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                     </div>
                 </Link>
                 <Link href="/past_papers" passHref>
-                    <div
-                        title="Past Papers"
-                        className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                    >
+                    <div onClick={handleLinkClick} className={`m-2 ${isNavOn ? "block" : "hidden"}`}>
                         <Image
                             src="/assets/PastPapersIcon.svg"
                             alt="Past Papers"
@@ -75,10 +89,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                     </div>
                 </Link>
                 <Link href="/forum" passHref>
-                    <div
-                        title="Forum"
-                        className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                    >
+                    <div onClick={handleLinkClick} className={`m-2 ${isNavOn ? "block" : "hidden"}`}>
                         <Image
                             src="/assets/ForumIcon.svg"
                             alt="Forum"
@@ -89,10 +100,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                     </div>
                 </Link>
                 <Link href="/resources" passHref>
-                    <div
-                        title="Resources"
-                        className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                    >
+                    <div onClick={handleLinkClick} className={`m-2 ${isNavOn ? "block" : "hidden"}`}>
                         <Image
                             src="/assets/BookIcon.svg"
                             alt="Book"
@@ -103,10 +111,8 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                     </div>
                 </Link>
                 <Link href="/favourites" passHref>
-                    <div
-                        title="Favourites"
-                        className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                    >
+                    <div onClick={handleLinkClick} className={`m-2 ${isNavOn ? "block" : "hidden"}`}>
+                    
                         <Image
                             src="/assets/NavFavouriteIcon.svg"
                             alt="Favourites"
@@ -119,10 +125,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
             </div>
             <div className="mb-4 bottom-5">
                 <Link href="/logout" passHref>
-                    <div
-                        title="Log Out"
-                        className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                    >
+                    <div onClick={handleLinkClick} className={`m-2 ${isNavOn ? "block" : "hidden"}`}>
                         <Image
                             src="/assets/LogoutIcon.svg"
                             alt="Logout"

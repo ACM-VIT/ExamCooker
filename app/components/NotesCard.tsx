@@ -57,6 +57,7 @@ function NotesCard({ note, index }: NotesCardProps) {
         </div>
 
     );
+
 }
 
 export default NotesCard;

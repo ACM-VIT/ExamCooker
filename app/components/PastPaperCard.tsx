@@ -78,6 +78,7 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
     <div className="max-w-sm w-full h-full">
       <div className="px-5 py-6 w-full text-center" style={{ backgroundColor: colors[index % colors.length] }}>
         <div className="bg-[#d9d9d9] w-full h-44 overflow-hidden">
+
           <img
             src="https://topperworld.in/media/2022/11/c-sc.png"
             alt={pastPaper.title}
