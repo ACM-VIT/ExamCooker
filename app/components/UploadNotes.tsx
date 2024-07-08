@@ -208,13 +208,14 @@ const UploadFileNotes: React.FC = () => {
 
     return (
         <div className="flex justify-center items-center min-h-screen">
-            <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md text-black dark:text-[#D5D5D5] ">
+            <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5] text-black dark:text-[#D5D5D5] ">
                 <div className="flex justify-between items-center mb-4">
                     <Link href={'/notes'}>
                         <button className="text-[#3BF3C7] px-2 py-2 border-2 border-[#3BF3C7] flex items-center justify-center font-bold hover:bg-[#ffffff]/10">
                             <FontAwesomeIcon icon={faArrowLeft} />
                         </button>
                     </Link>
+                    <h3>New note</h3>
                     <div className="relative group">
                         <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
                         <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
@@ -296,7 +297,7 @@ const UploadFileNotes: React.FC = () => {
                                 <input
                                     type="text"
                                     placeholder="Add tag"
-                                    className={`inline-block text-gray-700 px-3 py-1 text-sm font-semibold mr-2 mb-2`}
+                                    className={`p-2 border-2 border-dashed border-gray-300 w-full dark:bg-[#0C1222] text-lg font-bold`}
                                     value={newTag}
                                     onChange={handleTagInputChange}
                                     onKeyDown={handleKeyDown}
