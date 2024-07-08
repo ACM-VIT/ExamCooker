@@ -9,9 +9,9 @@ type CreateForumPostInput = {
   authorId: string
   forumId: string
   description: string
-  year: string
-  subject: string
-  slot: string
+  year?: string
+  slot?: string
+  selectedTags: string[]
 }
 
 async function findOrCreateTag(name: string): Promise<Tag> {
@@ -24,9 +24,11 @@ async function findOrCreateTag(name: string): Promise<Tag> {
 
 export async function createForumPost(data: CreateForumPostInput) {
   try {
-    const yearTag = await findOrCreateTag(data.year);
-    const subjectTag = await findOrCreateTag(data.subject);
-    const slotTag = await findOrCreateTag(data.slot);
+    const tagConnections = [
+      ...(data.year ? [await findOrCreateTag(data.year)] : []),
+      ...(data.slot ? [await findOrCreateTag(data.slot)] : []),
+      ...await Promise.all(data.selectedTags.map(tag => findOrCreateTag(tag)))
+    ].map(tag => ({ id: tag.id }));
 
     const newForumPost = await prisma.forumPost.create({
       data: {
@@ -39,15 +41,11 @@ export async function createForumPost(data: CreateForumPostInput) {
         },
         description: data.description,
         tags: {
-          connect: [
-            { id: yearTag.id },
-            { id: subjectTag.id },
-            { id: slotTag.id }
-          ]
+          connect: tagConnections
         }
       },
       include: {
-        tags: true // This will include the connected tags in the response
+        tags: true
       }
     });
 
