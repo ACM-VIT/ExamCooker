@@ -215,7 +215,7 @@ const UploadFileNotes: React.FC = () => {
                             <FontAwesomeIcon icon={faArrowLeft} />
                         </button>
                     </Link>
-                    <h3>New note</h3>
+                    <h3>New Note</h3>
                     <div className="relative group">
                         <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
                         <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
