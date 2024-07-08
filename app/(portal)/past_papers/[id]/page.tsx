@@ -6,40 +6,39 @@ import dynamic from 'next/dynamic';
 import PDFViewer from '@/app/components/pdfviewer';
 
 function removePdfExtension(filename: string): string {
-  if (filename.endsWith('.pdf')) {
-      return filename.slice(0, -4);
-  }
-  return filename;
+    if (filename.endsWith('.pdf')) {
+        return filename.slice(0, -4);
+    }
+    return filename;
 }
 
-async function PdfViewerPage({params }: {params : {id : string}}) {
-  
-  const prisma = new PrismaClient();
-  const paper = await prisma.pastPaper.findUnique({
-    where : {
-      id : params.id,
-    },
-    include: {
-      author: true,
-    },
-  });
+async function PdfViewerPage({ params }: { params: { id: string } }) {
+
+    const prisma = new PrismaClient();
+    const paper = await prisma.pastPaper.findUnique({
+        where: {
+            id: params.id,
+        },
+        include: {
+            author: true,
+        },
+    });
 
 
-return (
-  <div className="container mx-auto">
-      <div className="flex flex-col lg:flex-row h-[90vh]">
-          <div className="w-full lg:w-1/2 flex flex-col items-center justify-center mx-auto text-black p-10">
-              <h1 className="text-center">{removePdfExtension(paper!.title)}</h1><br />
-              <h2>Slot: A1</h2><br />
-              <h2>Year: 2024</h2><br />
-          </div>
-          <div className='flex flex-col w-full lg:w-1/2 items-center justify-center'>
-              <div className="h-[90vh] w-full pt-4 flex items-center justify-center lg:pl-24">
-                  <PDFViewer fileUrl={paper!.fileUrl} />
-              </div>
-          </div>
-      </div>
-  </div>
-);
+    return (
+        <div className="p-6 flex flex-col items-center space-x-4 lg:flex-row h-screen text-black dark:text-[#D5D5D5] divide-black dark:divide-[#D5D5D5] divide-x">
+            <div className="h-full w-1/2 pr-6">
+                <h1>{removePdfExtension(paper!.title)}</h1>
+                <h2>Slot: A1</h2>
+                <h2>Year: 2024</h2>
+            </div>
+            <div className='pl-6 w-1/2 h-full'>
+                <div className="h-full w-full overflow-hidden">
+                    <PDFViewer fileUrl={paper!.fileUrl} />
+                </div>
+            </div>
+        </div>
+
+    );
 }
 export default dynamic(() => Promise.resolve(PdfViewerPage), { ssr: false });
