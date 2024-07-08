@@ -33,7 +33,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
     return (
         <nav
             className={`fixed top-0 left-0 z-50 flex flex-col justify-between items-center h-screen ${
-                isNavOn ? "bg-[#5fc4e7] lg:w-[5vw] md:w-[8vw]" : ""
+                isNavOn ? "bg-[#5fc4e7] dark:bg-[#232530] dark:border-[#3BF4C7] dark:border w-[3vw]" : ""
             } text-white p-1 transition-all duration-300 ease-in-out`}
         >
             {isNavOn && (
