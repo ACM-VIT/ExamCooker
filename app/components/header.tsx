@@ -17,10 +17,10 @@ const Header: React.FC<HeaderProps> = ({ toggleTheme, darkMode }) => {
   const { data: session, status } = useSession();
 
   return (
-    <header className="bg-[#c2e6ec] border-b-[#82BEE9] border-[1px] flex flex-row-reverse">
+    <header className="bg-[#C2E6EC] border-b border-b-[#82BEE9] dark:border-b-[#3BF4C7] dark:bg-[#0C1222] flex flex-row-reverse">
       <div className="flex items-center text-right m-2">
         <div className="flex flex-col mr-4">
-          <p className="text-lg font-medium text-gray-900">{session?.user?.name}</p>
+          <p className="text-lg font-medium text-gray-900 dark:text-[#D5D5D5]">{session?.user?.name}</p>
           <p className="text-sm text-gray-500">{session?.user?.email}</p> 
         </div>
         <div className="w-10 h-10 bg-gray-300 rounded-full sm:mr-4"></div>

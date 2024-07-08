@@ -19,7 +19,7 @@ export default async function RootLayout({
 
     return (
         <html lang="en" >
-            <body className={`${plus_jakarta_sans.className} antialiased bg-[#ccf3ff]`} style={{ margin: "0" }}>
+            <body className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`} style={{ margin: "0" }}>
                 <SessionProvider>
                     {children}
                 </SessionProvider>
