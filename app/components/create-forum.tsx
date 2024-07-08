@@ -33,11 +33,11 @@ const CreateForum: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const result = await createForumPost({ title, authorId, forumId });
-    if (result.success) {
-      console.log('New forum post created: ', result.data);
-      setIsSuccess(true);
-    } else {
+    const result = await createForumPost({ title, authorId, forumId, description, year, subject, slot});
+      if (result.success) {
+        console.log('New forum post created: ', result.data);
+        setIsSuccess(true);
+      } else {
       console.error("Error: ", result.error);
     }
   };
@@ -82,14 +82,25 @@ const CreateForum: React.FC = () => {
           </div>
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
-              <input
-                type="text"
-                placeholder="Year"
-                className={`p-2 border ${year ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-base font-bold`}
+            <select
+                className="p-2 w-2/3 text-black bg-blue-400 cursor-pointer transition-colors duration-300 hover:bg-blue-600"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
                 required
-              />
+              > 
+                <option value="">Year</option>
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
+                <option value="2022">2022</option>
+                <option value="2021">2021</option>
+                <option value="2020">2020</option>
+                <option value="2019">2019</option>
+                <option value="2018">2018</option>
+                <option value="2017">2017</option>
+                <option value="2016">2016</option>
+                <option value="2015">2015</option>
+                <option value="2014">2014</option>
+              </select>
             </div>
             <div>
               <input
