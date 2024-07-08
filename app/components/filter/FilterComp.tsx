@@ -19,7 +19,7 @@ const FilterComp: React.FC<Props> = ({ title, options, onSelectionChange, select
   };
 
   return (
-    <div className="w-full sm:w-[182px] h-auto sm:h-[110px] dark:bg-none p-4 text-center">
+    <div className="w-full sm:w-[182px] dark:bg-none p-4 text-center">
       <h5 className="text-lg font-bold mb-2">{title}</h5>
       <div>
         {options.map((option) => (
