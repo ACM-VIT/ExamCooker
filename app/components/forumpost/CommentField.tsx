@@ -51,7 +51,7 @@ const CommentField: React.FC<AddCommentFormProps> = ({ forumPostId, onCommentAdd
           type="text" 
           placeholder="Add a comment.." 
           value={content} 
-          className="w-full px-4 py-3 text-base placeholder-[#838383] focus:outline-none focus:ring-2 focus:ring-[#3BF3C7]" 
+          className="w-full px-4 py-3 text-base placeholder-[#838383]  dark:bg-[#4F5159] focus:outline-none focus:ring-2 focus:ring-[#3BF3C7]" 
           onChange={handleInputChange} 
         />
         <SubmitCommentButton />
@@ -64,7 +64,7 @@ export default CommentField;
 
 const SubmitCommentButton: React.FC = () => {
   return (
-    <button type="submit" className="bg-white py-3 px-4 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-[#3BF3C7]">
+    <button type="submit" className="bg-white py-3 px-4 hover:bg-gray-300 dark:bg-[#4F5159] focus:outline-none focus:ring-2 focus:ring-[#3BF3C7]">
       <Image
         src="/comment/SubmitComment.svg"
         alt="Submit Comment"

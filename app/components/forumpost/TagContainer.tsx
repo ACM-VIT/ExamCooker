@@ -14,5 +14,5 @@ const TagContainer = ({tags}:{tags:Tag[]|undefined}) => {
 export default TagContainer;
 
 const Tag = ({ tagName }: { tagName: string }) => {
-    return <text className="bg-white text-gray-500 text-xs md:text-xs px-0.5 md:p-1">#{tagName}</text>;
+    return <text className="bg-white dark:bg-[#3F4451] text-xs md:text-xs px-0.5 md:p-1">#{tagName}</text>;
 }

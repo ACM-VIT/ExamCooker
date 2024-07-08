@@ -20,8 +20,8 @@ function ModuleDropdown({ module }: ModuleDropdownProps) {
         <div className="mb-2">
             <button
                 onClick={toggleExpand}
-                className="flex items-center justify-between w-full text-left py-2 px-4 bg-[#82BEE9] border-b-[#82BEE9] border-b-2 hover:bg-opacity-80 hover:border-b-white hover:border-b-2 transition-colors duration-200 "
-                style={{ borderBottomColor: isExpanded ? 'white' : '#82BEE9' }}
+                className="flex items-center justify-between w-full text-left py-2 px-4 bg-[#82BEE9] dark:bg-[#232530]  border-b-2 hover:bg-opacity-80 hover:border-b-white hover:border-b-2 transition-colors duration-200 "
+                style={{ borderBottomColor: isExpanded ? '#3BF4C7' : '' }}
             >
                 <h3>{module.title}</h3>
                 {isExpanded && <FontAwesomeIcon icon={faAngleDown} />}

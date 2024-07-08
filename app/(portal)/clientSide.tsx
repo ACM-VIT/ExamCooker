@@ -65,10 +65,7 @@ export default function ClientSide({
 
     return (
         <div
-            className={`relative flex ${
-                darkMode ? "bg-gray-900 text-white" : "bg-[#c2e6ec] text-black"
-            }`}
-        >
+            className={`relative flex`}>
             {!isNavOn && (
                 <button
                     title="Open Navbar"

@@ -24,20 +24,17 @@ export default async function SubjectDetailPage({ params }: { params: { id: stri
     }
 
     return (
-        <>
+        <div className="container mx-auto p-4 text-black dark:text-[#D5D5D5]">
+            <h2>{courseName}</h2>
             <br />
-            <div className="container mx-auto p-4">
-                <h2>{courseName}</h2>
-                <br />
-                <h3>Course Code: {courseCode}</h3>
-                <br />
-                <br />
-                <div className="space-y-6">
-                    {subject.modules.map((module) => (
-                        <ModuleDropdown key={module.id} module={module} />
-                    ))}
-                </div>
+            <h3>Course Code: {courseCode}</h3>
+            <br />
+            <br />
+            <div className="space-y-6">
+                {subject.modules.map((module) => (
+                    <ModuleDropdown key={module.id} module={module} />
+                ))}
             </div>
-        </>
+        </div>
     );
 }

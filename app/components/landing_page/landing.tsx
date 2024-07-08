@@ -20,11 +20,11 @@ function GradientText({ children }: { children: React.ReactNode }) {
 function WordBetweenLine({ children }: { children: React.ReactNode }) {
     return (
         <div className="relative flex items-center justify-between">
-            <div className="flex-grow border-t border-black"></div>
-            <span className="text-center text-3xl md:text-6xl lg:text-8xl font-extrabold flex-shrink text-black">
+            <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
+            <span className="text-center text-3xl md:text-6xl lg:text-8xl font-extrabold flex-shrink text-black dark:text-[#D5D5D5]">
                 {children}
             </span>
-            <div className="flex-grow border-t border-black"></div>
+            <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
         </div>
     );
 }
@@ -47,7 +47,7 @@ function LandingPageCard({
             <div className="hidden lg:block absolute right-0 bottom-0 w-[200px] h-[200px] rounded-full transition duration-1000 group-hover:duration-200 md:bg-none md:group-hover:bg-[#82BEE9]"></div>
             <div className="block lg:hidden absolute right-0 bottom-0 w-[200px] h-[200px] rounded-full bg-[#82BEE9]"></div>
 
-            <div className="relative w-full h-full bg-[#5FC4E7]/20 backdrop-blur-[100px] border-[#5FC4E7] border-[1px] p-1 md:p-4">
+            <div className="relative w-full h-full bg-[#5FC4E7]/20 dark:bg-[#7D7467]/20 backdrop-blur-[100px] border-[#5FC4E7]/20 dark:border-[#7D7467]/20 border-[1px] p-1 md:p-4">
                 <div className="flex items-center w-full justify-between">
                     <Image
                         src={imagePath}
@@ -106,7 +106,7 @@ function LandingPageContent() {
     };
 
     return (
-        <div className="bg-[#C2E6EC] space-y-40 md:space-y-96">
+        <div className="bg-[#C2E6EC] dark:bg-[#0C1222] space-y-40 md:space-y-96 text-black dark:text-[#D5D5D5]" >
             <div className="px-5 py-5 md:px-40 md:py-20 w-full">
                 <h1 className="text-6xl md:text-7xl lg:text-9xl drop-shadow-[0px_5px_rgba(59,244,199,1)]">
                     <GradientText>Cramming</GradientText>
@@ -159,7 +159,7 @@ function LandingPageContent() {
                 </div>
             </div>
 
-            <div className="lg:sticky lg:top-0 lg:h-screen lg:bg-[#8DCAE9] flex-col content-center">
+            <div className="lg:sticky lg:top-0 lg:h-screen lg:bg-[#8DCAE9] lg:dark:bg-[#0C1222]/20 lg:dark:backdrop-blur-[100px] flex-col content-center">
                 <WordBetweenLine>
                     <div className="text-center">
                         <GradientText>
@@ -174,7 +174,7 @@ function LandingPageContent() {
                 </div>
             </div>
 
-            <div className="lg:sticky lg:h-screen lg:top-0 lg:bg-[#C2E6EC] flex-col content-center">
+            <div className="lg:sticky lg:h-screen lg:top-0 lg:bg-[#C2E6EC] lg:dark:bg-[#0C1222] flex-col content-center">
                 <WordBetweenLine>
                     <div className="drop-shadow-[0px_5px_rgba(59,244,199,1)]">
                         Why Examcooker?
@@ -197,7 +197,7 @@ function LandingPageContent() {
                 </h4>
             </div>
 
-            <div className="lg:sticky lg:h-screen lg:top-0 lg:bg-[#8DCAE9] flex-col content-center">
+            <div className="lg:sticky lg:h-screen lg:top-0 lg:bg-[#8DCAE9] lg:dark:bg-[#0C1222]/20 backdrop-blur-[100px] flex-col content-center">
                 <WordBetweenLine>
                     <div className="flex items-center">
                         <span className="drop-shadow-[0px_5px_rgba(59,244,199,1)]">
