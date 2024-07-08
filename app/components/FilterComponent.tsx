@@ -54,6 +54,17 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
       { id: 'option2', label: 'A1' },
       { id: 'option3', label: 'B1' },
       { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
+      { id: 'option4', label: 'F1+TF1' },
     ],
     years: [
       { id: 'option1', label: '2024' },
@@ -90,7 +101,8 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
         <FontAwesomeIcon icon={faCaretDown} className="ml-2" />
       </button>
 
-      <div className={`absolute left-0 mt-2 max-w-[90vw] sm:max-w-[400px] md:max-w-[600px] lg:max-w-[1200px] h-auto border-2 border-black dark:border-[#D5D5D5] bg-[#5FC4E7] dark:bg-[#7D7467]/20 backdrop-blur-3xl overflow-y-auto ${isOpen ? '' : 'hidden'}`}>
+      <div className={`absolute left-0 mt-2 max-w-[90vw] sm:max-w-[400px] md:max-w-[600px] lg:max-w-[1200px] h-auto border-2 border-black 
+        dark:border-[#D5D5D5] bg-[#5FC4E7] dark:bg-[#7D7467]/20 backdrop-blur-3xl overflow-y-auto z-50 ${isOpen ? '' : 'hidden'}`}>
         <div className='py-20'>
           <div className="flex flex-col sm:flex-row sm:space-x-4 justify-center items-center">
             {(Object.entries(checkboxOptions) as [keyof CheckboxOptions, Option[]][]).map(([category, options]) => (
