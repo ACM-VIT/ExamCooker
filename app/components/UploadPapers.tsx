@@ -6,6 +6,8 @@ import { generateSignedUploadURL, storeFileInfoInDatabase } from "../actions/upl
 import cuid from 'cuid';
 import Fuse from 'fuse.js';
 import { getTags } from '../actions/fetchTags';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
 const UploadFilePaper: React.FC = () => {
     const [title, setTitle] = useState('');
@@ -205,37 +207,37 @@ const UploadFilePaper: React.FC = () => {
     };
 
     return (
-        <div className="flex justify-center items-center min-h-screen bg-gray-100">
-            <div className="bg-white p-6 shadow-lg w-full max-w-md">
+        <div className="flex justify-center items-center min-h-screen">
+            <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md text-black dark:text-[#D5D5D5] ">
                 <div className="flex justify-between items-center mb-4">
                     <Link href={'/past_papers'}>
-                        <button className="text-[#3BF3C7] px-2 py-1 border-2 border-[#3BF3C7] flex items-center justify-center font-bold hover:bg-teal-600">
-                            <span className="mr-0">&larr;</span>
+                        <button className="text-[#3BF3C7] px-2 py-2 border-2 border-[#3BF3C7] flex items-center justify-center font-bold hover:bg-[#ffffff]/10">
+                            <FontAwesomeIcon icon={faArrowLeft}/>
                         </button>
                     </Link>
-                    <button
-                        className="bg-teal-400 hover:bg-teal-500 text-black px-4 py-2 border-2 border-black font-bold"
-                        onClick={handleSubmit}
-                        disabled={uploading}
-                    >
-                        {uploading ? "Uploading..." : "Upload"}
-                    </button>
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
+                        <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
+                        <button type="submit" onClick={handleSubmit} disabled={uploading} className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">
+                            {uploading ? "Uploading..." : "Upload"}
+                        </button>
+                    </div>
                 </div>
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} className='w-full'>
                     <div className="mb-4">
                         <input
                             type="text"
                             placeholder="Title"
-                            className={`p-2 border ${title ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-lg font-bold`}
+                            className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold`}
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             required
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-2 gap-4 mb-4 place-content-center">
                         <div>
                             <select
-                                className="p-2 w-full text-black bg-blue-400 cursor-pointer transition-colors duration-300 hover:bg-blue-600"
+                                className="p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85"
                                 value={year}
                                 onChange={(e) => setYear(e.target.value)}
                                 required
@@ -248,7 +250,7 @@ const UploadFilePaper: React.FC = () => {
                         </div>
                         <div>
                             <select
-                                className="p-2 w-2/3 text-black bg-blue-400 cursor-pointer transition-colors duration-300 hover:bg-blue-600"
+                                className="p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85"
                                 value={slot}
                                 onChange={(e) => setSlot(e.target.value)}
                                 required
@@ -273,11 +275,11 @@ const UploadFilePaper: React.FC = () => {
                     </div>
 
                     <div className="mb-4">
-                        <div className="flex items-center mb-2 flex-wrap">
+                        <div className="flex items-center w-full mb-2 flex-wrap">
                             {selectedTags.map((tag) => (
                                 <span
                                     key={tag}
-                                    className="inline-block text-gray-700 px-3 py-1 text-sm font-semibold mr-2 mb-2"
+                                    className="inline-block bg-white dark:bg-[#3F4451] px-3 py-1 text-xs font-semibold mr-2 mb-2"
                                 >
                                     #{tag}
                                     <button
@@ -289,11 +291,11 @@ const UploadFilePaper: React.FC = () => {
                                     </button>
                                 </span>
                             ))}
-                            <div className="relative">
+                            <div className="relative w-full">
                                 <input
                                     type="text"
                                     placeholder="Add tag"
-                                    className={`p-2 border ${newTag ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-lg font-bold`}
+                                    className={`p-2 border-2 border-dashed border-gray-300 w-full dark:bg-[#0C1222] text-lg font-bold`}
                                     value={newTag}
                                     onChange={handleTagInputChange}
                                     onKeyDown={handleKeyDown}
@@ -301,11 +303,11 @@ const UploadFilePaper: React.FC = () => {
                                     onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                                 />
                                 {showDropdown && (
-                                    <div ref={dropdownRef} className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                    <div ref={dropdownRef} className="absolute z-10 mt-1 w-full bg-white dark:bg-[#232530] shadow-lg max-h-60 py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
                                         {filteredTags.map((tag) => (
                                             <div
                                                 key={tag}
-                                                className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100"
+                                                className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-[#ffffff]/10"
                                                 onClick={() => handleTagSelect(tag)}
                                             >
                                                 {tag}
