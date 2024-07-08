@@ -63,12 +63,12 @@ const FavFetch = ({ pastpapers, notes, forumposts, resources }: { pastpapers: Pa
   return (
 
     <div className="flex flex-col items-center">
-      <div className="flex flex-wrap justify-center w-fit space-x-2 sm:space-x-4 bg-[#82BEE9] p-2 sm:p-2 mb-6">
+      <div className="flex flex-wrap justify-center w-fit space-x-2 sm:space-x-4 bg-[#82BEE9] dark:bg-[#232530] p-2 sm:p-2 mb-6">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-1 py-1 sm:px-1 sm:py-1 text-sm sm:text-xs transition-colors duration-200 ${activeTab === tab ? 'bg-[#C2E6EC] text-black font-semibold' : 'text-black hover:bg-[#9ED2F0]'
+            className={`px-1 py-1 sm:px-1 sm:py-1 text-sm sm:text-xs transition-colors duration-200 ${activeTab === tab ? 'bg-[#C2E6EC] dark:bg-[#0C1222] font-semibold' : 'hover:bg-[#ffffff]/10'
               }`}
           >
             {tab}
