@@ -48,8 +48,8 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
     <Link
       href={getPageUrl(page)}
       className={`px-3 py-1.5 text-sm font-medium ${page === currentPage
-          ? 'bg-[#73E8CC]'
-          : 'bg-[#5fc4e7] hover:bg-opacity-85'
+          ? 'bg-[#73E8CC] dark:bg-[#232530]'
+          : 'bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90]'
         }`}
     >
       {children}

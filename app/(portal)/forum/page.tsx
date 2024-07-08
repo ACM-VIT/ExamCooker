@@ -113,7 +113,7 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen text-black dark:text-[#D5D5D5]">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold text-center mb-4">Forum</h1>
 

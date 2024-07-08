@@ -7,7 +7,7 @@ let count: number | undefined = 0;
 export function NumberOfComments({ commentArray }: { commentArray: Comment[] | undefined }) {
     return (
         <div>
-            <text className="bg-none text-black text-base py-4 px-2">{commentArray?.length} Comments</text>
+            <text className="bg-none text-base py-4 px-2">{commentArray?.length} Comments</text>
         </div>
     );
 }
