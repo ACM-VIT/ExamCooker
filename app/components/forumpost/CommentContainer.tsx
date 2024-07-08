@@ -16,7 +16,7 @@ export default async function CommentContainer({ comments }: { comments: Comment
     count = comments?.length;
 
     return (
-        <div className="bg-[#82BEE9]q p-0 md:px-2 h-full">
+        <div className="bg-[#7BBFE8] dark:bg-[#008A90] p-0 md:px-2 h-full">
             {comments?.map((comment: Comment) => (
                 <Comment
                     key={comment.id}
