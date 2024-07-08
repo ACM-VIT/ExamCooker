@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { createForumPost } from '../actions/CreateForumPost';
 import { useRouter } from 'next/navigation';
 import Fuse from 'fuse.js';
-import { getTags } from '../actions/fetchTags'; // Assume this action exists to fetch tags
+import { getTags } from '../actions/fetchTags';
 
 const CreateForum: React.FC = () => {
   const [title, setTitle] = useState('');
