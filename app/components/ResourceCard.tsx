@@ -23,7 +23,7 @@ function ResourceCard({ subject }: ResourceCardProps) {
     };
 
     return (
-        <div className="flex-col justify-between w-full h-full p-4 bg-[#5FC4E7] hover:border-b-2 hover:border-b-white dark:hover:border-b-[#3BF4C7] dark:bg-[#0C1222] dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 hover:shadow-lg">
+        <div className="flex-col justify-between w-full h-full p-4 bg-[#5FC4E7] border-b-2 border-b-[#5FC4E7] dark:border-b-[#3D414E] hover:border-b-2 hover:border-b-[#ffffff]  dark:hover:border-b-[#3BF4C7] dark:bg-[#0C1222] dark:hover:bg-[#ffffff]/10 transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
             <div className='items-start'>
                 <Link href={`/resources/${subject.id}`} className="block w-full text-left">
                     <p>RESOURCES</p>

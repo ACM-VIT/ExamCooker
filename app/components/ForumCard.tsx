@@ -16,7 +16,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
     }
     return (
         <div className="flex pl-11 pr-7 pt-7 justify-center text-black dark:text-[#D5D5D5] ">
-            <div className="bg-[#5FC4E7] dark:bg-[#0C1222] p-5 md:p-10 size-full md:size-5/6 hover:border-b dark:hover:bg-[#ffffff]/10 dark:hover:border-b-[#3BF4C7] hover:border-b-white  transition duration-200 transform hover:scale-105 hover:shadow-xl">
+            <div className="bg-[#5FC4E7] dark:bg-[#0C1222] p-5 md:p-10 size-full md:size-5/6 border-b-2 border-b-[#5FC4E7] dark:border-b-[#3D414E] hover:border-b-2 dark:hover:bg-[#ffffff]/10 dark:hover:border-b-[#3BF4C7] hover:border-b-white  transition duration-200 transform hover:scale-105 hover:shadow-xl">
                 <div className="flex justify-between items-center">
                     <Link href={`/forum/${post.id}`}>
                         <h2 className="font-extrabold lg:text-3xl md:text-xl text-base">{title}</h2>
