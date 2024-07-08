@@ -90,6 +90,9 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
         },
       },
     },
+    orderBy: {
+       createdAt: 'desc'
+    }
   });
 
   let filteredForumPosts = allForumPosts;
