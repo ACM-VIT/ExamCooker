@@ -1,24 +1,56 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { createForumPost } from '../actions/CreateForumPost';
 import { useRouter } from 'next/navigation';
+import Fuse from 'fuse.js';
+import { getTags } from '../actions/fetchTags'; // Assume this action exists to fetch tags
 
 const CreateForum: React.FC = () => {
   const [title, setTitle] = useState('');
   const [year, setYear] = useState('');
-  const [subject, setSubject] = useState('');
   const [slot, setSlot] = useState('');
   const [description, setDescription] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [filteredTags, setFilteredTags] = useState<string[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
   const authorId = "cly0klo9800006hg6gwc73j5u";
   const forumId = "cly4bhnc0000df02z5tshuhx7";
 
   const router = useRouter();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const years = ['2020', '2021', '2022', '2023', '2024'];
+  const slots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'E1', 'E2', 'F1', 'F2', 'G1', 'G2'];
+
+  const filterYearAndSlot = (tags: string[], years: string[], slots: string[]) => {
+    const yearRegex = /^(2\d{3}|3000)$/;
+    return tags.filter(tag => !yearRegex.test(tag) && !slots.includes(tag));
+  };
+
+  useEffect(() => {
+    async function fetchTags() {
+      try {
+        const fetchedTags = await getTags();
+        const filteredTags = filterYearAndSlot(fetchedTags, years, slots);
+        setAvailableTags(filteredTags);
+        setFilteredTags(filteredTags);
+      } catch (error) {
+        console.error('Error fetching tags:', error);
+      }
+    }
+    fetchTags();
+  }, []);
+
+  const fuse = useMemo(() => new Fuse(availableTags, {
+    threshold: 0.6,
+    minMatchCharLength: 2,
+  }), [availableTags]);
 
   useEffect(() => {
     if (isSuccess) {
@@ -30,16 +62,70 @@ const CreateForum: React.FC = () => {
     }
   }, [isSuccess, router]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const result = await createForumPost({ title, authorId, forumId, description, year, subject, slot});
-      if (result.success) {
-        console.log('New forum post created: ', result.data);
-        setIsSuccess(true);
-      } else {
+    const result = await createForumPost({ title, authorId, forumId, description, year, slot, selectedTags });
+    if (result.success) {
+      console.log('New forum post created: ', result.data);
+      setIsSuccess(true);
+    } else {
       console.error("Error: ", result.error);
     }
+  };
+
+  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewTag(value);
+    setShowDropdown(true);
+    if (value) {
+      const results = fuse.search(value);
+      const filteredResults = filterYearAndSlot(results.map(result => result.item), years, slots);
+      setFilteredTags(filteredResults);
+    } else {
+      setFilteredTags(filterYearAndSlot(availableTags, years, slots));
+    }
+  };
+
+  const handleTagSelect = (tag: string) => {
+    if (!selectedTags.includes(tag)) {
+      setSelectedTags([...selectedTags, tag]);
+    }
+    setNewTag('');
+    setIsAddingTag(false);
+    setShowDropdown(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (newTag && !selectedTags.includes(newTag)) {
+        setSelectedTags([...selectedTags, newTag]);
+        if (!availableTags.includes(newTag)) {
+          setAvailableTags([...availableTags, newTag]);
+        }
+        setNewTag('');
+        setIsAddingTag(false);
+        setShowDropdown(false);
+      }
+    }
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setSelectedTags(selectedTags.filter(t => t !== tag));
   };
 
   if (isSuccess) {
@@ -51,8 +137,6 @@ const CreateForum: React.FC = () => {
       </div>
     );
   }
-
-
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
       <div className="bg-white p-6 shadow-lg w-full max-w-md">
@@ -80,60 +164,31 @@ const CreateForum: React.FC = () => {
               required
             />
           </div>
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-            <select
-                className="p-2 w-2/3 text-black bg-blue-400 cursor-pointer transition-colors duration-300 hover:bg-blue-600"
+              <select
+                className="p-2 w-full text-black bg-blue-400 cursor-pointer transition-colors duration-300 hover:bg-blue-600"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
                 required
-              > 
+              >
                 <option value="">Year</option>
-                <option value="2024">2024</option>
-                <option value="2023">2023</option>
-                <option value="2022">2022</option>
-                <option value="2021">2021</option>
-                <option value="2020">2020</option>
-                <option value="2019">2019</option>
-                <option value="2018">2018</option>
-                <option value="2017">2017</option>
-                <option value="2016">2016</option>
-                <option value="2015">2015</option>
-                <option value="2014">2014</option>
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
               </select>
             </div>
             <div>
-              <input
-                type="text"
-                placeholder="Subject"
-                className={`p-2 border ${subject ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-base font-bold`}
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                required
-              />
-            </div>
-            <div>
               <select
-                className="p-2 w-2/3 text-black bg-blue-400 cursor-pointer transition-colors duration-300 hover:bg-blue-600"
+                className="p-2 w-full text-black bg-blue-400 cursor-pointer transition-colors duration-300 hover:bg-blue-600"
                 value={slot}
                 onChange={(e) => setSlot(e.target.value)}
                 required
               >
                 <option value="">Slot</option>
-                <option value="A1">A1</option>
-                <option value="A2">A2</option>
-                <option value="B1">B1</option>
-                <option value="B2">B2</option>
-                <option value="C1">C1</option>
-                <option value="C2">C2</option>
-                <option value="D1">D1</option>
-                <option value="D2">D2</option>
-                <option value="E1">E1</option>
-                <option value="E2">E2</option>
-                <option value="F1">F1</option>
-                <option value="F2">F2</option>
-                <option value="G1">G1</option>
-                <option value="G2">G2</option>
+                {slots.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -146,49 +201,55 @@ const CreateForum: React.FC = () => {
               required
             />
           </div>
-
           <div className="mb-4">
             <div className="flex items-center mb-2 flex-wrap">
-              {tags.map((tag) => (
+              {selectedTags.map((tag) => (
                 <span
                   key={tag}
                   className="inline-block text-gray-700 px-3 py-1 text-sm font-semibold mr-2 mb-2"
                 >
-                  #{tag}{' '}
+                  #{tag}
                   <button
                     type="button"
-                    //onClick={() => handleRemoveTag(tag)}
+                    onClick={() => handleRemoveTag(tag)}
                     className="ml-2 text-red-500"
                   >
                     &times;
                   </button>
                 </span>
               ))}
-              {isAddingTag ? (
+              <div className="relative">
                 <input
                   type="text"
-                  autoFocus
+                  placeholder="Add tag"
                   className={`p-2 border ${newTag ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-lg font-bold`}
                   value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  //onKeyDown={handleKeyDown}
+                  onChange={handleTagInputChange}
+                  onKeyDown={handleKeyDown}
+                  onFocus={() => setShowDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                 />
-              ) : (
-                <button
-                  type="button"
-                  //onClick={handleAddTagClick}
-                  className="bg-white hover:bg-blue-300 text-[#3BF3C7] px-4 py-2 border-2 border-[#3BF3C7] font-bold text-sm cursor-pointer ml-2"
-                >
-                  Add tag
-                </button>
-              )}
+                {showDropdown && (
+                  <div ref={dropdownRef} className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                    {filteredTags.map((tag) => (
+                      <div
+                        key={tag}
+                        className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100"
+                        onClick={() => handleTagSelect(tag)}
+                      >
+                        {tag}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-
         </form>
       </div>
     </div>
   );
+
 };
 
 export default CreateForum;
