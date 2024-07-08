@@ -118,7 +118,7 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
 
             <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
                 <Dropdown pageType='forum' />
-                <SearchBar pageType="notes" initialQuery={search} />
+                <SearchBar pageType="forum" initialQuery={search} />
                 <NewForumButton />
             </div>
 
