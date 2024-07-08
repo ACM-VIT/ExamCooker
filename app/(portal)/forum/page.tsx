@@ -113,19 +113,22 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
   }
 
   return (
-    <div className="flex flex-col min-h-screen text-black dark:text-[#D5D5D5]">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-center mb-4">Forum</h1>
+    <div className="flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-8 py-8">
+        <h1 className="text-center mb-4">Forum</h1>
 
-        <div className="flex justify-center">
-          <div className="container flex flex-col sm:flex-row items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-            <SearchBar pageType="forum" initialQuery={search} />
-            <div className="flex space-x-4">
-              <Dropdown pageType='forum' />
-              <NewForumButton />
+            <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
+                <Dropdown pageType='forum' />
+                <SearchBar pageType="notes" initialQuery={search} />
+                <NewForumButton />
             </div>
-          </div>
-        </div>
+
+            <div className='flex-col w-5/6 md:hidden space-y-4'>
+                <SearchBar pageType="forum" initialQuery={search} />
+                <div className='flex justify-between'>
+                    <Dropdown pageType='forum' />
+                    <NewForumButton />
+                </div>
+            </div>
 
         <div className="w-full mx-auto">
           {paginatedForumPosts.length > 0 ? (
@@ -151,7 +154,6 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
             </p>
           )}
         </div>
-      </div>
 
       {totalPages > 1 && (
         <div className="mt-auto">
