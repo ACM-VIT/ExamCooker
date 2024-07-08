@@ -1,16 +1,18 @@
 "use client"
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
 import { generateSignedUploadURL, storeFileInfoInDatabase } from "../actions/uploadFile";
 import cuid from 'cuid';
+import Fuse from 'fuse.js';
+import { getTags } from '../actions/fetchTags';
 
-const UploadFilePaper: React.FC = () => {
+const UploadFileNotes: React.FC = () => {
     const [title, setTitle] = useState('');
     const [year, setYear] = useState('');
-    const [subject, setSubject] = useState('');
     const [slot, setSlot] = useState('');
-    const [tags, setTags] = useState<string[]>([]);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [availableTags, setAvailableTags] = useState<string[]>([]);
     const [newTag, setNewTag] = useState('');
     const [isAddingTag, setIsAddingTag] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
@@ -19,30 +21,102 @@ const UploadFilePaper: React.FC = () => {
     const [fileUploadStatus, setFileUploadStatus] = useState<{ [key: string]: string }>({});
     const [isDragging, setIsDragging] = useState(false);
     const [error, setError] = useState("");
+    const [filteredTags, setFilteredTags] = useState<string[]>([]);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const [tagsLoaded, setTagsLoaded] = useState(false);
+    const years = ['2020', '2021', '2022', '2023', '2024'];
+    const slots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'E1', 'E2', 'F1', 'F2', 'G1', 'G2'];
 
-    const handleAddTag = () => {
-        if (newTag && !tags.includes(newTag)) {
-            setTags([...tags, newTag]);
-            setNewTag('');
+
+    const filterYearAndSlot = (tags: string[], years: string[], slots: string[]) => {
+        const yearRegex = /^(2\d{3}|3000)$/;
+        return tags.filter(tag => !yearRegex.test(tag) && !slots.includes(tag));
+    };
+
+    useEffect(() => {
+        async function fetchTags() {
+            try {
+                const fetchedTags = await getTags()
+                const filteredTags = filterYearAndSlot(fetchedTags, years, slots);
+                setAvailableTags(filteredTags)
+                setFilteredTags(filteredTags)
+                setTagsLoaded(true)
+            } catch (error) {
+                console.error('Error fetching tags:', error)
+            }
         }
+        fetchTags()
+    }, [])
+    useEffect(() => {
+        if (tagsLoaded) {
+            console.log("Available tags:", availableTags)
+        }
+    }, [availableTags, tagsLoaded])
+    const fuse = useMemo(() => new Fuse(availableTags, {
+        threshold: 0.6,
+        minMatchCharLength: 2,
+    }), [availableTags]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const handleAddTagClick = () => {
+        setIsAddingTag(true);
+        setShowDropdown(true);
+        setFilteredTags(availableTags);
+    };
+
+    const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setNewTag(value);
+        setShowDropdown(true);
+        if (value) {
+            const results = fuse.search(value);
+            const filteredResults = filterYearAndSlot(results.map(result => result.item), years, slots);
+            setFilteredTags(filteredResults);
+        } else {
+            setFilteredTags(filterYearAndSlot(availableTags, years, slots));
+        }
+    };
+
+    const handleTagSelect = (tag: string) => {
+        if (!selectedTags.includes(tag)) {
+            setSelectedTags([...selectedTags, tag]);
+        }
+        setNewTag('');
         setIsAddingTag(false);
+        setShowDropdown(false);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            handleAddTag();
+            if (newTag && !selectedTags.includes(newTag)) {
+                setSelectedTags([...selectedTags, newTag]);
+                if (!availableTags.includes(newTag)) {
+                    setAvailableTags([...availableTags, newTag]);
+                }
+                setNewTag('');
+                setIsAddingTag(false);
+                setShowDropdown(false);
+            }
         }
     };
 
-    const handleAddTagClick = () => {
-        setIsAddingTag(true);
-    };
-
     const handleRemoveTag = (tag: string) => {
-        setTags(tags.filter(t => t !== tag));
+        setSelectedTags(selectedTags.filter(t => t !== tag));
     };
-
     const onDrop = useCallback((acceptedFiles: File[]) => {
         setFiles([...files, ...acceptedFiles]);
     }, [files]);
@@ -95,7 +169,20 @@ const UploadFilePaper: React.FC = () => {
                 }
 
                 const fileUrl = `${url}${filename}`;
-                await storeFileInfoInDatabase(file.name, fileUrl, "cly0klo9800006hg6gwc73j5u", "Note");
+
+
+                const yearValue = year.trim() !== '' ? year : undefined;
+                const slotValue = slot.trim() !== '' ? slot : undefined;
+
+                await storeFileInfoInDatabase(
+                    file.name,
+                    fileUrl,
+                    "cly0klo9800006hg6gwc73j5u",
+                    "Note",
+                    selectedTags,
+                    yearValue,
+                    slotValue
+                );
 
                 setFileUploadStatus((prevStatus) => ({
                     ...prevStatus,
@@ -110,8 +197,13 @@ const UploadFilePaper: React.FC = () => {
         } finally {
             setUploading(false);
             setFiles([]);
+            setSelectedTags([]);
+            setYear('');
+            setSlot('');
+            setTitle('');
         }
     };
+
     return (
         <div className="flex justify-center items-center min-h-screen bg-gray-100">
             <div className="bg-white p-6 shadow-lg w-full max-w-md">
@@ -130,36 +222,29 @@ const UploadFilePaper: React.FC = () => {
                     </button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                <div className="mb-4">
-                    <input
-                    type="text"
-                    placeholder="Title"
-                    className={`p-2 border ${title ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-lg font-bold`}
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                    />
-                </div>
-                    <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="mb-4">
+                        <input
+                            type="text"
+                            placeholder="Title"
+                            className={`p-2 border ${title ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-lg font-bold`}
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                            <input
-                                type="text"
-                                placeholder="Year"
-                                className={`p-2 border ${year ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-base font-bold`}
+                            <select
+                                className="p-2 w-full text-black bg-blue-400 cursor-pointer transition-colors duration-300 hover:bg-blue-600"
                                 value={year}
                                 onChange={(e) => setYear(e.target.value)}
                                 required
-                            />
-                        </div>
-                        <div>
-                            <input
-                                type="text"
-                                placeholder="Subject"
-                                className={`p-2 border ${subject ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-base font-bold`}
-                                value={subject}
-                                onChange={(e) => setSubject(e.target.value)}
-                                required
-                            />
+                            >
+                                <option value="">Select Year</option>
+                                {years.map((y) => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
                         </div>
                         <div>
                             <select
@@ -189,7 +274,7 @@ const UploadFilePaper: React.FC = () => {
 
                     <div className="mb-4">
                         <div className="flex items-center mb-2 flex-wrap">
-                            {tags.map((tag) => (
+                            {selectedTags.map((tag) => (
                                 <span
                                     key={tag}
                                     className="inline-block text-gray-700 px-3 py-1 text-sm font-semibold mr-2 mb-2"
@@ -204,24 +289,31 @@ const UploadFilePaper: React.FC = () => {
                                     </button>
                                 </span>
                             ))}
-                            {isAddingTag ? (
+                            <div className="relative">
                                 <input
                                     type="text"
-                                    autoFocus
+                                    placeholder="Add tag"
                                     className={`p-2 border ${newTag ? 'border-solid' : 'border-dotted'} border-gray-300 w-full text-black text-lg font-bold`}
                                     value={newTag}
-                                    onChange={(e) => setNewTag(e.target.value)}
+                                    onChange={handleTagInputChange}
                                     onKeyDown={handleKeyDown}
+                                    onFocus={() => setShowDropdown(true)}
+                                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                                 />
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={handleAddTagClick}
-                                    className="bg-white hover:bg-blue-300 text-[#3BF3C7] px-4 py-2 border-2 border-[#3BF3C7] font-bold text-sm cursor-pointer ml-2"
-                                >
-                                    Add tag
-                                </button>
-                            )}
+                                {showDropdown && (
+                                    <div ref={dropdownRef} className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                        {filteredTags.map((tag) => (
+                                            <div
+                                                key={tag}
+                                                className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100"
+                                                onClick={() => handleTagSelect(tag)}
+                                            >
+                                                {tag}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -292,4 +384,4 @@ const UploadFilePaper: React.FC = () => {
 
 }
 
-export default UploadFilePaper;
+export default UploadFileNotes;

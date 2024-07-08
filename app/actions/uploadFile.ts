@@ -2,7 +2,6 @@
 
 
 import { Storage, StorageOptions } from "@google-cloud/storage"; import { PrismaClient } from "@prisma/client";
-import path from 'path';
 
 
 const prisma = new PrismaClient();
@@ -59,7 +58,22 @@ export async function generateSignedUploadURL(filename: string) {
     }
 }
 
-export async function storeFileInfoInDatabase(originalFilename: string, fileUrl: string, userId: string, fileType: string) {
+async function findOrCreateTag(name: string) {
+    let tag = await prisma.tag.findUnique({ where: { name } });
+    if (!tag) {
+        tag = await prisma.tag.create({ data: { name } });
+    }
+    return tag;
+}
+export async function storeFileInfoInDatabase(
+    originalFilename: string,
+    fileUrl: string,
+    userId: string,
+    fileType: string,
+    tags: string[],
+    year?: string,
+    slot?: string,
+) {
     try {
         const user = await prisma.user.findUnique({
             where: { id: userId },
@@ -69,6 +83,18 @@ export async function storeFileInfoInDatabase(originalFilename: string, fileUrl:
             throw new Error(`User with ID ${userId} does not exist`);
         }
 
+        let allTags = await Promise.all(tags.map(findOrCreateTag));
+
+        if (year) {
+            const yearTag = await findOrCreateTag(year);
+            allTags.push(yearTag);
+        }
+
+        if (slot) {
+            const slotTag = await findOrCreateTag(slot);
+            allTags.push(slotTag);
+        }
+
         let data;
         if (fileType === "Note") {
             data = await prisma.note.create({
@@ -76,6 +102,12 @@ export async function storeFileInfoInDatabase(originalFilename: string, fileUrl:
                     title: originalFilename,
                     fileUrl: fileUrl,
                     authorId: userId,
+                    tags: {
+                        connect: allTags.map(tag => ({ id: tag.id })),
+                    },
+                },
+                include: {
+                    tags: true,
                 },
             });
         } else if (fileType === "PastPaper") {
@@ -84,18 +116,25 @@ export async function storeFileInfoInDatabase(originalFilename: string, fileUrl:
                     title: originalFilename,
                     fileUrl: fileUrl,
                     authorId: userId,
+                    tags: {
+                        connect: allTags.map(tag => ({ id: tag.id })),
+                    },
+                },
+                include: {
+                    tags: true,
                 },
             });
         } else {
             throw new Error("Invalid file type");
         }
-        return data;
+
+        return { success: true, data };
     } catch (error) {
         console.error("Error storing file info in database:", error);
         if (error instanceof Error) {
-            throw new Error(`Failed to store file information in database: ${error.message}`);
+            return { success: false, error: `Failed to store file information in database: ${error.message}` };
         } else {
-            throw new Error('Failed to store file information in database: Unknown error');
+            return { success: false, error: 'Failed to store file information in database: Unknown error' };
         }
     }
 }
