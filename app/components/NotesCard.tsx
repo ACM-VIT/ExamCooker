@@ -28,6 +28,8 @@ function NotesCard({ note, index }: NotesCardProps) {
         setIsFav(!isFav);
     }
 
+    
+
     return (
         <div className={`text-black dark:text-[#D5D5D5] dark:border-b-2 bg-[#5FC4E7] hover:shadow-xl dark:lg:bg-none dark:bg-[#0C1222] lg:bg-none hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7] dark:border-b-[#ffffff]/20 dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 px-5 py-6 w-full max-w-96 text-center dark:bg-[#ffffff]/1`}>
             <div className="bg-[#d9d9d9] w-full h-44 overflow-hidden">

@@ -37,7 +37,7 @@ function ForumPost({ post, tagArray, commentArray }: { post: ForumPost | null, t
                     <DislikeButton postId={post!.id} downvoteCount={post!.downvoteCount} />
 
                 </div>
-                <CommentField forumPostId={post.id} />
+                <CommentField forumPostId={post!.id} />
                 <CommentContainer comments={commentArray} />
             </div>
         </div>

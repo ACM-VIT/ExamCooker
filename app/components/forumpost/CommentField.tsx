@@ -11,7 +11,7 @@ interface AddCommentFormProps {
 
 const CommentField: React.FC<AddCommentFormProps> = ({ forumPostId, onCommentAdded }) => {
   const [content, setContent] = useState('');
-  const authorId = 'cly0klo9800006hg6gwc73j5u'; // This should ideally come from user authentication
+   // This should ideally come from user authentication
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -21,10 +21,9 @@ const CommentField: React.FC<AddCommentFormProps> = ({ forumPostId, onCommentAdd
       return;
     }
 
-    console.log('Sending comment data:', { content, authorId, forumPostId });
+    console.log('Sending comment data:', { content, forumPostId });
     const result = await createComment({
         content,
-        authorId,
         forumPostId
     });
 

@@ -173,11 +173,9 @@ const UploadFileNotes: React.FC = () => {
 
                 const yearValue = year.trim() !== '' ? year : undefined;
                 const slotValue = slot.trim() !== '' ? slot : undefined;
-
                 await storeFileInfoInDatabase(
                     file.name,
                     fileUrl,
-                    "cly0klo9800006hg6gwc73j5u",
                     "Note",
                     selectedTags,
                     yearValue,

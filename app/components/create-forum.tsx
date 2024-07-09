@@ -19,7 +19,6 @@ const CreateForum: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [filteredTags, setFilteredTags] = useState<string[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const authorId = "cly0klo9800006hg6gwc73j5u";
   const forumId = "cly4bhnc0000df02z5tshuhx7";
 
   const router = useRouter();
@@ -78,7 +77,7 @@ const CreateForum: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const result = await createForumPost({ title, authorId, forumId, description, year, slot, selectedTags });
+    const result = await createForumPost({ title, forumId, description, year, slot, selectedTags });
     if (result.success) {
       console.log('New forum post created: ', result.data);
       setIsSuccess(true);
