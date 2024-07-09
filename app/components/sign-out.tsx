@@ -1,14 +1,13 @@
-import { signOut } from "@/app/auth";
+import { signOutAction } from "../actions/SignOut";
 
-export function SignOut() {
+export function SignOut({
+    children,
+}: Readonly<{
+    children: React.ReactNode;
+}>) {
     return (
-        <form
-            action={async () => {
-                "use server";
-                await signOut();
-            }}
-        >
-            <button type="submit">SignOut</button>
+        <form action={signOutAction}>
+            <button>{children}</button>
         </form>
     );
 }

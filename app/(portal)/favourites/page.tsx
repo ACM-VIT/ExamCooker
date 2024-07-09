@@ -72,13 +72,13 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
     return (
-        <div className="text-black dark:text-[#D5D5D5]">
-            <h1 className="text-4xl font-bold text-center p-4">Favourites</h1>
-            <div className="container flex items-center justify-center p-4 space-x-4">
+        <div className="container mx-auto text-black dark:text-[#D5D5D5]">
+            <h1 className="text-center p-4">Favourites</h1>
+            <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto p-4 space-x-4">
                 <SearchBar pageType="favourites" initialQuery={search} />
 
             </div>
-            <div className="p-5 flex items-center justify-center p-4 space-x-4">
+            <div className="flex items-center justify-center p-4 space-x-4">
                 <FavFetch
                     pastpapers={filteredPastPapers}
                     notes={filteredNotes}

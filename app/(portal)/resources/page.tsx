@@ -62,9 +62,9 @@ export default async function ResourcesPage({ searchParams }: { searchParams: { 
 
     return (
         <div className="container mx-auto p-4 flex flex-col min-h-screen text-black dark:text-[#D5D5D5]">
-            <h1 className="text-4xl font-bold text-center mb-4">Resource Repo</h1>
+            <h1 className="text-center mb-4">Resource Repo</h1>
             <div className="flex justify-center">
-                <div className="container flex items-center justify-center p-4 space-x-4 pt-2">
+                <div className="container w-5/6 lg:w-1/2 flex items-center justify-center p-4 space-x-4 pt-2">
                     <SearchBar pageType="resources" initialQuery={search} />
                 </div>
             </div>
