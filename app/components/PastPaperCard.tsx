@@ -1,39 +1,47 @@
-"use client";
-import React from 'react';
+"use client"
 import { useState } from 'react';
+import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faHeart } from '@fortawesome/free-solid-svg-icons';
-import { PastPaper } from '@prisma/client';
-import Link from 'next/link';
+import { updateBookmarkedPastPapers } from '../actions/handleFavs';
 
 interface PastPaperCardProps {
-    pastPaper: PastPaper;
-    index: number;
+  pastPaper: {
+    id: string;
+    title: string;
+  };
+  index: number;
 }
 
-const colors = ['#5FC4E7', '#82BEE9'];
-
-function removePdfExtension(filename: string): string {
-    if (filename.endsWith('.pdf')) {
-        return filename.slice(0, -4);
-    }
-    return filename;
+function removePdfExtension(title: string) {
+  return title.replace(/\.pdf$/, '');
 }
 
-//<div className="px-5 py-6 w-full text-center bg-[#5FC4E7]" style={{ backgroundColor: colors[index % colors.length] }}> code that was there before i removed it to add dark mode
-
-function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
+function PastPaperCard({ pastPaper }: PastPaperCardProps) {
     const [isFav, setIsFav] = useState(false);
 
-    function toggleFav() {
-        setIsFav(!isFav);
+    async function toggleFav() {
+        const newFavState = !isFav;
+        setIsFav(newFavState);
+
+        try {
+            const result = await updateBookmarkedPastPapers( pastPaper.id, newFavState);
+            if (!result.success) {
+                // If the update fails, revert the state
+                setIsFav(!newFavState);
+                console.error('Failed to update bookmarked past papers:', result.error);
+            }
+        } catch (error) {
+            // If there's an error, revert the state
+            setIsFav(!newFavState);
+            console.error('Error updating bookmarked past papers:', error);
+        }
     }
 
     return (
         <div className="max-w-sm w-full h-full text-black dark:text-[#D5D5D5] ">
             <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#0C1222] dark:lg:bg-none lg:bg-none border-b-2 border-b-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7] dark:border-b-[#ffffff]/20 dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 ">
                 <div className="bg-[#d9d9d9] w-full h-44 overflow-hidden">
-
                     <img
                         src="https://topperworld.in/media/2022/11/c-sc.png"
                         alt={pastPaper.title}

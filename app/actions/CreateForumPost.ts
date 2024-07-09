@@ -1,12 +1,13 @@
 'use server'
 
 import { PrismaClient, Tag } from '@prisma/client'
+import { auth } from '../auth'
+import { error } from 'console'
 
 const prisma = new PrismaClient()
 
 type CreateForumPostInput = {
   title: string
-  authorId: string
   forumId: string
   description: string
   year?: string
@@ -24,6 +25,13 @@ async function findOrCreateTag(name: string): Promise<Tag> {
 
 export async function createForumPost(data: CreateForumPostInput) {
   try {
+    const session = await auth();
+    if(!session|| !session.user){
+      return {
+        success: false,
+        error: "LOGIN KAR LODE",
+      };
+    }
     const tagConnections = [
       ...(data.year ? [await findOrCreateTag(data.year)] : []),
       ...(data.slot ? [await findOrCreateTag(data.slot)] : []),
@@ -34,7 +42,7 @@ export async function createForumPost(data: CreateForumPostInput) {
       data: {
         title: data.title,
         author: {
-          connect: { id: data.authorId }
+          connect: { email: session.user.email!}
         },
         forum: {
           connect: { id: data.forumId }

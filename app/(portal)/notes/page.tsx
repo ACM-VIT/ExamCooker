@@ -8,6 +8,7 @@ import SearchBar from "../../components/SearchBar";
 import Dropdown from "../../components/FilterComponent";
 import UploadButtonNotes from "../../components/UploadButtonNotes";
 
+
 const SCORE_THRESHOLD = 0.6;
 
 type NoteWithTags = Note & {

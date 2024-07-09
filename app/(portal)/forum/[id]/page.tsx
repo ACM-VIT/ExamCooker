@@ -17,7 +17,11 @@ async function forumPostThread({params}: {params : {id : string}}) {
             }
         },
         tags: true, 
-        comments: true,
+        comments: {
+          include : {
+            author : true,
+          }
+        },
       },
     });
 

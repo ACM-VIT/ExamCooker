@@ -8,25 +8,25 @@ generator client {
 }
 
 model User {
-  id                   String       @id @default(cuid())
+  id                   String        @id @default(cuid())
   name                 String?
-  email                String       @unique
-  emailVerified        DateTime?    @map("email_verified")
+  email                String        @unique
+  emailVerified        DateTime?     @map("email_verified")
   image                String?
   accounts             Account[]
   session              Session[]
-  role                 Role         @default(USER)
-  notes                Note[]       @relation("UserNotes")
+  role                 Role          @default(USER)
+  notes                Note[]        @relation("UserNotes")
   comments             Comment[]
-  viewHistory          ViewHistory?
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
+  viewHistory          ViewHistory[]
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
   forumPosts           ForumPost[]
-  pastPapers           PastPaper[]  @relation("UserPastPapers")
-  bookmarkedNotes      Note[]       @relation("UserBookmarkedNotes")
-  bookmarkedPastPapers PastPaper[]  @relation("UserBookmarkedPastPapers")
-  bookmarkedResources  Subject[]    @relation("UserBookmarkedResources")
-  bookmarkedForumPosts ForumPost[]  @relation("UserBookmarkedForumPosts")
+  pastPapers           PastPaper[]   @relation("UserPastPapers")
+  bookmarkedNotes      Note[]        @relation("UserBookmarkedNotes")
+  bookmarkedPastPapers PastPaper[]   @relation("UserBookmarkedPastPapers")
+  bookmarkedResources  Subject[]     @relation("UserBookmarkedResources")
+  bookmarkedForumPosts ForumPost[]   @relation("UserBookmarkedForumPosts")
 }
 
 model Account {
@@ -65,34 +65,42 @@ enum Role {
 }
 
 model Note {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
   title        String
-  author       User     @relation(fields: [authorId], references: [id], name: "UserNotes")
+  author       User          @relation(fields: [authorId], references: [id], name: "UserNotes")
   authorId     String
   fileUrl      String
-  isClear      Boolean  @default(false)
+  isClear      Boolean       @default(false)
   tags         Tag[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  bookmarkedBy User[]   @relation("UserBookmarkedNotes")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bookmarkedBy User[]        @relation("UserBookmarkedNotes")
+  ViewHistory  ViewHistory[]
 }
 
 model ViewHistory {
-  id        Int      @id @default(sequence())
-  recent    String[]
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int       @id @default(sequence())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  pastPaper   PastPaper @relation(fields: [pastPaperId], references: [id])
+  pastPaperId String
+  note        Note      @relation(fields: [noteId], references: [id])
+  noteId      String
+  forum       Forum     @relation(fields: [forumId], references: [id])
+  forumId     String
+  subject     Subject   @relation(fields: [subjectId], references: [id])
+  subjectId   String
+  viewedAt    DateTime  @updatedAt
 }
 
 model Forum {
-  id         String      @id @default(cuid())
-  courseName String
-  tags       Tag[]
-  posts      ForumPost[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id          String        @id @default(cuid())
+  courseName  String
+  tags        Tag[]
+  posts       ForumPost[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  ViewHistory ViewHistory[]
 }
 
 model ForumPost {
@@ -124,16 +132,17 @@ model Comment {
 }
 
 model PastPaper {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
   title        String
   fileUrl      String
   tags         Tag[]
-  author       User     @relation(fields: [authorId], references: [id], name: "UserPastPapers")
+  author       User          @relation(fields: [authorId], references: [id], name: "UserPastPapers")
   authorId     String
-  isClear      Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  bookmarkedBy User[]   @relation("UserBookmarkedPastPapers")
+  isClear      Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bookmarkedBy User[]        @relation("UserBookmarkedPastPapers")
+  ViewHistory  ViewHistory[]
 }
 
 model Tag {
@@ -151,10 +160,11 @@ model Tag {
 }
 
 model Subject {
-  id           String   @id @default(cuid())
-  name         String   @unique
+  id           String        @id @default(cuid())
+  name         String        @unique
   modules      Module[]
-  bookmarkedBy User[]   @relation("UserBookmarkedResources")
+  bookmarkedBy User[]        @relation("UserBookmarkedResources")
+  ViewHistory  ViewHistory[]
 }
 
 model Module {

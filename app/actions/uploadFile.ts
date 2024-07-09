@@ -1,7 +1,8 @@
 'use server';
 
-
 import { Storage, StorageOptions } from "@google-cloud/storage"; import { PrismaClient } from "@prisma/client";
+import { auth } from "../auth";
+import { redirect } from "next/navigation";
 
 
 const prisma = new PrismaClient();
@@ -68,19 +69,20 @@ async function findOrCreateTag(name: string) {
 export async function storeFileInfoInDatabase(
     originalFilename: string,
     fileUrl: string,
-    userId: string,
     fileType: string,
     tags: string[],
     year?: string,
     slot?: string,
 ) {
     try {
+        const session = await auth();
+        if(!session || !session.user){redirect("/landing")}
         const user = await prisma.user.findUnique({
-            where: { id: userId },
+            where: { email: session.user.email! },
         });
 
         if (!user) {
-            throw new Error(`User with ID ${userId} does not exist`);
+            throw new Error(`User with ID ${session?.user?.email} does not exist`);
         }
 
         let allTags = await Promise.all(tags.map(findOrCreateTag));
@@ -96,12 +98,13 @@ export async function storeFileInfoInDatabase(
         }
 
         let data;
+
         if (fileType === "Note") {
             data = await prisma.note.create({
                 data: {
                     title: originalFilename,
                     fileUrl: fileUrl,
-                    authorId: userId,
+                    authorId: user.id,
                     tags: {
                         connect: allTags.map(tag => ({ id: tag.id })),
                     },
@@ -115,7 +118,7 @@ export async function storeFileInfoInDatabase(
                 data: {
                     title: originalFilename,
                     fileUrl: fileUrl,
-                    authorId: userId,
+                    authorId: user.id,
                     tags: {
                         connect: allTags.map(tag => ({ id: tag.id })),
                     },

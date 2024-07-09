@@ -1,22 +1,23 @@
 'use server'
 
 import { PrismaClient } from '@prisma/client'
+import { auth } from '../auth'
 
 const prisma = new PrismaClient()
 
 type CreateCommentInput = {
   content: string
-  authorId: string
   forumPostId: string
 }
 
 export async function createComment(data: CreateCommentInput) {
   try {
+    const session = await auth();
     const newComment = await prisma.comment.create({
       data: {
         content: data.content,
         author: {
-          connect: { id: data.authorId }
+          connect: { email: session.user.email! }
         },
         forumPost: {
           connect: { id: data.forumPostId }

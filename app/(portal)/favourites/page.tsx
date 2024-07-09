@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PrismaClient, ForumPost, Note, PastPaper, Subject } from "@prisma/client";
 import Dropdown from "@/app/components/FilterComponent";
 import FavFetch from '@/app/components/FavFetchFilter';
+import { auth } from "@/app/auth";
 
 const prisma = new PrismaClient();
 
@@ -30,10 +31,11 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
     const pageSize = 9;
     const search = searchParams.search || '';
     const page = parseInt(searchParams.page || '1', 10);
-
+    const session = await auth();
+    
     const userBookmarks = await prisma.user.findUnique({
         where: {
-            id: "cly0klo9800006hg6gwc73j5u",
+            email: session.user.email,
         },
         select: {
             bookmarkedForumPosts: {

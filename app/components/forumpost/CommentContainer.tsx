@@ -1,6 +1,6 @@
-import { PrismaClient, type Comment } from "@prisma/client";
+import { Prisma, PrismaClient, type Comment } from "@prisma/client";
 import { ReplyButton, LikeButton, DislikeButton } from "../common/Buttons";
-
+const prisma = new PrismaClient();
 
 let count: number | undefined = 0;
 
@@ -12,6 +12,7 @@ export function NumberOfComments({ commentArray }: { commentArray: Comment[] | u
     );
 }
 
+
 export default async function CommentContainer({ comments }: { comments: Comment[] | undefined }) {
     count = comments?.length;
 
@@ -20,7 +21,7 @@ export default async function CommentContainer({ comments }: { comments: Comment
             {comments?.map((comment: Comment) => (
                 <Comment
                     key={comment.id}
-                    userName={comment.authorId}
+                    commentId={comment.id}
                     time={comment.createdAt.toISOString()}
                     content={comment.content}
                 />
@@ -31,12 +32,24 @@ export default async function CommentContainer({ comments }: { comments: Comment
 
 
 
-export function Comment({ userName, time, content }: { userName: string | null | undefined, time: string, content: string }) {
+export async function Comment({ commentId, time, content }: { commentId: string, time: string, content: string }) {
+    const creator = await prisma.comment.findUnique({
+        where: {
+            id: commentId,
+        },
+        include: {
+            author: {
+                select: {
+                    name : true
+                }
+            },
+        }
+    })
     return (
         <div className="m-0 p-2 border-black border-l w-full">
             <div className="flex justify-between">
                 <div>
-                    <p className="font-semibold">{userName}</p>
+                    <p className="font-semibold">{creator?.author.name}</p>
                     <p className="text-xs md:text-base">{time}</p>
                 </div>
                 <div className="flex gap-2">

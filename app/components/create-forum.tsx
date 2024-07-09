@@ -10,19 +10,44 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
 const CreateForum: React.FC = () => {
-    const [title, setTitle] = useState('');
-    const [year, setYear] = useState('');
-    const [slot, setSlot] = useState('');
-    const [description, setDescription] = useState('');
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
-    const [availableTags, setAvailableTags] = useState<string[]>([]);
-    const [newTag, setNewTag] = useState('');
-    const [isAddingTag, setIsAddingTag] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [filteredTags, setFilteredTags] = useState<string[]>([]);
-    const [showDropdown, setShowDropdown] = useState(false);
-    const authorId = "cly0klo9800006hg6gwc73j5u";
-    const forumId = "cly4bhnc0000df02z5tshuhx7";
+
+  const [title, setTitle] = useState('');
+  const [year, setYear] = useState('');
+  const [slot, setSlot] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [filteredTags, setFilteredTags] = useState<string[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const forumId = "cly4bhnc0000df02z5tshuhx7";
+
+  const router = useRouter();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const years = ['2020', '2021', '2022', '2023', '2024'];
+  const slots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'E1', 'E2', 'F1', 'F2', 'G1', 'G2'];
+
+  const filterYearAndSlot = (tags: string[], years: string[], slots: string[]) => {
+    const yearRegex = /^(2\d{3}|3000)$/;
+    return tags.filter(tag => !yearRegex.test(tag) && !slots.includes(tag));
+  };
+
+  useEffect(() => {
+    async function fetchTags() {
+      try {
+        const fetchedTags = await getTags();
+        const filteredTags = filterYearAndSlot(fetchedTags, years, slots);
+        setAvailableTags(filteredTags);
+        setFilteredTags(filteredTags);
+      } catch (error) {
+        console.error('Error fetching tags:', error);
+      }
+    }
+    fetchTags();
+  }, []);
 
     const router = useRouter();
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -54,11 +79,29 @@ const CreateForum: React.FC = () => {
         minMatchCharLength: 2,
     }), [availableTags]);
 
-    useEffect(() => {
-        if (isSuccess) {
-            const timer = setTimeout(() => {
-                router.push('/forum');
-            }, 2000);
+
+    const result = await createForumPost({ title, forumId, description, year, slot, selectedTags });
+    if (result.success) {
+      console.log('New forum post created: ', result.data);
+      setIsSuccess(true);
+    } else {
+      console.error("Error: ", result.error);
+    }
+  };
+
+  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewTag(value);
+    setShowDropdown(true);
+    if (value) {
+      const results = fuse.search(value);
+      const filteredResults = filterYearAndSlot(results.map(result => result.item), years, slots);
+      setFilteredTags(filteredResults);
+    } else {
+      setFilteredTags(filterYearAndSlot(availableTags, years, slots));
+    }
+  };
+
 
             return () => clearTimeout(timer);
         }
