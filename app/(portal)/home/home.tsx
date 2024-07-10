@@ -23,8 +23,8 @@ const Home: React.FC = () => {
         <div className="bg-[#C2E6EC] dark:bg-[#0C1222] min-h-screen text-black dark:text-[#D5D5D5]">
             <div className=" w-full px-8 mx-auto text-center justify-center mt-8">
                 
-                <h1 className="text-7xl mb-4">Welcome <GradientText><UserName /></GradientText></h1>
-                <p className="text-xl mb-4 sm:text-xl font-lato">You've got this! Even if 'this' means a borderline psychotic level of caffeine consumption.</p>
+                <h1 className="text-3xl md:text-7xl mb-4">Welcome <GradientText><UserName /></GradientText></h1>
+                <p className="text-md mb-4 sm:text-xl font-lato">You've got this! Even if 'this' means a borderline psychotic level of caffeine consumption.</p>
             </div>
 
             <div className="w-full px-4">
