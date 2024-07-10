@@ -12,6 +12,22 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
 }) => {
     const pathname = usePathname();
     const [loading, setLoading] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    function RenderMenuItem({ svgSource, alt, disableAnim }: { svgSource: string, alt: string, disableAnim: boolean }) {
+        return (
+            <div onClick={handleLinkClick} className={`flex gap-2 m-2 group ${isNavOn ? "block" : "hidden"}`}>
+                <Image
+                    src={svgSource}
+                    alt={alt}
+                    width={24}
+                    height={25}
+                    className={`transition-all transform-gpu group-hover:scale-110 ${!disableAnim ? "group-hover:-translate-y-1 group-hover:rotate-[-5deg]" : ""}`}
+                />
+                <p className={`transition-all text-black font-extrabold ${!disableAnim ? "group-hover:-translate-y-1" : ""}  dark:text-[#D5D5D5] ${isExpanded ? "block" : "hidden"}`}>{alt}</p>
+            </div>
+        );
+    }
 
     useEffect(() => {
         const timer = setTimeout(() => setLoading(false)); // Simulate loading time
@@ -22,6 +38,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
         const handleClickOutside = (event: MouseEvent) => {
             const nav = document.querySelector("nav");
             if (nav && !nav.contains(event.target as Node) && isNavOn) {
+                setIsExpanded(false)
                 toggleNavbar();
             }
         };
@@ -36,6 +53,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
     const handleLinkClick = () => {
         setLoading(true);
         if (isNavOn) {
+            setIsExpanded(false);
             toggleNavbar();
         }
     };
@@ -44,17 +62,19 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
         <>
             {loading && <Loading />}
             <nav
-                className={`fixed top-0 left-0 z-50 flex flex-col justify-between items-center h-screen ${
-                    isNavOn
-                        ? "bg-[#5fc4e7] dark:bg-[#232530] dark:border-[#3BF4C7] dark:border w-[50px]"
-                        : ""
-                } text-white p-1 transition-all duration-300 ease-in-out`}
+                className={`fixed top-0 left-0 z-50 flex flex-col justify-between items-center h-screen ${isNavOn
+                    ? "bg-[#5fc4e7] dark:bg-[#232530] dark:border-[#3BF4C7] dark:border w-fit"
+                    : ""
+                    } text-white p-1 transition-all duration-300 ease-in-out`}
             >
                 {isNavOn && (
                     <div className="mt-4">
                         <button
                             title="Close Navbar"
-                            onClick={toggleNavbar}
+                            onClick={()=>{
+                                setIsExpanded(false);
+                                toggleNavbar();
+                            }}
                             className="opacity-100"
                         >
                             <Image
@@ -69,106 +89,51 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                 )}
 
                 <div className="flex flex-col items-center mt-8">
-                    <Link href="/" passHref>
-                        <div
-                            onClick={handleLinkClick}
-                            className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                        >
-                            <Image
-                                src="/assets/Home.svg"
-                                alt="Home"
-                                width={24}
-                                height={25}
-                                className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
-                            />
-                        </div>
+                    <Link href="/" passHref className={`${pathname == '/' ? "bg-[#ffffff]/20" : ""}`}>
+                        <RenderMenuItem svgSource="/assets/Home.svg" alt="Home" disableAnim={pathname == "/"}/>
                     </Link>
-                    <Link href="/notes" passHref>
-                        <div
-                            onClick={handleLinkClick}
-                            className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                        >
-                            <Image
-                                src="/assets/NotesIcon.svg"
-                                alt="Notes"
-                                width={24}
-                                height={25}
-                                className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
-                            />
-                        </div>
+                    <Link href="/notes" passHref className={`${pathname == '/notes' ? "bg-[#ffffff]/20" : ""}`}>
+                        <RenderMenuItem svgSource="/assets/NotesIcon.svg" alt="Notes" disableAnim={pathname == "/notes"}/>
                     </Link>
-                    <Link href="/past_papers" passHref>
-                        <div
-                            onClick={handleLinkClick}
-                            className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                        >
-                            <Image
-                                src="/assets/PastPapersIcon.svg"
-                                alt="Past Papers"
-                                width={24}
-                                height={25}
-                                className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
-                            />
-                        </div>
+                    <Link href="/past_papers" passHref className={`${pathname == '/past_papers' ? "bg-[#ffffff]/20" : ""}`}>
+                        <RenderMenuItem svgSource="/assets/PastPapersIcon.svg" alt="Papers" disableAnim={pathname == "/past_papers"}/>
                     </Link>
-                    <Link href="/forum" passHref>
-                        <div
-                            onClick={handleLinkClick}
-                            className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                        >
-                            <Image
-                                src="/assets/ForumIcon.svg"
-                                alt="Forum"
-                                width={24}
-                                height={25}
-                                className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
-                            />
-                        </div>
+                    <Link href="/forum" passHref className={`${pathname == '/forum' ? "bg-[#ffffff]/20" : ""}`}>
+                        <RenderMenuItem svgSource="/assets/ForumIcon.svg" alt="Forum" disableAnim={pathname == "/forum"}/>
                     </Link>
-                    <Link href="/resources" passHref>
-                        <div
-                            onClick={handleLinkClick}
-                            className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                        >
-                            <Image
-                                src="/assets/BookIcon.svg"
-                                alt="Book"
-                                width={24}
-                                height={25}
-                                className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
-                            />
-                        </div>
+                    <Link href="/resources" passHref className={`${pathname == '/resources' ? "bg-[#ffffff]/20" : ""}`}>
+                        <RenderMenuItem svgSource="/assets/BookIcon.svg" alt="Resources" disableAnim={pathname == "/resources"}/>
                     </Link>
-                    <Link href="/favourites" passHref>
-                        <div
-                            onClick={handleLinkClick}
-                            className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                        >
-                            <Image
-                                src="/assets/NavFavouriteIcon.svg"
-                                alt="Favourites"
-                                width={24}
-                                height={25}
-                                className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
-                            />
-                        </div>
+                    <Link href="/favourites" passHref className={`${pathname == '/favourites' ? "bg-[#ffffff]/20" : ""}`}>
+                        <RenderMenuItem svgSource="/assets/NavFavouriteIcon.svg" alt="Favourites" disableAnim={pathname == "/favourites"}/>
                     </Link>
                 </div>
-                <div className="mb-4 bottom-5">
-                    <SignOut>
-                        <div
-                            onClick={handleLinkClick}
-                            className={`m-2 ${isNavOn ? "block" : "hidden"}`}
-                        >
-                            <Image
-                                src="/assets/LogoutIcon.svg"
-                                alt="Logout"
-                                width={24}
-                                height={24}
-                                className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
-                            />
-                        </div>
-                    </SignOut>
+                <div />
+                <div className="mb-4 bottom-5 w-full">
+                    <div
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className={`m-2 ${isNavOn ? "block" : "hidden"} ${!isExpanded ? "block" : "hidden"}`}
+                    >
+                        <Image
+                            src="/assets/LogoutIcon.svg"
+                            alt="Logout"
+                            width={24}
+                            height={24}
+                            className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
+                        />
+                    </div>
+                    <div
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className={`m-2 ${isNavOn ? "block" : "hidden"} ${isExpanded ? "block" : "hidden"}`}
+                    >
+                        <Image
+                            src="/assets/LogoutIcon.svg"
+                            alt="Logout"
+                            width={24}
+                            height={24}
+                            className="transition-transform transform-gpu -rotate-180 hover:scale-110 hover:-translate-y-1 hover:-rotate-[175deg]"
+                        />
+                    </div>
                 </div>
             </nav>
         </>
