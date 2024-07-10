@@ -9,7 +9,7 @@ import GradientHeart from "@/public/LandingPage/GradientHeart.svg";
 import GradientACMLogo from "@/public/LandingPage/ACM Logo.svg";
 import { SignIn } from "../sign-in";
 
-function GradientText({ children }: { children: React.ReactNode }) {
+export function GradientText({ children }: { children: React.ReactNode }) {
     return (
         <span className="text-transparent bg-clip-text bg-gradient-to-tr to-[#27BAEC] from-[#253EE0]">
             {children}

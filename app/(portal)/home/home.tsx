@@ -1,11 +1,10 @@
-
-
-
 import React from "react";
 import NotesCard from "@/app/components/NotesCard";
 import HomeFooter from "./home_footer";
 import ArrowRight from "@/public/assets/ArrowRight.svg";
 import Image from "next/image";
+import UserName from "./display_username";
+import { GradientText } from "@/app/components/landing_page/landing";
 
 
 const Home: React.FC = () => {
@@ -21,9 +20,10 @@ const Home: React.FC = () => {
     ];
 
     return (
-        <div className="bg-[#C2E6EC] min-h-screen">
+        <div className="bg-[#C2E6EC] dark:bg-[#0C1222] min-h-screen text-black dark:text-[#D5D5D5]">
             <div className=" w-full px-8 mx-auto text-center justify-center mt-8">
-                <h1 className="text-5xl font-bold z text-[#0070f3] font-roboto mb-4">Cramming, Made Easy.</h1>
+                
+                <h1 className="text-7xl mb-4">Welcome <GradientText><UserName /></GradientText></h1>
                 <p className="text-xl mb-4 sm:text-xl font-lato">You've got this! Even if 'this' means a borderline psychotic level of caffeine consumption.</p>
             </div>
 
@@ -40,7 +40,7 @@ const Home: React.FC = () => {
 
                 </div>
 
-                <div className="flex justify-center h-[37vh] justify-center overflow-x-auto md:overflow-hidden ">
+                <div className="flex justify-center h-[37vh] overflow-x-auto md:overflow-hidden ">
                     <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
                         {notes.slice(0, 3).map((note, index) => (
                             <NotesCard key={note.id} index={index} note={note} />
