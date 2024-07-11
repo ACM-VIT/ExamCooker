@@ -1,6 +1,5 @@
-
 "use client";
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NumberOfComments } from "@/app/components/forumpost/CommentContainer";
 import TagContainer from "@/app/components/forumpost/TagContainer";
 import { DislikeButton, LikeButton } from "@/app/components/common/Buttons";
@@ -8,12 +7,25 @@ import { ForumPost, Tag, Comment } from "@prisma/client";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faHeart } from '@fortawesome/free-solid-svg-icons';
 import Link from "next/link";
+import { useFavoritesStore } from '../actions/StoredFavourites';
 
-export default function ForumCard({ post, title, desc, author, tags, createdAt, comments }: { post: ForumPost, title: string, desc: string, author: string | null, tags: Tag[], createdAt: Date, comments: Comment[] | undefined }) {
-    const [isFav, setIsFav] = useState(false);
-    function toggleFav() {
-        setIsFav(!isFav);
-    }
+interface ForumCardProps {
+    post: ForumPost;
+    title: string;
+    desc: string;
+    author: string | null;
+    tags: Tag[];
+    createdAt: Date;
+    comments: Comment[] | undefined;
+}
+
+export default function ForumCard({ post, title, desc, author, tags, createdAt, comments }: ForumCardProps) {
+    const { toggleFavorite, isFavorite } = useFavoritesStore();
+
+    const handleToggleFav = () => {
+        toggleFavorite({ id: post.id, type: 'forum' });
+    };
+
     return (
         <div className="flex pl-11 pr-7 pt-7 justify-center text-black dark:text-[#D5D5D5] ">
             <div className="bg-[#5FC4E7] dark:bg-[#0C1222] p-5 md:p-10 size-full md:size-5/6 border-b-2 border-b-[#5FC4E7] dark:border-b-[#3D414E] hover:border-b-2 dark:hover:bg-[#ffffff]/10 dark:hover:border-b-[#3BF4C7] hover:border-b-white  transition duration-200 transform hover:scale-105 hover:shadow-xl">
@@ -32,22 +44,22 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                     </div>
                 </div>
 
-                <br></br>
+                <br />
                 <p className="text-xs">{desc}</p>
-                <br></br>
+                <br />
 
                 <div className="flex justify-between items-center sm:w-2/3 md:w-full">
                     <div className="sm:w-2/3 md:flex md:w-full md:justify-between">
                         <TagContainer tags={tags} />
                     </div>
-                    <button onClick={toggleFav} style={{ color: isFav ? 'red' : 'lightgrey' }}>
-                        <FontAwesomeIcon icon={faHeart} />
+                    <button onClick={handleToggleFav} className="transition-colors duration-200">
+                        <FontAwesomeIcon icon={faHeart} color={isFavorite(post.id, 'forum') ? 'red' : 'lightgrey'} />
                     </button>
-
                 </div>
 
                 <div className="text-xs text-right">
-                    <p>{author} posted at {createdAt.toISOString()}</p> </div>
+                    <p>{author} posted at {createdAt.toISOString()}</p>
+                </div>
             </div>
         </div>
     );

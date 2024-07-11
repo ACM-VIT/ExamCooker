@@ -1,43 +1,28 @@
-"use client"
-import { useState } from 'react';
+"use client";
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faHeart } from '@fortawesome/free-solid-svg-icons';
-import { updateBookmarkedPastPapers } from '../actions/handleFavs';
+import { useFavoritesStore } from '../actions/StoredFavourites';
 
 interface PastPaperCardProps {
-  pastPaper: {
-    id: string;
-    title: string;
-  };
-  index: number;
+    pastPaper: {
+        id: string;
+        title: string;
+    };
+    index: number;
 }
 
 function removePdfExtension(title: string) {
-  return title.replace(/\.pdf$/, '');
+    return title.replace(/\.pdf$/, '');
 }
 
 function PastPaperCard({ pastPaper }: PastPaperCardProps) {
-    const [isFav, setIsFav] = useState(false);
+    const { toggleFavorite, isFavorite } = useFavoritesStore();
 
-    async function toggleFav() {
-        const newFavState = !isFav;
-        setIsFav(newFavState);
-
-        try {
-            const result = await updateBookmarkedPastPapers( pastPaper.id, newFavState);
-            if (!result.success) {
-                // If the update fails, revert the state
-                setIsFav(!newFavState);
-                console.error('Failed to update bookmarked past papers:', result.error);
-            }
-        } catch (error) {
-            // If there's an error, revert the state
-            setIsFav(!newFavState);
-            console.error('Error updating bookmarked past papers:', error);
-        }
-    }
-
+    const handleToggleFav = () => {
+        toggleFavorite({ id: pastPaper.id, type: 'pastPaper' });
+    };
     return (
         <div className="max-w-sm w-full h-full text-black dark:text-[#D5D5D5] ">
             <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#0C1222] dark:lg:bg-none lg:bg-none border-b-2 border-b-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7] dark:border-b-[#ffffff]/20 dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 ">
@@ -59,7 +44,7 @@ function PastPaperCard({ pastPaper }: PastPaperCardProps) {
                         </span>
                         View
                     </Link>
-                    <button onClick={toggleFav} style={{ color: isFav ? 'red' : 'lightgrey' }}>
+                    <button onClick={handleToggleFav} style={{ color: isFavorite(pastPaper.id, 'pastPaper') ? 'red' : 'lightgrey' }}>
                         <FontAwesomeIcon icon={faHeart} />
                     </button>
                 </div>
