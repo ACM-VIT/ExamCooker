@@ -2,15 +2,14 @@ import React from "react";
 import Fuse from 'fuse.js';
 import Pagination from "@/app/components/Pagination";
 import SearchBar from "@/app/components/SearchBar";
-import Link from "next/link";
 import { PrismaClient, ForumPost, Note, PastPaper, Subject } from "@prisma/client";
-import Dropdown from "@/app/components/FilterComponent";
 import FavFetch from '@/app/components/FavFetchFilter';
 import { auth } from "@/app/auth";
 
 const prisma = new PrismaClient();
 
 const SCORE_THRESHOLD = 0.6;
+const PAGE_SIZE = 9;
 
 function performSearch<T>(query: string, dataSet: T[]): T[] {
     const options = {
@@ -27,12 +26,16 @@ function performSearch<T>(query: string, dataSet: T[]): T[] {
         .map((fuseResult) => fuseResult.item);
 }
 
-async function favouritesPage({ searchParams }: { searchParams: { page?: string, search?: string } }) {
-    const pageSize = 9;
+async function favouritesPage({ searchParams }: { searchParams: { page?: string, search?: string, type?: string } }) {
     const search = searchParams.search || '';
     const page = parseInt(searchParams.page || '1', 10);
+    const type = searchParams.type || 'Past Papers';
     const session = await auth();
-    
+
+    if (!session || !session.user || !session.user.email) {
+        throw new Error("User not authenticated");
+    }
+
     const userBookmarks = await prisma.user.findUnique({
         where: {
             email: session.user.email,
@@ -67,23 +70,51 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
         filteredResources = performSearch(search, filteredResources);
     }
 
-    const totalCount = filteredForumPosts.length + filteredNotes.length +
-        filteredPastPapers.length + filteredResources.length;
-    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    let itemsToDisplay;
+    let totalCount;
+    switch (type) {
+        case 'Past Papers':
+            totalCount = filteredPastPapers.length;
+            itemsToDisplay = filteredPastPapers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+            break;
+        case 'Notes':
+            totalCount = filteredNotes.length;
+            itemsToDisplay = filteredNotes.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+            break;
+        case 'Forum':
+            totalCount = filteredForumPosts.length;
+            itemsToDisplay = filteredForumPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+            break;
+        case 'Resources':
+            totalCount = filteredResources.length;
+            itemsToDisplay = filteredResources.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+            break;
+        default:
+            totalCount = filteredForumPosts.length + filteredNotes.length +
+                filteredPastPapers.length + filteredResources.length;
+            itemsToDisplay = [
+                ...filteredForumPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+                ...filteredNotes.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+                ...filteredPastPapers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+                ...filteredResources.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+            ];
+    }
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
     return (
         <div className="container mx-auto text-black dark:text-[#D5D5D5]">
             <h1 className="text-center p-4">Favourites</h1>
             <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto p-4 space-x-4">
                 <SearchBar pageType="favourites" initialQuery={search} />
-
             </div>
             <div className="flex items-center justify-center p-4 space-x-4">
                 <FavFetch
-                    pastpapers={filteredPastPapers}
-                    notes={filteredNotes}
-                    forumposts={filteredForumPosts}
-                    resources={filteredResources}
+                    pastpapers={type === 'Past Papers' ? itemsToDisplay : []}
+                    notes={type === 'Notes' ? itemsToDisplay : []}
+                    forumposts={type === 'Forum' ? itemsToDisplay : []}
+                    resources={type === 'Resources' ? itemsToDisplay : []}
+                    activeTab={type}
                 />
             </div>
             <Pagination
@@ -91,6 +122,7 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
                 totalPages={totalPages}
                 basePath="/favourites"
                 searchQuery={search}
+                typeQuery={type}
             />
         </div>
     );
