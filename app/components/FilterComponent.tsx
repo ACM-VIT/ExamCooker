@@ -102,7 +102,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
 
             <div className={` flex flex-col sm:flex-row sm:space-x-4 justify-center items-start absolute left-0 mt-2 
         max-w-[90vw] sm:max-w-[1200px]  border-2 border-black 
-        dark:border-[#D5D5D5] bg-[#5FC4E7] dark:bg-[#7D7467]/20 backdrop-blur-3xl z-50 overflow-auto ${isOpen ? '' : 'hidden'}`}>
+        dark:border-[#D5D5D5] bg-[#5FC4E7] dark:bg-[#7D7467]/20 backdrop-blur-[75px] z-50 overflow-auto ${isOpen ? '' : 'hidden'}`}>
                 {(Object.entries(checkboxOptions) as [keyof CheckboxOptions, Option[]][]).map(([category, options]) => (
                     <div key={category} className="w-full sm:h-[40vh] sm:w-1/3 p-4 sm:p-2">
                         <FilterComp
