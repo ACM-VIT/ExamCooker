@@ -24,14 +24,14 @@ export function LikeButton({ postId, upvoteCount }: { postId: string, upvoteCoun
                     alt="ThumbsUp"
                     width={21}
                     height={21}
-                    className="hidden md:flex"
+                    className="hidden md:flex dark:invert-[.835]"
                 />
                 <Image
                     src={"/comment/ThumbsUpIcon.svg"}
                     alt="ThumbsUp"
                     width={16}
                     height={16}
-                    className="flex md:hidden"
+                    className="flex md:hidden dark:invert-[.835]"
                 />
             </button>
             {likes}
@@ -59,14 +59,14 @@ export function DislikeButton({ postId, downvoteCount }: { postId: string, downv
                     alt="ThumbsDown"
                     width={21}
                     height={21}
-                    className="hidden md:flex"
+                    className="hidden md:flex dark:invert-[.835]"
                 />
                 <Image
                     src={"/comment/ThumbsDownIcon.svg"}
                     alt="ThumbsDown"
                     width={16}
                     height={16}
-                    className="flex md:hidden"
+                    className="flex md:hidden dark:invert-[.835]"
                 />
             </button>
             {dislikes}

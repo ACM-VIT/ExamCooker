@@ -77,7 +77,7 @@ export default function ClientSide({
                         alt="Menu"
                         width={30}
                         height={30}
-                        className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1"
+                        className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110 hover:-translate-y-1"
                     />
                 </button>
             )}

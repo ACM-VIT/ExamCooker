@@ -22,7 +22,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                     alt={alt}
                     width={24}
                     height={25}
-                    className={`transition-all transform-gpu group-hover:scale-110 ${!disableAnim ? "group-hover:-translate-y-1 group-hover:rotate-[-5deg]" : ""}`}
+                    className={`dark:invert-[.835] transition-all transform-gpu group-hover:scale-110 ${!disableAnim ? "group-hover:-translate-y-1 group-hover:rotate-[-5deg]" : ""}`}
                 />
                 <p className={`transition-all text-black font-extrabold ${!disableAnim ? "group-hover:-translate-y-1" : ""}  dark:text-[#D5D5D5] ${isExpanded ? "block" : "hidden"}`}>{alt}</p>
             </div>
@@ -82,7 +82,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                                 alt="Close"
                                 width={30}
                                 height={30}
-                                className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1"
+                                className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110 hover:-translate-y-1"
                             />
                         </button>
                     </div>
@@ -119,7 +119,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                             alt="Logout"
                             width={24}
                             height={24}
-                            className="transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
+                            className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
                         />
                     </div>
                     <div
@@ -131,7 +131,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                             alt="Logout"
                             width={24}
                             height={24}
-                            className="transition-transform transform-gpu -rotate-180 hover:scale-110 hover:-translate-y-1 hover:-rotate-[175deg]"
+                            className="dark:invert-[.835] transition-transform transform-gpu -rotate-180 hover:scale-110 hover:-translate-y-1 hover:-rotate-[175deg]"
                         />
                     </div>
                 </div>
