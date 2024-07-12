@@ -11,7 +11,7 @@ async function Page() {
     if (session && session.user) return redirect("/");
     return (
         <div className="min-h-screen flex flex-col">
-            <div className="flex flex-row-reverse items-center gap-6 py-4 px-6 border-b border-b-[#8DCAE9] dark:border-b-[#3BF4C7] overflow-hidden">
+            <div className="transition-colors ease-in flex flex-row-reverse items-center gap-6 py-4 px-6 border-b border-b-[#8DCAE9] dark:border-b-[#3BF4C7] overflow-hidden">
                 <SignIn displayText="Sign In"/>
                 <ThemeToggleSwitch />
             </div>
