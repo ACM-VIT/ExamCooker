@@ -8,6 +8,7 @@ import ArrowRight from "@/public/LandingPage/ArrowRight.svg";
 import GradientHeart from "@/public/LandingPage/GradientHeart.svg";
 import GradientACMLogo from "@/public/LandingPage/ACM Logo.svg";
 import { SignIn } from "../sign-in";
+import ThemeToggleSwitch from "../common/ThemeToggle";
 
 export function GradientText({ children }: { children: React.ReactNode }) {
     return (
@@ -81,7 +82,10 @@ function LandingPageCard({
 
 function LandingPageContent() {
     return (
-        <div className="bg-[#C2E6EC] dark:bg-[#0C1222] space-y-40 md:space-y-96 text-black dark:text-[#D5D5D5]" >
+        <div className="bg-[#C2E6EC] dark:bg-[#0C1222]  transition-colors ease-in space-y-40 md:space-y-96 text-black dark:text-[#D5D5D5]" >
+            <div className="flex flex-row-reverse p-4">
+            <ThemeToggleSwitch />
+            </div>
             <div className="px-5 py-5 md:px-40 md:py-20 w-full">
                 <h1 className="text-6xl md:text-7xl lg:text-9xl drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                     <GradientText>Cramming</GradientText>

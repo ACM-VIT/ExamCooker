@@ -24,8 +24,9 @@ function ThemeToggleSwitch() {
     },[darkMode])
 
     return (
-        <div onClick={() => setDarkMode(!darkMode)} className="w-16 h-8 bg-red-500 dark:bg-white cursor-pointer">
-            CLICK ME
+        <div onClick={() => setDarkMode(!darkMode)} className="flex items-center justify-center w-16 h-8 rounded-full bg-[#262626] border-4 border-[#0F1E21] transition-all ease-in dark:border-[#E9E9E9] dark:bg-white cursor-pointer">
+            <div className="bg-blue-400 dark:bg-white w-8 h-8 rounded-full -translate-x-4 dark:translate-x-4 transition-transform ease-in"></div>
+            <div></div>
         </div>
     );
 }
