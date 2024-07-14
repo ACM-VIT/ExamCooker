@@ -20,7 +20,7 @@ const FilterComp: React.FC<Props> = ({ title, options, onSelectionChange, select
 
   return (
     <div className="w-full sm:w-[182px] dark:bg-none p-4 text-center">
-      <h5 className="text-lg font-bold mb-2">{title}</h5>
+      <h6 className="[text-shadow:_0_1px_0_rgb(0_0_0_/_40%)] font-bold mb-2">{title}</h6>
       <div>
         {options.map((option) => (
           <div key={option.id} className="flex items-center mb-2">
@@ -33,7 +33,7 @@ const FilterComp: React.FC<Props> = ({ title, options, onSelectionChange, select
             />
             <label
               htmlFor={`checkbox-${option.id}`}
-              className="ml-2 block text-sm text-black dark:text-[#D5D5D5]"
+              className="ml-2 block text-sm text-black dark:text-[#D5D5D5] [text-shadow:_0_1px_0_rgb(0_0_0_/_40%)]"
             >
               {option.label}
             </label>

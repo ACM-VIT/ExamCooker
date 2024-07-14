@@ -34,7 +34,8 @@
     "react-dropzone": "^14.2.3",
     "react-loading": "^2.0.3",
     "react-spinners": "^0.14.1",
-    "react-switch": "^7.0.0"
+    "react-switch": "^7.0.0",
+    "zustand": "^4.5.4"
   },
   "devDependencies": {
     "@svgr/webpack": "^8.1.0",

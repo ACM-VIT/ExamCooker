@@ -9,10 +9,11 @@ interface PaginationProps {
   totalPages: number;
   basePath: string;
   searchQuery?: string;
-  tagsQuery?: string;  // Add this line
+  tagsQuery?: string;
+  typeQuery?: string;
 }
 
-const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePath, searchQuery, tagsQuery }) => {
+const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePath, searchQuery, tagsQuery, typeQuery }) => {
   const maxVisiblePages = 5;
 
   function getPageNumbers() {
@@ -41,6 +42,9 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
     if (tagsQuery) {
       url += `&tags=${encodeURIComponent(tagsQuery)}`;
     }
+    if (typeQuery) {
+      url += `&type=${encodeURIComponent(typeQuery)}`;
+    }
     return url;
   };
 
@@ -48,8 +52,8 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
     <Link
       href={getPageUrl(page)}
       className={`px-3 py-1.5 text-sm font-medium ${page === currentPage
-          ? 'bg-[#73E8CC] dark:bg-[#232530]'
-          : 'bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90]'
+        ? 'bg-[#73E8CC] dark:bg-[#232530]'
+        : 'bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90]'
         }`}
     >
       {children}

@@ -19,7 +19,7 @@ const Home: React.FC = () => {
     ];
 
     return (
-        <div className="bg-[#C2E6EC] dark:bg-[#0C1222] min-h-screen text-black dark:text-[#D5D5D5] flex flex-col">
+        <div className="bg-[#C2E6EC] dark:bg-[#0C1222] min-h-screen text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
             <div className="flex-grow">
                 <div className="w-full px-8 mx-auto text-center justify-center mt-8">
                     <h1 className="text-3xl md:text-7xl mb-4">Welcome <GradientText><UserName /></GradientText></h1>

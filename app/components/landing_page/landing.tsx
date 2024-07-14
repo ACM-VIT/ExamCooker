@@ -41,7 +41,7 @@ function LandingPageCard({
     altOfImage: string;
 }) {
     return (
-        <div className="relative overflow-hidden group">
+        <button className="relative overflow-hidden group">
             <div className="hidden lg:block absolute left-0 top-0 w-[200px] h-[200px] rounded-full bg-none transition duration-1000 group-hover:duration-200 group-hover:bg-[#3BF4C7]"></div>
             <div className="block lg:hidden absolute left-0 top-0 w-[200px] h-[200px] rounded-full bg-[#3BF4C7]"></div>
             <div className="hidden lg:block absolute right-0 bottom-0 w-[200px] h-[200px] rounded-full transition duration-1000 group-hover:duration-200 md:bg-none md:group-hover:bg-[#82BEE9]"></div>
@@ -54,7 +54,7 @@ function LandingPageCard({
                         alt={altOfImage}
                         width={300}
                         height={300}
-                        className="h-[100px] md:h-[300px]"
+                        className="h-[100px] md:h-[300px] dark:invert-[.835] dark:hue-rotate-180"
                     />
                     <div className="flex-col gap-5">
                         <span className="text-2xl md:text-4xl font-extrabold">
@@ -71,48 +71,23 @@ function LandingPageCard({
                         alt="ArrowRight"
                         width={35}
                         height={35}
+                        className="md:h-[35px] h-[25px] dark:invert-[0.835]"
                     />
                 </div>
             </div>
-        </div>
+        </button>
     );
 }
 
 function LandingPageContent() {
-    const handlePastPapersClick = () => {
-        // Implement logic for what happens when "Past Papers" box is clicked
-        alert("Past Papers box clicked!");
-        // You can add more logic here, like navigating to a different page or displaying more content
-    };
-    const handleForumClick = () => {
-        // Implement logic for what happens when "Past Papers" box is clicked
-        alert("Past Papers box clicked!");
-        // You can add more logic here, like navigating to a different page or displaying more content
-    };
-    const handleNotesClick = () => {
-        // Implement logic for what happens when "Past Papers" box is clicked
-        alert("Past Papers box clicked!");
-        // You can add more logic here, like navigating to a different page or displaying more content
-    };
-    const handleResourcesClick = () => {
-        // Implement logic for what happens when "Past Papers" box is clicked
-        alert("Past Papers box clicked!");
-        // You can add more logic here, like navigating to a different page or displaying more content
-    };
-    // <h4 className="drop-shadow-[0_35px_35px_rgba(0,0,0,1)]">Presenting [ExamCooker],your <br /> one-stop solution to Cram before Exams</h4>
-    //
-    const handleClick = () => {
-        alert("Clicked!");
-    };
-
     return (
-        <div className="bg-[#C2E6EC] dark:bg-[#0C1222] space-y-40 md:space-y-96 text-black dark:text-[#D5D5D5]" >
+        <div className="bg-[#C2E6EC] dark:bg-[#0C1222]  transition-colors ease-in space-y-40 md:space-y-96 text-black dark:text-[#D5D5D5]" >
             <div className="px-5 py-5 md:px-40 md:py-20 w-full">
-                <h1 className="text-6xl md:text-7xl lg:text-9xl drop-shadow-[0px_5px_rgba(59,244,199,1)]">
+                <h1 className="text-6xl md:text-7xl lg:text-9xl drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                     <GradientText>Cramming</GradientText>
                 </h1>
                 <br />
-                <h1 className="text-6xl md:text-7xl lg:text-9xl drop-shadow-[0px_5px_rgba(59,244,199,1)]">
+                <h1 className="text-6xl md:text-7xl lg:text-9xl drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                     Made Easy
                 </h1>
                 <br />
@@ -126,7 +101,7 @@ function LandingPageContent() {
 
             <div className="lg:sticky lg:top-0 lg:h-screen space-y-3">
                 <WordBetweenLine>
-                    <div className="drop-shadow-[0px_5px_rgba(59,244,199,1)]">
+                    <div className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                         For Crammers By Crammers
                     </div>
                 </WordBetweenLine>
@@ -159,7 +134,9 @@ function LandingPageContent() {
                 </div>
             </div>
 
-            <div className="lg:sticky lg:top-0 lg:h-screen lg:bg-[#8DCAE9] lg:dark:bg-[#0C1222]/20 lg:dark:backdrop-blur-[100px] flex-col content-center">
+            <div className="lg:sticky lg:top-0 lg:h-screen lg:bg-[#8DCAE9] lg:dark:bg-[#0C1222]/20 backdrop-blur-[150px] flex-col content-center overflow-hidden">
+            <div className="hidden lg:block absolute top-0  right-0  w-[200px] h-[100px] rounded-full blur-[100px] bg-none transition duration-1000 bg-[#8DCAE9]"></div>
+            <div className="hidden lg:block absolute bottom-0 left-0  w-[200px] h-[100px] rounded-full blur-[100px] bg-none transition duration-1000 bg-[#8DCAE9]"></div>
                 <WordBetweenLine>
                     <div className="text-center">
                         <GradientText>
@@ -176,7 +153,7 @@ function LandingPageContent() {
 
             <div className="lg:sticky lg:h-screen lg:top-0 lg:bg-[#C2E6EC] lg:dark:bg-[#0C1222] flex-col content-center">
                 <WordBetweenLine>
-                    <div className="drop-shadow-[0px_5px_rgba(59,244,199,1)]">
+                    <div className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                         Why Examcooker?
                     </div>
                 </WordBetweenLine>
@@ -200,7 +177,7 @@ function LandingPageContent() {
             <div className="lg:sticky lg:h-screen lg:top-0 lg:bg-[#8DCAE9] lg:dark:bg-[#0C1222]/20 backdrop-blur-[100px] flex-col content-center">
                 <WordBetweenLine>
                     <div className="flex items-center">
-                        <span className="drop-shadow-[0px_5px_rgba(59,244,199,1)]">
+                        <span className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                             Made With
                         </span>
                         <Image

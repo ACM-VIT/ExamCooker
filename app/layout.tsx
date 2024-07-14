@@ -1,7 +1,6 @@
 import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { SessionProvider } from "next-auth/react";
-
+import { ClientProvider } from "./components/Provider";
 
 export const metadata = {
     title: "ExamCooker 2024",
@@ -10,19 +9,17 @@ export const metadata = {
 };
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
-export default async function RootLayout({
+export default function RootLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-
-
     return (
-        <html lang="en" >
+        <html lang="en">
             <body className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`} style={{ margin: "0" }}>
-                <SessionProvider>
+                <ClientProvider>
                     {children}
-                </SessionProvider>
+                </ClientProvider>
             </body>
         </html>
     );
