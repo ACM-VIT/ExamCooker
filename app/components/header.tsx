@@ -8,6 +8,7 @@ import moon from "@/public/assets/moon.svg";
 import sun from "@/public/assets/sun.svg";
 import profile from "@/public/assets/Profile.svg";
 import { SignOut } from "./sign-out";
+import ThemeToggleSwitch from "./common/ThemeToggle";
 
 interface HeaderProps {
     toggleTheme: () => void;
@@ -40,8 +41,9 @@ const Header: React.FC<HeaderProps> = ({ toggleTheme, darkMode }) => {
     }, []);
 
     return (
-        <header className="bg-[#C2E6EC] dark:bg-[#0C1222] border-b border-b-[#82BEE9] dark:border-b-[#3BF4C7] flex flex-row-reverse">
-            <div className="flex items-center text-right m-2">
+        <header className="transition-colors bg-[#C2E6EC] dark:bg-[#0C1222] border-b border-b-[#82BEE9] dark:border-b-[#3BF4C7] flex flex-row-reverse">
+            <div className="flex items-center text-right m-2 space-x-4">
+                <ThemeToggleSwitch />
                 <div className="hidden sm:flex sm:flex-col mr-4">
                     <p className="lg:text-lg font-medium text-gray-900 dark:text-[#D5D5D5]">
                         {session?.user?.name}
@@ -88,46 +90,6 @@ const Header: React.FC<HeaderProps> = ({ toggleTheme, darkMode }) => {
                         </div>
                     )}
                 </div>
-                <Switch
-                    onChange={toggleTheme}
-                    checked={darkMode}
-                    onColor="#86d3ff"
-                    offColor="#ffcc00"
-                    onHandleColor="#2693e6"
-                    offHandleColor="#ffcc00"
-                    checkedIcon={
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                height: "100%",
-                                padding: 2,
-                            }}
-                        >
-                            <Image
-                                src={moon}
-                                alt="moon"
-                                width={16}
-                                height={16}
-                            />
-                        </div>
-                    }
-                    uncheckedIcon={
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                height: "100%",
-                                padding: 2,
-                            }}
-                        >
-                            <Image src={sun} alt="sun" width={16} height={16} />
-                        </div>
-                    }
-                    className="ml-2 mr-4 sm:ml-6"
-                />
             </div>
         </header>
     );

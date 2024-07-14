@@ -26,7 +26,7 @@ async function PdfViewerPage({params }: {params : {id : string}}) {
 
 
 return (
-      <div className="p-6 flex flex-col items-center space-x-4 lg:flex-row h-screen text-black dark:text-[#D5D5D5] divide-black dark:divide-[#D5D5D5] divide-x">
+      <div className="transition-colors p-6 flex flex-col items-center space-x-4 lg:flex-row h-screen text-black dark:text-[#D5D5D5] divide-black dark:divide-[#D5D5D5] divide-x">
           <div className="h-full w-1/2 pr-6">
               <h1>{removePdfExtension(note!.title)}</h1>
               <h2>Slot: A1</h2>

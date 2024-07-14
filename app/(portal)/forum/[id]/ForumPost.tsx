@@ -10,7 +10,7 @@ import type { Tag, Comment, ForumPost } from "@prisma/client";
 function ForumPost({ post, tagArray, commentArray }: { post: ForumPost | null, tagArray: Tag[] | undefined, commentArray: Comment[] | undefined }) {
 
     return (
-        <div className="w-full h-full p-6 text-black dark:text-[#D5D5D5]">
+        <div className="transition-colors w-full h-full p-6 text-black dark:text-[#D5D5D5]">
             <div className="bg-[#82BEE9] dark:bg-[#232530] p-4 md:p-10">
                 <h2 className="font-extrabold">{post?.title}</h2>
                 <hr className="border-0 h-px my-5 bg-black" />

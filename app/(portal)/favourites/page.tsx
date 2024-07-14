@@ -103,7 +103,7 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
     return (
-        <div className="container mx-auto text-black dark:text-[#D5D5D5]">
+        <div className="transition-colors container mx-auto text-black dark:text-[#D5D5D5]">
             <h1 className="text-center p-4">Favourites</h1>
             <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto p-4 space-x-4">
                 <SearchBar pageType="favourites" initialQuery={search} />

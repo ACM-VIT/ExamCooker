@@ -98,7 +98,7 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
     }
 
     return (
-        <div className="flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
+        <div className="transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
             <h1 className="text-center m-4">Notes</h1>
 
             <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
