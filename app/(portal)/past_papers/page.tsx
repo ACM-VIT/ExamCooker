@@ -98,8 +98,8 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string, 
     }
 
     return (
-        <div className="transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
-            <h1 className="text-center m-4">Past Papers</h1>
+        <div className="p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
+            <h1 className="text-center mb-4">Past Papers</h1>
             <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
                 <Dropdown pageType='past_papers' />
                 <SearchBar pageType="past_papers" initialQuery={search} />

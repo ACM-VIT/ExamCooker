@@ -98,9 +98,8 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
     }
 
     return (
-        <div className="transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
-            <h1 className="text-center m-4">Notes</h1>
-
+        <div className="p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
+            <h1 className="text-center mb-4">Notes</h1>
             <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
                 <Dropdown pageType='notes' />
                 <SearchBar pageType="notes" initialQuery={search} />
@@ -116,7 +115,8 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
             </div>
 
 
-            <div className="w-full xl:w-2/3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6 place-content-center place-items-center">
+            <div className='flex justify-center'>
+                <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6  place-content-center">
                 {paginatedNotes.length > 0 ? (
                     paginatedNotes.map((eachNote, index) => (
                         <NotesCard
@@ -132,6 +132,7 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
                             : "No notes found."}
                     </p>
                 )}
+                </div>
             </div>
 
             {totalPages > 1 && (

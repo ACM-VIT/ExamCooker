@@ -103,9 +103,9 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
     return (
-        <div className="transition-colors container mx-auto text-black dark:text-[#D5D5D5]">
-            <h1 className="text-center p-4">Favourites</h1>
-            <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto p-4 space-x-4">
+        <div className="transition-colors container mx-auto p-8 text-black dark:text-[#D5D5D5]">
+            <h1 className="text-center mb-4">Favourites</h1>
+            <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto px-4 py-2 space-x-4">
                 <SearchBar pageType="favourites" initialQuery={search} />
             </div>
             <div className="flex items-center justify-center p-4 space-x-4">
@@ -117,13 +117,15 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
                     activeTab={type}
                 />
             </div>
-            <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                basePath="/favourites"
-                searchQuery={search}
-                typeQuery={type}
-            />
+            {totalPages > 1 ??
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    basePath="/favourites"
+                    searchQuery={search}
+                    typeQuery={type}
+                />
+            }
         </div>
     );
 }
