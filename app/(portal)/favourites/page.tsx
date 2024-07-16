@@ -117,13 +117,15 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
                     activeTab={type}
                 />
             </div>
-            <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                basePath="/favourites"
-                searchQuery={search}
-                typeQuery={type}
-            />
+            {totalPages > 1 ??
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    basePath="/favourites"
+                    searchQuery={search}
+                    typeQuery={type}
+                />
+            }
         </div>
     );
 }
