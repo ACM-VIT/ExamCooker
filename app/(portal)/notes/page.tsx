@@ -62,6 +62,7 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
 
     const allNotes = await prisma.note.findMany({
         where: {
+            isClear: true,
             ...(tags.length > 0 && {
                 tags: {
                     some: {
@@ -117,21 +118,21 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
 
             <div className='flex justify-center'>
                 <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6  place-content-center">
-                {paginatedNotes.length > 0 ? (
-                    paginatedNotes.map((eachNote, index) => (
-                        <NotesCard
-                            key={eachNote.id}
-                            note={eachNote}
-                            index={index}
-                        />
-                    ))
-                ) : (
-                    <p className="col-span-3 text-center">
-                        {search || tags.length > 0
-                            ? "No notes found matching your search or selected tags."
-                            : "No notes found."}
-                    </p>
-                )}
+                    {paginatedNotes.length > 0 ? (
+                        paginatedNotes.map((eachNote, index) => (
+                            <NotesCard
+                                key={eachNote.id}
+                                note={eachNote}
+                                index={index}
+                            />
+                        ))
+                    ) : (
+                        <p className="col-span-3 text-center">
+                            {search || tags.length > 0
+                                ? "No notes found matching your search or selected tags."
+                                : "No notes found."}
+                        </p>
+                    )}
                 </div>
             </div>
 

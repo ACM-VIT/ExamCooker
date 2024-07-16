@@ -62,6 +62,7 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string, 
 
     const allPastPapers = await prisma.pastPaper.findMany({
         where: {
+            isClear: true,
             ...(tags.length > 0 && {
                 tags: {
                     some: {
