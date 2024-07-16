@@ -10,6 +10,7 @@ import { useFavoritesStore } from '../actions/StoredFavourites';
 interface NotesCardProps {
     note: Note;
     index: number;
+    openInNewTab?: boolean;
 }
 
 function removePdfExtension(filename: string): string {
@@ -19,7 +20,7 @@ function removePdfExtension(filename: string): string {
     return filename;
 }
 
-function NotesCard({ note, index }: NotesCardProps) {
+function NotesCard({ note, openInNewTab = false }: NotesCardProps) {
     const { toggleFavorite, isFavorite } = useFavoritesStore();
 
     const handleToggleFav = () => {
@@ -41,7 +42,11 @@ function NotesCard({ note, index }: NotesCardProps) {
                 </div>
                 <div className="flex  justify-between items-center space-x-4">
                     <div></div>
-                    <Link href={`notes/${note.id}`} className="py-1 px-2 text-sm flex items-center bg-white dark:bg-[#3F4451]">
+                    <Link
+                        href={`notes/${note.id}`}
+                        className="py-1 px-2 text-sm flex items-center bg-white dark:bg-[#3F4451]"
+                        {...(openInNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    >
                         <span className="mr-1 flex items-center justify-center">
                             <FontAwesomeIcon icon={faEye} />
                         </span>
