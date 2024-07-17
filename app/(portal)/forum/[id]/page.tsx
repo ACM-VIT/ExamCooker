@@ -1,5 +1,3 @@
-// dummy home.tsx to view forumpost page
-
 import { PrismaClient } from "@prisma/client";
 import ForumPost from "./ForumPost";
 
@@ -27,23 +25,6 @@ async function forumPostThread({params}: {params : {id : string}}) {
 
 return(
     <ForumPost post={forumpost} tagArray={forumpost?.tags} commentArray={forumpost?.comments}/>
-)
-}
+)}
 
 export default forumPostThread;
-
-// include {
-//   comments: {
-//     include: {
-//       author: {
-//         select: {
-//           name: true,
-//         },
-//       },
-//     },
-//     select: {
-//       content: true,
-//       author: true,
-//     },
-//       },
-//     },
