@@ -4,8 +4,10 @@ import { useSession } from "next-auth/react";
 const UserName: React.FC = () => {
     const { data: session } = useSession();
     let name:string | null | undefined = session?.user?.name;
-    if(name){
-        name = name.split(' ',1)[0]
+    if(name === "Supratim Ghose 22BIT0040"){
+        name = "Suppu";
+    } else {
+        name = name?.split(' ',1)[0]
     }
     return <>
         {name}
