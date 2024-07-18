@@ -3,8 +3,19 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import Loading from "../loading"; // Import the Loading component
-import { SignOut } from "./sign-out";
+import Loading from "../loading";
+
+const Tooltip = ({ children, content }) => {
+    return (
+      <div className="group relative">
+        {children}
+        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-gradient-to-r from-[#5fc4e7] to-[#4db3d6] dark:from-[#3BF4C7] dark:to-[#2ad3a7] text-white dark:text-[#232530] rounded-md text-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-50 whitespace-nowrap shadow-lg backdrop-blur-sm backdrop-filter max-w-xs break-words">
+          <span className="font-medium">{content}</span>
+          <div className="absolute w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-[#5fc4e7] dark:border-r-[#3BF4C7] -left-[6px] top-1/2 -translate-y-1/2 transform transition-transform duration-300 ease-in-out group-hover:scale-110"></div>
+        </div>
+      </div>
+    );
+  };
 
 const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
     isNavOn,
@@ -16,21 +27,23 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
 
     function RenderMenuItem({ svgSource, alt, disableAnim }: { svgSource: string, alt: string, disableAnim: boolean }) {
         return (
-            <div onClick={handleLinkClick} className={`flex gap-2 m-2 group ${isNavOn ? "block" : "hidden"}`}>
-                <Image
-                    src={svgSource}
-                    alt={alt}
-                    width={24}
-                    height={25}
-                    className={`dark:invert-[.835] transition-all transform-gpu group-hover:scale-110 ${!disableAnim ? "group-hover:-translate-y-1 group-hover:rotate-[-5deg]" : ""}`}
-                />
-                <p className={`transition-all text-black font-extrabold ${!disableAnim ? "group-hover:-translate-y-1" : ""}  dark:text-[#D5D5D5] ${isExpanded ? "block" : "hidden"}`}>{alt}</p>
-            </div>
+            <Tooltip content={alt}>
+                <div onClick={handleLinkClick} className={`flex gap-2 m-2 group ${isNavOn ? "block" : "hidden"}`}>
+                    <Image
+                        src={svgSource}
+                        alt={alt}
+                        width={24}
+                        height={25}
+                        className={`dark:invert-[.835] transition-all transform-gpu group-hover:scale-110 ${!disableAnim ? "group-hover:-translate-y-1 group-hover:rotate-[-5deg]" : ""}`}
+                    />
+                    <p className={`transition-all text-black font-extrabold ${!disableAnim ? "group-hover:-translate-y-1" : ""}  dark:text-[#D5D5D5] ${isExpanded ? "block" : "hidden"}`}>{alt}</p>
+                </div>
+            </Tooltip>
         );
     }
 
     useEffect(() => {
-        const timer = setTimeout(() => setLoading(false)); // Simulate loading time
+        const timer = setTimeout(() => setLoading(false));
         return () => clearTimeout(timer);
     }, [pathname]);
 
@@ -69,22 +82,21 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
             >
                 {isNavOn && (
                     <div className="mt-4">
-                        <button
-                            title="Close Navbar"
-                            onClick={()=>{
-                                setIsExpanded(false);
-                                toggleNavbar();
-                            }}
-                            className="opacity-100"
-                        >
-                            <Image
-                                src="/assets/HamburgerIcon.svg"
-                                alt="Close"
-                                width={30}
-                                height={30}
-                                className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110 hover:-translate-y-1"
-                            />
-                        </button>
+                            <button
+                                onClick={()=>{
+                                    setIsExpanded(false);
+                                    toggleNavbar();
+                                }}
+                                className="opacity-100"
+                            >
+                                <Image
+                                    src="/assets/HamburgerIcon.svg"
+                                    alt="Close"
+                                    width={30}
+                                    height={30}
+                                    className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110 hover:-translate-y-1"
+                                />
+                            </button>
                     </div>
                 )}
 
@@ -110,30 +122,34 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                 </div>
                 <div />
                 <div className="mb-4 bottom-5 w-full">
-                    <div
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className={`m-2 ${isNavOn ? "block" : "hidden"} ${!isExpanded ? "block" : "hidden"}`}
-                    >
-                        <Image
-                            src="/assets/LogoutIcon.svg"
-                            alt="Logout"
-                            width={24}
-                            height={24}
-                            className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
-                        />
-                    </div>
-                    <div
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className={`m-2 ${isNavOn ? "block" : "hidden"} ${isExpanded ? "block" : "hidden"}`}
-                    >
-                        <Image
-                            src="/assets/LogoutIcon.svg"
-                            alt="Logout"
-                            width={24}
-                            height={24}
-                            className="dark:invert-[.835] transition-transform transform-gpu -rotate-180 hover:scale-110 hover:-translate-y-1 hover:-rotate-[175deg]"
-                        />
-                    </div>
+                    <Tooltip content="Logout">
+                        <div
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className={`m-2 ${isNavOn ? "block" : "hidden"} ${!isExpanded ? "block" : "hidden"}`}
+                        >
+                            <Image
+                                src="/assets/LogoutIcon.svg"
+                                alt="Logout"
+                                width={24}
+                                height={24}
+                                className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110 hover:-translate-y-1 hover:rotate-[-5deg]"
+                            />
+                        </div>
+                    </Tooltip>
+                    <Tooltip content="Logout">
+                        <div
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className={`m-2 ${isNavOn ? "block" : "hidden"} ${isExpanded ? "block" : "hidden"}`}
+                        >
+                            <Image
+                                src="/assets/LogoutIcon.svg"
+                                alt="Logout"
+                                width={24}
+                                height={24}
+                                className="dark:invert-[.835] transition-transform transform-gpu -rotate-180 hover:scale-110 hover:-translate-y-1 hover:-rotate-[175deg]"
+                            />
+                        </div>
+                    </Tooltip>
                 </div>
             </nav>
         </>
