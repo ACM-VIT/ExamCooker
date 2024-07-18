@@ -12,7 +12,7 @@ function HomeFooter() {
             alt="ACM VIT Student Chapter"
             width={180}
             height={180}
-            className="rounded-full"
+            className="rounded-full max-w-full"
           />
         </div>
       </div>
@@ -21,4 +21,3 @@ function HomeFooter() {
 }
 
 export default HomeFooter;
-

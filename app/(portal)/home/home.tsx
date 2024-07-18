@@ -1,3 +1,4 @@
+
 import React from "react";
 import NotesCard from "@/app/components/NotesCard";
 import HomeFooter from "./home_footer";
@@ -56,7 +57,7 @@ const Home: React.FC = () => {
                         <Image src={ArrowRight} alt="arrow" className="h-6 w-6 ml-2" />
                     </div>
 
-                    <div className="flex justify-center h-[40vh] overflow-x-auto md:overflow-visible">
+                    <div className="flex justify-center md:h-auto h-[40vh] overflow-x-auto md:overflow-visible">
                         <div className="w-full max-w-5xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
                             {notes.map((note, index) => (
                                 <NotesCard
