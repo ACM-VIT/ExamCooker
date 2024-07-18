@@ -29,9 +29,32 @@ export default async function CommentContainer({ comments }: { comments: Comment
     );
 }
 
+export function TimeHandler(isoString:string) {
+    const dateObj = new Date(isoString);
 
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const hours = String((dateObj.getHours() > 12 ? dateObj.getHours() - 12 : dateObj.getHours())).padStart(2, '0');
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+    const amOrPm = Number(dateObj.getHours()) < 12 ? 'am' : 'pm';
+
+    const dateTimeObj = {
+        year,
+        month,
+        day,
+        hours,
+        minutes,
+        seconds,
+        amOrPm,
+    }
+
+    return dateTimeObj;
+}
 
 export async function Comment({ commentId, time, content }: { commentId: string, time: string, content: string }) {
+    const dateTimeObj = TimeHandler(time); 
     const creator = await prisma.comment.findUnique({
         where: {
             id: commentId,
@@ -39,7 +62,7 @@ export async function Comment({ commentId, time, content }: { commentId: string,
         include: {
             author: {
                 select: {
-                    name : true
+                    name: true
                 }
             },
         }
@@ -47,8 +70,8 @@ export async function Comment({ commentId, time, content }: { commentId: string,
     return (
         <div className="m-0 p-2 border-black border-l w-full">
             <div className="flex justify-between w-full">
-                    <p className="font-semibold">{creator?.author.name}</p>
-                    <p className="text-xs md:text-base">{time}</p>
+                <p className="font-semibold">{creator?.author.name}</p>
+                <p className="text-xs md:text-base">Posted at {dateTimeObj.hours}:{dateTimeObj.minutes} {dateTimeObj.amOrPm}, {dateTimeObj.day}/{dateTimeObj.month}/{dateTimeObj.year}</p>
             </div>
             <h6>{content}</h6>
             <hr className="border-0 h-px my-2 bg-black" />
