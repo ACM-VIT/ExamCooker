@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { NumberOfComments } from "@/app/components/forumpost/CommentContainer";
+import { NumberOfComments, TimeHandler } from "@/app/components/forumpost/CommentContainer";
 import TagContainer from "@/app/components/forumpost/TagContainer";
 import { DislikeButton, LikeButton } from "@/app/components/common/Buttons";
 import { ForumPost, Tag, Comment } from "@prisma/client";
@@ -21,6 +21,8 @@ interface ForumCardProps {
 
 export default function ForumCard({ post, title, desc, author, tags, createdAt, comments }: ForumCardProps) {
     const { toggleFavorite, isFavorite } = useFavoritesStore();
+
+    const dateTimeObj = TimeHandler(createdAt.toISOString());
 
     const handleToggleFav = () => {
         toggleFavorite({ id: post.id, type: 'forum' });
@@ -58,7 +60,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                 </div>
 
                 <div className="text-xs text-right">
-                    <p>{author} posted at {createdAt.toISOString()}</p>
+                    <p>{author} posted at {dateTimeObj.hours}:{dateTimeObj.minutes} {dateTimeObj.amOrPm}, {dateTimeObj.day}/{dateTimeObj.month}/{dateTimeObj.year}</p>
                 </div>
             </div>
         </div>
