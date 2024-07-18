@@ -8,6 +8,7 @@ import ArrowRight from "@/public/LandingPage/ArrowRight.svg";
 import GradientHeart from "@/public/LandingPage/GradientHeart.svg";
 import GradientACMLogo from "@/public/LandingPage/ACM Logo.svg";
 import { SignIn } from "../sign-in";
+import Link from "next/link";
 
 export function GradientText({ children }: { children: React.ReactNode }) {
     return (
@@ -41,7 +42,7 @@ function LandingPageCard({
     altOfImage: string;
 }) {
     return (
-        <button className="relative overflow-hidden group">
+        <Link href={"#sign-in"} className="relative overflow-hidden group">
             <div className="hidden lg:block absolute left-0 top-0 w-[200px] h-[200px] rounded-full bg-none transition duration-1000 group-hover:duration-200 group-hover:bg-[#3BF4C7]"></div>
             <div className="block lg:hidden absolute left-0 top-0 w-[200px] h-[200px] rounded-full bg-[#3BF4C7]"></div>
             <div className="hidden lg:block absolute right-0 bottom-0 w-[200px] h-[200px] rounded-full transition duration-1000 group-hover:duration-200 md:bg-none md:group-hover:bg-[#82BEE9]"></div>
@@ -75,7 +76,7 @@ function LandingPageCard({
                     />
                 </div>
             </div>
-        </button>
+        </Link>
     );
 }
 
@@ -135,10 +136,10 @@ function LandingPageContent() {
             </div>
 
             <div className="lg:sticky lg:top-0 lg:h-screen lg:bg-[#8DCAE9] lg:dark:bg-[#0C1222]/20 backdrop-blur-[150px] flex-col content-center overflow-hidden">
-            <div className="hidden lg:block absolute top-0  right-0  w-[200px] h-[100px] rounded-full blur-[100px] bg-none transition duration-1000 bg-[#8DCAE9]"></div>
-            <div className="hidden lg:block absolute bottom-0 left-0  w-[200px] h-[100px] rounded-full blur-[100px] bg-none transition duration-1000 bg-[#8DCAE9]"></div>
+                <div className="hidden lg:block absolute top-0  right-0  w-[200px] h-[100px] rounded-full blur-[100px] bg-none transition duration-1000 bg-[#8DCAE9]"></div>
+                <div className="hidden lg:block absolute bottom-0 left-0  w-[200px] h-[100px] rounded-full blur-[100px] bg-none transition duration-1000 bg-[#8DCAE9]"></div>
                 <WordBetweenLine>
-                    <div className="text-center">
+                    <div id="sign-in" className="text-center">
                         <GradientText>
                             Start Cooking Your
                             <br /> Academic Success Today{" "}
