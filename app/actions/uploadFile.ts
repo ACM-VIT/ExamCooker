@@ -4,6 +4,7 @@ import { Storage, StorageOptions } from "@google-cloud/storage";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "../auth";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 const prisma = new PrismaClient();
 
@@ -76,6 +77,7 @@ export async function storeFileInfoInDatabase(
     year?: string,
     slot?: string
 ) {
+    let data;
     try {
         const session = await auth();
         if (!session || !session.user) {
@@ -103,7 +105,6 @@ export async function storeFileInfoInDatabase(
             allTags.push(slotTag);
         }
 
-        let data;
 
         if (fileType === "Note") {
             data = await prisma.note.create({
@@ -136,8 +137,14 @@ export async function storeFileInfoInDatabase(
         } else {
             throw new Error("Invalid file type");
         }
+        // if (fileType === "Note"){
+        //     revalidatePath('/notes')
+        // } else if (fileType === "PastPaper") {
+        //     revalidatePath('/past_papers')
+        // }
 
-        return { success: true, data };
+        fileType === "Note" ? revalidatePath('/notes') : revalidatePath('/past_papers')
+
     } catch (error) {
         console.error("Error storing file info in database:", error);
         if (error instanceof Error) {
@@ -152,4 +159,14 @@ export async function storeFileInfoInDatabase(
             };
         }
     }
+    // if (fileType === "Note"){
+    //     redirect('/notes')
+    // } else if (fileType === "PastPaper") {
+    //     redirect('/past_papers')
+    // }
+
+    fileType === "Note" ? redirect('/notes') : redirect('/past_papers')
+
+    return { success: true, data };
+
 }
