@@ -30,13 +30,6 @@ function WordBetweenLine({ children }: { children: React.ReactNode }) {
     );
 }
 
-function TestCard(){
-    return (
-    <div className="relative w-full h-full bg-[#5FC4E7]/20 dark:bg-[#7D7467]/20 backdrop-blur-[100px] border-[#5FC4E7]/20 dark:border-[#7D7467]/20 border-[1px] p-1 md:p-4">
-    </div>
-    );
-}
-
 function LandingPageCard({
     title,
     content,
