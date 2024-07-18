@@ -3,6 +3,8 @@
 import { PrismaClient, Tag } from '@prisma/client'
 import { auth } from '../auth'
 import { error } from 'console'
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 
 const prisma = new PrismaClient()
 
@@ -23,7 +25,8 @@ async function findOrCreateTag(name: string): Promise<Tag> {
   return tag;
 }
 
-export async function createForumPost(data: CreateForumPostInput) {
+export async function createForumPost(inputData: CreateForumPostInput) {
+  const status = true;
   try {
     const session = await auth();
     if(!session|| !session.user){
@@ -33,21 +36,21 @@ export async function createForumPost(data: CreateForumPostInput) {
       };
     }
     const tagConnections = [
-      ...(data.year ? [await findOrCreateTag(data.year)] : []),
-      ...(data.slot ? [await findOrCreateTag(data.slot)] : []),
-      ...await Promise.all(data.selectedTags.map(tag => findOrCreateTag(tag)))
+      ...(inputData.year ? [await findOrCreateTag(inputData.year)] : []),
+      ...(inputData.slot ? [await findOrCreateTag(inputData.slot)] : []),
+      ...await Promise.all(inputData.selectedTags.map(tag => findOrCreateTag(tag)))
     ].map(tag => ({ id: tag.id }));
 
     const newForumPost = await prisma.forumPost.create({
       data: {
-        title: data.title,
+        title: inputData.title,
         author: {
           connect: { email: session.user.email!}
         },
         forum: {
-          connect: { id: data.forumId }
+          connect: { id: inputData.forumId }
         },
-        description: data.description,
+        description: inputData.description,
         tags: {
           connect: tagConnections
         }
@@ -57,9 +60,12 @@ export async function createForumPost(data: CreateForumPostInput) {
       }
     });
 
-    return { success: true, data: newForumPost }
+    revalidatePath(`/forum`)
   } catch (error) {
     console.error('Failed to create forum post:', error)
     return { success: false, error: 'Failed to create forum post' }
   }
+
+  redirect('/forum')
+  
 }

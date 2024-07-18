@@ -6,6 +6,8 @@ import { toolbarPlugin } from '@react-pdf-viewer/toolbar';
 import { zoomPlugin } from '@react-pdf-viewer/zoom';
 import { pageNavigationPlugin } from '@react-pdf-viewer/page-navigation';
 import { fullScreenPlugin } from '@react-pdf-viewer/full-screen';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faChevronUp, faChevronDown, faMinus, faPlus, faExpand } from '@fortawesome/free-solid-svg-icons';
 
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
@@ -43,7 +45,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                                             <GoToPreviousPage>
                                                 {(props) => (
                                                     <button {...props} className={buttonClass}>
-                                                        ▲
+                                                        <FontAwesomeIcon icon={faChevronUp} />
                                                     </button>
                                                 )}
                                             </GoToPreviousPage>
@@ -51,7 +53,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                                             <GoToNextPage>
                                                 {(props) => (
                                                     <button {...props} className={buttonClass}>
-                                                        ▼
+                                                        <FontAwesomeIcon icon={faChevronDown} />
                                                     </button>
                                                 )}
                                             </GoToNextPage>
@@ -60,21 +62,21 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                                             <ZoomOut>
                                                 {(props) => (
                                                     <button {...props} className={buttonClass}>
-                                                        -
+                                                        <FontAwesomeIcon icon={faMinus} />
                                                     </button>
                                                 )}
                                             </ZoomOut>
                                             <ZoomIn>
                                                 {(props) => (
                                                     <button {...props} className={buttonClass}>
-                                                        +
+                                                        <FontAwesomeIcon icon={faPlus} />
                                                     </button>
                                                 )}
                                             </ZoomIn>
                                             <EnterFullScreen>
                                                 {(props) => (
                                                     <button {...props} className={buttonClass}>
-                                                        ⛶
+                                                        <FontAwesomeIcon icon={faExpand} />
                                                     </button>
                                                 )}
                                             </EnterFullScreen>

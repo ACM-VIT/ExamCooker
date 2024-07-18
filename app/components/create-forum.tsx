@@ -68,12 +68,12 @@ const CreateForum: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = await createForumPost({ title, forumId, description, year, slot, selectedTags });
-    if (result.success) {
-      console.log('New forum post created: ', result.data);
-      setIsSuccess(true);
-    } else {
-      console.error("Error: ", result.error);
-    }
+    // if (result.success) {     NEEDS FIX
+    //   console.log('New forum post created: ', /*result.data*/);
+    //   setIsSuccess(true);
+    // } else {
+    //   console.error("Error: ", result.error);
+    // }
   };
 
   const handleTagSelect = (tag: string) => {
@@ -115,14 +115,14 @@ const CreateForum: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (isSuccess) {
-      const timer = setTimeout(() => {
-        router.push('/forum');
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isSuccess, router]);
+  // useEffect(() => {
+  //   if (isSuccess) {
+  //     const timer = setTimeout(() => {
+  //       router.push('/forum');
+  //     }, 2000);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [isSuccess, router]);
 
   if (isSuccess) {
     return (

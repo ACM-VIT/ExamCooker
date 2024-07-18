@@ -18,7 +18,7 @@ export function LikeButton({ postId, upvoteCount }: { postId: string, upvoteCoun
 
     return (
         <div className="flex gap-1 p-1">
-            <button onClick={handleClick} className="hover:bg-gray-300">
+            <button onClick={handleClick} className="hover:bg-gray-200 dark:hover:bg-white/20">
                 <Image
                     src={"/comment/ThumbsUpIcon.svg"}
                     alt="ThumbsUp"
@@ -53,7 +53,7 @@ export function DislikeButton({ postId, downvoteCount }: { postId: string, downv
 
     return (
         <div className="flex gap-1 p-1">
-            <button onClick={handleClick} className="hover:bg-gray-300">
+            <button onClick={handleClick} className="hover:bg-gray-200 dark:hover:bg-white/20">
                 <Image
                     src={"/comment/ThumbsDownIcon.svg"}
                     alt="ThumbsDown"
