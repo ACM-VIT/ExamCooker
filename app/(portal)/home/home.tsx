@@ -71,8 +71,6 @@ const Home: React.FC = () => {
                     </div>
                 </section>
             </div>
-
-            <HomeFooter />
         </div>
     );
 };
