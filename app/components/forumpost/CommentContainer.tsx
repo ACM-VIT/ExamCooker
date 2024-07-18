@@ -1,5 +1,4 @@
 import { Prisma, PrismaClient, type Comment } from "@prisma/client";
-import { ReplyButton, LikeButton, DislikeButton } from "../common/Buttons";
 const prisma = new PrismaClient();
 
 let count: number | undefined = 0;
@@ -47,32 +46,12 @@ export async function Comment({ commentId, time, content }: { commentId: string,
     })
     return (
         <div className="m-0 p-2 border-black border-l w-full">
-            <div className="flex justify-between">
-                <div>
+            <div className="flex justify-between w-full">
                     <p className="font-semibold">{creator?.author.name}</p>
                     <p className="text-xs md:text-base">{time}</p>
-                </div>
-                <div className="flex gap-2">
-                    <ReplyButton />
-                    <div className="flex-column">
-                        {/* <LikeButton />
-                        <DislikeButton /> */}
-                    </div>
-                </div>
             </div>
             <h6>{content}</h6>
             <hr className="border-0 h-px my-2 bg-black" />
         </div>
     );
 }
-
-
-// const prisma = new PrismaClient();
-//     const writer = await prisma.comment.findUnique({
-//       where : {
-//         id : comment.authorId,
-//       },
-//       include: {
-//         author: true,
-//       },
-//     });
