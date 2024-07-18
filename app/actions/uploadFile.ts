@@ -1,13 +1,12 @@
-'use server';
+"use server";
 
-import { Storage, StorageOptions } from "@google-cloud/storage"; import { PrismaClient } from "@prisma/client";
+import { Storage, StorageOptions } from "@google-cloud/storage";
+import { PrismaClient } from "@prisma/client";
 import { auth } from "../auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-
 const prisma = new PrismaClient();
-
 
 const storageOptions: StorageOptions = {
     projectId: process.env.GCP_PROJECT_ID,
@@ -15,11 +14,11 @@ const storageOptions: StorageOptions = {
         type: process.env.GCP_TYPE,
         project_id: process.env.GCP_PROJECT_ID,
         private_key_id: process.env.GCP_PRIVATE_KEY_ID,
-        private_key: process.env.GCP_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        private_key: process.env.GCP_PRIVATE_KEY?.replace(/\\n/g, "\n"),
         client_email: process.env.GCP_CLIENT_EMAIL,
         client_id: process.env.GCP_CLIENT_ID,
-        universe_domain: process.env.GCP_UNIVERSE_DOMAIN
-    }
+        universe_domain: process.env.GCP_UNIVERSE_DOMAIN,
+    },
 };
 
 export async function generateSignedUploadURL(filename: string) {
@@ -29,15 +28,18 @@ export async function generateSignedUploadURL(filename: string) {
     }
     console.log("Bucket name:", bucketName);
 
-
     let storage: Storage;
 
     try {
         storage = new Storage(storageOptions);
     } catch (error) {
         console.error("Error initializing Storage:", error);
-        throw new Error(`Failed to initialize Storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    };
+        throw new Error(
+            `Failed to initialize Storage: ${
+                error instanceof Error ? error.message : "Unknown error"
+            }`
+        );
+    }
 
     const bucket = storage.bucket(bucketName);
     const file = bucket.file(filename);
@@ -48,7 +50,7 @@ export async function generateSignedUploadURL(filename: string) {
 
     try {
         const [response] = await file.generateSignedPostPolicyV4(options);
-        console.log(response)
+        console.log(response);
         return response;
     } catch (error) {
         console.error("Error generating signed URL:", error);
@@ -73,18 +75,22 @@ export async function storeFileInfoInDatabase(
     fileType: string,
     tags: string[],
     year?: string,
-    slot?: string,
+    slot?: string
 ) {
     let data;
     try {
         const session = await auth();
-        if(!session || !session.user){redirect("/landing")}
+        if (!session || !session.user) {
+            redirect("/landing");
+        }
         const user = await prisma.user.findUnique({
             where: { email: session.user.email! },
         });
 
         if (!user) {
-            throw new Error(`User with ID ${session?.user?.email} does not exist`);
+            throw new Error(
+                `User with ID ${session?.user?.email} does not exist`
+            );
         }
 
         let allTags = await Promise.all(tags.map(findOrCreateTag));
@@ -107,7 +113,7 @@ export async function storeFileInfoInDatabase(
                     fileUrl: fileUrl,
                     authorId: user.id,
                     tags: {
-                        connect: allTags.map(tag => ({ id: tag.id })),
+                        connect: allTags.map((tag) => ({ id: tag.id })),
                     },
                 },
                 include: {
@@ -121,7 +127,7 @@ export async function storeFileInfoInDatabase(
                     fileUrl: fileUrl,
                     authorId: user.id,
                     tags: {
-                        connect: allTags.map(tag => ({ id: tag.id })),
+                        connect: allTags.map((tag) => ({ id: tag.id })),
                     },
                 },
                 include: {
@@ -142,9 +148,15 @@ export async function storeFileInfoInDatabase(
     } catch (error) {
         console.error("Error storing file info in database:", error);
         if (error instanceof Error) {
-            return { success: false, error: `Failed to store file information in database: ${error.message}` };
+            return {
+                success: false,
+                error: `Failed to store file information in database: ${error.message}`,
+            };
         } else {
-            return { success: false, error: 'Failed to store file information in database: Unknown error' };
+            return {
+                success: false,
+                error: "Failed to store file information in database: Unknown error",
+            };
         }
     }
     // if (fileType === "Note"){
