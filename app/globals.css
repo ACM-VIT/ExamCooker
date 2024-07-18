@@ -23,6 +23,9 @@
 }
 
 @layer base {
+    html {
+        @apply scroll-smooth;
+    }
     h1 {
         @apply sm:text-5xl font-extrabold text-4xl;
     }
