@@ -30,6 +30,13 @@ function WordBetweenLine({ children }: { children: React.ReactNode }) {
     );
 }
 
+function TestCard(){
+    return (
+    <div className="relative w-full h-full bg-[#5FC4E7]/20 dark:bg-[#7D7467]/20 backdrop-blur-[100px] border-[#5FC4E7]/20 dark:border-[#7D7467]/20 border-[1px] p-1 md:p-4">
+    </div>
+    );
+}
+
 function LandingPageCard({
     title,
     content,
@@ -43,26 +50,24 @@ function LandingPageCard({
 }) {
     return (
         <Link href={"#sign-in"} className="relative overflow-hidden group">
-            <div className="hidden lg:block absolute left-0 top-0 w-[200px] h-[200px] rounded-full bg-none transition duration-1000 group-hover:duration-200 group-hover:bg-[#3BF4C7]"></div>
-            <div className="block lg:hidden absolute left-0 top-0 w-[200px] h-[200px] rounded-full bg-[#3BF4C7]"></div>
-            <div className="hidden lg:block absolute right-0 bottom-0 w-[200px] h-[200px] rounded-full transition duration-1000 group-hover:duration-200 md:bg-none md:group-hover:bg-[#82BEE9]"></div>
-            <div className="block lg:hidden absolute right-0 bottom-0 w-[200px] h-[200px] rounded-full bg-[#82BEE9]"></div>
+            <div className="hidden lg:block absolute left-0 top-0 w-[150px] h-[150px] rounded-full bg-none transition duration-1000 group-hover:duration-200 group-hover:bg-[#3BF4C7]"></div>
+            <div className="block lg:hidden absolute left-0 top-0 w-[100px] h-[100px] rounded-full bg-[#3BF4C7]"></div>
+            <div className="hidden lg:block absolute right-0 bottom-0 w-[150px] h-[150px] rounded-full transition duration-1000 group-hover:duration-200 md:bg-none md:group-hover:bg-[#82BEE9]"></div>
+            <div className="block lg:hidden absolute right-0 bottom-0 w-[100px] h-[100px] rounded-full bg-[#82BEE9]"></div>
 
-            <div className="relative w-full h-full bg-[#5FC4E7]/20 dark:bg-[#7D7467]/20 backdrop-blur-[100px] border-[#5FC4E7]/20 dark:border-[#7D7467]/20 border-[1px] p-1 md:p-4">
-                <div className="flex items-center w-full justify-between">
+            <div className="relative flex flex-col justify-between w-full h-full bg-[#5FC4E7]/20 dark:bg-[#7D7467]/20 backdrop-blur-[100px] border-[#5FC4E7]/20 dark:border-[#7D7467]/20 border p-1 md:p-4">
+                <div className="flex items-center w-full h-[150px] md:h-5/6 justify-between">
                     <Image
                         src={imagePath}
                         alt={altOfImage}
-                        width={300}
-                        height={300}
-                        className="h-[100px] md:h-[300px] dark:invert-[.835] dark:hue-rotate-180"
+                        className="h-[75%] lg:h-[90%] dark:invert-[.835] dark:hue-rotate-180"
                     />
                     <div className="flex-col gap-5">
-                        <span className="text-2xl md:text-4xl font-extrabold">
+                        <span className="text-xl md:text-4xl font-extrabold">
                             {title}
                         </span>
                         <br />
-                        <span className="text-lg">{content}</span>
+                        <span className="text-sm md:text-lg">{content}</span>
                     </div>
                 </div>
                 <div className="flex justify-between">
@@ -70,9 +75,7 @@ function LandingPageCard({
                     <Image
                         src={ArrowRight}
                         alt="ArrowRight"
-                        width={35}
-                        height={35}
-                        className="md:h-[35px] h-[25px] dark:invert-[0.835]"
+                        className="md:h-[35px] h-[20px] dark:invert-[0.835]"
                     />
                 </div>
             </div>
@@ -100,14 +103,13 @@ function LandingPageContent() {
                 </div>
             </div>
 
-            <div className="lg:sticky lg:top-0 lg:h-screen space-y-3">
+            <div className="lg:sticky lg:top-0 lg:h-screen space-y-5">
                 <WordBetweenLine>
                     <div className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                         For Crammers By Crammers
                     </div>
                 </WordBetweenLine>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-[5px] px-1 md:gap-[20px] md:px-4 max-w-[1475px] mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-[5px] md:gap-5 mx-auto md:h-3/4 w-[90%] md:max-w-[75%]">
                     <LandingPageCard
                         title="Past Papers"
                         content="Conquer Your Exam Anxieties using our plethora of past papers"
@@ -135,7 +137,7 @@ function LandingPageContent() {
                 </div>
             </div>
 
-            <div className="lg:sticky lg:top-0 lg:h-screen lg:bg-[#8DCAE9] lg:dark:bg-[#0C1222]/20 backdrop-blur-[150px] flex-col content-center overflow-hidden">
+            <div className="lg:sticky lg:top-0 lg:h-screen lg:bg-[#8DCAE9] bg-none lg:dark:bg-[#0C1222]/20 backdrop-blur-[150px] content-center overflow-hidden">
                 <div className="hidden lg:block absolute top-0  right-0  w-[200px] h-[100px] rounded-full blur-[100px] bg-none transition duration-1000 bg-[#8DCAE9]"></div>
                 <div className="hidden lg:block absolute bottom-0 left-0  w-[200px] h-[100px] rounded-full blur-[100px] bg-none transition duration-1000 bg-[#8DCAE9]"></div>
                 <WordBetweenLine>
@@ -201,3 +203,31 @@ function LandingPageContent() {
 }
 
 export default LandingPageContent;
+
+
+                // <div className="grid grid-cols-1 lg:grid-cols-2 gap-[5px] px-1 md:gap-[20px] max-w-[85%] mx-auto">
+                //     <LandingPageCard
+                //         title="Past Papers"
+                //         content="Conquer Your Exam Anxieties using our plethora of past papers"
+                //         imagePath={PastPaper}
+                //         altOfImage="PastPaper"
+                //     />
+                //     <LandingPageCard
+                //         title="Forum"
+                //         content="Connect with fellow crammers and ignite discussions with our Forum"
+                //         imagePath={Forum}
+                //         altOfImage="Forum"
+                //     />
+                //     <LandingPageCard
+                //         title="Notes"
+                //         content="Access and Contribute to a vibrant collection of notes, created by students like you!"
+                //         imagePath={Notes}
+                //         altOfImage="Notes"
+                //     />
+                //     <LandingPageCard
+                //         title="Resource Repo"
+                //         content="Expand your learning horizon through curated links to top-notch articles and videos"
+                //         imagePath={Resources}
+                //         altOfImage="ResourceRepo"
+                //     />
+                // </div>
