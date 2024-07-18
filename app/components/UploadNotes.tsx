@@ -8,6 +8,8 @@ import Fuse from 'fuse.js';
 import { getTags } from '../actions/fetchTags';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 const UploadFileNotes: React.FC = () => {
     const [title, setTitle] = useState('');
