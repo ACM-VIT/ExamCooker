@@ -1,13 +1,12 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import { PrismaClient, Prisma, Subject } from '@prisma/client';
+import { PrismaClient, Subject } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import ResourceCard from '../../components/ResourceCard';
 import Pagination from '../../components/Pagination';
 import SearchBar from '../../components/SearchBar';
 
 const SCORE_THRESHOLD = 0.8;
-
 const prisma = new PrismaClient();
 
 function validatePage(page: number, totalPages: number): number {
@@ -61,38 +60,39 @@ export default async function ResourcesPage({ searchParams }: { searchParams: { 
     }
 
     return (
-        <div className="transition-colors container mx-auto px-8 py-8 flex flex-col min-h-screen text-black dark:text-[#D5D5D5]">
-            <h1 className="text-center mb-4">Resource Repo</h1>
-            <div className="flex justify-center">
-                <div className="container w-5/6 lg:w-1/2 flex items-center justify-center p-4 space-x-4 pt-2">
+        <div className="transition-colors min-h-screen bg-gray-100 dark:bg-gray-900 text-black dark:text-gray-200">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <h1 className="text-3xl sm:text-4xl font-bold text-center mb-8">Resource Repository</h1>
+                
+                <div className="max-w-3xl mx-auto mb-8">
                     <SearchBar pageType="resources" initialQuery={search} />
                 </div>
-            </div>
-            <div className="flex justify-center">
-                <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-                    {paginatedSubjects.length > 0 ? (
-                        paginatedSubjects.map((subject) => (
+                
+                {paginatedSubjects.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {paginatedSubjects.map((subject) => (
                             <ResourceCard key={subject.id} subject={subject} />
-                        ))
-                    ) : (
-                        <p className="col-span-3 text-center">
-                            {search
-                                ? "No subjects found matching your search."
-                                : "No subjects found."}
-                        </p>
-                    )}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-center text-lg">
+                        {search
+                            ? "No subjects found matching your search."
+                            : "No subjects found."}
+                    </p>
+                )}
+
+                {totalPages > 1 && (
+                    <div className="mt-12">
+                        <Pagination
+                            currentPage={validatedPage}
+                            totalPages={totalPages}
+                            basePath="/resources"
+                            searchQuery={search}
+                        />
+                    </div>
+                )}
             </div>
-            {totalPages > 1 && (
-                <div className="mt-auto">
-                    <Pagination
-                        currentPage={validatedPage}
-                        totalPages={totalPages}
-                        basePath="/resources"
-                        searchQuery={search}
-                    />
-                </div>
-            )}
         </div>
     );
 }
