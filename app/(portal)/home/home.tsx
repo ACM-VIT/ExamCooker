@@ -6,6 +6,25 @@ import Image from "next/image";
 import UserName from "./display_username";
 import { GradientText } from "@/app/components/landing_page/landing";
 
+function getQuirkyLine() {
+    const collection : string[] = [
+        "You've got this! Even if 'this' means a borderline psychotic level of caffeine consumption.",
+        "They laughed when I said I'd learn a semester's worth of material in one night. Now they're asking for my notes. #Who'sLaughingNow?",
+        "Sleep is for the victors... of tomorrow's nap.",
+        "Sleep is optional, caffeine is mandatory",
+        "You might not feel like a genius now, but you will after this exam.",
+        "Practice makes progress... and hopefully, perfection.",
+        "Share your knowledge, save a life (or at least a grade)",
+        "I'm not lazy, I'm just selectively productive.",
+        "Coffee is my superpower.",
+        "This coffee is keeping my sanity intact."
+    ]
+
+    const selection : number = Math.floor(Math.random() * collection.length);
+
+    return collection[selection];
+}
+
 const Home: React.FC = () => {
     const notes = [
         { id: 1, title: "Note 1", content: "Content for note 1" },
@@ -22,8 +41,8 @@ const Home: React.FC = () => {
         <div className="bg-[#C2E6EC] dark:bg-[#0C1222] min-h-screen text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
             <div className="flex-grow">
                 <div className="w-full px-8 mx-auto text-center justify-center mt-8">
-                    <h1 className="text-3xl md:text-7xl mb-4">Welcome <GradientText><UserName /></GradientText></h1>
-                    <p className="text-md mb-4 sm:text-xl">You've got this! Even if 'this' means a borderline psychotic level of caffeine consumption.</p>
+                    <h1 className="text-3xl md:text-7xl mb-4">Welcome, <GradientText><UserName /></GradientText></h1>
+                    <p className="text-md mb-4 sm:text-xl">{getQuirkyLine()}</p>
                 </div>
 
                 <div className="w-full px-4">
@@ -42,7 +61,7 @@ const Home: React.FC = () => {
                                 <NotesCard
                                     key={note.id}
                                     index={index}
-                                    note={note}
+                                    note={note} //pls get rid of this
                                     className="max-h-[15rem] sm:max-h-[18rem] md:max-h-[20rem]"
                                 />
                             ))}

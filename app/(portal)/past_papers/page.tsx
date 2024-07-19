@@ -75,6 +75,9 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string, 
         include: {
             tags: true,
         },
+        orderBy: {
+            createdAt: 'desc',
+        }
     });
 
     let filteredPastPapers = allPastPapers;
