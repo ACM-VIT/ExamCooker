@@ -4,6 +4,7 @@ import { auth } from "@/app/auth";
 import { redirect } from "next/navigation";
 import { SessionProvider } from "next-auth/react";
 import ClientSide from "./clientSide";
+import HomeFooter from "./home/home_footer";
 
 export default async function Layout({
     children,
@@ -13,5 +14,12 @@ export default async function Layout({
     const session = await auth();
     if (!session || !session.user) return redirect("/landing");
 
-    return <ClientSide><SessionProvider>{children}</SessionProvider></ClientSide>;
+    return (
+        <ClientSide>
+            <SessionProvider>
+                {children}
+            </SessionProvider>
+            <HomeFooter />
+        </ClientSide>
+    );
 }

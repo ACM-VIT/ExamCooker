@@ -1,24 +1,43 @@
-
 import React from 'react';
 import Image from 'next/image';
+import { faInstagram } from '@fortawesome/free-brands-svg-icons';
+import { faLinkedinIn } from '@fortawesome/free-brands-svg-icons';
+import { faYoutube } from '@fortawesome/free-brands-svg-icons';
+import { faGithub } from '@fortawesome/free-brands-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 function HomeFooter() {
   return (
-    <footer className="flex justify-center pt-6 pb-6 w-full bg-[#C2E6EC] dark:bg-[#0C1222]">
-      <div className="flex items-center justify-center">
-        <div className="max-w-xs sm:max-w-md ml-2.5">
-          <Image
-            src={'/assets/ACM Logo.svg'}
-            alt="ACM VIT Student Chapter"
-            width={180}
-            height={180}
-            className="rounded-full"
-          />
-        </div>
+    <footer className="flex flex-col sm:flex-row justify-between items-center pt-6 pb-6 mx-20% bg-[#C2E6EC] dark:bg-[#0C1222] px-4 sm:px-8">
+      <div className="flex justify-center mb-4 sm:mb-0"> 
+        <Image
+          src={'/assets/ACM Logo.svg'}
+          alt="ACM VIT Student Chapter"
+          width={180}
+          height={180}
+          className="rounded-full"
+        />
+      </div>
+      <div className="hidden sm:block">
+        <p className="text-xl sm:text-3xl font-semibold text-black dark:text-[#D5D5D5]">ExamCooker</p>
+      </div>
+      <div className="flex items-center space-x-3 sm:space-x-4">
+        <p className="text-lg sm:text-xl font-semibold text-black dark:text-[#D5D5D5]">Find us:</p>
+        <a href="https://www.instagram.com/acmvit?igsh=cXEybjdxb3hja3Iw">
+          <FontAwesomeIcon icon={faInstagram} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
+        </a>
+        <a href="https://in.linkedin.com/company/acmvit">
+          <FontAwesomeIcon icon={faLinkedinIn} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
+        </a>
+        <a href="https://www.youtube.com/@acm_vit">
+          <FontAwesomeIcon icon={faYoutube} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
+        </a>
+        <a href="https://github.com/ACM-VIT">
+          <FontAwesomeIcon icon={faGithub} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
+        </a>
       </div>
     </footer>
   );
 }
 
 export default HomeFooter;
-
