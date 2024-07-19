@@ -51,7 +51,7 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
             bookmarkedNotes: true,
             bookmarkedPastPapers: true,
             bookmarkedResources: true,
-        }
+        },
     });
 
     if (!userBookmarks) {

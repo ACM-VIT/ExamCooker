@@ -76,6 +76,9 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
         include: {
             tags: true,
         },
+        orderBy: {
+            createdAt: 'desc',
+        }
     });
 
     let filteredNotes = allNotes;
