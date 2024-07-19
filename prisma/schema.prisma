@@ -79,18 +79,18 @@ model Note {
 }
 
 model ViewHistory {
-  id          Int       @id @default(sequence())
+  id          String     @id @default(cuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  pastPaper   PastPaper @relation(fields: [pastPaperId], references: [id])
-  pastPaperId String
-  note        Note      @relation(fields: [noteId], references: [id])
-  noteId      String
-  forum       Forum     @relation(fields: [forumId], references: [id])
-  forumId     String
-  subject     Subject   @relation(fields: [subjectId], references: [id])
-  subjectId   String
-  viewedAt    DateTime  @updatedAt
+  user        User       @relation(fields: [userId], references: [id])
+  pastPaper   PastPaper? @relation(fields: [pastPaperId], references: [id])
+  pastPaperId String?
+  note        Note?      @relation(fields: [noteId], references: [id])
+  noteId      String?
+  forum       Forum?     @relation(fields: [forumId], references: [id])
+  forumId     String?
+  subject     Subject?   @relation(fields: [subjectId], references: [id])
+  subjectId   String?
+  viewedAt    DateTime   @updatedAt
 }
 
 model Forum {
@@ -148,9 +148,6 @@ model PastPaper {
 model Tag {
   id         String      @id @default(cuid())
   name       String      @unique
-  CourseCode String?
-  year       Int?
-  slot       String?
   notes      Note[]
   forums     Forum[]
   forumPosts ForumPost[]
