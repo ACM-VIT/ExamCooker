@@ -1,7 +1,5 @@
-// pages/note.tsx
 import React from 'react';
 import { PrismaClient } from '@prisma/client';
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import PDFViewer from '@/app/components/pdfviewer';
 

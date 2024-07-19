@@ -1,7 +1,6 @@
-import { Prisma, PrismaClient, type Comment } from "@prisma/client";
+import { PrismaClient, type Comment } from "@prisma/client";
 const prisma = new PrismaClient();
 
-let count: number | undefined = 0;
 
 export function NumberOfComments({ commentArray }: { commentArray: Comment[] | undefined }) {
     return (
@@ -12,8 +11,7 @@ export function NumberOfComments({ commentArray }: { commentArray: Comment[] | u
 }
 
 
-export default async function CommentContainer({ comments }: { comments: Comment[] | undefined }) {
-    count = comments?.length;
+export default function CommentContainer({ comments }: { comments: Comment[] | undefined }) {
 
     return (
         <div className="bg-[#7BBFE8] dark:bg-[#008A90] p-0 md:px-2 h-full">
@@ -29,7 +27,7 @@ export default async function CommentContainer({ comments }: { comments: Comment
     );
 }
 
-export function TimeHandler(isoString:string) {
+export function TimeHandler(isoString: string) {
     const dateObj = new Date(isoString);
 
     const year = dateObj.getFullYear();
@@ -54,7 +52,7 @@ export function TimeHandler(isoString:string) {
 }
 
 export async function Comment({ commentId, time, content }: { commentId: string, time: string, content: string }) {
-    const dateTimeObj = TimeHandler(time); 
+    const dateTimeObj = TimeHandler(time);
     const creator = await prisma.comment.findUnique({
         where: {
             id: commentId,

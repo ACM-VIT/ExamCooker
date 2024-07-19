@@ -74,30 +74,5 @@ export function DislikeButton({ postId, downvoteCount }: { postId: string, downv
     )
 }
 
-export function ReplyButton() {
-
-    function handleClick() {
-        alert("RANDOM BULLSHIT GO"); //yes that's a moonknight reference ;)
-    }
-
-    return <div className="p-1">
-        <button onClick={handleClick} className="hover:bg-gray-300">
-            <Image
-                src={"/comment/ReplyIcon.svg"}
-                alt="Reply"
-                width={21}
-                height={21}
-                className="hidden md:flex"
-            />
-            <Image
-                src={"/comment/ReplyIcon.svg"}
-                alt="Reply"
-                width={14}
-                height={14}
-                className="flex md:hidden"
-            />
-        </button>
-    </div>;
-}
 
 

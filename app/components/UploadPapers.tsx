@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
 import { generateSignedUploadURL, storeFileInfoInDatabase } from "../actions/uploadFile";
@@ -121,9 +121,6 @@ const UploadFilePaper: React.FC = () => {
     const handleRemoveTag = (tag: string) => {
         setSelectedTags(selectedTags.filter(t => t !== tag));
     };
-    const onDrop = useCallback((acceptedFiles: File[]) => {
-        setFiles([...files, ...acceptedFiles]);
-    }, [files]);
 
     const { getRootProps, getInputProps } = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
@@ -214,7 +211,7 @@ const UploadFilePaper: React.FC = () => {
                 <div className="flex justify-between items-center mb-4">
                     <Link href={'/past_papers'}>
                         <button className="text-[#3BF3C7] px-2 py-2 border-2 border-[#3BF3C7] flex items-center justify-center font-bold hover:bg-[#ffffff]/10">
-                            <FontAwesomeIcon icon={faArrowLeft}/>
+                            <FontAwesomeIcon icon={faArrowLeft} />
                         </button>
                     </Link>
                     <h3>New Paper</h3>

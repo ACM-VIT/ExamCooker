@@ -35,8 +35,7 @@ export async function generateSignedUploadURL(filename: string) {
     } catch (error) {
         console.error("Error initializing Storage:", error);
         throw new Error(
-            `Failed to initialize Storage: ${
-                error instanceof Error ? error.message : "Unknown error"
+            `Failed to initialize Storage: ${error instanceof Error ? error.message : "Unknown error"
             }`
         );
     }
@@ -93,7 +92,7 @@ export async function storeFileInfoInDatabase(
             );
         }
 
-        let allTags = await Promise.all(tags.map(findOrCreateTag));
+        const allTags = await Promise.all(tags.map(findOrCreateTag));
 
         if (year) {
             const yearTag = await findOrCreateTag(year);

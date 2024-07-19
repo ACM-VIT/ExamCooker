@@ -52,6 +52,6 @@ function getBookmarkField(itemType: BookmarkType): string {
     case 'subject':
       return 'bookmarkedResources';
     default:
-      throw new Error(`Invalid item type: ${itemType}`);
+      throw new Error(`Invalid item type: ${itemType as string}`);
   }
 }

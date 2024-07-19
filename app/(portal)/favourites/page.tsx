@@ -2,7 +2,7 @@ import React from "react";
 import Fuse from 'fuse.js';
 import Pagination from "@/app/components/Pagination";
 import SearchBar from "@/app/components/SearchBar";
-import { PrismaClient, ForumPost, Note, PastPaper, Subject } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import FavFetch from '@/app/components/FavFetchFilter';
 import { auth } from "@/app/auth";
 
