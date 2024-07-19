@@ -27,6 +27,7 @@ model User {
   bookmarkedPastPapers PastPaper[]   @relation("UserBookmarkedPastPapers")
   bookmarkedResources  Subject[]     @relation("UserBookmarkedResources")
   bookmarkedForumPosts ForumPost[]   @relation("UserBookmarkedForumPosts")
+  votes                Vote[]
 }
 
 model Account {
@@ -70,6 +71,7 @@ model Note {
   author       User          @relation(fields: [authorId], references: [id], name: "UserNotes")
   authorId     String
   fileUrl      String
+  thumbNailUrl String?
   isClear      Boolean       @default(false)
   tags         Tag[]
   createdAt    DateTime      @default(now())
@@ -86,38 +88,62 @@ model ViewHistory {
   pastPaperId String?
   note        Note?      @relation(fields: [noteId], references: [id])
   noteId      String?
-  forum       Forum?     @relation(fields: [forumId], references: [id])
-  forumId     String?
+  forumPost   ForumPost? @relation(fields: [forumPostId], references: [id])
+  forumPostId String?
   subject     Subject?   @relation(fields: [subjectId], references: [id])
   subjectId   String?
   viewedAt    DateTime   @updatedAt
+
+  @@unique([userId, pastPaperId])
+  @@unique([userId, noteId])
+  @@unique([userId, forumPostId])
+  @@unique([userId, subjectId])
 }
 
 model Forum {
-  id          String        @id @default(cuid())
-  courseName  String
-  tags        Tag[]
-  posts       ForumPost[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  ViewHistory ViewHistory[]
+  id         String      @id @default(cuid())
+  courseName String
+  tags       Tag[]
+  posts      ForumPost[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 }
 
 model ForumPost {
-  id            String    @id @default(cuid())
+  id            String        @id @default(cuid())
   title         String
-  author        User      @relation(fields: [authorId], references: [id])
+  author        User          @relation(fields: [authorId], references: [id])
   authorId      String
-  forum         Forum     @relation(fields: [forumId], references: [id])
+  forum         Forum         @relation(fields: [forumId], references: [id])
   forumId       String
-  description   String    @default("")
+  description   String        @default("")
   comments      Comment[]
   tags          Tag[]
-  upvoteCount   Int       @default(0)
-  downvoteCount Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  bookmarkedBy  User[]    @relation("UserBookmarkedForumPosts")
+  upvoteCount   Int           @default(0)
+  downvoteCount Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  bookmarkedBy  User[]        @relation("UserBookmarkedForumPosts")
+  viewHistory   ViewHistory[]
+  votes         Vote[]
+}
+
+model Vote {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  forumPostId String
+  forumPost   ForumPost @relation(fields: [forumPostId], references: [id])
+  type        VoteType
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, forumPostId])
+}
+
+enum VoteType {
+  UPVOTE
+  DOWNVOTE
 }
 
 model Comment {
@@ -135,6 +161,7 @@ model PastPaper {
   id           String        @id @default(cuid())
   title        String
   fileUrl      String
+  thumbNailUrl String?
   tags         Tag[]
   author       User          @relation(fields: [authorId], references: [id], name: "UserPastPapers")
   authorId     String
@@ -142,7 +169,7 @@ model PastPaper {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   bookmarkedBy User[]        @relation("UserBookmarkedPastPapers")
-  ViewHistory  ViewHistory[]
+  viewHistory  ViewHistory[]
 }
 
 model Tag {
@@ -161,7 +188,7 @@ model Subject {
   name         String        @unique
   modules      Module[]
   bookmarkedBy User[]        @relation("UserBookmarkedResources")
-  ViewHistory  ViewHistory[]
+  viewHistory  ViewHistory[]
 }
 
 model Module {
