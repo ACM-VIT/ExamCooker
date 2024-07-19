@@ -1,6 +1,6 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import { PrismaClient, Prisma, Note, Tag } from "@prisma/client";
+import { PrismaClient, Note, Tag } from "@prisma/client";
 import { redirect } from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import NotesCard from "../../components/NotesCard";
@@ -56,7 +56,7 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
     const pageSize = 9;
     const search = searchParams.search || '';
     const page = parseInt(searchParams.page || '1', 10);
-    let tags: string[] = Array.isArray(searchParams.tags)
+    const tags: string[] = Array.isArray(searchParams.tags)
         ? searchParams.tags
         : (searchParams.tags ? searchParams.tags.split(',') : []);
 
@@ -86,7 +86,7 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
     const totalCount = filteredNotes.length;
     const totalPages = Math.ceil(totalCount / pageSize);
 
-    let validatedPage = validatePage(page, totalPages);
+    const validatedPage = validatePage(page, totalPages);
 
     const startIndex = (validatedPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
@@ -115,6 +115,17 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
                 </div>
             </div>
 
+            {tags.length > 0 && (
+                <div className="flex justify-center mb-4">
+                    <div className="flex flex-wrap gap-2">
+                        {tags.map((tag, index) => (
+                            <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className='flex justify-center'>
                 <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6  place-content-center">

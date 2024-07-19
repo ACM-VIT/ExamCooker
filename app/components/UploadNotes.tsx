@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
 import { generateSignedUploadURL, storeFileInfoInDatabase } from "../actions/uploadFile";
@@ -8,8 +8,6 @@ import Fuse from 'fuse.js';
 import { getTags } from '../actions/fetchTags';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 
 const UploadFileNotes: React.FC = () => {
     const [title, setTitle] = useState('');
@@ -121,9 +119,6 @@ const UploadFileNotes: React.FC = () => {
     const handleRemoveTag = (tag: string) => {
         setSelectedTags(selectedTags.filter(t => t !== tag));
     };
-    const onDrop = useCallback((acceptedFiles: File[]) => {
-        setFiles([...files, ...acceptedFiles]);
-    }, [files]);
 
     const { getRootProps, getInputProps } = useDropzone({
         onDrop: (acceptedFiles: File[]) => {

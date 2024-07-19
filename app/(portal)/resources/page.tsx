@@ -49,7 +49,7 @@ export default async function ResourcesPage({ searchParams }: { searchParams: { 
     const totalCount = filteredSubjects.length;
     const totalPages = Math.ceil(totalCount / pageSize);
 
-    let validatedPage = validatePage(page, totalPages);
+    const validatedPage = validatePage(page, totalPages);
 
     const startIndex = (validatedPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
@@ -63,11 +63,11 @@ export default async function ResourcesPage({ searchParams }: { searchParams: { 
         <div className="transition-colors min-h-screen bg-gray-100 dark:bg-gray-900 text-black dark:text-gray-200">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <h1 className="text-3xl sm:text-4xl font-bold text-center mb-8">Resource Repository</h1>
-                
+
                 <div className="max-w-3xl mx-auto mb-8">
                     <SearchBar pageType="resources" initialQuery={search} />
                 </div>
-                
+
                 {paginatedSubjects.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {paginatedSubjects.map((subject) => (

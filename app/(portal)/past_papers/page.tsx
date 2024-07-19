@@ -1,10 +1,9 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import { PrismaClient, Prisma, PastPaper, Tag } from "@prisma/client";
+import { PrismaClient, PastPaper, Tag } from "@prisma/client";
 import { redirect } from 'next/navigation';
 import Pagination from '../../components/Pagination';
 import PastPaperCard from '../../components/PastPaperCard';
-import FilterComponent from '../../components/FilterComponent';
 import SearchBar from '../../components/SearchBar';
 import UploadButtonPaper from '../../components/uploadButtonPaper';
 import Dropdown from '../../components/FilterComponent';
@@ -56,7 +55,7 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string, 
     const pageSize = 9;
     const search = searchParams.search || '';
     const page = parseInt(searchParams.page || '1', 10);
-    let tags: string[] = Array.isArray(searchParams.tags)
+    const tags: string[] = Array.isArray(searchParams.tags)
         ? searchParams.tags
         : (searchParams.tags ? searchParams.tags.split(',') : []);
 
@@ -86,7 +85,7 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string, 
     const totalCount = filteredPastPapers.length;
     const totalPages = Math.ceil(totalCount / pageSize);
 
-    let validatedPage = validatePage(page, totalPages);
+    const validatedPage = validatePage(page, totalPages);
 
     const startIndex = (validatedPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;

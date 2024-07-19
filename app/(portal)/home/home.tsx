@@ -1,7 +1,6 @@
 
 import React from "react";
 import NotesCard from "@/app/components/NotesCard";
-import HomeFooter from "./home_footer";
 import ArrowRight from "@/public/assets/ArrowRight.svg";
 import Image from "next/image";
 import UserName from "./display_username";

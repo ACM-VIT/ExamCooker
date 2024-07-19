@@ -1,11 +1,11 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { NumberOfComments, TimeHandler } from "@/app/components/forumpost/CommentContainer";
 import TagContainer from "@/app/components/forumpost/TagContainer";
 import { DislikeButton, LikeButton } from "@/app/components/common/Buttons";
 import { ForumPost, Tag, Comment } from "@prisma/client";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEye, faHeart } from '@fortawesome/free-solid-svg-icons';
+import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import Link from "next/link";
 import { useFavoritesStore } from '../actions/StoredFavourites';
 
@@ -25,7 +25,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
     const dateTimeObj = TimeHandler(createdAt.toISOString());
 
     const handleToggleFav = () => {
-        toggleFavorite({ id: post.id, type: 'forum' });
+        void toggleFavorite({ id: post.id, type: 'forum' });
     };
 
     return (

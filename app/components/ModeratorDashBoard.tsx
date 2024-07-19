@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Note, PastPaper, Tag } from "@prisma/client";
+import { Note, PastPaper } from "@prisma/client";
 import Pagination from "./Pagination";
 import NotesCard from "./NotesCard";
 import PastPaperCard from "./PastPaperCard";
@@ -36,11 +36,11 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({ ini
 
     const page = parseInt(searchParams.page || '1', 10);
 
-    let items = activeTab === 'notes' ? notes : pastPapers;
+    const items = activeTab === 'notes' ? notes : pastPapers;
 
     const totalCount = items.length;
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-    let validatedPage = validatePage(page, totalPages);
+    const validatedPage = validatePage(page, totalPages);
 
     const startIndex = (validatedPage - 1) * PAGE_SIZE;
     const endIndex = startIndex + PAGE_SIZE;

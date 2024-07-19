@@ -1,8 +1,5 @@
-import Link from "next/link";
-import { SignOut } from "../components/sign-out";
 import { auth } from "@/app/auth";
 import Home from "@/app/(portal)/home/home";
-import HomeFooter from "./home/home_footer";
 
 
 export default async function Page() {
@@ -11,7 +8,7 @@ export default async function Page() {
     return (
         <>
             {session ? (
-                    <Home/>
+                <Home />
             ) : (
                 <div>Yahan kya krra h lode</div>
             )}

@@ -10,11 +10,23 @@ type CreateCommentInput = {
   content: string
   forumPostId: string
 }
+interface NewComment {
+  id: string;
+  content: string;
+  authorId: string;
+  forumPostId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 
-export async function createComment(data: CreateCommentInput) {
+export async function createComment(data: CreateCommentInput): Promise<{ success: boolean; data?: NewComment; error?: string }> {
   try {
     const session = await auth();
+
+    if (!session || !session.user) {
+      throw new Error("Session or user is undefined");
+    }
     const newComment = await prisma.comment.create({
       data: {
         content: data.content,

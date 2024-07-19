@@ -6,7 +6,7 @@ import NotesCard from './NotesCard';
 import PastPaperCard from './PastPaperCard';
 import ResourceCard from './ResourceCard';
 import ForumCard from './ForumCard';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 const FavFetch = ({ pastpapers, notes, forumposts, resources, activeTab }: {
   pastpapers: PastPaper[],
@@ -16,7 +16,6 @@ const FavFetch = ({ pastpapers, notes, forumposts, resources, activeTab }: {
   activeTab: string
 }) => {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [currentTab, setCurrentTab] = useState(activeTab);
 
   useEffect(() => {
@@ -59,12 +58,12 @@ const FavFetch = ({ pastpapers, notes, forumposts, resources, activeTab }: {
           <ForumCard
             key={eachPost.id}
             title={eachPost.title}
-            author={eachPost.author?.name || 'Unknown'}
+            author={eachPost.author?.name}
             desc={eachPost.description}
             createdAt={eachPost.createdAt}
-            tags={eachPost.tags || []}
+            tags={eachPost.tags}
             post={eachPost}
-            comments={eachPost.comments || []}
+            comments={eachPost.comment}
           />
         ));
       case 'Resources':

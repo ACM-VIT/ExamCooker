@@ -1,6 +1,6 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import { PrismaClient, Prisma, ForumPost, Tag, Comment, User } from "@prisma/client";
+import { PrismaClient, ForumPost, Tag, Comment, User } from "@prisma/client";
 import { redirect } from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import ForumCard from "../../components/ForumCard";
@@ -65,7 +65,7 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
   const pageSize = 5;
   const search = searchParams.search || '';
   const page = parseInt(searchParams.page || '1', 10);
-  let tags: string[] = Array.isArray(searchParams.tags)
+  const tags: string[] = Array.isArray(searchParams.tags)
     ? searchParams.tags
     : (searchParams.tags ? searchParams.tags.split(',') : []);
 
@@ -91,7 +91,7 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
       },
     },
     orderBy: {
-       createdAt: 'desc'
+      createdAt: 'desc'
     }
   });
 
@@ -103,7 +103,7 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
   const totalCount = filteredForumPosts.length;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  let validatedPage = validatePage(page, totalPages);
+  const validatedPage = validatePage(page, totalPages);
 
   const startIndex = (validatedPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
@@ -117,46 +117,46 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
 
   return (
     <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-8 py-8">
-        <h1 className="text-center mb-4">Forum</h1>
+      <h1 className="text-center mb-4">Forum</h1>
 
-            <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-                <Dropdown pageType='forum' />
-                <SearchBar pageType="forum" initialQuery={search} />
-                <NewForumButton />
-            </div>
+      <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
+        <Dropdown pageType='forum' />
+        <SearchBar pageType="forum" initialQuery={search} />
+        <NewForumButton />
+      </div>
 
-            <div className='flex-col w-5/6 md:hidden space-y-4'>
-                <SearchBar pageType="forum" initialQuery={search} />
-                <div className='flex justify-between'>
-                    <Dropdown pageType='forum' />
-                    <NewForumButton />
-                </div>
-            </div>
-
-        <div className="w-full mx-auto">
-          {paginatedForumPosts.length > 0 ? (
-            <div className="space-y-4">
-              {paginatedForumPosts.map((eachPost) => (
-                <ForumCard
-                  key={eachPost.id}
-                  title={eachPost.title}
-                  author={eachPost.author.name || 'Unknown'}
-                  desc={eachPost.description || 'No description available'}
-                  createdAt={eachPost.createdAt}
-                  tags={eachPost.tags}
-                  post={eachPost}
-                  comments={eachPost.comments}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-center py-8">
-              {search || tags.length > 0
-                ? "No forum posts found matching your search or selected tags."
-                : "No forum posts found."}
-            </p>
-          )}
+      <div className='flex-col w-5/6 md:hidden space-y-4'>
+        <SearchBar pageType="forum" initialQuery={search} />
+        <div className='flex justify-between'>
+          <Dropdown pageType='forum' />
+          <NewForumButton />
         </div>
+      </div>
+
+      <div className="w-full mx-auto">
+        {paginatedForumPosts.length > 0 ? (
+          <div className="space-y-4">
+            {paginatedForumPosts.map((eachPost) => (
+              <ForumCard
+                key={eachPost.id}
+                title={eachPost.title}
+                author={eachPost.author.name || 'Unknown'}
+                desc={eachPost.description || 'No description available'}
+                createdAt={eachPost.createdAt}
+                tags={eachPost.tags}
+                post={eachPost}
+                comments={eachPost.comments}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-center py-8">
+            {search || tags.length > 0
+              ? "No forum posts found matching your search or selected tags."
+              : "No forum posts found."}
+          </p>
+        )}
+      </div>
 
       {totalPages > 1 && (
         <div className="mt-auto">
