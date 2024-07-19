@@ -1,8 +1,5 @@
-
 import React from "react";
 import NotesCard from "@/app/components/NotesCard";
-import ArrowRight from "@/public/assets/ArrowRight.svg";
-import Image from "next/image";
 import UserName from "./display_username";
 import { GradientText } from "@/app/components/landing_page/landing";
 
@@ -20,9 +17,7 @@ function getQuirkyLine() {
         "This coffee is keeping my sanity intact."
     ]
 
-    const selection : number = Math.floor(Math.random() * collection.length);
-
-    return collection[selection];
+    return collection[Math.floor(Math.random() * collection.length)];
 }
 
 const Home: React.FC = () => {
@@ -39,55 +34,49 @@ const Home: React.FC = () => {
 
     return (
         <div className="bg-[#C2E6EC] dark:bg-[#0C1222] min-h-screen text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
-            <div className="flex-grow">
-                <div className="w-full px-8 mx-auto text-center justify-center mt-8">
-                    <h1 className="text-3xl md:text-7xl mb-4">Welcome, <GradientText><UserName /></GradientText></h1>
-                    <p className="text-md mb-4 sm:text-xl">{getQuirkyLine()}</p>
-                </div>
+            <div className="container mx-auto px-4 py-8 max-w-7xl">
+                <header className="text-center mb-12">
+                    <h1 className="text-4xl md:text-6xl font-bold mb-4">Welcome <GradientText><UserName /></GradientText></h1>
+                    <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300">{getQuirkyLine()}</p>
+                </header>
 
-                <div className="w-full px-4">
-                    <div className="flex items-center justify-center text-2xl font-bold pt-6 mb-2">
-                        <div className="relative flex items-center justify-between">
-                            <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                            <span>Recently viewed</span>
-                            <Image src={ArrowRight} alt="arrow" className="h-6 w-6 ml-2" />
-                            <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                        </div>
+                <main>
+                    <section className="mb-16">
+                         <div className="flex items-center justify-center text-xl sm:text-2xl font-bold mb-6 pt-4">
+                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5] "></div>
+                        <span className="mx-4">Recently Viewed</span>
+                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
                     </div>
-
-                    <div className="flex justify-center h-[40vh] overflow-x-auto md:overflow-hidden">
-                        <div className="w-full max-w-5xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6 md:max-h-[20rem]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
                             {notes.slice(0, 3).map((note, index) => (
                                 <NotesCard
                                     key={note.id}
                                     index={index}
-                                    note={note} //pls get rid of this
-                                    className="max-h-[15rem] sm:max-h-[18rem] md:max-h-[20rem]"
+                                    note={note}
+                                    className="w-full"
                                 />
                             ))}
                         </div>
-                    </div>
-                </div>
+                    </section>
 
-                <section className="mt-4 w-full px-4">
-                    <div className="flex items-center justify-center text-2xl font-bold pt-6 mb-2">
-                        <span>Favourites </span>
-                        <Image src={ArrowRight} alt="arrow" className="h-6 w-6 ml-2" />
+                    <section>
+                    <div className="flex items-center justify-center text-xl sm:text-2xl font-bold mb-6 pt-4">
+                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5] "></div>
+                        <span className="mx-4">Favourites</span>
+                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
                     </div>
-
-                    <div className="flex justify-center md:h-auto h-[40vh] overflow-x-auto md:overflow-visible">
-                        <div className="w-full max-w-5xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
                             {notes.map((note, index) => (
                                 <NotesCard
                                     key={note.id}
                                     index={index}
                                     note={note}
-                                    className="max-h-[15rem] sm:max-h-[18rem] md:max-h-[20rem]"
+                                    className="w-full"
                                 />
                             ))}
                         </div>
-                    </div>
-                </section>
+                    </section>
+                </main>
             </div>
         </div>
     );
