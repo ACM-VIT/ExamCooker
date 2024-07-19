@@ -60,7 +60,7 @@ export default async function ResourcesPage({ searchParams }: { searchParams: { 
     }
 
     return (
-        <div className="transition-colors min-h-screen bg-gray-100 dark:bg-gray-900 text-black dark:text-gray-200">
+        <div className="transition-colors min-h-screen text-black dark:text-gray-200">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <h1 className="text-3xl sm:text-4xl font-bold text-center mb-8">Resource Repository</h1>
 
