@@ -70,35 +70,67 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
         filteredResources = performSearch(search, filteredResources);
     }
 
-    let itemsToDisplay;
-    let totalCount;
+    let itemsToDisplay: Array<{
+        id: string;
+        type: 'note' | 'pastpaper' | 'forumpost' | 'subject';
+        title: string;
+        [key: string]: any;
+    }> = [];
+    let totalCount: number;
+
     switch (type) {
         case 'Past Papers':
             totalCount = filteredPastPapers.length;
-            itemsToDisplay = filteredPastPapers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+            itemsToDisplay = filteredPastPapers.map(paper => ({ ...paper, type: 'pastpaper' as const, title: paper.title }));
             break;
         case 'Notes':
             totalCount = filteredNotes.length;
-            itemsToDisplay = filteredNotes.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+            itemsToDisplay = filteredNotes.map(note => ({ ...note, type: 'note' as const, title: note.title }));
             break;
         case 'Forum':
             totalCount = filteredForumPosts.length;
-            itemsToDisplay = filteredForumPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+            itemsToDisplay = filteredForumPosts.map(post => ({
+                ...post,
+                type: 'forumpost' as const,
+                title: post.title,
+                description: post.description,
+                author: post.author,
+                tags: post.tags,
+                comments: post.comments,
+                upvoteCount: post.upvoteCount,
+                downvoteCount: post.downvoteCount,
+                createdAt: post.createdAt,
+                updatedAt: post.updatedAt,
+            }));
             break;
         case 'Resources':
             totalCount = filteredResources.length;
-            itemsToDisplay = filteredResources.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+            itemsToDisplay = filteredResources.map(resource => ({ ...resource, type: 'subject' as const, title: resource.name }));
             break;
         default:
             totalCount = filteredForumPosts.length + filteredNotes.length +
                 filteredPastPapers.length + filteredResources.length;
             itemsToDisplay = [
-                ...filteredForumPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-                ...filteredNotes.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-                ...filteredPastPapers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-                ...filteredResources.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                ...filteredForumPosts.map(post => ({
+                    ...post,
+                    type: 'forumpost' as const,
+                    title: post.title,
+                    description: post.description,
+                    author: post.author,
+                    tags: post.tags,
+                    comments: post.comments,
+                    upvoteCount: post.upvoteCount,
+                    downvoteCount: post.downvoteCount,
+                    createdAt: post.createdAt,
+                    updatedAt: post.updatedAt,
+                })),
+                ...filteredNotes.map(note => ({ ...note, type: 'note' as const, title: note.title })),
+                ...filteredPastPapers.map(paper => ({ ...paper, type: 'pastpaper' as const, title: paper.title })),
+                ...filteredResources.map(resource => ({ ...resource, type: 'subject' as const, title: resource.name }))
             ];
     }
+
+    itemsToDisplay = itemsToDisplay.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
@@ -110,14 +142,11 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
             </div>
             <div className="flex items-center justify-center">
                 <FavFetch
-                    pastpapers={type === 'Past Papers' ? itemsToDisplay : []}
-                    notes={type === 'Notes' ? itemsToDisplay : []}
-                    forumposts={type === 'Forum' ? itemsToDisplay : []}
-                    resources={type === 'Resources' ? itemsToDisplay : []}
+                    items={itemsToDisplay}
                     activeTab={type}
                 />
             </div>
-            {totalPages > 1 ??
+            {totalPages > 1 && (
                 <Pagination
                     currentPage={page}
                     totalPages={totalPages}
@@ -125,9 +154,10 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
                     searchQuery={search}
                     typeQuery={type}
                 />
-            }
+            )}
         </div>
     );
 }
+
 
 export default favouritesPage;

@@ -2,6 +2,8 @@ import React from 'react';
 import { PrismaClient } from '@prisma/client';
 import dynamic from 'next/dynamic';
 import PDFViewer from '@/app/components/pdfviewer';
+import { recordViewHistory } from '@/app/actions/viewHistory';
+import { auth } from '@/app/auth';
 
 function removePdfExtension(filename: string): string {
   return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
@@ -19,6 +21,12 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
 
     if (!note) {
       throw new Error('Note not found');
+    }
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (userId) {
+      await recordViewHistory('note', note.id, userId);
     }
   } catch (error) {
     console.error('Error fetching note:', error);

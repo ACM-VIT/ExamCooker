@@ -4,17 +4,18 @@ import Link from 'next/link';
 import { Subject } from '@prisma/client';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
-import { useFavoritesStore } from '../actions/StoredFavourites';
+import { useBookmarks } from './BookmarksProvider';
 
 interface ResourceCardProps {
     subject: Subject;
 }
 
 function ResourceCard({ subject }: ResourceCardProps) {
-    const { toggleFavorite, isFavorite } = useFavoritesStore();
+    const { isBookmarked, toggleBookmark } = useBookmarks();
+    const isFav = isBookmarked(subject.id, 'subject');
 
     const handleToggleFav = () => {
-        toggleFavorite({ id: subject.id, type: 'subject' });
+        toggleBookmark({ id: subject.id, type: 'subject', title: subject.name }, !isFav);
     };
 
 
@@ -35,7 +36,7 @@ function ResourceCard({ subject }: ResourceCardProps) {
             <div className='items-end'>
                 <div className='flex justify-between'>
                     <div />
-                    <button onClick={handleToggleFav} className="ml-4" style={{ color: isFavorite(subject.id, 'subject') ? 'red' : 'lightgrey' }}>
+                    <button onClick={handleToggleFav} className="ml-4" style={{ color: isFav ? 'red' : 'lightgrey' }}>
                         <FontAwesomeIcon icon={faHeart} />
                     </button>
                 </div>

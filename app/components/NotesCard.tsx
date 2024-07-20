@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faHeart } from '@fortawesome/free-solid-svg-icons';
 import { Note } from '@prisma/client';
 import Link from 'next/link';
-import { useFavoritesStore } from '../actions/StoredFavourites';
+import { useBookmarks } from './BookmarksProvider';
 
 interface NotesCardProps {
     note: Note;
@@ -21,10 +21,12 @@ export function removePdfExtension(filename: string): string {
 }
 
 function NotesCard({ note, openInNewTab = false }: NotesCardProps) {
-    const { toggleFavorite, isFavorite } = useFavoritesStore();
+    const { isBookmarked, toggleBookmark } = useBookmarks();
+
+    const isFav = isBookmarked(note.id, 'note');
 
     const handleToggleFav = () => {
-        toggleFavorite({ id: note.id, type: 'note' });
+        toggleBookmark({ id: note.id, type: 'note', title: note.title }, !isFav);
     };
 
     return (
@@ -53,7 +55,7 @@ function NotesCard({ note, openInNewTab = false }: NotesCardProps) {
                         View
                     </Link>
                     <button onClick={handleToggleFav} className="transition-colors duration-200">
-                        <FontAwesomeIcon icon={faHeart} color={isFavorite(note.id, 'note') ? 'red' : 'lightgrey'} />
+                        <FontAwesomeIcon icon={faHeart} color={isFav ? 'red' : 'lightgrey'} />
                     </button>
                 </div>
             </div>

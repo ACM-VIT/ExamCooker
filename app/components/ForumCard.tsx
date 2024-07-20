@@ -7,7 +7,7 @@ import { ForumPost, Tag, Comment } from "@prisma/client";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import Link from "next/link";
-import { useFavoritesStore } from '../actions/StoredFavourites';
+import { useBookmarks } from './BookmarksProvider';
 
 interface ForumCardProps {
     post: ForumPost;
@@ -20,13 +20,16 @@ interface ForumCardProps {
 }
 
 export default function ForumCard({ post, title, desc, author, tags, createdAt, comments }: ForumCardProps) {
-    const { toggleFavorite, isFavorite } = useFavoritesStore();
-
     const dateTimeObj = TimeHandler(createdAt.toISOString());
 
+    const { isBookmarked, toggleBookmark } = useBookmarks();
+
+    const isFav = isBookmarked(post.id, 'forumpost');
+
     const handleToggleFav = () => {
-        void toggleFavorite({ id: post.id, type: 'forum' });
+        toggleBookmark({ id: post.id, type: 'forumpost', title: post.title }, !isFav);
     };
+
 
     return (
         <div className="w-full flex pl-11 pr-7 pt-7 justify-center text-black dark:text-[#D5D5D5] ">
@@ -55,7 +58,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                         <TagContainer tags={tags} />
                     </div>
                     <button onClick={handleToggleFav} className="transition-colors duration-200">
-                        <FontAwesomeIcon icon={faHeart} color={isFavorite(post.id, 'forum') ? 'red' : 'lightgrey'} />
+                        <FontAwesomeIcon icon={faHeart} color={isFav ? 'red' : 'lightgrey'} />
                     </button>
                 </div>
 

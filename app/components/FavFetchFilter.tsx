@@ -1,6 +1,5 @@
 "use client";
 
-import { ForumPost, Note, PastPaper, Subject } from '@prisma/client';
 import { useState, useEffect } from 'react';
 import NotesCard from './NotesCard';
 import PastPaperCard from './PastPaperCard';
@@ -8,11 +7,13 @@ import ResourceCard from './ResourceCard';
 import ForumCard from './ForumCard';
 import { useRouter } from 'next/navigation';
 
-const FavFetch = ({ pastpapers, notes, forumposts, resources, activeTab }: {
-  pastpapers: PastPaper[],
-  notes: Note[],
-  forumposts: ForumPost[],
-  resources: Subject[],
+const FavFetch = ({ items, activeTab }: {
+  items: Array<{
+    id: string;
+    type: 'note' | 'pastpaper' | 'forumpost' | 'subject';
+    title: string;
+    [key: string]: any;
+  }>,
   activeTab: string
 }) => {
   const router = useRouter();
@@ -32,53 +33,68 @@ const FavFetch = ({ pastpapers, notes, forumposts, resources, activeTab }: {
   };
 
   const renderContent = () => {
-    switch (currentTab) {
-      case 'Past Papers':
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-            {pastpapers.map((eachPaper, index) => (
-              <div key={eachPaper.id} className="flex justify-center">
-                <PastPaperCard index={index} pastPaper={eachPaper} />
-              </div>
-            ))}
-          </div>
-        );
-      case 'Notes':
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-            {notes.map((eachNote, index) => (
-              <div key={eachNote.id} className="flex justify-center">
-                <NotesCard index={index} note={eachNote} />
-              </div>
-            ))}
-          </div>
-        );
-      case 'Forum':
-        return forumposts.map(eachPost => (
-          <ForumCard
-            key={eachPost.id}
-            title={eachPost.title}
-            author={eachPost.author?.name}
-            desc={eachPost.description}
-            createdAt={eachPost.createdAt}
-            tags={eachPost.tags}
-            post={eachPost}
-            comments={eachPost.comment}
-          />
-        ));
-      case 'Resources':
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-            {resources.map(resource => (
-              <div key={resource.id} className="flex justify-center">
-                <ResourceCard subject={resource} />
-              </div>
-            ))}
-          </div>
-        );
-      default:
-        return <div>No content available</div>;
+    const filteredItems = items.filter(item => {
+      switch (currentTab) {
+        case 'Past Papers':
+          return item.type === 'pastpaper';
+        case 'Notes':
+          return item.type === 'note';
+        case 'Forum':
+          return item.type === 'forumpost';
+        case 'Resources':
+          return item.type === 'subject';
+        default:
+          return false;
+      }
+    });
+
+    if (currentTab === 'Forum') {
+      return (
+        <div className="flex flex-col gap-4 pt-6">
+          {filteredItems.map((item, index) => (
+            <ForumCard
+              key={item.id}
+              title={item.title}
+              author={item.author?.name}
+              desc={item.description}
+              createdAt={item.createdAt}
+              tags={item.tags}
+              post={item}
+              comments={item.comments}
+            />
+          ))}
+        </div>
+      );
     }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
+        {filteredItems.map((item, index) => {
+          switch (item.type) {
+            case 'pastpaper':
+              return (
+                <div key={item.id} className="flex justify-center">
+                  <PastPaperCard index={index} pastPaper={item} />
+                </div>
+              );
+            case 'note':
+              return (
+                <div key={item.id} className="flex justify-center">
+                  <NotesCard index={index} note={item} />
+                </div>
+              );
+            case 'subject':
+              return (
+                <div key={item.id} className="flex justify-center">
+                  <ResourceCard subject={item} />
+                </div>
+              );
+            default:
+              return null;
+          }
+        })}
+      </div>
+    );
   };
 
   return (
