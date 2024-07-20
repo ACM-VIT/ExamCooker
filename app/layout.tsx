@@ -3,12 +3,13 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { getBookmarks } from './actions/bookmarks';
 import BookmarksProvider from './components/BookmarksProvider';
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata = {
     title: "ExamCooker 2024",
     description: "ACM-VIT 2024 ExamCooker Website",
+    // metadataBase: new URL(""),
 };
-
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
 export default async function RootLayout({
@@ -26,6 +27,7 @@ export default async function RootLayout({
                         {children}
                     </BookmarksProvider>
                 </SessionProvider>
+                <Toaster />
             </body>
         </html>
     );

@@ -47,9 +47,20 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
                     tags: true,
                     comments: true,
                 },
+                orderBy: {
+                    createdAt: 'desc',  //migrate so that most recent fav first?
+                }
             },
-            bookmarkedNotes: true,
-            bookmarkedPastPapers: true,
+            bookmarkedNotes: {
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            },
+            bookmarkedPastPapers: {
+                orderBy:{
+                    createdAt: 'desc'
+                }
+            },
             bookmarkedResources: true,
         },
     });
