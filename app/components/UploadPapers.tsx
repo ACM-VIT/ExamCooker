@@ -125,14 +125,13 @@ const UploadFilePaper: React.FC = () => {
     const { getRootProps, getInputProps } = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
             setFiles([...files, ...acceptedFiles]);
-            setFileTitles([...fileTitles, ...acceptedFiles.map(() => '')])
+            setFileTitles([...fileTitles, ...acceptedFiles.map(file => file.name)])
             setIsDragging(false);
         },
         onDragEnter: () => setIsDragging(true),
         onDragLeave: () => setIsDragging(false),
         multiple: true
     });
-
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -218,7 +217,6 @@ const UploadFilePaper: React.FC = () => {
         return (
             <input
                 type="text"
-                placeholder="Title"
                 className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold`}
                 value={value}
                 onChange={(e) => onChange(index, e.target.value)}
@@ -226,7 +224,6 @@ const UploadFilePaper: React.FC = () => {
             />
         );
     }, []);
-
     return (
         <div className="flex justify-center items-center min-h-screen">
             <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5] text-black dark:text-[#D5D5D5] ">
@@ -375,12 +372,7 @@ const UploadFilePaper: React.FC = () => {
                                     <TextField
                                         value={fileTitles[index]}
                                         onChange={handleTitleChange}
-                                        index={index}
-                                    />
-                                    {file.name}
-                                    <span className={`ml-2 ${fileUploadStatus[file.name] === "Uploading" ? "text-yellow-500" : "text-green-500"}`}>
-                                        {fileUploadStatus[file.name]}
-                                    </span>
+                                        index={index} />
                                 </div>
                             ))}
                         </div>

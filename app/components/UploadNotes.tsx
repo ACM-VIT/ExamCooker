@@ -124,14 +124,13 @@ const UploadFileNotes: React.FC = () => {
     const { getRootProps, getInputProps } = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
             setFiles([...files, ...acceptedFiles]);
-            setFileTitles([...fileTitles, ...acceptedFiles.map(() => '')])
+            setFileTitles([...fileTitles, ...acceptedFiles.map(file => file.name)])
             setIsDragging(false);
         },
         onDragEnter: () => setIsDragging(true),
         onDragLeave: () => setIsDragging(false),
         multiple: true
     });
-
     const handleTitleChange = useCallback((index: number, value: string) => {
         setFileTitles(prevTitles => {
             const newTitles = [...prevTitles];
@@ -208,21 +207,17 @@ const UploadFileNotes: React.FC = () => {
         }
     };
 
-    const TextField = useCallback(({ initialValue, value, onChange, index }: { initialValue: string, value: string, onChange: (index: number, value: string) => void, index: number }) => {
-        if (value == '')
-            value = initialValue;
+    const TextField = useCallback(({ value, onChange, index }: { value: string, onChange: (index: number, value: string) => void, index: number }) => {
         return (
             <input
                 type="text"
-                placeholder="Title"
-                className='p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold'
+                className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold`}
                 value={value}
-                onChange={(e) => { onChange(index, e.target.value); }}
+                onChange={(e) => onChange(index, e.target.value)}
                 required
             />
         );
     }, []);
-
     return (
         <div className="flex justify-center items-center min-h-screen">
             <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5] text-black dark:text-[#D5D5D5] ">
@@ -370,11 +365,9 @@ const UploadFileNotes: React.FC = () => {
                             {files.map((file, index) => (
                                 <div key={index} className="text-gray-700 flex items-center text-xs w-full">
                                     <TextField
-                                        initialValue={removePdfExtension(file.name)}
                                         value={fileTitles[index]}
                                         onChange={handleTitleChange}
-                                        index={index}
-                                    />
+                                        index={index} />
                                 </div>
                             ))}
                         </div>
