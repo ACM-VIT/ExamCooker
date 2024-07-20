@@ -65,23 +65,27 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen overflow-hidden bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <div className="lg:w-1/2 p-8 flex flex-col justify-center overflow-none">
-        <h1 className="text-3xl font-bold mb-4 truncate">{removePdfExtension(note.title)}</h1>
-        <div className="space-y-2 overflow-y-auto">
-          <p className="text-lg"><span className="font-semibold">Slot:</span> {slot}</p>
-          <p className="text-lg"><span className="font-semibold">Year:</span> {year}</p>
-          <p className="text-lg"><span className="font-semibold">Posted by:</span> {note.author?.name || 'Unknown'}</p>
-          <p className='text-lg'><span className='font-semibold'>At: </span>{TimeHandler(note.createdAt.toISOString()).hours}:{TimeHandler(note.createdAt.toISOString()).minutes}{TimeHandler(note.createdAt.toISOString()).amOrPm}, {TimeHandler(note.createdAt.toISOString()).day}/{TimeHandler(note.createdAt.toISOString()).month}/{TimeHandler(note.createdAt.toISOString()).year}</p>
+    <div className="flex flex-col lg:flex-row h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <div className="lg:w-1/2 flex flex-col overflow-hidden">
+        <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="max-w-2xl mx-auto">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{removePdfExtension(note.title)}</h1>
+            <div className="space-y-2 sm:space-y-3">
+              <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> A1</p>
+              <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> 2024</p>
+              <p className="text-base sm:text-lg"><span className="font-semibold">Author:</span> {note.author?.name || 'Unknown'}</p>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="w-full lg:w-1/2 lg:border-l lg:border-black-900 lg:dark:border-[#d5d5d5] lg:overflow-hidden p-4">
-        <div className="h-full">
+      <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-gray-200 dark:lg:border-gray-700 p-4">
+        <div className="h-full overflow-auto">
           <PDFViewer fileUrl={note.fileUrl} />
         </div>
       </div>
     </div>
   );
+
 }
 
 export default dynamic(() => Promise.resolve(PdfViewerPage), { ssr: false });
