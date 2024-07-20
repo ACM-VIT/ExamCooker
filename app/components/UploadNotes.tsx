@@ -8,6 +8,7 @@ import Fuse from 'fuse.js';
 import { getTags } from '../actions/fetchTags';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { removePdfExtension } from './NotesCard';
 
 const UploadFileNotes: React.FC = () => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
@@ -207,14 +208,16 @@ const UploadFileNotes: React.FC = () => {
         }
     };
 
-    const TextField = useCallback(({ value, onChange, index }: { value: string, onChange: (index: number, value: string) => void, index: number }) => {
+    const TextField = useCallback(({ initialValue, value, onChange, index }: { initialValue: string, value: string, onChange: (index: number, value: string) => void, index: number }) => {
+        if (value == '')
+            value = initialValue;
         return (
             <input
                 type="text"
                 placeholder="Title"
-                className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold`}
+                className='p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold'
                 value={value}
-                onChange={(e) => onChange(index, e.target.value)}
+                onChange={(e) => { onChange(index, e.target.value); }}
                 required
             />
         );
@@ -363,20 +366,21 @@ const UploadFileNotes: React.FC = () => {
                     </div>
 
                     {files.length > 0 && (
-                        <div className="mb-4 flex flex-col gap-2">
+                        <div className="flex flex-col gap-2 w-[100%]">
                             {files.map((file, index) => (
-                                <div key={index} className="text-gray-700 flex gap-2 items-center text-xs">
+                                <div key={index} className="text-gray-700 flex gap-2 items-center text-xs w-full">
                                     <TextField
+                                        initialValue={removePdfExtension(file.name)}
                                         value={fileTitles[index]}
                                         onChange={handleTitleChange}
                                         index={index}
                                     />
-                                    {file.name}
                                     <span className={`ml-2 ${fileUploadStatus[file.name] === "Uploading" ? "text-yellow-500" : "text-green-500"}`}>
                                         {fileUploadStatus[file.name]}
                                     </span>
                                 </div>
-                            ))}                        </div>
+                            ))}
+                        </div>
                     )}
                     {error && (
                         <div className="mb-4 text-center">
