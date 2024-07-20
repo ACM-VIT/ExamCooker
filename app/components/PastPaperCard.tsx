@@ -3,16 +3,13 @@ import React from 'react';
 import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faHeart } from '@fortawesome/free-solid-svg-icons';
-import { useFavoritesStore } from '../actions/StoredFavourites';
+import { useBookmarks } from './BookmarksProvider';
+import { PastPaper } from '@prisma/client';
 
 interface PastPaperCardProps {
-    pastPaper: {
-        id: string;
-        title: string;
-    };
+    pastPaper: PastPaper;
     index: number;
     openInNewTab?: boolean;
-    onApprove?: () => Promise<void>;
 }
 
 function removePdfExtension(title: string) {
@@ -20,10 +17,12 @@ function removePdfExtension(title: string) {
 }
 
 function PastPaperCard({ pastPaper, openInNewTab = false }: PastPaperCardProps) {
-    const { toggleFavorite, isFavorite } = useFavoritesStore();
+    const { isBookmarked, toggleBookmark } = useBookmarks();
+
+    const isFav = isBookmarked(pastPaper.id, 'pastpaper');
 
     const handleToggleFav = () => {
-        toggleFavorite({ id: pastPaper.id, type: 'pastPaper' });
+        toggleBookmark({ id: pastPaper.id, type: 'pastpaper', title: pastPaper.title }, !isFav);
     };
 
     return (
@@ -51,7 +50,7 @@ function PastPaperCard({ pastPaper, openInNewTab = false }: PastPaperCardProps) 
                         </span>
                         View
                     </Link>
-                    <button onClick={handleToggleFav} style={{ color: isFavorite(pastPaper.id, 'pastPaper') ? 'red' : 'lightgrey' }}>
+                    <button onClick={handleToggleFav} style={{ color: isFav ? 'red' : 'lightgrey' }}>
                         <FontAwesomeIcon icon={faHeart} />
                     </button>
                 </div>

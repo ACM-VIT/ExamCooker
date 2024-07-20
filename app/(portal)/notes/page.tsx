@@ -7,6 +7,7 @@ import NotesCard from "../../components/NotesCard";
 import SearchBar from "../../components/SearchBar";
 import Dropdown from "../../components/FilterComponent";
 import UploadButtonNotes from "../../components/UploadButtonNotes";
+import { useBookmarks } from '@/app/components/BookmarksProvider';
 
 
 const SCORE_THRESHOLD = 0.6;
