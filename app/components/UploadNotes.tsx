@@ -124,7 +124,7 @@ const UploadFileNotes: React.FC = () => {
     const { getRootProps, getInputProps } = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
             setFiles([...files, ...acceptedFiles]);
-            setFileTitles([...fileTitles, ...acceptedFiles.map(file => file.name)])
+            setFileTitles([...fileTitles, ...acceptedFiles.map(file => removePdfExtension(file.name))])
             setIsDragging(false);
         },
         onDragEnter: () => setIsDragging(true),

@@ -8,6 +8,7 @@ import Fuse from 'fuse.js';
 import { getTags } from '../actions/fetchTags';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { removePdfExtension } from './NotesCard';
 
 
 
@@ -125,7 +126,7 @@ const UploadFilePaper: React.FC = () => {
     const { getRootProps, getInputProps } = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
             setFiles([...files, ...acceptedFiles]);
-            setFileTitles([...fileTitles, ...acceptedFiles.map(file => file.name)])
+            setFileTitles([...fileTitles, ...acceptedFiles.map(file => removePdfExtension(file.name))])
             setIsDragging(false);
         },
         onDragEnter: () => setIsDragging(true),
