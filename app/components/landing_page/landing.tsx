@@ -6,7 +6,7 @@ import Notes from "@/public/LandingPage/LandingPageNotes.svg";
 import Resources from "@/public/LandingPage/LandingPageResourceRepo.svg";
 import ArrowRight from "@/public/LandingPage/ArrowRight.svg";
 import GradientHeart from "@/public/LandingPage/GradientHeart.svg";
-import GradientACMLogo from "@/public/LandingPage/ACM Logo.svg";
+import GradientACMLogo from "@/public/assets/ACM logo.svg";
 import { SignIn } from "../sign-in";
 import Link from "next/link";
 
@@ -187,7 +187,7 @@ function LandingPageContent() {
                     <Image
                         src={GradientACMLogo}
                         alt="ACM logo"
-                        className="w-[500px] md:w-[816px] md:h-[353px]"
+                        className="w-[250px] md:w-[750px] md:h-[353px]"
                     />
                 </div>
             </div>
@@ -196,31 +196,3 @@ function LandingPageContent() {
 }
 
 export default LandingPageContent;
-
-
-                // <div className="grid grid-cols-1 lg:grid-cols-2 gap-[5px] px-1 md:gap-[20px] max-w-[85%] mx-auto">
-                //     <LandingPageCard
-                //         title="Past Papers"
-                //         content="Conquer Your Exam Anxieties using our plethora of past papers"
-                //         imagePath={PastPaper}
-                //         altOfImage="PastPaper"
-                //     />
-                //     <LandingPageCard
-                //         title="Forum"
-                //         content="Connect with fellow crammers and ignite discussions with our Forum"
-                //         imagePath={Forum}
-                //         altOfImage="Forum"
-                //     />
-                //     <LandingPageCard
-                //         title="Notes"
-                //         content="Access and Contribute to a vibrant collection of notes, created by students like you!"
-                //         imagePath={Notes}
-                //         altOfImage="Notes"
-                //     />
-                //     <LandingPageCard
-                //         title="Resource Repo"
-                //         content="Expand your learning horizon through curated links to top-notch articles and videos"
-                //         imagePath={Resources}
-                //         altOfImage="ResourceRepo"
-                //     />
-                // </div>

@@ -13,7 +13,7 @@ interface NotesCardProps {
     openInNewTab?: boolean;
 }
 
-function removePdfExtension(filename: string): string {
+export function removePdfExtension(filename: string): string {
     if (filename.endsWith('.pdf')) {
         return filename.slice(0, -4);
     }

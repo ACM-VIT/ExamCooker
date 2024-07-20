@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
 import { generateSignedUploadURL, storeFileInfoInDatabase } from "../actions/uploadFile";
@@ -8,9 +8,10 @@ import Fuse from 'fuse.js';
 import { getTags } from '../actions/fetchTags';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { removePdfExtension } from './NotesCard';
 
 const UploadFileNotes: React.FC = () => {
-    const [title, setTitle] = useState('');
+    const [fileTitles, setFileTitles] = useState<string[]>([]);
     const [year, setYear] = useState('');
     const [slot, setSlot] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -123,14 +124,20 @@ const UploadFileNotes: React.FC = () => {
     const { getRootProps, getInputProps } = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
             setFiles([...files, ...acceptedFiles]);
+            setFileTitles([...fileTitles, ...acceptedFiles.map(file => removePdfExtension(file.name))])
             setIsDragging(false);
         },
         onDragEnter: () => setIsDragging(true),
         onDragLeave: () => setIsDragging(false),
         multiple: true
     });
-
-
+    const handleTitleChange = useCallback((index: number, value: string) => {
+        setFileTitles(prevTitles => {
+            const newTitles = [...prevTitles];
+            newTitles[index] = value;
+            return newTitles;
+        });
+    }, []);
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setUploading(true);
@@ -197,10 +204,20 @@ const UploadFileNotes: React.FC = () => {
             setSelectedTags([]);
             setYear('');
             setSlot('');
-            setTitle('');
         }
     };
 
+    const TextField = useCallback(({ value, onChange, index }: { value: string, onChange: (index: number, value: string) => void, index: number }) => {
+        return (
+            <input
+                type="text"
+                className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold`}
+                value={value}
+                onChange={(e) => onChange(index, e.target.value)}
+                required
+            />
+        );
+    }, []);
     return (
         <div className="flex justify-center items-center min-h-screen">
             <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5] text-black dark:text-[#D5D5D5] ">
@@ -221,16 +238,6 @@ const UploadFileNotes: React.FC = () => {
 
                 </div>
                 <form onSubmit={handleSubmit} className='w-full'>
-                    <div className="mb-4">
-                        <input
-                            type="text"
-                            placeholder="Title"
-                            className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold`}
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            required
-                        />
-                    </div>
                     <div className="grid grid-cols-2 gap-4 mb-4 place-content-center">
                         <div>
                             <select
@@ -354,13 +361,13 @@ const UploadFileNotes: React.FC = () => {
                     </div>
 
                     {files.length > 0 && (
-                        <div className="mb-4">
+                        <div className="flex flex-col gap-2 w-[100%]">
                             {files.map((file, index) => (
-                                <div key={index} className="text-gray-700 flex items-center">
-                                    {file.name}
-                                    <span className={`ml-2 ${fileUploadStatus[file.name] === "Uploading" ? "text-yellow-500" : "text-green-500"}`}>
-                                        {fileUploadStatus[file.name]}
-                                    </span>
+                                <div key={index} className="text-gray-700 flex items-center text-xs w-full">
+                                    <TextField
+                                        value={fileTitles[index]}
+                                        onChange={handleTitleChange}
+                                        index={index} />
                                 </div>
                             ))}
                         </div>
