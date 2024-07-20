@@ -14,7 +14,7 @@ function ResourceCard({ subject }: ResourceCardProps) {
     const { toggleFavorite, isFavorite } = useFavoritesStore();
 
     const handleToggleFav = () => {
-        toggleFavorite({ id: subject.id, type: 'subject' });
+        toggleFavorite({ id: subject.id, type: 'subject', title: subject.name });
     };
 
 

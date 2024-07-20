@@ -23,7 +23,7 @@ function PastPaperCard({ pastPaper, openInNewTab = false }: PastPaperCardProps) 
     const { toggleFavorite, isFavorite } = useFavoritesStore();
 
     const handleToggleFav = () => {
-        toggleFavorite({ id: pastPaper.id, type: 'pastPaper' });
+        toggleFavorite({ id: pastPaper.id, type: 'pastpaper', title: pastPaper.title });
     };
 
     return (
@@ -51,7 +51,7 @@ function PastPaperCard({ pastPaper, openInNewTab = false }: PastPaperCardProps) 
                         </span>
                         View
                     </Link>
-                    <button onClick={handleToggleFav} style={{ color: isFavorite(pastPaper.id, 'pastPaper') ? 'red' : 'lightgrey' }}>
+                    <button onClick={handleToggleFav} style={{ color: isFavorite(pastPaper.id, 'pastpaper') ? 'red' : 'lightgrey' }}>
                         <FontAwesomeIcon icon={faHeart} />
                     </button>
                 </div>

@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 import { auth } from "../auth";
-import { useFavoritesStore } from "./StoredFavourites";
 
 const prisma = new PrismaClient();
 
@@ -8,7 +7,7 @@ export async function initializeFavorites() {
     try {
         const session = await auth();
         if (!session?.user?.email) {
-            return;
+            return [];
         }
 
         const user = await prisma.user.findUnique({
@@ -22,16 +21,17 @@ export async function initializeFavorites() {
         });
 
         if (user) {
-            const favorites = [
-                ...user.bookmarkedNotes.map(note => ({ id: note.id, type: 'note' as const })),
-                ...user.bookmarkedPastPapers.map(paper => ({ id: paper.id, type: 'pastPaper' as const })),
-                ...user.bookmarkedForumPosts.map(post => ({ id: post.id, type: 'forum' as const })),
-                ...user.bookmarkedResources.map(resource => ({ id: resource.id, type: 'subject' as const })),
+            return [
+                ...user.bookmarkedNotes.map(note => ({ id: note.id, type: 'note', title: note.title })),
+                ...user.bookmarkedPastPapers.map(paper => ({ id: paper.id, type: 'pastpaper', title: paper.title })),
+                ...user.bookmarkedForumPosts.map(post => ({ id: post.id, type: 'forum', title: post.title })),
+                ...user.bookmarkedResources.map(resource => ({ id: resource.id, type: 'subject', title: resource.name })),
             ];
-
-            useFavoritesStore.getState().setInitialFavorites(favorites);
         }
+
+        return [];
     } catch (error) {
         console.error('Error initializing favorites:', error);
+        return [];
     }
 }

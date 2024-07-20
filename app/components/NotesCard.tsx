@@ -24,7 +24,7 @@ function NotesCard({ note, openInNewTab = false }: NotesCardProps) {
     const { toggleFavorite, isFavorite } = useFavoritesStore();
 
     const handleToggleFav = () => {
-        toggleFavorite({ id: note.id, type: 'note' });
+        toggleFavorite({ id: note.id, type: 'note', title: note.title });
     };
 
     return (

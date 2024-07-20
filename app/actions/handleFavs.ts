@@ -4,7 +4,7 @@ import { auth } from "../auth";
 
 const prisma = new PrismaClient();
 
-type BookmarkType = 'note' | 'pastPaper' | 'forum' | 'subject';
+type BookmarkType = 'note' | 'pastpaper' | 'forumpost' | 'subject';
 
 export async function updateBookmark(itemType: BookmarkType, itemId: string, isFavorite: boolean) {
   try {
@@ -45,9 +45,9 @@ function getBookmarkField(itemType: BookmarkType): string {
   switch (itemType) {
     case 'note':
       return 'bookmarkedNotes';
-    case 'pastPaper':
+    case 'pastpaper':
       return 'bookmarkedPastPapers';
-    case 'forum':
+    case 'forumpost':
       return 'bookmarkedForumPosts';
     case 'subject':
       return 'bookmarkedResources';

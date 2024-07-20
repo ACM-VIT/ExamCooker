@@ -5,7 +5,8 @@ import { revalidateFavorites } from '../actions/revalidateFavourites';
 
 type FavoriteItem = {
     id: string;
-    type: 'note' | 'pastPaper' | 'forum' | 'subject';
+    type: 'note' | 'pastpaper' | 'forumpost' | 'subject';
+    title: string;
 };
 
 type FavoritesStore = {
@@ -32,7 +33,7 @@ export const useFavoritesStore = create<FavoritesStore>()(
                                 ? [...state.favorites, item]
                                 : state.favorites.filter(fav => !(fav.id === item.id && fav.type === item.type))
                         }));
-                        await revalidateFavorites();
+                        await revalidateFavorites(item.type);
                     } else {
                         console.error('Failed to update bookmarked item:', result.error);
                     }

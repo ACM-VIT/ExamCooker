@@ -25,7 +25,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
     const dateTimeObj = TimeHandler(createdAt.toISOString());
 
     const handleToggleFav = () => {
-        void toggleFavorite({ id: post.id, type: 'forum' });
+        void toggleFavorite({ id: post.id, type: 'forumpost', title: title });
     };
 
     return (
@@ -55,7 +55,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                         <TagContainer tags={tags} />
                     </div>
                     <button onClick={handleToggleFav} className="transition-colors duration-200">
-                        <FontAwesomeIcon icon={faHeart} color={isFavorite(post.id, 'forum') ? 'red' : 'lightgrey'} />
+                        <FontAwesomeIcon icon={faHeart} color={isFavorite(post.id, 'forumpost') ? 'red' : 'lightgrey'} />
                     </button>
                 </div>
 
