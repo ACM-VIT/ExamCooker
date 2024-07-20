@@ -10,7 +10,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
 const UploadFileNotes: React.FC = () => {
-    const [title, setTitle] = useState('');
+    const [fileTitles, setFileTitles] = useState<string[]>([]);
     const [year, setYear] = useState('');
     const [slot, setSlot] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -123,6 +123,7 @@ const UploadFileNotes: React.FC = () => {
     const { getRootProps, getInputProps } = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
             setFiles([...files, ...acceptedFiles]);
+            setFileTitles([...fileTitles, ...acceptedFiles.map(() => '')])
             setIsDragging(false);
         },
         onDragEnter: () => setIsDragging(true),
@@ -130,6 +131,11 @@ const UploadFileNotes: React.FC = () => {
         multiple: true
     });
 
+    const handleTitleChange = (index: number, value: string) => {
+        const newTitles = [...fileTitles];
+        newTitles[index] = value;
+        setFileTitles(newTitles);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -197,9 +203,22 @@ const UploadFileNotes: React.FC = () => {
             setSelectedTags([]);
             setYear('');
             setSlot('');
-            setTitle('');
         }
     };
+
+    const TextField = ({ value, onChange, index }: { value: string, onChange: (index: number, value: string) => void, index: number }) => {
+
+        return (
+            <input
+                type="text"
+                placeholder="Title"
+                className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold`}
+                value={value}
+                onChange={(e) => onChange(index, e.target.value)}
+                required
+            />
+        );
+    }
 
     return (
         <div className="flex justify-center items-center min-h-screen">
@@ -221,16 +240,6 @@ const UploadFileNotes: React.FC = () => {
 
                 </div>
                 <form onSubmit={handleSubmit} className='w-full'>
-                    <div className="mb-4">
-                        <input
-                            type="text"
-                            placeholder="Title"
-                            className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold`}
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            required
-                        />
-                    </div>
                     <div className="grid grid-cols-2 gap-4 mb-4 place-content-center">
                         <div>
                             <select
@@ -354,9 +363,14 @@ const UploadFileNotes: React.FC = () => {
                     </div>
 
                     {files.length > 0 && (
-                        <div className="mb-4">
+                        <div className="mb-4 flex flex-col gap-2">
                             {files.map((file, index) => (
-                                <div key={index} className="text-gray-700 flex items-center">
+                                <div key={index} className="text-gray-700 flex gap-2 items-center text-xs">
+                                    <TextField
+                                        value={fileTitles[index]}
+                                        onChange={handleTitleChange}
+                                        index={index}
+                                    />
                                     {file.name}
                                     <span className={`ml-2 ${fileUploadStatus[file.name] === "Uploading" ? "text-yellow-500" : "text-green-500"}`}>
                                         {fileUploadStatus[file.name]}
