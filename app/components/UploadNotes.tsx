@@ -368,16 +368,13 @@ const UploadFileNotes: React.FC = () => {
                     {files.length > 0 && (
                         <div className="flex flex-col gap-2 w-[100%]">
                             {files.map((file, index) => (
-                                <div key={index} className="text-gray-700 flex gap-2 items-center text-xs w-full">
+                                <div key={index} className="text-gray-700 flex items-center text-xs w-full">
                                     <TextField
                                         initialValue={removePdfExtension(file.name)}
                                         value={fileTitles[index]}
                                         onChange={handleTitleChange}
                                         index={index}
                                     />
-                                    <span className={`ml-2 ${fileUploadStatus[file.name] === "Uploading" ? "text-yellow-500" : "text-green-500"}`}>
-                                        {fileUploadStatus[file.name]}
-                                    </span>
                                 </div>
                             ))}
                         </div>
