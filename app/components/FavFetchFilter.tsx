@@ -48,6 +48,25 @@ const FavFetch = ({ items, activeTab }: {
       }
     });
 
+    if (currentTab === 'Forum') {
+      return (
+        <div className="flex flex-col gap-4 pt-6">
+          {filteredItems.map((item, index) => (
+            <ForumCard
+              key={item.id}
+              title={item.title}
+              author={item.author?.name}
+              desc={item.description}
+              createdAt={item.createdAt}
+              tags={item.tags}
+              post={item}
+              comments={item.comments}
+            />
+          ))}
+        </div>
+      );
+    }
+
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
         {filteredItems.map((item, index) => {
@@ -63,19 +82,6 @@ const FavFetch = ({ items, activeTab }: {
                 <div key={item.id} className="flex justify-center">
                   <NotesCard index={index} note={item} />
                 </div>
-              );
-            case 'forumpost':
-              return (
-                <ForumCard
-                  key={item.id}
-                  title={item.title}
-                  author={item.author?.name}
-                  desc={item.description}
-                  createdAt={item.createdAt}
-                  tags={item.tags}
-                  post={item}
-                  comments={item.comments}
-                />
               );
             case 'subject':
               return (
