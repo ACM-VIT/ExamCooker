@@ -23,16 +23,16 @@ function HomeFooter() {
       </div>
       <div className="flex items-center space-x-3 sm:space-x-4">
         <p className="text-lg sm:text-xl font-semibold text-black dark:text-[#D5D5D5]">Find us:</p>
-        <a href="https://www.instagram.com/acmvit?igsh=cXEybjdxb3hja3Iw">
+        <a href="https://www.instagram.com/acmvit?igsh=cXEybjdxb3hja3Iw" target="_blank" >
           <FontAwesomeIcon icon={faInstagram} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
         </a>
-        <a href="https://in.linkedin.com/company/acmvit">
+        <a href="https://in.linkedin.com/company/acmvit" target="_blank">
           <FontAwesomeIcon icon={faLinkedinIn} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
         </a>
-        <a href="https://www.youtube.com/@acm_vit">
+        <a href="https://www.youtube.com/@acm_vit" target="_blank">
           <FontAwesomeIcon icon={faYoutube} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
         </a>
-        <a href="https://github.com/ACM-VIT">
+        <a href="https://github.com/ACM-VIT" target="_blank">
           <FontAwesomeIcon icon={faGithub} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
         </a>
       </div>
