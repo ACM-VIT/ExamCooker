@@ -50,7 +50,7 @@ export default function CommonFav({ category, title, thing }: { category: string
     };
 
     return (
-        <div className="w-full p-2 flex flex-col gap-2 bg-[#5FC4E7] dark:bg-white/10 lg:dark:bg-[#0C1222] border-2 border-[#5FC4E7] dark:border-white/20 dark:border-b-[#3BF4C7] lg:dark:border-white/20 hover:dark:bg-white/10 hover:scale-105 hover:border-b-white hover:dark:border-b-[#3BF4C7] transition duration-200">
+        <div className="w-full p-2 flex flex-col justify-between gap-2 bg-[#5FC4E7] dark:bg-white/10 lg:dark:bg-[#0C1222] border-2 border-[#5FC4E7] dark:border-white/20 dark:border-b-[#3BF4C7] lg:dark:border-white/20 hover:dark:bg-white/10 hover:scale-105 hover:border-b-white hover:dark:border-b-[#3BF4C7] transition duration-200">
             <h6>{category.toUpperCase()}</h6>
             <h5>{title}</h5>
 
