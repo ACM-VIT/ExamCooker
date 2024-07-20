@@ -1,8 +1,9 @@
 "use client"
+import React from 'react';
 import { faEye, faHeart } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
-import { useFavoritesStore } from '../actions/StoredFavourites';
+import { useBookmarks } from './BookmarksProvider';
 
 type FavoriteType = "note" | "pastpaper" | "forumpost" | "subject";
 
@@ -22,16 +23,16 @@ function mapCategoryToType(category: string): FavoriteType {
 }
 
 export default function CommonFav({ category, title, thing }: { category: string, title: string, thing: any }) {
-    const { toggleFavorite, isFavorite } = useFavoritesStore();
+    const { toggleBookmark, isBookmarked } = useBookmarks();
     const favoriteType = mapCategoryToType(category);
-    const isFav = isFavorite(thing.id, favoriteType);
+    const isFav = isBookmarked(thing.id, favoriteType);
 
     const handleFavoriteClick = () => {
-        toggleFavorite({
+        toggleBookmark({
             id: thing.id,
             type: favoriteType,
             title: title,
-        });
+        }, !isFav);
     };
 
     const getLink = () => {
