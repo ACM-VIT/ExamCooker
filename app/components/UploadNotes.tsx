@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
 import { generateSignedUploadURL, storeFileInfoInDatabase } from "../actions/uploadFile";
@@ -131,12 +131,13 @@ const UploadFileNotes: React.FC = () => {
         multiple: true
     });
 
-    const handleTitleChange = (index: number, value: string) => {
-        const newTitles = [...fileTitles];
-        newTitles[index] = value;
-        setFileTitles(newTitles);
-    };
-
+    const handleTitleChange = useCallback((index: number, value: string) => {
+        setFileTitles(prevTitles => {
+            const newTitles = [...prevTitles];
+            newTitles[index] = value;
+            return newTitles;
+        });
+    }, []);
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setUploading(true);
@@ -206,8 +207,7 @@ const UploadFileNotes: React.FC = () => {
         }
     };
 
-    const TextField = ({ value, onChange, index }: { value: string, onChange: (index: number, value: string) => void, index: number }) => {
-
+    const TextField = useCallback(({ value, onChange, index }: { value: string, onChange: (index: number, value: string) => void, index: number }) => {
         return (
             <input
                 type="text"
@@ -218,7 +218,7 @@ const UploadFileNotes: React.FC = () => {
                 required
             />
         );
-    }
+    }, []);
 
     return (
         <div className="flex justify-center items-center min-h-screen">
@@ -376,8 +376,7 @@ const UploadFileNotes: React.FC = () => {
                                         {fileUploadStatus[file.name]}
                                     </span>
                                 </div>
-                            ))}
-                        </div>
+                            ))}                        </div>
                     )}
                     {error && (
                         <div className="mb-4 text-center">
