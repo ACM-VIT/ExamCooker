@@ -37,7 +37,7 @@ async function forumPostThread({ params }: { params: { id: string } }) {
 
 
   return (
-    <ForumPost post={forumpost} tagArray={forumpost?.tags} commentArray={forumpost?.comments} />
+    <ForumPost post={forumpost} tagArray={forumpost?.tags} commentArray={forumpost?.comments} authorName={forumpost.author.name} />
   )
 }
 

@@ -7,7 +7,7 @@ import { DislikeButton, LikeButton } from "@/app/components/common/Buttons";
 
 import type { Tag, Comment, ForumPost } from "@prisma/client";
 
-function ForumPost({ post, tagArray, commentArray }: { post: ForumPost | null, tagArray: Tag[] | undefined, commentArray: Comment[] | undefined }) {
+function ForumPost({ post, tagArray, commentArray, authorName }: { post: ForumPost | null, tagArray: Tag[] | undefined, commentArray: Comment[] | undefined, authorName: string | null}) {
 
     return (
         <div className="transition-colors w-full h-full p-6 text-black dark:text-[#D5D5D5]">
@@ -15,6 +15,7 @@ function ForumPost({ post, tagArray, commentArray }: { post: ForumPost | null, t
                 <h2 className="font-extrabold">{post?.title}</h2>
                 <hr className="border-0 h-px my-5 bg-black" /> 
                 <h6>{post?.description}</h6>
+                <h6 className="text-right text-s font-normal text-white">Author: {authorName}</h6>
                 <br />
                 <div className="sm:w-2/3 md:flex md:w-full md:justify-between">
                     <div>
