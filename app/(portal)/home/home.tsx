@@ -121,9 +121,6 @@ const Home = async () => {
     const emptyFav: boolean = favoriteItems.length === 0;
     const emptyRecentlyViewed: boolean = recentlyViewedItems.length === 0;
 
-    console.log(emptyFav);
-    console.log(emptyRecentlyViewed);
-
     const getTitle = (item: ViewedItem['item']) => {
         if ('title' in item) {
             return item.title;
