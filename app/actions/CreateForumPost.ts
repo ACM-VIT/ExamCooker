@@ -61,11 +61,9 @@ export async function createForumPost(inputData: CreateForumPostInput) {
     });
 
     revalidatePath(`/forum`)
+    return {success: true, data: newForumPost}
   } catch (error) {
     console.error('Failed to create forum post:', error)
     return { success: false, error: 'Failed to create forum post' }
-  }
-
-  redirect('/forum')
-  
+  }  
 }

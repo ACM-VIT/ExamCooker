@@ -8,6 +8,7 @@ import Fuse from 'fuse.js';
 import { getTags } from '../actions/fetchTags';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { useToast } from '@/components/ui/use-toast';
 
 const CreateForum: React.FC = () => {
   const [title, setTitle] = useState('');
@@ -20,6 +21,7 @@ const CreateForum: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [filteredTags, setFilteredTags] = useState<string[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const {toast} = useToast()
   const forumId = "cly4bhnc0000df02z5tshuhx7";
 
   const router = useRouter();
@@ -68,12 +70,14 @@ const CreateForum: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = await createForumPost({ title, forumId, description, year, slot, selectedTags });
-    // if (result.success) {     NEEDS FIX
-    //   console.log('New forum post created: ', /*result.data*/);
-    //   setIsSuccess(true);
-    // } else {
-    //   console.error("Error: ", result.error);
-    // }
+    if (result.success) {
+      console.log('New forum post created: ', result.data!.title);
+      setIsSuccess(true);
+      toast({title:"WOOOHOOOOOO"})
+      router.push('/forum')
+    } else {
+      console.error("Error: ", result.error);
+    }
   };
 
   const handleTagSelect = (tag: string) => {
