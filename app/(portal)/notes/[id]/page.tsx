@@ -67,7 +67,7 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
   const postTime : string = note.createdAt.toISOString()
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
       <div className="lg:w-1/2 flex flex-col overflow-hidden">
         <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-2xl mx-auto">
@@ -81,7 +81,7 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
           </div>
         </div>
       </div>
-      <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-gray-200 dark:lg:border-gray-700 p-4">
+      <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
         <div className="h-full overflow-auto">
           <PDFViewer fileUrl={note.fileUrl} />
         </div>
