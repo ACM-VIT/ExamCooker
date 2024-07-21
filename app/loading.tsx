@@ -1,21 +1,26 @@
+"use client";
 import LoadingSvg from "@/public/assets/Loader.svg"
 import Image from "next/image";
+import { useState } from "react";
+
+function getQuirkyLine() {
+    const lines = [
+        "Brewing up something amazing for you...",
+        "Grinding away at loading your content...",
+        "Loading up the next serving of coffee...",
+        "Adding a shot of speed to your load...",
+        "Avoiding work by loading things...",
+        "Brewing up a page just for you...",
+        "Procrastinating by making you wait for this load...",
+    ]
+
+
+    return lines[Math.floor(Math.random() * lines.length)];
+}
+
 export default function Loading() {
 
-    function getQuirkyLine() {
-        const lines = [
-            "Brewing up something amazing for you...",
-            "Grinding away at loading your content...",
-            "Loading up the next serving of coffee...",
-            "Adding a shot of speed to your load...",
-            "Avoiding work by loading things...",
-            "Brewing up a page just for you...",
-            "Procrastinating by making you wait for this load...",
-        ]
-
-
-        return lines[Math.floor(Math.random() * lines.length)];
-    }
+    const [line, setLine] = useState(getQuirkyLine())
 
     return (
         <div
@@ -35,7 +40,7 @@ export default function Loading() {
         >
             <div className="flex flex-col justify-center items-center">
                 <Image src={LoadingSvg} alt="Loader" className="animate-spin size-1/3" />
-                <h6 className="p-5">{getQuirkyLine()}</h6>
+                <h6 className="p-5">{line}</h6>
             </div>
         </div>
     );
