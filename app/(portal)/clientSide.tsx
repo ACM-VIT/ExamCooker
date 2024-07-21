@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, Suspense } from "react";
 import NavBar from "@/app/components/NavBar";
 import Header from "@/app/components/header";
 import Image from "next/image";
-import Loading from "@/app/loading";
+import Loading from "@/app/(portal)/loading";
 
 export default function ClientSide({
     children,
@@ -94,7 +94,8 @@ export default function ClientSide({
             >
                 <div className={darkMode ? "dark" : ""}>
                     <Header toggleTheme={toggleTheme} darkMode={darkMode} />
-                    <Suspense fallback={<Loading />}>{children}</Suspense>
+                    {/* <Suspense fallback={<Loading />}>{children}</Suspense> */}
+                    {children}
                 </div>
             </main>
         </div>

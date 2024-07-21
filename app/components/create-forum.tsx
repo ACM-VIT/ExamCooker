@@ -9,7 +9,7 @@ import { getTags } from '../actions/fetchTags';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { useToast } from '@/components/ui/use-toast';
-import Loading from '../loading';
+import Loading from '../(portal)/loading';
 
 
 const years = ['2020', '2021', '2022', '2023', '2024'];
@@ -48,7 +48,7 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
   }), [availableTags]);
 
   useEffect(() => {
-    setShowDropdown(true);
+    setShowDropdown(false);
     if (tagInput) {
       const results = fuse.search(tagInput);
       setFilteredTags(results.map(result => result.item));
