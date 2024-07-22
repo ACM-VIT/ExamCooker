@@ -146,29 +146,32 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
     return (
-        <div className="transition-colors container mx-auto text-black dark:text-[#D5D5D5] overflow-hidden">
-            <h1 className="text-center p-4 pb-6">Favourites</h1>
-            <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto pb-10 pt-4">
-                <SearchBar pageType="favourites" initialQuery={search} />
+        <div className="flex flex-col min-h-screen">
+            <div className="flex-grow">
+                <div className="transition-colors container mx-auto text-black dark:text-[#D5D5D5] overflow-hidden">
+                    <h1 className="text-center p-4 pb-6">Favourites</h1>
+                    <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto pb-10 pt-4">
+                        <SearchBar pageType="favourites" initialQuery={search} />
+                    </div>
+                    <div className="flex items-center justify-center">
+                        <FavFetch
+                            items={itemsToDisplay}
+                            activeTab={type}
+                        />
+                    </div>
+                    {totalPages > 1 && (
+                        <Pagination
+                            currentPage={page}
+                            totalPages={totalPages}
+                            basePath="/favourites"
+                            searchQuery={search}
+                            typeQuery={type}
+                        />
+                    )}
+                </div>
             </div>
-            <div className="flex items-center justify-center">
-                <FavFetch
-                    items={itemsToDisplay}
-                    activeTab={type}
-                />
-            </div>
-            {totalPages > 1 && (
-                <Pagination
-                    currentPage={page}
-                    totalPages={totalPages}
-                    basePath="/favourites"
-                    searchQuery={search}
-                    typeQuery={type}
-                />
-            )}
         </div>
     );
 }
-
 
 export default favouritesPage;
