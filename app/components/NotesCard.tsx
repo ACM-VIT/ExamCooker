@@ -41,7 +41,7 @@ function NotesCard({ note, openInNewTab = false }: NotesCardProps) {
                     <img
                         src="https://topperworld.in/media/2022/11/c-sc.png"
                         alt={removePdfExtension(note.title)}
-                        className="w-full h-full object-cover"
+                        className="w-full object-cover"
                     />
                 </div>
                 <div className="mb-2  w-full whitespace-nowrap overflow-hidden text-ellipsis">
