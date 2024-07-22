@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useTransition } from 'react';
 import Link from 'next/link';
 import { createForumPost } from '../actions/CreateForumPost';
 import { useRouter } from 'next/navigation';
@@ -9,96 +9,85 @@ import { getTags } from '../actions/fetchTags';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { useToast } from '@/components/ui/use-toast';
+import Loading from '../(portal)/loading';
 
-const CreateForum: React.FC = () => {
+
+const years = ['2020', '2021', '2022', '2023', '2024'];
+const slots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'E1', 'E2', 'F1', 'F2', 'G1', 'G2'];
+
+const filterYearAndSlot = (tags: string[]) => {
+  const yearRegex = /^(2\d{3}|3000)$/;
+  return tags.filter(tag => !yearRegex.test(tag) && !slots.includes(tag));
+};
+
+
+const CreateForum = ({ allTags }: { allTags: string[] }) => {
   const [title, setTitle] = useState('');
   const [year, setYear] = useState('');
   const [slot, setSlot] = useState('');
   const [description, setDescription] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
   const [filteredTags, setFilteredTags] = useState<string[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const {toast} = useToast()
+  const { toast } = useToast()
   const forumId = "cly4bhnc0000df02z5tshuhx7";
+  const [pending, startTransition] = useTransition();
+  const [tagInput, setTagInput] = useState("");
+
 
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const years = ['2020', '2021', '2022', '2023', '2024'];
-  const slots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'E1', 'E2', 'F1', 'F2', 'G1', 'G2'];
-
-  const filterYearAndSlot = (tags: string[], years: string[], slots: string[]) => {
-    const yearRegex = /^(2\d{3}|3000)$/;
-    return tags.filter(tag => !yearRegex.test(tag) && !slots.includes(tag));
-  };
-
-  useEffect(() => {
-    async function fetchTags() {
-      try {
-        const fetchedTags = await getTags();
-        const filteredTags = filterYearAndSlot(fetchedTags, years, slots);
-        setAvailableTags(filteredTags);
-        setFilteredTags(filteredTags);
-      } catch (error) {
-        console.error('Error fetching tags:', error);
-      }
-    }
-    fetchTags();
-  }, []);
+  const availableTags = useMemo(() => {
+    return filterYearAndSlot(allTags)
+  }, [allTags])
 
   const fuse = useMemo(() => new Fuse(availableTags, {
     threshold: 0.6,
     minMatchCharLength: 2,
   }), [availableTags]);
 
-  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setNewTag(value);
-    setShowDropdown(true);
-    if (value) {
-      const results = fuse.search(value);
-      const filteredResults = filterYearAndSlot(results.map(result => result.item), years, slots);
-      setFilteredTags(filteredResults);
+  useEffect(() => {
+    setShowDropdown(false);
+    if (tagInput) {
+      const results = fuse.search(tagInput);
+      setFilteredTags(results.map(result => result.item));
     } else {
-      setFilteredTags(filterYearAndSlot(availableTags, years, slots));
+      setFilteredTags(availableTags);
     }
+  }, [fuse, tagInput])
+
+  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTagInput(e.target.value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await createForumPost({ title, forumId, description, year, slot, selectedTags });
-    if (result.success) {
-      console.log('New forum post created: ', result.data!.title);
-      setIsSuccess(true);
-      toast({title:"WOOOHOOOOOO"})
-      router.push('/forum')
-    } else {
-      console.error("Error: ", result.error);
-    }
+    startTransition(async () => {
+      const result = await createForumPost({ title, forumId, description, year, slot, selectedTags });
+      if (result.success) {
+        toast({ title: `Successfully posted: "${result.data?.title}"` });
+        router.push('/forum');
+      } else {
+        toast({title: "Error: Could not post.", variant: "destructive"});
+        console.error("Error: ", result.error);
+      }
+    })
   };
 
   const handleTagSelect = (tag: string) => {
     if (!selectedTags.includes(tag)) {
       setSelectedTags([...selectedTags, tag]);
     }
-    setNewTag('');
+    setTagInput('');
     setShowDropdown(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (newTag && !selectedTags.includes(newTag)) {
-        setSelectedTags([...selectedTags, newTag]);
-        if (!availableTags.includes(newTag)) {
-          setAvailableTags([...availableTags, newTag]);
-        }
-        setNewTag('');
-        setShowDropdown(false);
-      }
+      if (!filteredTags.length) return;
+      handleTagSelect(filteredTags[0]);
     }
   };
 
@@ -119,27 +108,9 @@ const CreateForum: React.FC = () => {
     };
   }, []);
 
-  // useEffect(() => {
-  //   if (isSuccess) {
-  //     const timer = setTimeout(() => {
-  //       router.push('/forum');
-  //     }, 2000);
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [isSuccess, router]);
-
-  if (isSuccess) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="p-6 shadow-lg">
-          <p className="text-green-600 font-bold text-xl">Forum post successfully created!</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex justify-center items-center min-h-screen text-black dark:text-[#D5D5D5]">
+      {pending && <Loading />}
       <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5]">
         <div className="flex justify-between items-center mb-4">
           <Link href={'/forum'}>
@@ -226,7 +197,7 @@ const CreateForum: React.FC = () => {
                   type="text"
                   placeholder="Add tag"
                   className={`p-2 border-2 border-dashed border-gray-300 w-full dark:bg-[#0C1222] text-lg font-bold`}
-                  value={newTag}
+                  value={tagInput}
                   onChange={handleTagInputChange}
                   onKeyDown={handleKeyDown}
                   onFocus={() => setShowDropdown(true)}

@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from "react"
+import React, { useState } from "react"
 import Image from "next/image"
 import { upvotePost, downvotePost } from '@/app/actions/forumVote'
 
 export function LikeButton({ postId, upvoteCount }: { postId: string, upvoteCount: number }) {
     const [likes, setLikes] = useState(upvoteCount)
 
-    async function handleClick() {
+    async function handleClick(e: React.MouseEvent) {
+        e.stopPropagation();
         const result = await upvotePost(postId)
         if (result.success) {
             setLikes(result.upvoteCount || 0)
@@ -42,7 +43,8 @@ export function LikeButton({ postId, upvoteCount }: { postId: string, upvoteCoun
 export function DislikeButton({ postId, downvoteCount }: { postId: string, downvoteCount: number }) {
     const [dislikes, setDislikes] = useState(downvoteCount)
 
-    async function handleClick() {
+    async function handleClick(e: React.MouseEvent) {
+        e.stopPropagation();
         const result = await downvotePost(postId)
         if (result.success) {
             setDislikes(result.downvoteCount || 0)

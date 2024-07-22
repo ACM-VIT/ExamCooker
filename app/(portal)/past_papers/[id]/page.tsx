@@ -58,6 +58,8 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
         await prisma.$disconnect();
     }
 
+    const postTime : string = paper.createdAt.toISOString();
+
     return (
         <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
           <div className="lg:w-1/2 flex flex-col overflow-hidden">
@@ -65,9 +67,10 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
               <div className="max-w-2xl mx-auto">
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{removePdfExtension(paper.title)}</h1>
                 <div className="space-y-2 sm:space-y-3">
-                  <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> A1</p>
-                  <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> 2024</p>
-                  <p className="text-base sm:text-lg"><span className="font-semibold">Author:</span> {paper.author?.name || 'Unknown'}</p>
+                  <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {slot}</p>
+                  <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {year}</p>
+                  <p className="text-base sm:text-lg"><span className="font-semibold">Posted by: </span> {paper.author?.name || 'Unknown'}</p>
+                  <p className='text-base sm:text-xs'><span className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span></p>
                 </div>
               </div>
             </div>
@@ -81,4 +84,4 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
       );
 }
 
-export default dynamic(() => Promise.resolve(PdfViewerPage), { ssr: false });
+export default PdfViewerPage;
