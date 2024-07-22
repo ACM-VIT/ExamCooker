@@ -6,9 +6,10 @@ import { DislikeButton, LikeButton } from "@/app/components/common/Buttons";
 import { ForumPost, Tag, Comment } from "@prisma/client";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
-import Link from "next/link";
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
+import {useToast} from "@/components/ui/use-toast";
+
 
 interface ForumCardProps {
     post: ForumPost;
@@ -24,6 +25,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
     const dateTimeObj = TimeHandler(createdAt.toISOString());
     const router = useRouter();
 
+    const {toast} = useToast();
     const { isBookmarked, toggleBookmark } = useBookmarks();
 
     const isFav = isBookmarked(post.id, 'forumpost');
@@ -31,7 +33,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
     const handleToggleFav = (e:React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
-        toggleBookmark({ id: post.id, type: 'forumpost', title: post.title }, !isFav);
+        toggleBookmark({ id: post.id, type: 'forumpost', title: post.title }, !isFav).catch(()=> toast({title: "Error! Could not add to favorites", variant: "destructive"}));
     };
 
 

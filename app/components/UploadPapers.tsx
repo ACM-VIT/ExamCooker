@@ -8,7 +8,6 @@ import Fuse from 'fuse.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { removePdfExtension } from './NotesCard';
-import { useRouter } from 'next/navigation';
 import Loading from '../loading';
 
 const years = ['2020', '2021', '2022', '2023', '2024'];
@@ -24,12 +23,9 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
     const [year, setYear] = useState('');
     const [slot, setSlot] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
-    const [newTag, setNewTag] = useState('');
-    const [isAddingTag, setIsAddingTag] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState("");
-    const [fileUploadStatus, setFileUploadStatus] = useState<{ [key: string]: string }>({});
     const [isDragging, setIsDragging] = useState(false);
     const [error, setError] = useState("");
     const [filteredTags, setFilteredTags] = useState<string[]>([]);
@@ -38,7 +34,6 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
     const [pending, startTransition] = useTransition();
     
 
-    const router = useRouter();
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const availableTags = useMemo(() => {
@@ -75,7 +70,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
         }
     }, [fuse, tagInput])
 
-    const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { setNewTag(e.target.value) };
+    const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { setTagInput(e.target.value) };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault(); 
@@ -99,11 +94,6 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
                     Object.entries({ ...fields, file }).forEach(([key, value]) => {
                         formData.append(key, value as string | Blob);
                     });
-
-                    setFileUploadStatus((prevStatus) => ({
-                        ...prevStatus,
-                        [file.name]: "Uploading",
-                    }));
 
                     const uploadResponse = await fetch(url, {
                         method: 'POST',
@@ -129,11 +119,6 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
                         yearValue,
                         slotValue
                     );
-
-                    setFileUploadStatus((prevStatus) => ({
-                        ...prevStatus,
-                        [file.name]: "Uploaded",
-                    }));
                 }
 
                 setMessage("Files uploaded successfully!");
@@ -154,8 +139,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
         if (!selectedTags.includes(tag)) {
             setSelectedTags([...selectedTags, tag]);
         }
-        setNewTag('');
-        setIsAddingTag(false);
+        setTagInput('');
         setShowDropdown(false);
     };
 
@@ -322,7 +306,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
                                     type="text"
                                     placeholder="Add tag"
                                     className={`p-2 border-2 border-dashed border-gray-300 w-full dark:bg-[#0C1222] text-lg font-bold`}
-                                    value={newTag}
+                                    value={tagInput}
                                     onChange={handleTagInputChange}
                                     onKeyDown={handleKeyDown}
                                     onFocus={() => setShowDropdown(true)}
@@ -384,7 +368,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
 
                     {files.length > 0 && (
                         <div className="mb-4 flex flex-col gap-2">
-                            {files.map((file, index) => (
+                            {files.map((_, index) => (
                                 <div key={index} className="text-gray-700 flex gap-2 items-center text-xs">
                                     <TextField
                                         value={fileTitles[index]}

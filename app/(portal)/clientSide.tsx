@@ -1,9 +1,8 @@
 "use client";
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import NavBar from "@/app/components/NavBar";
 import Header from "@/app/components/header";
 import Image from "next/image";
-import Loading from "@/app/(portal)/loading";
 
 export default function ClientSide({
     children,

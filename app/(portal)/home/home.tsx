@@ -111,13 +111,12 @@ const Home = async () => {
                             <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
-                            {recentlyViewedItems.map((item, index) => (
+                            {recentlyViewedItems.map((item) => (
                                 <CommonResource
                                     key={item.item.id}
                                     category={item.type}
                                     title={getTitle(item.item)} // maybe run migrations and change subject.name to title and then item.item.tile
                                     thing={item.item}
-                                    index={index}
                                 />
                             ))}
                         </div>
@@ -130,13 +129,12 @@ const Home = async () => {
                             <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
-                            {favoriteItems.slice(0, 9).map((item, index) => (
+                            {favoriteItems.slice(0, 9).map((item) => (
                                 <CommonResource
                                     key={item.item.id}
                                     category={item.type}
                                     title={getTitle(item.item)}
                                     thing={item.item}
-                                    index={index}
                                 />
                             ))}
                         </div>

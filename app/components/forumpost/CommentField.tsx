@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import React, { useState } from "react";
 import { createComment } from "@/app/actions/CreateComment";
 
 interface AddCommentFormProps {

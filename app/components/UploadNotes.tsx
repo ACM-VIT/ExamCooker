@@ -8,7 +8,6 @@ import Fuse from 'fuse.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { removePdfExtension } from './NotesCard';
-import { useRouter } from 'next/navigation';
 import Loading from '../loading';
 
 const years = ['2020', '2021', '2022', '2023', '2024'];
@@ -24,21 +23,15 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
     const [year, setYear] = useState('');
     const [slot, setSlot] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
-    const [newTag, setNewTag] = useState('');
-    const [isAddingTag, setIsAddingTag] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
-    const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState("");
-    const [fileUploadStatus, setFileUploadStatus] = useState<{ [key: string]: string }>({});
     const [isDragging, setIsDragging] = useState(false);
     const [error, setError] = useState("");
     const [filteredTags, setFilteredTags] = useState<string[]>([]);
     const [showDropdown, setShowDropdown] = useState(false);
-    const [tagsLoaded, setTagsLoaded] = useState(false);
     const [pending, startTransition] = useTransition();
     const [tagInput, setTagInput] = useState("");
     
-    const router = useRouter();
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const availableTags = useMemo(() => {
@@ -75,18 +68,16 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
         }
       }, [fuse, tagInput])
 
-    const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { setNewTag(e.target.value) };
+    const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { setTagInput(e.target.value) };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         startTransition(async () => {
-            setUploading(true);
             setMessage("");
             setError("");
 
             if (files.length === 0) {
                 setError("Please select at least one file to upload.");
-                setUploading(false);
                 return;
             }
 
@@ -99,11 +90,6 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
                     Object.entries({ ...fields, file }).forEach(([key, value]) => {
                         formData.append(key, value as string | Blob);
                     });
-
-                    setFileUploadStatus((prevStatus) => ({
-                        ...prevStatus,
-                        [file.name]: "Uploading",
-                    }));
 
                     const uploadResponse = await fetch(url, {
                         method: 'POST',
@@ -127,11 +113,6 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
                         yearValue,
                         slotValue
                     );
-
-                    setFileUploadStatus((prevStatus) => ({
-                        ...prevStatus,
-                        [file.name]: "Uploaded",
-                    }));
                 }
 
                 setMessage("Files uploaded successfully!");
@@ -139,7 +120,6 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
                 console.error("Error uploading files:", error);
                 setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
             } finally {
-                setUploading(false);
                 setFiles([]);
                 setSelectedTags([]);
                 setYear('');
@@ -242,8 +222,8 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
                     <div className="relative group">
                         <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
                         <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
-                        <button type="submit" onClick={handleSubmit} disabled={uploading} className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">
-                            {uploading ? "Uploading..." : "Upload"}
+                        <button type="submit" onClick={handleSubmit} disabled={pending} className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">
+                            {pending ? "Uploading..." : "Upload"}
                         </button>
                     </div>
 
@@ -311,7 +291,7 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
                                     type="text"
                                     placeholder="Add tag"
                                     className={`p-2 border-2 border-dashed border-gray-300 w-full dark:bg-[#0C1222] text-lg font-bold`}
-                                    value={newTag}
+                                    value={tagInput}
                                     onChange={handleTagInputChange}
                                     onKeyDown={handleKeyDown}
                                     onFocus={() => setShowDropdown(true)}
@@ -373,7 +353,7 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
 
                     {files.length > 0 && (
                         <div className="flex flex-col gap-2 w-[100%]">
-                            {files.map((file, index) => (
+                            {files.map((_, index) => (
                                 <div key={index} className="text-gray-700 flex items-center text-xs w-full">
                                     <TextField
                                         value={fileTitles[index]}

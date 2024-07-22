@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const SearchBarFilter: React.FC = () => {
   return (
-    <div className="flex items-center bg-white border  border-black border-2  shadow-md">
+    <div className="flex items-center bg-white border-black border-2 shadow-md">
       <FontAwesomeIcon icon={faSearch} color='grey' className='ml-4' />
       <input
         type="text"

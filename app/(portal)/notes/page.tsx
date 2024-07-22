@@ -1,13 +1,12 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import { PrismaClient, Note, Tag } from "@prisma/client";
-import { redirect } from 'next/navigation';
+import {Note, PrismaClient, Tag} from "@prisma/client";
+import {redirect} from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import NotesCard from "../../components/NotesCard";
 import SearchBar from "../../components/SearchBar";
 import Dropdown from "../../components/FilterComponent";
 import UploadButtonNotes from "../../components/UploadButtonNotes";
-import { useBookmarks } from '@/app/components/BookmarksProvider';
 
 
 const SCORE_THRESHOLD = 0.6;
@@ -61,7 +60,7 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
         ? searchParams.tags
         : (searchParams.tags ? searchParams.tags.split(',') : []);
 
-    const allNotes = await prisma.note.findMany({
+    let filteredNotes = await prisma.note.findMany({
         where: {
             isClear: true,
             ...(tags.length > 0 && {
@@ -81,8 +80,6 @@ async function notesPage({ searchParams }: { searchParams: { page?: string, sear
             createdAt: 'desc',
         }
     });
-
-    let filteredNotes = allNotes;
     if (search) {
         filteredNotes = performSearch(search, filteredNotes);
     }

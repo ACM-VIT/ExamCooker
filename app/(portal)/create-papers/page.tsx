@@ -12,6 +12,6 @@ async function UploadPaperPage() {
             <UploadFilePaper allTags={allTags.map(i => i.name)}/>
         </div>
     );
-};
+}
 
 export default UploadPaperPage;

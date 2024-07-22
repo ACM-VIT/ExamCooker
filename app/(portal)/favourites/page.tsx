@@ -86,7 +86,7 @@ async function favouritesPage({ searchParams }: { searchParams: { page?: string,
         type: 'note' | 'pastpaper' | 'forumpost' | 'subject';
         title: string;
         [key: string]: any;
-    }> = [];
+    }>;
     let totalCount: number;
 
     switch (type) {

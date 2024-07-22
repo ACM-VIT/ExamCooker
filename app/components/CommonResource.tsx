@@ -4,6 +4,7 @@ import { faEye, faHeart } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
 import { useBookmarks } from './BookmarksProvider';
+import {useToast} from "@/components/ui/use-toast";
 
 type FavoriteType = "note" | "pastpaper" | "forumpost" | "subject";
 
@@ -24,6 +25,7 @@ function mapCategoryToType(category: string): FavoriteType {
 
 export default function CommonFav({ category, title, thing }: { category: string, title: string, thing: any }) {
     const { toggleBookmark, isBookmarked } = useBookmarks();
+    const { toast } = useToast()
     const favoriteType = mapCategoryToType(category);
     const isFav = isBookmarked(thing.id, favoriteType);
 
@@ -32,7 +34,7 @@ export default function CommonFav({ category, title, thing }: { category: string
             id: thing.id,
             type: favoriteType,
             title: title,
-        }, !isFav);
+        }, !isFav).catch(()=>toast({title: "Error! Could not add to favorites", variant: "destructive"}));
     };
 
     const getLink = () => {

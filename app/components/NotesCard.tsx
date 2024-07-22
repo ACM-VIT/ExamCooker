@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEye, faHeart } from '@fortawesome/free-solid-svg-icons';
+import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { Note } from '@prisma/client';
-import Link from 'next/link';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
+import {useToast} from "@/components/ui/use-toast";
 
 interface NotesCardProps {
     note: Note;
@@ -22,15 +22,16 @@ export function removePdfExtension(filename: string): string {
     return filename;
 }
 
-function NotesCard({ note, openInNewTab = false }: NotesCardProps) {
+function NotesCard({ note }: NotesCardProps) {
     const { isBookmarked, toggleBookmark } = useBookmarks();
     const router = useRouter();
     const isFav = isBookmarked(note.id, 'note');
+    const { toast } = useToast();
 
     const handleToggleFav = (e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
-        toggleBookmark({ id: note.id, type: 'note', title: note.title }, !isFav);
+        toggleBookmark({ id: note.id, type: 'note', title: note.title }, !isFav).catch(()=> toast({title: "Error! Could not add to favorites", variant: "destructive"}) );
     };
 
     return (

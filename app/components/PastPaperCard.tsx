@@ -1,11 +1,11 @@
 "use client";
 import React from 'react';
-import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEye, faHeart } from '@fortawesome/free-solid-svg-icons';
+import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { useBookmarks } from './BookmarksProvider';
 import { PastPaper } from '@prisma/client';
 import { useRouter } from 'next/navigation';
+import {useToast} from "@/components/ui/use-toast";
 
 interface PastPaperCardProps {
     pastPaper: PastPaper;
@@ -17,15 +17,16 @@ function removePdfExtension(title: string) {
     return title.replace(/\.pdf$/, '');
 }
 
-function PastPaperCard({ pastPaper, openInNewTab = false }: PastPaperCardProps) {
+function PastPaperCard({ pastPaper }: PastPaperCardProps) {
     const { isBookmarked, toggleBookmark } = useBookmarks();
     const router = useRouter();
     const isFav = isBookmarked(pastPaper.id, 'pastpaper');
+    const { toast } = useToast();
 
     const handleToggleFav = (e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
-        toggleBookmark({ id: pastPaper.id, type: 'pastpaper', title: pastPaper.title }, !isFav);
+        toggleBookmark({ id: pastPaper.id, type: 'pastpaper', title: pastPaper.title }, !isFav).catch(() => toast({title: "Error! Could not add to favorites", variant: "destructive"}) );
     };
 
     return (

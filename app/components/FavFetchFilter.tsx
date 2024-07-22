@@ -1,5 +1,7 @@
 "use client";
 
+// todo sort the types out
+
 import { useState, useEffect } from 'react';
 import NotesCard from './NotesCard';
 import PastPaperCard from './PastPaperCard';

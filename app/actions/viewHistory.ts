@@ -1,5 +1,7 @@
 'use server'
 
+// todo delete this file
+
 import { PrismaClient, Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 

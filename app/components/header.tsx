@@ -1,11 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import Switch from "react-switch";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import moon from "@/public/assets/moon.svg";
-import sun from "@/public/assets/sun.svg";
 import profile from "@/public/assets/Profile.svg";
 import { SignOut } from "./sign-out";
 import ThemeToggleSwitch from "./common/ThemeToggle";
@@ -15,7 +12,7 @@ interface HeaderProps {
     darkMode: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ toggleTheme, darkMode }) => {
+const Header: React.FC<HeaderProps> = () => {
     const { data: session } = useSession();
     const [showOverlay, setShowOverlay] = useState(false);
     const overlayRef = useRef<HTMLDivElement>(null);

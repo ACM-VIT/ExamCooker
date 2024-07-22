@@ -11,6 +11,6 @@ async function NewForumPage() {
             <UploadFileNotes allTags={allTags.map(i => i.name)}/>
         </div>
     );
-};
+}
 
 export default NewForumPage;

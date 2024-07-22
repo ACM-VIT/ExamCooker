@@ -1,12 +1,9 @@
 import React from 'react';
 import { PrismaClient } from '@prisma/client';
-import dynamic from 'next/dynamic';
 import PDFViewer from '@/app/components/pdfviewer';
-import { recordViewHistory } from '@/app/actions/viewHistory';
 import { auth } from '@/app/auth';
 import { TimeHandler } from '@/app/components/forumpost/CommentContainer';
 import {notFound} from "next/navigation";
-//{dateTimeObj.hours}:{dateTimeObj.minutes} {dateTimeObj.amOrPm}, {dateTimeObj.day}/{dateTimeObj.month}/{dateTimeObj.year}
 
 function removePdfExtension(filename: string): string {
   return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
