@@ -1,21 +1,29 @@
 "use client"
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback, useTransition } from 'react';
 import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
 import { generateSignedUploadURL, storeFileInfoInDatabase } from "../actions/uploadFile";
 import cuid from 'cuid';
 import Fuse from 'fuse.js';
-import { getTags } from '../actions/fetchTags';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { removePdfExtension } from './NotesCard';
+import { useRouter } from 'next/navigation';
+import Loading from '../loading';
 
-const UploadFileNotes: React.FC = () => {
+const years = ['2020', '2021', '2022', '2023', '2024'];
+const slots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'E1', 'E2', 'F1', 'F2', 'G1', 'G2'];
+
+const filterYearAndSlot = (tags: string[]) => {
+    const yearRegex = /^(2\d{3}|3000)$/;
+    return tags.filter(tag => !yearRegex.test(tag) && !slots.includes(tag));
+};
+
+const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
     const [year, setYear] = useState('');
     const [slot, setSlot] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
-    const [availableTags, setAvailableTags] = useState<string[]>([]);
     const [newTag, setNewTag] = useState('');
     const [isAddingTag, setIsAddingTag] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
@@ -26,40 +34,139 @@ const UploadFileNotes: React.FC = () => {
     const [error, setError] = useState("");
     const [filteredTags, setFilteredTags] = useState<string[]>([]);
     const [showDropdown, setShowDropdown] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
     const [tagsLoaded, setTagsLoaded] = useState(false);
-    const years = ['2020', '2021', '2022', '2023', '2024'];
-    const slots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'E1', 'E2', 'F1', 'F2', 'G1', 'G2'];
+    const [pending, startTransition] = useTransition();
+    const [tagInput, setTagInput] = useState("");
+    
+    const router = useRouter();
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
+    const availableTags = useMemo(() => {
+        return filterYearAndSlot(allTags)
+      }, [allTags])
 
-    const filterYearAndSlot = (tags: string[], years: string[], slots: string[]) => {
-        const yearRegex = /^(2\d{3}|3000)$/;
-        return tags.filter(tag => !yearRegex.test(tag) && !slots.includes(tag));
-    };
-
-    useEffect(() => {
-        async function fetchTags() {
-            try {
-                const fetchedTags = await getTags()
-                const filteredTags = filterYearAndSlot(fetchedTags, years, slots);
-                setAvailableTags(filteredTags)
-                setFilteredTags(filteredTags)
-                setTagsLoaded(true)
-            } catch (error) {
-                console.error('Error fetching tags:', error)
-            }
-        }
-        fetchTags()
-    }, [])
-    useEffect(() => {
-        if (tagsLoaded) {
-            console.log("Available tags:", availableTags)
-        }
-    }, [availableTags, tagsLoaded])
     const fuse = useMemo(() => new Fuse(availableTags, {
         threshold: 0.6,
         minMatchCharLength: 2,
     }), [availableTags]);
+
+    // useEffect(() => {
+    //     async function fetchTags() {
+    //         try {
+    //             const fetchedTags = await getTags()
+    //             const filteredTags = filterYearAndSlot(fetchedTags, years, slots);
+    //             setAvailableTags(filteredTags)
+    //             setFilteredTags(filteredTags)
+    //             setTagsLoaded(true)
+    //         } catch (error) {
+    //             console.error('Error fetching tags:', error)
+    //         }
+    //     }
+    //     fetchTags()
+    // }, [])
+
+    useEffect(() => {
+        setShowDropdown(false);
+        if (tagInput) {
+          const results = fuse.search(tagInput);
+          setFilteredTags(results.map(result => result.item));
+        } else {
+          setFilteredTags(availableTags);
+        }
+      }, [fuse, tagInput])
+
+    const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { setNewTag(e.target.value) };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        startTransition(async () => {
+            setUploading(true);
+            setMessage("");
+            setError("");
+
+            if (files.length === 0) {
+                setError("Please select at least one file to upload.");
+                setUploading(false);
+                return;
+            }
+
+            try {
+                for (const file of files) {
+                    const filename = `${file.name}-${cuid()}`;
+                    const { url, fields } = await generateSignedUploadURL(filename);
+
+                    const formData = new FormData();
+                    Object.entries({ ...fields, file }).forEach(([key, value]) => {
+                        formData.append(key, value as string | Blob);
+                    });
+
+                    setFileUploadStatus((prevStatus) => ({
+                        ...prevStatus,
+                        [file.name]: "Uploading",
+                    }));
+
+                    const uploadResponse = await fetch(url, {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (!uploadResponse.ok) {
+                        throw new Error(`Failed to upload file: ${file.name}`);
+                    }
+
+                    const fileUrl = `${url}${filename}`;
+
+
+                    const yearValue = year.trim() !== '' ? year : undefined;
+                    const slotValue = slot.trim() !== '' ? slot : undefined;
+                    await storeFileInfoInDatabase(
+                        file.name,
+                        fileUrl,
+                        "Note",
+                        selectedTags,
+                        yearValue,
+                        slotValue
+                    );
+
+                    setFileUploadStatus((prevStatus) => ({
+                        ...prevStatus,
+                        [file.name]: "Uploaded",
+                    }));
+                }
+
+                setMessage("Files uploaded successfully!");
+            } catch (error) {
+                console.error("Error uploading files:", error);
+                setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            } finally {
+                setUploading(false);
+                setFiles([]);
+                setSelectedTags([]);
+                setYear('');
+                setSlot('');
+            }
+        })
+    };
+
+    const handleTagSelect = (tag: string) => {
+        if (!selectedTags.includes(tag)) {
+            setSelectedTags([...selectedTags, tag]);
+        }
+        setTagInput('');
+        setShowDropdown(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (!filteredTags.length) return;
+            handleTagSelect(filteredTags[0]);
+          }
+    };
+
+    const handleRemoveTag = (tag: string) => {
+        setSelectedTags(selectedTags.filter(t => t !== tag));
+    };
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -74,52 +181,18 @@ const UploadFileNotes: React.FC = () => {
         };
     }, []);
 
-    const handleAddTagClick = () => {
-        setIsAddingTag(true);
-        setShowDropdown(true);
-        setFilteredTags(availableTags);
-    };
 
-    const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setNewTag(value);
-        setShowDropdown(true);
-        if (value) {
-            const results = fuse.search(value);
-            const filteredResults = filterYearAndSlot(results.map(result => result.item), years, slots);
-            setFilteredTags(filteredResults);
-        } else {
-            setFilteredTags(filterYearAndSlot(availableTags, years, slots));
-        }
-    };
+    // useEffect(() => {
+    //     if (tagsLoaded) {
+    //         console.log("Available tags:", availableTags)
+    //     }
+    // }, [availableTags, tagsLoaded])
 
-    const handleTagSelect = (tag: string) => {
-        if (!selectedTags.includes(tag)) {
-            setSelectedTags([...selectedTags, tag]);
-        }
-        setNewTag('');
-        setIsAddingTag(false);
-        setShowDropdown(false);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            if (newTag && !selectedTags.includes(newTag)) {
-                setSelectedTags([...selectedTags, newTag]);
-                if (!availableTags.includes(newTag)) {
-                    setAvailableTags([...availableTags, newTag]);
-                }
-                setNewTag('');
-                setIsAddingTag(false);
-                setShowDropdown(false);
-            }
-        }
-    };
-
-    const handleRemoveTag = (tag: string) => {
-        setSelectedTags(selectedTags.filter(t => t !== tag));
-    };
+    // const handleAddTagClick = () => {
+    //     setIsAddingTag(true);
+    //     setShowDropdown(true);
+    //     setFilteredTags(availableTags);
+    // };
 
     const { getRootProps, getInputProps } = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
@@ -138,74 +211,11 @@ const UploadFileNotes: React.FC = () => {
             return newTitles;
         });
     }, []);
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setUploading(true);
-        setMessage("");
-        setError("");
-
-        if (files.length === 0) {
-            setError("Please select at least one file to upload.");
-            setUploading(false);
-            return;
-        }
-
-        try {
-            for (const file of files) {
-                const filename = `${file.name}-${cuid()}`;
-                const { url, fields } = await generateSignedUploadURL(filename);
-
-                const formData = new FormData();
-                Object.entries({ ...fields, file }).forEach(([key, value]) => {
-                    formData.append(key, value as string | Blob);
-                });
-
-                setFileUploadStatus((prevStatus) => ({
-                    ...prevStatus,
-                    [file.name]: "Uploading",
-                }));
-
-                const uploadResponse = await fetch(url, {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                if (!uploadResponse.ok) {
-                    throw new Error(`Failed to upload file: ${file.name}`);
-                }
-
-                const fileUrl = `${url}${filename}`;
+    
 
 
-                const yearValue = year.trim() !== '' ? year : undefined;
-                const slotValue = slot.trim() !== '' ? slot : undefined;
-                await storeFileInfoInDatabase(
-                    file.name,
-                    fileUrl,
-                    "Note",
-                    selectedTags,
-                    yearValue,
-                    slotValue
-                );
 
-                setFileUploadStatus((prevStatus) => ({
-                    ...prevStatus,
-                    [file.name]: "Uploaded",
-                }));
-            }
 
-            setMessage("Files uploaded successfully!");
-        } catch (error) {
-            console.error("Error uploading files:", error);
-            setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        } finally {
-            setUploading(false);
-            setFiles([]);
-            setSelectedTags([]);
-            setYear('');
-            setSlot('');
-        }
-    };
 
     const TextField = useCallback(({ value, onChange, index }: { value: string, onChange: (index: number, value: string) => void, index: number }) => {
         return (
@@ -220,6 +230,7 @@ const UploadFileNotes: React.FC = () => {
     }, []);
     return (
         <div className="flex justify-center items-center min-h-screen">
+            {pending && <Loading/>}
             <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5] text-black dark:text-[#D5D5D5] ">
                 <div className="flex justify-between items-center mb-4">
                     <Link href={'/notes'}>

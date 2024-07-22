@@ -136,12 +136,7 @@ export async function storeFileInfoInDatabase(
         } else {
             throw new Error("Invalid file type");
         }
-        // if (fileType === "Note"){
-        //     revalidatePath('/notes')
-        // } else if (fileType === "PastPaper") {
-        //     revalidatePath('/past_papers')
-        // }
-
+        
         fileType === "Note" ? revalidatePath('/notes') : revalidatePath('/past_papers')
 
     } catch (error) {
@@ -158,12 +153,6 @@ export async function storeFileInfoInDatabase(
             };
         }
     }
-    // if (fileType === "Note"){
-    //     redirect('/notes')
-    // } else if (fileType === "PastPaper") {
-    //     redirect('/past_papers')
-    // }
-
     fileType === "Note" ? redirect('/notes') : redirect('/past_papers')
 
     return { success: true, data };

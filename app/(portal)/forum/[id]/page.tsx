@@ -32,12 +32,22 @@ async function forumPostThread({ params }: { params: { id: string } }) {
   const userId = session?.user?.id;
 
   if (userId) {
-    await recordViewHistory('forumPost', forumpost.id, userId);
+    await prisma.viewHistory.upsert({
+      where: { userId_forumPostId: { userId, forumPostId: forumpost.id } },
+      update: {
+        viewedAt: new Date(),
+      },
+      create: {
+        userId,
+        forumPostId: forumpost.id,
+        viewedAt: new Date(),
+      },
+    })
   }
 
 
   return (
-    <ForumPost post={forumpost} tagArray={forumpost?.tags} commentArray={forumpost?.comments} />
+    <ForumPost post={forumpost} />
   )
 }
 
