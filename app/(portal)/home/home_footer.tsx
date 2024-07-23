@@ -8,10 +8,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 function HomeFooter() {
   return (
-    <footer className="flex flex-col sm:flex-row justify-between items-center pt-6 pb-6 mx-20% bg-[#C2E6EC] dark:bg-[#0C1222] px-4 sm:px-8">
+    <footer className="flex flex-col sm:flex-row justify-between items-center pt-6 pb-6 mx-20% bg-[#C2E6EC] dark:bg-[#0C1222] border-t border-t-[#82BEE9] dark:border-t-[#3BF4C7] px-4 sm:px-8">
       <div className="flex justify-center mb-4 sm:mb-0"> 
         <Image
-          src={'/assets/ACM Logo.svg'}
+          src={'/assets/ACM logo.svg'}
           alt="ACM VIT Student Chapter"
           width={180}
           height={180}

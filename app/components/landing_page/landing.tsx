@@ -9,6 +9,7 @@ import GradientHeart from "@/public/LandingPage/GradientHeart.svg";
 import GradientACMLogo from "@/public/assets/ACM logo.svg";
 import { SignIn } from "../sign-in";
 import Link from "next/link";
+import BookAndBoy from "@/public/assets/bookandboy.svg"
 
 export function GradientText({ children }: { children: React.ReactNode }) {
     return (
@@ -79,23 +80,30 @@ function LandingPageCard({
 function LandingPageContent() {
     return (
         <div className="bg-[#C2E6EC] dark:bg-[#0C1222]  transition-colors ease-in space-y-40 md:space-y-96 text-black dark:text-[#D5D5D5]" >
-            <div className="px-5 py-5 md:px-40 md:py-20 w-full">
-                <h1 className="text-6xl md:text-7xl lg:text-9xl drop-shadow-[0px_2px_rgba(59,244,199,1)]">
-                    <GradientText>Cramming</GradientText>
-                </h1>
-                <br />
-                <h1 className="text-6xl md:text-7xl lg:text-9xl drop-shadow-[0px_2px_rgba(59,244,199,1)]">
-                    Made Easy
-                </h1>
-                <br />
-                <div>
-                    <h4>
-                        Presenting [ExamCooker],your <br /> one-stop solution to
-                        Cram before Exams
-                    </h4>
+            <div className="flex flex-col md:flex-row justify-around items-center lg:items-start gap-0 lg:gap-4">
+                <div className="p-10 w-fit">
+                    <h1 className="text-6xl md:text-7xl lg:text-9xl drop-shadow-[0px_2px_rgba(59,244,199,1)]">
+                        <GradientText>Cramming</GradientText>
+                    </h1>
+                    <br />
+                    <h1 className="text-6xl md:text-7xl lg:text-9xl drop-shadow-[0px_2px_rgba(59,244,199,1)]">
+                        Made Easy
+                    </h1>
+                    <br />
+                    <div>
+                        <h4>
+                            Presenting ExamCooker,your <br /> one-stop solution to
+                            Cram before Exams
+                        </h4>
+                    </div>
                 </div>
-            </div>
+                <Image
+                    src={BookAndBoy}
+                    alt="Landing Page Image"
+                    className="h-[250px] lg:h-screen"
+                />
 
+            </div>
             <div className="lg:sticky lg:top-0 lg:h-screen space-y-5">
                 <WordBetweenLine>
                     <div className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">

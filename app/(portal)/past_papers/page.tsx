@@ -131,7 +131,7 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string, 
             )}
 
             <div className="flex justify-center">
-                <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6  place-content-center">
+                <div className="w-fit grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6  place-content-center">
                     {paginatedPastPapers.length > 0 ? (
                         paginatedPastPapers.map((eachPaper, index) => (
                             <div key={eachPaper.id} className="flex justify-center">
