@@ -51,7 +51,7 @@ const FavFetch = ({ items, activeTab }: {
     if (filteredItems.length === 0) {
       return (
         <div className="flex justify-center items-center h-[calc(65vh-200px)]">
-          <p className="text-gray-500">Its seems You have not liked anything as of now.....</p>
+          <p className="text-gray-500">It seems you have not liked anything as of now...</p>
         </div>
       );
     }
