@@ -6,6 +6,10 @@ import { recordViewHistory } from "@/app/actions/viewHistory";
 async function forumPostThread({ params }: { params: { id: string } }) {
 
   const prisma = new PrismaClient();
+
+  const session = await auth();
+  const userId = session?.user?.id;
+
   const forumpost = await prisma.forumPost.findUnique({
     where: {
       id: params.id,
@@ -14,6 +18,11 @@ async function forumPostThread({ params }: { params: { id: string } }) {
       author: {
         select: {
           name: true,
+        }
+      },
+      votes: {
+        where: {
+          userId: userId
         }
       },
       tags: true,
@@ -28,8 +37,6 @@ async function forumPostThread({ params }: { params: { id: string } }) {
     throw new Error('Forum post not found');
   }
 
-  const session = await auth();
-  const userId = session?.user?.id;
 
   if (userId) {
     await prisma.viewHistory.upsert({
