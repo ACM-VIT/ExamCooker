@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback, useTransition } from 'react';
 import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
-import { generateSignedUploadURL, storeFileInfoInDatabase } from "../actions/uploadFile";
+import { storeFileInfoInDatabase } from "../actions/uploadFile";
 import cuid from 'cuid';
 import Fuse from 'fuse.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -10,6 +10,7 @@ import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { removePdfExtension } from './NotesCard';
 import { useRouter } from 'next/navigation';
 import Loading from '../loading';
+import { useToast } from '@/components/ui/use-toast';
 
 const years = ['2020', '2021', '2022', '2023', '2024'];
 const slots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'E1', 'E2', 'F1', 'F2', 'G1', 'G2'];
@@ -19,13 +20,25 @@ const filterYearAndSlot = (tags: string[]) => {
     return tags.filter(tag => !yearRegex.test(tag) && !slots.includes(tag));
 };
 
+const formatMessage = (array: string[]) => {
+    let message: string = ''
+    for(let i = 0; i < array.length; i++){
+        if(i != array.length - 1) {
+            message += (array[i] + ', ')
+        }
+        else {
+            message += (array[i] + '.')
+        }
+    }
+    return message
+}
+
 const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
     const [year, setYear] = useState('');
     const [slot, setSlot] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [newTag, setNewTag] = useState('');
-    const [isAddingTag, setIsAddingTag] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState("");
@@ -37,6 +50,7 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
     const [tagsLoaded, setTagsLoaded] = useState(false);
     const [pending, startTransition] = useTransition();
     const [tagInput, setTagInput] = useState("");
+    const {toast} = useToast();
     
     const router = useRouter();
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -79,73 +93,86 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        startTransition(async () => {
-            setUploading(true);
-            setMessage("");
-            setError("");
+        setUploading(true);
+        setMessage("");
+        setError("");
 
-            if (files.length === 0) {
-                setError("Please select at least one file to upload.");
-                setUploading(false);
-                return;
+        if (files.length === 0) {
+            setError("Please select at least one file to upload.");
+            setUploading(false);
+            return;
+        }
+
+        try {
+            var counter : number = 0;
+            for (const file of files) {
+                setFileUploadStatus((prevStatus) => ({
+                    ...prevStatus,
+                    [file.name]: "Uploading",
+                }));
+
+                console.log("Sending file to Python backend...");
+                const result = await sendFileToPythonBackend(file, fileTitles[counter]);
+
+                console.log("Storing file info in database...");
+                const yearValue = year.trim() !== '' ? year : undefined;
+                const slotValue = slot.trim() !== '' ? slot : undefined;
+                console.log(result.fileUrl, result.thumbnailUrl)
+                await storeFileInfoInDatabase(
+                    fileTitles[counter],
+                    result.fileUrl,
+                    "Note",
+                    selectedTags,
+                    yearValue,
+                    slotValue,
+                    result.thumbnailUrl
+                );
+
+                setFileUploadStatus((prevStatus) => ({
+                    ...prevStatus,
+                    [file.name]: "Uploaded",
+                }));
+
+                counter++;
             }
 
-            try {
-                for (const file of files) {
-                    const filename = `${file.name}-${cuid()}`;
-                    const { url, fields } = await generateSignedUploadURL(filename);
+            toast({title: `Uploaded: ${formatMessage(fileTitles)}`})
+            
+        } catch (error) {
+            console.error("Error uploading files:", error);
+            setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setUploading(false);
+            setFiles([]);
+            setSelectedTags([]);
+            setYear('');
+            setSlot('');
+        }
+    };
 
-                    const formData = new FormData();
-                    Object.entries({ ...fields, file }).forEach(([key, value]) => {
-                        formData.append(key, value as string | Blob);
-                    });
+    const sendFileToPythonBackend = async (file: File, fileTitle: string) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('fileTitle', fileTitle)
 
-                    setFileUploadStatus((prevStatus) => ({
-                        ...prevStatus,
-                        [file.name]: "Uploading",
-                    }));
+        try {
+            const response = await fetch('http://localhost:8000/process_pdf', {
+                method: 'POST',
+                body: formData,
+            });
 
-                    const uploadResponse = await fetch(url, {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    if (!uploadResponse.ok) {
-                        throw new Error(`Failed to upload file: ${file.name}`);
-                    }
-
-                    const fileUrl = `${url}${filename}`;
-
-
-                    const yearValue = year.trim() !== '' ? year : undefined;
-                    const slotValue = slot.trim() !== '' ? slot : undefined;
-                    await storeFileInfoInDatabase(
-                        file.name,
-                        fileUrl,
-                        "Note",
-                        selectedTags,
-                        yearValue,
-                        slotValue
-                    );
-
-                    setFileUploadStatus((prevStatus) => ({
-                        ...prevStatus,
-                        [file.name]: "Uploaded",
-                    }));
-                }
-
-                setMessage("Files uploaded successfully!");
-            } catch (error) {
-                console.error("Error uploading files:", error);
-                setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            } finally {
-                setUploading(false);
-                setFiles([]);
-                setSelectedTags([]);
-                setYear('');
-                setSlot('');
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to process file: ${file.name}. Server responded with ${response.status}: ${errorText}`);
             }
-        })
+
+            const result = await response.json();
+            console.log('FastAPI response:', result);
+            return result;
+        } catch (error) {
+            console.error('Error in sendFileToPythonBackend:', error);
+            throw error;
+        }
     };
 
     const handleTagSelect = (tag: string) => {
@@ -204,6 +231,7 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
         onDragLeave: () => setIsDragging(false),
         multiple: true
     });
+    
     const handleTitleChange = useCallback((index: number, value: string) => {
         setFileTitles(prevTitles => {
             const newTitles = [...prevTitles];
@@ -211,12 +239,16 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
             return newTitles;
         });
     }, []);
+
+    const handleRemoveFile = ( fileArray: File[], index: number, filename: string) => {
+        // e.stopPropagation();
+        // e.preventDefault();
+        // delete fileArray[index];
+        setFiles(files.filter(t => t !== fileArray[index]))
+        console.log(filename);
+        setFileTitles(fileTitles.filter(t => t !== filename)); 
+    };
     
-
-
-
-
-
     const TextField = useCallback(({ value, onChange, index }: { value: string, onChange: (index: number, value: string) => void, index: number }) => {
         return (
             <input
@@ -375,10 +407,20 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
                         <div className="flex flex-col gap-2 w-[100%]">
                             {files.map((file, index) => (
                                 <div key={index} className="text-gray-700 flex items-center text-xs w-full">
-                                    <TextField
-                                        value={fileTitles[index]}
-                                        onChange={handleTitleChange}
-                                        index={index} />
+                                    <span key={index} className="text-gray-700 flex gap-2 items-center text-xs">
+                                        <TextField
+                                            value={fileTitles[index]}
+                                            onChange={handleTitleChange}
+                                            index={index} />
+
+                                        <button 
+                                            type="button"
+                                            className="ml-2 text-red-500"
+                                            onClick={() => handleRemoveFile(files, index, fileTitles[index])}
+                                            > {/*handleRemoveFile*/}
+                                            &times;
+                                        </button>
+                                    </span>
                                 </div>
                             ))}
                         </div>
