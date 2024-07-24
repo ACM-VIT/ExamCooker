@@ -184,7 +184,7 @@ const Home = async () => {
                                 />
                             ))}
                         </div>
-                    </section>zzzz
+                    </section>
                 </main>
             </div>
         </div>
