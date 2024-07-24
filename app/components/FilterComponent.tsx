@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import FilterComp from './filter/FilterComp';
 import { faCaretDown } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -59,16 +59,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
         };
     }, [isOpen, handleClickOutside]);
 
-    const checkboxOptions: CheckboxOptions = {
-        // courses: [
-        //     { id: 'option1', label: 'BENG101L' },
-        //     { id: 'option2', label: 'BEEE101L' },
-        //     { id: 'option3', label: 'BPHY101L' },
-        //     { id: 'option4', label: 'BCHEM101L' },
-        //     { id: 'option5', label: 'BMAT101L' },
-        //     { id: 'option6', label: 'BSTS101L' },
-        // ],
-
+    const checkboxOptions = useMemo<CheckboxOptions>(() => ({
         slots: [
             { id: 'A1', label: 'A1' },
             { id: 'A2', label: 'A2' },
@@ -85,23 +76,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
             { id: 'G1', label: 'G1' },
             { id: 'G2', label: 'G2' },
         ],
-        //     years: [
-        //         { id: 'option1', label: '2024' },
-        //         { id: 'option2', label: '2023' },
-        //         { id: 'option3', label: '2022' },
-        //         { id: 'option4', label: '2021' },
-        //     ],
-
-    };
-
-    const handleSelectionChange = useCallback((category: keyof CheckboxOptions, selection: string[]) => {
-        const newTags = Array.from(new Set([
-            ...selectedTags.filter(tag => !checkboxOptions[category]?.some(option => option.label === tag)),
-            ...selection
-        ]));
-        setSelectedTags(newTags);
-        updateURL(newTags);
-    }, [selectedTags, checkboxOptions]);
+    }), []);
 
     const updateURL = useCallback((tags: string[]) => {
         const params = new URLSearchParams(searchParams);
@@ -110,6 +85,17 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
         const newURL = `/${pageType}?${params.toString()}`;
         router.push(newURL);
     }, [searchParams, router, pageType]);
+
+    const handleSelectionChange = useCallback((category: keyof CheckboxOptions, selection: string[]) => {
+        const newTags = Array.from(new Set([
+            ...selectedTags.filter(tag => !checkboxOptions[category]?.some(option => option.label === tag)),
+            ...selection
+        ]));
+        setSelectedTags(newTags);
+        updateURL(newTags);
+    }, [selectedTags, checkboxOptions, updateURL]);
+
+
 
     return (
         <div className="relative inline-block text-left" ref={dropdownRef}>
