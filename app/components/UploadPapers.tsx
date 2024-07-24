@@ -6,7 +6,7 @@ import { storeFileInfoInDatabase } from "../actions/uploadFile";
 import cuid from 'cuid';
 import Fuse from 'fuse.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faSquareXmark } from '@fortawesome/free-solid-svg-icons';
 import { removePdfExtension } from './NotesCard';
 import { useRouter } from 'next/navigation';
 import Loading from '../loading';
@@ -349,7 +349,7 @@ const UploadFilePaper = ({ allTags }: { allTags: string[] }) => {
                                         onClick={() => handleRemoveTag(tag)}
                                         className="ml-2 text-red-500"
                                     >
-                                        &times;
+                                        <FontAwesomeIcon icon={faSquareXmark} />
                                     </button>
                                 </span>
                             ))}
@@ -435,10 +435,10 @@ const UploadFilePaper = ({ allTags }: { allTags: string[] }) => {
                                             className="ml-2 text-red-500"
                                             onClick={() => handleRemoveFile(files, index, fileTitles[index])}
                                         > {/*handleRemoveFile*/}
-                                            &times;
-                                        </button>
-                                    </span>
-                                </div>
+                                        <FontAwesomeIcon icon={faSquareXmark} />
+                                    </button>
+                                </span>
+                            </div>
                             ))}
                         </div>
                     )}
