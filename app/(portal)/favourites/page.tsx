@@ -1,12 +1,12 @@
-import React from "react";
+'use client';
+
+import React, { useState, useEffect, useMemo } from "react";
 import Fuse from 'fuse.js';
 import Pagination from "@/app/components/Pagination";
 import SearchBar from "@/app/components/SearchBar";
-import { PrismaClient } from "@prisma/client";
-import FavFetch from '@/app/components/FavFetchFilter';
-import { auth } from "@/app/auth";
-
-const prisma = new PrismaClient();
+import FavFetch, { mapBookmarkToItem } from '@/app/components/FavFetchFilter';
+import { useBookmarks } from '@/app/components/BookmarksProvider';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 const SCORE_THRESHOLD = 0.6;
 const PAGE_SIZE = 9;
@@ -26,152 +26,73 @@ function performSearch<T>(query: string, dataSet: T[]): T[] {
         .map((fuseResult) => fuseResult.item);
 }
 
-async function favouritesPage({ searchParams }: { searchParams: { page?: string, search?: string, type?: string } }) {
-    const search = searchParams.search || '';
-    const page = parseInt(searchParams.page || '1', 10);
-    const type = searchParams.type || 'Past Papers';
-    const session = await auth();
+function FavouritesPage() {
+    const { bookmarks } = useBookmarks();
+    const searchParams = useSearchParams();
+    const router = useRouter();
 
-    if (!session || !session.user || !session.user.email) {
-        throw new Error("User not authenticated");
-    }
+    const search = searchParams.get('search') || '';
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const type = searchParams.get('type') || 'Past Papers';
 
-    const userBookmarks = await prisma.user.findUnique({
-        where: {
-            email: session.user.email,
-        },
-        select: {
-            bookmarkedForumPosts: {
-                include: {
-                    author: true,
-                    tags: true,
-                    comments: true,
-                },
-                orderBy: {
-                    createdAt: 'desc',  //migrate so that most recent fav first?
+    const [filteredBookmarks, setFilteredBookmarks] = useState(bookmarks);
+
+    useEffect(() => {
+        let filtered = bookmarks;
+        if (search) {
+            filtered = performSearch(search, bookmarks);
+        }
+        if (type !== 'All') {
+            filtered = filtered.filter(bookmark => {
+                switch (type) {
+                    case 'Past Papers':
+                        return bookmark.type === 'pastpaper';
+                    case 'Notes':
+                        return bookmark.type === 'note';
+                    case 'Forum':
+                        return bookmark.type === 'forumpost';
+                    case 'Resources':
+                        return bookmark.type === 'subject';
+                    default:
+                        return true;
                 }
-            },
-            bookmarkedNotes: {
-                orderBy: {
-                    createdAt: 'desc'
-                }
-            },
-            bookmarkedPastPapers: {
-                orderBy:{
-                    createdAt: 'desc'
-                }
-            },
-            bookmarkedResources: true,
-        },
-    });
+            });
+        }
+        setFilteredBookmarks(filtered);
+    }, [bookmarks, search, type]);
 
-    if (!userBookmarks) {
-        throw new Error("User not found");
-    }
-
-    let filteredForumPosts = userBookmarks.bookmarkedForumPosts;
-    let filteredNotes = userBookmarks.bookmarkedNotes;
-    let filteredPastPapers = userBookmarks.bookmarkedPastPapers;
-    let filteredResources = userBookmarks.bookmarkedResources;
-
-    if (search) {
-        filteredForumPosts = performSearch(search, filteredForumPosts);
-        filteredNotes = performSearch(search, filteredNotes);
-        filteredPastPapers = performSearch(search, filteredPastPapers);
-        filteredResources = performSearch(search, filteredResources);
-    }
-
-    let itemsToDisplay: Array<{
-        id: string;
-        type: 'note' | 'pastpaper' | 'forumpost' | 'subject';
-        title: string;
-        [key: string]: any;
-    }> = [];
-    let totalCount: number;
-
-    switch (type) {
-        case 'Past Papers':
-            totalCount = filteredPastPapers.length;
-            itemsToDisplay = filteredPastPapers.map(paper => ({ ...paper, type: 'pastpaper' as const, title: paper.title }));
-            break;
-        case 'Notes':
-            totalCount = filteredNotes.length;
-            itemsToDisplay = filteredNotes.map(note => ({ ...note, type: 'note' as const, title: note.title }));
-            break;
-        case 'Forum':
-            totalCount = filteredForumPosts.length;
-            itemsToDisplay = filteredForumPosts.map(post => ({
-                ...post,
-                type: 'forumpost' as const,
-                title: post.title,
-                description: post.description,
-                author: post.author,
-                tags: post.tags,
-                comments: post.comments,
-                upvoteCount: post.upvoteCount,
-                downvoteCount: post.downvoteCount,
-                createdAt: post.createdAt,
-                updatedAt: post.updatedAt,
-            }));
-            break;
-        case 'Resources':
-            totalCount = filteredResources.length;
-            itemsToDisplay = filteredResources.map(resource => ({ ...resource, type: 'subject' as const, title: resource.name }));
-            break;
-        default:
-            totalCount = filteredForumPosts.length + filteredNotes.length +
-                filteredPastPapers.length + filteredResources.length;
-            itemsToDisplay = [
-                ...filteredForumPosts.map(post => ({
-                    ...post,
-                    type: 'forumpost' as const,
-                    title: post.title,
-                    description: post.description,
-                    author: post.author,
-                    tags: post.tags,
-                    comments: post.comments,
-                    upvoteCount: post.upvoteCount,
-                    downvoteCount: post.downvoteCount,
-                    createdAt: post.createdAt,
-                    updatedAt: post.updatedAt,
-                })),
-                ...filteredNotes.map(note => ({ ...note, type: 'note' as const, title: note.title })),
-                ...filteredPastPapers.map(paper => ({ ...paper, type: 'pastpaper' as const, title: paper.title })),
-                ...filteredResources.map(resource => ({ ...resource, type: 'subject' as const, title: resource.name }))
-            ];
-    }
-
-    itemsToDisplay = itemsToDisplay.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
+    const totalCount = filteredBookmarks.length;
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
+    const itemsToDisplay = useMemo(() => {
+        return filteredBookmarks
+            .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+            .map(mapBookmarkToItem);
+    }, [filteredBookmarks, page]);
+
     return (
-        <div className="flex flex-col min-h-screen">
-            <div className="flex-grow">
-                <div className="transition-colors container mx-auto text-black dark:text-[#D5D5D5] overflow-hidden">
-                    <h1 className="text-center p-4 pb-6">Favourites</h1>
-                    <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto pb-10 pt-4">
-                        <SearchBar pageType="favourites" initialQuery={search} />
-                    </div>
-                    <div className="flex items-center justify-center">
-                        <FavFetch
-                            items={itemsToDisplay}
-                            activeTab={type}
-                        />
-                    </div>
-                    {totalPages > 1 && (
-                        <Pagination
-                            currentPage={page}
-                            totalPages={totalPages}
-                            basePath="/favourites"
-                            searchQuery={search}
-                            typeQuery={type}
-                        />
-                    )}
-                </div>
+        <div className="transition-colors container mx-auto text-black dark:text-[#D5D5D5] overflow-hidden">
+            <h1 className="text-center p-4 pb-6">Favourites</h1>
+            <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto pb-10 pt-4">
+                <SearchBar pageType="favourites" initialQuery={search} />
             </div>
+            <div className="flex items-center justify-center">
+                <FavFetch
+                    items={itemsToDisplay}
+                    activeTab={type}
+                />
+            </div>
+            {totalPages > 1 && (
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    basePath="/favourites"
+                    searchQuery={search}
+                    typeQuery={type}
+                />
+            )}
         </div>
     );
 }
 
-export default favouritesPage;
+export default FavouritesPage;
