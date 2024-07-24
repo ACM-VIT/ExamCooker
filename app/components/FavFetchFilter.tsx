@@ -7,29 +7,14 @@ import ResourceCard from './ResourceCard';
 import ForumCard from './ForumCard';
 import { useRouter } from 'next/navigation';
 import { ForumPost, Tag, Comment, PastPaper, Note, Subject, User, Vote } from "@prisma/client";
-import { Bookmark } from '../actions/bookmarks';
-interface ForumCardProps {
-  post: ForumPost & {
-    author: User;
-    tags: Tag[];
-    comments: (Comment & { author: User })[];
-    votes: Vote[];
-  };
-  title: string;
-  desc: string;
-  author: string | null;
-  tags: Tag[];
-  createdAt: Date;
-  comments: (Comment & { author: User })[];
-}
-interface ForumPostItem extends Omit<ForumPost, 'upvoteCount' | 'downvoteCount'> {
+import { Bookmark } from '../actions/Favourites';
+
+interface ForumPostItem extends ForumPost {
   type: 'forumpost';
-  author?: { name: string | null };
+  author: User;
   tags: Tag[];
   comments: (Comment & { author: User })[];
-  upvoteCount: number;
-  downvoteCount: number;
-  votes: { type: 'UPVOTE' | 'DOWNVOTE' }[];
+  votes: Vote[];
   userVote?: 'UPVOTE' | 'DOWNVOTE' | null;
 }
 
