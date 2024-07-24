@@ -21,46 +21,6 @@ const storageOptions: StorageOptions = {
     },
 };
 
-export async function generateSignedUploadURL(filename: string) {
-    const bucketName = process.env.BUCKET_NAME;
-    if (!bucketName) {
-        throw new Error("Missing BUCKET_NAME environment variable");
-    }
-    console.log("Bucket name:", bucketName);
-
-    let storage: Storage;
-
-    try {
-        storage = new Storage(storageOptions);
-    } catch (error) {
-        console.error("Error initializing Storage:", error);
-        throw new Error(
-            `Failed to initialize Storage: ${error instanceof Error ? error.message : "Unknown error"
-            }`
-        );
-    }
-
-    const bucket = storage.bucket(bucketName);
-    const file = bucket.file(filename);
-
-    const options = {
-        expires: Date.now() + 5 * 60 * 1000,
-    };
-
-    try {
-        const [response] = await file.generateSignedPostPolicyV4(options);
-        console.log(response);
-        return response;
-    } catch (error) {
-        console.error("Error generating signed URL:", error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to generate signed URL: ${error.message}`);
-        } else {
-            throw new Error("Failed to generate signed URL: Unknown error");
-        }
-    }
-}
-
 async function findOrCreateTag(name: string) {
     let tag = await prisma.tag.findUnique({ where: { name } });
     if (!tag) {
@@ -74,7 +34,8 @@ export async function storeFileInfoInDatabase(
     fileType: string,
     tags: string[],
     year?: string,
-    slot?: string
+    slot?: string,
+    thumbnailUrl?: string
 ) {
     let data;
     try {
@@ -104,12 +65,12 @@ export async function storeFileInfoInDatabase(
             allTags.push(slotTag);
         }
 
-
         if (fileType === "Note") {
             data = await prisma.note.create({
                 data: {
                     title: originalFilename,
                     fileUrl: fileUrl,
+                    thumbNailUrl: thumbnailUrl,
                     authorId: user.id,
                     tags: {
                         connect: allTags.map((tag) => ({ id: tag.id })),
@@ -124,6 +85,7 @@ export async function storeFileInfoInDatabase(
                 data: {
                     title: originalFilename,
                     fileUrl: fileUrl,
+                    thumbNailUrl: thumbnailUrl,
                     authorId: user.id,
                     tags: {
                         connect: allTags.map((tag) => ({ id: tag.id })),
@@ -136,7 +98,7 @@ export async function storeFileInfoInDatabase(
         } else {
             throw new Error("Invalid file type");
         }
-        
+
         fileType === "Note" ? revalidatePath('/notes') : revalidatePath('/past_papers')
 
     } catch (error) {
@@ -153,8 +115,8 @@ export async function storeFileInfoInDatabase(
             };
         }
     }
+
     fileType === "Note" ? redirect('/notes') : redirect('/past_papers')
 
     return { success: true, data };
-
 }

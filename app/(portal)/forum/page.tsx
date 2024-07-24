@@ -1,6 +1,6 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import { PrismaClient, ForumPost, Tag, Comment, User } from "@prisma/client";
+import { PrismaClient, ForumPost, Tag, Comment, User, Vote } from "@prisma/client";
 import { redirect } from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import ForumCard from "../../components/ForumCard";
@@ -14,6 +14,7 @@ type ForumPostWithDetails = ForumPost & {
   author: User;
   tags: Tag[];
   comments: (Comment & { author: User })[];
+  votes: Vote[];
 };
 
 function validatePage(page: number, totalPages: number): number {
@@ -83,6 +84,7 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
     },
     include: {
       author: true,
+      votes: true,
       tags: true,
       comments: {
         include: {

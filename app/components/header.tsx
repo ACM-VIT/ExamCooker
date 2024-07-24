@@ -42,7 +42,7 @@ const Header: React.FC<HeaderProps> = () => {
             <div className="flex items-center text-right m-2 space-x-4">
                 <ThemeToggleSwitch />
                 <div className="hidden sm:flex sm:flex-col mr-4">
-                    <p className="lg:text-lg font-medium text-gray-900 dark:text-[#D5D5D5]">
+                    <p className="lg:text-base font-medium text-gray-900 dark:text-[#D5D5D5]">
                         {session?.user?.name}
                     </p>
                     <p className="lg:text-sm text-gray-500 dark:text-gray-400">

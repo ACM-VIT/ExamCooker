@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import { createComment } from "@/app/actions/CreateComment";
+import Loading from "@/app/(portal)/loading";
 
 interface AddCommentFormProps {
   forumPostId: string ;
@@ -11,32 +12,34 @@ interface AddCommentFormProps {
 
 const CommentField: React.FC<AddCommentFormProps> = ({ forumPostId, onCommentAdded }) => {
   const [content, setContent] = useState('');
-   // This should ideally come from user authentication
+  const [pending, startTransition] = useTransition();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    startTransition(async() => {
 
-    if (!content.trim()) {
-      alert("Comment cannot be empty");
-      return;
-    }
-
-    console.log('Sending comment data:', { content, forumPostId });
-    const result = await createComment({
-        content,
-        forumPostId
-    });
-
-    if (result.success) {
-        console.log('New comment created:', result.data);
-        setContent('');
-        if (onCommentAdded) {
-          onCommentAdded();
-        }
-      } else {
-        console.error('Error creating comment:', result.error);
-        alert(`Failed to add comment: ${result.error}`);
+      if (!content.trim()) {
+        alert("Comment cannot be empty");
+        return;
       }
+
+      console.log('Sending comment data:', { content, forumPostId });
+      const result = await createComment({
+          content,
+          forumPostId
+      });
+
+      if (result.success) {
+          console.log('New comment created:', result.data);
+          setContent('');
+          if (onCommentAdded) {
+            onCommentAdded();
+          }
+        } else {
+          console.error('Error creating comment:', result.error);
+          alert(`Failed to add comment: ${result.error}`);
+        }
+    })
   };
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,6 +48,7 @@ const CommentField: React.FC<AddCommentFormProps> = ({ forumPostId, onCommentAdd
 
   return (
     <div>
+      {pending && <Loading/>}
       <form className="relative drop-shadow-md flex align-top mb-5" onSubmit={handleSubmit}>
         <input 
           type="text" 

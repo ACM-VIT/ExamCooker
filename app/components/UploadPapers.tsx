@@ -2,13 +2,14 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback, useTransition } from 'react';
 import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
-import { generateSignedUploadURL, storeFileInfoInDatabase } from "../actions/uploadFile";
+import { storeFileInfoInDatabase } from "../actions/uploadFile";
 import cuid from 'cuid';
 import Fuse from 'fuse.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { removePdfExtension } from './NotesCard';
 import Loading from '../loading';
+import { useToast } from '@/components/ui/use-toast';
 
 const years = ['2020', '2021', '2022', '2023', '2024'];
 const slots = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2', 'E1', 'E2', 'F1', 'F2', 'G1', 'G2'];
@@ -17,6 +18,19 @@ const filterYearAndSlot = (tags: string[]) => {
     const yearRegex = /^(2\d{3}|3000)$/;
     return tags.filter(tag => !yearRegex.test(tag) && !slots.includes(tag));
 };
+
+const formatMessage = (array: string[]) => {
+    let message: string = ''
+    for(let i = 0; i < array.length; i++){
+        if(i != array.length - 1) {
+            message += (array[i] + ', ')
+        }
+        else {
+            message += (array[i] + '.')
+        }
+    }
+    return message
+}
 
 const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
@@ -32,7 +46,8 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
     const [showDropdown, setShowDropdown] = useState(false);
     const [tagInput, setTagInput] = useState("");
     const [pending, startTransition] = useTransition();
-    
+    const { toast } = useToast();
+
 
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -73,66 +88,87 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
     const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { setTagInput(e.target.value) };
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault(); 
-        startTransition(async() => {
-            setUploading(true);
-            setMessage("");
-            setError("");
+        e.preventDefault();
+        setUploading(true);
+        setMessage("");
+        setError("");
 
-            if (files.length === 0) {
-                setError("Please select at least one file to upload.");
-                setUploading(false);
-                return;
+        if (files.length === 0) {
+            setError("Please select at least one file to upload.");
+            setUploading(false);
+            return;
+        }
+
+        try {
+            var counter : number = 0;
+            for (const file of files) {
+                setFileUploadStatus((prevStatus) => ({
+                    ...prevStatus,
+                    [file.name]: "Uploading",
+                }));
+
+                console.log("Sending file to Python backend...");
+                const result = await sendFileToPythonBackend(file, fileTitles[counter]);
+
+                console.log("Storing file info in database...");
+                const yearValue = year.trim() !== '' ? year : undefined;
+                const slotValue = slot.trim() !== '' ? slot : undefined;
+                console.log(result.fileUrl, result.thumbnailUrl)
+                await storeFileInfoInDatabase(
+                    fileTitles[counter],
+                    result.fileUrl,
+                    "PastPaper",
+                    selectedTags,
+                    yearValue,
+                    slotValue,
+                    result.thumbnailUrl
+                );
+
+                setFileUploadStatus((prevStatus) => ({
+                    ...prevStatus,
+                    [file.name]: "Uploaded",
+                }));
+
+                counter++;
             }
 
-            try {
-                for (const file of files) {
-                    const filename = `${file.name}-${cuid()}`;
-                    const { url, fields } = await generateSignedUploadURL(filename);
+            toast({title: `Uploaded: ${formatMessage(fileTitles)}`})
 
-                    const formData = new FormData();
-                    Object.entries({ ...fields, file }).forEach(([key, value]) => {
-                        formData.append(key, value as string | Blob);
-                    });
+        } catch (error) {
+            console.error("Error uploading files:", error);
+            setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setUploading(false);
+            setFiles([]);
+            setSelectedTags([]);
+            setYear('');
+            setSlot('');
+        }
+    };
 
-                    const uploadResponse = await fetch(url, {
-                        method: 'POST',
-                        body: formData,
-                    });
+    const sendFileToPythonBackend = async (file: File, fileTitle: string) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('fileTitle', fileTitle)
 
-                    if (!uploadResponse.ok) {
-                        throw new Error(`Failed to upload file: ${file.name}`);
-                    }
+        try {
+            const response = await fetch('http://localhost:8000/process_pdf', {
+                method: 'POST',
+                body: formData,
+            });
 
-                    const fileUrl = `${url}${filename}`;
-
-
-                    const yearValue = year.trim() !== '' ? year : undefined;
-                    const slotValue = slot.trim() !== '' ? slot : undefined;
-
-                    await storeFileInfoInDatabase(
-                        file.name,
-                        fileUrl,
-                        // session?.user?.email || "",
-                        "PastPaper",
-                        selectedTags,
-                        yearValue,
-                        slotValue
-                    );
-                }
-
-                setMessage("Files uploaded successfully!");
-            } catch (error) {
-                console.error("Error uploading files:", error);
-                setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            } finally {
-                setUploading(false);
-                setFiles([]);
-                setSelectedTags([]);
-                setYear('');
-                setSlot('');
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to process file: ${file.name}. Server responded with ${response.status}: ${errorText}`);
             }
-        })
+
+            const result = await response.json();
+            console.log('FastAPI response:', result);
+            return result;
+        } catch (error) {
+            console.error('Error in sendFileToPythonBackend:', error);
+            throw error;
+        }
     };
 
     const handleTagSelect = (tag: string) => {
@@ -187,6 +223,15 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
         });
     }, []);
 
+    const handleRemoveFile = ( fileArray: File[], index: number, filename: string) => {
+        // e.stopPropagation();
+        // e.preventDefault();
+        // delete fileArray[index];
+        setFiles(files.filter(t => t !== fileArray[index]))
+        console.log(filename);
+        setFileTitles(fileTitles.filter(t => t !== filename));
+    };
+
 
 
 
@@ -222,6 +267,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
                 onChange={(e) => onChange(index, e.target.value)}
                 required
             />
+
         );
     }, []);
     return (
@@ -369,12 +415,24 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
                     {files.length > 0 && (
                         <div className="mb-4 flex flex-col gap-2">
                             {files.map((_, index) => (
-                                <div key={index} className="text-gray-700 flex gap-2 items-center text-xs">
+                            <div>
+                                {/* {console.log(files, fileTitles)} */}
+                                <span key={index} className="text-gray-700 flex gap-2 items-center text-xs">
                                     <TextField
                                         value={fileTitles[index]}
                                         onChange={handleTitleChange}
-                                        index={index} />
-                                </div>
+                                        index={index}
+                                    />
+
+                                    <button
+                                        type="button"
+                                        className="ml-2 text-red-500"
+                                        onClick={() => handleRemoveFile(files, index, fileTitles[index])}
+                                        > {/*handleRemoveFile*/}
+                                        &times;
+                                    </button>
+                                </span>
+                            </div>
                             ))}
                         </div>
                     )}

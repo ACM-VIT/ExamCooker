@@ -61,7 +61,7 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); 
     startTransition(async () => {
       const result = await createForumPost({ title, forumId, description, year, slot, selectedTags });
       if (result.success) {
