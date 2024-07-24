@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed_tags": "node seed-tags.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.4.1",

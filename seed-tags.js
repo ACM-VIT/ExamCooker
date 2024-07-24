@@ -17,8 +17,15 @@ async function main(filepath) {
 
     for await (const line of rl) {
         // Each line in input.txt will be successively available here as `line`.
-        prisma.tag.create({
-            data: {
+        prisma.tag.upsert({
+            where: {
+                name: line
+            },
+            update: {
+                name: line,
+                aliases: []
+            },
+            create: {
                 name: line,
                 aliases: []
             }
