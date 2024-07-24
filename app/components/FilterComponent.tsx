@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import FilterComp from './filter/FilterComp';
+import SearchBarFilter from './filter/SearchBarFilter'; // Import the search bar
 import { faCaretDown } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -64,8 +65,8 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
             { id: 'F2', label: 'F2' },
             { id: 'G1', label: 'G1' },
             { id: 'G2', label: 'G2' },
-
-        ], years: [
+        ],
+        years: [
             { id: 'option1', label: '2024' },
             { id: 'option2', label: '2023' },
             { id: 'option3', label: '2022' },
@@ -94,15 +95,13 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
         <div className="relative inline-block text-left">
             <button
                 onClick={toggleDropdown}
-                className="inline-flex items-center justify-center w-full border-black dark:border-[#D5D5D5] border-2 text-lg font-bold px-4 py-2 bg-[#5FC4E7] dark:bg-[#7D7467]/20"
+                className="inline-flex items-center justify-center w-full border-black dark:border-white border-2 text-lg font-bold px-4 py-2 bg-[#5FC4E7] dark:bg-[#7D7467]/20"
             >
                 Filter
                 <FontAwesomeIcon icon={faCaretDown} className="ml-2" />
             </button>
 
-            <div className={` flex flex-col sm:flex-row sm:space-x-4 justify-center items-start absolute left-0 mt-2 
-        max-w-[90vw] sm:max-w-[1200px]  border-2 border-black 
-        dark:border-[#D5D5D5] bg-[#5FC4E7] dark:bg-[#7D7467]/20 backdrop-blur-[75px] z-50 overflow-auto ${isOpen ? '' : 'hidden'}`}>
+            <div className={`hide-scrollbar flex flex-col sm:flex-row sm:space-x-4 justify-center items-start absolute left-0 mt-2 max-w-[90vw] sm:max-w-[1200px] border-2 border-black dark:border-white bg-[#5FC4E7] dark:bg-[#000000] z-50 overflow-auto ${isOpen ? '' : 'hidden'}`}>
                 {(Object.entries(checkboxOptions) as [keyof CheckboxOptions, Option[]][]).map(([category, options]) => (
                     <div key={category} className="w-full sm:h-[40vh] sm:w-1/3 p-4 sm:p-2">
                         <FilterComp
@@ -110,6 +109,8 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
                             options={options}
                             onSelectionChange={(selection) => handleSelectionChange(category, selection)}
                             selectedOptions={selectedTags.filter(tag => options.some(option => option.label === tag))}
+                            isSlotCategory={category === 'slots'}
+                            searchBar={category === 'courses' ? <SearchBarFilter /> : undefined} // Pass the search bar only for courses
                         />
                     </div>
                 ))}
