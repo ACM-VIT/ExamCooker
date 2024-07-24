@@ -6,7 +6,7 @@ import { storeFileInfoInDatabase } from "../actions/uploadFile";
 import cuid from 'cuid';
 import Fuse from 'fuse.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faSquareXmark } from '@fortawesome/free-solid-svg-icons';
 import { removePdfExtension } from './NotesCard';
 import Loading from '../loading';
 import { useToast } from '@/components/ui/use-toast';
@@ -21,8 +21,8 @@ const filterYearAndSlot = (tags: string[]) => {
 
 const formatMessage = (array: string[]) => {
     let message: string = ''
-    for(let i = 0; i < array.length; i++){
-        if(i != array.length - 1) {
+    for (let i = 0; i < array.length; i++) {
+        if (i != array.length - 1) {
             message += (array[i] + ', ')
         }
         else {
@@ -32,7 +32,7 @@ const formatMessage = (array: string[]) => {
     return message
 }
 
-const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
+const UploadFilePaper = ({ allTags }: { allTags: string[] }) => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
     const [year, setYear] = useState('');
     const [slot, setSlot] = useState('');
@@ -53,7 +53,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
 
     const availableTags = useMemo(() => {
         return filterYearAndSlot(allTags)
-      }, [allTags])
+    }, [allTags])
 
     const fuse = useMemo(() => new Fuse(availableTags, {
         threshold: 0.6,
@@ -100,7 +100,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
         }
 
         try {
-            var counter : number = 0;
+            var counter: number = 0;
             for (const file of files) {
                 setFileUploadStatus((prevStatus) => ({
                     ...prevStatus,
@@ -132,8 +132,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
                 counter++;
             }
 
-            toast({title: `Uploaded: ${formatMessage(fileTitles)}`})
-
+            toast({ title: `Uploaded: ${formatMessage(fileTitles)}` })
         } catch (error) {
             console.error("Error uploading files:", error);
             setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -184,7 +183,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
             e.preventDefault();
             if (!filteredTags.length) return;
             handleTagSelect(filteredTags[0]);
-          }
+        }
     };
 
     const handleRemoveTag = (tag: string) => {
@@ -223,7 +222,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
         });
     }, []);
 
-    const handleRemoveFile = ( fileArray: File[], index: number, filename: string) => {
+    const handleRemoveFile = (fileArray: File[], index: number, filename: string) => {
         // e.stopPropagation();
         // e.preventDefault();
         // delete fileArray[index];
@@ -256,7 +255,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
     //     setFilteredTags(availableTags);
     // };
 
-    
+
 
     const TextField = useCallback(({ value, onChange, index }: { value: string, onChange: (index: number, value: string) => void, index: number }) => {
         return (
@@ -272,7 +271,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
     }, []);
     return (
         <div className="flex justify-center items-center min-h-screen">
-            {pending && <Loading/>}
+            {pending && <Loading />}
             <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5] text-black dark:text-[#D5D5D5] ">
                 <div className="flex justify-between items-center mb-4">
                     <Link href={'/past_papers'}>
@@ -343,7 +342,7 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
                                         onClick={() => handleRemoveTag(tag)}
                                         className="ml-2 text-red-500"
                                     >
-                                        &times;
+                                        <FontAwesomeIcon icon={faSquareXmark} />
                                     </button>
                                 </span>
                             ))}
@@ -415,21 +414,21 @@ const UploadFilePaper = ({allTags} : {allTags : string[]}) => {
                     {files.length > 0 && (
                         <div className="mb-4 flex flex-col gap-2">
                             {files.map((_, index) => (
-                            <div>
-                                {/* {console.log(files, fileTitles)} */}
-                                <span key={index} className="text-gray-700 flex gap-2 items-center text-xs">
-                                    <TextField
-                                        value={fileTitles[index]}
-                                        onChange={handleTitleChange}
-                                        index={index}
-                                    />
+                                <div key={index} className="text-gray-700 flex items-center text-xs w-full">
+                                    {/* {console.log(files, fileTitles)} */}
+                                    <span key={index} className="text-gray-700 flex gap-2 items-center text-xs">
+                                        <TextField
+                                            value={fileTitles[index]}
+                                            onChange={handleTitleChange}
+                                            index={index}
+                                        />
 
-                                    <button
-                                        type="button"
-                                        className="ml-2 text-red-500"
-                                        onClick={() => handleRemoveFile(files, index, fileTitles[index])}
+                                        <button
+                                            type="button"
+                                            className="ml-2 text-red-500"
+                                            onClick={() => handleRemoveFile(files, index, fileTitles[index])}
                                         > {/*handleRemoveFile*/}
-                                        &times;
+                                        <FontAwesomeIcon icon={faSquareXmark} />
                                     </button>
                                 </span>
                             </div>

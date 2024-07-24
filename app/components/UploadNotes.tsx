@@ -6,7 +6,7 @@ import { storeFileInfoInDatabase } from "../actions/uploadFile";
 import cuid from 'cuid';
 import Fuse from 'fuse.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faSquareXmark } from '@fortawesome/free-solid-svg-icons';
 import { removePdfExtension } from './NotesCard';
 import Loading from '../loading';
 import { useToast } from '@/components/ui/use-toast';
@@ -324,7 +324,8 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
                                         onClick={() => handleRemoveTag(tag)}
                                         className="ml-2 text-red-500"
                                     >
-                                        &times;
+                                        <FontAwesomeIcon icon={faSquareXmark} />
+                                        
                                     </button>
                                 </span>
                             ))}
@@ -405,10 +406,10 @@ const UploadFileNotes = ({allTags} : {allTags: string[]}) => {
 
                                         <button
                                             type="button"
-                                            className="ml-2 text-red-500"
+                                            className="ml-2 text-red-500 text-xl"
                                             onClick={() => handleRemoveFile(files, index, fileTitles[index])}
                                             > {/*handleRemoveFile*/}
-                                            &times;
+                                            <FontAwesomeIcon icon={faSquareXmark} />
                                         </button>
                                     </span>
                                 </div>

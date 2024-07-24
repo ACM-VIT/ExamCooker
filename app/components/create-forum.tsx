@@ -6,7 +6,7 @@ import { createForumPost } from '../actions/CreateForumPost';
 import { useRouter } from 'next/navigation';
 import Fuse from 'fuse.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faSquareXmark } from '@fortawesome/free-solid-svg-icons';
 import { useToast } from '@/components/ui/use-toast';
 import Loading from '../(portal)/loading';
 
@@ -187,7 +187,7 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
                     onClick={() => handleRemoveTag(tag)}
                     className="ml-2 text-red-500"
                   >
-                    &times;
+                    <FontAwesomeIcon icon={faSquareXmark} />
                   </button>
                 </span>
               ))}
