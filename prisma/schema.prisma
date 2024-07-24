@@ -175,6 +175,7 @@ model PastPaper {
 model Tag {
   id         String      @id @default(cuid())
   name       String      @unique
+  aliases    String[]
   notes      Note[]
   forums     Forum[]
   forumPosts ForumPost[]
