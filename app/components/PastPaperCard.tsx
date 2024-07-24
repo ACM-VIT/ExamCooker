@@ -49,7 +49,6 @@ function PastPaperCard({ pastPaper }: PastPaperCardProps) {
                         <FontAwesomeIcon icon={faHeart} color={isFav ? 'red' : 'lightgrey'} />
                     </button>
                 </div>
-                <div {...(openInNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}></div>
             </div>
         </div>
     );

@@ -23,7 +23,7 @@ function mapCategoryToType(category: string): FavoriteType {
     }
 }
 
-export default function CommonFav({ category, title, thing }: { category: string, title: string, thing: any, index: number}) {
+export default function CommonFav({ category, title, thing }: { category: string, title: string, thing: any}) {
     const { toggleBookmark, isBookmarked } = useBookmarks();
     const { toast } = useToast()
     const favoriteType = mapCategoryToType(category);

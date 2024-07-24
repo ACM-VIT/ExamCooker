@@ -2,7 +2,7 @@
 
 // todo sort the types out
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import NotesCard from './NotesCard';
 import PastPaperCard from './PastPaperCard';
 import ResourceCard from './ResourceCard';
@@ -34,7 +34,7 @@ interface SubjectItem extends Omit<Subject, 'type'> {
   type: 'subject';
 }
 
-export function mapBookmarkToItem(bookmark: Bookmark): Item {
+export function mapBookmarkToItem(bookmark: any): Item {
   switch (bookmark.type) {
     case 'forumpost':
       return bookmark as ForumPostItem

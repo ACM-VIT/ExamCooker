@@ -18,7 +18,7 @@ interface ForumCardProps {
         tags: Tag[];
         comments: (Comment & { author: User })[];
         votes: Vote[];
-    };
+    } | any;
     title: string;
     desc: string;
     author: string | null;
