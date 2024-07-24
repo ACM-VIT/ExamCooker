@@ -23,7 +23,7 @@ function mapCategoryToType(category: string): FavoriteType {
     }
 }
 
-export default function CommonFav({ category, title, thing, index }: { category: string, title: string, thing: any, index: number}) {
+export default function CommonFav({ category, title, thing, index }: { category: string, title: string, thing: any, index: number }) {
     const { toggleBookmark, isBookmarked } = useBookmarks();
     const favoriteType = mapCategoryToType(category);
     const isFav = isBookmarked(thing.id, favoriteType);
@@ -58,15 +58,16 @@ export default function CommonFav({ category, title, thing, index }: { category:
         <div className="w-full p-2 flex flex-col justify-between gap-2 bg-[#5FC4E7] dark:bg-white/10 lg:dark:bg-[#0C1222] border-2 border-[#5FC4E7] dark:border-white/20 dark:border-b-[#3BF4C7] lg:dark:border-white/20 hover:dark:bg-white/10 hover:scale-105 hover:border-b-white hover:dark:border-b-[#3BF4C7] transition duration-200 cursor-pointer"
             onClick={() => router.push(getLink())}>
             <h6 className="opacity-50 text-xs">{category.toUpperCase()}</h6>
-            <div className="flex justify-between">
-            <h5>
+            <h5 className='break-all'>
                 {title}
             </h5>
+            <div className="flex justify-between">
+                <div></div>
                 <button onClick={handleFavoriteClick} className="transition-colors duration-200">
                     <FontAwesomeIcon icon={faHeart} className={isFav ? "text-red-500" : "text-gray-300"} />
                 </button>
             </div>
-            
+
 
 
 
@@ -78,7 +79,7 @@ export default function CommonFav({ category, title, thing, index }: { category:
                     View
                 </Link> */}
 
-                
+
             </div>
         </div>
     );
