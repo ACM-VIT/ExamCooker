@@ -1,4 +1,8 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+    images: {
+        domains: ['storage.googleapis.com', 'topperworld.in'],
+    },
+};
 
-export default nextConfig;
+export default nextConfig;

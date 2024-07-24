@@ -106,6 +106,14 @@ const FavFetch: React.FC<FavFetchProps> = ({ items, activeTab }) => {
       }
     });
 
+    if (filteredItems.length === 0) {
+      return (
+        <div className="flex justify-center items-center h-[calc(65vh-200px)]">
+          <p className="text-gray-500">It seems you have not liked anything as of now...</p>
+        </div>
+      );
+    }
+
     if (currentTab === 'Forum') {
       return (
         <div className="flex flex-col gap-4 pt-6">

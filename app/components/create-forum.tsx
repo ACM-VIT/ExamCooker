@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { createForumPost } from '../actions/CreateForumPost';
 import { useRouter } from 'next/navigation';
 import Fuse from 'fuse.js';
-import { getTags } from '../actions/fetchTags';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { useToast } from '@/components/ui/use-toast';
@@ -62,7 +61,7 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); 
     startTransition(async () => {
       const result = await createForumPost({ title, forumId, description, year, slot, selectedTags });
       if (result.success) {

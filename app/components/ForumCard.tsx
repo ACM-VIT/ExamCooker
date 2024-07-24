@@ -25,6 +25,42 @@ interface ForumCardProps {
     comments: (Comment & { author: User })[];
 }
 
+function formatTimeDifference(hours: string, minutes: string, seconds: string, amOrPm: string, day: string, month: string, year: number): string {
+
+    let inputHours = parseInt(hours);
+    const inputMinutes = parseInt(minutes);
+    const inputSeconds = parseInt(seconds);
+    const inputDay = parseInt(day);
+    const inputMonth = parseInt(month) - 1; 
+    const inputYear = year;
+  
+    if (amOrPm.toLowerCase() === 'pm' && inputHours < 12) {
+      inputHours += 12;
+    } else if (amOrPm.toLowerCase() === 'am' && inputHours === 12) {
+      inputHours = 0;
+    }
+
+    const inputDate = new Date(inputYear, inputMonth, inputDay, inputHours, inputMinutes, inputSeconds);
+
+    const currentDate = new Date();
+  
+    const diffMillis = currentDate.getTime() - inputDate.getTime();
+  
+    const diffMinutes = Math.floor(diffMillis / (1000 * 60));
+    const diffHours = Math.floor(diffMillis / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMillis / (1000 * 60 * 60 * 24));
+  
+    if (diffMillis < 0) {
+      return "Input time is in the future";
+    } else if (diffMinutes < 60) {
+      return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+    } else {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+    }
+  }
+
 export default function ForumCard({ post, title, desc, author, tags, createdAt, comments }: ForumCardProps) {
     const dateTimeObj = TimeHandler(createdAt.toISOString());
     const router = useRouter();
@@ -83,7 +119,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                 </div>
 
                 <div className="text-xs text-right">
-                    <p>{author} posted at {dateTimeObj.hours}:{dateTimeObj.minutes} {dateTimeObj.amOrPm}, {dateTimeObj.day}/{dateTimeObj.month}/{dateTimeObj.year}</p>
+                    <p>{author} asked {formatTimeDifference(dateTimeObj.hours, dateTimeObj.minutes, dateTimeObj.seconds, dateTimeObj.amOrPm, dateTimeObj.day, dateTimeObj.month, dateTimeObj.year)} ago</p>
                 </div>
             </div>
         </div>
