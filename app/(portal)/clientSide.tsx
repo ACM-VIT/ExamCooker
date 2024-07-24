@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import NavBar from "@/app/components/NavBar";
 import Header from "@/app/components/header";
 import Image from "next/image";
+import HomeFooter from "@/app/(portal)/home/home_footer";
 
 export default function ClientSide({
     children,
@@ -93,8 +94,8 @@ export default function ClientSide({
             >
                 <div className={darkMode ? "dark" : ""}>
                     <Header toggleTheme={toggleTheme} darkMode={darkMode} />
-                    {/* <Suspense fallback={<Loading />}>{children}</Suspense> */}
                     {children}
+                    <HomeFooter/>
                 </div>
             </main>
         </div>
