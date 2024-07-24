@@ -1,5 +1,5 @@
 import React from "react";
-import UploadFileNotes from "@/app/components/UploadNotes";
+import UploadFile from "@/app/components/UploadFile";
 import { PrismaClient } from "@prisma/client";
 
 async function NewForumPage() {
@@ -8,7 +8,7 @@ async function NewForumPage() {
     const allTags = await prisma.tag.findMany();
     return (
         <div className="create-notes">
-            <UploadFileNotes allTags={allTags.map(i => i.name)}/>
+            <UploadFile allTags={allTags.map(i => i.name)} variant="Notes"/>
         </div>
     );
 }

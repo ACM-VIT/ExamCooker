@@ -7,7 +7,6 @@ import { Note } from '@prisma/client';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
 import {useToast} from "@/components/ui/use-toast";
-import Image from 'next/image';
 
 interface NotesCardProps {
     note: Note;
@@ -51,9 +50,6 @@ function NotesCard({ note }: NotesCardProps) {
          {removePdfExtension(note.title)}
      </div>
      <div className="flex justify-between items-center space-x-4">
-         <div></div>
-         <div {...(openInNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-         </div>
          <button onClick={handleToggleFav} className="transition-colors duration-200">
              <FontAwesomeIcon icon={faHeart} color={isFav ? 'red' : 'lightgrey'} />
          </button>

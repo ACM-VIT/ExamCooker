@@ -10,11 +10,9 @@ interface Props {
   options: Option[];
   onSelectionChange: (selection: string[]) => void;
   selectedOptions: string[];
-  isSlotCategory?: boolean;
-  searchBar?: React.ReactNode;
 }
 
-const FilterComp: React.FC<Props> = ({ title, options, onSelectionChange, selectedOptions, isSlotCategory, searchBar }) => {
+const FilterComp: React.FC<Props> = ({ title, options, onSelectionChange, selectedOptions }) => {
   const handleCheckboxChange = (label: string) => {
     const updatedSelection = selectedOptions.includes(label)
       ? selectedOptions.filter(item => item !== label)
@@ -25,8 +23,7 @@ const FilterComp: React.FC<Props> = ({ title, options, onSelectionChange, select
   return (
     <div className="w-full sm:w-[182px] dark:bg-none p-4 text-center">
       <h6 className="[text-shadow:_0_1px_0_rgb(0_0_0_/_40%)] font-bold mb-2">{title}</h6>
-      {/* {searchBar}  */}
-      <div className={`${isSlotCategory ? 'grid grid-cols-2 gap-x-4 gap-y-4 sm:gap-x-2 gap-y-2' : ''}`}>
+      <div>
         {options.map((option) => (
           <div key={option.id} className="flex items-center mb-2">
             <input
@@ -50,4 +47,3 @@ const FilterComp: React.FC<Props> = ({ title, options, onSelectionChange, select
 };
 
 export default FilterComp;
-

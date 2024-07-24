@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from "react";
 import NavBar from "@/app/components/NavBar";
 import Header from "@/app/components/header";
 import Image from "next/image";
-import HomeFooter from "./home/home_footer";
 
 export default function ClientSide({
     children,
@@ -92,11 +91,10 @@ export default function ClientSide({
                     isNavOn ? "lg:w-[95vw] md:w-[92vw]" : "w-[100vw]"
                 }`}
             >
-                <div className={`min-h-screen flex flex-col justify-between ${darkMode ? "dark" : ""}`}>
+                <div className={darkMode ? "dark" : ""}>
                     <Header toggleTheme={toggleTheme} darkMode={darkMode} />
                     {/* <Suspense fallback={<Loading />}>{children}</Suspense> */}
                     {children}
-                    <HomeFooter />
                 </div>
             </main>
         </div>

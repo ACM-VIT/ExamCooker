@@ -1,16 +1,11 @@
 "use client";
-import React, {ReactNode,useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {usePathname} from "next/navigation";
 import Loading from "../loading";
 
-interface TooltipProps {
-    children: ReactNode;
-    content: string;
-}
-
-const Tooltip: React.FC<TooltipProps> = ({children, content}: { children: React.ReactNode, content: string }) => {
+const Tooltip = ({children, content}: { children: React.ReactNode, content: string }) => {
     return (
         <div className="group relative">
             {children}
@@ -109,33 +104,34 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
 
                 <div className="flex flex-col items-center mt-8">
                     <Link href="/" passHref className={`${pathname == '/' ? "bg-[#ffffff]/20" : ""}`}>
-                        <RenderMenuItem svgSource="/assets/Home.svg" alt="Home" disableAnim={pathname == "/"} />
+                        <RenderMenuItem svgSource="/assets/Home.svg" alt="Home" disableAnim={pathname == "/"}/>
                     </Link>
                     <Link href={"/notes"} passHref className={`${pathname == '/notes' ? "bg-[#ffffff]/20" : ""}`}>
                         <RenderMenuItem svgSource="/assets/NotesIcon.svg" alt="Notes"
-                                        disableAnim={pathname == "/notes"} />
+                                        disableAnim={pathname == "/notes"}/>
                     </Link>
                     <Link href={"/past_papers"} passHref
                           className={`${pathname == '/past_papers' ? "bg-[#ffffff]/20" : ""}`}>
                         <RenderMenuItem svgSource="/assets/PastPapersIcon.svg" alt="Papers"
-                                        disableAnim={pathname == "/past_papers"} />
+                                        disableAnim={pathname == "/past_papers"}/>
                     </Link>
                     <Link href={"/forum"} passHref className={`${pathname == '/forum' ? "bg-[#ffffff]/20" : ""}`}>
                         <RenderMenuItem svgSource="/assets/ForumIcon.svg" alt="Forum"
-                                        disableAnim={pathname == "/forum"} />
+                                        disableAnim={pathname == "/forum"}/>
                     </Link>
                     <Link href={"/resources"} passHref
                           className={`${pathname == '/resources' ? "bg-[#ffffff]/20" : ""}`}>
                         <RenderMenuItem svgSource="/assets/BookIcon.svg" alt="Resources"
-                                        disableAnim={pathname == "/resources"} />
+                                        disableAnim={pathname == "/resources"}/>
                     </Link>
                     <Link href={"/favourites"} passHref
                           className={`${pathname == '/favourites' ? "bg-[#ffffff]/20" : ""}`}>
                         <RenderMenuItem svgSource="/assets/NavFavouriteIcon.svg" alt="Favourites"
-                                        disableAnim={pathname == "/favourites"} />
+                                        disableAnim={pathname == "/favourites"}/>
                     </Link>
                 </div>
                 <div/>
+
             </nav>
         </>
     );

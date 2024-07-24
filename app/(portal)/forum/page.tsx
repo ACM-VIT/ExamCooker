@@ -1,7 +1,7 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import { PrismaClient, ForumPost, Tag, Comment, User, Vote } from "@prisma/client";
-import { redirect } from 'next/navigation';
+import {Comment, ForumPost, PrismaClient, Tag, User, Vote} from "@prisma/client";
+import {redirect} from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import ForumCard from "../../components/ForumCard";
 import SearchBar from "../../components/SearchBar";
@@ -70,7 +70,7 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
     ? searchParams.tags
     : (searchParams.tags ? searchParams.tags.split(',') : []);
 
-  const allForumPosts = await prisma.forumPost.findMany({
+  let filteredForumPosts = await prisma.forumPost.findMany({
     where: {
       ...(tags.length > 0 && {
         tags: {
@@ -96,8 +96,6 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
       createdAt: 'desc'
     }
   });
-
-  let filteredForumPosts = allForumPosts;
   if (search) {
     filteredForumPosts = performSearch(search, filteredForumPosts);
   }
