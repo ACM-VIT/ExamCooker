@@ -29,32 +29,26 @@ function PastPaperCard({ pastPaper, openInNewTab = false }: PastPaperCardProps) 
     };
 
     return (
-        <div className="max-w-sm w-full h-full text-black dark:text-[#D5D5D5] ">
-            <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96"
+        <div className={`max-w-sm w-full h-full text-black dark:text-[#D5D5D5]`}>
+            <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 cursor-pointer"
                 onClick={() => router.push(`/past_papers/${pastPaper.id}`)}>
-                <div className="bg-[#d9d9d9] w-full h-44 overflow-hidden">
+                <div className="bg-[#d9d9d9] w-full h-44 relative overflow-hidden">
                     <img
-                        src="https://topperworld.in/media/2022/11/c-sc.png"
-                        alt={pastPaper.title}
                         className="w-full object-cover"
+                        src={pastPaper.thumbNailUrl || "https://topperworld.in/media/2022/11/c-sc.png"} // migration to make thumbnail mandatory 
+                        alt={removePdfExtension(pastPaper.title)}
                     />
                 </div>
-                <div className="mb-2 w-full whitespace-nowrap overflow-hidden text-ellipsis">
-                    {removePdfExtension(pastPaper.title)}
-                </div>
-                <div className="flex justify-between items-center space-x-4">
+                <div className="flex justify-between items-center">
                     <div></div>
-                        {/* {...(openInNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                        className="py-1 px-2 text-sm flex items-center bg-white dark:bg-[#3D414E]"
-                    > */}
-                        {/* <span className="mr-1 flex items-center justify-center">
-                            <FontAwesomeIcon icon={faEye} />
-                        </span>
-                        View */}
-                    <button onClick={handleToggleFav} style={{ color: isFav ? 'red' : 'lightgrey' }}>
-                        <FontAwesomeIcon icon={faHeart} />
+                    <div className="mb-2 w-full whitespace-nowrap overflow-hidden text-ellipsis text-lg">
+                        {removePdfExtension(pastPaper.title)}
+                    </div>
+                    <button onClick={handleToggleFav} className="transition-colors duration-200">
+                        <FontAwesomeIcon icon={faHeart} color={isFav ? 'red' : 'lightgrey'} />
                     </button>
                 </div>
+                <div {...(openInNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}></div>
             </div>
         </div>
     );
