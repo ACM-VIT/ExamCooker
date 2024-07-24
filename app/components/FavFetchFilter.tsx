@@ -1,20 +1,23 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+// todo sort the types out
+
+import React, { useState, useEffect } from 'react';
 import NotesCard from './NotesCard';
 import PastPaperCard from './PastPaperCard';
 import ResourceCard from './ResourceCard';
 import ForumCard from './ForumCard';
 import { useRouter } from 'next/navigation';
-import { ForumPost, Tag, Comment, PastPaper, Note, Subject, User, Vote } from "@prisma/client";
-import { Bookmark } from '../actions/Favourites';
+import { ForumPost, Tag, Comment, PastPaper, Note, Subject, User } from "@prisma/client";
 
-interface ForumPostItem extends ForumPost {
+interface ForumPostItem extends Omit<ForumPost, 'upvoteCount' | 'downvoteCount'> {
   type: 'forumpost';
-  author: User;
+  author?: { name: string | null };
   tags: Tag[];
   comments: (Comment & { author: User })[];
-  votes: Vote[];
+  upvoteCount: number;
+  downvoteCount: number;
+  votes: { type: 'UPVOTE' | 'DOWNVOTE' }[];
   userVote?: 'UPVOTE' | 'DOWNVOTE' | null;
 }
 
@@ -31,7 +34,7 @@ interface SubjectItem extends Omit<Subject, 'type'> {
   type: 'subject';
 }
 
-export function mapBookmarkToItem(bookmark: Bookmark): Item {
+export function mapBookmarkToItem(bookmark: any): Item {
   switch (bookmark.type) {
     case 'forumpost':
       return bookmark as ForumPostItem

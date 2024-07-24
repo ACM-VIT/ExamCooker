@@ -1,5 +1,5 @@
 import React from "react";
-import UploadFilePaper from "@/app/components/UploadPapers";
+import UploadFile from "@/app/components/UploadFile";
 import { PrismaClient } from "@prisma/client";
 
 
@@ -9,9 +9,9 @@ async function UploadPaperPage() {
     const allTags = await prisma.tag.findMany();
     return (
         <div className="create-papers">
-            <UploadFilePaper allTags={allTags.map(i => i.name)}/>
+            <UploadFile allTags={allTags.map(i => i.name)} variant="Past Papers"/>
         </div>
     );
-};
+}
 
 export default UploadPaperPage;

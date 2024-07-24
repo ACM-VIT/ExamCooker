@@ -15,7 +15,6 @@
     "@fortawesome/free-regular-svg-icons": "^6.5.2",
     "@fortawesome/free-solid-svg-icons": "^6.5.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
-    "@google-cloud/storage": "^7.11.2",
     "@prisma/client": "^5.16.1",
     "@radix-ui/react-toast": "^1.2.1",
     "@react-pdf-viewer/core": "^3.12.0",

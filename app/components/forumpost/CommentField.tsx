@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useTransition } from "react";
+import React, { useState, useTransition } from "react";
 import { createComment } from "@/app/actions/CreateComment";
 import Loading from "@/app/(portal)/loading";
 

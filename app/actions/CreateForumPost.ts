@@ -2,9 +2,7 @@
 
 import { PrismaClient, Tag } from '@prisma/client'
 import { auth } from '../auth'
-import { error } from 'console'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 
 const prisma = new PrismaClient()
 
@@ -26,7 +24,6 @@ async function findOrCreateTag(name: string): Promise<Tag> {
 }
 
 export async function createForumPost(inputData: CreateForumPostInput) {
-  const status = true;
   try {
     const session = await auth();
     if(!session|| !session.user){

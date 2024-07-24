@@ -9,6 +9,8 @@ import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
 import { ForumPost, Tag, Comment, User, Vote } from "@prisma/client";
+import {useToast} from "@/components/ui/use-toast";
+
 
 interface ForumCardProps {
     post: ForumPost & {
@@ -16,7 +18,7 @@ interface ForumCardProps {
         tags: Tag[];
         comments: (Comment & { author: User })[];
         votes: Vote[];
-    };
+    } | any;
     title: string;
     desc: string;
     author: string | null;
@@ -31,9 +33,9 @@ function formatTimeDifference(hours: string, minutes: string, seconds: string, a
     const inputMinutes = parseInt(minutes);
     const inputSeconds = parseInt(seconds);
     const inputDay = parseInt(day);
-    const inputMonth = parseInt(month) - 1; 
+    const inputMonth = parseInt(month) - 1;
     const inputYear = year;
-  
+
     if (amOrPm.toLowerCase() === 'pm' && inputHours < 12) {
       inputHours += 12;
     } else if (amOrPm.toLowerCase() === 'am' && inputHours === 12) {
@@ -43,13 +45,13 @@ function formatTimeDifference(hours: string, minutes: string, seconds: string, a
     const inputDate = new Date(inputYear, inputMonth, inputDay, inputHours, inputMinutes, inputSeconds);
 
     const currentDate = new Date();
-  
+
     const diffMillis = currentDate.getTime() - inputDate.getTime();
-  
+
     const diffMinutes = Math.floor(diffMillis / (1000 * 60));
     const diffHours = Math.floor(diffMillis / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMillis / (1000 * 60 * 60 * 24));
-  
+
     if (diffMillis < 0) {
       return "Input time is in the future";
     } else if (diffMinutes < 60) {
@@ -65,6 +67,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
     const dateTimeObj = TimeHandler(createdAt.toISOString());
     const router = useRouter();
 
+    const {toast} = useToast();
     const { isBookmarked, toggleBookmark } = useBookmarks();
 
     const isFav = isBookmarked(post.id, 'forumpost');
@@ -72,7 +75,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
     const handleToggleFav = (e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
-        toggleBookmark({ id: post.id, type: 'forumpost', title: post.title }, !isFav);
+        toggleBookmark({ id: post.id, type: 'forumpost', title: post.title }, !isFav).catch(()=> toast({title: "Error! Could not add to favorites", variant: "destructive"}));
     };
 
     const userVote = post.votes && post.votes.length > 0 ? post.votes[0].type : null;

@@ -1,16 +1,15 @@
-import { PrismaClient } from '@prisma/client';
+import {PrismaClient} from '@prisma/client';
 import ModuleDropdown from '../../../components/ModuleDropdown';
-import { recordViewHistory } from '@/app/actions/viewHistory';
-import { auth } from '@/app/auth';
+import {recordViewHistory} from '@/app/actions/viewHistory';
+import {auth} from '@/app/auth';
 
 const prisma = new PrismaClient();
 
 async function fetchSubject(id: string) {
-    const subject = await prisma.subject.findUnique({
-        where: { id },
-        include: { modules: true },
+    return prisma.subject.findUnique({
+        where: {id},
+        include: {modules: true},
     });
-    return subject;
 }
 
 export default async function SubjectDetailPage({ params }: { params: { id: string } }) {

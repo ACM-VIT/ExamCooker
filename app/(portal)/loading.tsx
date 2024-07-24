@@ -1,7 +1,7 @@
 "use client";
 import LoadingSvg from "@/public/assets/Loader.svg"
 import Image from "next/image";
-import { useState } from "react";
+import {useMemo} from "react";
 
 function getQuirkyLine() {
     const lines = [
@@ -20,7 +20,7 @@ function getQuirkyLine() {
 
 export default function Loading() {
 
-    const [line, setLine] = useState(getQuirkyLine())
+    const line = useMemo(getQuirkyLine, [])
 
     return (
         <div
