@@ -19,7 +19,6 @@ export default async function Layout({
             <SessionProvider>
                 {children}
             </SessionProvider>
-            <HomeFooter />
         </ClientSide>
     );
 }
