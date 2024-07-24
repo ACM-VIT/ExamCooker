@@ -78,12 +78,12 @@ export default async function Layout({
     ];
 
     return (
-        <ClientSide>
-            <SessionProvider>
+        <SessionProvider>
+            <ClientSide>
                 <BookmarksProvider initialBookmarks={initialBookmarks}>
                     {children}
                 </BookmarksProvider>
-            </SessionProvider>
-        </ClientSide>
+            </ClientSide>
+        </SessionProvider>
     );
 }
