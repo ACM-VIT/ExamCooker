@@ -122,7 +122,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                 </div>
 
                 <div className="text-xs text-right">
-                    <p>{author} asked {formatTimeDifference(dateTimeObj.hours, dateTimeObj.minutes, dateTimeObj.seconds, dateTimeObj.amOrPm, dateTimeObj.day, dateTimeObj.month, dateTimeObj.year)} ago</p>
+                    <p>{author?.slice(0, -10)} asked {formatTimeDifference(dateTimeObj.hours, dateTimeObj.minutes, dateTimeObj.seconds, dateTimeObj.amOrPm, dateTimeObj.day, dateTimeObj.month, dateTimeObj.year)} ago</p>
                 </div>
             </div>
         </div>

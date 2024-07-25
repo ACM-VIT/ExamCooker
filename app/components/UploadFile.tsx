@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
 import uploadFile from "../actions/uploadFile";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faCircleXmark } from '@fortawesome/free-solid-svg-icons';
 import { removePdfExtension } from './NotesCard';
 import Loading from '../loading';
 import TagsInput from "@/app/components/tagsInput";
@@ -212,7 +212,7 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                         <div className="flex flex-col gap-2 w-[100%]">
                             {files.map((_, index) => (
                                 <div key={index} className="text-gray-700 flex items-center text-xs w-full">
-                                    <   span key={index} className="text-gray-700 flex gap-2 items-center text-xs">
+                                    {/* <span key={index} className="text-gray-700 flex gap-2 items-center text-xs"> */}
                                         <TextField
                                             value={fileTitles[index]}
                                             onChange={handleTitleChange}
@@ -223,9 +223,9 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                                             className="ml-2 text-red-500"
                                             onClick={() => handleRemoveFile(index)}
                                             >
-                                            &times;
+                                            <FontAwesomeIcon icon={faCircleXmark} />
                                         </button>
-                                    </span>
+                                    {/* </span> */}
                                 </div>
                             ))}
                         </div>
