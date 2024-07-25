@@ -92,7 +92,7 @@ export default function ClientSide({
                     isNavOn ? "lg:w-[95vw] md:w-[92vw]" : "w-[100vw]"
                 }`}
             >
-                <div className={darkMode ? "dark" : ""}>
+                <div className={`min-h-screen flex flex-col justify-between ${darkMode ? "dark" : ""}`}>
                     <Header toggleTheme={toggleTheme} darkMode={darkMode} />
                     {children}
                     <HomeFooter/>
