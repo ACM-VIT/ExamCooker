@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import FilterComp from './filter/FilterComp';
-import { faCaretDown } from '@fortawesome/free-solid-svg-icons';
+import { faCaretDown, faCaretUp } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -97,7 +97,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
                 className="inline-flex items-center justify-center w-full border-black dark:border-[#D5D5D5] border-2 text-lg font-bold px-4 py-2 bg-[#5FC4E7] dark:bg-[#7D7467]/20"
             >
                 Filter
-                <FontAwesomeIcon icon={faCaretDown} className="ml-2" />
+                {isOpen ? <FontAwesomeIcon icon={faCaretUp} className="ml-2" /> : <FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
             </button>
 
             <div className={` flex flex-col sm:flex-row sm:space-x-4 justify-center items-start absolute left-0 mt-2 
