@@ -82,7 +82,7 @@ export default async function uploadFile({formDatas, tags, year, slot, variant}:
 
     const {allTags, user, results} = await preInsert({tags, year, slot, formDatas});
 
-    const errors = results.filter(result => result.message !== "success");
+    const errors = results.filter(result => result.message !== "processed successfully");
 
     if (errors.length > 0) {
         return {
