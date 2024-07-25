@@ -53,7 +53,12 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                     formData.append("fileTitle", fileTitles[index]);
                     return formData;
                 })
-                await uploadFile({formDatas, tags: selectedTags, year, slot, variant});
+                const response = await uploadFile({formDatas, tags: selectedTags, year, slot, variant});
+                console.log()
+                if (!response.success) {
+                    setError("Error uploading files: " + response.error);
+                    return;
+                }
                 setMessage(`Successfully uploaded: ${formatMessage(fileTitles)}`);
             }catch (error) {
                 console.error("Error uploading files:", error);
