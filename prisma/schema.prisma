@@ -1,0 +1,202 @@
+datasource db {
+  provider = "cockroachdb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                   String        @id @default(cuid())
+  name                 String?
+  email                String        @unique
+  emailVerified        DateTime?     @map("email_verified")
+  image                String?
+  accounts             Account[]
+  session              Session[]
+  role                 Role          @default(USER)
+  notes                Note[]        @relation("UserNotes")
+  comments             Comment[]
+  viewHistory          ViewHistory[]
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  forumPosts           ForumPost[]
+  pastPapers           PastPaper[]   @relation("UserPastPapers")
+  bookmarkedNotes      Note[]        @relation("UserBookmarkedNotes")
+  bookmarkedPastPapers PastPaper[]   @relation("UserBookmarkedPastPapers")
+  bookmarkedResources  Subject[]     @relation("UserBookmarkedResources")
+  bookmarkedForumPosts ForumPost[]   @relation("UserBookmarkedForumPosts")
+  votes                Vote[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+enum Role {
+  USER
+  MODERATOR
+}
+
+model Note {
+  id           String        @id @default(cuid())
+  title        String
+  author       User          @relation(fields: [authorId], references: [id], name: "UserNotes")
+  authorId     String
+  fileUrl      String
+  thumbNailUrl String?
+  isClear      Boolean       @default(false)
+  tags         Tag[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bookmarkedBy User[]        @relation("UserBookmarkedNotes")
+  ViewHistory  ViewHistory[]
+}
+
+model ViewHistory {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  pastPaper   PastPaper? @relation(fields: [pastPaperId], references: [id])
+  pastPaperId String?
+  note        Note?      @relation(fields: [noteId], references: [id])
+  noteId      String?
+  forumPost   ForumPost? @relation(fields: [forumPostId], references: [id])
+  forumPostId String?
+  subject     Subject?   @relation(fields: [subjectId], references: [id])
+  subjectId   String?
+  viewedAt    DateTime   @updatedAt
+
+  @@unique([userId, pastPaperId])
+  @@unique([userId, noteId])
+  @@unique([userId, forumPostId])
+  @@unique([userId, subjectId])
+}
+
+model Forum {
+  id         String      @id @default(cuid())
+  courseName String
+  tags       Tag[]
+  posts      ForumPost[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model ForumPost {
+  id            String        @id @default(cuid())
+  title         String
+  author        User          @relation(fields: [authorId], references: [id])
+  authorId      String
+  forum         Forum         @relation(fields: [forumId], references: [id])
+  forumId       String
+  description   String        @default("")
+  comments      Comment[]
+  tags          Tag[]
+  upvoteCount   Int           @default(0)
+  downvoteCount Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  bookmarkedBy  User[]        @relation("UserBookmarkedForumPosts")
+  viewHistory   ViewHistory[]
+  votes         Vote[]
+}
+
+model Vote {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  forumPostId String
+  forumPost   ForumPost @relation(fields: [forumPostId], references: [id])
+  type        VoteType
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, forumPostId])
+}
+
+enum VoteType {
+  UPVOTE
+  DOWNVOTE
+}
+
+model Comment {
+  id          String    @id @default(cuid())
+  content     String
+  author      User      @relation(fields: [authorId], references: [id])
+  authorId    String
+  forumPost   ForumPost @relation(fields: [forumPostId], references: [id])
+  forumPostId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model PastPaper {
+  id           String        @id @default(cuid())
+  title        String
+  fileUrl      String
+  thumbNailUrl String?
+  tags         Tag[]
+  author       User          @relation(fields: [authorId], references: [id], name: "UserPastPapers")
+  authorId     String
+  isClear      Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bookmarkedBy User[]        @relation("UserBookmarkedPastPapers")
+  viewHistory  ViewHistory[]
+}
+
+model Tag {
+  id         String      @id @default(cuid())
+  name       String      @unique
+  aliases    String[]
+  notes      Note[]
+  forums     Forum[]
+  forumPosts ForumPost[]
+  pastPapers PastPaper[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Subject {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  modules      Module[]
+  bookmarkedBy User[]        @relation("UserBookmarkedResources")
+  viewHistory  ViewHistory[]
+}
+
+model Module {
+  id            String   @id @default(cuid())
+  title         String
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  subjectId     String
+  webReferences String[]
+  youtubeLinks  String[]
+}
