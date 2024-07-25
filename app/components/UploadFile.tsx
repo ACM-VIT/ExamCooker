@@ -74,14 +74,14 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
 
                 toast({title: "Selected files uploaded successfully."})
 
-                // router.push(`/notes`)
+                router.push(`/notes`)
 
                 // todo delete the next 5 lines and uncomment the previous line
-                setFiles([]);
-                setSelectedTags([]);
-                setYear('');
-                setSlot('');
-                setFileTitles([]);
+                // setFiles([]);
+                // setSelectedTags([]);
+                // setYear('');
+                // setSlot('');
+                // setFileTitles([]);
 
             }catch (error) {
                 console.error("Error uploading files:", error);
