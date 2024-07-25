@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     images: {
-        domains: ['storage.googleapis.com', 'topperworld.in'],
+        domains: ['storage.googleapis.com'],
     },
 };
 
