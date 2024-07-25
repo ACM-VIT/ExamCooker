@@ -150,13 +150,12 @@ const Home = async () => {
                             </div>
                         }
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
-                            {recentlyViewedItems.map((item, index) => (
+                            {recentlyViewedItems.map((item) => (
                                 <CommonResource
                                     key={item.item.id}
                                     category={item.type}
                                     title={getTitle(item.item)} // maybe run migrations and change subject.name to title and then item.item.tile
                                     thing={item.item}
-                                    index={index}
                                 />
                             ))}
                         </div>
@@ -174,13 +173,12 @@ const Home = async () => {
                             </div>
                         }
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
-                            {favoriteItems.length > 0 && favoriteItems.slice(0, 9).map((item, index) => (
+                            {favoriteItems.length > 0 && favoriteItems.slice(0, 9).map((item) => (
                                 <CommonResource
                                     key={item.item.id}
                                     category={item.type}
                                     title={getTitle(item.item)}
                                     thing={item.item}
-                                    index={index}
                                 />
                             ))}
                         </div>
