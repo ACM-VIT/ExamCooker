@@ -6,6 +6,8 @@ const UserName: React.FC = () => {
     let name:string | null | undefined = session?.user?.name;
     if(name === "Supratim Ghose 22BIT0040"){
         name = "Snacc | পুতুল শিল্পী";
+    } else if(name === "Rohit Phaniram Sakamuri 23BDS0051"){
+        name = "Umm..guys, please pull";
     } else if(name === "Alan J Bibins 23BCE0598"){
         name = "Aloo";
     } else if(name === "Manav Muthanna M 21BIT0151") {
