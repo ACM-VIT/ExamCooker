@@ -28,7 +28,7 @@ function ResourceCard({subject}: ResourceCardProps) {
     // Since the Subject datatype only has a "name" field, I assume that the name has to be something like "COURSECODE - COURSENAME" and 
     // am hence, using the '-' character to split the string
     let [courseCode, courseName] = subject.name.split('-');
-    courseName = courseName ? courseName : "Subject Name";
+    // courseName = courseName ? courseName : "Subject Name";
 
     return (
         <div

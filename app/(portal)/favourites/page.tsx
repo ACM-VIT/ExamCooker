@@ -70,7 +70,7 @@ function FavouritesPage() {
     }, [filteredBookmarks, page]);
 
     return (
-        <div className="transition-colors container mx-auto text-black dark:text-[#D5D5D5] overflow-hidden">
+        <div className="flex flex-col justify-start min-h-screen transition-colors mx-auto text-black dark:text-[#D5D5D5] overflow-hidden">
             <h1 className="text-center p-4 pb-6">Favourites</h1>
             <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto pb-10 pt-4">
                 <SearchBar pageType="favourites" initialQuery={search} />

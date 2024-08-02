@@ -4,25 +4,14 @@ import Link from 'next/link';
 import { useDropzone } from 'react-dropzone';
 import uploadFile from "../actions/uploadFile";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faCircleXmark } from '@fortawesome/free-solid-svg-icons';
 import { removePdfExtension } from './NotesCard';
 import Loading from '../loading';
 import TagsInput from "@/app/components/tagsInput";
+import {useToast} from "@/components/ui/use-toast";
+import {useRouter} from "next/navigation";
 
 const years = ['2020', '2021', '2022', '2023', '2024'];
-
-const formatMessage = (array: string[]) => {
-    let message: string = ''
-    for(let i = 0; i < array.length; i++){
-        if(i != array.length - 1) {
-            message += (array[i] + ', ')
-        }
-        else {
-            message += (array[i] + '.')
-        }
-    }
-    return message
-}
 
 const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | "Past Papers"}) => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
@@ -30,14 +19,15 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
     const [slot, setSlot] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [files, setFiles] = useState<File[]>([]);
-    const [message, setMessage] = useState("");
     const [isDragging, setIsDragging] = useState(false);
     const [error, setError] = useState("");
     const [pending, startTransition] = useTransition();
 
+    const {toast} = useToast();
+    const router = useRouter();
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setMessage("");
         setError("");
 
         if (files.length === 0) {
@@ -53,22 +43,49 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                     formData.append("fileTitle", fileTitles[index]);
                     return formData;
                 })
-                const response = await uploadFile({formDatas, tags: selectedTags, year, slot, variant});
+                    const promises = formDatas.map(async (formData) => {
+
+                        const response = await fetch(`${process.env.NEXT_PUBLIC_MICROSERVICE_URL}/process_pdf`, {
+                            method: "POST",
+                            body: formData,
+                        });
+
+                        if (!response.ok) {
+                            console.log(response);
+                            throw new Error(`Failed to upload file ${formData.get("fileTitle")}`);
+                        }
+
+                        return await response.json();
+                    });
+
+                const results = await Promise.all(promises) as {
+                    fileUrl: string,
+                    thumbnailUrl: string,
+                    filename: string,
+                    message: string
+                }[];
+
+                const response = await uploadFile({results, tags: selectedTags, year, slot, variant});
                 console.log()
                 if (!response.success) {
                     setError("Error uploading files: " + response.error);
                     return;
                 }
-                setMessage(`Successfully uploaded: ${formatMessage(fileTitles)}`);
+
+                toast({title: "Selected files uploaded successfully."})
+
+                router.push(`/notes`)
+
+                // todo delete the next 5 lines and uncomment the previous line
+                // setFiles([]);
+                // setSelectedTags([]);
+                // setYear('');
+                // setSlot('');
+                // setFileTitles([]);
+
             }catch (error) {
                 console.error("Error uploading files:", error);
                 setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            } finally {
-                setFiles([]);
-                setSelectedTags([]);
-                setYear('');
-                setSlot('');
-                setFileTitles([]);
             }
         });
     };
@@ -212,7 +229,7 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                         <div className="flex flex-col gap-2 w-[100%]">
                             {files.map((_, index) => (
                                 <div key={index} className="text-gray-700 flex items-center text-xs w-full">
-                                    <   span key={index} className="text-gray-700 flex gap-2 items-center text-xs">
+                                    {/* <span key={index} className="text-gray-700 flex gap-2 items-center text-xs"> */}
                                         <TextField
                                             value={fileTitles[index]}
                                             onChange={handleTitleChange}
@@ -223,9 +240,9 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                                             className="ml-2 text-red-500"
                                             onClick={() => handleRemoveFile(index)}
                                             >
-                                            &times;
+                                            <FontAwesomeIcon icon={faCircleXmark} />
                                         </button>
-                                    </span>
+                                    {/* </span> */}
                                 </div>
                             ))}
                         </div>
@@ -233,12 +250,6 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                     {error && (
                         <div className="mb-4 text-center">
                             <span className="text-red-500">{error}</span>
-                        </div>
-                    )}
-
-                    {message && (
-                        <div className="mb-4 text-center">
-                            <span className={`text-${message.includes('successfully') ? 'green' : 'red'}-500`}>{message}</span>
                         </div>
                     )}
                 </form>
