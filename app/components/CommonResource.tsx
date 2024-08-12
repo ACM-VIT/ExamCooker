@@ -8,6 +8,10 @@ import {useToast} from "@/components/ui/use-toast";
 
 type FavoriteType = "note" | "pastpaper" | "forumpost" | "subject";
 
+function removePdfExtension(title: string) {
+    return title.replace(/\.pdf$/, '');
+}
+
 function mapCategoryToType(category: string): FavoriteType {
     switch (category.toLowerCase()) {
         case 'note':
@@ -60,7 +64,7 @@ export default function CommonFav({ category, title, thing }: { category: string
             onClick={() => router.push(getLink())}>
             <h6 className="opacity-50 text-xs">{category.toUpperCase()}</h6>
                 <h5 className='break-all'>
-                    {title}
+                    {removePdfExtension(title)}
                 </h5>
                 <div className="flex justify-between">
                 <div></div>
