@@ -5,6 +5,8 @@ import PDFViewer from '@/app/components/pdfviewer';
 import { auth } from '@/app/auth';
 import { recordViewHistory } from '@/app/actions/viewHistory';
 import { TimeHandler } from '@/app/components/forumpost/CommentContainer';
+import DeleteButton from '@/app/components/DeleteButton';
+import pastPaperPage from '../page';
 
 function removePdfExtension(filename: string): string {
     return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
@@ -20,11 +22,20 @@ function isValidYear(year: string): boolean {
     return regex.test(year);
 }
 
+function isYours(author: string | null, currentUser: string | null | undefined) {
+  let state : boolean;
+  currentUser === author ? state = true : state = false;
+  return state;
+}
+
 async function PdfViewerPage({ params }: { params: { id: string } }) {
     const prisma = new PrismaClient();
     let paper;
     let year: string = '';
     let slot: string = '';
+    const session = await auth();
+    const userId = session?.user?.id;
+    const currentUser = session?.user?.name
 
     try {
         paper = await prisma.pastPaper.findUnique({
@@ -53,7 +64,7 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
         }
     } catch (error) {
         console.error('Error fetching past paper:', error);
-        return <div className="text-center p-8">Error loading past paper. Please try again later.</div>;
+        return <div className="text-center p-8 dark:text-[#d5d5d5]">Error loading past paper. Please head to /notes, or try again later.</div>;
     } finally {
         await prisma.$disconnect();
     }
@@ -69,8 +80,11 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
                 <div className="space-y-2 sm:space-y-3">
                   <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {slot}</p>
                   <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {year}</p>
-                  <p className="text-base sm:text-lg"><span className="font-semibold">Posted by: </span> {paper.author?.name || 'Unknown'}</p>
-                  <p className='text-base sm:text-xs'><span className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span></p>
+                  <p className="text-base sm:text-lg"><span className="font-semibold">Posted by: </span> {paper.author?.name?.slice(0,-10) || 'Unknown'}</p>
+                  <div className="flex gap-2 items-center">
+                    <p className='text-base sm:text-xs'><span className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span></p>
+                    {isYours(paper.author?.name, currentUser) && <DeleteButton itemID={paper.id} activeTab="pastPaper"/>}
+                  </div>
                 </div>
               </div>
             </div>

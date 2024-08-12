@@ -4,6 +4,9 @@ import PDFViewer from '@/app/components/pdfviewer';
 import { auth } from '@/app/auth';
 import { TimeHandler } from '@/app/components/forumpost/CommentContainer';
 import {notFound} from "next/navigation";
+import DeleteButton from '@/app/components/DeleteButton';
+// import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+// import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
 function removePdfExtension(filename: string): string {
   return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
@@ -19,11 +22,20 @@ function isValidYear(year: string): boolean {
   return regex.test(year);
 }
 
+function isYours(author: string | null, currentUser: string | null | undefined) {
+  let state : boolean;
+  currentUser === author ? state = true : state = false;
+  return state;
+}
+
 async function PdfViewerPage({ params }: { params: { id: string } }) {
   const prisma = new PrismaClient();
   let year: string = '';
   let slot: string = '';
   let note;
+  const session = await auth();
+  const userId = session?.user?.id;
+  const currentUser = session?.user?.name
 
   try {
     note = await prisma.note.findUnique({
@@ -48,15 +60,21 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
     if (!note) {
       return notFound();
     }
-    const session = await auth();
-    const userId = session?.user?.id;
+    // const session = await auth();
+    // const userId = session?.user?.id;
+    // const currentUser = session?.user?.name
 
     if (userId) {
       // await recordViewHistory('note', note.id, userId);
     }
   } catch (error) {
     console.error('Error fetching note:', error);
-    return <div className="text-center p-8">Error loading note. Please try again later.</div>;
+    return (
+      <div>
+        <div className="text-center p-8 dark:text-[#d5d5d5]">Error loading note. Please refresh, or try again later.</div>
+        {/* <div><FontAwesomeIcon icon={faArrowLeft}/>Go Back</div> */}
+      </div>
+    );
   } finally {
     await prisma.$disconnect();
   }
@@ -69,11 +87,15 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
         <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-2xl mx-auto">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{removePdfExtension(note.title)}</h1>
+            
             <div className="space-y-2 sm:space-y-3">
               <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {slot}</p>
               <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {year}</p>
-              <p className="text-base sm:text-lg"><span className="font-semibold">Posted by: </span> {note.author?.name || 'Unknown'}</p>
-              <p className='text-base sm:text-xs'><span className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span></p>
+              <p className="text-base sm:text-lg"><span className="font-semibold">Posted by: </span> {note.author?.name?.slice(0,-10) || 'Unknown'}</p>
+              <div className="flex gap-2 items-center">
+                <p className='text-base sm:text-xs'><span className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span></p>
+                {isYours(note.author?.name, currentUser) && <DeleteButton itemID={note.id} activeTab='notes'/>}
+              </div>
             </div>
           </div>
         </div>
