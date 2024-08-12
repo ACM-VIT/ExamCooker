@@ -68,7 +68,7 @@ export async function Comment({ commentId, time, content }: { commentId: string,
     return (
         <div className="m-0 p-2 border-black border-l w-full">
             <div className="flex justify-between w-full">
-                <p className="font-semibold">{creator?.author.name}</p>
+                <p className="font-semibold">{creator?.author.name?.slice(0, -10)}</p>
                 <p className="text-xs md:text-base">Posted at {dateTimeObj.hours}:{dateTimeObj.minutes} {dateTimeObj.amOrPm}, {dateTimeObj.day}/{dateTimeObj.month}/{dateTimeObj.year}</p>
             </div>
             <h6>{content}</h6>
