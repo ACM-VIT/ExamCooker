@@ -5,7 +5,7 @@ import { Note, PastPaper } from "@prisma/client";
 import Pagination from "./Pagination";
 import NotesCard from "./NotesCard";
 import PastPaperCard from "./PastPaperCard";
-import { approveItem } from '../actions/moderatorActions';
+import { approveItem, deleteItem } from '../actions/moderatorActions';
 
 const PAGE_SIZE = 9;
 
@@ -60,12 +60,31 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({ ini
         }
     };
 
+    const handleDelete = async (id: string, type: 'note' | 'pastPaper') => {
+        try {
+            await deleteItem(id, type);
+            type === 'note' ?
+                setNotes(notes.filter(note => note.id !== id)) :
+                setPastPapers(pastPapers.filter(paper => paper.id !== id));
+
+            setSelectedItems(selectedItems.filter(item => item !== id));
+        } catch (error) {
+            console.error('Error deletign item:', error);
+        }
+    }
+
     const handleBulkApprove = async () => {
         for (const id of selectedItems) {
             await handleApprove(id, activeTab === 'notes' ? 'note' : 'pastPaper');
         }
         setSelectedItems([]);
     };
+
+    const handleBulkDelete = async () => {
+        for (const id of selectedItems) {
+            await handleDelete(id, activeTab === 'notes' ? 'note' : 'pastPaper');
+        }
+    }
 
     const toggleItemSelection = (id: string) => {
         setSelectedItems(prev =>
@@ -106,6 +125,16 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({ ini
                 </button>
             )}
 
+            {selectedItems.length > 0 && (
+                <button
+                    className="mb-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
+                    onClick={handleBulkDelete}
+                >
+                    Delete Selected ({selectedItems.length})
+                </button>
+
+            )}
+
             <div className='flex justify-center'>
                 <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6 place-content-center">
                     {paginatedItems.length > 0 ? (
@@ -131,14 +160,24 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({ ini
                                         openInNewTab={true}
                                     />
                                 )}
-                                <button
-                                    className="absolute top-2 right-2 bg-green-500 text-white px-3 py-1 rounded-md 
-                                               opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
-                                               hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
-                                    onClick={() => handleApprove(item.id, activeTab === 'notes' ? 'note' : 'pastPaper')}
-                                >
-                                    Approve
-                                </button>
+                                <div className="flex gap-2 absolute top-2 right-2">
+                                    <button
+                                        className="bg-green-500 text-white px-3 py-1 rounded-md 
+                                                opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
+                                                hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+                                        onClick={() => handleApprove(item.id, activeTab === 'notes' ? 'note' : 'pastPaper')}
+                                    >
+                                        Approve
+                                    </button>
+                                    <button
+                                        className="bg-red-500 text-white px-3 py-1 rounded-md 
+                                                opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
+                                                hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+                                        onClick={() => handleDelete(item.id, activeTab === 'notes' ? 'note' : 'pastPaper')}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
                             </div>
                         ))
                     ) : (
@@ -154,7 +193,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({ ini
                     <Pagination
                         currentPage={validatedPage}
                         totalPages={totalPages}
-                        basePath="/moderator-dashboard"
+                        basePath="/mod"
                     />
                 </div>
             )}
