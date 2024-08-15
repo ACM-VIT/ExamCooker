@@ -47,11 +47,13 @@ export default async function Layout({
             id: note.id,
             type: "note" as const,
             title: note.title,
+            thumbNailUrl: note.thumbNailUrl,
         })),
         ...user.bookmarkedPastPapers.map((paper) => ({
             id: paper.id,
             type: "pastpaper" as const,
             title: paper.title,
+            thumbNailUrl: paper.thumbNailUrl,
         })),
         ...user.bookmarkedForumPosts.map((post) => ({
             id: post.id,
