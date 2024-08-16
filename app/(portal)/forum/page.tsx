@@ -1,12 +1,13 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import {Comment, ForumPost, PrismaClient, Tag, User, Vote} from "@prisma/client";
-import {redirect} from 'next/navigation';
+import { Comment, ForumPost, PrismaClient, Tag, User, Vote } from "@prisma/client";
+import { redirect } from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import ForumCard from "../../components/ForumCard";
 import SearchBar from "../../components/SearchBar";
 import Dropdown from "../../components/FilterComponent";
 import NewForumButton from "../../components/NewForumButton";
+import { auth } from '@/app/auth';
 
 const SCORE_THRESHOLD = 0.8;
 
@@ -63,6 +64,8 @@ function performSearch(query: string, dataSet: ForumPostWithDetails[]) {
 
 async function forum({ searchParams }: { searchParams: { page?: string, search?: string, tags?: string | string[] } }) {
   const prisma = new PrismaClient();
+  const session = await auth();
+  const currentUserId = session?.user?.id;
   const pageSize = 5;
   const search = searchParams.search || '';
   const page = parseInt(searchParams.page || '1', 10);
@@ -84,7 +87,11 @@ async function forum({ searchParams }: { searchParams: { page?: string, search?:
     },
     include: {
       author: true,
-      votes: true,
+      votes: {
+        where: {
+          userId: currentUserId
+        }
+      },
       tags: true,
       comments: {
         include: {

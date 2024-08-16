@@ -34,7 +34,7 @@ function ForumPost({ post }: {
         <h2 className="font-extrabold">{post?.title}</h2>
         <hr className="border-0 h-px my-5 bg-black" />
         <h6>{post?.description}</h6>
-        <h6 className="text-right text-s font-normal text-white">Author: {post.author.name}</h6>
+        <h6 className="text-right text-s font-normal text-white">Author: {post.author.name?.slice(0, -10)}</h6>
         <br />
         <div className="sm:w-2/3 md:flex md:w-full md:justify-between">
           <div>

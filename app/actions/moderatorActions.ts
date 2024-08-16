@@ -2,6 +2,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { auth } from "../auth";
+import { revalidatePath } from 'next/cache';
 
 const prisma = new PrismaClient();
 
@@ -14,10 +15,12 @@ export async function fetchUnclearedItems() {
     }
 
     const notes = await prisma.note.findMany({
-        where: { isClear: false }
+        where: { isClear: false },
+        orderBy: {createdAt: 'desc'},
     });
     const pastPapers = await prisma.pastPaper.findMany({
-        where: { isClear: false }
+        where: { isClear: false },
+        orderBy : {createdAt: 'desc'},
     });
 
     return { notes, pastPapers };
@@ -31,9 +34,27 @@ export async function approveItem(id: string, type: 'note' | 'pastPaper') {
         throw new Error('Access denied');
     }
 
-    if (type === 'note') {
-        await prisma.note.update({ where: { id }, data: { isClear: true } });
-    } else {
-        await prisma.pastPaper.update({ where: { id }, data: { isClear: true } });
+    type === 'note' ?
+        await prisma.note.update({ where: { id }, data: { isClear: true } }) :
+        await prisma.pastPaper.update({ where: { id }, data: { isClear: true } })
+
+    revalidatePath('/mod')
+}
+
+export async function deleteItem(id: string, type: 'note' | 'pastPaper') {
+    const session = await auth();
+
+    // @ts-ignore
+    if(session?.user?.role !== 'MODERATOR') {
+        throw new Error('Access denied');
     }
+
+    if(type === 'note') { 
+        await prisma.note.delete({where: { id }}) 
+    }
+
+    if(type === 'pastPaper') {
+        await prisma.pastPaper.delete({where: {id}})
+    }
+    revalidatePath('/mod')
 }
