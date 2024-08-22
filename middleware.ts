@@ -26,5 +26,5 @@ export default async function middleware(
 }
 
 export const config = {
-    matcher: "/",
+    matcher: "/:path/create",
 };
