@@ -32,7 +32,7 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
     let year: string = '';
     let slot: string = '';
     const session = await auth();
-    const userId = session?.user?.id;
+    // const userId = session?.user?.id;
     const currentUser = session?.user?.name
 
     try {
