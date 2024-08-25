@@ -5,7 +5,7 @@ import { Note, PastPaper } from "@prisma/client";
 import Pagination from "./Pagination";
 import NotesCard from "./NotesCard";
 import PastPaperCard from "./PastPaperCard";
-import { approveItem, deleteItem } from "../actions/moderatorActions";
+import {approveItem, deleteItem, renameItem} from "../actions/moderatorActions";
 
 const PAGE_SIZE = 9;
 
@@ -66,6 +66,19 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
             setSelectedItems(selectedItems.filter((item) => item !== id));
         } catch (error) {
             console.error("Error approving item:", error);
+        }
+    };
+
+    const handleRename = async (id: string, type: "note" | "pastPaper", newName: string) => {
+        try {
+            await renameItem(id, type, newName);
+            if (type === "note") {
+                setNotes(notes.map((note) => note.id === id ? {...note, title: newName} : note));
+            } else {
+                setPastPapers(pastPapers.map((paper) => paper.id === id ? {...paper, title: newName} : paper));
+            }
+        } catch (error) {
+            console.error("Error renaming item:", error);
         }
     };
 
@@ -186,6 +199,22 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                 <div className="flex gap-2 absolute top-2 right-2">
                                     <button
                                         className="bg-green-500 text-white px-3 py-1 rounded-md 
+                                                opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
+                                                hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+                                        onClick={() =>
+                                            handleRename(
+                                                item.id,
+                                                activeTab === "notes"
+                                                    ? "note"
+                                                    : "pastPaper",
+                                                prompt("Enter new name:") || item.title
+                                            )
+                                        }
+                                    >
+                                        Rename
+                                    </button>
+                                    <button
+                                        className="bg-green-500 text-white px-3 py-1 rounded-md
                                                 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
                                                 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
                                         onClick={() =>

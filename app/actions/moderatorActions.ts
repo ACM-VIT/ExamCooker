@@ -46,6 +46,29 @@ export async function approveItem(id: string, type: "note" | "pastPaper") {
     revalidatePath("/mod");
 }
 
+export async function renameItem(
+    id: string,
+    type: "note" | "pastPaper",
+    title: string
+) {
+    const session = await auth();
+
+    // @ts-ignore
+    if (session?.user?.role !== "MODERATOR") {
+        throw new Error("Access denied");
+    }
+
+    if (type === "note") {
+        await prisma.note.update({ where: { id }, data: { title } });
+    }
+
+    if (type === "pastPaper") {
+        await prisma.pastPaper.update({ where: { id }, data: { title } });
+    }
+
+    revalidatePath("/mod");
+}
+
 export async function deleteItem(id: string, type: "note" | "pastPaper") {
     const session = await auth();
 
