@@ -66,7 +66,6 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                 }[];
 
                 const response = await uploadFile({results, tags: selectedTags, year, slot, variant});
-                console.log()
                 if (!response.success) {
                     setError("Error uploading files: " + response.error);
                     return;
@@ -74,7 +73,7 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
 
                 toast({title: "Selected files uploaded successfully."})
 
-                router.push(`/notes`)
+                router.push(`/past_papers`)
 
                 // todo delete the next 5 lines and uncomment the previous line
                 // setFiles([]);
