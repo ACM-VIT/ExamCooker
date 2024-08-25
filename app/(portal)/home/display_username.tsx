@@ -67,7 +67,7 @@ const UserName: React.FC = () => {
     } else if(name === "Garv Jain 22BDS0188") {
         name = "BT";
     } else if(name === "Srija Puvvada 22BCE3851") {
-        name = "Oil Money";
+        name = "Grace Oil Money";
     } else if(name === "Mahendra Sajjan Choudhary 23BCE0701") {
         name = "Tharki";
     } else if(name === "Nitin S 23BIT0388") {
