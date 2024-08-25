@@ -1,4 +1,5 @@
-import { PrismaClient, type Comment } from "@prisma/client";
+import {type Comment, PrismaClient} from "@prisma/client";
+
 const prisma = new PrismaClient();
 
 
@@ -19,7 +20,7 @@ export default function CommentContainer({ comments }: { comments: Comment[] | u
                 <Comment
                     key={comment.id}
                     commentId={comment.id}
-                    time={comment.createdAt.toISOString()}
+                    time={comment.createdAt.toLocaleString("en-US", {timeZone: "Asia/Kolkata"})}
                     content={comment.content}
                 />
             ))}
@@ -38,7 +39,7 @@ export function TimeHandler(isoString: string) {
     const seconds = String(dateObj.getSeconds()).padStart(2, '0');
     const amOrPm = Number(dateObj.getHours()) < 12 ? 'am' : 'pm';
 
-    const dateTimeObj = {
+    return {
         year,
         month,
         day,
@@ -46,9 +47,7 @@ export function TimeHandler(isoString: string) {
         minutes,
         seconds,
         amOrPm,
-    }
-
-    return dateTimeObj;
+    };
 }
 
 export async function Comment({ commentId, time, content }: { commentId: string, time: string, content: string }) {

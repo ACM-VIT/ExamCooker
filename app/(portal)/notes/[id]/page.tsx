@@ -79,7 +79,7 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
     await prisma.$disconnect();
   }
 
-  const postTime : string = note.createdAt.toISOString()
+  const postTime : string = note.createdAt.toLocaleString("en-US", {timeZone: "Asia/Kolkata"});
 
   return (
     <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
