@@ -6,6 +6,7 @@ import {SessionProvider} from "next-auth/react";
 import ClientSide from "./clientSide";
 import {PrismaClient} from "@prisma/client";
 import BookmarksProvider from "@/app/components/BookmarksProvider";
+import {headers} from "next/headers";
 
 export default async function Layout({
                                          children,
@@ -16,7 +17,8 @@ export default async function Layout({
 
     const session = await auth();
     if (!session?.user?.email) {
-        return redirect("/landing");
+        const header_url = headers().get('x-url') || "";
+        return redirect(`/api/auth/init?redirect=${encodeURIComponent(header_url)}`)
     }
 
     const user = await prisma.user.findUnique({
