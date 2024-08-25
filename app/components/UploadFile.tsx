@@ -1,11 +1,11 @@
 "use client"
-import React, { useState, useCallback, useTransition } from 'react';
+import React, {useState, useCallback, useTransition} from 'react';
 import Link from 'next/link';
-import { useDropzone } from 'react-dropzone';
+import {useDropzone} from 'react-dropzone';
 import uploadFile from "../actions/uploadFile";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faCircleXmark } from '@fortawesome/free-solid-svg-icons';
-import { removePdfExtension } from './NotesCard';
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
+import {faArrowLeft, faCircleXmark} from '@fortawesome/free-solid-svg-icons';
+import {removePdfExtension} from './NotesCard';
 import Loading from '../loading';
 import TagsInput from "@/app/components/tagsInput";
 import {useToast} from "@/components/ui/use-toast";
@@ -13,7 +13,7 @@ import {useRouter} from "next/navigation";
 
 const years = ['2020', '2021', '2022', '2023', '2024'];
 
-const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | "Past Papers"}) => {
+const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | "Past Papers" }) => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
     const [year, setYear] = useState('');
     const [slot, setSlot] = useState('');
@@ -40,23 +40,23 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                 const formDatas = files.map((file, index) => {
                     const formData = new FormData();
                     formData.append("file", file);
-                    formData.append("fileTitle", fileTitles[index]);
+                    formData.append("filetitle", fileTitles[index]);
                     return formData;
                 })
-                    const promises = formDatas.map(async (formData) => {
+                const promises = formDatas.map(async (formData) => {
 
-                        const response = await fetch(`${process.env.NEXT_PUBLIC_MICROSERVICE_URL}/process_pdf`, {
-                            method: "POST",
-                            body: formData,
-                        });
-
-                        if (!response.ok) {
-                            console.log(response);
-                            throw new Error(`Failed to upload file ${formData.get("fileTitle")}`);
-                        }
-
-                        return await response.json();
+                    const response = await fetch(`${process.env.NEXT_PUBLIC_MICROSERVICE_URL}/process_pdf`, {
+                        method: "POST",
+                        body: formData,
                     });
+
+                    if (!response.ok) {
+                        console.log(response);
+                        throw new Error(`Failed to upload file ${formData.get("fileTitle")}`);
+                    }
+
+                    return await response.json();
+                });
 
                 const results = await Promise.all(promises) as {
                     fileUrl: string,
@@ -82,22 +82,25 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                 // setSlot('');
                 // setFileTitles([]);
 
-            }catch (error) {
+            } catch (error) {
                 console.error("Error uploading files:", error);
                 setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
         });
     };
 
-    const { getRootProps, getInputProps } = useDropzone({
+    const {getRootProps, getInputProps} = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
-            setFiles(f=>[...f, ...acceptedFiles]);
-            setFileTitles(f=>[...f, ...acceptedFiles.map(file => removePdfExtension(file.name))])
+            setFiles(f => [...f, ...acceptedFiles]);
+            setFileTitles(f => [...f, ...acceptedFiles.map(file => removePdfExtension(file.name))])
             setIsDragging(false);
         },
         onDragEnter: () => setIsDragging(true),
         onDragLeave: () => setIsDragging(false),
-        multiple: true
+        multiple: true,
+        accept: {
+            'application/pdf': ['.pdf'],
+        },
     });
 
     const handleTitleChange = useCallback((index: number, value: string) => {
@@ -109,11 +112,15 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
     }, []);
 
     const handleRemoveFile = (index: number) => {
-        setFiles(f=> f.filter((_, i) => i !== index));
+        setFiles(f => f.filter((_, i) => i !== index));
         setFileTitles(f => f.filter((_, i) => i !== index));
     };
 
-    const TextField = useCallback(({ value, onChange, index }: { value: string, onChange: (index: number, value: string) => void, index: number }) => {
+    const TextField = useCallback(({value, onChange, index}: {
+        value: string,
+        onChange: (index: number, value: string) => void,
+        index: number
+    }) => {
         return (
             <input
                 type="text"
@@ -127,18 +134,22 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
     return (
         <div className="flex justify-center items-center min-h-screen">
             {pending && <Loading/>}
-            <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5] text-black dark:text-[#D5D5D5] ">
+            <div
+                className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5] text-black dark:text-[#D5D5D5] ">
                 <div className="flex justify-between items-center mb-4">
                     <Link href={'/notes'}>
-                        <button className="text-[#3BF3C7] px-2 py-2 border-2 border-[#3BF3C7] flex items-center justify-center font-bold hover:bg-[#ffffff]/10">
-                            <FontAwesomeIcon icon={faArrowLeft} />
+                        <button
+                            className="text-[#3BF3C7] px-2 py-2 border-2 border-[#3BF3C7] flex items-center justify-center font-bold hover:bg-[#ffffff]/10">
+                            <FontAwesomeIcon icon={faArrowLeft}/>
                         </button>
                     </Link>
                     <h3>New {variant}</h3>
                     <div className="relative group">
-                        <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
-                        <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
-                        <button type="submit" onClick={handleSubmit} disabled={pending} className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">
+                        <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]"/>
+                        <div
+                            className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000"/>
+                        <button type="submit" onClick={handleSubmit} disabled={pending}
+                                className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">
                             {pending ? "Uploading..." : "Upload"}
                         </button>
                     </div>
@@ -229,18 +240,18 @@ const UploadFile = ({allTags, variant} : {allTags: string[], variant: "Notes" | 
                             {files.map((_, index) => (
                                 <div key={index} className="text-gray-700 flex items-center text-xs w-full">
                                     {/* <span key={index} className="text-gray-700 flex gap-2 items-center text-xs"> */}
-                                        <TextField
-                                            value={fileTitles[index]}
-                                            onChange={handleTitleChange}
-                                            index={index} />
+                                    <TextField
+                                        value={fileTitles[index]}
+                                        onChange={handleTitleChange}
+                                        index={index}/>
 
-                                        <button
-                                            type="button"
-                                            className="ml-2 text-red-500"
-                                            onClick={() => handleRemoveFile(index)}
-                                            >
-                                            <FontAwesomeIcon icon={faCircleXmark} />
-                                        </button>
+                                    <button
+                                        type="button"
+                                        className="ml-2 text-red-500"
+                                        onClick={() => handleRemoveFile(index)}
+                                    >
+                                        <FontAwesomeIcon icon={faCircleXmark}/>
+                                    </button>
                                     {/* </span> */}
                                 </div>
                             ))}
