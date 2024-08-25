@@ -1,12 +1,10 @@
 import React from 'react';
 import { PrismaClient } from '@prisma/client';
-import dynamic from 'next/dynamic';
 import PDFViewer from '@/app/components/pdfviewer';
 import { auth } from '@/app/auth';
 import { recordViewHistory } from '@/app/actions/viewHistory';
 import { TimeHandler } from '@/app/components/forumpost/CommentContainer';
 import DeleteButton from '@/app/components/DeleteButton';
-import pastPaperPage from '../page';
 
 function removePdfExtension(filename: string): string {
     return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
@@ -69,7 +67,7 @@ async function PdfViewerPage({ params }: { params: { id: string } }) {
         await prisma.$disconnect();
     }
 
-    const postTime : string = paper.createdAt.toISOString();
+    const postTime : string = paper.createdAt.toLocaleString("en-US", {timeZone: "Asia/Kolkata"});
 
     return (
         <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">

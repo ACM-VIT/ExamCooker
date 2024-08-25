@@ -19,7 +19,7 @@ export default function CommentContainer({ comments }: { comments: Comment[] | u
                 <Comment
                     key={comment.id}
                     commentId={comment.id}
-                    time={comment.createdAt.toISOString()}
+                    time={comment.createdAt.toLocaleString("en-US", {timeZone: "Asia/Kolkata"})}
                     content={comment.content}
                 />
             ))}
