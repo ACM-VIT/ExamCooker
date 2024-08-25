@@ -1,6 +1,6 @@
 "use server";
-import { signOut } from "@/app/auth";
+import {signOut} from "@/app/auth";
 
 export const signOutAction = async () => {
-    await signOut();
+    await signOut({redirectTo: "/landing"});
 };
