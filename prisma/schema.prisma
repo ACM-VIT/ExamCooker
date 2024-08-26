@@ -93,6 +93,7 @@ model ViewHistory {
   subject     Subject?   @relation(fields: [subjectId], references: [id])
   subjectId   String?
   viewedAt    DateTime   @updatedAt
+  count       Int        @default(1)
 
   @@unique([userId, pastPaperId])
   @@unique([userId, noteId])
