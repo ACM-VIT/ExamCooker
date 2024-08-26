@@ -1,7 +1,7 @@
 import {PrismaClient} from '@prisma/client';
 import ModuleDropdown from '../../../components/ModuleDropdown';
-import {recordViewHistory} from '@/app/actions/viewHistory';
 import {auth} from '@/app/auth';
+import {notFound} from "next/navigation";
 
 const prisma = new PrismaClient();
 
@@ -17,7 +17,7 @@ export default async function SubjectDetailPage({ params }: { params: { id: stri
     //Since the Subject datatype only has a "name" field, I assume that the name has to be something like "COURSECODE - COURSENAME" and 
     //am hence, using the '-' character to split the string
     if (!subject) {
-        return <div>Subject not found</div>;
+        return notFound();
     }
     let [courseCode, courseName] = subject.name.split('-');
 
@@ -28,7 +28,25 @@ export default async function SubjectDetailPage({ params }: { params: { id: stri
     const userId = session?.user?.id;
 
     if (userId) {
-        await recordViewHistory('subject', subject.id, userId);
+        await prisma.viewHistory.upsert({
+            where: {
+                userId_subjectId: {
+                    userId,
+                    subjectId: subject.id,
+                },
+            },
+            update: {
+                viewedAt: new Date(),
+                count: {
+                    increment: 1,
+                },
+            },
+            create: {
+                userId,
+                subjectId: subject.id,
+                viewedAt: new Date(),
+            },
+        });
     }
     return (
         <div className="transition-colors container mx-auto p-4 text-black dark:text-[#D5D5D5]">

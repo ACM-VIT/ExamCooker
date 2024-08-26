@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import ForumPost from "./ForumPost";
 import { auth } from "@/app/auth";
-import { recordViewHistory } from "@/app/actions/viewHistory";
+import {notFound} from "next/navigation";
 
 async function forumPostThread({ params }: { params: { id: string } }) {
 
@@ -34,7 +34,7 @@ async function forumPostThread({ params }: { params: { id: string } }) {
     },
   });
   if (!forumpost) {
-    throw new Error('Forum post not found');
+    return notFound();
   }
 
 
@@ -43,6 +43,9 @@ async function forumPostThread({ params }: { params: { id: string } }) {
       where: { userId_forumPostId: { userId, forumPostId: forumpost.id } },
       update: {
         viewedAt: new Date(),
+        count: {
+          increment: 1,
+        },
       },
       create: {
         userId,

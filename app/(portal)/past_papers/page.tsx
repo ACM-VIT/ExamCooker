@@ -1,7 +1,7 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import { PrismaClient, PastPaper, Tag } from "@prisma/client";
-import { redirect } from 'next/navigation';
+import {PastPaper, PrismaClient, Tag} from "@prisma/client";
+import {redirect} from 'next/navigation';
 import Pagination from '../../components/Pagination';
 import PastPaperCard from '../../components/PastPaperCard';
 import SearchBar from '../../components/SearchBar';
@@ -59,7 +59,7 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string, 
         ? searchParams.tags
         : (searchParams.tags ? searchParams.tags.split(',') : []);
 
-    const allPastPapers = await prisma.pastPaper.findMany({
+    let filteredPastPapers = await prisma.pastPaper.findMany({
         where: {
             isClear: true,
             ...(tags.length > 0 && {
@@ -79,8 +79,6 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string, 
             createdAt: 'desc',
         }
     });
-
-    let filteredPastPapers = allPastPapers;
     if (search) {
         filteredPastPapers = performSearch(search, filteredPastPapers);
     }
@@ -163,3 +161,4 @@ async function pastPaperPage({ searchParams }: { searchParams: { page?: string, 
 }
 
 export default pastPaperPage;
+
