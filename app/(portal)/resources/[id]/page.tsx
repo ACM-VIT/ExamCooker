@@ -1,6 +1,7 @@
 import {PrismaClient} from '@prisma/client';
 import ModuleDropdown from '../../../components/ModuleDropdown';
 import {auth} from '@/app/auth';
+import {notFound} from "next/navigation";
 
 const prisma = new PrismaClient();
 
@@ -16,7 +17,7 @@ export default async function SubjectDetailPage({ params }: { params: { id: stri
     //Since the Subject datatype only has a "name" field, I assume that the name has to be something like "COURSECODE - COURSENAME" and 
     //am hence, using the '-' character to split the string
     if (!subject) {
-        return <div>Subject not found</div>;
+        return notFound();
     }
     let [courseCode, courseName] = subject.name.split('-');
 

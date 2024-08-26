@@ -40,15 +40,16 @@ async function PdfViewerPage({params}: { params: { id: string } }) {
             },
         });
 
-        for (let i: number = 0; i < paper!.tags.length; i++) {
-            if (isValidYear(paper!.tags[i].name)) {
-                year = paper!.tags[i].name
-            } else if (isValidSlot(paper!.tags[i].name)) {
-                slot = paper!.tags[i].name
-            }
-        }
-
         if (paper && userId) {
+            for (let i: number = 0; i < paper!.tags.length; i++) {
+                if (isValidYear(paper!.tags[i].name)) {
+                    year = paper!.tags[i].name
+                } else if (isValidSlot(paper!.tags[i].name)) {
+                    slot = paper!.tags[i].name
+                }
+            }
+
+
             await prisma.viewHistory.upsert({
                 where: {
                     userId_pastPaperId: {
