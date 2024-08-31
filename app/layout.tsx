@@ -1,6 +1,8 @@
 import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
+import {auth} from "@/app/auth";
+import "@/app/globals.css";
 
 export const metadata = {
     title: {
@@ -14,10 +16,13 @@ export const metadata = {
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
 export default async function RootLayout({
-    children,
+    protected_routes, unprotected_routes
 }: {
-    children: React.ReactNode;
+    protected_routes: React.ReactNode;
+    unprotected_routes: React.ReactNode;
 }) {
+    const session = await auth();
+
 
     return (
         <html lang="en">
@@ -25,7 +30,7 @@ export default async function RootLayout({
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
-                        {children}
+                        {session?.user?.email? protected_routes : unprotected_routes}
                 <Toaster />
             </body>
         </html>

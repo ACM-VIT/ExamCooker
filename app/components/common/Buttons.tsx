@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import Image from "next/image";
 import { useRouter } from 'next/navigation';
 import { upvotePost, downvotePost } from '@/app/actions/forumVote';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
