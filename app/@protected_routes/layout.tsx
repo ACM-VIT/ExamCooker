@@ -1,12 +1,9 @@
-import "@/app/globals.css";
 import React from "react";
 import {auth} from "@/app/auth";
-import {redirect} from "next/navigation";
 import {SessionProvider} from "next-auth/react";
 import ClientSide from "./clientSide";
 import {PrismaClient} from "@prisma/client";
 import BookmarksProvider from "@/app/components/BookmarksProvider";
-import {headers} from "next/headers";
 
 export default async function Layout({
                                          children,
@@ -15,14 +12,10 @@ export default async function Layout({
 }>) {
     const prisma = new PrismaClient();
 
-    const session = await auth();
-    if (!session?.user?.email) {
-        const header_url = headers().get('x-url') || "";
-        return redirect(`/api/auth/init?redirect=${encodeURIComponent(header_url)}`)
-    }
+    const session = (await auth())!;
 
-    const user = await prisma.user.findUnique({
-        where: {email: session.user.email},
+    const user = await prisma.user.findUniqueOrThrow({
+        where: {email: session.user!.email!},
         include: {
             bookmarkedNotes: true,
             bookmarkedPastPapers: true,
@@ -41,8 +34,6 @@ export default async function Layout({
             bookmarkedResources: true,
         },
     });
-
-    if (!user) return redirect("/landing");
 
     const initialBookmarks = [
         ...user.bookmarkedNotes.map((note) => ({
