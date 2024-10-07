@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -6,6 +8,7 @@ import Image from "next/image";
 import profile from "@/public/assets/Profile.svg";
 import { SignOut } from "./sign-out";
 import ThemeToggleSwitch from "./common/ThemeToggle";
+import TodoListDropdown from "./TodoListModal";
 
 interface HeaderProps {
     toggleTheme: () => void;
@@ -16,6 +19,8 @@ const Header: React.FC<HeaderProps> = () => {
     const { data: session } = useSession();
     const [showOverlay, setShowOverlay] = useState(false);
     const overlayRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
 
     const handleClick = () => {
         setShowOverlay(!showOverlay);
@@ -40,6 +45,9 @@ const Header: React.FC<HeaderProps> = () => {
     return (
         <header className="transition-colors bg-[#C2E6EC] dark:bg-[#0C1222] border-b border-b-[#82BEE9] dark:border-b-[#3BF4C7] flex flex-row-reverse">
             <div className="flex items-center text-right m-2 space-x-4">
+                <div className="p-4">
+                    <TodoListDropdown buttonRef={buttonRef} />
+                </div>
                 <ThemeToggleSwitch />
                 <div className="hidden sm:flex sm:flex-col mr-4">
                     <p className="lg:text-base font-medium text-gray-900 dark:text-[#D5D5D5]">
@@ -93,3 +101,4 @@ const Header: React.FC<HeaderProps> = () => {
 };
 
 export default Header;
+
