@@ -1,8 +1,9 @@
-import React from "react";
+import type React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import {auth} from "@/app/auth";
 import "@/app/globals.css";
+import SocialMediaFollowToast from "@/components/ui/SocialMediaToast";
 
 export const metadata = {
     title: {
@@ -32,6 +33,7 @@ export default async function RootLayout({
             >
                         {session?.user?.email? protected_routes : unprotected_routes}
                 <Toaster />
+                <SocialMediaFollowToast />
             </body>
         </html>
     );
