@@ -1,15 +1,11 @@
 import React from "react";
-import { auth } from "../../auth";
-import { fetchUnclearedItems } from "../../actions/moderatorActions";
+import {auth} from "../../auth";
+import {fetchUnclearedItems} from "../../actions/moderatorActions";
 import ModeratorDashboardClient from "../../components/ModeratorDashBoard";
 
-interface ModeratorDashboardProps {
+async function ModeratorDashboard({searchParams}: {
     searchParams: { page?: string; search?: string; tags?: string | string[] };
-}
-
-const ModeratorDashboard: React.FC<ModeratorDashboardProps> = async ({
-    searchParams,
-}) => {
+}) {
     const session = await auth();
 
     // @ts-ignore
@@ -18,7 +14,7 @@ const ModeratorDashboard: React.FC<ModeratorDashboardProps> = async ({
     }
 
     try {
-        const { notes, pastPapers, totalUsers } = await fetchUnclearedItems();
+        const {notes, pastPapers, totalUsers} = await fetchUnclearedItems();
         return (
             <ModeratorDashboardClient
                 initialNotes={notes}
@@ -34,6 +30,6 @@ const ModeratorDashboard: React.FC<ModeratorDashboardProps> = async ({
             return <div>Error fetching data: Unknown error occurred.</div>;
         }
     }
-};
+}
 
 export default ModeratorDashboard;

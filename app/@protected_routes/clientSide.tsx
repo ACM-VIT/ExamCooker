@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import NavBar from "@/app/components/NavBar";
 import Header from "@/app/components/header";
 import Image from "next/image";
-import HomeFooter from "@/app/(portal)/home/home_footer";
+import HomeFooter from "@/app/@protected_routes/home/home_footer";
 
 export default function ClientSide({
     children,
@@ -12,7 +12,7 @@ export default function ClientSide({
 }) {
     const [isNavOn, setIsNavOn] = useState(false);
     const [darkMode, setDarkMode] = useState(false);
-    const navbarRef = useRef<HTMLDivElement>(null);
+    const navbarRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         const savedNavState = localStorage.getItem("isNavOn");
@@ -64,8 +64,7 @@ export default function ClientSide({
     }, [isNavOn]);
 
     return (
-        <div
-            className={`relative flex`}>
+        <div className={`relative flex`}>
             {!isNavOn && (
                 <button
                     title="Open Navbar"
@@ -92,10 +91,14 @@ export default function ClientSide({
                     isNavOn ? "lg:w-[95vw] md:w-[92vw]" : "w-[100vw]"
                 }`}
             >
-                <div className={`min-h-screen flex flex-col justify-between ${darkMode ? "dark" : ""}`}>
+                <div
+                    className={`min-h-screen flex flex-col justify-between ${
+                        darkMode ? "dark" : ""
+                    }`}
+                >
                     <Header toggleTheme={toggleTheme} darkMode={darkMode} />
                     {children}
-                    <HomeFooter/>
+                    <HomeFooter />
                 </div>
             </main>
         </div>
