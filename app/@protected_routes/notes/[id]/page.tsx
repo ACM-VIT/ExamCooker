@@ -6,6 +6,7 @@ import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
 import {notFound} from "next/navigation";
 import DeleteButton from '@/app/components/DeleteButton';
 import {Metadata} from "next";
+import ShareLink from '@/app/components/ShareLink';
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
@@ -106,13 +107,14 @@ async function PdfViewerPage({params}: { params: { id: string } }) {
                             <p className="text-base sm:text-lg"><span
                                 className="font-semibold">Posted by: </span> {note.author?.name?.slice(0, -10) || 'Unknown'}
                             </p>
-                            <div className="flex gap-2 items-center">
+                            <div className="flex gap-2 items-center justify-between">
                                 <p className='text-base sm:text-xs'><span
                                     className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
                                 </p>
                                 {note.author?.id === userId &&
                                     <DeleteButton itemID={note.id} activeTab='notes'/>
                                 }
+                                <ShareLink fileType='these Notes'/>
                             </div>
                         </div>
                     </div>
