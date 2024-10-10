@@ -6,9 +6,14 @@ import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
 import {notFound} from "next/navigation";
 import DeleteButton from '@/app/components/DeleteButton';
 import {Metadata} from "next";
+
+import { Edit } from 'lucide-react';
+import EditButton from '@/app/components/EditButton';
+
 import ShareLink from '@/app/components/ShareLink';
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+
 
 function removePdfExtension(filename: string): string {
     return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
@@ -111,6 +116,10 @@ async function PdfViewerPage({params}: { params: { id: string } }) {
                                 <p className='text-base sm:text-xs'><span
                                     className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
                                 </p>
+                                {note.author?.role === "MODERATOR" &&
+                                    <EditButton itemID={note.id} title={note.title} activeTab='notes'/>
+                                }
+
                                 {note.author?.id === userId &&
                                     <DeleteButton itemID={note.id} activeTab='notes'/>
                                 }

@@ -6,7 +6,11 @@ import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
 import DeleteButton from '@/app/components/DeleteButton';
 import {Metadata} from "next";
 import {notFound} from "next/navigation";
+
+import EditButton from '@/app/components/EditButton';
+
 import ShareLink from '@/app/components/ShareLink';
+
 
 function removePdfExtension(filename: string): string {
     return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
@@ -105,6 +109,9 @@ async function PdfViewerPage({params}: { params: { id: string } }) {
                                 <p className='text-base sm:text-xs'><span
                                     className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
                                 </p>
+                                {paper.author?.role === "MODERATOR" &&
+                                    <EditButton itemID={paper.id} title={paper.title} activeTab='pastPaper'/>}
+
                                 {userId === paper.author.id &&
                                     <DeleteButton itemID={paper.id} activeTab="pastPaper"/>}
                                 <ShareLink fileType='this Past Paper'/>
