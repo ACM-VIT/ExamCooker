@@ -7,7 +7,7 @@ import debounce from 'lodash/debounce';
 import Seacrh from "@/app/components/assets/seacrh.svg";
 
 interface SearchProps {
-    pageType: 'notes' | 'past_papers' | 'resources' | 'forum' | 'favourites';
+    pageType: 'syllabus' | 'notes' | 'past_papers' | 'resources' | 'forum' | 'favourites';
     availableTags?: string[];
     initialQuery?: string;
 }
