@@ -11,6 +11,13 @@ interface SyllabusCardProps {
     syllabus: syllabi;
 }
 
+function processSyllabusName(input: string): string {
+    return input
+      .slice(9) 
+      .replace(/\.pdf$/, '') 
+      .replace(/_/g, ' '); 
+  }
+
 function SyllabusCard({ syllabus }: SyllabusCardProps) {
     const { isBookmarked, toggleBookmark } = useBookmarks();
     const isFav = isBookmarked(syllabus.id, 'subject');
@@ -36,7 +43,7 @@ function SyllabusCard({ syllabus }: SyllabusCardProps) {
                         textOverflow: 'ellipsis',
                         width: '100%' 
                     }}>
-                    {syllabus.name}
+                    {processSyllabusName(syllabus.name)}
                 </Link>
             </div>
             <div className="items-end">
