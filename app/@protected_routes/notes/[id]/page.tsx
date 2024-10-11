@@ -34,6 +34,7 @@ async function PdfViewerPage({params}: { params: { id: string } }) {
     let year: string = '';
     let slot: string = '';
     let note;
+    let current_user;
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -47,6 +48,12 @@ async function PdfViewerPage({params}: { params: { id: string } }) {
                 tags: true,
             },
         });
+
+        current_user = await prisma.user.findUnique({
+            where: {
+                id: userId,
+            }
+        })
 
         if (note && userId) {
             for (let i: number = 0; i < note!.tags.length; i++) {
@@ -116,7 +123,7 @@ async function PdfViewerPage({params}: { params: { id: string } }) {
                                 <p className='text-base sm:text-xs'><span
                                     className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
                                 </p>
-                                {note.author?.role === "MODERATOR" &&
+                                {current_user?.role === "MODERATOR" &&
                                     <EditButton itemID={note.id} title={note.title} activeTab='notes'/>
                                 }
 
