@@ -152,7 +152,7 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="fixed bg-[#C2E6EC] dark:bg-[#0C1222] shadow-xl transform transition-all ease-in-out duration-300 opacity-100 z-50 border-2 border-[#5FC4E7] dark:border-[#008A90] overflow-hidden flex flex-col"
+          className="absolute fixed bg-[#C2E6EC] dark:bg-[#0C1222] shadow-xl transform transition-all ease-in-out duration-300 opacity-100 z-50 border-2 border-[#5FC4E7] dark:border-[#008A90] overflow-hidden flex flex-col"
           style={{ maxWidth: "90vw", maxHeight: "70vh" }}
         >
           <div className="flex justify-between items-center p-4 border-b">
