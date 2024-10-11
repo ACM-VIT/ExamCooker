@@ -1,3 +1,4 @@
+
 datasource db {
   provider = "cockroachdb"
   url      = env("DATABASE_URL")
@@ -27,6 +28,7 @@ model User {
   bookmarkedPastPapers PastPaper[]   @relation("UserBookmarkedPastPapers")
   bookmarkedResources  Subject[]     @relation("UserBookmarkedResources")
   bookmarkedForumPosts ForumPost[]   @relation("UserBookmarkedForumPosts")
+  bookmarkedSyllabus   syllabi[]    @relation("UserBookmarkedSyllabus")
   votes                Vote[]
 }
 
@@ -94,11 +96,14 @@ model ViewHistory {
   subjectId   String?
   viewedAt    DateTime   @updatedAt
   count       Int        @default(1)
+  syllabi    syllabi?  @relation(fields: [syllabusId], references: [id])
+  syllabusId  String?
 
   @@unique([userId, pastPaperId])
   @@unique([userId, noteId])
   @@unique([userId, forumPostId])
   @@unique([userId, subjectId])
+  @@unique([userId, syllabusId])
 }
 
 model Forum {
@@ -200,4 +205,12 @@ model Module {
   subjectId     String
   webReferences String[]
   youtubeLinks  String[]
+}
+
+model syllabi {
+  id           String        @id @default(cuid())
+  name         String
+  fileUrl      String
+  bookmarkedBy User[]        @relation("UserBookmarkedSyllabus")
+  viewHistory  ViewHistory[]
 }

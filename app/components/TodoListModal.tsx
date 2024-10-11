@@ -49,23 +49,19 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
 
-        const dropdownWidth = Math.min(320, viewportWidth * 0.9);
-
         let left = buttonRect.left;
-        if (left + dropdownWidth > viewportWidth) {
-          left = Math.max(0, viewportWidth - dropdownWidth);
+        if (left + 320 > viewportWidth) {
+          left = Math.max(0, viewportWidth - 320);
         }
 
         let top = buttonRect.bottom + window.scrollY;
-        const dropdownHeight = Math.min(400, viewportHeight * 0.7);
+        const dropdownHeight = dropdownRef.current.offsetHeight;
         if (top + dropdownHeight > viewportHeight) {
           top = Math.max(0, buttonRect.top - dropdownHeight);
         }
 
         dropdownRef.current.style.left = `${left}px`;
         dropdownRef.current.style.top = `${top}px`;
-        dropdownRef.current.style.width = `${dropdownWidth}px`;
-        dropdownRef.current.style.maxHeight = `${dropdownHeight}px`;
       }
     };
 
@@ -148,12 +144,10 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
       >
         {isOpen ? "Close" : "Open"} Todo List
       </button>
-
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="absolute fixed bg-[#C2E6EC] dark:bg-[#0C1222] shadow-xl transform transition-all ease-in-out duration-300 opacity-100 z-50 border-2 border-[#5FC4E7] dark:border-[#008A90] overflow-hidden flex flex-col"
-          style={{ maxWidth: "90vw", maxHeight: "70vh" }}
+          className="absolute bg-[#C2E6EC] dark:bg-[#0C1222] shadow-xl w-full sm:w-80 max-w-md transform transition-all ease-in-out duration-300 opacity-100 z-50 border-2 border-[#5FC4E7] dark:border-[#008A90] rounded-lg"
         >
           <div className="flex justify-between items-center p-4 border-b">
             <h2 className="text-lg font-semibold dark:text-[#D5D5D5]">
@@ -166,20 +160,19 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
               <XIcon size={24} />
             </button>
           </div>
-          <div className="p-4 flex-grow overflow-y-auto">
+          <div className="p-4">
             <div className="flex mb-4">
               <input
                 type="text"
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value.slice(0, 17))}
                 onKeyPress={handleKeyPress}
-                placeholder="Enter new task (17 char max)"
-                className="flex-grow border px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white dark:bg-[#3D414E] rounded"
-                maxLength={17}
+                placeholder="Enter new task"
+                className="flex-grow border px-2 py-1 rounded-l focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
               <button
                 onClick={addTodo}
-                className="ml-2 bg-[#82BEE9] hover:bg-[#5FA0D9] dark:bg-[#008A90] text-white dark:text-[#D5D5D5] px-3 py-1 rounded transition duration-200"
+                className="bg-[#82BEE9] hover:bg-[#5FA0D9] text-white dark:text-[#D5D5D5] px-3 py-1 rounded-r transition duration-200"
               >
                 <PlusIcon size={20} />
               </button>
@@ -190,14 +183,10 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
                   key={todo.id}
                   className="flex items-center justify-between bg-[#5FC4E7] dark:bg-[#008A90] dark:text-[#D5D5D5] p-2 rounded"
                 >
-                  <span
-                    className={`${
-                      todo.completed ? "line-through" : ""
-                    } truncate flex-grow mr-2`}
-                  >
+                  <span className={todo.completed ? "line-through" : ""}>
                     {todo.task}
                   </span>
-                  <div className="flex-shrink-0">
+                  <div>
                     <button
                       onClick={() => toggleComplete(todo.id)}
                       className="text-blue-500 mr-2 hover:text-blue-600 transition duration-200"

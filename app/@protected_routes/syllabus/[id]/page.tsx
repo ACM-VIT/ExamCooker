@@ -13,6 +13,13 @@ async function getSyllabus(id: string) {
     });
 }
 
+function processSyllabusName(input: string): string {
+    return input
+      .slice(9) 
+      .replace(/\.pdf$/, '') 
+      .replace(/_/g, ' '); 
+  }
+
 async function SyllabusViewerPage({ params }: { params: { id: string } }) {
     const prisma = new PrismaClient();
     let syllabus;
@@ -22,7 +29,7 @@ async function SyllabusViewerPage({ params }: { params: { id: string } }) {
     try {
         syllabus = await getSyllabus(params.id);
 
-        if (userId) {
+        if (userId && syllabus?.id) {
             await prisma.viewHistory.upsert({
                 where: {
                     userId_syllabusId: { userId, syllabusId: syllabus.id}
@@ -65,7 +72,7 @@ async function SyllabusViewerPage({ params }: { params: { id: string } }) {
             <div className="lg:w-1/2 flex flex-col overflow-hidden">
                 <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
                     <div className="max-w-2xl mx-auto">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{syllabus.name}</h1>
+                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{processSyllabusName(syllabus.name)}</h1>
                         <div className="space-y-2 sm:space-y-3">
                             <div className="flex gap-2 items-center">
                                 {/* {syllabus.author?.id === userId &&
