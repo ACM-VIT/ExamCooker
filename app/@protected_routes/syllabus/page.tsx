@@ -58,14 +58,14 @@ export default async function SyllabusPage({ searchParams }: { searchParams: { p
     const paginatedSyllabi = filteredSyllabi.slice(startIndex, endIndex);
 
     return (
-        <div className="min-h-screen text-black dark:text-gray-200 flex flex-col items-center justify-start p-4 sm:p-6 md:p-8 lg:p-10">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-4 sm:mb-6 md:mb-8">Syllabus</h1>
+        <div className="min-h-screen text-black dark:text-gray-200 flex flex-col items-center justify-start p-8">
+            <h1 className="text-center mb-4">Syllabus</h1>
             
-            <div className="w-full max-w-3xl mb-6 sm:mb-8">
+            <div className="w-full max-w-3xl mb-6 sm:mb-8 pt-2">
                 <SearchBar pageType="syllabus" initialQuery={search} />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-full w-[90vw]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 w-[90vw]">
                 {paginatedSyllabi.map((syllabus, index) => (
                     <div key={syllabus.id} className={`
                         ${index < 8 ? '' : 'hidden sm:block'}
