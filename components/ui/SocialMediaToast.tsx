@@ -7,41 +7,41 @@ import GiftBoxIcon from '@/public/assets/GiftBox.svg';
 
 const SocialMediaFollowToast = () => {
   const [showToast, setShowToast] = useState(false);
-  //
-  // useEffect(() => {
-  //   const checkAndShowToast = () => {
-  //     const storedData = localStorage.getItem('socialMediaToastData');
-  //     const currentTime = new Date().getTime();
-  //
-  //     if (!storedData) {
-  //       showToastNotification();
-  //       return;
-  //     }
-  //
-  //     const { timestamp, hasSeenToast } = JSON.parse(storedData);
-  //     const expirationTime = 12 * 60 * 60 * 1000;
-  //
-  //     if (!hasSeenToast || currentTime - timestamp > expirationTime) {
-  //       showToastNotification();
-  //     }
-  //   };
-  //
-  //   const showToastNotification = () => {
-  //     setShowToast(true);
-  //     localStorage.setItem('socialMediaToastData', JSON.stringify({
-  //       hasSeenToast: true,
-  //       timestamp: new Date().getTime()
-  //     }));
-  //
-  //     setTimeout(() => {
-  //       setShowToast(false);
-  //     }, 20000 );
-  //   };
-  //
-  //   checkAndShowToast();
-  // }, []);
-  //
-  // if (!showToast) return null;
+
+  useEffect(() => {
+    const checkAndShowToast = () => {
+      const storedData = localStorage.getItem('socialMediaToastData');
+      const currentTime = new Date().getTime();
+
+      if (!storedData) {
+        showToastNotification();
+        return;
+      }
+
+      const { timestamp, hasSeenToast } = JSON.parse(storedData);
+      const expirationTime = 12 * 60 * 60 * 1000;
+
+      if (!hasSeenToast || currentTime - timestamp > expirationTime) {
+        showToastNotification();
+      }
+    };
+
+    const showToastNotification = () => {
+      setShowToast(true);
+      localStorage.setItem('socialMediaToastData', JSON.stringify({
+        hasSeenToast: true,
+        timestamp: new Date().getTime()
+      }));
+
+      setTimeout(() => {
+        setShowToast(false);
+      }, 20000 );
+    };
+
+    checkAndShowToast();
+  }, []);
+
+  if (!showToast) return null;
 
   return (
     <div className="fixed bottom-0 right-4 z-50 max-w-sm px-4 bg-[#C2E6EC] rounded-lg shadow-xl dark:bg-[#0C1222] border border-[#2699E9] dark:border-[#3BF4C7]">
