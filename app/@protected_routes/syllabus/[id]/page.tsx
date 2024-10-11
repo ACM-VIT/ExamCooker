@@ -22,7 +22,7 @@ async function SyllabusViewerPage({ params }: { params: { id: string } }) {
     try {
         syllabus = await getSyllabus(params.id);
 
-        if (userId) {
+        if (userId && syllabus?.id) {
             await prisma.viewHistory.upsert({
                 where: {
                     userId_syllabusId: { userId, syllabusId: syllabus.id}
