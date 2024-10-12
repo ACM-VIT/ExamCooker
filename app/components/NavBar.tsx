@@ -77,7 +77,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({isNav
                 className={`fixed top-0 left-0 z-50 flex flex-col justify-between items-center h-screen ${isNavOn
                     ? "bg-[#5fc4e7] dark:bg-[#232530] dark:border-[#3BF4C7] dark:border w-fit"
                     : ""
-                } text-white p-1 transition-all duration-300 ease-in-out`}
+                } text-white p-1 transition-colors duration-300 ease-in-out`}
             >
                 {isNavOn && (
                     <div className="mt-4">
@@ -103,14 +103,19 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({isNav
                     <Link href="/" passHref className={`${pathname == '/' ? "bg-[#ffffff]/20" : ""}`}>
                         <RenderMenuItem svgSource="/assets/Home.svg" alt="Home" disableAnim={pathname == "/"}/>
                     </Link>
-                    <Link href={"/notes"} passHref className={`${pathname == '/notes' ? "bg-[#ffffff]/20" : ""}`}>
-                        <RenderMenuItem svgSource="/assets/NotesIcon.svg" alt="Notes"
-                                        disableAnim={pathname == "/notes"}/>
-                    </Link>
                     <Link href={"/past_papers"} passHref
                           className={`${pathname == '/past_papers' ? "bg-[#ffffff]/20" : ""}`}>
                         <RenderMenuItem svgSource="/assets/PastPapersIcon.svg" alt="Papers"
                                         disableAnim={pathname == "/past_papers"}/>
+                    </Link>
+                    <Link href={"/notes"} passHref className={`${pathname == '/notes' ? "bg-[#ffffff]/20" : ""}`}>
+                        <RenderMenuItem svgSource="/assets/NotesIcon.svg" alt="Notes"
+                                        disableAnim={pathname == "/notes"}/>
+                    </Link>
+                    <Link href={"/syllabus"} passHref
+                          className={`${pathname == '/syllabus' ? "bg-[#ffffff]/20" : ""}`}>
+                        <RenderMenuItem svgSource="/assets/SyllabusLogo.svg" alt="Syllabus"
+                                        disableAnim={pathname == "/syllabus"}/>
                     </Link>
                     <Link href={"/forum"} passHref className={`${pathname == '/forum' ? "bg-[#ffffff]/20" : ""}`}>
                         <RenderMenuItem svgSource="/assets/ForumIcon.svg" alt="Forum"
@@ -125,11 +130,6 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({isNav
                           className={`${pathname == '/favourites' ? "bg-[#ffffff]/20" : ""}`}>
                         <RenderMenuItem svgSource="/assets/NavFavouriteIcon.svg" alt="Favourites"
                                         disableAnim={pathname == "/favourites"}/>
-                    </Link>
-                    <Link href={"/syllabus"} passHref
-                          className={`${pathname == '/syllabus' ? "bg-[#ffffff]/20" : ""}`}>
-                        <RenderMenuItem svgSource="/assets/SyllabusLogo.svg" alt="Syllabus"
-                                        disableAnim={pathname == "/syllabus"}/>
                     </Link>
                     {/* <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M64 464c-8.8 0-16-7.2-16-16L48 64c0-8.8 7.2-16 16-16l160 0 0 80c0 17.7 14.3 32 32 32l80 0 0 288c0 8.8-7.2 16-16 16L64 464zM64 0C28.7 0 0 28.7 0 64L0 448c0 35.3 28.7 64 64 64l256 0c35.3 0 64-28.7 64-64l0-293.5c0-17-6.7-33.3-18.7-45.3L274.7 18.7C262.7 6.7 246.5 0 229.5 0L64 0zm56 256c-13.3 0-24 10.7-24 24s10.7 24 24 24l144 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-144 0zm0 96c-13.3 0-24 10.7-24 24s10.7 24 24 24l144 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-144 0z"/></svg> */}
                 </div>
