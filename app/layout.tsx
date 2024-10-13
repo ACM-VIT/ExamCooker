@@ -13,6 +13,11 @@ export const metadata = {
     description: "Cram up for your exams with ExamCooker!",
     keywords: ['vit', 'previous year question papers', 'pdf', 'notes', 'question papers', 'exam', 'examcooker', 'acm', 'vit acm', 'vit acm examcooker'],
     metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL!),
+    openGraph: {
+        images: [
+            {url: `${process.env.NEXT_PUBLIC_BASE_URL!}/opengraph-image.png`}
+        ]
+    }
 };
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
