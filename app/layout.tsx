@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import {auth} from "@/app/auth";
 import "@/app/globals.css";
 import SocialMediaFollowToast from "@/components/ui/SocialMediaToast";
+import {redirect} from "next/navigation";
 
 export const metadata = {
     title: {
@@ -36,7 +37,7 @@ export default async function RootLayout({
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
-                        {session?.user?.email? protected_routes : unprotected_routes}
+                        {session?.user?.email? protected_routes ?? redirect("/") : unprotected_routes}
                 <Toaster />
                 <SocialMediaFollowToast />
             </body>
