@@ -32,7 +32,7 @@ const QuizPage = () => {
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
-  const [countdownStarted, setCountdownStarted] = useState(false);
+  const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(pathname.split("quiz/")[1]);
@@ -100,7 +100,6 @@ const QuizPage = () => {
     const updatedQuestions = [...questions];
     updatedQuestions[currentQuestionIndex].selectedAnswer = answer;
     setQuestions(updatedQuestions);
-    setCountdownStarted(false);
   };
 
   const toggleMarkQuestion = () => {
@@ -121,16 +120,12 @@ const QuizPage = () => {
   const goToNextQuestion = () => {
     const currentQuestion = questions[currentQuestionIndex];
 
-    if (!currentQuestion.selectedAnswer) {
-      setCountdownStarted(true);
-      return;
-    }
+    if (!currentQuestion.selectedAnswer) return;
 
     if (currentQuestionIndex === questions.length - 1) {
       submitQuiz();
     } else {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setCountdownStarted(false);
     }
   };
 
@@ -143,18 +138,32 @@ const QuizPage = () => {
   }
 
   if (quizSubmitted) {
+    const displayedQuestions = showOnlyIncorrect
+      ? questions.filter((q) => q.selectedAnswer !== q.answer)
+      : questions;
+
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="w-[60vw] mx-auto p-6">
+        <div className="mb-4">
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              onChange={(e) => setShowOnlyIncorrect(e.target.checked)}
+              className="form-checkbox"
+            />
+            <span className="text-white text-lg">
+              Show Incorrect Questions Only
+            </span>
+          </label>
+        </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold mb-4">Quiz Results</h1>
-          <div className="mb-4">
-            <p className="text-lg">
-              Score: {score} out of {questions.length} (
-              {((score / questions.length) * 100).toFixed(1)}%)
-            </p>
-          </div>
+          <p className="text-lg mb-4">
+            Score: {score} out of {questions.length} (
+            {((score / questions.length) * 100).toFixed(1)}%)
+          </p>
           <div className="space-y-4">
-            {questions.map((q, index) => (
+            {displayedQuestions.map((q, index) => (
               <div
                 key={index}
                 className={`p-4 rounded-lg ${
@@ -196,7 +205,7 @@ const QuizPage = () => {
   const currentQuestion = questions[currentQuestionIndex];
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="w-[60vw] mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-2">
           <Clock
@@ -214,7 +223,7 @@ const QuizPage = () => {
             {formatTime(timeRemaining)}
           </span>
         </div>
-        <div className="text-sm text-gray-600">
+        <div className="text-md text-white">
           Question {currentQuestionIndex + 1} of {questions.length}
         </div>
       </div>
@@ -250,52 +259,23 @@ const QuizPage = () => {
               className={`w-full p-4 text-left rounded-lg border transition-colors ${
                 currentQuestion.selectedAnswer === option
                   ? "border-blue-500 bg-blue-50"
-                  : "border-gray-200 hover:bg-gray-50"
+                  : "border-gray-200 hover:bg-gray-100"
               }`}
             >
               {option}
             </button>
           ))}
         </div>
-
-        {countdownStarted && !currentQuestion.selectedAnswer && (
-          <div className="mt-4 text-red-500">
-            Please select an answer before proceeding.
-          </div>
-        )}
       </div>
 
-      <div className="flex justify-end items-center mb-6">
+      <div className="flex justify-end space-x-4">
         <button
           onClick={goToNextQuestion}
-          className="flex items-center space-x-2 px-6 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+          className="px-6 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
         >
-          <span>
-            {currentQuestionIndex === questions.length - 1
-              ? "Submit Quiz"
-              : "Next"}
-          </span>
-          <ChevronRight size={20} />
+          {currentQuestionIndex === questions.length - 1 ? "Submit" : "Next"}
+          <ChevronRight size={20} className="ml-2 inline" />
         </button>
-      </div>
-
-      <div className="grid grid-cols-10 gap-2">
-        {questions.map((q, index) => (
-          <div
-            key={index}
-            className={`p-2 rounded text-center ${
-              index === currentQuestionIndex
-                ? "bg-blue-500 text-white"
-                : q.selectedAnswer
-                ? "bg-green-100"
-                : q.isMarked
-                ? "bg-yellow-100"
-                : "bg-gray-100"
-            }`}
-          >
-            {index + 1}
-          </div>
-        ))}
       </div>
     </div>
   );
