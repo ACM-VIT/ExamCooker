@@ -1,4 +1,4 @@
-{
+export const WildlifeJSON = {
     "title":"Wildlife Ecology",
     "weeks": [
       {
@@ -1158,7 +1158,7 @@
       },
       {
         "name": "12",
-        "questions": [
+        "content": [
           {
             "question": "\"Enquiry into plants\" is a book written by",
             "options": [
@@ -1261,20 +1261,6 @@
           }
         ]
       }
-      
-      
-
-      
-      
-
-      
-
-      
-      
-
-    
-        
-      
     ]
   }
   
