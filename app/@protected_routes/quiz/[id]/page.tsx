@@ -49,6 +49,7 @@ export default function Component() {
   const [expandedQuestionIndex, setExpandedQuestionIndex] = useState<
     number | null
   >(null);
+  const [showError, setShowError] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(pathname.split("quiz/")[1]);
@@ -114,6 +115,7 @@ export default function Component() {
   };
 
   const handleAnswerSelect = (answer: string) => {
+    setShowError(false);
     const updatedQuestions = [...questions];
     updatedQuestions[currentQuestionIndex].selectedAnswer = answer;
     setQuestions(updatedQuestions);
@@ -137,8 +139,12 @@ export default function Component() {
   const goToNextQuestion = () => {
     const currentQuestion = questions[currentQuestionIndex];
 
-    if (!currentQuestion.selectedAnswer) return;
+    if (!currentQuestion.selectedAnswer) {
+      setShowError(true);
+      return;
+    }
 
+    setShowError(false);
     if (currentQuestionIndex === questions.length - 1) {
       submitQuiz();
     } else {
@@ -366,6 +372,12 @@ export default function Component() {
             </button>
           ))}
         </div>
+
+        {showError && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm w-[60vw] text-center">
+            Please select an answer before proceeding
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end space-x-4 mt-4 sm:mt-6">
