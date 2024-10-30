@@ -167,7 +167,7 @@ export default function Component() {
   if (questions.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-gray-900"></div>
+        <div className="animate-spin h-16 w-16 border-t-2 border-b-2 border-gray-900"></div>
       </div>
     );
   }
@@ -181,19 +181,19 @@ export default function Component() {
 
     return (
       <div className="lg:w-[75vw] md:w-[90vw] mx-auto px-4 py-8">
-        <div className="mb-8 bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="text-center bg-[#5FC4E7] dark:bg-[#008A90] p-6 rounded-t-lg">
+        <div className="mb-8 bg-white shadow-lg overflow-hidden">
+          <div className="text-center bg-[#5FC4E7] dark:bg-[#008A90] p-6 ">
             <div className="flex justify-center mb-4">
               <Trophy className="w-16 h-16" />
             </div>
             <h1 className="text-2xl font-bold">Quiz Complete!</h1>
-            <p className="text-lg mt-2 text-gray-100">
+            <p className="text-lg mt-2 text-black dark:text-[#D5D5D5] font-semibold">
               Here's how you performed
             </p>
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-              <div className="p-4 rounded-lg bg-[#D9D9D9]">
+              <div className="p-4 bg-[#D9D9D9]">
                 <p className="text-sm uppercase font-medium mb-1">Score</p>
                 <p
                   className={`text-3xl font-bold ${getScoreColor(
@@ -203,7 +203,7 @@ export default function Component() {
                   {score}/{questions.length}
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[#D9D9D9]">
+              <div className="p-4 bg-[#D9D9D9]">
                 <p className="text-sm uppercase font-medium mb-1">Percentage</p>
                 <p
                   className={`text-3xl font-bold ${getScoreColor(
@@ -213,7 +213,7 @@ export default function Component() {
                   {percentage}%
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-[#D9D9D9]">
+              <div className="p-4 bg-[#D9D9D9]">
                 <p className="text-sm uppercase font-medium mb-1">Questions</p>
                 <p className="text-3xl font-bold">
                   {
@@ -228,7 +228,7 @@ export default function Component() {
         </div>
 
         <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center space-x-2 bg-[#D9D9D9] p-3 rounded-lg">
+          <div className="flex items-center space-x-2 bg-[#D9D9D9] p-3">
             <Target size={20} />
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -249,10 +249,12 @@ export default function Component() {
           {displayedQuestions.map((q, index) => (
             <div
               key={index}
-              className={`p-2 py-4 rounded-lg cursor-pointer transition-all duration-300 ${
+              className={`p-2 py-4 cursor-pointer transition-all duration-300 ${
                 expandedQuestionIndex === index ? "col-span-4" : ""
               } ${
-                q.selectedAnswer === q.answer ? "bg-green-200" : "bg-red-200"
+                q.selectedAnswer === q.answer
+                  ? "bg-green-200 dark:bg-green-800/20 text-green-800"
+                  : "bg-red-200 dark:bg-red-800/10 font-semibold text-red-800"
               }`}
               onClick={() => toggleQuestionExpansion(index)}
             >
@@ -291,14 +293,14 @@ export default function Component() {
         <div className="mt-8 flex justify-between">
           <button
             onClick={() => router.push("/quiz")}
-            className="flex items-center px-6 py-3 bg-[#5FC4E7] dark:bg-[#008A90] rounded-lg hover:opacity-90 transition-opacity"
+            className="flex items-center px-6 py-3 bg-[#5FC4E7] dark:bg-[#008A90] hover:opacity-90 transition-opacity"
           >
             <ArrowLeft size={20} className="mr-2" />
             Try Another Quiz
           </button>
           <button
             onClick={() => router.push("/")}
-            className="flex items-center px-6 py-3 bg-[#5FC4E7] dark:bg-[#008A90] rounded-lg hover:opacity-90 transition-opacity"
+            className="flex items-center px-6 py-3 bg-[#5FC4E7] dark:bg-[#008A90] hover:opacity-90 transition-opacity"
           >
             Return Home
             <ChevronRight size={20} className="ml-2" />
@@ -349,7 +351,7 @@ export default function Component() {
           </h2>
           <button
             onClick={toggleMarkQuestion}
-            className={`p-2 rounded-full ${
+            className={`p-2 ${
               currentQuestion.isMarked
                 ? "text-yellow-500 bg-yellow-50"
                 : "text-gray-400 hover:bg-gray-50"
