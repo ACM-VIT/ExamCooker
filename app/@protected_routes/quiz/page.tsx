@@ -23,8 +23,9 @@ const QuizCard: React.FC<QuizCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className="bg-white dark:bg-gray-800 shadow-md p-6 cursor-pointer 
-                 hover:shadow-lg transition-shadow duration-200"
+      className="hover:shadow-xl px-5 py-6 w-full bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7]
+            dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2
+            dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 cursor-pointer"
     >
       <h3 className="text-xl font-semibold mb-2 dark:text-white">
         {courseName}
@@ -50,7 +51,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
         onClick={onClose}
       />
       <div className="relative flex items-center justify-center min-h-screen p-4">
-        <div className="bg-[#5FC4E7] dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl relative">
+        <div className="w-full max-w-2xl relative border-2 border-[#D5D5D5] border-dashed">
           {children}
         </div>
       </div>
@@ -80,13 +81,13 @@ const QuizPage = () => {
   const courses: Course[] = [
     { courseCode: "BCSE101L", courseName: "Wildlife Ecology" },
     { courseCode: "BCSE102L", courseName: "Forest and Management" },
-    { courseCode: "BCSE103L", courseName: "Suppu FTW" },
+    { courseCode: "BCSE103L", courseName: "Another Subject" },
     { courseCode: "BCSE104L", courseName: "Ethical Hacking" },
   ];
 
   return (
-    <div className="h-[80vh] w-full flex flex-col items-center py-8 ">
-      <p className="text-6xl font-bold mb-12 dark:text-white">NPTEL QUIZ</p>
+    <div className="h-[80vh] w-full flex flex-col items-center justify-start py-8 ">
+      <h1 className="mb-12 text-black dark:text-[#D5D5D5]">NPTEL QUIZ</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl px-4">
         {courses.map((course) => (
