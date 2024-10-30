@@ -103,61 +103,61 @@ export default function QuizModalContent({
     const newValidation = { ...validation };
     let isValid = true;
 
-    // if (quizState.selectedWeeks.length === 0) {
-    //   newValidation.weeks = {
-    //     isValid: false,
-    //     message: "Please select at least one week",
-    //   };
-    //   isValid = false;
-    // } else {
-    //   newValidation.weeks = {
-    //     isValid: true,
-    //     message: `${quizState.selectedWeeks.length} weeks selected`,
-    //   };
-    // }
+    if (quizState.selectedWeeks.length === 0) {
+      newValidation.weeks = {
+        isValid: false,
+        message: "Please select at least one week",
+      };
+      isValid = false;
+    } else {
+      newValidation.weeks = {
+        isValid: true,
+        message: `${quizState.selectedWeeks.length} weeks selected`,
+      };
+    }
 
-    // const maxQuestions = quizState.selectedWeeks.length * 10;
-    // if (!quizState.numQuestions || quizState.numQuestions <= 0) {
-    //   newValidation.questions = {
-    //     isValid: false,
-    //     message: "Please enter a valid number of questions",
-    //   };
-    //   isValid = false;
-    // } else if (quizState.numQuestions > maxQuestions) {
-    //   newValidation.questions = {
-    //     isValid: false,
-    //     message: `Maximum ${maxQuestions} questions allowed for selected weeks`,
-    //   };
-    //   isValid = false;
-    // } else {
-    //   newValidation.questions = {
-    //     isValid: true,
-    //     message: `${quizState.numQuestions} questions selected`,
-    //   };
-    // }
+    const maxQuestions = quizState.selectedWeeks.length * 10;
+    if (!quizState.numQuestions || quizState.numQuestions <= 0) {
+      newValidation.questions = {
+        isValid: false,
+        message: "Please enter a valid number of questions",
+      };
+      isValid = false;
+    } else if (quizState.numQuestions > maxQuestions) {
+      newValidation.questions = {
+        isValid: false,
+        message: `Maximum ${maxQuestions} questions allowed for selected weeks`,
+      };
+      isValid = false;
+    } else {
+      newValidation.questions = {
+        isValid: true,
+        message: `${quizState.numQuestions} questions selected`,
+      };
+    }
 
-    // const totalSeconds = getTotalSeconds();
-    // if (totalSeconds === 0) {
-    //   newValidation.duration = {
-    //     isValid: false,
-    //     message: "Please set a duration greater than 0",
-    //   };
-    //   isValid = false;
-    // } else if (
-    //   quizState.numQuestions !== null &&
-    //   totalSeconds < quizState.numQuestions * 30
-    // ) {
-    //   newValidation.duration = {
-    //     isValid: false,
-    //     message: "Duration too short for number of questions",
-    //   };
-    //   isValid = false;
-    // } else {
-    //   newValidation.duration = {
-    //     isValid: true,
-    //     message: `${formatDuration(quizState.duration)} duration set`,
-    //   };
-    // }
+    const totalSeconds = getTotalSeconds();
+    if (totalSeconds === 0) {
+      newValidation.duration = {
+        isValid: false,
+        message: "Please set a duration greater than 0",
+      };
+      isValid = false;
+    } else if (
+      quizState.numQuestions !== null &&
+      totalSeconds < quizState.numQuestions * 30
+    ) {
+      newValidation.duration = {
+        isValid: false,
+        message: "Duration too short for number of questions",
+      };
+      isValid = false;
+    } else {
+      newValidation.duration = {
+        isValid: true,
+        message: `${formatDuration(quizState.duration)} duration set`,
+      };
+    }
 
     setValidation(newValidation);
     return isValid;
@@ -377,6 +377,9 @@ export default function QuizModalContent({
           />
         </div>
       </div>
+      {!validation.duration.isValid && (
+        <p className="text-red-500 text-xs">{validation.duration.message}</p>
+      )}
     </div>
   );
 }
