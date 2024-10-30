@@ -199,7 +199,7 @@ export default function Component() {
                 </p>
               </div>
               <div
-                className={`text-4xl font-bold flex flex-col justify-center items-center ${getScoreColor(
+                className={`text-4xl font-bold flex flex-col justify-center items-center p-4 ${getScoreColor(
                   Number(percentage)
                 )}`}
               >
@@ -209,7 +209,7 @@ export default function Component() {
                 <p className={`text-3xl font-bold`}>{percentage}%</p>
               </div>
               <div
-                className={`text-4xl font-bold flex flex-col justify-center items-center ${getScoreColor(
+                className={`text-4xl font-bold flex flex-col justify-center items-center p-4 ${getScoreColor(
                   Number(percentage)
                 )}`}
               >
