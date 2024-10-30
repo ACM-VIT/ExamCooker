@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -9,6 +10,9 @@ import {
   ArrowLeft,
   Trophy,
   Target,
+  Flag,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { WildlifeJSON } from "@/public/assets/quizJSON";
 
@@ -22,6 +26,7 @@ interface QuizQuestion extends Question {
   selectedAnswer?: string;
   isMarked?: boolean;
   weekNumber: string;
+  isExpanded?: boolean;
 }
 
 interface Week {
@@ -30,7 +35,7 @@ interface Week {
   content?: Question[];
 }
 
-const QuizPage = () => {
+export default function Component() {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -41,6 +46,9 @@ const QuizPage = () => {
   const [score, setScore] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
   const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false);
+  const [expandedQuestionIndex, setExpandedQuestionIndex] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
     const params = new URLSearchParams(pathname.split("quiz/")[1]);
@@ -66,6 +74,7 @@ const QuizPage = () => {
       return questionsArray.map((q) => ({
         ...q,
         weekNumber: week,
+        isExpanded: false,
       }));
     });
 
@@ -137,10 +146,16 @@ const QuizPage = () => {
     }
   };
 
+  const toggleQuestionExpansion = (index: number) => {
+    if (quizSubmitted) {
+      setExpandedQuestionIndex(expandedQuestionIndex === index ? null : index);
+    }
+  };
+
   const getScoreColor = (percentage: number) => {
-    if (percentage >= 80) return "text-green-600";
+    if (percentage >= 80) return "text-green-800";
     if (percentage >= 60) return "text-yellow-600";
-    return "text-red-600";
+    return "text-red-800";
   };
 
   if (questions.length === 0) {
@@ -159,13 +174,13 @@ const QuizPage = () => {
     const percentage = ((score / questions.length) * 100).toFixed(1);
 
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="lg:w-[75vw] md:w-[90vw] mx-auto px-4 py-8">
         <div className="mb-8 bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="text-center bg-[#5FC4E7] dark:bg-[#008A90] p-6 rounded-t-lg">
             <div className="flex justify-center mb-4">
               <Trophy className="w-16 h-16" />
             </div>
-            <h1 className="text-3xl font-bold">Quiz Complete!</h1>
+            <h1 className="text-2xl font-bold">Quiz Complete!</h1>
             <p className="text-lg mt-2 text-gray-100">
               Here's how you performed
             </p>
@@ -219,63 +234,50 @@ const QuizPage = () => {
               <span className="text-base font-medium">Show Incorrect Only</span>
             </label>
           </div>
-
-          <span className="text-sm text-gray-500">
+          <span className="text-md text-[#D5D5D5] p-4 justify-end">
             Showing {displayedQuestions.length} of {questions.length} questions
           </span>
         </div>
 
-        <div className="space-y-6">
-          {displayedQuestions.map((question, index) => (
+        <div className="w-full grid sm:grid-cols-4 grid-cols-3 gap-4 mb-6">
+          {displayedQuestions.map((q, index) => (
             <div
               key={index}
-              className="bg-white rounded-lg shadow-lg overflow-hidden border-l-4 transition-all hover:shadow-xl"
-              style={{
-                borderLeftColor:
-                  question.selectedAnswer === question.answer
-                    ? "#22c55e"
-                    : "#ef4444",
-              }}
+              className={`p-2 py-4 rounded-lg cursor-pointer transition-all duration-300 ${
+                expandedQuestionIndex === index ? "col-span-4" : ""
+              } ${
+                q.selectedAnswer === q.answer ? "bg-green-200" : "bg-red-200"
+              }`}
+              onClick={() => toggleQuestionExpansion(index)}
             >
-              <div className="bg-[#5FC4E7] dark:bg-[#008A90] p-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">
-                    Question {index + 1}
-                  </h2>
-                  {question.selectedAnswer === question.answer ? (
-                    <CheckCircle className="text-green-500 w-6 h-6" />
-                  ) : (
-                    <XCircle className="text-red-500 w-6 h-6" />
-                  )}
-                </div>
-                <p className="mt-2">{question.question}</p>
+              <div className="flex justify-between items-center">
+                <p className="text-md">Question {index + 1}</p>
+                {expandedQuestionIndex === index ? (
+                  <ChevronUp size={20} />
+                ) : (
+                  <ChevronDown size={20} />
+                )}
               </div>
-              <div className="p-4">
-                <div className="space-y-3">
-                  <div className="p-3 bg-[#D9D9D9] rounded-lg">
-                    <p className="text-sm font-medium text-gray-500">
-                      Your Answer:
-                    </p>
-                    <p
+              {expandedQuestionIndex === index && (
+                <div className="mt-2">
+                  <p>{q.question}</p>
+                  <p className="mt-2">
+                    Your answer:{" "}
+                    <span
                       className={
-                        question.selectedAnswer === question.answer
-                          ? "text-green-600 font-medium"
-                          : "text-red-600 font-medium"
+                        q.selectedAnswer === q.answer
+                          ? "text-green-800 font-semibold"
+                          : "text-red-800 font-semibold"
                       }
                     >
-                      {question.selectedAnswer || "Not answered"}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-[#D9D9D9] rounded-lg">
-                    <p className="text-sm font-medium text-gray-500">
-                      Correct Answer:
-                    </p>
-                    <p className="text-green-600 font-medium">
-                      {question.answer}
-                    </p>
-                  </div>
+                      {q.selectedAnswer || "Not answered"}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-green-800 font-semibold">
+                    Correct answer: {q.answer}
+                  </p>
                 </div>
-              </div>
+              )}
             </div>
           ))}
         </div>
@@ -339,6 +341,14 @@ const QuizPage = () => {
           <h2 className="text-base sm:text-xl font-medium flex justify-center items-center p-3 sm:p-4 text-center shadow-sm">
             {currentQuestionIndex + 1}. {currentQuestion.question}
           </h2>
+          <button
+            onClick={toggleMarkQuestion}
+            className={`p-2 rounded-full ${
+              currentQuestion.isMarked
+                ? "text-yellow-500 bg-yellow-50"
+                : "text-gray-400 hover:bg-gray-50"
+            }`}
+          ></button>
         </div>
 
         <div className="space-y-3 w-[60vw]">
@@ -369,6 +379,4 @@ const QuizPage = () => {
       </div>
     </div>
   );
-};
-
-export default QuizPage;
+}

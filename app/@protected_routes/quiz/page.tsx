@@ -23,7 +23,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 cursor-pointer 
+      className="bg-white dark:bg-gray-800 shadow-md p-6 cursor-pointer 
                  hover:shadow-lg transition-shadow duration-200"
     >
       <h3 className="text-xl font-semibold mb-2 dark:text-white">

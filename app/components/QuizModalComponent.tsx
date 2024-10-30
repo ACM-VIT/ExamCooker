@@ -223,7 +223,7 @@ export default function QuizModalContent({
       <div className="flex justify-between items-center mb-6">
         <button
           onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          className="p-2 hover:bg-gray-100 transition-colors"
         >
           <ArrowLeft size={24} className="text-black dark:text-white" />
         </button>
@@ -252,7 +252,7 @@ export default function QuizModalContent({
           </div>
           <div className="relative">
             <button
-              className={`p-3 w-full border rounded-lg text-left flex justify-between items-center ${
+              className={`p-3 w-full border text-left flex justify-between items-center ${
                 validation.weeks.isValid ? "border-gray-300" : "border-red-500"
               }`}
               onClick={() => setShowDropdown(!showDropdown)}
@@ -266,7 +266,7 @@ export default function QuizModalContent({
               <HelpCircle size={20} className="text-gray-400" />
             </button>
             {showDropdown && (
-              <div className="absolute z-10 w-full bg-white border mt-1 rounded-lg shadow-lg overflow-y-auto max-h-48">
+              <div className="absolute z-10 w-full bg-white border mt-1 shadow-lg overflow-y-auto max-h-48">
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((week) => (
                   <div
                     key={week}
@@ -306,7 +306,7 @@ export default function QuizModalContent({
             value={quizState.numQuestions || ""}
             onChange={(e) => handleNumQuestionsChange(Number(e.target.value))}
             placeholder="Enter number"
-            className={`w-full p-2 border rounded-lg ${
+            className={`w-full p-2 border ${
               validation.questions.isValid
                 ? "border-gray-300"
                 : "border-red-500"
@@ -332,7 +332,7 @@ export default function QuizModalContent({
             onChange={(e) =>
               handleDurationChange("hours", Number(e.target.value))
             }
-            className={`w-full p-2 border rounded-lg ${
+            className={`w-full p-2 border  ${
               validation.duration.isValid ? "border-gray-300" : "border-red-500"
             }`}
             style={{ height: "3rem" }}
@@ -348,7 +348,7 @@ export default function QuizModalContent({
             onChange={(e) =>
               handleDurationChange("minutes", Number(e.target.value))
             }
-            className={`w-full p-2 border rounded-lg ${
+            className={`w-full p-2 border${
               validation.duration.isValid ? "border-gray-300" : "border-red-500"
             }`}
             style={{ height: "3rem" }}
@@ -364,7 +364,7 @@ export default function QuizModalContent({
             onChange={(e) =>
               handleDurationChange("seconds", Number(e.target.value))
             }
-            className={`w-full p-2 border rounded-lg ${
+            className={`w-full p-2 border ${
               validation.duration.isValid ? "border-gray-300" : "border-red-500"
             }`}
             style={{ height: "3rem" }}
