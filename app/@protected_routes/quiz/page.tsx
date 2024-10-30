@@ -101,7 +101,8 @@ const QuizPage = () => {
 
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <QuizModalContent
-          courseName={selectedCourse?.courseName}
+          courseCode={selectedCourse?.courseCode || ""}
+          courseName={selectedCourse?.courseName || ""}
           onClose={handleCloseModal}
         />
       </Modal>
