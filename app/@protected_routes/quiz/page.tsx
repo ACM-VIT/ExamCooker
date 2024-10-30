@@ -9,7 +9,6 @@ interface Course {
   courseName: string;
 }
 
-// QuizCard component
 interface QuizCardProps {
   courseCode: string;
   courseName: string;
@@ -35,7 +34,6 @@ const QuizCard: React.FC<QuizCardProps> = ({
   );
 };
 
-// Separate Modal component
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -47,15 +45,12 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
 
   return (
     <div className="fixed inset-0 z-50">
-      {/* Backdrop with blur */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-
-      {/* Modal content */}
       <div className="relative flex items-center justify-center min-h-screen p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl relative">
+        <div className="bg-[#5FC4E7] dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl relative">
           {children}
         </div>
       </div>
@@ -63,7 +58,6 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
   );
 };
 
-// Quiz Modal Content component
 interface QuizModalContentProps {
   courseName: string;
   onClose: () => void;
@@ -84,14 +78,14 @@ const QuizPage = () => {
   };
 
   const courses: Course[] = [
-    { courseCode: "BCSE101L", courseName: "Discrete Mathematics" },
-    { courseCode: "BCSE102L", courseName: "Data Structures" },
-    { courseCode: "BCSE103L", courseName: "Computer Networks" },
-    { courseCode: "BCSE104L", courseName: "Database Systems" },
+    { courseCode: "BCSE101L", courseName: "Wildlife Ecology" },
+    { courseCode: "BCSE102L", courseName: "Forest and Management" },
+    { courseCode: "BCSE103L", courseName: "Suppu FTW" },
+    { courseCode: "BCSE104L", courseName: "Ethical Hacking" },
   ];
 
   return (
-    <div className="h-[80vh] w-full flex flex-col items-center py-8">
+    <div className="h-[80vh] w-full flex flex-col items-center py-8 ">
       <p className="text-6xl font-bold mb-12 dark:text-white">NPTEL QUIZ</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl px-4">

@@ -1,7 +1,15 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Clock, Flag } from "lucide-react";
+import {
+  ChevronRight,
+  Clock,
+  CheckCircle,
+  XCircle,
+  ArrowLeft,
+  Trophy,
+  Target,
+} from "lucide-react";
 import { WildlifeJSON } from "@/public/assets/quizJSON";
 
 interface Question {
@@ -129,6 +137,12 @@ const QuizPage = () => {
     }
   };
 
+  const getScoreColor = (percentage: number) => {
+    if (percentage >= 80) return "text-green-600";
+    if (percentage >= 60) return "text-yellow-600";
+    return "text-red-600";
+  };
+
   if (questions.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -142,60 +156,144 @@ const QuizPage = () => {
       ? questions.filter((q) => q.selectedAnswer !== q.answer)
       : questions;
 
+    const percentage = ((score / questions.length) * 100).toFixed(1);
+
     return (
-      <div className="w-[60vw] mx-auto p-6">
-        <div className="mb-4">
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              onChange={(e) => setShowOnlyIncorrect(e.target.checked)}
-              className="form-checkbox"
-            />
-            <span className="text-white text-lg">
-              Show Incorrect Questions Only
-            </span>
-          </label>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h1 className="text-2xl font-bold mb-4">Quiz Results</h1>
-          <p className="text-lg mb-4">
-            Score: {score} out of {questions.length} (
-            {((score / questions.length) * 100).toFixed(1)}%)
-          </p>
-          <div className="space-y-4">
-            {displayedQuestions.map((q, index) => (
-              <div
-                key={index}
-                className={`p-4 rounded-lg ${
-                  q.selectedAnswer === q.answer ? "bg-green-50" : "bg-red-50"
-                }`}
-              >
-                <p className="font-medium">
-                  {index + 1}. {q.question}
-                </p>
-                <p className="mt-2">
-                  Your answer:{" "}
-                  <span
-                    className={
-                      q.selectedAnswer === q.answer
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }
-                  >
-                    {q.selectedAnswer || "Not answered"}
-                  </span>
-                </p>
-                <p className="mt-1 text-green-600">
-                  Correct answer: {q.answer}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="mb-8 bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="text-center bg-[#5FC4E7] dark:bg-[#008A90] p-6 rounded-t-lg">
+            <div className="flex justify-center mb-4">
+              <Trophy className="w-16 h-16" />
+            </div>
+            <h1 className="text-3xl font-bold">Quiz Complete!</h1>
+            <p className="text-lg mt-2 text-gray-100">
+              Here's how you performed
+            </p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+              <div className="p-4 rounded-lg bg-[#D9D9D9]">
+                <p className="text-sm uppercase font-medium mb-1">Score</p>
+                <p
+                  className={`text-3xl font-bold ${getScoreColor(
+                    Number(percentage)
+                  )}`}
+                >
+                  {score}/{questions.length}
                 </p>
               </div>
-            ))}
+              <div className="p-4 rounded-lg bg-[#D9D9D9]">
+                <p className="text-sm uppercase font-medium mb-1">Percentage</p>
+                <p
+                  className={`text-3xl font-bold ${getScoreColor(
+                    Number(percentage)
+                  )}`}
+                >
+                  {percentage}%
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-[#D9D9D9]">
+                <p className="text-sm uppercase font-medium mb-1">Questions</p>
+                <p className="text-3xl font-bold">
+                  {
+                    questions.filter((q) => q.selectedAnswer === q.answer)
+                      .length
+                  }{" "}
+                  correct
+                </p>
+              </div>
+            </div>
           </div>
+        </div>
+
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center space-x-2 bg-[#D9D9D9] p-3 rounded-lg">
+            <Target size={20} />
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showOnlyIncorrect}
+                onChange={(e) => setShowOnlyIncorrect(e.target.checked)}
+                className="form-checkbox h-5 w-5"
+              />
+              <span className="text-base font-medium">Show Incorrect Only</span>
+            </label>
+          </div>
+
+          <span className="text-sm text-gray-500">
+            Showing {displayedQuestions.length} of {questions.length} questions
+          </span>
+        </div>
+
+        <div className="space-y-6">
+          {displayedQuestions.map((question, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-lg shadow-lg overflow-hidden border-l-4 transition-all hover:shadow-xl"
+              style={{
+                borderLeftColor:
+                  question.selectedAnswer === question.answer
+                    ? "#22c55e"
+                    : "#ef4444",
+              }}
+            >
+              <div className="bg-[#5FC4E7] dark:bg-[#008A90] p-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">
+                    Question {index + 1}
+                  </h2>
+                  {question.selectedAnswer === question.answer ? (
+                    <CheckCircle className="text-green-500 w-6 h-6" />
+                  ) : (
+                    <XCircle className="text-red-500 w-6 h-6" />
+                  )}
+                </div>
+                <p className="mt-2">{question.question}</p>
+              </div>
+              <div className="p-4">
+                <div className="space-y-3">
+                  <div className="p-3 bg-[#D9D9D9] rounded-lg">
+                    <p className="text-sm font-medium text-gray-500">
+                      Your Answer:
+                    </p>
+                    <p
+                      className={
+                        question.selectedAnswer === question.answer
+                          ? "text-green-600 font-medium"
+                          : "text-red-600 font-medium"
+                      }
+                    >
+                      {question.selectedAnswer || "Not answered"}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-[#D9D9D9] rounded-lg">
+                    <p className="text-sm font-medium text-gray-500">
+                      Correct Answer:
+                    </p>
+                    <p className="text-green-600 font-medium">
+                      {question.answer}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 flex justify-between">
+          <button
+            onClick={() => router.push("/quiz")}
+            className="flex items-center px-6 py-3 bg-[#5FC4E7] dark:bg-[#008A90] rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <ArrowLeft size={20} className="mr-2" />
+            Try Another Quiz
+          </button>
           <button
             onClick={() => router.push("/")}
-            className="mt-6 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+            className="flex items-center px-6 py-3 bg-[#5FC4E7] dark:bg-[#008A90] rounded-lg hover:opacity-90 transition-opacity"
           >
-            Return to Home
+            Return Home
+            <ChevronRight size={20} className="ml-2" />
           </button>
         </div>
       </div>
@@ -205,61 +303,53 @@ const QuizPage = () => {
   const currentQuestion = questions[currentQuestionIndex];
 
   return (
-    <div className="w-[60vw] mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="flex justify-between items-center mb-4 sm:mb-6">
         <div className="flex items-center space-x-2">
           <Clock
             className={`${
               timeRemaining <= 30
                 ? "text-red-500 animate-pulse"
-                : "text-gray-500"
+                : "text-black dark:text-white"
             }`}
           />
           <span
-            className={`font-mono text-xl ${
-              timeRemaining <= 30 ? "text-red-500" : ""
+            className={`font-mono text-lg sm:text-xl ${
+              timeRemaining <= 30
+                ? "text-red-500"
+                : "text-black dark:text-white"
             }`}
           >
             {formatTime(timeRemaining)}
           </span>
         </div>
-        <div className="text-md text-white">
+        <div className="text-lg sm:text-md text-black dark:text-white">
           Question {currentQuestionIndex + 1} of {questions.length}
         </div>
       </div>
 
       {showWarning && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 sm:px-4 sm:py-3 rounded-lg mb-4 text-sm sm:text-base">
           30 seconds remaining! Please finish your quiz.
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex justify-between items-start mb-4">
-          <h2 className="text-xl font-medium">
+      <div className="flex flex-col items-center justify-center">
+        <div className="flex mb-4 bg-[#5FC4E7] dark:bg-[#008A90] min-h-[10vh] w-[70vw] shadow-md rounded-lg">
+          <h2 className="text-base sm:text-xl font-medium flex justify-center items-center p-3 sm:p-4 text-center shadow-sm">
             {currentQuestionIndex + 1}. {currentQuestion.question}
           </h2>
-          <button
-            onClick={toggleMarkQuestion}
-            className={`p-2 rounded-full ${
-              currentQuestion.isMarked
-                ? "text-yellow-500 bg-yellow-50"
-                : "text-gray-400 hover:bg-gray-50"
-            }`}
-          >
-            <Flag size={20} />
-          </button>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 w-[60vw]">
           {currentQuestion.options.map((option, index) => (
             <button
               key={index}
               onClick={() => handleAnswerSelect(option)}
-              className={`w-full p-4 text-left rounded-lg border transition-colors ${
+              className={`p-3 sm:p-4 text-left rounded-lg border transition-colors w-full text-sm sm:text-base ${
                 currentQuestion.selectedAnswer === option
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-gray-200 hover:bg-gray-100"
+                  ? "bg-[#5FC4E7] dark:bg-[#008A90] dark:text-white"
+                  : "bg-[#D9D9D9] hover:bg-gray-100"
               }`}
             >
               {option}
@@ -268,10 +358,10 @@ const QuizPage = () => {
         </div>
       </div>
 
-      <div className="flex justify-end space-x-4">
+      <div className="flex justify-end space-x-4 mt-4 sm:mt-6">
         <button
           onClick={goToNextQuestion}
-          className="px-6 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+          className="px-4 sm:px-6 py-2 text-lg font-semibold bg-[#5FC4E7] dark:bg-[#008A90] rounded-lg hover:opacity-90 transition-opacity"
         >
           {currentQuestionIndex === questions.length - 1 ? "Submit" : "Next"}
           <ChevronRight size={20} className="ml-2 inline" />
