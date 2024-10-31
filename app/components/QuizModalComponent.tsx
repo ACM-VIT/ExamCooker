@@ -1,81 +1,44 @@
-"use client";
-
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, List, HelpCircle, Check } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 
 interface QuizModalContentProps {
   courseCode: string;
   courseName: string;
+  weeks: number[];
+  availableQuestions: number;
   onClose: () => void;
 }
 
-interface QuizState {
-  selectedWeeks: number[];
-  numQuestions: number | null;
-  duration: {
-    hours: number;
-    minutes: number;
-    seconds: number;
-  };
-}
-
-interface ValidationState {
-  weeks: {
-    isValid: boolean;
-    message: string;
-  };
-  questions: {
-    isValid: boolean;
-    message: string;
-  };
-  duration: {
-    isValid: boolean;
-    message: string;
-  };
-}
-
-const STORAGE_KEY = "quizSettings";
-
-export default function QuizModalContent({
+const QuizModalContent: React.FC<QuizModalContentProps> = ({
   courseCode,
   courseName,
+  weeks,
+  availableQuestions,
   onClose,
-}: QuizModalContentProps) {
+}) => {
   const router = useRouter();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [quizState, setQuizState] = useState<QuizState>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (
-          parsed &&
-          Array.isArray(parsed.selectedWeeks) &&
-          typeof parsed.numQuestions === "number" &&
-          typeof parsed.duration === "object"
-        ) {
-          return parsed;
-        }
-      }
-    }
-    return {
-      selectedWeeks: [],
-      numQuestions: null,
-      duration: { hours: 0, minutes: 0, seconds: 0 },
-    };
+  const [quizState, setQuizState] = useState({
+    selectedWeeks: [] as number[],
+    numQuestions: null as number | null,
+    duration: {
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+    },
   });
 
-  const [validation, setValidation] = useState<ValidationState>({
+  const [validation, setValidation] = useState({
     weeks: { isValid: true, message: "" },
     questions: { isValid: true, message: "" },
     duration: { isValid: true, message: "" },
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(quizState));
+    localStorage.setItem("quizSettings", JSON.stringify(quizState));
   }, [quizState]);
 
   useEffect(() => {
@@ -99,6 +62,10 @@ export default function QuizModalContent({
     return hours * 3600 + minutes * 60 + seconds;
   };
 
+  const formatDuration = (duration: { hours: number; minutes: number; seconds: number }) => {
+    return `${String(duration.hours).padStart(2, "0")}:${String(duration.minutes).padStart(2, "0")}:${String(duration.seconds).padStart(2, "0")}`;
+  };
+
   const validateInputs = (): boolean => {
     const newValidation = { ...validation };
     let isValid = true;
@@ -112,11 +79,11 @@ export default function QuizModalContent({
     } else {
       newValidation.weeks = {
         isValid: true,
-        message: `${quizState.selectedWeeks.length} weeks selected`,
+        message: `${quizState.selectedWeeks.length} week(s) selected`,
       };
     }
 
-    const maxQuestions = quizState.selectedWeeks.length * 10;
+    const maxQuestions = Math.min(quizState.selectedWeeks.length * 10, availableQuestions);
     if (!quizState.numQuestions || quizState.numQuestions <= 0) {
       newValidation.questions = {
         isValid: false,
@@ -132,8 +99,9 @@ export default function QuizModalContent({
     } else {
       newValidation.questions = {
         isValid: true,
-        message: `${quizState.numQuestions} questions selected`,
+        message: `${quizState.numQuestions} question(s) selected`,
       };
+      isValid = true;
     }
 
     const totalSeconds = getTotalSeconds();
@@ -145,7 +113,7 @@ export default function QuizModalContent({
       isValid = false;
     } else if (
       quizState.numQuestions !== null &&
-      totalSeconds < quizState.numQuestions * 30
+      totalSeconds < quizState.numQuestions * 30 
     ) {
       newValidation.duration = {
         isValid: false,
@@ -157,32 +125,21 @@ export default function QuizModalContent({
         isValid: true,
         message: `${formatDuration(quizState.duration)} duration set`,
       };
+      isValid = true;
     }
 
     setValidation(newValidation);
     return isValid;
   };
 
-  const formatDuration = (duration: {
-    hours: number;
-    minutes: number;
-    seconds: number;
-  }) => {
-    return `${String(duration.hours).padStart(2, "0")}:${String(
-      duration.minutes
-    ).padStart(2, "0")}:${String(duration.seconds).padStart(2, "0")}`;
-  };
-
   const handleStartQuiz = () => {
     if (validateInputs()) {
       const formattedWeeks = quizState.selectedWeeks.join("-");
-      const formattedDuration = formatDuration(quizState.duration).replace(
-        /:/g,
-        ""
-      );
+      const formattedDuration = formatDuration(quizState.duration).replace(/:/g, "");
       router.push(
-        `/quiz/weeks=${formattedWeeks}&numQ=${quizState.numQuestions}&time=${formattedDuration}`
+        `/quiz/${courseCode}?weeks=${formattedWeeks}&numQ=${quizState.numQuestions}&time=${formattedDuration}`
       );
+      onClose(); 
     }
   };
 
@@ -202,10 +159,7 @@ export default function QuizModalContent({
     }));
   };
 
-  const handleDurationChange = (
-    field: "hours" | "minutes" | "seconds",
-    value: number
-  ) => {
+  const handleDurationChange = (field: "hours" | "minutes" | "seconds", value: number) => {
     const maxValue = field === "hours" ? 23 : 59;
     const sanitizedValue = Math.max(0, Math.min(value, maxValue));
 
@@ -219,27 +173,20 @@ export default function QuizModalContent({
   };
 
   return (
-    <div className="relative overflow-hidden p-6 max-w-2xl mx-auto shadow-lg bg-[#C2E6EC] dark:bg-[#0C1222]">
+    <div className="relative overflow-hidden p-6 bg-[#C2E6EC] dark:bg-[#0C1222] rounded-lg shadow-lg">
       <div className="flex justify-between items-center mb-6">
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-gray-100 transition-colors"
-        >
+        <button onClick={onClose} className="p-2 hover:bg-gray-100 transition-colors">
           <ArrowLeft size={24} className="text-black dark:text-[#D5D5D5]" />
         </button>
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-black dark:text-[#D5D5D5]">
-            {courseCode}
-          </h2>
-          <h3 className="text-lg font-semibold text-black dark:text-[#D5D5D5]">
-            {courseName}
-          </h3>
+          <h2 className="text-2xl font-bold text-black dark:text-[#D5D5D5]">{courseName}</h2>
+          <h3 className="text-lg font-semibold text-black dark:text-[#D5D5D5]">{courseCode}</h3>
         </div>
         <button onClick={handleStartQuiz} className="relative group">
           <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
           <div className="absolute inset-0 blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
           <button
-            type="submit"
+            type="button"
             title="Start Quiz"
             className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7]
                         dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold
@@ -253,9 +200,7 @@ export default function QuizModalContent({
       <div className="flex space-x-4 mb-6">
         <div className="w-1/2 flex flex-col justify-between" ref={dropdownRef}>
           <div className="flex items-center mb-2">
-            <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
-              Select Weeks
-            </label>
+            <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">Select Weeks</label>
           </div>
           <div className="relative">
             <button
@@ -267,119 +212,106 @@ export default function QuizModalContent({
               <span>
                 {quizState.selectedWeeks.length === 0
                   ? "Select Weeks"
-                  : quizState.selectedWeeks.join(",")}
+                  : quizState.selectedWeeks.join(", ")}
               </span>
-              <Check
-                className="mr-2 text-black dark:text-[#D5D5D5]"
-                size={20}
-              />
+              <Check className="mr-2 text-black dark:text-[#D5D5D5]" size={20} />
             </button>
             {showDropdown && (
               <div className="absolute z-10 w-full bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] border mt-1 shadow-lg overflow-y-auto max-h-48">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((week) => (
+                {weeks.map((week) => (
                   <div
                     key={week}
                     onClick={() => toggleWeek(week)}
                     className={`cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20 ${
-                      quizState.selectedWeeks.includes(week) ? "" : ""
+                      quizState.selectedWeeks.includes(week) ? "bg-black/10 dark:bg-white/10" : ""
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={quizState.selectedWeeks.includes(week)}
-                      readOnly
-                      className="mr-2"
-                    />
-                    <span>{week}</span>
+                    <input type="checkbox" checked={quizState.selectedWeeks.includes(week)} readOnly className="mr-2" />
+                    <span>Week {week}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          {!validation.weeks.isValid && (
-            <p className="text-red-500 text-xs">{validation.weeks.message}</p>
-          )}
+          {!validation.weeks.isValid && <p className="text-red-500 text-xs">{validation.weeks.message}</p>}
         </div>
 
         <div className="w-1/2">
           <div className="flex items-center mb-2">
             <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
-              Number of Questions
+              Number of Questions ({availableQuestions} available)
             </label>
           </div>
           <input
             type="number"
             value={quizState.numQuestions || ""}
             onChange={(e) => handleNumQuestionsChange(Number(e.target.value))}
-            placeholder="Enter number"
-            className={`w-full p-2 border  dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
-              validation.questions.isValid
-                ? "border-gray-300"
-                : "border-red-500"
+            placeholder={`Enter number`}
+            className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
+              validation.questions.isValid ? "border-gray-300" : "border-red-500"
             }`}
             style={{ height: "3rem" }}
+            min={1}
+            max={Math.min(quizState.selectedWeeks.length * 10, availableQuestions)}
           />
           {!validation.questions.isValid && (
-            <p className="text-red-500 text-xs">
-              {validation.questions.message}
-            </p>
+            <p className="text-red-500 text-xs">{validation.questions.message}</p>
           )}
         </div>
       </div>
 
       <div className="flex space-x-4 mb-6">
         <div className="w-1/3">
-          <label className="text-sm font-mediumtext-black text-black dark:text-[#D5D5D5]">
-            Hours
-          </label>
+          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">Hours</label>
           <input
             type="number"
             value={quizState.duration.hours}
-            onChange={(e) =>
-              handleDurationChange("hours", Number(e.target.value))
-            }
+            onChange={(e) => handleDurationChange("hours", Number(e.target.value))}
             className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
               validation.duration.isValid ? "border-gray-300" : "border-red-500"
             }`}
             style={{ height: "3rem" }}
+            min={0}
+            max={23}
           />
         </div>
         <div className="w-1/3">
-          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
-            Minutes
-          </label>
+          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">Minutes</label>
           <input
             type="number"
             value={quizState.duration.minutes}
-            onChange={(e) =>
-              handleDurationChange("minutes", Number(e.target.value))
-            }
+            onChange={(e) => handleDurationChange("minutes", Number(e.target.value))}
             className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
               validation.duration.isValid ? "border-gray-300" : "border-red-500"
             }`}
             style={{ height: "3rem" }}
+            min={0}
+            max={59}
           />
         </div>
         <div className="w-1/3">
-          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
-            Seconds
-          </label>
+          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">Seconds</label>
           <input
             type="number"
             value={quizState.duration.seconds}
-            onChange={(e) =>
-              handleDurationChange("seconds", Number(e.target.value))
-            }
+            onChange={(e) => handleDurationChange("seconds", Number(e.target.value))}
             className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
               validation.duration.isValid ? "border-gray-300" : "border-red-500"
             }`}
             style={{ height: "3rem" }}
+            min={0}
+            max={59}
           />
         </div>
       </div>
       {!validation.duration.isValid && (
         <p className="text-red-500 text-xs">{validation.duration.message}</p>
       )}
+
+      <div className="mt-8 flex justify-end">
+      </div>
     </div>
   );
-}
+};
+
+export default QuizModalContent;

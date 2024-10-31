@@ -5,37 +5,38 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronRight,
   Clock,
-  CheckCircle,
-  XCircle,
   ArrowLeft,
   Trophy,
   Target,
-  Flag,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { WildlifeJSON } from "@/public/assets/quizJSON";
+
+interface QuizContent {
+  title: string;
+  weeks: Week[];
+}
+
+interface Week {
+  name: string;
+  questions: Question[];
+}
 
 interface Question {
   question: string;
   options: string[];
-  answer: string;
+  answer: string[];
 }
 
-interface QuizQuestion extends Question {
+interface QuizQuestion extends Omit<Question, 'answer'> {
+  answer: string; 
   selectedAnswer?: string;
   isMarked?: boolean;
   weekNumber: string;
   isExpanded?: boolean;
 }
 
-interface Week {
-  name: string;
-  questions?: Question[];
-  content?: Question[];
-}
-
-export default function Component() {
+const QuizComponent: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -46,42 +47,85 @@ export default function Component() {
   const [score, setScore] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
   const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false);
-  const [expandedQuestionIndex, setExpandedQuestionIndex] = useState<
-    number | null
-  >(null);
+  const [expandedQuestionIndex, setExpandedQuestionIndex] = useState<number | null>(null);
   const [showError, setShowError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(pathname.split("quiz/")[1]);
-    const weeks = params.get("weeks")?.split("-") || [];
-    const numQuestions = parseInt(params.get("numQ") || "0");
-    const time = params.get("time") || "000000";
+    const fetchQuizContent = async () => {
+      setIsLoading(true);
+      setFetchError(null);
+      try {
+        const url = new URL(window.location.href);
+        const pathParts = pathname.split("/quiz/");
+        if (pathParts.length < 2) {
+          throw new Error("Invalid quiz URL format.");
+        }
+        const courseCodeWithParams = pathParts[1];
+        const [courseCode] = courseCodeWithParams.split("?");
 
-    const hours = parseInt(time.slice(0, 2));
-    const minutes = parseInt(time.slice(2, 4));
-    const seconds = parseInt(time.slice(4, 6));
-    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-    setTimeRemaining(totalSeconds);
+        const params = new URLSearchParams(url.search);
+        const weeksParam = params.get("weeks");
+        const numQuestionsParam = params.get("numQ");
+        const timeParam = params.get("time");
 
-    const allQuestions: QuizQuestion[] = weeks.flatMap((week) => {
-      const weekData = WildlifeJSON.weeks.find((w) => w.name === week) as
-        | Week
-        | undefined;
+        if (!courseCode) {
+          throw new Error("Course code not found in URL.");
+        }
 
-      if (!weekData) return [];
+        const weeks = weeksParam ? weeksParam.split("-").map(Number) : [];
+        const numQuestions = numQuestionsParam ? parseInt(numQuestionsParam) : 0;
+        const timeSeconds = timeParam
+          ? parseInt(timeParam.substring(0, 2)) * 3600 +
+            parseInt(timeParam.substring(2, 4)) * 60 +
+            parseInt(timeParam.substring(4, 6))
+          : 0;
 
-      const questionsArray = weekData.questions || weekData.content || [];
+        setTimeRemaining(timeSeconds > 0 ? timeSeconds : 30 * 60); 
 
-      return questionsArray.map((q) => ({
-        ...q,
-        weekNumber: week,
-        isExpanded: false,
-      }));
-    });
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/courses/${courseCode}`
+        );
+        if (!response.ok) {
+          throw new Error(`Error fetching quiz content: ${response.statusText}`);
+        }
 
-    const shuffledQuestions = allQuestions.sort(() => Math.random() - 0.5);
-    setQuestions(shuffledQuestions.slice(0, numQuestions));
+        const data: QuizContent = await response.json();
+
+        const allQuestions: QuizQuestion[] = data.weeks
+          .filter((week) => weeks.includes(parseInt(week.name)))
+          .flatMap((week) =>
+            week.questions.map((q) => ({
+              question: q.question,
+              options: q.options,
+              answer: q.answer[0], 
+              weekNumber: week.name,
+              isExpanded: false,
+            }))
+          );
+
+        if (allQuestions.length === 0) {
+          throw new Error("No questions available for the selected weeks.");
+        }
+
+        const shuffledQuestions = allQuestions.sort(() => Math.random() - 0.5);
+        setQuestions(shuffledQuestions.slice(0, numQuestions));
+      } catch (error: any) {
+        setFetchError(error.message || "An unknown error occurred.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchQuizContent();
   }, [pathname]);
+
+  useEffect(() => {
+    if (timeRemaining === 0 && !quizSubmitted && questions.length > 0) {
+      submitQuiz();
+    }
+  }, [timeRemaining, quizSubmitted, questions]);
 
   useEffect(() => {
     if (timeRemaining > 0 && !quizSubmitted) {
@@ -157,25 +201,37 @@ export default function Component() {
     return "dark:bg-red-800/20 text-red-800";
   };
 
-  if (questions.length === 0) {
-    return (
+  let content;
+
+  if (isLoading) {
+    content = (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin h-16 w-16 border-t-2 border-b-2 border-gray-900"></div>
       </div>
     );
-  }
-
-  if (quizSubmitted) {
+  } else if (fetchError) {
+    content = (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-red-500">{fetchError}</p>
+      </div>
+    );
+  } else if (questions.length === 0) {
+    content = (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-700 dark:text-gray-300">No questions available.</p>
+      </div>
+    );
+  } else if (quizSubmitted) {
     const displayedQuestions = showOnlyIncorrect
       ? questions.filter((q) => q.selectedAnswer !== q.answer)
       : questions;
 
     const percentage = ((score / questions.length) * 100).toFixed(1);
 
-    return (
+    content = (
       <div className="lg:w-[75vw] md:w-[90vw] mx-auto px-4 py-8">
-        <div className="mb-8 bg-[#5FC4E7] dark:bg-[#ffffff]/20 shadow-lg overflow-hidden  dark:border-2">
-          <div className="text-center p-6 ">
+        <div className="mb-8 bg-[#5FC4E7] dark:bg-[#ffffff]/20 shadow-lg overflow-hidden dark:border-2">
+          <div className="text-center p-6">
             <div className="flex justify-center mb-4">
               <Trophy className="w-16 h-16 dark:text-[#D5D5D5]" />
             </div>
@@ -193,7 +249,7 @@ export default function Component() {
                   Number(percentage)
                 )}`}
               >
-                <p className="text-md  uppercase font-medium mb-1 ">Score</p>
+                <p className="text-md uppercase font-medium mb-1">Score</p>
                 <p className="text-3xl">
                   {score}/{questions.length}
                 </p>
@@ -203,7 +259,7 @@ export default function Component() {
                   Number(percentage)
                 )}`}
               >
-                <p className="text-md uppercase font-medium mb-1 ">
+                <p className="text-md uppercase font-medium mb-1">
                   Percentage
                 </p>
                 <p className={`text-3xl font-bold`}>{percentage}%</p>
@@ -213,13 +269,9 @@ export default function Component() {
                   Number(percentage)
                 )}`}
               >
-                <p className="text-md uppercase font-medium mb-1 ">Questions</p>
+                <p className="text-md uppercase font-medium mb-1">Questions</p>
                 <p className="text-3xl">
-                  {
-                    questions.filter((q) => q.selectedAnswer === q.answer)
-                      .length
-                  }{" "}
-                  correct
+                  {questions.filter((q) => q.selectedAnswer === q.answer).length} correct
                 </p>
               </div>
             </div>
@@ -260,7 +312,7 @@ export default function Component() {
               onClick={() => toggleQuestionExpansion(index)}
             >
               <div className="flex justify-between items-center">
-                <p className="text-md  text-black dark:text-[#D5D5D5]">
+                <p className="text-md text-black dark:text-[#D5D5D5]">
                   Question {index + 1}
                 </p>
                 {expandedQuestionIndex === index ? (
@@ -271,7 +323,7 @@ export default function Component() {
               </div>
               {expandedQuestionIndex === index && (
                 <div className="mt-2">
-                  <p className=" text-black dark:text-[#D5D5D5]">
+                  <p className="text-black dark:text-[#D5D5D5]">
                     {q.question}
                   </p>
                   <p className="mt-2">
@@ -313,81 +365,86 @@ export default function Component() {
         </div>
       </div>
     );
-  }
 
-  const currentQuestion = questions[currentQuestionIndex];
+  } else {
+    const currentQuestion = questions[currentQuestionIndex];
 
-  return (
-    <div className="mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-      <div className="flex justify-between items-center mb-4 sm:mb-6">
-        <div className="flex items-center space-x-2">
-          <Clock
-            className={`${
-              timeRemaining <= 30
-                ? "text-red-500 animate-pulse"
-                : "text-black dark:text-white"
-            }`}
-          />
-          <span
-            className={`font-mono text-lg sm:text-xl ${
-              timeRemaining <= 30
-                ? "text-red-500"
-                : "text-black dark:text-white"
-            }`}
-          >
-            {formatTime(timeRemaining)}
-          </span>
-        </div>
-        <div className="text-lg sm:text-md text-black dark:text-white">
-          Question {currentQuestionIndex + 1} of {questions.length}
-        </div>
-      </div>
-
-      {showWarning && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 sm:px-4 sm:py-3 rounded-lg mb-4 text-sm sm:text-base">
-          30 seconds remaining! Please finish your quiz.
-        </div>
-      )}
-
-      <div className="flex flex-col items-center justify-center">
-        <div className="flex mb-4 bg-[#5FC4E7] dark:bg-[#008A90]  text-black dark:text-[#D5D5D5] min-h-[10vh] w-[70vw] shadow-md">
-          <h2 className="text-base sm:text-xl font-medium flex justify-center items-center p-3 sm:p-4 text-center shadow-sm">
-            {currentQuestionIndex + 1}. {currentQuestion.question}
-          </h2>
-        </div>
-
-        <div className="space-y-3 w-[60vw]">
-          {currentQuestion.options.map((option, index) => (
-            <button
-              key={index}
-              onClick={() => handleAnswerSelect(option)}
-              className={`p-3 sm:p-4 text-left dark:border dark:border-[#D5D5D5] transition-colors w-full text-sm sm:text-base text-black dark:text-[#D5D5D5] ${
-                currentQuestion.selectedAnswer === option
-                  ? "bg-[#82BEE9] dark:bg-white/20 text-white shadow-lg"
-                  : "bg-[#5FC4E7] dark:bg-[#0C1222]"
+    content = (
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="flex justify-between items-center mb-4 sm:mb-6">
+          <div className="flex items-center space-x-2">
+            <Clock
+              className={`${
+                timeRemaining <= 30
+                  ? "text-red-500 animate-pulse"
+                  : "text-black dark:text-white"
+              }`}
+            />
+            <span
+              className={`font-mono text-lg sm:text-xl ${
+                timeRemaining <= 30
+                  ? "text-red-500"
+                  : "text-black dark:text-white"
               }`}
             >
-              {option}
-            </button>
-          ))}
+              {formatTime(timeRemaining)}
+            </span>
+          </div>
+          <div className="text-lg sm:text-md text-black dark:text-white">
+            Question {currentQuestionIndex + 1} of {questions.length}
+          </div>
         </div>
 
-        {showError && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm w-[60vw] text-center">
-            Please select an answer before proceeding
+        {showWarning && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 sm:px-4 sm:py-3 rounded-lg mb-4 text-sm sm:text-base">
+            30 seconds remaining! Please finish your quiz.
           </div>
         )}
-      </div>
 
-      <div className="flex justify-end space-x-4 mt-4 sm:mt-6">
-        <button
-          onClick={goToNextQuestion}
-          className="dark:text-[#D5D5D5] px-4 sm:px-6 py-2 text-lg font-semibold bg-[#5FC4E7] dark:bg-[#008A90] hover:opacity-90 transition-opacity"
-        >
-          {currentQuestionIndex === questions.length - 1 ? "Submit" : "Next"}
-          <ChevronRight size={20} className="ml-2 inline" />
-        </button>
+        <div className="flex flex-col items-center justify-center">
+          <div className="flex mb-4 bg-[#5FC4E7] dark:bg-[#008A90] text-black dark:text-[#D5D5D5] min-h-[10vh] w-[70vw] shadow-md">
+            <h2 className="text-base sm:text-xl font-medium flex justify-center items-center p-3 sm:p-4 text-center shadow-sm">
+              {currentQuestionIndex + 1}. {currentQuestion.question}
+            </h2>
+          </div>
+
+          <div className="space-y-3 w-[60vw]">
+            {currentQuestion.options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleAnswerSelect(option)}
+                className={`p-3 sm:p-4 text-left dark:border dark:border-[#D5D5D5] transition-colors w-full text-sm sm:text-base text-black dark:text-[#D5D5D5] ${
+                  currentQuestion.selectedAnswer === option
+                    ? "bg-[#82BEE9] dark:bg-white/20 text-white shadow-lg"
+                    : "bg-[#5FC4E7] dark:bg-[#0C1222]"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+
+          {showError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm w-[60vw] text-center">
+              Please select an answer before proceeding
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end space-x-4 mt-4 sm:mt-6">
+          <button
+            onClick={goToNextQuestion}
+            className="dark:text-[#D5D5D5] px-4 sm:px-6 py-2 text-lg font-semibold bg-[#5FC4E7] dark:bg-[#008A90] hover:opacity-90 transition-opacity"
+          >
+            {currentQuestionIndex === questions.length - 1 ? "Submit" : "Next"}
+            <ChevronRight size={20} className="ml-2 inline" />
+          </button>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+
+  return content;
+};
+
+export default QuizComponent;
