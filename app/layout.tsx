@@ -11,7 +11,7 @@ export const metadata = {
         template: "%s | ExamCooker",
         default: "ExamCooker - ACM-VIT",
     },
-    description: "Cram up for your exams with ExamCooker!!",
+    description: "Cram up for your exams with ExamCooker!! ",
     keywords: [
         "vit",
         "previous year question papers",
