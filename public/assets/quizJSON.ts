@@ -1279,9 +1279,9 @@ export const ForestJSON = {
             "Latin 'foris' meaning trees",
             "Greek 'foris' meaning trees"
           ],
-          "answer": [
+          "answer": 
             " Latin 'foris' meaning outside"
-          ]
+          
         },
         {
           "question": "According to the Supreme Court the word 'forest' must be understood according to its",
@@ -1291,9 +1291,9 @@ export const ForestJSON = {
             "silvicultural meaning",
             "dictionary meaning"
           ],
-          "answer": [
+          "answer": 
             "dictionary meaning"
-          ]
+          
         },
         {
           "question": "According to the Supreme Court, the term 'forest land' includes",
@@ -1303,9 +1303,9 @@ export const ForestJSON = {
             "some area recorded as forest in government record irrespective of ownership",
             "any area recorded as forest in the government record irrespective of ownership"
           ],
-          "answer": [
+          "answer": 
             "any area recorded as forest in the government record irrespective of ownership"
-          ]
+          
         },
         {
           "question": "\"Plant community, predominantly comprised of trees and other woody vegitation, usually with a closed canopy\" is",
@@ -1315,9 +1315,9 @@ export const ForestJSON = {
             "legal definition of forests",
             "ecological definition of forest"
           ],
-          "answer": [
+          "answer": 
             "ecological definition of forest"
-          ]
+          
         },
         {
           "question": "Tropical moist forests don't include",
@@ -1327,9 +1327,9 @@ export const ForestJSON = {
             "semi-evergreen forest",
             "moist deciduous forests"
           ],
-          "answer": [
+          "answer": 
             " Broadleaved forest"
-          ]
+          
         },
         {
           "question": "Which of these is not a use value",
@@ -1339,9 +1339,9 @@ export const ForestJSON = {
             "O option value",
             "existence value"
           ],
-          "answer": [
+          "answer": 
             "existence value"
-          ]
+          
         },
         {
           "question": "Montane sub-tropical forests don't include",
@@ -1351,9 +1351,9 @@ export const ForestJSON = {
             "semi-evergreen forest",
             "Odry-evergreen forest"
           ],
-          "answer": [
+          "answer": 
             "semi-evergreen forest"
-          ]
+          
         },
         {
           "question": "Which of these is not a forest type found in India?",
@@ -1363,9 +1363,9 @@ export const ForestJSON = {
             "Montane temperate",
             "Alpine"
           ],
-          "answer": [
+          "answer": 
             " Mediterranean dry"
-          ]
+          
         },
         {
           "question": "The value of leaving use and non-use values for off-springs or future generation is called",
@@ -1375,9 +1375,9 @@ export const ForestJSON = {
             "existance value",
             "O option value"
           ],
-          "answer": [
+          "answer": 
             "bequest value"
-          ]
+          
         },
         {
           "question": "Which of these is not a consumptive value",
@@ -1387,9 +1387,9 @@ export const ForestJSON = {
             "non-timber forest products",
             "Education"
           ],
-          "answer": [
+          "answer": 
             "Education"
-          ]
+          
         }
       ]
     },
@@ -1404,9 +1404,9 @@ export const ForestJSON = {
             "Raptiles",
             "Water"
           ],
-          "answer": [
+          "answer": 
             "Water"
-          ]
+          
         },
         {
           "question": "In the formula, I = PXAXT, T rafers to -\nTransference\nTime\nTechnology\nNone of these",
@@ -1416,9 +1416,9 @@ export const ForestJSON = {
             "Technology",
             "None of these"
           ],
-          "answer": [
+          "answer": 
             "Technology"
-          ]
+          
         },
         {
           "question": "Lithosere is an example of -\nHydrosere\nXerosere\nPsammosere\nHalosere",
@@ -1428,9 +1428,9 @@ export const ForestJSON = {
             "Psammosere",
             "Halosere"
           ],
-          "answer": [
+          "answer": 
             "Xerosere"
-          ]
+          
         },
         {
           "question": "The art and science of cultivating forest crops is called\nForesticulture\nMonoculture\nSilviculture\nSilvics",
@@ -1440,9 +1440,9 @@ export const ForestJSON = {
             "Silviculture",
             "Silvics"
           ],
-          "answer": [
+          "answer": 
             "Silviculture"
-          ]
+          
         },
         {
           "question": "Net primary productivity is given by\nAPAR + LUE\nAPAR X LUE\nAPAR - LUE\nAPAR/LUE",
@@ -1452,9 +1452,9 @@ export const ForestJSON = {
             "APAR - LUE",
             "APAR/LUE"
           ],
-          "answer": [
+          "answer": 
             "APAR X LUE"
-          ]
+          
         },
         {
           "question": "In the context of plant nutrition, Boron is\nMacronutrient\nMicronutrient\nPrimary nutrient\nSecondary nutrient",
@@ -1464,9 +1464,9 @@ export const ForestJSON = {
             "Primary nutrient",
             "Secondary nutrient"
           ],
-          "answer": [
+          "answer": 
             "Micronutrient"
-          ]
+          
         },
         {
           "question": "Which of these is not a characteristics of pioneer species?\nAbility to grow on bare rocks.\nAbility to tolerate extreme temperature.\nLarge size\nShort life span",
@@ -1476,9 +1476,9 @@ export const ForestJSON = {
             "Large size",
             "Short life span"
           ],
-          "answer": [
+          "answer": 
             "Large size"
-          ]
+          
         },
         {
           "question": "The study of life hoistory/general features of forest crops with respect to environmental factors is called\nForesticulture\nMonoculture\nSilviculture\nSilvics",
@@ -1488,9 +1488,9 @@ export const ForestJSON = {
             "Silviculture",
             "Silvics"
           ],
-          "answer": [
+          "answer": 
             "Silvics"
-          ]
+          
         },
         {
           "question": "At compensation point,\nPhotosynthesis = respiration\nPhotosynthesis \u003E respiration\nPhotosynthesis \u003C respiration\nNone of these.",
@@ -1500,9 +1500,9 @@ export const ForestJSON = {
             "Photosynthesis \u003C respiration",
             "None of these."
           ],
-          "answer": [
+          "answer": 
             " Photosynthesis = respiration"
-          ]
+          
         },
         {
           "question": "Practical application of scientific, technical and economic principles of forestry comes under which branch of forestry?\nForest management\nForset economics\nForset mensuration\nForest protection",
@@ -1512,9 +1512,9 @@ export const ForestJSON = {
             "Forset mensuration",
             "Forest protection"
           ],
-          "answer": [
+          "answer": 
             " Forest management"
-          ]
+          
         }
       ]
     },
@@ -1529,9 +1529,9 @@ export const ForestJSON = {
             "fertile",
             "infertile"
           ],
-          "answer": [
+          "answer": 
             "brick"
-          ]
+          
         },
         {
           "question": "Soil formation is dependent upon",
@@ -1541,9 +1541,9 @@ export const ForestJSON = {
             "climate",
             "all of the above"
           ],
-          "answer": [
+          "answer": 
             "all of the above"
-          ]
+          
         },
         {
           "question": "Self ploughing character is seen in",
@@ -1553,9 +1553,9 @@ export const ForestJSON = {
             "saline soil",
             "red and yellow soil"
           ],
-          "answer": [
+          "answer": 
             " black cotton soil"
-          ]
+          
         },
         {
           "question": "Hydrolysis is an example of",
@@ -1565,9 +1565,9 @@ export const ForestJSON = {
             "biological weathering",
             "none of the above"
           ],
-          "answer": [
+          "answer": 
             " chemical weathering"
-          ]
+          
         },
         {
           "question": "Which of these has the highest organic matter content?",
@@ -1577,9 +1577,9 @@ export const ForestJSON = {
             "saline soil",
             "red and yellow soil"
           ],
-          "answer": [
+          "answer": 
             " peaty soil"
-          ]
+          
         },
         {
           "question": "In soil profile, C refers to",
@@ -1589,9 +1589,9 @@ export const ForestJSON = {
             "subsoil layer",
             "substratum layer"
           ],
-          "answer": [
+          "answer": 
             "substratum layer"
-          ]
+          
         },
         {
           "question": "Carbonation is an example of",
@@ -1601,9 +1601,9 @@ export const ForestJSON = {
             "biological weathering",
             "none of the above"
           ],
-          "answer": [
+          "answer": 
             " chemical weathering"
-          ]
+          
         },
         {
           "question": "Vertical arrangement of soil horizons is called",
@@ -1613,9 +1613,9 @@ export const ForestJSON = {
             "soil profile",
             "soil science"
           ],
-          "answer": [
+          "answer": 
             "soil profile"
-          ]
+          
         },
         {
           "question": "Mechanical action of ocean waves is an example of",
@@ -1625,9 +1625,9 @@ export const ForestJSON = {
             "biological weathering",
             "none of the above"
           ],
-          "answer": [
+          "answer": 
             "physical weathering"
-          ]
+          
         },
         {
           "question": "Thermal stresses lead to",
@@ -1637,9 +1637,9 @@ export const ForestJSON = {
             "biological weathering",
             "none of the above"
           ],
-          "answer": [
+          "answer": 
             "physical weathering"
-          ]
+          
         }
       ]
     },
@@ -1654,9 +1654,9 @@ export const ForestJSON = {
             "For a non-circular cross-section, girth tape correctly estimates the sectional area.",
             "None of these is a correct statement."
           ],
-          "answer": [
+          "answer": 
             " For a non-circular cross-section, girth tape over-estimates the sectional area."
-          ]
+          
         },
         {
           "question": "A tree has dbh of 25 cm. Find its basal area in sq m.",
@@ -1666,9 +1666,9 @@ export const ForestJSON = {
             "0.149",
             "0.195"
           ],
-          "answer": [
+          "answer": 
             " 0.49"
-          ]
+          
         },
         {
           "question": "For absolute form factor, the reference for the base of the cylinder is",
@@ -1678,9 +1678,9 @@ export const ForestJSON = {
             "10% of tree height",
             "20% of tree height"
           ],
-          "answer": [
+          "answer": 
             " base of the tree"
-          ]
+          
         },
         {
           "question": "The breast height for Japan and Korea is",
@@ -1690,9 +1690,9 @@ export const ForestJSON = {
             "1.3 m",
             "1.4 m"
           ],
-          "answer": [
+          "answer": 
             "1.2 m"
-          ]
+          
         },
         {
           "question": "In the triangle of figure, θ = 60° and c = 4 cm. Find b.",
@@ -1702,9 +1702,9 @@ export const ForestJSON = {
             "1.5",
             "2"
           ],
-          "answer": [
+          "answer": 
             "2"
-          ]
+          
         },
         {
           "question": "Consider a stand of eucalyptus trees that are on average 30 cm in diameter and spaced on a regular 3 m grid. Find the spacing factor.",
@@ -1714,9 +1714,9 @@ export const ForestJSON = {
             "15",
             "data insufficient"
           ],
-          "answer": [
+          "answer": 
             "10"
-          ]
+          
         },
         {
           "question": "For false form factor, the reference for the base of the cylinder is",
@@ -1726,9 +1726,9 @@ export const ForestJSON = {
             "10% of tree height",
             "20% of tree height"
           ],
-          "answer": [
+          "answer": 
             "breast height"
-          ]
+          
         },
         {
           "question": "A tree has dbh of 35 cm. Find its basal area in sq m.",
@@ -1738,9 +1738,9 @@ export const ForestJSON = {
             "0.149",
             "0.195"
           ],
-          "answer": [
+          "answer": 
             "0.096"
-          ]
+          
         },
         {
           "question": "Diameter over bark (dob), diameter under bark (dub) and bark thickness (tb) are related as:",
@@ -1750,9 +1750,9 @@ export const ForestJSON = {
             "dob = dub + 2 x tb",
             "dob = dub - 2 x tb"
           ],
-          "answer": [
+          "answer": 
             "dob = dub + 2 x tb"
-          ]
+          
         },
         {
           "question": "For normal form factor, the reference for the base of the cylinder is",
@@ -1762,9 +1762,9 @@ export const ForestJSON = {
             "10% of tree height",
             "20% of tree height"
           ],
-          "answer": [
+          "answer": 
             "10% of tree height"
-          ]
+          
         }
       ]
     },
@@ -1779,9 +1779,9 @@ export const ForestJSON = {
             "Bias",
             "Variance"
           ],
-          "answer": [
+          "answer": 
             " Accuracy"
-          ]
+          
         },
         {
           "question": "IMU stands for\nImperial metering unit\nInertial metering unit\nImperial measurement unit\nInertial measurement unit",
@@ -1791,9 +1791,9 @@ export const ForestJSON = {
             "Imperial measurement unit",
             "Inertial measurement unit"
           ],
-          "answer": [
+          "answer": 
             "Inertial measurement unit"
-          ]
+          
         },
         {
           "question": "Which of these is correct?\nPlane surveying takes into account the true shape of the Earth and is used for smaller areas (\u003C 250 sq km)\nPlane surveying takes into account the true shape of the Earth and is used for larger areas (\u003E 250 sq km)\nGeodetic surveying takes into account the true shape of the Earth and is used for smaller areas (\u003C 250 sq km)\nGeodetic surveying takes into account the true shape of the Earth and is used for larger areas (\u003E 250 sq km)",
@@ -1803,9 +1803,9 @@ export const ForestJSON = {
             "Geodetic surveying takes into account the true shape of the Earth and is used for smaller areas (\u003C 250 sq km)",
             "Geodetic surveying takes into account the true shape of the Earth and is used for larger areas (\u003E 250 sq km)"
           ],
-          "answer": [
+          "answer": 
             "Geodetic surveying takes into account the true shape of the Earth and is used for larger areas (\u003E 250 sq km)"
-          ]
+          
         },
         {
           "question": "Plots as topographical units are used in\nhills\nplains\ndeserts\ntundra",
@@ -1815,9 +1815,9 @@ export const ForestJSON = {
             "deserts",
             "tundra"
           ],
-          "answer": [
+          "answer": 
             " hills"
-          ]
+          
         },
         {
           "question": "is how close the measured values are to each other.",
@@ -1827,9 +1827,9 @@ export const ForestJSON = {
             "Bias",
             "Variance"
           ],
-          "answer": [
+          "answer": 
             "Precision"
-          ]
+          
         },
         {
           "question": "A list of sampling units will be called a\nframe\nwindow\nsample\npopulation",
@@ -1839,9 +1839,9 @@ export const ForestJSON = {
             "sample",
             "population"
           ],
-          "answer": [
+          "answer": 
             " frame"
-          ]
+          
         },
         {
           "question": "\"This sampling employs a simple rule of selecting every kth unit starting with a number chosen at random from 1 to k as the random start.\" We're talking about\nSimple random sampling\nSystematic sampling\nStratified sampling\nMultistage sampling",
@@ -1851,9 +1851,9 @@ export const ForestJSON = {
             "Stratified sampling",
             "Multistage sampling"
           ],
-          "answer": [
+          "answer": 
             "Systematic sampling"
-          ]
+          
         },
         {
           "question": "The frequency of flyovers is an indicator of\nspatial resolution\ntemporal resolution\nspectral resolution\nradiometric resolution",
@@ -1863,9 +1863,9 @@ export const ForestJSON = {
             "spectral resolution",
             "radiometric resolution"
           ],
-          "answer": [
+          "answer": 
             "temporal resolution"
-          ]
+          
         },
         {
           "question": "The time of flight for LiDAR is 0.00001 sec. Find the distance of the object from the instrument.\n500 m\n1000 m\n1500 m\n2000 m",
@@ -1875,9 +1875,9 @@ export const ForestJSON = {
             "1500 m",
             "2000 m"
           ],
-          "answer": [
+          "answer": 
             "1500 m"
-          ]
+          
         },
         {
           "question": "Bathymetric LiDAR uses\nfar infrared light\nnear infrared light\norange light\ngreen light",
@@ -1887,9 +1887,9 @@ export const ForestJSON = {
             "orange light",
             "green light"
           ],
-          "answer": [
+          "answer": 
             "green light"
-          ]
+          
         }
       ]
     },
@@ -1904,9 +1904,9 @@ export const ForestJSON = {
             "fuel, air, wood",
             "fuel, oxygen, heat"
           ],
-          "answer": [
+          "answer": 
             "fuel, oxygen, heat"
-          ]
+          
         },
         {
           "question": "The acronym HIPPO does not include",
@@ -1916,9 +1916,9 @@ export const ForestJSON = {
             "pollination",
             "pollution"
           ],
-          "answer": [
+          "answer": 
             "pollination"
-          ]
+          
         },
         {
           "question": "In the formula I = PXAXT, T refers to",
@@ -1928,9 +1928,9 @@ export const ForestJSON = {
             "technology",
             "none of the above"
           ],
-          "answer": [
+          "answer": 
             "technology"
-          ]
+          
         },
         {
           "question": "Which of these is a stochastic factor?",
@@ -1940,9 +1940,9 @@ export const ForestJSON = {
             "population structure",
             "forest fire"
           ],
-          "answer": [
+          "answer": 
             "forest fire"
-          ]
+          
         },
         {
           "question": "Which of these is a deterministic factor?",
@@ -1952,9 +1952,9 @@ export const ForestJSON = {
             "death rate",
             "diseases"
           ],
-          "answer": [
+          "answer": 
             "death rate"
-          ]
+          
         },
         {
           "question": "A scientist uses a trap to capture a monkey. In the context of Wildlife Protection Act 1972, ",
@@ -1964,9 +1964,9 @@ export const ForestJSON = {
             "the trap is a weapon and capturing is not hunting.",
             "the trap is not a weapon and capturing is not hunting."
           ],
-          "answer": [
+          "answer": 
             " the trap is a weapon and capturing is hunting."
-          ]
+          
         },
         {
           "question": "The acronym HIPPO does not include",
@@ -1976,9 +1976,9 @@ export const ForestJSON = {
             "invasive species",
             "human over-population"
           ],
-          "answer": [
+          "answer": 
             "habitat enhancement"
-          ]
+          
         },
         {
           "question": "Invasive climbers increase the probability of which of these fire types?",
@@ -1988,9 +1988,9 @@ export const ForestJSON = {
             "ladder fire",
             "firestorm"
           ],
-          "answer": [
+          "answer": 
             "ladder fire"
-          ]
+          
         },
         {
           "question": "In the formula I = PXAXT, P refers to",
@@ -2000,9 +2000,9 @@ export const ForestJSON = {
             "population pressure",
             "none of the above"
           ],
-          "answer": [
+          "answer": 
             "population pressure"
-          ]
+          
         },
         {
           "question": "A veterinarian uses an immobilising gun to capture a deer. In the context of Wildlife Protection Act 1972,",
@@ -2012,9 +2012,9 @@ export const ForestJSON = {
             "the immobilising gun is a weapon and capturing is not hunting.",
             "the immobilising gun is not a weapon and capturing is not hunting."
           ],
-          "answer": [
+          "answer": 
             " the immobilising gun is a weapon and capturing is hunting."
-          ]
+          
         }
       ]
     },
@@ -2029,9 +2029,9 @@ export const ForestJSON = {
             "Harvesting -\u003E Regeneration -\u003E Stand tending",
             "Regeneration -\u003E Harvesting -\u003E Stand tending"
           ],
-          "answer": [
+          "answer": 
             "Harvesting -\u003E Regeneration -\u003E Stand tending"
-          ]
+          
         },
         {
           "question": "Tending is done during",
@@ -2041,9 +2041,9 @@ export const ForestJSON = {
             "late stage of life",
             "any stage of life"
           ],
-          "answer": [
+          "answer": 
             "any stage of life"
-          ]
+          
         },
         {
           "question": "Which of these is not a feature of natural regeneration?",
@@ -2053,9 +2053,9 @@ export const ForestJSON = {
             "preservation of genetic variability",
             "good control over genetic improvement"
           ],
-          "answer": [
+          "answer": 
             "good control over genetic improvement"
-          ]
+          
         },
         {
           "question": "Taungya regeneration is",
@@ -2065,9 +2065,9 @@ export const ForestJSON = {
             "artificial regeneration with nomadic tribes",
             "artificial regeneration with hunters and gatherers"
           ],
-          "answer": [
+          "answer": 
             "artificial regeneration with villagers"
-          ]
+          
         },
         {
           "question": "The movement of seeds away from their place of seed production into a new area is called",
@@ -2077,9 +2077,9 @@ export const ForestJSON = {
             "dispersal",
             "drifting"
           ],
-          "answer": [
+          "answer": 
             "dispersal"
-          ]
+          
         },
         {
           "question": "A site was clear-cut. Which of these methods of regeneration cannot be used?",
@@ -2089,9 +2089,9 @@ export const ForestJSON = {
             "artificial regeneration by planting seedlings",
             "artificial regeneration by transplanting trees"
           ],
-          "answer": [
+          "answer": 
             " natural regeneration"
-          ]
+          
         },
         {
           "question": "Ring weeding is primarily a feature of",
@@ -2101,9 +2101,9 @@ export const ForestJSON = {
             "artificial regeneration by direct sowing",
             "artificial regeneration by planting seedlings"
           ],
-          "answer": [
+          "answer": 
             "assisted natural regeneration"
-          ]
+          
         },
         {
           "question": "Which of these is not a feature of natural regeneration",
@@ -2113,9 +2113,9 @@ export const ForestJSON = {
             "long time needed to regenerate forest",
             "high requirement of heavy machinery and labour"
           ],
-          "answer": [
+          "answer": 
             "high requirement of heavy machinery and labour"
-          ]
+          
         },
         {
           "question": "Which of these is not advantage of clear felling system",
@@ -2125,9 +2125,9 @@ export const ForestJSON = {
             "Increases soil erosion and landslides in hilly areas",
             "Mimics natural processes of fire and large-scale insect attacks"
           ],
-          "answer": [
+          "answer": 
             "Increases soil erosion and landslides in hilly areas"
-          ]
+          
         },
         {
           "question": "Average age at which a tree is considered mature for felling is called as",
@@ -2137,9 +2137,9 @@ export const ForestJSON = {
             "rotation age",
             "maturity age"
           ],
-          "answer": [
+          "answer": 
             "rotation age"
-          ]
+          
         }
       ]
     },
@@ -2154,9 +2154,9 @@ export const ForestJSON = {
             "secondary felling",
             "final felling"
           ],
-          "answer": [
+          "answer": 
             "secondary felling"
-          ]
+          
         },
         {
           "question": "Clear felling system is not used for",
@@ -2166,9 +2166,9 @@ export const ForestJSON = {
             "plain areas",
             "plateau areas"
           ],
-          "answer": [
+          "answer": 
             "shade bearer species"
-          ]
+          
         },
         {
           "question": "For a crop with rotation age of 120 years, PB-III would have crop age",
@@ -2178,9 +2178,9 @@ export const ForestJSON = {
             "60-90 years",
             "90-120 years"
           ],
-          "answer": [
+          "answer": 
             "30-60 years"
-          ]
+          
         },
         {
           "question": "Catchment areas are best suited for",
@@ -2190,9 +2190,9 @@ export const ForestJSON = {
             "uniform shelterwood system",
             "group shelterwood system"
           ],
-          "answer": [
+          "answer": 
             "selection system"
-          ]
+          
         },
         {
           "question": "Shelterwood system results in",
@@ -2202,9 +2202,9 @@ export const ForestJSON = {
             "uneven aged stand with natural aesthetics",
             "uneven aged stand with artificial aesthetics"
           ],
-          "answer": [
+          "answer": 
             " even aged stand with natural aesthetics"
-          ]
+          
         },
         {
           "question": "Which of these is the correct sequence for shelterwood system?",
@@ -2214,9 +2214,9 @@ export const ForestJSON = {
             "Preparatory felling -\u003ESecondary felling -\u003E Seeding felling -\u003E Final felling",
             "Preparatory felling -\u003E Seeding felling -\u003E Secondary felling -\u003E Final felling"
           ],
-          "answer": [
+          "answer": 
             "Preparatory felling -\u003E Seeding felling -\u003E Secondary felling -\u003E Final felling"
-          ]
+          
         },
         {
           "question": "Inverse-J shaped number-diameter curves are seen in",
@@ -2226,9 +2226,9 @@ export const ForestJSON = {
             "uniform shelterwood system",
             "group shelterwood system"
           ],
-          "answer": [
+          "answer": 
             "selection system"
-          ]
+          
         },
         {
           "question": "Trees not putting increment are removed during",
@@ -2238,9 +2238,9 @@ export const ForestJSON = {
             "secondary felling",
             "final felling"
           ],
-          "answer": [
+          "answer": 
             " preparatory felling"
-          ]
+          
         },
         {
           "question": "Close to nature forestry is a feature of",
@@ -2250,9 +2250,9 @@ export const ForestJSON = {
             "uniform shelterwood system",
             "group shelterwood system"
           ],
-          "answer": [
+          "answer": 
             "selection system"
-          ]
+          
         },
         {
           "question": "In group shelterwood system, the regeneration area is increased",
@@ -2262,9 +2262,9 @@ export const ForestJSON = {
             "parallel to gaps",
             "perpendicular to gaps"
           ],
-          "answer": [
+          "answer": 
             " centrifugally around gaps"
-          ]
+          
         }
       ]
     },
@@ -2279,9 +2279,9 @@ export const ForestJSON = {
             "marking",
             "logging"
           ],
-          "answer": [
+          "answer": 
             "cruising"
-          ]
+          
         },
         {
           "question": "Which of these gives the greatest saving of lumber",
@@ -2291,9 +2291,9 @@ export const ForestJSON = {
             "open face",
             "all of these"
           ],
-          "answer": [
+          "answer": 
             "humboldt face"
-          ]
+          
         },
         {
           "question": "Careful selection of trees for harvesting based on a forest management prescription is known as",
@@ -2303,9 +2303,9 @@ export const ForestJSON = {
             "marking",
             "logging"
           ],
-          "answer": [
+          "answer": 
             "marking"
-          ]
+          
         },
         {
           "question": "Cutting of timber into logs is known as",
@@ -2315,9 +2315,9 @@ export const ForestJSON = {
             "skidding",
             "delimbing"
           ],
-          "answer": [
+          "answer": 
             "bucking"
-          ]
+          
         },
         {
           "question": "Research plots are shown in marking colour",
@@ -2327,9 +2327,9 @@ export const ForestJSON = {
             "red",
             "white"
           ],
-          "answer": [
+          "answer": 
             "white"
-          ]
+          
         },
         {
           "question": "Which of these gives the greatest accuracy in constructing face cuts",
@@ -2339,9 +2339,9 @@ export const ForestJSON = {
             "open face",
             "all of these."
           ],
-          "answer": [
+          "answer": 
             " conventional face"
-          ]
+          
         },
         {
           "question": "Trees to be retained are shown in marking colour.",
@@ -2351,9 +2351,9 @@ export const ForestJSON = {
             "red",
             "white"
           ],
-          "answer": [
+          "answer": 
             "blue"
-          ]
+          
         },
         {
           "question": "Moving of logs from forest to landing area is known as",
@@ -2363,9 +2363,9 @@ export const ForestJSON = {
             "skidding",
             "delimbing"
           ],
-          "answer": [
+          "answer": 
             "skidding"
-          ]
+          
         },
         {
           "question": "Trees on boundary are shown in marking colour.",
@@ -2375,9 +2375,9 @@ export const ForestJSON = {
             "red",
             "white"
           ],
-          "answer": [
+          "answer": 
             "red"
-          ]
+          
         },
         {
           "question": "Net growth in initial volume is given by",
@@ -2387,9 +2387,9 @@ export const ForestJSON = {
             "V2-V1+H-I+M",
             "V2-V1+H-I-M"
           ],
-          "answer": [
+          "answer": 
             "V2-V1+H-I"
-          ]
+          
         }
       ]
     },
@@ -2404,9 +2404,9 @@ export const ForestJSON = {
             "Omoisture content of fruits",
             "chemical analysis of fat and nitrogen content"
           ],
-          "answer": [
+          "answer": 
             "colour of fruits"
-          ]
+          
         },
         {
           "question": "\"Number of seeds in sample that germinate upto the peak germination period expressed as %\" is a definition of",
@@ -2416,9 +2416,9 @@ export const ForestJSON = {
             "germination energy",
             "germination power"
           ],
-          "answer": [
+          "answer": 
             "germination energy"
-          ]
+          
         },
         {
           "question": "Which of these is a good storage condition",
@@ -2428,9 +2428,9 @@ export const ForestJSON = {
             "low moisture, high temperature",
             "low moisture, low temperature"
           ],
-          "answer": [
+          "answer": 
             "low moisture, low temperature"
-          ]
+          
         },
         {
           "question": "Shell cracking of seeds is used for which species",
@@ -2440,9 +2440,9 @@ export const ForestJSON = {
             "Ober (palm)",
             "O teak"
           ],
-          "answer": [
+          "answer": 
             "Ober (palm)"
-          ]
+          
         },
         {
           "question": "agave is used for",
@@ -2452,9 +2452,9 @@ export const ForestJSON = {
             "chain link fencing",
             "stone wall fencing"
           ],
-          "answer": [
+          "answer": 
             "live fencing"
-          ]
+          
         },
         {
           "question": "Which of these prevents water logging",
@@ -2464,9 +2464,9 @@ export const ForestJSON = {
             "Oflat bed",
             "all of these."
           ],
-          "answer": [
+          "answer": 
             "Oraised bed"
-          ]
+          
         },
         {
           "question": "Which of these characterises a refractory site",
@@ -2476,9 +2476,9 @@ export const ForestJSON = {
             "soil depth \u003E 30 cm",
             "none of these"
           ],
-          "answer": [
+          "answer": 
             " soil depth \u003C 10 cm"
-          ]
+          
         },
         {
           "question": "Which of these conserves moisture",
@@ -2488,9 +2488,9 @@ export const ForestJSON = {
             "Oraised bed",
             "flat bed"
           ],
-          "answer": [
+          "answer": 
             "sunken bed"
-          ]
+          
         },
         {
           "question": "Choice of spacing is dependent upon",
@@ -2500,9 +2500,9 @@ export const ForestJSON = {
             "O growth rate",
             "all of these."
           ],
-          "answer": [
+          "answer": 
             "all of these."
-          ]
+          
         },
         {
           "question": "Wet and dry treatment of seeds is used for which species",
@@ -2512,9 +2512,9 @@ export const ForestJSON = {
             "ber",
             "O teak"
           ],
-          "answer": [
+          "answer": 
             "O teak"
-          ]
+          
         }
       ]
     },
@@ -2529,9 +2529,9 @@ export const ForestJSON = {
             "Ominor forest",
             "Omajor forest"
           ],
-          "answer": [
+          "answer": 
             "Omajor forest"
-          ]
+          
         },
         {
           "question": "In 1931, Van Panchayats were constituted in areas that are now in",
@@ -2541,9 +2541,9 @@ export const ForestJSON = {
             "West Bengal",
             "Uttarakhand"
           ],
-          "answer": [
+          "answer": 
             "Uttarakhand"
-          ]
+          
         },
         {
           "question": "Planting along canal banks is a part of",
@@ -2553,9 +2553,9 @@ export const ForestJSON = {
             "extension forestry",
             "O agroforestry"
           ],
-          "answer": [
+          "answer": 
             "extension forestry"
-          ]
+          
         },
         {
           "question": "\"allowing some places and some creatures to exist without significant human interference\" is a definition of",
@@ -2565,9 +2565,9 @@ export const ForestJSON = {
             "environmentalism",
             "O all of these"
           ],
-          "answer": [
+          "answer": 
             "preservation"
-          ]
+          
         },
         {
           "question": "Sustainable harvest of resources falls under the category of:",
@@ -2577,9 +2577,9 @@ export const ForestJSON = {
             "environmentalism",
             "none of the above"
           ],
-          "answer": [
+          "answer": 
             " conservation"
-          ]
+          
         },
         {
           "question": "The tiger and the elephant can be called as",
@@ -2589,9 +2589,9 @@ export const ForestJSON = {
             "flagship species",
             "all of the above"
           ],
-          "answer": [
+          "answer": 
             "all of the above"
-          ]
+          
         },
         {
           "question": "Which of these is a stochastic factor?",
@@ -2601,9 +2601,9 @@ export const ForestJSON = {
             "population structure",
             "forest fire"
           ],
-          "answer": [
+          "answer": 
             "forest fire"
-          ]
+          
         },
         {
           "question": "\"Science of relationships between organisms and their environments\" is the definition of:",
@@ -2613,9 +2613,9 @@ export const ForestJSON = {
             "environmentalism",
             "ecology"
           ],
-          "answer": [
+          "answer": 
             "ecology"
-          ]
+          
         },
         {
           "question": "Which of these is a deterministic factor?",
@@ -2625,9 +2625,9 @@ export const ForestJSON = {
             "Olitter size",
             "O death rate"
           ],
-          "answer": [
+          "answer": 
             "O death rate"
-          ]
+          
         },
         {
           "question": "The acronym HIPPO does not include",
@@ -2637,9 +2637,9 @@ export const ForestJSON = {
             "invasive species",
             "human over-population"
           ],
-          "answer": [
+          "answer": 
             "habitat enhancement"
-          ]
+          
         }
       ]
     },
@@ -2654,9 +2654,9 @@ export const ForestJSON = {
             "the trap is a weapon and capturing is not hunting.",
             "the trap is not a weapon and capturing is not hunting."
           ],
-          "answer": [
+          "answer": 
             " the trap is a weapon and capturing is hunting."
-          ]
+          
         },
         {
           "question": "Which of these is not a characteristic of pioneer species\nability to grow on bare rocks\nability to tolerate extreme temperatures\nlarge size\nshort life span",
@@ -2666,9 +2666,9 @@ export const ForestJSON = {
             "large size",
             "short life span"
           ],
-          "answer": [
+          "answer": 
             "large size"
-          ]
+          
         },
         {
           "question": "agave is used for\nbarbed wire fencing\nOlive fencing\nchain link fencing\nstone wall fencing",
@@ -2678,9 +2678,9 @@ export const ForestJSON = {
             "chain link fencing",
             "stone wall fencing"
           ],
-          "answer": [
+          "answer": 
             "Olive fencing"
-          ]
+          
         },
         {
           "question": "At compensation point,\nphotosynthesis = respiration\nphotosynthesis \u003E respiration\nphotosynthesis \u003C respiration\nnone of these",
@@ -2690,9 +2690,9 @@ export const ForestJSON = {
             "photosynthesis \u003C respiration",
             "none of these"
           ],
-          "answer": [
+          "answer": 
             " photosynthesis = respiration"
-          ]
+          
         },
         {
           "question": "The breast height for Japan and Korea is\n1.1 m\n1.2 m\n1.3 m\n1.4 m",
@@ -2702,9 +2702,9 @@ export const ForestJSON = {
             "1.3 m",
             "1.4 m"
           ],
-          "answer": [
+          "answer": 
             "1.2 m"
-          ]
+          
         },
         {
           "question": "In the triangle of figure, 0 = 60° and c = 2 cm. Find b.",
@@ -2714,9 +2714,9 @@ export const ForestJSON = {
             "0.75",
             "1"
           ],
-          "answer": [
+          "answer": 
             "1"
-          ]
+          
         },
         {
           "question": "The tiger and the elephant can be called as\numbrella species\nkeystone species\nflagship species\nall of the above",
@@ -2726,9 +2726,9 @@ export const ForestJSON = {
             "flagship species",
             "all of the above"
           ],
-          "answer": [
+          "answer": 
             "all of the above"
-          ]
+          
         },
         {
           "question": "The movement of seeds away from their place of seed production into a new area is called\ntranslocation\nmigration\ndispersal\ndrifting",
@@ -2738,9 +2738,9 @@ export const ForestJSON = {
             "dispersal",
             "drifting"
           ],
-          "answer": [
+          "answer": 
             "dispersal"
-          ]
+          
         },
         {
           "question": "According to the Supreme Court, the term forest land includes\nsome area recorded as forest in the Government record according to ownership\nany area recorded as forest in the Government record according to ownership\nsome area recorded as forest in the Government record irrespective of ownership\nany area recorded as forest in the Government record irrespective of ownership",
@@ -2750,9 +2750,9 @@ export const ForestJSON = {
             "some area recorded as forest in the Government record irrespective of ownership",
             "any area recorded as forest in the Government record irrespective of ownership"
           ],
-          "answer": [
+          "answer": 
             "any area recorded as forest in the Government record irrespective of ownership"
-          ]
+          
         },
         {
           "question": "Which of these is a stochastic factor?\nbirth rate\ndeath rate\npopulation structure\nforest fire",
@@ -2762,9 +2762,9 @@ export const ForestJSON = {
             "population structure",
             "forest fire"
           ],
-          "answer": [
+          "answer": 
             "forest fire"
-          ]
+          
         }
       ]
     }
@@ -2775,7 +2775,7 @@ export const spokenenglishJSON = {
 "request_count": "1",
 "weeks": [
   {
-    "name": "0",
+    "name": "1",
     "questions": [
       {
         "question": "To make a good presentation, choose a topic.",
@@ -2785,9 +2785,9 @@ export const spokenenglishJSON = {
           "Detailed",
           "Random"
         ],
-        "answer": [
+        "answer": 
           " Specific"
-        ]
+        
       },
       {
         "question": "Sounds are of two types - vowels and consonants. The statement is",
@@ -2795,9 +2795,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Reading out a presentation can distract/bore the audience. The statement is",
@@ -2805,9 +2805,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "In a formal presentation, jargons are not recommended.",
@@ -2815,9 +2815,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Spoken English is guided by stress, pause and intonation.",
@@ -2825,9 +2825,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Darting glance makes the presentation effective. The statement is",
@@ -2835,9 +2835,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Body language, voice modulation and grooming just reinforce the content of the speech. The statement is",
@@ -2845,9 +2845,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Putting too much information in one slide ensure effective communication in less time. The statement is",
@@ -2855,9 +2855,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Complete the following sentence with appropriate option.\nI hope you have a",
@@ -2866,14 +2866,14 @@ export const spokenenglishJSON = {
           "Let it be a",
           "I wish you a"
         ],
-        "answer": [
+        "answer": 
           "I wish you a"
-        ]
+        
       }
     ]
   },
   {
-    "name": "1",
+    "name": "2",
     "questions": [
       {
         "question": " \"Unlike Sanskrit and Latin, English is a spoken language\". The statement is",
@@ -2881,9 +2881,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": " \"Spoken language is guided by spelling\". The statement is",
@@ -2900,9 +2900,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "4) A presentation should begin with",
@@ -2913,9 +2913,9 @@ export const spokenenglishJSON = {
           "Pace",
           "Option E: Pause"
         ],
-        "answer": [
+        "answer": 
           " Greeting"
-        ]
+        
       },
       {
         "question": "5) The difference in 'talking' to the audience and 'reading' to the audience lies in",
@@ -2925,9 +2925,9 @@ export const spokenenglishJSON = {
           "Pace",
           "Pause"
         ],
-        "answer": [
+        "answer": 
           "Eye contact"
-        ]
+        
       },
       {
         "question": "6) Alok, a student of IIT, while introducing himself in a formal occasion (let us assume that it is a conference) says \" Hi Everybody, I am Alok from Civils Department\". Is it an appropriate introduction for a formal occasion?",
@@ -2935,9 +2935,9 @@ export const spokenenglishJSON = {
           " Yes",
           "No"
         ],
-        "answer": [
+        "answer": 
           "No"
-        ]
+        
       },
       {
         "question": "7) Use of non-linguistics fillers in speech is a sign of preparedness and confidence. The statement is",
@@ -2945,9 +2945,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "8) In all abbreviations, the last component takes stress.",
@@ -2955,9 +2955,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "9) In a formal speech, the use of hyperboles and self denigration is highly recommended.",
@@ -2965,9 +2965,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "10 Presence of slang (in speech) is a sign of informality. The statement is",
@@ -2975,14 +2975,14 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       }
     ]
   },
   {
-    "name": "2",
+    "name": "3",
     "questions": [
       {
         "question": "Dressing is an important aspect of theatre in presentation. The statement is",
@@ -2990,9 +2990,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "During a formal presentation, Shyam wears a pleasant smile on his face. Is it appropriate for the occasion?",
@@ -3000,9 +3000,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "A funeral look is key to a successful presentation",
@@ -3010,9 +3010,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Do not have darting glances during a presentation. The statement is",
@@ -3020,9 +3020,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "It is always good to have a copy of slides/notes (ready for reference) before the presentation. The statement is",
@@ -3030,9 +3030,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "For a presentation, slow tempo is the best bet to be understood.",
@@ -3040,9 +3040,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Which among the following is a linguistic reason for mishearing?",
@@ -3052,9 +3052,9 @@ export const spokenenglishJSON = {
           "Noise",
           "Similar syllable structure"
         ],
-        "answer": [
+        "answer": 
           "Similar syllable structure"
-        ]
+        
       },
       {
         "question": "How many syllables does the word \"university\" have?",
@@ -3064,9 +3064,9 @@ export const spokenenglishJSON = {
           "Four",
           "Five"
         ],
-        "answer": [
+        "answer": 
           "Five"
-        ]
+        
       },
       {
         "question": "More sounds in less time causes distortion. The statement is",
@@ -3074,9 +3074,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Misheard sounds are often somehow related to the right word. The statement is",
@@ -3084,14 +3084,14 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       }
     ]
   },
   {
-    "name": "3",
+    "name": "4",
     "questions": [
       {
         "question": "Which among the following is not a synonym of the word 'mannequin'",
@@ -3101,9 +3101,9 @@ export const spokenenglishJSON = {
           "Dummie",
           "Dissected human body"
         ],
-        "answer": [
+        "answer": 
           "Dissected human body"
-        ]
+        
       },
       {
         "question": "Harsha makes a presentation on a civil problem. He begins the presentation by discussing the solution. Is it an appropriate way to begin a presentation.",
@@ -3111,9 +3111,9 @@ export const spokenenglishJSON = {
           " Yes",
           "No"
         ],
-        "answer": [
+        "answer": 
           "No"
-        ]
+        
       },
       {
         "question": "In making a presentation on a civic problem, it is always good to insert a few photographs that aptly highlights the issue.",
@@ -3121,9 +3121,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Which among the following is not a synonym of the word 'dishevel'",
@@ -3133,9 +3133,9 @@ export const spokenenglishJSON = {
           "Disorder",
           "Disorganised"
         ],
-        "answer": [
+        "answer": 
           "Decluttered"
-        ]
+        
       },
       {
         "question": "Archives are a great source of information. The statement is",
@@ -3143,9 +3143,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "\" Perfection is inside you. The purpose of education is to bring it out.\" Whose quote is this?",
@@ -3155,9 +3155,9 @@ export const spokenenglishJSON = {
           "M.K. Gandhi",
           "Martin Luther King"
         ],
-        "answer": [
+        "answer": 
           "Swami Vivekananda"
-        ]
+        
       },
       {
         "question": "Numerical data is best transmitted visually. The statement is",
@@ -3165,9 +3165,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "While presenting data visually in a PPT, maintain silence and allow the speakers watch it. The statement is",
@@ -3175,9 +3175,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Diagrams can be best used to present relative position. The statement is",
@@ -3185,14 +3185,14 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       }
     ]
   },
   {
-    "name": "4",
+    "name": "5",
     "questions": [
       {
         "question": "You cannot have 30 slides in a one minute presentation. The statement is",
@@ -3200,9 +3200,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Powerpoint slides aren't a great medium to communicate/showcase numbers",
@@ -3210,9 +3210,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Powerpoint slides are not good to present too much of information",
@@ -3220,9 +3220,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Powerpoint slides must be uncluttered.",
@@ -3230,9 +3230,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Powerpoint slides must have ______ font size",
@@ -3241,9 +3241,9 @@ export const spokenenglishJSON = {
           "Medium",
           "Large"
         ],
-        "answer": [
+        "answer": 
           "Large"
-        ]
+        
       },
       {
         "question": "Which among the following words is the accurate meaning of the word \"serendipity\"",
@@ -3253,9 +3253,9 @@ export const spokenenglishJSON = {
           "Discovery by chance",
           "An unfortunate accident"
         ],
-        "answer": [
+        "answer": 
           "Discovery by chance"
-        ]
+        
       },
       {
         "question": "A nervous speaker can be fidgeting with an object. The statement is",
@@ -3263,9 +3263,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "When a person is not in control of his/her self, then the message doesnt go as intended. The statement is",
@@ -3273,9 +3273,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "While presenting, it is important to look into the eyes of the audience. The statement is",
@@ -3283,9 +3283,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "While making a presentation, speakers need to have a sense of time. The statement is",
@@ -3293,14 +3293,14 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       }
     ]
   },
   {
-    "name": "5",
+    "name": "6",
     "questions": [
       {
         "question": "Which is not correct about an ideal speaker among the following?",
@@ -3310,9 +3310,9 @@ export const spokenenglishJSON = {
           "Keep fidgeting",
           "Will be aware of the time limit"
         ],
-        "answer": [
+        "answer": 
           "Keep fidgeting"
-        ]
+        
       },
       {
         "question": "Politeness is a ______ factor",
@@ -3322,9 +3322,9 @@ export const spokenenglishJSON = {
           "Cultural",
           "none of the above"
         ],
-        "answer": [
+        "answer": 
           "Cultural"
-        ]
+        
       },
       {
         "question": "Choose the correct option:",
@@ -3332,9 +3332,9 @@ export const spokenenglishJSON = {
           " English does not have different pronouns and verbs in terms of respect",
           "So English is a language without politeness"
         ],
-        "answer": [
+        "answer": 
           " English does not have different pronouns and verbs in terms of respect"
-        ]
+        
       },
       {
         "question": "Match the following\na. Thanks- i. Request\nb. Sorry- ii. Favour\nc. Please- iii. Before interruption",
@@ -3344,9 +3344,9 @@ export const spokenenglishJSON = {
           "A-iii B-ii C-i",
           "A- ii B-i C- iii"
         ],
-        "answer": [
+        "answer": 
           "A-ii B- iii C- i"
-        ]
+        
       },
       {
         "question": "Polite way of suggestion is?",
@@ -3356,9 +3356,9 @@ export const spokenenglishJSON = {
           "Both",
           "None of the above"
         ],
-        "answer": [
+        "answer": 
           "Question form"
-        ]
+        
       },
       {
         "question": "Satwik (during a presentation) introduces himself “Hi everyone! I am Satwik from the department of civil engineering”. Is it an appropriate introduction?",
@@ -3366,9 +3366,9 @@ export const spokenenglishJSON = {
           " Yes",
           "No"
         ],
-        "answer": [
+        "answer": 
           "No"
-        ]
+        
       },
       {
         "question": "Choose the correct option:\nA. A good research requires a lot of money\nB. A good research requires brain and creativity",
@@ -3378,9 +3378,9 @@ export const spokenenglishJSON = {
           "Both are true",
           "Both are false"
         ],
-        "answer": [
+        "answer": 
           "Only B is true"
-        ]
+        
       },
       {
         "question": "Presenter should overcome nervousness through___",
@@ -3390,9 +3390,9 @@ export const spokenenglishJSON = {
           "Constant practice",
           "None of the above"
         ],
-        "answer": [
+        "answer": 
           "Constant practice"
-        ]
+        
       },
       {
         "question": "Absence of problem quantification would lead to ___",
@@ -3402,9 +3402,9 @@ export const spokenenglishJSON = {
           "Vague presentation",
           "None of the above"
         ],
-        "answer": [
+        "answer": 
           "Generalisation"
-        ]
+        
       },
       {
         "question": "Meena had to do a three minutes presentation. She showed 10 photographs. What would be the effect of Seetha's presentation on the audience?",
@@ -3414,14 +3414,14 @@ export const spokenenglishJSON = {
           "Entertain audience",
           "None of the above"
         ],
-        "answer": [
+        "answer": 
           "Distracted from the topic"
-        ]
+        
       }
     ]
   },
   {
-    "name": "6",
+    "name": "7",
     "questions": [
       {
         "question": "Which among the following is not a synonym for the word 'salient'",
@@ -3431,9 +3431,9 @@ export const spokenenglishJSON = {
           "Silent",
           "notable"
         ],
-        "answer": [
+        "answer": 
           "Silent"
-        ]
+        
       },
       {
         "question": "A: Words in South Indian languages mostly end in vowels, m and n sounds. B: Words in North Indian languages mostly do not end in Vowels, m and n sounds.",
@@ -3443,9 +3443,9 @@ export const spokenenglishJSON = {
           "A is true, B is false",
           "A is false, B is true"
         ],
-        "answer": [
+        "answer": 
           " A and B are true"
-        ]
+        
       },
       {
         "question": "In the word elephant, which syllable is stressed?",
@@ -3454,9 +3454,9 @@ export const spokenenglishJSON = {
           "'el-e-phant",
           "el-'e-phant"
         ],
-        "answer": [
+        "answer": 
           "'el-e-phant"
-        ]
+        
       },
       {
         "question": "They have different sounds (sometimes)",
@@ -3465,9 +3465,9 @@ export const spokenenglishJSON = {
           "They are differently emphasised",
           "All of the above"
         ],
-        "answer": [
+        "answer": 
           "All of the above"
-        ]
+        
       },
       {
         "question": "A pause is a brief silence between two words, phrases or sentences. The statement is",
@@ -3475,9 +3475,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "I didn't have my breakfast today morning. Is the sentence grammatically right?",
@@ -3485,9 +3485,9 @@ export const spokenenglishJSON = {
           " Yes",
           "No"
         ],
-        "answer": [
+        "answer": 
           "No"
-        ]
+        
       },
       {
         "question": "In dictionaries, the pronunciation of a word is represented using",
@@ -3497,9 +3497,9 @@ export const spokenenglishJSON = {
           "Figures",
           "Phonetic alphabet"
         ],
-        "answer": [
+        "answer": 
           "Phonetic alphabet"
-        ]
+        
       },
       {
         "question": "English has an audible pause after every few words. The statement is",
@@ -3507,9 +3507,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "One or more words used like one word in a sentence is called a phrase. The statement is",
@@ -3517,9 +3517,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "n the word engi'neer, the vertical stroke above and in front of the second syllable indicates that it has",
@@ -3529,14 +3529,14 @@ export const spokenenglishJSON = {
           "Rythm",
           "Lengthening"
         ],
-        "answer": [
+        "answer": 
           "Stress"
-        ]
+        
       }
     ]
   },
   {
-    "name": "7",
+    "name": "8",
     "questions": [
       {
         "question": "While listening, keen attention has to be paid to the pronunciation of names and numbers because",
@@ -3546,9 +3546,9 @@ export const spokenenglishJSON = {
           "They are easily misunderstood",
           "All the above"
         ],
-        "answer": [
+        "answer": 
           "All the above"
-        ]
+        
       },
       {
         "question": "Stress is marked on the consonant cluster. The statement is",
@@ -3556,9 +3556,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "In the pronunciation of a word, the strongest degree of stress placed is called the loudness. The statement is",
@@ -3566,9 +3566,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Abbreviations take stress on the first letter. The statement is",
@@ -3576,9 +3576,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "The fourth syllable of the word 'examination' receives the primary stress. The statement is",
@@ -3586,9 +3586,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "There are three syllables in the word \"happiness\". The statement is",
@@ -3596,9 +3596,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "The word 'free' is monosyllabic",
@@ -3606,9 +3606,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "In questions 9 and 10, stress is marked differently. Choose the correct one",
@@ -3618,9 +3618,9 @@ export const spokenenglishJSON = {
           "/'brıgədıə/",
           "/b'rıgədıǝ/"
         ],
-        "answer": [
+        "answer": 
           " /brıgə'dıǝ/"
-        ]
+        
       },
       {
         "question": "Population",
@@ -3630,14 +3630,14 @@ export const spokenenglishJSON = {
           "/pppjuler's(ə)n/",
           "/pp'pju'lers(ə)n/"
         ],
-        "answer": [
+        "answer": 
           "/pppju'lers(ə)n/"
-        ]
+        
       }
     ]
   },
   {
-    "name": "8",
+    "name": "9",
     "questions": [
       {
         "question": "One speech unit that can be produced in one breath pulse is equal to one intonation. The statement is",
@@ -3645,9 +3645,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "The number of syllables in a word is determined by the number of letters in that word The statement is",
@@ -3655,9 +3655,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Only one speech unit can be produced in one breath pulse. The statement is-----",
@@ -3665,9 +3665,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "A syllable does not exist without a vowel. The statement is",
@@ -3675,9 +3675,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "When we pronounce a syllable more prominently than the other syllables in that word, then the syllable is said to have received",
@@ -3687,9 +3687,9 @@ export const spokenenglishJSON = {
           "Loudness",
           "Amplitude"
         ],
-        "answer": [
+        "answer": 
           " Stress"
-        ]
+        
       },
       {
         "question": "In English, the stress shifts as the word derives new forms with suffixation/prefixation. The statement is",
@@ -3697,9 +3697,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Stress marking in English is a big challenge for the non native speakers. The statement is",
@@ -3707,9 +3707,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Vowels are the elements and Consonants are the elements in a word",
@@ -3719,9 +3719,9 @@ export const spokenenglishJSON = {
           "Optional and obligatory",
           "None of the above"
         ],
-        "answer": [
+        "answer": 
           "Obligatory and optional"
-        ]
+        
       },
       {
         "question": "Photography",
@@ -3731,9 +3731,9 @@ export const spokenenglishJSON = {
           "Last syllable",
           "Penultimate syllable"
         ],
-        "answer": [
+        "answer": 
           "Second syllable"
-        ]
+        
       },
       {
         "question": "Photographic",
@@ -3743,14 +3743,14 @@ export const spokenenglishJSON = {
           "Third syllable",
           "Last syllable"
         ],
-        "answer": [
+        "answer": 
           "Third syllable"
-        ]
+        
       }
     ]
   },
   {
-    "name": "9",
+    "name": "10",
     "questions": [
       {
         "question": "Which among the following words is not a derived word?",
@@ -3760,9 +3760,9 @@ export const spokenenglishJSON = {
           "harmony",
           "unhappy"
         ],
-        "answer": [
+        "answer": 
           "harmony"
-        ]
+        
       },
       {
         "question": "Words that end in the suffix -ate usually take stress on the last syllable. The statement is",
@@ -3770,9 +3770,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Words ending in -ea, -ean, -ee-eer or – ere, -esce, -ese, -esque, -ette, -ier take stress on the first syllable. The statement is",
@@ -3780,9 +3780,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Authenticate",
@@ -3792,9 +3792,9 @@ export const spokenenglishJSON = {
           "ti-",
           "-cate"
         ],
-        "answer": [
+        "answer": 
           "-then"
-        ]
+        
       },
       {
         "question": "Automatic",
@@ -3804,9 +3804,9 @@ export const spokenenglishJSON = {
           "ma-",
           "-tic"
         ],
-        "answer": [
+        "answer": 
           "ma-"
-        ]
+        
       },
       {
         "question": "Admission",
@@ -3816,9 +3816,9 @@ export const spokenenglishJSON = {
           "-(s)ion",
           "No stress"
         ],
-        "answer": [
+        "answer": 
           "mi-"
-        ]
+        
       },
       {
         "question": "Demoralize",
@@ -3828,9 +3828,9 @@ export const spokenenglishJSON = {
           "/dımprə'lnız/",
           "/dımp'rəlnız/"
         ],
-        "answer": [
+        "answer": 
           " /dı'mprǝlnıΖ/"
-        ]
+        
       },
       {
         "question": "Degenerate",
@@ -3840,9 +3840,9 @@ export const spokenenglishJSON = {
           "/dı'dze'n(ə)rət/",
           "/dı'dzen(ə) 'rət/"
         ],
-        "answer": [
+        "answer": 
           "/dı'dzen(ə)rət/"
-        ]
+        
       },
       {
         "question": "Contaminate",
@@ -3852,14 +3852,14 @@ export const spokenenglishJSON = {
           "kən'ta:mıneit/",
           "'kənta:mıneit/"
         ],
-        "answer": [
+        "answer": 
           "kən'ta:mıneit/"
-        ]
+        
       }
     ]
   },
   {
-    "name": "10",
+    "name": "11",
     "questions": [
       {
         "question": "For a presentation to be precise within the time limits, it is important to choose a specific topic over a generic/random topic. The statement is",
@@ -3867,9 +3867,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "While presenting, Anil is looking at the slides again and again. What could be the possible reason for it?",
@@ -3879,9 +3879,9 @@ export const spokenenglishJSON = {
           "He wants to give emphasis to a particular slide",
           "All the above"
         ],
-        "answer": [
+        "answer": 
           " He is not confident of his slides"
-        ]
+        
       },
       {
         "question": "The basic principle behind making a good presentation is to load the slides with information to make it interesting for the audience. The statement is",
@@ -3889,9 +3889,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Veena chooses to speak on Deforestation. But majority of her slides talk about planting of trees. Her presentation lacks",
@@ -3901,9 +3901,9 @@ export const spokenenglishJSON = {
           "Focus",
           "None of the above"
         ],
-        "answer": [
+        "answer": 
           "Focus"
-        ]
+        
       },
       {
         "question": "Which among the following is true about an ideal presentation?",
@@ -3913,9 +3913,9 @@ export const spokenenglishJSON = {
           "a and c",
           "a, b, c, and d"
         ],
-        "answer": [
+        "answer": 
           "a, b, c, and d"
-        ]
+        
       },
       {
         "question": "Cartoons in slides can",
@@ -3925,9 +3925,9 @@ export const spokenenglishJSON = {
           "Make the presentation worthless",
           "None of the above"
         ],
-        "answer": [
+        "answer": 
           " Avoid the problem of listeners' monotony"
-        ]
+        
       },
       {
         "question": "Constant practice can overcome nervousness. The statement is",
@@ -3935,9 +3935,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "A diagram that represents a process by showing the steps as boxes of various kinds, and their order by connecting them with arrows is called",
@@ -3947,9 +3947,9 @@ export const spokenenglishJSON = {
           "Line graph",
           "Flowchart"
         ],
-        "answer": [
+        "answer": 
           "Flowchart"
-        ]
+        
       },
       {
         "question": "While making a presentation, Arjun made a statement regarding a problem - \"Everyone is dying of starvation in Telangana\". What is the problem with this statement?",
@@ -3959,14 +3959,14 @@ export const spokenenglishJSON = {
           "He did not quantify the problem",
           "None of the above"
         ],
-        "answer": [
+        "answer": 
           "He did not quantify the problem"
-        ]
+        
       }
     ]
   },
   {
-    "name": "11",
+    "name": "12",
     "questions": [
       {
         "question": "Choose the correct order of airflow during sound production",
@@ -3976,9 +3976,9 @@ export const spokenenglishJSON = {
           "Lungs- Larynx- uvula- vocal cords- Mouth",
           "Lungs- Larynx-Vocal cords- uvula - mouth"
         ],
-        "answer": [
+        "answer": 
           "Lungs- Larynx-Vocal cords- uvula - mouth"
-        ]
+        
       },
       {
         "question": "Study of production of speech sounds is called morphology. The statement is",
@@ -3986,9 +3986,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "The Greek word for the term \"sound\" is lexicon. The statement is",
@@ -3996,9 +3996,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Vibration of pharynx causes sound. The statement is",
@@ -4006,9 +4006,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Identify the nasal sound from the following",
@@ -4018,9 +4018,9 @@ export const spokenenglishJSON = {
           "n",
           "p"
         ],
-        "answer": [
+        "answer": 
           "n"
-        ]
+        
       },
       {
         "question": "Identify the vowel sound in the term \"Gate\"",
@@ -4030,9 +4030,9 @@ export const spokenenglishJSON = {
           "e",
           "ae"
         ],
-        "answer": [
+        "answer": 
           " ei"
-        ]
+        
       },
       {
         "question": "Identify the vowel sound in the term \"Doubt\"",
@@ -4042,9 +4042,9 @@ export const spokenenglishJSON = {
           "eu",
           "au"
         ],
-        "answer": [
+        "answer": 
           "au"
-        ]
+        
       },
       {
         "question": "The sounds. 'f' and 'v' differ only in terms of?",
@@ -4054,9 +4054,9 @@ export const spokenenglishJSON = {
           "Vibration",
           "All of the above"
         ],
-        "answer": [
+        "answer": 
           "Vibration"
-        ]
+        
       },
       {
         "question": "dentify the vowel distribution in the word \"beetle\"",
@@ -4066,9 +4066,9 @@ export const spokenenglishJSON = {
           "Long vowel and short vowel",
           "Short vowel and long vowel"
         ],
-        "answer": [
+        "answer": 
           " Only one long vowel"
-        ]
+        
       }
     ]
   },
@@ -4081,9 +4081,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Language learning requires exposure. The statement is",
@@ -4091,9 +4091,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           " True"
-        ]
+        
       },
       {
         "question": "Choose the correct option:\nA: If you want to tell jokes while speaking, they have to be delivered with a degree of theatricality\nB: Joke is the best tool to get the attention of the listeners",
@@ -4103,9 +4103,9 @@ export const spokenenglishJSON = {
           "Both A and B are true",
           "Both A and B are false"
         ],
-        "answer": [
+        "answer": 
           " Only A is true"
-        ]
+        
       },
       {
         "question": "A:Puppies were adopted by numerous kind souls at the puppy drive.\nB:Many kind souls adopted puppies during the puppy drive.\nSentence A has been transcribed to form sentence B. The statement is",
@@ -4113,9 +4113,9 @@ export const spokenenglishJSON = {
           " True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "False"
-        ]
+        
       },
       {
         "question": "Choose the correct option:\nA: The sound /h/ in the word vehicle is silent.\nB: The second syllable receives the main stress in the word industry.",
@@ -4125,9 +4125,9 @@ export const spokenenglishJSON = {
           "Both A and B are true",
           "Both A and B are false"
         ],
-        "answer": [
+        "answer": 
           "Only A is true"
-        ]
+        
       },
       {
         "question": "7) Which is not true about written English?",
@@ -4137,9 +4137,9 @@ export const spokenenglishJSON = {
           "It has pronunciation",
           "It has spelling"
         ],
-        "answer": [
+        "answer": 
           "It has pronunciation"
-        ]
+        
       },
       {
         "question": "Inability to learn the phonology of the second language is the main reason for non-standard sounds in second language. The statement is",
@@ -4147,9 +4147,9 @@ export const spokenenglishJSON = {
           "True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "True"
-        ]
+        
       },
       {
         "question": "Acquiring standard sounds is the way to communicate with the rest of the world. The statement is",
@@ -4157,9 +4157,9 @@ export const spokenenglishJSON = {
           "True",
           "False"
         ],
-        "answer": [
+        "answer": 
           "True"
-        ]
+        
       },
       {
         "question": "Choose the correct option:\nA: Made by plastic\nB: Made with China",
@@ -4169,13 +4169,16 @@ export const spokenenglishJSON = {
           "Both A and B are correct",
           "Both A and B are false"
         ],
-        "answer": [
+        "answer": 
           "Both A and B are false"
-        ]
+        
       }
     ]
   }
 ]
 }
+
+
+
 
 
