@@ -1,226 +1,234 @@
-"use client";
+'use client'
 
-import React, { useState, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import {
-  ChevronRight,
-  Clock,
-  CheckCircle,
-  XCircle,
-  ArrowLeft,
-  Trophy,
-  Target,
-  Flag,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
-import { WildlifeJSON } from "@/public/assets/quizJSON";
+import React, { useState, useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { ChevronRight, Clock, Trophy, Target, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react'
+
+// Assuming these imports are correct and the JSON files are properly formatted
+import { WildlifeJSON } from "@/public/assets/quizJSON"
+import { ForestJSON } from "@/public/assets/quizJSON"
+import { spokenenglishJSON } from "@/public/assets/quizJSON"
 
 interface Question {
-  question: string;
-  options: string[];
-  answer: string;
+  question: string
+  options: string[]
+  answer: string 
 }
 
 interface QuizQuestion extends Question {
-  selectedAnswer?: string;
-  isMarked?: boolean;
-  weekNumber: string;
-  isExpanded?: boolean;
+  selectedAnswer?: string
+  isMarked?: boolean
+  weekNumber: string
+  isExpanded?: boolean
 }
 
 interface Week {
-  name: string;
-  questions?: Question[];
-  content?: Question[];
+  name: string
+  questions?: Question[]
+  content?: Question[]
 }
 
-export default function Component() {
-  const pathname = usePathname();
-  const router = useRouter();
+interface CourseData {
+  title: string
+  code: string
+  weeks: Week[]
+}
 
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [score, setScore] = useState(0);
-  const [showWarning, setShowWarning] = useState(false);
-  const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false);
-  const [expandedQuestionIndex, setExpandedQuestionIndex] = useState<
-    number | null
-  >(null);
-  const [showError, setShowError] = useState(false);
+const getCourseData = (courseCode: string): CourseData => {
+  switch (courseCode) { 
+    case "102104073":
+      return { ...WildlifeJSON, code: courseCode } as CourseData
+    case "102104082":
+      return { ...ForestJSON, code: courseCode } as CourseData
+    case "109106067":
+      return { ...spokenenglishJSON, code: courseCode } as CourseData
+    default:
+      return { ...WildlifeJSON, code: "102104073" } as CourseData // Default code if unspecified
+  }
+}
+
+
+export default function Component() {
+  const pathname = usePathname()
+  const router = useRouter()
+
+  const [questions, setQuestions] = useState<QuizQuestion[]>([])
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [timeRemaining, setTimeRemaining] = useState(0)
+  const [quizSubmitted, setQuizSubmitted] = useState(false)
+  const [score, setScore] = useState(0)
+  const [showWarning, setShowWarning] = useState(false)
+  const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false)
+  const [expandedQuestionIndex, setExpandedQuestionIndex] = useState<number | null>(null)
+  const [showError, setShowError] = useState(false)
 
   useEffect(() => {
-    const params = new URLSearchParams(pathname.split("quiz/")[1]);
-    const weeks = params.get("weeks")?.split("-") || [];
-    const numQuestions = parseInt(params.get("numQ") || "0");
-    const time = params.get("time") || "000000";
+    const params = new URLSearchParams(pathname.split("quiz/")[1])
+    const weeks = params.get("weeks")?.split("-") || []
+    const numQuestions = parseInt(params.get("numQ") || "0")
+    const time = params.get("time") || "000000"
+    const courseCode = params.get("course") || "102104073" // Default to Wildlife if no course specified
 
-    const hours = parseInt(time.slice(0, 2));
-    const minutes = parseInt(time.slice(2, 4));
-    const seconds = parseInt(time.slice(4, 6));
-    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-    setTimeRemaining(totalSeconds);
+    const hours = parseInt(time.slice(0, 2))
+    const minutes = parseInt(time.slice(2, 4))
+    const seconds = parseInt(time.slice(4, 6))
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds
+    setTimeRemaining(totalSeconds)
+
+    const courseData = getCourseData(courseCode)
 
     const allQuestions: QuizQuestion[] = weeks.flatMap((week) => {
-      const weekData = WildlifeJSON.weeks.find((w) => w.name === week) as
-        | Week
-        | undefined;
+      const weekData = courseData.weeks.find((w) => w.name === week)
 
-      if (!weekData) return [];
+      if (!weekData) {
+        console.warn(`Week ${week} not found in course data`)
+        return []
+      }
 
-      const questionsArray = weekData.questions || weekData.content || [];
+      const questionsArray = weekData.questions || weekData.content || []
 
-      return questionsArray.map((q) => ({
+      return questionsArray.map((q: Question) => ({
         ...q,
         weekNumber: week,
         isExpanded: false,
-      }));
-    });
+      }))
+    })
 
-    const shuffledQuestions = allQuestions.sort(() => Math.random() - 0.5);
-    setQuestions(shuffledQuestions.slice(0, numQuestions));
-  }, [pathname]);
+    const shuffledQuestions = allQuestions.sort(() => Math.random() - 0.5)
+    setQuestions(shuffledQuestions.slice(0, numQuestions))
+  }, [pathname])
 
   useEffect(() => {
     if (timeRemaining > 0 && !quizSubmitted) {
       const timer = setInterval(() => {
         setTimeRemaining((prev) => {
           if (prev <= 1) {
-            submitQuiz();
-            clearInterval(timer);
-            return 0;
+            submitQuiz()
+            clearInterval(timer)
+            return 0
           }
 
           if (prev === 30) {
-            setShowWarning(true);
+            setShowWarning(true)
           }
-          return prev - 1;
-        });
-      }, 1000);
+          return prev - 1
+        })
+      }, 1000)
 
-      return () => clearInterval(timer);
+      return () => clearInterval(timer)
     }
-  }, [timeRemaining, quizSubmitted]);
+  }, [timeRemaining, quizSubmitted])
 
   const formatTime = (totalSeconds: number) => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-      2,
-      "0"
-    )}:${String(seconds).padStart(2, "0")}`;
-  };
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+  }
 
   const handleAnswerSelect = (answer: string) => {
-    setShowError(false);
-    const updatedQuestions = [...questions];
-    updatedQuestions[currentQuestionIndex].selectedAnswer = answer;
-    setQuestions(updatedQuestions);
-  };
+    setShowError(false)
+    const updatedQuestions = [...questions]
+    updatedQuestions[currentQuestionIndex].selectedAnswer = answer
+    setQuestions(updatedQuestions)
+  }
 
-  const submitQuiz = () => {
-    const correctAnswers = questions.filter(
-      (q) => q.selectedAnswer === q.answer
-    ).length;
-    setScore(correctAnswers);
+  const isAnswerCorrect = (selected: string, correctAnswers: string | string[]) => {
+    // Normalize the selected answer
+    const normalizedSelected = selected.trim().toLowerCase();
+
+    // If correctAnswers is a string, compare directly
+    if (typeof correctAnswers === 'string') {
+        return normalizedSelected === correctAnswers.trim().toLowerCase();
+    }
+
+    // If correctAnswers is an array, check if selected is in the array
+    if (Array.isArray(correctAnswers)) {
+        return correctAnswers.some(answer => normalizedSelected === answer.trim().toLowerCase());
+    }
+
+    return false; // Return false if no valid answer type is found
+};
+
+const submitQuiz = () => {
+    const correctAnswersCount = questions.filter((q) => {
+        const selectedAnswer = (q.selectedAnswer || "").trim();
+        return isAnswerCorrect(selectedAnswer, q.answer);
+    }).length;
+
+    setScore(correctAnswersCount);
     setQuizSubmitted(true);
-  };
+};
+
 
   const goToNextQuestion = () => {
-    const currentQuestion = questions[currentQuestionIndex];
+    const currentQuestion = questions[currentQuestionIndex]
 
     if (!currentQuestion.selectedAnswer) {
-      setShowError(true);
-      return;
+      setShowError(true)
+      return
     }
 
-    setShowError(false);
+    setShowError(false)
     if (currentQuestionIndex === questions.length - 1) {
-      submitQuiz();
+      submitQuiz()
     } else {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setCurrentQuestionIndex(currentQuestionIndex + 1)
     }
-  };
+  }
 
   const toggleQuestionExpansion = (index: number) => {
     if (quizSubmitted) {
-      setExpandedQuestionIndex(expandedQuestionIndex === index ? null : index);
+      setExpandedQuestionIndex(expandedQuestionIndex === index ? null : index)
     }
-  };
+  }
 
   const getScoreColor = (percentage: number) => {
-    if (percentage >= 80) return "text-green-800 dark:bg-green-800/20";
-    if (percentage >= 60) return "text-yellow-600 dark:bg-yellow-800/20";
-    return "dark:bg-red-800/20 text-red-800";
-  };
+    if (percentage >= 80) return "text-green-800 dark:bg-green-800/20"
+    if (percentage >= 60) return "text-yellow-600 dark:bg-yellow-800/20"
+    return "dark:bg-red-800/20 text-red-800"
+  }
 
   if (questions.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin h-16 w-16 border-t-2 border-b-2 border-gray-900"></div>
       </div>
-    );
+    )
   }
 
   if (quizSubmitted) {
     const displayedQuestions = showOnlyIncorrect
       ? questions.filter((q) => q.selectedAnswer !== q.answer)
-      : questions;
+      : questions
 
-    const percentage = ((score / questions.length) * 100).toFixed(1);
+    const percentage = ((score / questions.length) * 100).toFixed(1)
 
     return (
       <div className="lg:w-[75vw] md:w-[90vw] mx-auto px-4 py-8">
-        <div className="mb-8 bg-[#5FC4E7] dark:bg-[#ffffff]/20 shadow-lg overflow-hidden  dark:border-2">
-          <div className="text-center p-6 ">
+        <div className="mb-8 bg-[#5FC4E7] dark:bg-[#ffffff]/20 shadow-lg overflow-hidden dark:border-2">
+          <div className="text-center p-6">
             <div className="flex justify-center mb-4">
               <Trophy className="w-16 h-16 dark:text-[#D5D5D5]" />
             </div>
-            <h1 className="text-2xl font-bold dark:text-[#D5D5D5]">
-              Quiz Complete!
-            </h1>
+            <h1 className="text-2xl font-bold dark:text-[#D5D5D5]">Quiz Complete!</h1>
             <p className="text-lg mt-2 text-black dark:text-[#D5D5D5] font-semibold">
               Here's how you performed
             </p>
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center p-2">
-              <div
-                className={`text-4xl font-bold flex flex-col justify-center items-center p-4 ${getScoreColor(
-                  Number(percentage)
-                )}`}
-              >
-                <p className="text-md  uppercase font-medium mb-1 ">Score</p>
-                <p className="text-3xl">
-                  {score}/{questions.length}
-                </p>
+              <div className={`text-4xl font-bold flex flex-col justify-center items-center p-4 ${getScoreColor(Number(percentage))}`}>
+                <p className="text-md uppercase font-medium mb-1">Score</p>
+                <p className="text-3xl">{score}/{questions.length}</p>
               </div>
-              <div
-                className={`text-4xl font-bold flex flex-col justify-center items-center p-4 ${getScoreColor(
-                  Number(percentage)
-                )}`}
-              >
-                <p className="text-md uppercase font-medium mb-1 ">
-                  Percentage
-                </p>
-                <p className={`text-3xl font-bold`}>{percentage}%</p>
+              <div className={`text-4xl font-bold flex flex-col justify-center items-center p-4 ${getScoreColor(Number(percentage))}`}>
+                <p className="text-md uppercase font-medium mb-1">Percentage</p>
+                <p className="text-3xl font-bold">{percentage}%</p>
               </div>
-              <div
-                className={`text-4xl font-bold flex flex-col justify-center items-center p-4 ${getScoreColor(
-                  Number(percentage)
-                )}`}
-              >
-                <p className="text-md uppercase font-medium mb-1 ">Questions</p>
-                <p className="text-3xl">
-                  {
-                    questions.filter((q) => q.selectedAnswer === q.answer)
-                      .length
-                  }{" "}
-                  correct
-                </p>
+              <div className={`text-4xl font-bold flex flex-col justify-center items-center p-4 ${getScoreColor(Number(percentage))}`}>
+                <p className="text-md uppercase font-medium mb-1">Questions</p>
+                <p className="text-3xl">{questions.filter((q) => q.selectedAnswer === q.answer).length} correct</p>
               </div>
             </div>
           </div>
@@ -260,35 +268,19 @@ export default function Component() {
               onClick={() => toggleQuestionExpansion(index)}
             >
               <div className="flex justify-between items-center">
-                <p className="text-md  text-black dark:text-[#D5D5D5]">
-                  Question {index + 1}
-                </p>
-                {expandedQuestionIndex === index ? (
-                  <ChevronUp size={20} />
-                ) : (
-                  <ChevronDown size={20} />
-                )}
+                <p className="text-md text-black dark:text-[#D5D5D5]">Question {index + 1}</p>
+                {expandedQuestionIndex === index ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </div>
               {expandedQuestionIndex === index && (
                 <div className="mt-2">
-                  <p className=" text-black dark:text-[#D5D5D5]">
-                    {q.question}
-                  </p>
+                  <p className="text-black dark:text-[#D5D5D5]">{q.question}</p>
                   <p className="mt-2">
                     Your answer:{" "}
-                    <span
-                      className={
-                        q.selectedAnswer === q.answer
-                          ? "text-green-800 font-semibold"
-                          : "text-red-800 font-semibold"
-                      }
-                    >
+                    <span className={q.selectedAnswer === q.answer ? "text-green-800 font-semibold" : "text-red-800 font-semibold"}>
                       {q.selectedAnswer || "Not answered"}
                     </span>
                   </p>
-                  <p className="mt-1 text-green-800 font-semibold">
-                    Correct answer: {q.answer}
-                  </p>
+                  <p className="mt-1 text-green-800 font-semibold">Correct answer: {q.answer}</p>
                 </div>
               )}
             </div>
@@ -312,10 +304,10 @@ export default function Component() {
           </button>
         </div>
       </div>
-    );
+    )
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
+  const currentQuestion = questions[currentQuestionIndex]
 
   return (
     <div className="mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -323,16 +315,12 @@ export default function Component() {
         <div className="flex items-center space-x-2">
           <Clock
             className={`${
-              timeRemaining <= 30
-                ? "text-red-500 animate-pulse"
-                : "text-black dark:text-white"
+              timeRemaining <= 30 ? "text-red-500 animate-pulse" : "text-black dark:text-white"
             }`}
           />
           <span
             className={`font-mono text-lg sm:text-xl ${
-              timeRemaining <= 30
-                ? "text-red-500"
-                : "text-black dark:text-white"
+              timeRemaining <= 30 ? "text-red-500" : "text-black dark:text-white"
             }`}
           >
             {formatTime(timeRemaining)}
@@ -350,7 +338,7 @@ export default function Component() {
       )}
 
       <div className="flex flex-col items-center justify-center">
-        <div className="flex mb-4 bg-[#5FC4E7] dark:bg-[#008A90]  text-black dark:text-[#D5D5D5] min-h-[10vh] w-[70vw] shadow-md">
+        <div className="flex mb-4 bg-[#5FC4E7] dark:bg-[#008A90] text-black dark:text-[#D5D5D5] min-h-[10vh] w-[70vw] shadow-md">
           <h2 className="text-base sm:text-xl font-medium flex justify-center items-center p-3 sm:p-4 text-center shadow-sm">
             {currentQuestionIndex + 1}. {currentQuestion.question}
           </h2>
@@ -368,6 +356,7 @@ export default function Component() {
               }`}
             >
               {option}
+            
             </button>
           ))}
         </div>
@@ -389,5 +378,5 @@ export default function Component() {
         </button>
       </div>
     </div>
-  );
+  )
 }
