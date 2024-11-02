@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, List, HelpCircle, Check } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 
 interface QuizModalContentProps {
   courseCode: string;
@@ -35,8 +35,6 @@ interface ValidationState {
   };
 }
 
-const STORAGE_KEY = "quizSettings";
-
 export default function QuizModalContent({
   courseCode,
   courseName,
@@ -45,27 +43,12 @@ export default function QuizModalContent({
   const router = useRouter();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const TOTAL_WEEKS = 12;
 
-  const [quizState, setQuizState] = useState<QuizState>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (
-          parsed &&
-          Array.isArray(parsed.selectedWeeks) &&
-          typeof parsed.numQuestions === "number" &&
-          typeof parsed.duration === "object"
-        ) {
-          return parsed;
-        }
-      }
-    }
-    return {
-      selectedWeeks: [],
-      numQuestions: null,
-      duration: { hours: 0, minutes: 0, seconds: 0 },
-    };
+  const [quizState, setQuizState] = useState<QuizState>({
+    selectedWeeks: [],
+    numQuestions: null,
+    duration: { hours: 0, minutes: 0, seconds: 0 },
   });
 
   const [validation, setValidation] = useState<ValidationState>({
@@ -74,11 +57,7 @@ export default function QuizModalContent({
     duration: { isValid: true, message: "" },
   });
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(quizState));
-  }, [quizState]);
-
-  useEffect(() => {
+  React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
@@ -143,15 +122,6 @@ export default function QuizModalContent({
         message: "Please set a duration greater than 0",
       };
       isValid = false;
-    } else if (
-      quizState.numQuestions !== null &&
-      totalSeconds < quizState.numQuestions * 30
-    ) {
-      newValidation.duration = {
-        isValid: false,
-        message: "Duration too short for number of questions",
-      };
-      isValid = false;
     } else {
       newValidation.duration = {
         isValid: true,
@@ -186,6 +156,16 @@ export default function QuizModalContent({
     }
   };
 
+  const toggleAllWeeks = () => {
+    setQuizState((prev) => ({
+      ...prev,
+      selectedWeeks:
+        prev.selectedWeeks.length === TOTAL_WEEKS
+          ? []
+          : Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1),
+    }));
+  };
+
   const toggleWeek = (week: number) => {
     setQuizState((prev) => ({
       ...prev,
@@ -198,7 +178,7 @@ export default function QuizModalContent({
   const handleNumQuestionsChange = (value: number) => {
     setQuizState((prev) => ({
       ...prev,
-      numQuestions: value,
+      numQuestions: Math.max(0, value),
     }));
   };
 
@@ -229,10 +209,10 @@ export default function QuizModalContent({
         </button>
         <div className="text-center">
           <h2 className="text-2xl font-bold text-black dark:text-[#D5D5D5]">
-            {courseCode}
+            {courseName}
           </h2>
           <h3 className="text-lg font-semibold text-black dark:text-[#D5D5D5]">
-            {courseName}
+            {courseCode}
           </h3>
         </div>
         <button onClick={handleStartQuiz} className="relative group">
@@ -267,7 +247,7 @@ export default function QuizModalContent({
               <span>
                 {quizState.selectedWeeks.length === 0
                   ? "Select Weeks"
-                  : quizState.selectedWeeks.join(",")}
+                  : quizState.selectedWeeks.join(", ")}
               </span>
               <Check
                 className="mr-2 text-black dark:text-[#D5D5D5]"
@@ -275,24 +255,36 @@ export default function QuizModalContent({
               />
             </button>
             {showDropdown && (
-              <div className="absolute z-10 w-full bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] border mt-1 shadow-lg overflow-y-auto max-h-48">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((week) => (
-                  <div
-                    key={week}
-                    onClick={() => toggleWeek(week)}
-                    className={`cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20 ${
-                      quizState.selectedWeeks.includes(week) ? "" : ""
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={quizState.selectedWeeks.includes(week)}
-                      readOnly
-                      className="mr-2"
-                    />
-                    <span>{week}</span>
-                  </div>
-                ))}
+              <div className="absolute z-10 w-full bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] border mt-1 shadow-lg overflow-y-auto max-h-64">
+                <div
+                  onClick={toggleAllWeeks}
+                  className="cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20 border-b"
+                >
+                  <input
+                    type="checkbox"
+                    checked={quizState.selectedWeeks.length === TOTAL_WEEKS}
+                    readOnly
+                    className="mr-2"
+                  />
+                  <span>All Weeks</span>
+                </div>
+                {Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map(
+                  (week) => (
+                    <div
+                      key={week}
+                      onClick={() => toggleWeek(week)}
+                      className="cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={quizState.selectedWeeks.includes(week)}
+                        readOnly
+                        className="mr-2"
+                      />
+                      <span>Week {week}</span>
+                    </div>
+                  )
+                )}
               </div>
             )}
           </div>
@@ -309,27 +301,24 @@ export default function QuizModalContent({
           </div>
           <input
             type="number"
+            min="0"
             value={quizState.numQuestions || ""}
             onChange={(e) => handleNumQuestionsChange(Number(e.target.value))}
             placeholder="Enter number"
-            className={`w-full p-2 border  dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
-              validation.questions.isValid
-                ? "border-gray-300"
-                : "border-red-500"
+            className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
+              validation.questions.isValid ? "border-gray-300" : "border-red-500"
             }`}
             style={{ height: "3rem" }}
           />
           {!validation.questions.isValid && (
-            <p className="text-red-500 text-xs">
-              {validation.questions.message}
-            </p>
+            <p className="text-red-500 text-xs">{validation.questions.message}</p>
           )}
         </div>
       </div>
 
       <div className="flex space-x-4 mb-6">
         <div className="w-1/3">
-          <label className="text-sm font-mediumtext-black text-black dark:text-[#D5D5D5]">
+          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
             Hours
           </label>
           <input

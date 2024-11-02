@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { ChevronRight, Clock, Trophy, Target, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react'
 
-// Assuming these imports are correct and the JSON files are properly formatted
 import { WildlifeJSON } from "@/public/assets/quizJSON"
 import { ForestJSON } from "@/public/assets/quizJSON"
 import { spokenenglishJSON } from "@/public/assets/quizJSON"
@@ -20,6 +19,7 @@ interface QuizQuestion extends Question {
   isMarked?: boolean
   weekNumber: string
   isExpanded?: boolean
+  originalIndex?: number  //tracks original index
 }
 
 interface Week {
@@ -43,10 +43,9 @@ const getCourseData = (courseCode: string): CourseData => {
     case "109106067":
       return { ...spokenenglishJSON, code: courseCode } as CourseData
     default:
-      return { ...WildlifeJSON, code: "102104073" } as CourseData // Default code if unspecified
+      return { ...WildlifeJSON, code: "102104073" } as CourseData
   }
 }
-
 
 export default function Component() {
   const pathname = usePathname()
@@ -67,7 +66,7 @@ export default function Component() {
     const weeks = params.get("weeks")?.split("-") || []
     const numQuestions = parseInt(params.get("numQ") || "0")
     const time = params.get("time") || "000000"
-    const courseCode = params.get("course") || "102104073" // Default to Wildlife if no course specified
+    const courseCode = params.get("course") || "102104073"
 
     const hours = parseInt(time.slice(0, 2))
     const minutes = parseInt(time.slice(2, 4))
@@ -87,15 +86,20 @@ export default function Component() {
 
       const questionsArray = weekData.questions || weekData.content || []
 
-      return questionsArray.map((q: Question) => ({
+      return questionsArray.map((q: Question, index) => ({
         ...q,
         weekNumber: week,
         isExpanded: false,
+        originalIndex: index  // Store original index of q
       }))
     })
 
     const shuffledQuestions = allQuestions.sort(() => Math.random() - 0.5)
-    setQuestions(shuffledQuestions.slice(0, numQuestions))
+    const selectedQuestions = shuffledQuestions.slice(0, numQuestions).map((q, index) => ({
+      ...q,
+      originalIndex: index 
+    }))
+    setQuestions(selectedQuestions)
   }, [pathname])
 
   useEffect(() => {
@@ -134,32 +138,24 @@ export default function Component() {
   }
 
   const isAnswerCorrect = (selected: string, correctAnswers: string | string[]) => {
-    // Normalize the selected answer
     const normalizedSelected = selected.trim().toLowerCase();
-
-    // If correctAnswers is a string, compare directly
     if (typeof correctAnswers === 'string') {
         return normalizedSelected === correctAnswers.trim().toLowerCase();
     }
-
-    // If correctAnswers is an array, check if selected is in the array
     if (Array.isArray(correctAnswers)) {
         return correctAnswers.some(answer => normalizedSelected === answer.trim().toLowerCase());
     }
+    return false;
+  }
 
-    return false; // Return false if no valid answer type is found
-};
-
-const submitQuiz = () => {
+  const submitQuiz = () => {
     const correctAnswersCount = questions.filter((q) => {
         const selectedAnswer = (q.selectedAnswer || "").trim();
         return isAnswerCorrect(selectedAnswer, q.answer);
     }).length;
-
     setScore(correctAnswersCount);
     setQuizSubmitted(true);
-};
-
+  }
 
   const goToNextQuestion = () => {
     const currentQuestion = questions[currentQuestionIndex]
@@ -199,7 +195,7 @@ const submitQuiz = () => {
 
   if (quizSubmitted) {
     const displayedQuestions = showOnlyIncorrect
-      ? questions.filter((q) => q.selectedAnswer !== q.answer)
+      ? questions.filter((q) => !isAnswerCorrect(q.selectedAnswer || "", q.answer))
       : questions
 
     const percentage = ((score / questions.length) * 100).toFixed(1)
@@ -228,7 +224,7 @@ const submitQuiz = () => {
               </div>
               <div className={`text-4xl font-bold flex flex-col justify-center items-center p-4 ${getScoreColor(Number(percentage))}`}>
                 <p className="text-md uppercase font-medium mb-1">Questions</p>
-                <p className="text-3xl">{questions.filter((q) => q.selectedAnswer === q.answer).length} correct</p>
+                <p className="text-3xl">{questions.filter((q) => isAnswerCorrect(q.selectedAnswer || "", q.answer)).length} correct</p>
               </div>
             </div>
           </div>
@@ -261,14 +257,17 @@ const submitQuiz = () => {
               className={`p-2 py-4 cursor-pointer transition-all duration-300 ${
                 expandedQuestionIndex === index ? "col-span-4" : ""
               } ${
-                q.selectedAnswer === q.answer
+                isAnswerCorrect(q.selectedAnswer || "", q.answer)
                   ? "bg-green-200 dark:bg-[#1a271a] text-[#037d00]"
                   : "bg-red-200 dark:bg-[#341a1a] font-semibold text-[#cb0909]"
               }`}
               onClick={() => toggleQuestionExpansion(index)}
             >
               <div className="flex justify-between items-center">
-                <p className="text-md text-black dark:text-[#D5D5D5]">Question {index + 1}</p>
+                <div className="flex flex-col">
+                  <p className="text-md text-black dark:text-[#D5D5D5]">Question {(q.originalIndex || 0) + 1}</p>
+                  <p className="text-sm text-black dark:text-[#D5D5D5] opacity-75">Week {q.weekNumber}</p>
+                </div>
                 {expandedQuestionIndex === index ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </div>
               {expandedQuestionIndex === index && (
@@ -276,7 +275,7 @@ const submitQuiz = () => {
                   <p className="text-black dark:text-[#D5D5D5]">{q.question}</p>
                   <p className="mt-2">
                     Your answer:{" "}
-                    <span className={q.selectedAnswer === q.answer ? "text-green-800 font-semibold" : "text-red-800 font-semibold"}>
+                    <span className={isAnswerCorrect(q.selectedAnswer || "", q.answer) ? "text-green-800 font-semibold" : "text-red-800 font-semibold"}>
                       {q.selectedAnswer || "Not answered"}
                     </span>
                   </p>
@@ -339,7 +338,7 @@ const submitQuiz = () => {
 
       <div className="flex flex-col items-center justify-center">
         <div className="flex mb-4 bg-[#5FC4E7] dark:bg-[#008A90] text-black dark:text-[#D5D5D5] min-h-[10vh] w-[70vw] shadow-md">
-          <h2 className="text-base sm:text-xl font-medium flex justify-center items-center p-3 sm:p-4 text-center shadow-sm">
+        <h2 className="text-base sm:text-xl font-medium flex justify-center items-center p-3 sm:p-4 text-center shadow-sm">
             {currentQuestionIndex + 1}. {currentQuestion.question}
           </h2>
         </div>
@@ -356,7 +355,6 @@ const submitQuiz = () => {
               }`}
             >
               {option}
-            
             </button>
           ))}
         </div>
