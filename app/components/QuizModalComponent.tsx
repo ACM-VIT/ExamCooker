@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
 
@@ -23,10 +23,10 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
 
   const [quizState, setQuizState] = useState({
     selectedWeeks: [] as number[],
-    numQuestions: null as number | null,
+    numQuestions: 1, 
     duration: {
       hours: 0,
-      minutes: 0,
+      minutes: 30, 
       seconds: 0,
     },
   });
@@ -36,6 +36,14 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
     questions: { isValid: true, message: "" },
     duration: { isValid: true, message: "" },
   });
+
+  const maxQuestions = useMemo(() => {
+    return Math.min(quizState.selectedWeeks.length * 10, availableQuestions);
+  }, [quizState.selectedWeeks.length, availableQuestions]);
+
+  useEffect(() => {
+    validateInputs();
+  }, [quizState.selectedWeeks, quizState.numQuestions, quizState.duration]);
 
   useEffect(() => {
     localStorage.setItem("quizSettings", JSON.stringify(quizState));
@@ -62,8 +70,14 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
     return hours * 3600 + minutes * 60 + seconds;
   };
 
-  const formatDuration = (duration: { hours: number; minutes: number; seconds: number }) => {
-    return `${String(duration.hours).padStart(2, "0")}:${String(duration.minutes).padStart(2, "0")}:${String(duration.seconds).padStart(2, "0")}`;
+  const formatDuration = (duration: {
+    hours: number;
+    minutes: number;
+    seconds: number;
+  }) => {
+    return `${String(duration.hours).padStart(2, "0")}:${String(
+      duration.minutes
+    ).padStart(2, "0")}:${String(duration.seconds).padStart(2, "0")}`;
   };
 
   const validateInputs = (): boolean => {
@@ -83,7 +97,6 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
       };
     }
 
-    const maxQuestions = Math.min(quizState.selectedWeeks.length * 10, availableQuestions);
     if (!quizState.numQuestions || quizState.numQuestions <= 0) {
       newValidation.questions = {
         isValid: false,
@@ -101,7 +114,6 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
         isValid: true,
         message: `${quizState.numQuestions} question(s) selected`,
       };
-      isValid = true;
     }
 
     const totalSeconds = getTotalSeconds();
@@ -112,8 +124,8 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
       };
       isValid = false;
     } else if (
-      quizState.numQuestions !== null &&
-      totalSeconds < quizState.numQuestions * 30 
+      quizState.numQuestions &&
+      totalSeconds < quizState.numQuestions * 30
     ) {
       newValidation.duration = {
         isValid: false,
@@ -125,7 +137,6 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
         isValid: true,
         message: `${formatDuration(quizState.duration)} duration set`,
       };
-      isValid = true;
     }
 
     setValidation(newValidation);
@@ -135,21 +146,39 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
   const handleStartQuiz = () => {
     if (validateInputs()) {
       const formattedWeeks = quizState.selectedWeeks.join("-");
-      const formattedDuration = formatDuration(quizState.duration).replace(/:/g, "");
+      const formattedDuration = formatDuration(quizState.duration).replace(
+        /:/g,
+        ""
+      ); 
       router.push(
         `/quiz/${courseCode}?weeks=${formattedWeeks}&numQ=${quizState.numQuestions}&time=${formattedDuration}`
       );
-      onClose(); 
+      onClose();
     }
   };
 
   const toggleWeek = (week: number) => {
-    setQuizState((prev) => ({
-      ...prev,
-      selectedWeeks: prev.selectedWeeks.includes(week)
+    setQuizState((prev) => {
+      const isSelected = prev.selectedWeeks.includes(week);
+      const newSelectedWeeks = isSelected
         ? prev.selectedWeeks.filter((w) => w !== week)
-        : [...prev.selectedWeeks, week].sort((a, b) => a - b),
-    }));
+        : [...prev.selectedWeeks, week].sort((a, b) => a - b);
+
+      const newMaxQuestions = Math.min(
+        newSelectedWeeks.length * 10,
+        availableQuestions
+      );
+      const newNumQuestions =
+        prev.numQuestions > newMaxQuestions
+          ? newMaxQuestions
+          : prev.numQuestions;
+
+      return {
+        ...prev,
+        selectedWeeks: newSelectedWeeks,
+        numQuestions: newNumQuestions,
+      };
+    });
   };
 
   const handleNumQuestionsChange = (value: number) => {
@@ -159,7 +188,10 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
     }));
   };
 
-  const handleDurationChange = (field: "hours" | "minutes" | "seconds", value: number) => {
+  const handleDurationChange = (
+    field: "hours" | "minutes" | "seconds",
+    value: number
+  ) => {
     const maxValue = field === "hours" ? 23 : 59;
     const sanitizedValue = Math.max(0, Math.min(value, maxValue));
 
@@ -175,12 +207,16 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
   return (
     <div className="relative overflow-hidden p-6 bg-[#C2E6EC] dark:bg-[#0C1222] rounded-lg shadow-lg">
       <div className="flex justify-between items-center mb-6">
-        <button onClick={onClose} className="p-2 hover:bg-gray-100 transition-colors">
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 transition-colors rounded"
+        >
           <ArrowLeft size={24} className="text-black dark:text-[#D5D5D5]" />
         </button>
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-black dark:text-[#D5D5D5]">{courseName}</h2>
-          <h3 className="text-lg font-semibold text-black dark:text-[#D5D5D5]">{courseCode}</h3>
+          <h2 className="text-2xl font-bold text-black dark:text-[#D5D5D5]">
+            {courseName}
+          </h2>
         </div>
         <button onClick={handleStartQuiz} className="relative group">
           <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
@@ -197,16 +233,18 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
         </button>
       </div>
 
-      <div className="flex space-x-4 mb-6">
-        <div className="w-1/2 flex flex-col justify-between" ref={dropdownRef}>
+      <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+        <div className="w-full sm:w-1/2 flex flex-col justify-between" ref={dropdownRef}>
           <div className="flex items-center mb-2">
-            <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">Select Weeks</label>
+            <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
+              Select Weeks
+            </label>
           </div>
           <div className="relative">
             <button
               className={`p-3 w-full border text-left flex justify-between items-center bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
                 validation.weeks.isValid ? "border-gray-300" : "border-red-500"
-              }`}
+              } rounded whitespace-nowrap overflow-hidden`}
               onClick={() => setShowDropdown(!showDropdown)}
             >
               <span>
@@ -217,87 +255,117 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
               <Check className="mr-2 text-black dark:text-[#D5D5D5]" size={20} />
             </button>
             {showDropdown && (
-              <div className="absolute z-10 w-full bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] border mt-1 shadow-lg overflow-y-auto max-h-48">
+              <div className="absolute z-10 w-full bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] border rounded shadow-lg overflow-y-auto max-h-48 top-full left-0 mt-1">
                 {weeks.map((week) => (
                   <div
                     key={week}
                     onClick={() => toggleWeek(week)}
-                    className={`cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20 ${
-                      quizState.selectedWeeks.includes(week) ? "bg-black/10 dark:bg-white/10" : ""
+                    className={`cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20 flex items-center ${
+                      quizState.selectedWeeks.includes(week)
+                        ? "bg-black/10 dark:bg-white/10"
+                        : ""
                     }`}
                   >
-                    <input type="checkbox" checked={quizState.selectedWeeks.includes(week)} readOnly className="mr-2" />
+                    <input
+                      type="checkbox"
+                      checked={quizState.selectedWeeks.includes(week)}
+                      readOnly
+                      className="mr-2"
+                    />
                     <span>Week {week}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          {!validation.weeks.isValid && <p className="text-red-500 text-xs">{validation.weeks.message}</p>}
+          {!validation.weeks.isValid && (
+            <p className="text-red-500 text-xs mt-1">{validation.weeks.message}</p>
+          )}
         </div>
 
-        <div className="w-1/2">
+        <div className="w-full sm:w-1/2">
           <div className="flex items-center mb-2">
             <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
-              Number of Questions ({availableQuestions} available)
+              Number of Questions ({maxQuestions} available)
             </label>
           </div>
           <input
             type="number"
             value={quizState.numQuestions || ""}
             onChange={(e) => handleNumQuestionsChange(Number(e.target.value))}
-            placeholder={`Enter number`}
+            placeholder={
+              quizState.selectedWeeks.length > 0
+                ? `Enter number (max ${maxQuestions})`
+                : "Select weeks first"
+            }
             className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
-              validation.questions.isValid ? "border-gray-300" : "border-red-500"
-            }`}
+              validation.questions.isValid
+                ? "border-gray-300"
+                : "border-red-500 placeholder-red-500"
+            } rounded`}
             style={{ height: "3rem" }}
             min={1}
-            max={Math.min(quizState.selectedWeeks.length * 10, availableQuestions)}
+            max={maxQuestions}
+            disabled={quizState.selectedWeeks.length === 0}
           />
           {!validation.questions.isValid && (
-            <p className="text-red-500 text-xs">{validation.questions.message}</p>
+            <p className="text-red-500 text-xs mt-1">
+              {validation.questions.message}
+            </p>
           )}
         </div>
       </div>
 
-      <div className="flex space-x-4 mb-6">
-        <div className="w-1/3">
-          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">Hours</label>
+      <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+        <div className="w-full sm:w-1/3">
+          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
+            Hours
+          </label>
           <input
             type="number"
             value={quizState.duration.hours}
-            onChange={(e) => handleDurationChange("hours", Number(e.target.value))}
+            onChange={(e) =>
+              handleDurationChange("hours", Number(e.target.value))
+            }
             className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
               validation.duration.isValid ? "border-gray-300" : "border-red-500"
-            }`}
+            } rounded`}
             style={{ height: "3rem" }}
             min={0}
             max={23}
           />
         </div>
-        <div className="w-1/3">
-          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">Minutes</label>
+        <div className="w-full sm:w-1/3">
+          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
+            Minutes
+          </label>
           <input
             type="number"
             value={quizState.duration.minutes}
-            onChange={(e) => handleDurationChange("minutes", Number(e.target.value))}
+            onChange={(e) =>
+              handleDurationChange("minutes", Number(e.target.value))
+            }
             className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
               validation.duration.isValid ? "border-gray-300" : "border-red-500"
-            }`}
+            } rounded`}
             style={{ height: "3rem" }}
             min={0}
             max={59}
           />
         </div>
-        <div className="w-1/3">
-          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">Seconds</label>
+        <div className="w-full sm:w-1/3">
+          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
+            Seconds
+          </label>
           <input
             type="number"
             value={quizState.duration.seconds}
-            onChange={(e) => handleDurationChange("seconds", Number(e.target.value))}
+            onChange={(e) =>
+              handleDurationChange("seconds", Number(e.target.value))
+            }
             className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
               validation.duration.isValid ? "border-gray-300" : "border-red-500"
-            }`}
+            } rounded`}
             style={{ height: "3rem" }}
             min={0}
             max={59}
@@ -305,7 +373,9 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
         </div>
       </div>
       {!validation.duration.isValid && (
-        <p className="text-red-500 text-xs">{validation.duration.message}</p>
+        <p className="text-red-500 text-xs mt-1">
+          {validation.duration.message}
+        </p>
       )}
 
       <div className="mt-8 flex justify-end">

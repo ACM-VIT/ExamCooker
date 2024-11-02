@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface Course {
+  requestCount: number;
   courseCode: string;
   courseName: string;
   questionCount: number;

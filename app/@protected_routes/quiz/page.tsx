@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import QuizModalContent from "@/app/components/QuizModalComponent";
 import QuizCard from "@/app/components/QuizCard";
@@ -15,6 +15,7 @@ interface Course {
   courseName: string;
   questionCount: number;
   weeks: number[];
+  requestCount?: number;
 }
 
 interface ModalProps {
@@ -50,21 +51,27 @@ const QuizPage: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const coursesPerPage = 6;
-
-  const debouncedSetSearchQuery = React.useMemo(
-    () => debounce((query: string) => {
-      setSearchQuery(query);
-      setCurrentPage(1);
-    }, 300),
+  const coursesPerPage = 16;
+  const debouncedSetSearchQuery = useMemo(
+    () =>
+      debounce((query: string) => {
+        setSearchQuery(query);
+        setCurrentPage(1);
+      }, 300),
     []
   );
+
+  useEffect(() => {
+    return () => {
+      debouncedSetSearchQuery.cancel();
+    };
+  }, [debouncedSetSearchQuery]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     debouncedSetSearchQuery(e.target.value);
   };
 
-  const handleCardClick = (course: Course) => {
+  const handleCardClick = useCallback((course: Course) => {
     if (course.questionCount > 0) {
       setSelectedCourse(course);
       setIsQuizModalOpen(true);
@@ -72,28 +79,65 @@ const QuizPage: React.FC = () => {
       setSelectedCourse(course);
       setIsUnderConstructionModalOpen(true);
     }
-  };
+  }, []);
 
-  const handleCloseQuizModal = () => {
+  const handleCloseQuizModal = useCallback(() => {
     setIsQuizModalOpen(false);
     setSelectedCourse(null);
-  };
+  }, []);
 
-  const handleCloseUnderConstructionModal = () => {
+  const handleCloseUnderConstructionModal = useCallback(() => {
     setIsUnderConstructionModalOpen(false);
     setSelectedCourse(null);
-  };
+  }, []);
 
-  const filteredCourses = courses.filter(
-    (course) =>
-      course.courseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.courseName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const hardcodedCourseNames = [
+    "wild life ecology",
+    "noc:forests and their management",
+  ];
+
+  const sortedFilteredCourses = useMemo(() => {
+    if (!courses) return [];
+
+    const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+    const filtered = normalizedSearchQuery
+      ? courses.filter((course) =>
+          course.courseName.toLowerCase().includes(normalizedSearchQuery)
+        )
+      : courses;
+
+    const hardcodedCourses = filtered.filter((course) =>
+      hardcodedCourseNames.includes(course.courseName.toLowerCase())
+    );
+
+    const availableCourses = filtered
+      .filter(
+        (course) =>
+          !hardcodedCourseNames.includes(course.courseName.toLowerCase()) &&
+          course.questionCount > 0
+      )
+      .sort((a, b) => {
+        const requestA = a.requestCount ?? 0;
+        const requestB = b.requestCount ?? 0;
+        return requestB - requestA;
+      });
+
+    const underConstructionCourses = filtered.filter(
+      (course) =>
+        course.questionCount === 0 &&
+        !hardcodedCourseNames.includes(course.courseName.toLowerCase())
+    );
+
+    return [...hardcodedCourses, ...availableCourses, ...underConstructionCourses];
+  }, [courses, searchQuery, hardcodedCourseNames]);
+
+  const totalCount = sortedFilteredCourses.length;
+  const totalPages = Math.ceil(totalCount / coursesPerPage);
 
   const indexOfLastCourse = currentPage * coursesPerPage;
   const indexOfFirstCourse = indexOfLastCourse - coursesPerPage;
-  const currentCourses = filteredCourses.slice(indexOfFirstCourse, indexOfLastCourse);
-  const totalPages = Math.ceil(filteredCourses.length / coursesPerPage);
+  const currentCourses = sortedFilteredCourses.slice(indexOfFirstCourse, indexOfLastCourse);
 
   const maxVisiblePages = 5;
 
@@ -115,16 +159,15 @@ const QuizPage: React.FC = () => {
 
   const { pageNumbers, startPage, endPage } = getPageNumbers();
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen">
       <div className="flex flex-col items-center justify-start flex-grow py-8 px-4">
         <h1 className="mb-12 text-black dark:text-[#D5D5D5] text-4xl font-bold">NPTEL QUIZ</h1>
 
-        {/* Search Input */}
         <form className="relative flex items-center w-full max-w-4xl mb-6">
           <div className="relative flex items-center bg-white dark:bg-[#3D414E] border border-black dark:border-[#D5D5D5] w-full px-4 py-2 shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
             <Image src={SearchIcon} alt="search" className="dark:invert" />
@@ -137,7 +180,6 @@ const QuizPage: React.FC = () => {
           </div>
         </form>
 
-        {/* Courses Grid */}
         {isLoading ? (
           <div className="flex items-center justify-center mt-6">
             <div className="animate-spin h-16 w-16 border-t-4 border-b-4 border-blue-500 rounded-full"></div>
@@ -146,18 +188,18 @@ const QuizPage: React.FC = () => {
           <div className="flex items-center justify-center mt-6">
             <p className="text-red-500">{error}</p>
           </div>
-        ) : filteredCourses.length === 0 ? (
+        ) : sortedFilteredCourses.length === 0 ? (
           <div className="flex items-center justify-center mt-6">
-            <p className="text-gray-700 dark:text-gray-300">No courses found.</p>
+            <p className="text-gray-700 dark:text-gray-300">No quizzes found.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full max-w-6xl px-4">
             {currentCourses.map((course) => (
               <QuizCard
                 key={course.courseCode}
-                courseCode={course.courseCode}
                 courseName={course.courseName}
                 availableQuestions={course.questionCount}
+                isFeatured={hardcodedCourseNames.includes(course.courseName.toLowerCase())} 
                 onClick={() => handleCardClick(course)}
               />
             ))}
@@ -165,11 +207,12 @@ const QuizPage: React.FC = () => {
         )}
 
         {totalPages > 1 && (
-          <div className="mt-auto w-full max-w-4xl flex justify-center items-center space-x-2 py-4">
+          <div className="mt-auto w-full max-w-6xl flex justify-center items-center space-x-2 py-4">
             {currentPage > 1 && (
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 className="px-3 py-1.5 text-sm font-medium bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90] text-white rounded"
+                aria-label="Previous Page"
               >
                 &lt;
               </button>
@@ -183,7 +226,8 @@ const QuizPage: React.FC = () => {
                     1 === currentPage
                       ? "bg-[#73E8CC] dark:bg-[#232530] text-white"
                       : "bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90] text-white"
-                  }`}
+                  } rounded`}
+                  aria-label="Go to Page 1"
                 >
                   1
                 </button>
@@ -199,7 +243,8 @@ const QuizPage: React.FC = () => {
                   number === currentPage
                     ? "bg-[#73E8CC] dark:bg-[#232530] text-white"
                     : "bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90] text-white"
-                }`}
+                } rounded`}
+                aria-label={`Go to Page ${number}`}
               >
                 {number}
               </button>
@@ -214,7 +259,8 @@ const QuizPage: React.FC = () => {
                     totalPages === currentPage
                       ? "bg-[#73E8CC] dark:bg-[#232530] text-white"
                       : "bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90] text-white"
-                  }`}
+                  } rounded`}
+                  aria-label={`Go to Page ${totalPages}`}
                 >
                   {totalPages}
                 </button>
@@ -225,6 +271,7 @@ const QuizPage: React.FC = () => {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 className="px-3 py-1.5 text-sm font-medium bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90] text-white rounded"
+                aria-label="Next Page"
               >
                 &gt;
               </button>
@@ -233,7 +280,6 @@ const QuizPage: React.FC = () => {
         )}
       </div>
 
-      {/* Quiz Modal */}
       {selectedCourse && isQuizModalOpen && (
         <Modal isOpen={isQuizModalOpen} onClose={handleCloseQuizModal}>
           <QuizModalContent
@@ -246,7 +292,6 @@ const QuizPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* Under Construction Modal */}
       {selectedCourse && selectedCourse.questionCount === 0 && isUnderConstructionModalOpen && (
         <Modal isOpen={isUnderConstructionModalOpen} onClose={handleCloseUnderConstructionModal}>
           <UnderConstructionModal
