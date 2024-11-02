@@ -79,10 +79,10 @@ const QuizPage = () => {
   };
 
   const courses: Course[] = [
-    { courseCode: "102104073", courseName: "Wildlife Ecology" },
-    { courseCode: "102104082", courseName: "Forest and Management" },
-    { courseCode: "102104058", courseName: "Animal Physiology" },
-    { courseCode: "109106067", courseName: "Better Spoken English" },
+    { courseCode: "BCSE101L", courseName: "Wildlife Ecology" },
+    { courseCode: "BCSE102L", courseName: "Forest and Management" },
+    { courseCode: "BCSE103L", courseName: "Another Subject" },
+    { courseCode: "BCSE104L", courseName: "Ethical Hacking" },
   ];
 
   return (

@@ -1,5 +1,5 @@
 export const WildlifeJSON = {
-    "title":"Wildlife Ecology",
+    "title": "Wild Life Ecology",
     "weeks": [
       {
         "name": "1",
