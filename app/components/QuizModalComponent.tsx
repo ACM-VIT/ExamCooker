@@ -181,7 +181,7 @@ export default function QuizModalContent({
         ""
       );
       router.push(
-        `/quiz/weeks=${formattedWeeks}&numQ=${quizState.numQuestions}&time=${formattedDuration}`
+        `/quiz/weeks=${formattedWeeks}&numQ=${quizState.numQuestions}&time=${formattedDuration}&course=${courseCode}`
       );
     }
   };
