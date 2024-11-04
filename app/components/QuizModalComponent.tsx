@@ -199,7 +199,7 @@ export default function QuizModalContent({
   };
 
   return (
-    <div className="relative overflow-hidden p-6 max-w-2xl mx-auto shadow-lg bg-[#C2E6EC] dark:bg-[#0C1222]">
+    <div className="relative p-6 max-w-2xl mx-auto shadow-lg bg-[#C2E6EC] dark:bg-[#0C1222]">
       <div className="flex justify-between items-center mb-6">
         <button
           onClick={onClose}
@@ -244,11 +244,11 @@ export default function QuizModalContent({
               }`}
               onClick={() => setShowDropdown(!showDropdown)}
             >
-              <span>
+              <p className="text-sm sm:text-base">
                 {quizState.selectedWeeks.length === 0
                   ? "Select Weeks"
                   : quizState.selectedWeeks.join(", ")}
-              </span>
+              </p>
               <Check
                 className="mr-2 text-black dark:text-[#D5D5D5]"
                 size={20}
@@ -305,7 +305,7 @@ export default function QuizModalContent({
             value={quizState.numQuestions || ""}
             onChange={(e) => handleNumQuestionsChange(Number(e.target.value))}
             placeholder="Enter number"
-            className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
+            className={`text-sm sm:text-base w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] placeholder:text-[#D5D5D5] ${
               validation.questions.isValid ? "border-gray-300" : "border-red-500"
             }`}
             style={{ height: "3rem" }}
