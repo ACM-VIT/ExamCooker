@@ -180,9 +180,9 @@ export default function Component() {
     }
 
     const getScoreColor = (percentage: number) => {
-        if (percentage >= 80) return "text-green-800 dark:bg-green-800/20"
-        if (percentage >= 60) return "text-yellow-600 dark:bg-yellow-800/20"
-        return "dark:bg-red-800/20 text-red-800"
+        if (percentage >= 80) return "text-green-400 dark:bg-green-800/20"
+        if (percentage >= 60) return "text-yellow-400 dark:bg-yellow-800/20"
+        return "dark:bg-red-800/20 text-red-400"
     }
 
     if (questions.length === 0) {
@@ -284,8 +284,8 @@ export default function Component() {
                     ))}
                 </div>
 
-                <div className="mt-8 flex justify-between font-semibold dark:text-[#D5D5D5]">
-                    <div className='flex gap-4'>
+                <div className="mt-8 flex flex-col gap-4 sm:flex-row items-center justify-between font-semibold dark:text-[#D5D5D5]">
+                    <div className='flex gap-4 justify-between sm:justify-start w-full sm:w-fit'>
                         <button
                             onClick={() => router.push("/quiz")}
                             className="flex items-center px-6 py-3 bg-[#5FC4E7] dark:bg-[#008A90] hover:opacity-90 transition-opacity"
@@ -303,7 +303,7 @@ export default function Component() {
                     </div>
                     <button
                         onClick={() => router.push("/")}
-                        className="flex items-center px-6 py-3 bg-[#5FC4E7] dark:bg-[#008A90] hover:opacity-90 transition-opacity"
+                        className="flex items-center justify-center w-full sm:w-fit px-6 py-3 bg-[#5FC4E7] dark:bg-[#008A90] hover:opacity-90 transition-opacity"
                     >
                         Return Home
                         <ChevronRight size={20} className="ml-2" />
