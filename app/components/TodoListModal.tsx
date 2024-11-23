@@ -184,7 +184,7 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Enter new task"
-                className="flex-grow border px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white dark:bg-[#3D414E] rounded "
+                className="flex-grow border px-2 dark:text-white py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white dark:bg-[#3D414E] rounded "
               />
               <button
                 onClick={addTodo}
