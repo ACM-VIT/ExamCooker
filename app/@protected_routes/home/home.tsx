@@ -130,7 +130,10 @@ const Home = async () => {
         return 'Untitled';
     };
     return (
-        <div className="bg-[#C2E6EC] dark:bg-[#0C1222] min-h-screen text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
+        <div className="bg-[#C2E6EC] dark:bg-[hsl(224,48%,9%)] min-h-screen text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
+            <div className="bg-[#5FC4E7] dark:bg-gradient-to-tr to-[#27BAEC] from-[#253EE0] dark:text-white text-center py-2 text-sm">
+                VIT's <strong>largest</strong> competitive coding event is coming soon!  Get ready for <strong>Reverse Coding!</strong>
+            </div>
             <div className="container mx-auto px-4 py-8 max-w-7xl">
                 <header className="text-center mb-12">
                     <h1 className="text-4xl md:text-6xl font-bold mb-4">Welcome <GradientText><UserName /></GradientText></h1>
