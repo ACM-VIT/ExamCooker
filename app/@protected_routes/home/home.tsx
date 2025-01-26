@@ -131,9 +131,15 @@ const Home = async () => {
     };
     return (
         <div className="bg-[#C2E6EC] dark:bg-[hsl(224,48%,9%)] min-h-screen text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
-           <Link href="https://vtop.vit.ac.in/vtop/login"> <div className="bg-[#5FC4E7] dark:bg-gradient-to-tr to-[#27BAEC] from-[#253EE0] dark:text-white text-center py-2 text-sm">
-            Register now on VTOP for VIT's <strong>largest</strong> competitive coding event - <strong>Reverse Coding</strong>! May the force be with you.
-            </div></Link> 
+           <Link 
+  href="https://vtop.vit.ac.in/vtop/login" 
+  target="_blank" 
+  rel="noopener noreferrer"
+>
+  <div className="bg-[#5FC4E7] dark:bg-gradient-to-tr to-[#27BAEC] from-[#253EE0] dark:text-white text-center py-2 text-sm">
+    Register now on VTOP for VIT's <strong>largest</strong> competitive coding event - <strong>Reverse Coding</strong>! May the force be with you.
+  </div>
+</Link>
             <div className="container mx-auto px-4 py-8 max-w-7xl">
                 <header className="text-center mb-12">
                     <h1 className="text-4xl md:text-6xl font-bold mb-4">Welcome <GradientText><UserName /></GradientText></h1>
