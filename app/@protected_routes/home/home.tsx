@@ -132,7 +132,7 @@ const Home = async () => {
     return (
         <div className="bg-[#C2E6EC] dark:bg-[hsl(224,48%,9%)] min-h-screen text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
            <Link 
-  href="https://vtop.vit.ac.in/vtop/login" 
+  href="https://vtop.vit.ac.in/vtop/content" 
   target="_blank" 
   rel="noopener noreferrer"
 >
