@@ -137,7 +137,7 @@ const Home = async () => {
   rel="noopener noreferrer"
 >
   <div className="bg-[#5FC4E7] dark:bg-gradient-to-tr to-[#27BAEC] from-[#253EE0] dark:text-white text-center py-2 text-sm">
-    Register now on VTOP for VIT's <strong>largest</strong> competitive coding event - <strong>Reverse Coding</strong>! May the force be with you.
+   Want to create something this <strong>cool</strong>? ACM is where it starts! last day left to join the fun. Enroll now on <strong>VTOP</strong>!
   </div>
 </Link>
             <div className="container mx-auto px-4 py-8 max-w-7xl">
