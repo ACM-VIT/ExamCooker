@@ -137,7 +137,7 @@ const Home = async () => {
   rel="noopener noreferrer"
 >
   <div className="bg-[#5FC4E7] dark:bg-gradient-to-tr to-[#27BAEC] from-[#253EE0] dark:text-white text-center py-2 text-sm">
-   Come be a part of the chapter that makes the coolest projects! Submit your forms now!
+   Want to know what goes behind this cool website? Join our chapter to find out!
   </div>
 </Link> 
             <div className="container mx-auto px-4 py-8 max-w-7xl">
