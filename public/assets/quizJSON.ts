@@ -4178,7 +4178,1272 @@ export const spokenenglishJSON = {
 ]
 }
 
-
+export const conservationEconomicsJSON = {
+  "title": "Conservation Economics",
+  "code": "102104086",
+  "weeks": [
+    {
+      "name": "1",
+      "questions": [
+        {
+          "question": "In the word root for conservation, con stands for",
+          "options": [
+            "together",
+            "to keep",
+            "house",
+            "manage"
+          ],
+          "answer": "together"
+        },
+        {
+          "question": "\"the ability of a single economic actor (or small group of actors) to have a substantial influence on market prices\" is known as",
+          "options": [
+            "price power",
+            "market power",
+            "externality",
+            "economic power"
+          ],
+          "answer": "market power"
+        },
+        {
+          "question": "The branch of economics that studies how scarce resources are allocated among competing uses is known as",
+          "options": [
+            "microeconomics",
+            "macroeconomics",
+            "econometrics",
+            "welfare economics"
+          ],
+          "answer": "microeconomics"
+        },
+        {
+          "question": "The branch of economics that studies the economy as a whole is known as",
+          "options": [
+            "microeconomics",
+            "macroeconomics",
+            "econometrics",
+            "welfare economics"
+          ],
+          "answer": "macroeconomics"
+        },
+        {
+          "question": "The branch of economics that applies statistical methods to economic data in order to give empirical content to economic relationships is known as",
+          "options": [
+            "microeconomics",
+            "macroeconomics",
+            "econometrics",
+            "welfare economics"
+          ],
+          "answer": "econometrics"
+        },
+        {
+          "question": "The branch of economics that uses microeconomic techniques to simultaneously evaluate the economic efficiency and distributional consequences of public policy is known as",
+          "options": [
+            "microeconomics",
+            "macroeconomics",
+            "econometrics",
+            "welfare economics"
+          ],
+          "answer": "welfare economics"
+        },
+        {
+          "question": "Which of the following is not a positive statement?",
+          "options": [
+            "India is a developing country",
+            "The level of aggregate unemployment in India is 9%",
+            "The poverty rate in India is too high",
+            "The rate of inflation in India is increasing"
+          ],
+          "answer": "The poverty rate in India is too high"
+        },
+        {
+          "question": "Which of the following is not a normative statement?",
+          "options": [
+            "India should achieve a higher economic growth rate",
+            "The level of inequality in India is very high",
+            "The level of female literacy in India is 65%",
+            "The government should spend more on education"
+          ],
+          "answer": "The level of female literacy in India is 65%"
+        },
+        {
+          "question": "When we study about the determination of price and output in an individual market, we are studying",
+          "options": [
+            "microeconomics",
+            "macroeconomics",
+            "econometrics",
+            "welfare economics"
+          ],
+          "answer": "microeconomics"
+        },
+        {
+          "question": "When we study about the determination of aggregate output and general price level in the economy, we are studying",
+          "options": [
+            "microeconomics",
+            "macroeconomics",
+            "econometrics",
+            "welfare economics"
+          ],
+          "answer": "macroeconomics"
+        }
+      ]
+    },
+    {
+      "name": "2",
+      "questions": [
+        {
+          "question": "The value of the next best alternative foregone is known as",
+          "options": [
+            "accounting cost",
+            "opportunity cost",
+            "private cost",
+            "social cost"
+          ],
+          "answer": "opportunity cost"
+        },
+        {
+          "question": "In the context of environmental resources, the opportunity cost of an environmental policy is",
+          "options": [
+            "the value of reduced environmental damage",
+            "the value of the environmental resources in their next best use",
+            "the cost of administering and enforcing the policy",
+            "the political cost of the policy"
+          ],
+          "answer": "the value of the environmental resources in their next best use"
+        },
+        {
+          "question": "The additional cost incurred when an additional unit of a good is produced is known as",
+          "options": [
+            "average cost",
+            "marginal cost",
+            "private cost",
+            "social cost"
+          ],
+          "answer": "marginal cost"
+        },
+        {
+          "question": "The additional benefit obtained when an additional unit of a good is consumed is known as",
+          "options": [
+            "average benefit",
+            "marginal benefit",
+            "private benefit",
+            "social benefit"
+          ],
+          "answer": "marginal benefit"
+        },
+        {
+          "question": "The cost of an economic activity that is borne by society as a whole is known as",
+          "options": [
+            "private cost",
+            "social cost",
+            "average cost",
+            "marginal cost"
+          ],
+          "answer": "social cost"
+        },
+        {
+          "question": "The benefit of an economic activity that accrues to society as a whole is known as",
+          "options": [
+            "private benefit",
+            "social benefit",
+            "average benefit",
+            "marginal benefit"
+          ],
+          "answer": "social benefit"
+        },
+        {
+          "question": "When there is no externality, which of the following is true?",
+          "options": [
+            "private cost = social cost and private benefit = social benefit",
+            "private cost < social cost and private benefit < social benefit",
+            "private cost > social cost and private benefit > social benefit",
+            "private cost = social benefit and private benefit = social cost"
+          ],
+          "answer": "private cost = social cost and private benefit = social benefit"
+        },
+        {
+          "question": "When there is a negative externality, which of the following is true?",
+          "options": [
+            "private cost = social cost and private benefit = social benefit",
+            "private cost < social cost and private benefit < social benefit",
+            "private cost > social cost and private benefit < social benefit",
+            "private cost = social benefit and private benefit = social cost"
+          ],
+          "answer": "private cost < social cost and private benefit > social benefit"
+        },
+        {
+          "question": "When there is a positive externality, which of the following is true?",
+          "options": [
+            "private cost = social cost and private benefit = social benefit",
+            "private cost < social cost and private benefit < social benefit",
+            "private cost > social cost and private benefit > social benefit",
+            "private cost = social benefit and private benefit = social cost"
+          ],
+          "answer": "private cost > social cost and private benefit < social benefit"
+        },
+        {
+          "question": "In the context of environmental pollution, the social cost of pollution is",
+          "options": [
+            "the cost of cleaning up the pollution",
+            "the cost of health damages due to pollution",
+            "the cost of reduced agricultural productivity due to pollution",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        }
+      ]
+    },
+    {
+      "name": "3",
+      "questions": [
+        {
+          "question": "Which of the following is a public good?",
+          "options": [
+            "a car",
+            "a road",
+            "a public park",
+            "education"
+          ],
+          "answer": "a public park"
+        },
+        {
+          "question": "Which of the following is not a public good?",
+          "options": [
+            "national defense",
+            "clean air",
+            "a lighthouse",
+            "a toll road"
+          ],
+          "answer": "a toll road"
+        },
+        {
+          "question": "Which of the following is a characteristic of a public good?",
+          "options": [
+            "excludability",
+            "rivalry",
+            "non-excludability",
+            "all of the above"
+          ],
+          "answer": "non-excludability"
+        },
+        {
+          "question": "Which of the following is not a characteristic of a public good?",
+          "options": [
+            "non-rivalry",
+            "non-excludability",
+            "free rider problem",
+            "high private benefit"
+          ],
+          "answer": "high private benefit"
+        },
+        {
+          "question": "The problem that arises when people can enjoy the benefits of a good without paying for it is known as",
+          "options": [
+            "tragedy of the commons",
+            "free rider problem",
+            "externality",
+            "market failure"
+          ],
+          "answer": "free rider problem"
+        },
+        {
+          "question": "The tragedy of the commons arises due to",
+          "options": [
+            "public goods",
+            "private goods",
+            "common property resources",
+            "club goods"
+          ],
+          "answer": "common property resources"
+        },
+        {
+          "question": "Which of the following is an example of a common property resource?",
+          "options": [
+            "a car",
+            "a house",
+            "a forest",
+            "a private garden"
+          ],
+          "answer": "a forest"
+        },
+        {
+          "question": "Which of the following is not an example of a common property resource?",
+          "options": [
+            "a fishery",
+            "groundwater",
+            "clean air",
+            "a private swimming pool"
+          ],
+          "answer": "a private swimming pool"
+        },
+        {
+          "question": "The optimal level of pollution is",
+          "options": [
+            "zero",
+            "the level where marginal social cost of pollution is equal to marginal social benefit of pollution",
+            "the level where marginal private cost of pollution is equal to marginal private benefit of pollution",
+            "the level where total social cost of pollution is minimized"
+          ],
+          "answer": "the level where marginal social cost of pollution is equal to marginal social benefit of pollution"
+        },
+        {
+          "question": "At the optimal level of pollution,",
+          "options": [
+            "the marginal social cost of pollution is zero",
+            "the marginal social benefit of pollution is zero",
+            "the total social cost of pollution is zero",
+            "the net social benefit of pollution is maximized"
+          ],
+          "answer": "the net social benefit of pollution is maximized"
+        }
+      ]
+    },
+    {
+      "name": "4",
+      "questions": [
+        {
+          "question": "Which of the following is a method of valuing environmental resources?",
+          "options": [
+            "market price method",
+            "replacement cost method",
+            "contingent valuation method",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "The method of valuing environmental resources that uses the market price of a substitute good is known as",
+          "options": [
+            "travel cost method",
+            "hedonic pricing method",
+            "replacement cost method",
+            "contingent valuation method"
+          ],
+          "answer": "replacement cost method"
+        },
+        {
+          "question": "The method of valuing environmental resources that uses the cost of traveling to a site as a proxy for the value of the site is known as",
+          "options": [
+            "travel cost method",
+            "hedonic pricing method",
+            "replacement cost method",
+            "contingent valuation method"
+          ],
+          "answer": "travel cost method"
+        },
+        {
+          "question": "The method of valuing environmental resources that uses the price of a related market good to infer the value of the environmental resource is known as",
+          "options": [
+            "travel cost method",
+            "hedonic pricing method",
+            "replacement cost method",
+            "contingent valuation method"
+          ],
+          "answer": "hedonic pricing method"
+        },
+        {
+          "question": "The method of valuing environmental resources that uses surveys to elicit people's willingness to pay for the resource is known as",
+          "options": [
+            "travel cost method",
+            "hedonic pricing method",
+            "replacement cost method",
+            "contingent valuation method"
+          ],
+          "answer": "contingent valuation method"
+        },
+        {
+          "question": "Which of the following is a limitation of the market price method of valuing environmental resources?",
+          "options": [
+            "it can only be used to value resources that are traded in markets",
+            "it does not capture the non-use values of environmental resources",
+            "it is sensitive to market distortions",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is a limitation of the replacement cost method of valuing environmental resources?",
+          "options": [
+            "it may overestimate the value of the environmental resource",
+            "it does not capture the non-use values of environmental resources",
+            "it is difficult to find suitable substitute goods",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is a limitation of the travel cost method of valuing environmental resources?",
+          "options": [
+            "it can only be used to value recreational sites",
+            "it does not capture the non-use values of environmental resources",
+            "it is sensitive to the choice of the functional form of the travel cost function",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is a limitation of the hedonic pricing method of valuing environmental resources?",
+          "options": [
+            "it can only be used to value resources that are related to market goods",
+            "it does not capture the non-use values of environmental resources",
+            "it is sensitive to the choice of the functional form of the hedonic price function",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is a limitation of the contingent valuation method of valuing environmental resources?",
+          "options": [
+            "it is hypothetical",
+            "it is sensitive to the design of the survey",
+            "it may be subject to strategic bias",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        }
+      ]
+    },
+    {
+      "name": "5",
+      "questions": [
+        {
+          "question": "biologically productive land and water available to provide the resources a population consumes and to absorb its wastes",
+          "options": [
+            "ecological footprint",
+            "biocapacity",
+            "carbon footprint",
+            "water footprint"
+          ],
+          "answer": "biocapacity"
+        },
+        {
+          "question": "If the ecological footprint of a population is equal to its biocapacity, it means that",
+          "options": [
+            "the population is living within its means",
+            "the population is living beyond its means",
+            "the population is using renewable resources sustainably",
+            "the population is not generating any waste"
+          ],
+          "answer": "the population is living within its means"
+        },
+        {
+          "question": "If the ecological footprint of a population is less than its biocapacity, it means that",
+          "options": [
+            "the population is living within its means",
+            "the population is living beyond its means",
+            "the population is using renewable resources unsustainably",
+            "the population has an ecological surplus"
+          ],
+          "answer": "the population has an ecological surplus"
+        },
+        {
+          "question": "Which of the following is a way to reduce ecological footprint?",
+          "options": [
+            "consuming more resources",
+            "generating more waste",
+            "using renewable resources more efficiently",
+            "increasing the size of the population"
+          ],
+          "answer": "using renewable resources more efficiently"
+        },
+        {
+          "question": "Which of the following is not a way to reduce ecological footprint?",
+          "options": [
+            "reducing consumption",
+            "reducing waste generation",
+            "using non-renewable resources more efficiently",
+            "increasing the efficiency of resource use"
+          ],
+          "answer": "using non-renewable resources more efficiently"
+        },
+        {
+          "question": "The concept of natural capital was developed by",
+          "options": [
+            "Garrett Hardin",
+            "Herman Daly",
+            "William Rees and Mathis Wackernagel",
+            "Paul Ehrlich"
+          ],
+          "answer": "Herman Daly"
+        },
+        {
+          "question": "Natural capital is defined as",
+          "options": [
+            "the stock of natural ecosystems that provide a flow of valuable ecosystem services into the future",
+            "the total value of the world's ecosystems",
+            "the amount of money required to replace the ecosystem services provided by nature",
+            "the impact of human activities on the environment"
+          ],
+          "answer": "the stock of natural ecosystems that provide a flow of valuable ecosystem services into the future"
+        },
+        {
+          "question": "Which of the following is an example of natural capital?",
+          "options": [
+            "a forest",
+            "a fish stock",
+            "clean air",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is not an example of natural capital?",
+          "options": [
+            "fossil fuels",
+            "minerals",
+            "timber",
+            "water"
+          ],
+          "answer": "timber"
+        },
+        {
+          "question": "Ecosystem services are",
+          "options": [
+            "the benefits people obtain from ecosystems",
+            "the costs of maintaining ecosystems",
+            "the impact of human activities on ecosystems",
+            "the amount of money required to replace ecosystem services"
+          ],
+          "answer": "the benefits people obtain from ecosystems"
+        }
+      ]
+    },
+    {
+      "name": "6",
+      "questions": [
+        {
+          "question": "Which of the following is a provisioning service?",
+          "options": [
+            "food",
+            "freshwater",
+            "fuelwood",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is not a provisioning service?",
+          "options": [
+            "timber",
+            "fiber",
+            "genetic resources",
+            "climate regulation"
+          ],
+          "answer": "climate regulation"
+        },
+        {
+          "question": "Which of the following is a regulating service?",
+          "options": [
+            "climate regulation",
+            "water purification",
+            "pollination",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is not a regulating service?",
+          "options": [
+            "disease regulation",
+            "flood regulation",
+            "nutrient cycling",
+            "food"
+          ],
+          "answer": "food"
+        },
+        {
+          "question": "Which of the following is a supporting service?",
+          "options": [
+            "soil formation",
+            "photosynthesis",
+            "nutrient cycling",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is not a supporting service?",
+          "options": [
+            "primary production",
+            "water cycling",
+            "habitat provision",
+            "freshwater"
+          ],
+          "answer": "freshwater"
+        },
+        {
+          "question": "Which of the following is a cultural service?",
+          "options": [
+            "recreation",
+            "ecotourism",
+            "spiritual and religious values",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is not a cultural service?",
+          "options": [
+            "aesthetic values",
+            "educational values",
+            "sense of place",
+            "pollination"
+          ],
+          "answer": "pollination"
+        },
+        {
+          "question": "The economic value of ecosystem services is",
+          "options": [
+            "zero",
+            "positive",
+            "negative",
+            "unknown"
+          ],
+          "answer": "positive"
+        },
+        {
+          "question": "The total economic value of an ecosystem is",
+          "options": [
+            "the sum of its provisioning, regulating, supporting, and cultural services",
+            "the value of its most important service",
+            "the value of its least important service",
+            "zero"
+          ],
+          "answer": "the sum of its provisioning, regulating, supporting, and cultural services"
+        }
+      ]
+    },
+    {
+      "name": "7",
+      "questions": [
+        {
+          "question": "Payment for ecosystem services (PES) is a",
+          "options": [
+            "market-based approach to conservation",
+            "regulatory approach to conservation",
+            "voluntary approach to conservation",
+            "community-based approach to conservation"
+          ],
+          "answer": "market-based approach to conservation"
+        },
+        {
+          "question": "Under PES schemes, who are the buyers of ecosystem services?",
+          "options": [
+            "those who provide the ecosystem services",
+            "those who benefit from the ecosystem services",
+            "the government",
+            "non-governmental organizations"
+          ],
+          "answer": "those who benefit from the ecosystem services"
+        },
+        {
+          "question": "Under PES schemes, who are the sellers of ecosystem services?",
+          "options": [
+            "those who provide the ecosystem services",
+            "those who benefit from the ecosystem services",
+            "the government",
+            "non-governmental organizations"
+          ],
+          "answer": "those who provide the ecosystem services"
+        },
+        {
+          "question": "Which of the following is not a type of PES scheme?",
+          "options": [
+            "watershed services",
+            "carbon sequestration",
+            "biodiversity conservation",
+            "ecotourism"
+          ],
+          "answer": "ecotourism"
+        },
+        {
+          "question": "Which of the following is a benefit of PES schemes?",
+          "options": [
+            "they can provide a sustainable source of funding for conservation",
+            "they can create incentives for land managers to provide ecosystem services",
+            "they can improve the livelihoods of local communities",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is a challenge of PES schemes?",
+          "options": [
+            "they can be difficult to design and implement",
+            "they may not be effective in all contexts",
+            "they may lead to inequitable outcomes",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "The success of PES schemes depends on",
+          "options": [
+            "clear definition of property rights",
+            "effective monitoring and enforcement",
+            "participation of local communities",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is an example of a successful PES scheme?",
+          "options": [
+            "the Payment for Watershed Services Program in Costa Rica",
+            "the Chicago Climate Exchange",
+            "the Conservation Reserve Program in the United States",
+            "all of the above"
+          ],
+          "answer": "the Payment for Watershed Services Program in Costa Rica"
+        },
+        {
+          "question": "Which of the following is not an example of a successful PES scheme?",
+          "options": [
+            "the Katoomba Ecosystem Services Incubator",
+            "the New York City Watershed Agreement",
+            "the European Union Emissions Trading Scheme",
+            "the Clean Development Mechanism"
+          ],
+          "answer": "the European Union Emissions Trading Scheme"
+        },
+        {
+          "question": "PES schemes are most likely to be successful when",
+          "options": [
+            "the ecosystem services are clearly defined and measurable",
+            "there are willing buyers and sellers of the ecosystem services",
+            "there is a strong institutional framework to support the scheme",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        }
+      ]
+    },
+    {
+      "name": "8",
+      "questions": [
+        {
+          "question": "Ecotourism is defined as",
+          "options": [
+            "responsible travel to natural areas that conserves the environment and improves the well-being of local people",
+            "travel to natural areas for recreational purposes",
+            "travel to natural areas for scientific research",
+            "travel to natural areas for adventure activities"
+          ],
+          "answer": "responsible travel to natural areas that conserves the environment and improves the well-being of local people"
+        },
+        {
+          "question": "Which of the following is a principle of ecotourism?",
+          "options": [
+            "minimize impact",
+            "build environmental and cultural awareness and respect",
+            "provide positive experiences for both visitors and hosts",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is not a principle of ecotourism?",
+          "options": [
+            "maximize profits",
+            "support local conservation efforts",
+            "promote cultural exchange",
+            "respect local culture"
+          ],
+          "answer": "maximize profits"
+        },
+        {
+          "question": "The benefits of ecotourism include",
+          "options": [
+            "conservation of natural areas",
+            "economic benefits for local communities",
+            "increased environmental awareness",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "The challenges of ecotourism include",
+          "options": [
+            "environmental damage",
+            "cultural commodification",
+            "unequal distribution of benefits",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Ecotourism is most likely to be successful when",
+          "options": [
+            "it is well-managed",
+            "it involves local communities",
+            "it is sustainable",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is an example of successful ecotourism?",
+          "options": [
+            "ecotourism in Costa Rica",
+            "ecotourism in Kenya",
+            "ecotourism in Nepal",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Which of the following is not an example of successful ecotourism?",
+          "options": [
+            "mass tourism in the Caribbean",
+            "community-based tourism in the Amazon",
+            "wildlife tourism in Botswana",
+            "cultural tourism in Bhutan"
+          ],
+          "answer": "mass tourism in the Caribbean"
+        },
+        {
+          "question": "The key to sustainable ecotourism is",
+          "options": [
+            "minimizing negative impacts and maximizing positive impacts",
+            "attracting large numbers of tourists",
+            "generating quick profits",
+            "ignoring local culture and traditions"
+          ],
+          "answer": "minimizing negative impacts and maximizing positive impacts"
+        },
+        {
+          "question": "Ecotourism can contribute to conservation by",
+          "options": [
+            "providing economic incentives for conservation",
+            "raising awareness about the importance of conservation",
+            "supporting local conservation initiatives",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        }
+      ]
+    },
+    {
+      "name": "9",
+      "questions": [
+        {
+          "question": "a market structure in which many firms sell products that are similar but not identical",
+          "options": [
+            "monopoly",
+            "oligopoly",
+            "perfect competition",
+            "monopolistic competition"
+          ],
+          "answer": "monopolistic competition"
+        },
+        {
+          "question": "a market structure in which only a few sellers offer similar or identical products",
+          "options": [
+            "monopoly",
+            "oligopoly",
+            "perfect competition",
+            "monopolistic competition"
+          ],
+          "answer": "oligopoly"
+        },
+        {
+          "question": "a market structure in which many sellers offer identical products",
+          "options": [
+            "monopoly",
+            "oligopoly",
+            "perfect competition",
+            "monopolistic competition"
+          ],
+          "answer": "perfect competition"
+        },
+        {
+          "question": "a market structure in which one seller sells a unique product",
+          "options": [
+            "monopoly",
+            "oligopoly",
+            "perfect competition",
+            "monopolistic competition"
+          ],
+          "answer": "monopoly"
+        },
+        {
+          "question": "the study of how firms make decisions in strategic situations",
+          "options": [
+            "game theory",
+            "decision theory",
+            "linear programming",
+            "econometrics"
+          ],
+          "answer": "game theory"
+        },
+        {
+          "question": "the percentage of total output supplied in the market by the four largest firms",
+          "options": [
+            "concentration ratio",
+            "market share",
+            "Herfindahl-Hirschman Index",
+            "Lerner Index"
+          ],
+          "answer": "concentration ratio"
+        },
+        {
+          "question": "an agreement among firms in a market about quantities to produce or prices to charge",
+          "options": [
+            "collusion",
+            "cartel",
+            "tacit collusion",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "which of the following is not a characteristic of oligopoly?",
+          "options": [
+            "few sellers",
+            "similar or identical products",
+            "barriers to entry",
+            "free entry"
+          ],
+          "answer": "free entry"
+        },
+        {
+          "question": "which of the following is a characteristic of monopolistic competition?",
+          "options": [
+            "many sellers",
+            "differentiated products",
+            "free entry",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "which of the following is not a characteristic of perfect competition?",
+          "options": [
+            "many sellers",
+            "identical products",
+            "free entry",
+            "price maker"
+          ],
+          "answer": "price maker"
+        }
+      ]
+    },
+    {
+      "name": "10",
+      "questions": [
+        {
+          "question": "the total of all workers, including the employed and the unemployed",
+          "options": [
+            "employed",
+            "unemployed",
+            "labour force",
+            "not in the labour force"
+          ],
+          "answer": "labour force"
+        },
+        {
+          "question": "the number of people who are employed",
+          "options": [
+            "employed",
+            "unemployed",
+            "labour force",
+            "not in the labour force"
+          ],
+          "answer": "employed"
+        },
+        {
+          "question": "the number of people who are unemployed",
+          "options": [
+            "employed",
+            "unemployed",
+            "labour force",
+            "not in the labour force"
+          ],
+          "answer": "unemployed"
+        },
+        {
+          "question": "people who do not have a job, are not available for work, and have not tried to find a job within the previous four weeks",
+          "options": [
+            "employed",
+            "unemployed",
+            "labour force",
+            "not in the labour force"
+          ],
+          "answer": "not in the labour force"
+        },
+        {
+          "question": "the percentage of the labour force that is unemployed",
+          "options": [
+            "employment rate",
+            "unemployment rate",
+            "labour force participation rate",
+            "natural rate of unemployment"
+          ],
+          "answer": "unemployment rate"
+        },
+        {
+          "question": "the percentage of the adult population that is in the labour force",
+          "options": [
+            "employment rate",
+            "unemployment rate",
+            "labour force participation rate",
+            "natural rate of unemployment"
+          ],
+          "answer": "labour force participation rate"
+        },
+        {
+          "question": "the normal rate of unemployment around which the unemployment rate fluctuates",
+          "options": [
+            "employment rate",
+            "unemployment rate",
+            "labour force participation rate",
+            "natural rate of unemployment"
+          ],
+          "answer": "natural rate of unemployment"
+        },
+        {
+          "question": "which of the following is not a type of unemployment?",
+          "options": [
+            "frictional unemployment",
+            "structural unemployment",
+            "cyclical unemployment",
+            "natural unemployment"
+          ],
+          "answer": "natural unemployment"
+        },
+        {
+          "question": "unemployment that results because workers search for jobs that best suit their tastes and skills",
+          "options": [
+            "frictional unemployment",
+            "structural unemployment",
+            "cyclical unemployment",
+            "natural rate of unemployment"
+          ],
+          "answer": "frictional unemployment"
+        },
+        {
+          "question": "unemployment that results because the number of jobs available in some labour markets is insufficient to provide a job for everyone who wants one",
+          "options": [
+            "frictional unemployment",
+            "structural unemployment",
+            "cyclical unemployment",
+            "natural rate of unemployment"
+          ],
+          "answer": "structural unemployment"
+        }
+      ]
+    },
+    {
+      "name": "11",
+      "questions": [
+        {
+          "question": "the study of how the allocation of resources affects economic well-being",
+          "options": [
+            "welfare economics",
+            "positive economics",
+            "normative economics",
+            "behavioural economics"
+          ],
+          "answer": "welfare economics"
+        },
+        {
+          "question": "the maximum price a buyer is willing and able to pay for a good",
+          "options": [
+            "willingness to pay",
+            "consumer surplus",
+            "producer surplus",
+            "total surplus"
+          ],
+          "answer": "willingness to pay"
+        },
+        {
+          "question": "the amount a buyer is willing to pay for a good minus the amount the buyer actually pays for it",
+          "options": [
+            "willingness to pay",
+            "consumer surplus",
+            "producer surplus",
+            "total surplus"
+          ],
+          "answer": "consumer surplus"
+        },
+        {
+          "question": "the amount a seller is paid for a good minus the seller’s cost of providing it",
+          "options": [
+            "willingness to pay",
+            "consumer surplus",
+            "producer surplus",
+            "total surplus"
+          ],
+          "answer": "producer surplus"
+        },
+        {
+          "question": "the sum of consumer surplus and producer surplus",
+          "options": [
+            "willingness to pay",
+            "consumer surplus",
+            "producer surplus",
+            "total surplus"
+          ],
+          "answer": "total surplus"
+        },
+        {
+          "question": "which of the following is not a way to measure economic well-being?",
+          "options": [
+            "consumer surplus",
+            "producer surplus",
+            "total surplus",
+            "price elasticity of demand"
+          ],
+          "answer": "price elasticity of demand"
+        },
+        {
+          "question": "an allocation of resources that maximizes total surplus",
+          "options": [
+            "efficient allocation",
+            "inefficient allocation",
+            "market equilibrium",
+            "social optimum"
+          ],
+          "answer": "efficient allocation"
+        },
+        {
+          "question": "a situation in which a market fails to allocate resources efficiently",
+          "options": [
+            "market failure",
+            "government failure",
+            "externality",
+            "public good"
+          ],
+          "answer": "market failure"
+        },
+        {
+          "question": "the property of society getting the most it can from its scarce resources",
+          "options": [
+            "efficiency",
+            "equity",
+            "equality",
+            "liberty"
+          ],
+          "answer": "efficiency"
+        },
+        {
+          "question": "the property of distributing economic prosperity uniformly among the members of society",
+          "options": [
+            "efficiency",
+            "equity",
+            "equality",
+            "liberty"
+          ],
+          "answer": "equity"
+        }
+      ]
+    }, 
+    {
+      "name": "12",
+      "questions": [
+        {
+          "question": "As per Wildlife Protection Act 1972 (WPA 1972), wild life includes any animal, aquatic or land vegetation which forms part of any",
+          "options": [
+            "ecosystem",
+            "state",
+            "country",
+            "habitat"
+          ],
+          "answer": "habitat"
+        },
+        {
+          "question": "The tiger has a home range of several square kilometres, regulates the ecosystem through controlling herbivore populations and trophic cascades, and people come to tiger reserves to watch tigers. Thus, the tiger can be called as",
+          "options": [
+            "umbrella species",
+            "keystone species",
+            "flagship species",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Soil formation is an example of",
+          "options": [
+            "provisioning service",
+            "regulating service",
+            "supporting service",
+            "cultural service"
+          ],
+          "answer": "supporting service"
+        },
+        {
+          "question": "Zoo is an example of",
+          "options": [
+            "in-situ conservation",
+            "ex-situ conservation",
+            "in-situ preservation",
+            "ex-situ preservation"
+          ],
+          "answer": "ex-situ conservation"
+        },
+        {
+          "question": "The fig tree bears fruits in times when animals do not have much access to food. In this context, it would be a good example of",
+          "options": [
+            "least concern species",
+            "keystone species",
+            "flagship species",
+            "extinct species"
+          ],
+          "answer": "keystone species"
+        },
+        {
+          "question": "Nutrient cycling is an example of",
+          "options": [
+            "provisioning service",
+            "regulating service",
+            "supporting service",
+            "cultural service"
+          ],
+          "answer": "supporting service"
+        },
+        {
+          "question": "People come to Sessa orchid sanctuary in Arunachal Pradesh to witness orchids, which in this context would be classified as",
+          "options": [
+            "umbrella species",
+            "keystone species",
+            "flagship species",
+            "extinct species"
+          ],
+          "answer": "flagship species"
+        },
+         {
+          "question": "We prefer those areas for the creation of a conservation reserve where the level of threat is",
+          "options": [
+            "very high",
+            "medium",
+            "very low",
+            "non-existent"
+          ],
+          "answer": "medium"
+        },
+        {
+          "question": "The elephant has a home range of several square kilometres, regulates the ecosystem by its habit of destructive feeding, and people can relate to this animal which is important for conservation. Given this background, the elephant can be called as",
+          "options": [
+            "umbrella species",
+            "keystone species",
+            "flagship species",
+            "all of the above"
+          ],
+          "answer": "all of the above"
+        },
+        {
+          "question": "Biological control of pest populations is an example of",
+          "options": [
+            "provisioning service",
+            "regulating service",
+            "supporting service",
+            "cultural service"
+          ],
+          "answer": "regulating service"
+        }
+      ]
+    }
+  ]
+}
 
 
 
