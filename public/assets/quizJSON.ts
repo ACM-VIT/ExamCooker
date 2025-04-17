@@ -4206,84 +4206,84 @@ export const conservationEconomicsJSON = {
           "answer": "market power"
         },
         {
-          "question": "The branch of economics that studies how scarce resources are allocated among competing uses is known as",
+          "question": "\"an economy that allocates resources through the decentralised decisions of many firms and households as they interact in markets for goods and services\" is a / an",
           "options": [
-            "microeconomics",
-            "macroeconomics",
-            "econometrics",
-            "welfare economics"
+            "urban economy",
+            "rural economy",
+            "planned economy",
+            "market economy"
           ],
-          "answer": "microeconomics"
+          "answer": "market economy"
         },
         {
-          "question": "The branch of economics that studies the economy as a whole is known as",
+          "question": "In the word root for conservation, servare stands for",
           "options": [
-            "microeconomics",
-            "macroeconomics",
-            "econometrics",
-            "welfare economics"
+            "together",
+            "to keep",
+            "house",
+            "manage"
           ],
-          "answer": "macroeconomics"
+          "answer": "to keep"
+        }, 
+        {
+          "question": "Which of these is true?",
+          "options": [
+            "Wants are unlimited, resources are unlimited",
+            "Wants are limited, resources are limited",
+            "Wants are unlimited, resources are limited",
+            "Wants are limited, resources are unlimited"
+          ],
+          "answer": "Wants are unlimited, resources are limited"
         },
         {
-          "question": "The branch of economics that applies statistical methods to economic data in order to give empirical content to economic relationships is known as",
+          "question": "\"an increase in the overall level of prices in the economy\" is",
           "options": [
-            "microeconomics",
-            "macroeconomics",
-            "econometrics",
-            "welfare economics"
+            "inflation",
+            "deflation",
+            "stagflation",
+            "priceflation"
           ],
-          "answer": "econometrics"
+          "answer": "inflation"
         },
         {
-          "question": "The branch of economics that uses microeconomic techniques to simultaneously evaluate the economic efficiency and distributional consequences of public policy is known as",
+          "question": "Phillips curve shows the relation between",
           "options": [
-            "microeconomics",
-            "macroeconomics",
-            "econometrics",
-            "welfare economics"
+            "profit and loss",
+            "marked price and selling price",
+            "inflation rate and unemployment rate",
+            "electricity consumption and heat output"
           ],
-          "answer": "welfare economics"
+          "answer": "inflation rate and unemployment rate"
         },
         {
-          "question": "Which of the following is not a positive statement?",
+          "question": "In the word root for Economics, oikos stands for",
           "options": [
-            "India is a developing country",
-            "The level of aggregate unemployment in India is 9%",
-            "The poverty rate in India is too high",
-            "The rate of inflation in India is increasing"
+            "together",
+            "to keep",
+            "house",
+            "manage"
           ],
-          "answer": "The poverty rate in India is too high"
+          "answer": "house"
         },
         {
-          "question": "Which of the following is not a normative statement?",
+          "question": "Most of rational thinking occurs",
           "options": [
-            "India should achieve a higher economic growth rate",
-            "The level of inequality in India is very high",
-            "The level of female literacy in India is 65%",
-            "The government should spend more on education"
+            "before the margin",
+            "at the margin",
+            "after the margin",
+            "none of these"
           ],
-          "answer": "The level of female literacy in India is 65%"
+          "answer": "at the margin"
         },
         {
-          "question": "When we study about the determination of price and output in an individual market, we are studying",
+          "question": "Input costs that do not require an outlay of money are",
           "options": [
-            "microeconomics",
-            "macroeconomics",
-            "econometrics",
-            "welfare economics"
+            "explicit costs",
+            "implicit costs",
+            "opportunity costs",
+            "phantom costs"
           ],
-          "answer": "microeconomics"
-        },
-        {
-          "question": "When we study about the determination of aggregate output and general price level in the economy, we are studying",
-          "options": [
-            "microeconomics",
-            "macroeconomics",
-            "econometrics",
-            "welfare economics"
-          ],
-          "answer": "macroeconomics"
+          "answer": "implicit costs"
         }
       ]
     },
@@ -4291,104 +4291,104 @@ export const conservationEconomicsJSON = {
       "name": "2",
       "questions": [
         {
-          "question": "The value of the next best alternative foregone is known as",
+          "question": "Which of these is not a pillar of sustainability?",
           "options": [
-            "accounting cost",
-            "opportunity cost",
-            "private cost",
-            "social cost"
+            "environmental sustainability",
+            "economic sustainability",
+            "trans-boundary sustainability",
+            "social sustainability"
           ],
-          "answer": "opportunity cost"
+          "answer": "trans-boundary sustainability"
         },
         {
-          "question": "In the context of environmental resources, the opportunity cost of an environmental policy is",
+          "question": "The Trinity explosion of 1945 is taken as the beginning of the",
           "options": [
-            "the value of reduced environmental damage",
-            "the value of the environmental resources in their next best use",
-            "the cost of administering and enforcing the policy",
-            "the political cost of the policy"
+            "Holocene",
+            "Cenocene",
+            "Anthropocene",
+            "Eocene"
           ],
-          "answer": "the value of the environmental resources in their next best use"
+          "answer": "Anthropocene"
+        }, 
+        {
+          "question": "According to Malthusian model,",
+          "options": [
+            "Population grows in geometric progression, food supply increases in geometric progression",
+            "Population grows in arithmetic progression, food supply increases in arithmetic progression",
+            "Population grows in arithmetic progression, food supply increases in geometric progression",
+            "Population grows in geometric progression, food supply increases in arithmetic progression"
+          ],
+          "answer": "Population grows in geometric progression, food supply increases in arithmetic progression"
         },
         {
-          "question": "The additional cost incurred when an additional unit of a good is produced is known as",
+          "question": "The demographic transition sees a society move from",
           "options": [
-            "average cost",
-            "marginal cost",
-            "private cost",
-            "social cost"
+            "high birth rate, low death rate to low birth rate, high death rate",
+            "low birth rate, high death rate to low birth rate, low death rate",
+            "high birth rate, high death rate to low birth rate, low death rate",
+            "high birth rate, high death rate to low birth rate, high death rate"
           ],
-          "answer": "marginal cost"
+          "answer": "high birth rate, high death rate to low birth rate, low death rate"
+        }, 
+        {
+          "question": "Which of these is a pillar of sustainability",
+          "options": [
+            "social sustainability",
+            "industrial sustainability",
+            "agricultural sustainability",
+            "trans-boundary sustainability"
+          ],
+          "answer": "social sustainability"
         },
         {
-          "question": "The additional benefit obtained when an additional unit of a good is consumed is known as",
+          "question": "Which of these is a preventive check according to Malthus?",
           "options": [
-            "average benefit",
-            "marginal benefit",
-            "private benefit",
-            "social benefit"
+            "foresight",
+            "vice",
+            "misery",
+            "flood"
           ],
-          "answer": "marginal benefit"
+          "answer": "foresight"
+        }, 
+        {
+          "question": "The quantum of human impacts can be written as",
+          "options": [
+            "$I = P + A + T$",
+            "$I = P X A + T$",
+            "$I = P X A X T$",
+            "$I = P = A + T$"
+          ],
+          "answer": "$I = P X A X T$"
         },
         {
-          "question": "The cost of an economic activity that is borne by society as a whole is known as",
+          "question": "The book \"An Essay on the Principle of Population\" was written by",
           "options": [
-            "private cost",
-            "social cost",
-            "average cost",
-            "marginal cost"
+            "Darwin",
+            "Malthus",
+            "Spencer",
+            "Owens"
           ],
-          "answer": "social cost"
+          "answer": "Malthus"
+        }, 
+        {
+          "question": "The logistic growth equation curve is",
+          "options": [
+            "I-shaped",
+            "J-shaped",
+            "S-shaped",
+            "U-shaped"
+          ],
+          "answer": "S-shaped"
         },
         {
-          "question": "The benefit of an economic activity that accrues to society as a whole is known as",
+          "question": "Which of these is a positive check according to Malthus?",
           "options": [
-            "private benefit",
-            "social benefit",
-            "average benefit",
-            "marginal benefit"
+            "late marriage",
+            "war",
+            "celibacy",
+            "moral restraint"
           ],
-          "answer": "social benefit"
-        },
-        {
-          "question": "When there is no externality, which of the following is true?",
-          "options": [
-            "private cost = social cost and private benefit = social benefit",
-            "private cost < social cost and private benefit < social benefit",
-            "private cost > social cost and private benefit > social benefit",
-            "private cost = social benefit and private benefit = social cost"
-          ],
-          "answer": "private cost = social cost and private benefit = social benefit"
-        },
-        {
-          "question": "When there is a negative externality, which of the following is true?",
-          "options": [
-            "private cost = social cost and private benefit = social benefit",
-            "private cost < social cost and private benefit < social benefit",
-            "private cost > social cost and private benefit < social benefit",
-            "private cost = social benefit and private benefit = social cost"
-          ],
-          "answer": "private cost < social cost and private benefit > social benefit"
-        },
-        {
-          "question": "When there is a positive externality, which of the following is true?",
-          "options": [
-            "private cost = social cost and private benefit = social benefit",
-            "private cost < social cost and private benefit < social benefit",
-            "private cost > social cost and private benefit > social benefit",
-            "private cost = social benefit and private benefit = social cost"
-          ],
-          "answer": "private cost > social cost and private benefit < social benefit"
-        },
-        {
-          "question": "In the context of environmental pollution, the social cost of pollution is",
-          "options": [
-            "the cost of cleaning up the pollution",
-            "the cost of health damages due to pollution",
-            "the cost of reduced agricultural productivity due to pollution",
-            "all of the above"
-          ],
-          "answer": "all of the above"
+          "answer": "war"
         }
       ]
     },
@@ -4396,209 +4396,210 @@ export const conservationEconomicsJSON = {
       "name": "3",
       "questions": [
         {
-          "question": "Which of the following is a public good?",
+          "question": "_______ is used to identify which potential impacts are relevant to assess. (Fill in the blank)",
           "options": [
-            "a car",
-            "a road",
-            "a public park",
-            "education"
+            "screening",
+            "scoping",
+            "reporting",
+            "review"
           ],
-          "answer": "a public park"
+          "answer": "scoping"
         },
         {
-          "question": "Which of the following is not a public good?",
+          "question": "\"the potential or capacity of a material to have adverse effects on living organisms\" is",
           "options": [
-            "national defense",
-            "clean air",
-            "a lighthouse",
-            "a toll road"
+            "vulnerability",
+            "susceptibility",
+            "sustainability",
+            "toxicity"
           ],
-          "answer": "a toll road"
+          "answer": "toxicity"
+        }, 
+        {
+          "question": "A deciduous forest in Madhya Pradesh was converted to a mine. After the mining operations were over, the pits were filled up with soil and ________ species of deciduous forest planted again. This is an example of",
+          "options": [
+            "recovery",
+            "restoration",
+            "enhancement",
+            "replacement"
+          ],
+          "answer": "restoration"
         },
         {
-          "question": "Which of the following is a characteristic of a public good?",
+          "question": "Hydrocarbons derived from incomplete burning of mineral oils are",
           "options": [
-            "excludability",
-            "rivalry",
-            "non-excludability",
-            "all of the above"
+            "petrogenic hydrocarbons",
+            "pyrogenic hydrocarbons",
+            "biogenic hydrocarbons",
+            "chemoenic hydrocarbons"
           ],
-          "answer": "non-excludability"
+          "answer": "pyrogenic hydrocarbons"
         },
         {
-          "question": "Which of the following is not a characteristic of a public good?",
+          "question": "A deciduous forest in Madhya Pradesh was converted to a mine. After the mining operations were over, the pits were filled up with water and a ________ lake was created. It is now visited by several migratory birds. This is an example of",
           "options": [
-            "non-rivalry",
-            "non-excludability",
-            "free rider problem",
-            "high private benefit"
+            "recovery",
+            "restoration",
+            "enhancement",
+            "replacement"
           ],
-          "answer": "high private benefit"
+          "answer": "replacement"
         },
         {
-          "question": "The problem that arises when people can enjoy the benefits of a good without paying for it is known as",
+          "question": "\"the relative effect of exposure\" is",
           "options": [
-            "tragedy of the commons",
-            "free rider problem",
-            "externality",
-            "market failure"
+            "vulnerability",
+            "sensitivity",
+            "sustainability",
+            "toxicity"
           ],
-          "answer": "free rider problem"
+          "answer": "sensitivity"
         },
         {
-          "question": "The tragedy of the commons arises due to",
+          "question": "_______ determines which projects or developments require a full or partial impact assessment study. (Fill in the blank)",
           "options": [
-            "public goods",
-            "private goods",
-            "common property resources",
-            "club goods"
+            "screening",
+            "scoping",
+            "reporting",
+            "review"
           ],
-          "answer": "common property resources"
+          "answer": "screening"
         },
         {
-          "question": "Which of the following is an example of a common property resource?",
+          "question": "\"the extent to which a chemical is available for uptake into an organism\" is",
           "options": [
-            "a car",
-            "a house",
-            "a forest",
-            "a private garden"
+            "bioavailability",
+            "bioaccumulation",
+            "biomagnification",
+            "bioresponse"
           ],
-          "answer": "a forest"
+          "answer": "bioavailability"
         },
         {
-          "question": "Which of the following is not an example of a common property resource?",
+          "question": "Hydrocarbons derived from biological processes acting on mineral oils are",
           "options": [
-            "a fishery",
-            "groundwater",
-            "clean air",
-            "a private swimming pool"
+            "petrogenic hydrocarbons",
+            "pyrogenic hydrocarbons",
+            "biogenic hydrocarbons",
+            "chemoenic hydrocarbons"
           ],
-          "answer": "a private swimming pool"
+          "answer": "biogenic hydrocarbons"
         },
         {
-          "question": "The optimal level of pollution is",
+          "question": "\"Any changes in natural or human systems that inadvertently increase vulnerability to climatic stimuli; an adaptation that does not succeed in reducing vulnerability but increases it instead\" is a definition for",
           "options": [
-            "zero",
-            "the level where marginal social cost of pollution is equal to marginal social benefit of pollution",
-            "the level where marginal private cost of pollution is equal to marginal private benefit of pollution",
-            "the level where total social cost of pollution is minimized"
+            "adaptation",
+            "mitigation",
+            "maladaptation",
+            "malmitigation"
           ],
-          "answer": "the level where marginal social cost of pollution is equal to marginal social benefit of pollution"
-        },
-        {
-          "question": "At the optimal level of pollution,",
-          "options": [
-            "the marginal social cost of pollution is zero",
-            "the marginal social benefit of pollution is zero",
-            "the total social cost of pollution is zero",
-            "the net social benefit of pollution is maximized"
-          ],
-          "answer": "the net social benefit of pollution is maximized"
+          "answer": "maladaptation"
         }
       ]
     },
     {
       "name": "4",
       "questions": [
+       
         {
-          "question": "Which of the following is a method of valuing environmental resources?",
+          "question": "Which of these is a deterministic factor?",
           "options": [
-            "market price method",
-            "replacement cost method",
-            "contingent valuation method",
-            "all of the above"
+            "environmental variation",
+            "forest fire",
+            "death rate",
+            "diseases"
           ],
-          "answer": "all of the above"
+          "answer": "death rate"
         },
         {
-          "question": "The method of valuing environmental resources that uses the market price of a substitute good is known as",
+          "question": "I tried growing vegetables under my teak plantation, but the vegetable plants died out. I should be concerned about",
           "options": [
-            "travel cost method",
-            "hedonic pricing method",
-            "replacement cost method",
-            "contingent valuation method"
+            "autophagy",
+            "allelophagy",
+            "autopathy",
+            "allelopathy"
           ],
-          "answer": "replacement cost method"
+          "answer": "allelopathy"
         },
         {
-          "question": "The method of valuing environmental resources that uses the cost of traveling to a site as a proxy for the value of the site is known as",
+          "question": "The movement of lions across the Gir landscape is an example of",
           "options": [
-            "travel cost method",
-            "hedonic pricing method",
-            "replacement cost method",
-            "contingent valuation method"
+            "diffusion",
+            "secular dispersal",
+            "jump dispersal",
+            "drifting"
           ],
-          "answer": "travel cost method"
+          "answer": "diffusion"
+        }, 
+        {
+          "question": "\"The geographical distribution of a species will be controlled by that environmental factor for which the organism has the narrowest range of tolerance.\" This is the statement for",
+          "options": [
+            "Liebig's law of the minimum",
+            "Liebig's law of the maximum",
+            "Shelford's law of tolerance",
+            "Shelford's law of intolerance"
+          ],
+          "answer": "Shelford's law of tolerance"
         },
         {
-          "question": "The method of valuing environmental resources that uses the price of a related market good to infer the value of the environmental resource is known as",
+          "question": "The regular, seasonal movement of animals, often along fixed routes is called",
           "options": [
-            "travel cost method",
-            "hedonic pricing method",
-            "replacement cost method",
-            "contingent valuation method"
+            "translocation",
+            "migration",
+            "dispersal",
+            "drifting"
           ],
-          "answer": "hedonic pricing method"
+          "answer": "migration"
         },
         {
-          "question": "The method of valuing environmental resources that uses surveys to elicit people's willingness to pay for the resource is known as",
+          "question": "Which of these is a stochastic factor?",
           "options": [
-            "travel cost method",
-            "hedonic pricing method",
-            "replacement cost method",
-            "contingent valuation method"
+            "birth rate",
+            "death rate",
+            "population structure",
+            "environmental fluctuation"
           ],
-          "answer": "contingent valuation method"
+          "answer": "environmental fluctuation"
         },
         {
-          "question": "Which of the following is a limitation of the market price method of valuing environmental resources?",
+          "question": "The movement of individuals away from their place of birth or hatching or seed production into a new habitat or area to survive and reproduce is called",
           "options": [
-            "it can only be used to value resources that are traded in markets",
-            "it does not capture the non-use values of environmental resources",
-            "it is sensitive to market distortions",
-            "all of the above"
+            "translocation",
+            "migration",
+            "dispersal",
+            "drifting"
           ],
-          "answer": "all of the above"
+          "answer": "dispersal"
         },
         {
-          "question": "Which of the following is a limitation of the replacement cost method of valuing environmental resources?",
+          "question": "Scarcity of food is a",
           "options": [
-            "it may overestimate the value of the environmental resource",
-            "it does not capture the non-use values of environmental resources",
-            "it is difficult to find suitable substitute goods",
-            "all of the above"
+            "chemical factor",
+            "demographic factor",
+            "push factor",
+            "pull factor"
           ],
-          "answer": "all of the above"
+          "answer": "push factor"
         },
         {
-          "question": "Which of the following is a limitation of the travel cost method of valuing environmental resources?",
+          "question": "Which of these correctly represents the process of habitat fragmentation and loss?",
           "options": [
-            "it can only be used to value recreational sites",
-            "it does not capture the non-use values of environmental resources",
-            "it is sensitive to the choice of the functional form of the travel cost function",
-            "all of the above"
+            "Original forest → Dissection → Perforation → Fragmentation → Attrition",
+            "Original forest → Dissection → Attrition → Fragmentation → Perforation",
+            "Original forest → Dissection → Perforation → Attrition → Fragmentation",
+            "Original forest → Dissection → Fragmentation → Perforation → Attrition"
           ],
-          "answer": "all of the above"
-        },
+          "answer": "Original forest → Dissection → Perforation → Fragmentation → Attrition"
+        }, 
         {
-          "question": "Which of the following is a limitation of the hedonic pricing method of valuing environmental resources?",
+          "question": "A root zone treatment plant is an example of",
           "options": [
-            "it can only be used to value resources that are related to market goods",
-            "it does not capture the non-use values of environmental resources",
-            "it is sensitive to the choice of the functional form of the hedonic price function",
-            "all of the above"
+            "phytoremediation",
+            "biological control",
+            "biomagnification",
+            "bioaccumulation"
           ],
-          "answer": "all of the above"
-        },
-        {
-          "question": "Which of the following is a limitation of the contingent valuation method of valuing environmental resources?",
-          "options": [
-            "it is hypothetical",
-            "it is sensitive to the design of the survey",
-            "it may be subject to strategic bias",
-            "all of the above"
-          ],
-          "answer": "all of the above"
+          "answer": "phytoremediation"
         }
       ]
     },
@@ -4606,104 +4607,104 @@ export const conservationEconomicsJSON = {
       "name": "5",
       "questions": [
         {
-          "question": "biologically productive land and water available to provide the resources a population consumes and to absorb its wastes",
+          "question": "\"a measure of the responsiveness of quantity demanded or quantity supplied to a change in one of its determinants\" is",
           "options": [
-            "ecological footprint",
-            "biocapacity",
-            "carbon footprint",
-            "water footprint"
+            "elasticity",
+            "responsivity",
+            "demand-supply equilibrium",
+            "pricing"
           ],
-          "answer": "biocapacity"
+          "answer": "elasticity"
         },
         {
-          "question": "If the ecological footprint of a population is equal to its biocapacity, it means that",
+          "question": "\"the ability to produce a good using fewer inputs than another producer\" is",
           "options": [
-            "the population is living within its means",
-            "the population is living beyond its means",
-            "the population is using renewable resources sustainably",
-            "the population is not generating any waste"
+            "comparative advantage",
+            "absolute advantage",
+            "production advantage",
+            "resource advantage"
           ],
-          "answer": "the population is living within its means"
+          "answer": "absolute advantage"
+        }, 
+        {
+          "question": "Common resource goods are",
+          "options": [
+            "excludable, rival in consumption",
+            "non-excludable, rival in consumption",
+            "excludable, non-rival in consumption",
+            "non-excludable, non-rival in consumption"
+          ],
+          "answer": "non-excludable, rival in consumption"
         },
         {
-          "question": "If the ecological footprint of a population is less than its biocapacity, it means that",
+          "question": "\"If private parties can bargain without cost over the allocation of resources, they can solve the problem of externalities on their own.\" This is a statement for",
           "options": [
-            "the population is living within its means",
-            "the population is living beyond its means",
-            "the population is using renewable resources unsustainably",
-            "the population has an ecological surplus"
+            "Allocation theorem",
+            "Phillips theorem",
+            "Coase theorem",
+            "Nash theorem"
           ],
-          "answer": "the population has an ecological surplus"
+          "answer": "Coase theorem"
+        }, 
+        {
+          "question": "Development that meets the needs of the present without compromising the ability of future generations to meet their own needs is known as",
+          "options": [
+            "Good development",
+            "Sustainable development",
+            "Futuristic development",
+            "Gandhian development"
+          ],
+          "answer": "Sustainable development"
         },
         {
-          "question": "Which of the following is a way to reduce ecological footprint?",
+          "question": "Club goods are",
           "options": [
-            "consuming more resources",
-            "generating more waste",
-            "using renewable resources more efficiently",
-            "increasing the size of the population"
+            "excludable, rival in consumption",
+            "non-excludable, rival in consumption",
+            "excludable, non-rival in consumption",
+            "non-excludable, non-rival in consumption"
           ],
-          "answer": "using renewable resources more efficiently"
+          "answer": "excludable, non-rival in consumption"
         },
         {
-          "question": "Which of the following is not a way to reduce ecological footprint?",
+          "question": "Which of these is not a method of internalisation of externalities?",
           "options": [
-            "reducing consumption",
-            "reducing waste generation",
-            "using non-renewable resources more efficiently",
-            "increasing the efficiency of resource use"
+            "tradable pollution permits",
+            "charities to social causes",
+            "command-and-control policies",
+            "free market"
           ],
-          "answer": "using non-renewable resources more efficiently"
+          "answer": "free market"
         },
         {
-          "question": "The concept of natural capital was developed by",
+          "question": "Private goods are",
           "options": [
-            "Garrett Hardin",
-            "Herman Daly",
-            "William Rees and Mathis Wackernagel",
-            "Paul Ehrlich"
+            "excludable, rival in consumption",
+            "non-excludable, rival in consumption",
+            "excludable, non-rival in consumption",
+            "non-excludable, non-rival in consumption"
           ],
-          "answer": "Herman Daly"
+          "answer": "excludable, rival in consumption"
         },
         {
-          "question": "Natural capital is defined as",
+          "question": "\"a simplified description, especially a mathematical one, of a system or process, to assist calculations and predictions\" is the definition of a / an",
           "options": [
-            "the stock of natural ecosystems that provide a flow of valuable ecosystem services into the future",
-            "the total value of the world's ecosystems",
-            "the amount of money required to replace the ecosystem services provided by nature",
-            "the impact of human activities on the environment"
+            "equation",
+            "model",
+            "philosophy",
+            "process dynamics"
           ],
-          "answer": "the stock of natural ecosystems that provide a flow of valuable ecosystem services into the future"
-        },
+          "answer": "model"
+        }, 
         {
-          "question": "Which of the following is an example of natural capital?",
+          "question": "\"the impact of one person's actions on the well-being of a bystander\" is",
           "options": [
-            "a forest",
-            "a fish stock",
-            "clean air",
-            "all of the above"
+            "actor-observer effect",
+            "externality",
+            "internality",
+            "benefits principle"
           ],
-          "answer": "all of the above"
-        },
-        {
-          "question": "Which of the following is not an example of natural capital?",
-          "options": [
-            "fossil fuels",
-            "minerals",
-            "timber",
-            "water"
-          ],
-          "answer": "timber"
-        },
-        {
-          "question": "Ecosystem services are",
-          "options": [
-            "the benefits people obtain from ecosystems",
-            "the costs of maintaining ecosystems",
-            "the impact of human activities on ecosystems",
-            "the amount of money required to replace ecosystem services"
-          ],
-          "answer": "the benefits people obtain from ecosystems"
+          "answer": "externality"
         }
       ]
     },
@@ -4711,104 +4712,104 @@ export const conservationEconomicsJSON = {
       "name": "6",
       "questions": [
         {
-          "question": "Which of the following is a provisioning service?",
+          "question": "\"the claim that, other things being equal, the quantity demanded of a good falls when the price of the good rises\" is a statement of",
           "options": [
-            "food",
-            "freshwater",
-            "fuelwood",
-            "all of the above"
+            "law of demand",
+            "law of supply",
+            "law of quantity demanded",
+            "law of quantity supplied"
           ],
-          "answer": "all of the above"
+          "answer": "law of demand"
         },
         {
-          "question": "Which of the following is not a provisioning service?",
+          "question": "\"a legal maximum on the price at which a good can be sold\" is",
           "options": [
-            "timber",
-            "fiber",
-            "genetic resources",
-            "climate regulation"
+            "price ceiling",
+            "price floor",
+            "selling ceiling",
+            "selling floor"
           ],
-          "answer": "climate regulation"
+          "answer": "price ceiling"
         },
         {
-          "question": "Which of the following is a regulating service?",
+          "question": "\"a good for which, other things being equal, an increase in income leads to a decrease in demand\" is",
           "options": [
-            "climate regulation",
-            "water purification",
-            "pollination",
-            "all of the above"
+            "normal good",
+            "inferior good",
+            "Giffen good",
+            "common good"
           ],
-          "answer": "all of the above"
+          "answer": "inferior good"
         },
         {
-          "question": "Which of the following is not a regulating service?",
+          "question": "\"a table that shows the relationship between the price of a good and the quantity supplied\" is",
           "options": [
-            "disease regulation",
-            "flood regulation",
-            "nutrient cycling",
-            "food"
+            "demand table",
+            "demand schedule",
+            "supply table",
+            "supply schedule"
           ],
-          "answer": "food"
+          "answer": "supply schedule"
+        }, 
+        {
+          "question": "\"a graph of the relationship between the price of a good and the quantity demanded\" is",
+          "options": [
+            "demand curve",
+            "supply curve",
+            "Laffer's curve",
+            "Phillips curve"
+          ],
+          "answer": "demand curve"
         },
         {
-          "question": "Which of the following is a supporting service?",
+          "question": "\"a table that shows the relationship between the price of a good and the quantity demanded\" is",
           "options": [
-            "soil formation",
-            "photosynthesis",
-            "nutrient cycling",
-            "all of the above"
+            "demand table",
+            "demand schedule",
+            "supply table",
+            "supply schedule"
           ],
-          "answer": "all of the above"
+          "answer": "demand schedule"
         },
         {
-          "question": "Which of the following is not a supporting service?",
+          "question": "\"a measure of how much the quantity demanded of one good responds to a change in the price of another good, computed as the percentage change in quantity demanded of the first good divided by the percentage change in price of the second good\" is",
           "options": [
-            "primary production",
-            "water cycling",
-            "habitat provision",
-            "freshwater"
+            "income elasticity of demand",
+            "cross-price elasticity of demand",
+            "price elasticity of supply",
+            "price elasticity of demand"
           ],
-          "answer": "freshwater"
+          "answer": "cross-price elasticity of demand"
         },
         {
-          "question": "Which of the following is a cultural service?",
+          "question": "Rice and wheat are",
           "options": [
-            "recreation",
-            "ecotourism",
-            "spiritual and religious values",
-            "all of the above"
+            "substitutes",
+            "complements",
+            "club goods",
+            "public goods"
           ],
-          "answer": "all of the above"
+          "answer": "substitutes"
         },
         {
-          "question": "Which of the following is not a cultural service?",
+          "question": "\"a good for which, other things being equal, an increase in income leads to an increase in demand\" is",
           "options": [
-            "aesthetic values",
-            "educational values",
-            "sense of place",
-            "pollination"
+            "normal good",
+            "inferior good",
+            "Giffen good",
+            "common good"
           ],
-          "answer": "pollination"
+          "answer": "normal good"
         },
         {
-          "question": "The economic value of ecosystem services is",
+          "question": "\"a measure of how much the quantity demanded of a good responds to a change in the price of that good, computed as the percentage change in quantity demanded divided by the percentage change in price\" is",
           "options": [
-            "zero",
-            "positive",
-            "negative",
-            "unknown"
+            "price elasticity of demand",
+            "income elasticity of demand",
+            "cross-price elasticity of demand",
+            "price elasticity of supply"
           ],
-          "answer": "positive"
-        },
-        {
-          "question": "The total economic value of an ecosystem is",
-          "options": [
-            "the sum of its provisioning, regulating, supporting, and cultural services",
-            "the value of its most important service",
-            "the value of its least important service",
-            "zero"
-          ],
-          "answer": "the sum of its provisioning, regulating, supporting, and cultural services"
+          "answer": "price elasticity of demand"
         }
       ]
     },
@@ -4816,104 +4817,104 @@ export const conservationEconomicsJSON = {
       "name": "7",
       "questions": [
         {
-          "question": "Payment for ecosystem services (PES) is a",
+          "question": "\"the price of a good that prevails in the world market for that good\" is the definition of",
           "options": [
-            "market-based approach to conservation",
-            "regulatory approach to conservation",
-            "voluntary approach to conservation",
-            "community-based approach to conservation"
+            "export price",
+            "import price",
+            "world price",
+            "domestic price"
           ],
-          "answer": "market-based approach to conservation"
+          "answer": "world price"
         },
         {
-          "question": "Under PES schemes, who are the buyers of ecosystem services?",
+          "question": "The area between the demand curve and the price is an indicator of",
           "options": [
-            "those who provide the ecosystem services",
-            "those who benefit from the ecosystem services",
-            "the government",
-            "non-governmental organizations"
+            "consumer surplus",
+            "producer surplus",
+            "total surplus",
+            "deadweight loss"
           ],
-          "answer": "those who benefit from the ecosystem services"
+          "answer": "consumer surplus"
         },
         {
-          "question": "Under PES schemes, who are the sellers of ecosystem services?",
+          "question": "\"the amount a buyer is willing to pay for a good minus the amount the buyer actually pays for it\" is",
           "options": [
-            "those who provide the ecosystem services",
-            "those who benefit from the ecosystem services",
-            "the government",
-            "non-governmental organizations"
+            "consumer surplus",
+            "producer surplus",
+            "total surplus",
+            "deadweight loss"
           ],
-          "answer": "those who provide the ecosystem services"
+          "answer": "consumer surplus"
         },
         {
-          "question": "Which of the following is not a type of PES scheme?",
+          "question": "\"the amount a seller is paid for a good minus the seller's cost of providing it\" is",
           "options": [
-            "watershed services",
-            "carbon sequestration",
-            "biodiversity conservation",
-            "ecotourism"
+            "consumer surplus",
+            "producer surplus",
+            "total surplus",
+            "deadweight loss"
           ],
-          "answer": "ecotourism"
+          "answer": "producer surplus"
+        }, 
+        {
+          "question": "Value to buyers - Cost to sellers is",
+          "options": [
+            "consumer surplus",
+            "producer surplus",
+            "total surplus",
+            "deadweight loss"
+          ],
+          "answer": "total surplus"
         },
         {
-          "question": "Which of the following is a benefit of PES schemes?",
+          "question": "\"the fall in total surplus that results from a market distortion, such as a tax\" is",
           "options": [
-            "they can provide a sustainable source of funding for conservation",
-            "they can create incentives for land managers to provide ecosystem services",
-            "they can improve the livelihoods of local communities",
-            "all of the above"
+            "consumer surplus",
+            "producer surplus",
+            "total surplus",
+            "deadweight loss"
           ],
-          "answer": "all of the above"
+          "answer": "deadweight loss"
         },
         {
-          "question": "Which of the following is a challenge of PES schemes?",
+          "question": "Laffer's curve is the relationship between",
           "options": [
-            "they can be difficult to design and implement",
-            "they may not be effective in all contexts",
-            "they may lead to inequitable outcomes",
-            "all of the above"
+            "inflation and unemployment",
+            "tax size and tax revenue",
+            "producer surplus and consumer surplus",
+            "tax size and deadweight loss"
           ],
-          "answer": "all of the above"
+          "answer": "tax size and tax revenue"
         },
         {
-          "question": "The success of PES schemes depends on",
+          "question": "Imposition of tariff",
           "options": [
-            "clear definition of property rights",
-            "effective monitoring and enforcement",
-            "participation of local communities",
-            "all of the above"
+            "increases producer surplus and government revenue",
+            "increases consumer surplus and government revenue",
+            "increases producer surplus, consumer surplus and government revenue",
+            "increases total surplus"
           ],
-          "answer": "all of the above"
+          "answer": "increases producer surplus and government revenue"
+        }, 
+        {
+          "question": "\"the maximum amount that a buyer will pay for a good\" is",
+          "options": [
+            "willingness to pay",
+            "market demand",
+            "demand curve",
+            "buyer's surplus"
+          ],
+          "answer": "willingness to pay"
         },
         {
-          "question": "Which of the following is an example of a successful PES scheme?",
+          "question": "The area between the supply curve and the price is an indicator of",
           "options": [
-            "the Payment for Watershed Services Program in Costa Rica",
-            "the Chicago Climate Exchange",
-            "the Conservation Reserve Program in the United States",
-            "all of the above"
+            "consumer surplus",
+            "producer surplus",
+            "total surplus",
+            "deadweight loss"
           ],
-          "answer": "the Payment for Watershed Services Program in Costa Rica"
-        },
-        {
-          "question": "Which of the following is not an example of a successful PES scheme?",
-          "options": [
-            "the Katoomba Ecosystem Services Incubator",
-            "the New York City Watershed Agreement",
-            "the European Union Emissions Trading Scheme",
-            "the Clean Development Mechanism"
-          ],
-          "answer": "the European Union Emissions Trading Scheme"
-        },
-        {
-          "question": "PES schemes are most likely to be successful when",
-          "options": [
-            "the ecosystem services are clearly defined and measurable",
-            "there are willing buyers and sellers of the ecosystem services",
-            "there is a strong institutional framework to support the scheme",
-            "all of the above"
-          ],
-          "answer": "all of the above"
+          "answer": "producer surplus"
         }
       ]
     },
@@ -4921,104 +4922,104 @@ export const conservationEconomicsJSON = {
       "name": "8",
       "questions": [
         {
-          "question": "Ecotourism is defined as",
+          "question": "For a positive consumption externality,",
           "options": [
-            "responsible travel to natural areas that conserves the environment and improves the well-being of local people",
-            "travel to natural areas for recreational purposes",
-            "travel to natural areas for scientific research",
-            "travel to natural areas for adventure activities"
+            "SMB = PMB",
+            "SMB = PMB - MD",
+            "SMB = PMB + MB",
+            "SMC = PMC / MD"
           ],
-          "answer": "responsible travel to natural areas that conserves the environment and improves the well-being of local people"
+          "answer": "SMB = PMB + MB"
         },
         {
-          "question": "Which of the following is a principle of ecotourism?",
+          "question": "For a positive production externality,",
           "options": [
-            "minimize impact",
-            "build environmental and cultural awareness and respect",
-            "provide positive experiences for both visitors and hosts",
-            "all of the above"
+            "SMB = PMB",
+            "SMB = PMB - MD",
+            "SMB = PMB + MB",
+            "SMC = PMC / MD"
           ],
-          "answer": "all of the above"
+          "answer": "SMB = PMB"
         },
         {
-          "question": "Which of the following is not a principle of ecotourism?",
+          "question": "\"The direct cost to producers of producing an additional unit of a good\" is",
           "options": [
-            "maximize profits",
-            "support local conservation efforts",
-            "promote cultural exchange",
-            "respect local culture"
+            "private marginal cost (PMC)",
+            "social marginal cost (SMC)",
+            "private marginal benefit (PMB)",
+            "social marginal benefit (SMB)"
           ],
-          "answer": "maximize profits"
+          "answer": "private marginal cost (PMC)"
         },
         {
-          "question": "The benefits of ecotourism include",
+          "question": "For a negative production externality,",
           "options": [
-            "conservation of natural areas",
-            "economic benefits for local communities",
-            "increased environmental awareness",
-            "all of the above"
+            "SMC = PMC + MD",
+            "SMC = PMC - MD",
+            "SMC = PMC",
+            "SMC = PMC - MB"
           ],
-          "answer": "all of the above"
+          "answer": "SMC = PMC + MD"
+        }, 
+        {
+          "question": "\"The private marginal cost to producers plus any costs associated with the production of the good that are imposed on others\" is",
+          "options": [
+            "private marginal cost (PMC)",
+            "social marginal cost (SMC)",
+            "private marginal benefit (PMB)",
+            "social marginal benefit (SMB)"
+          ],
+          "answer": "social marginal cost (SMC)"
         },
         {
-          "question": "The challenges of ecotourism include",
+          "question": "Partying with loud noise is an example of",
           "options": [
-            "environmental damage",
-            "cultural commodification",
-            "unequal distribution of benefits",
-            "all of the above"
+            "negative production externality",
+            "positive production externality",
+            "negative consumption externality",
+            "positive consumption externality"
           ],
-          "answer": "all of the above"
+          "answer": "negative consumption externality"
         },
         {
-          "question": "Ecotourism is most likely to be successful when",
+          "question": "\"When an individual's consumption increases the well-being of others, but the individual is not compensated by those others,\" we have",
           "options": [
-            "it is well-managed",
-            "it involves local communities",
-            "it is sustainable",
-            "all of the above"
+            "negative production externality",
+            "positive production externality",
+            "negative consumption externality",
+            "positive consumption externality"
           ],
-          "answer": "all of the above"
+          "answer": "positive consumption externality"
         },
         {
-          "question": "Which of the following is an example of successful ecotourism?",
+          "question": "\"When a firm's production increases the well-being of others but the firm is not compensated by those others,\" we have",
           "options": [
-            "ecotourism in Costa Rica",
-            "ecotourism in Kenya",
-            "ecotourism in Nepal",
-            "all of the above"
+            "negative production externality",
+            "positive production externality",
+            "negative consumption externality",
+            "positive consumption externality"
           ],
-          "answer": "all of the above"
+          "answer": "positive production externality"
+        }, 
+        {
+          "question": "\"When an individual's consumption reduces the well-being of others who are not compensated by the individual,\" we have",
+          "options": [
+            "negative production externality",
+            "positive production externality",
+            "negative consumption externality",
+            "positive consumption externality"
+          ],
+          "answer": "negative consumption externality"
         },
         {
-          "question": "Which of the following is not an example of successful ecotourism?",
+          "question": "For a negative consumption externality,",
           "options": [
-            "mass tourism in the Caribbean",
-            "community-based tourism in the Amazon",
-            "wildlife tourism in Botswana",
-            "cultural tourism in Bhutan"
+            "SMB = PMB",
+            "SMB = PMB - MD",
+            "SMB = PMB + MB",
+            "SMC = PMC / MD"
           ],
-          "answer": "mass tourism in the Caribbean"
-        },
-        {
-          "question": "The key to sustainable ecotourism is",
-          "options": [
-            "minimizing negative impacts and maximizing positive impacts",
-            "attracting large numbers of tourists",
-            "generating quick profits",
-            "ignoring local culture and traditions"
-          ],
-          "answer": "minimizing negative impacts and maximizing positive impacts"
-        },
-        {
-          "question": "Ecotourism can contribute to conservation by",
-          "options": [
-            "providing economic incentives for conservation",
-            "raising awareness about the importance of conservation",
-            "supporting local conservation initiatives",
-            "all of the above"
-          ],
-          "answer": "all of the above"
+          "answer": "SMB = PMB - MD"
         }
       ]
     },
@@ -5026,104 +5027,104 @@ export const conservationEconomicsJSON = {
       "name": "9",
       "questions": [
         {
-          "question": "a market structure in which many firms sell products that are similar but not identical",
+          "question": "\"costs that have already been committed and cannot be recovered\" are",
           "options": [
-            "monopoly",
+            "fixed costs",
+            "variable costs",
+            "marginal costs",
+            "sunk costs"
+          ],
+          "answer": "sunk costs"
+        },
+        {
+          "question": "\"total revenue minus total cost, including both explicit and implicit costs\" is a definition of",
+          "options": [
+            "economic profit",
+            "accounting profit",
+            "profit",
+            "loss"
+          ],
+          "answer": "economic profit"
+        },
+        {
+          "question": "\"the increase in total cost that arises from an extra unit of production\" are",
+          "options": [
+            "fixed costs",
+            "variable costs",
+            "marginal costs",
+            "sunk costs"
+          ],
+          "answer": "marginal costs"
+        },
+        {
+          "question": "A monopolist firm's profit is given by",
+          "options": [
+            "(Price - ATC) × Q",
+            "(Price - Q) × ATC",
+            "(ATC - Q) × Price",
+            "Price × Q - ATC"
+          ],
+          "answer": "(Price - ATC) × Q"
+        }, 
+        {
+          "question": "Which of the following is true for a competitive firm?",
+          "options": [
+            "P > MR",
+            "P > MC",
+            "MR > MC",
+            "MR = MC"
+          ],
+          "answer": "MR = MC"
+        },
+        {
+          "question": "\"the amount a firm receives for the sale of its output\" is a definition of",
+          "options": [
+            "total revenue",
+            "total cost",
+            "profit",
+            "loss"
+          ],
+          "answer": "total revenue"
+        },
+        {
+          "question": "When the cost of production for a single firm is much lesser than the cost of production for competitive firms, we have a / an",
+          "options": [
+            "natural monopoly",
+            "artificial monopoly",
             "oligopoly",
-            "perfect competition",
-            "monopolistic competition"
+            "duopoly"
           ],
-          "answer": "monopolistic competition"
+          "answer": "natural monopoly"
         },
         {
-          "question": "a market structure in which only a few sellers offer similar or identical products",
+          "question": "\"costs that do not vary with the quantity of output produced\" are",
           "options": [
-            "monopoly",
-            "oligopoly",
-            "perfect competition",
-            "monopolistic competition"
+            "fixed costs",
+            "variable costs",
+            "marginal costs",
+            "sunk costs"
           ],
-          "answer": "oligopoly"
+          "answer": "fixed costs"
+        }, 
+        {
+          "question": "\"costs that vary with the quantity of output produced\" are",
+          "options": [
+            "fixed costs",
+            "variable costs",
+            "marginal costs",
+            "sunk costs"
+          ],
+          "answer": "variable costs"
         },
         {
-          "question": "a market structure in which many sellers offer identical products",
+          "question": "\"the increase in output that arises from an additional unit of input\" is",
           "options": [
-            "monopoly",
-            "oligopoly",
-            "perfect competition",
-            "monopolistic competition"
+            "marginal product",
+            "marginal profit",
+            "marginal loss",
+            "marginal cost"
           ],
-          "answer": "perfect competition"
-        },
-        {
-          "question": "a market structure in which one seller sells a unique product",
-          "options": [
-            "monopoly",
-            "oligopoly",
-            "perfect competition",
-            "monopolistic competition"
-          ],
-          "answer": "monopoly"
-        },
-        {
-          "question": "the study of how firms make decisions in strategic situations",
-          "options": [
-            "game theory",
-            "decision theory",
-            "linear programming",
-            "econometrics"
-          ],
-          "answer": "game theory"
-        },
-        {
-          "question": "the percentage of total output supplied in the market by the four largest firms",
-          "options": [
-            "concentration ratio",
-            "market share",
-            "Herfindahl-Hirschman Index",
-            "Lerner Index"
-          ],
-          "answer": "concentration ratio"
-        },
-        {
-          "question": "an agreement among firms in a market about quantities to produce or prices to charge",
-          "options": [
-            "collusion",
-            "cartel",
-            "tacit collusion",
-            "all of the above"
-          ],
-          "answer": "all of the above"
-        },
-        {
-          "question": "which of the following is not a characteristic of oligopoly?",
-          "options": [
-            "few sellers",
-            "similar or identical products",
-            "barriers to entry",
-            "free entry"
-          ],
-          "answer": "free entry"
-        },
-        {
-          "question": "which of the following is a characteristic of monopolistic competition?",
-          "options": [
-            "many sellers",
-            "differentiated products",
-            "free entry",
-            "all of the above"
-          ],
-          "answer": "all of the above"
-        },
-        {
-          "question": "which of the following is not a characteristic of perfect competition?",
-          "options": [
-            "many sellers",
-            "identical products",
-            "free entry",
-            "price maker"
-          ],
-          "answer": "price maker"
+          "answer": "marginal product"
         }
       ]
     },
@@ -5131,104 +5132,104 @@ export const conservationEconomicsJSON = {
       "name": "10",
       "questions": [
         {
-          "question": "the total of all workers, including the employed and the unemployed",
+          "question": "\"an absolute level of income set by the government for each family size below which a family is deemed to be in poverty\" is known as",
           "options": [
-            "employed",
-            "unemployed",
-            "labour force",
-            "not in the labour force"
+            "deprivation line",
+            "poverty line",
+            "deprivation index",
+            "poverty index"
           ],
-          "answer": "labour force"
+          "answer": "poverty line"
         },
         {
-          "question": "the number of people who are employed",
+          "question": "Absolute poverty depends",
           "options": [
-            "employed",
-            "unemployed",
-            "labour force",
-            "not in the labour force"
+            "on income but not on access to social services",
+            "not on income but on access to social services",
+            "on income and on access to social services",
+            "neither on income nor on access to social services"
           ],
-          "answer": "employed"
+          "answer": "on income and on access to social services"
         },
         {
-          "question": "the number of people who are unemployed",
+          "question": "\"the equipment and structures used to produce goods and services\" is the definition of",
           "options": [
-            "employed",
-            "unemployed",
-            "labour force",
-            "not in the labour force"
+            "tools",
+            "machinery",
+            "capital",
+            "factors of production"
           ],
-          "answer": "unemployed"
+          "answer": "capital"
         },
         {
-          "question": "people who do not have a job, are not available for work, and have not tried to find a job within the previous four weeks",
+          "question": "\"above-equilibrium wages paid by firms to increase worker productivity\" are known as",
           "options": [
-            "employed",
-            "unemployed",
-            "labour force",
-            "not in the labour force"
+            "compensating wage",
+            "efficiency wage",
+            "productivity wage",
+            "retention wage"
           ],
-          "answer": "not in the labour force"
+          "answer": "efficiency wage"
+        }, 
+        {
+          "question": "\"government policy aimed at protecting people against the risk of adverse events\" is",
+          "options": [
+            "Social protection",
+            "Social insurance",
+            "Social security",
+            "Socialism"
+          ],
+          "answer": "Social insurance"
         },
         {
-          "question": "the percentage of the labour force that is unemployed",
+          "question": "\"a difference in wages that arises to offset the non-monetary characteristics of different jobs\" is known as",
           "options": [
-            "employment rate",
-            "unemployment rate",
-            "labour force participation rate",
-            "natural rate of unemployment"
+            "differentiating differential",
+            "compensating differential",
+            "differentiating integral",
+            "compensating integral"
           ],
-          "answer": "unemployment rate"
+          "answer": "compensating differential"
         },
         {
-          "question": "the percentage of the adult population that is in the labour force",
+          "question": "For a competitive and profit-maximising firm,",
           "options": [
-            "employment rate",
-            "unemployment rate",
-            "labour force participation rate",
-            "natural rate of unemployment"
+            "each factor's rental price < the value of the marginal product for that factor",
+            "each factor's rental price = the value of the marginal product for that factor",
+            "each factor's rental price > the value of the marginal product for that factor",
+            "each factor's rental price = the value of the marginal product for that factor"
           ],
-          "answer": "labour force participation rate"
+          "answer": "each factor's rental price = the value of the marginal product for that factor"
         },
         {
-          "question": "the normal rate of unemployment around which the unemployment rate fluctuates",
+          "question": "\"a condition characterised by severe deprivation of basic human needs, including food, safe drinking water, sanitation facilities, health, shelter, education and information\" is known as",
           "options": [
-            "employment rate",
-            "unemployment rate",
-            "labour force participation rate",
-            "natural rate of unemployment"
+            "absolute poverty",
+            "relative poverty",
+            "median poverty",
+            "poverty line"
           ],
-          "answer": "natural rate of unemployment"
+          "answer": "absolute poverty"
+        }, 
+        {
+          "question": "\"a condition where a household's income is lower than the median income in the particular country\" is known as",
+          "options": [
+            "absolute poverty",
+            "relative poverty",
+            "median poverty",
+            "poverty line"
+          ],
+          "answer": "relative poverty"
         },
         {
-          "question": "which of the following is not a type of unemployment?",
+          "question": "\"the increase in the amount of output from an additional unit of labor\" is",
           "options": [
-            "frictional unemployment",
-            "structural unemployment",
-            "cyclical unemployment",
-            "natural unemployment"
+            "marginal product of labour",
+            "marginal product of input",
+            "average product of labour",
+            "average product of input"
           ],
-          "answer": "natural unemployment"
-        },
-        {
-          "question": "unemployment that results because workers search for jobs that best suit their tastes and skills",
-          "options": [
-            "frictional unemployment",
-            "structural unemployment",
-            "cyclical unemployment",
-            "natural rate of unemployment"
-          ],
-          "answer": "frictional unemployment"
-        },
-        {
-          "question": "unemployment that results because the number of jobs available in some labour markets is insufficient to provide a job for everyone who wants one",
-          "options": [
-            "frictional unemployment",
-            "structural unemployment",
-            "cyclical unemployment",
-            "natural rate of unemployment"
-          ],
-          "answer": "structural unemployment"
+          "answer": "marginal product of labour"
         }
       ]
     },
@@ -5236,104 +5237,104 @@ export const conservationEconomicsJSON = {
       "name": "11",
       "questions": [
         {
-          "question": "the study of how the allocation of resources affects economic well-being",
+          "question": "\"an action taken by an uninformed party to induce an informed party to reveal information\" is known as",
           "options": [
-            "welfare economics",
-            "positive economics",
-            "normative economics",
-            "behavioural economics"
+            "signalling",
+            "screening",
+            "informing",
+            "heuristics"
           ],
-          "answer": "welfare economics"
+          "answer": "screening"
         },
         {
-          "question": "the maximum price a buyer is willing and able to pay for a good",
+          "question": "\"the part of actual resources that can be developed profitably in the future\" are",
           "options": [
-            "willingness to pay",
-            "consumer surplus",
-            "producer surplus",
-            "total surplus"
+            "potential resources",
+            "actual resources",
+            "reserve resources",
+            "stock resources"
           ],
-          "answer": "willingness to pay"
+          "answer": "reserve resources"
         },
         {
-          "question": "the amount a buyer is willing to pay for a good minus the amount the buyer actually pays for it",
+          "question": "\"the limit on the consumption bundles that a consumer can afford\" is known as",
           "options": [
-            "willingness to pay",
-            "consumer surplus",
-            "producer surplus",
-            "total surplus"
+            "budget constraint",
+            "bundle constraint",
+            "affordability constraint",
+            "consumption constraint"
           ],
-          "answer": "consumer surplus"
+          "answer": "budget constraint"
         },
         {
-          "question": "the amount a seller is paid for a good minus the seller’s cost of providing it",
+          "question": "\"mental short cut using emotion (gut feeling) to influences the decision\" is",
           "options": [
-            "willingness to pay",
-            "consumer surplus",
-            "producer surplus",
-            "total surplus"
+            "affect heuristic",
+            "availability heuristic",
+            "effort heuristic",
+            "familiarity heuristic"
           ],
-          "answer": "producer surplus"
+          "answer": "affect heuristic"
+        }, 
+        {
+          "question": "\"those resources that are currently being used after surveying, quantification and qualification\" are",
+          "options": [
+            "potential resources",
+            "actual resources",
+            "reserve resources",
+            "stock resources"
+          ],
+          "answer": "actual resources"
         },
         {
-          "question": "the sum of consumer surplus and producer surplus",
+          "question": "\"the change in consumption that results when a price change moves the consumer along a given indifference curve to a point with a new marginal rate of substitution\" is known as",
           "options": [
-            "willingness to pay",
-            "consumer surplus",
-            "producer surplus",
-            "total surplus"
+            "income effect",
+            "substitution effect",
+            "indifference effect",
+            "budget effect"
           ],
-          "answer": "total surplus"
+          "answer": "substitution effect"
         },
         {
-          "question": "which of the following is not a way to measure economic well-being?",
+          "question": "An inferior good whose demand increases with price is called as",
           "options": [
-            "consumer surplus",
-            "producer surplus",
-            "total surplus",
-            "price elasticity of demand"
+            "Normal good",
+            "Veblen good",
+            "Giffen good",
+            "Demand good"
           ],
-          "answer": "price elasticity of demand"
+          "answer": "Giffen good"
         },
         {
-          "question": "an allocation of resources that maximizes total surplus",
+          "question": "Which of these is not a property of indifference curves?",
           "options": [
-            "efficient allocation",
-            "inefficient allocation",
-            "market equilibrium",
-            "social optimum"
+            "Higher indifference curves are preferred to lower ones",
+            "Indifference curves are downward-sloping",
+            "Indifference curves cross at right angles",
+            "Indifference curves are bowed inwards"
           ],
-          "answer": "efficient allocation"
+          "answer": "Indifference curves cross at right angles"
+        }, 
+        {
+          "question": "\"an action taken by an informed party to reveal private information to an uninformed party\" is known as",
+          "options": [
+            "signalling",
+            "screening",
+            "informing",
+            "heuristics"
+          ],
+          "answer": "signalling"
         },
         {
-          "question": "a situation in which a market fails to allocate resources efficiently",
+          "question": "\"simple strategies or mental processes used to quickly form judgments, make decisions, and find solutions to complex problems\" is known as",
           "options": [
-            "market failure",
-            "government failure",
-            "externality",
-            "public good"
+            "signalling",
+            "screening",
+            "informing",
+            "heuristics"
           ],
-          "answer": "market failure"
-        },
-        {
-          "question": "the property of society getting the most it can from its scarce resources",
-          "options": [
-            "efficiency",
-            "equity",
-            "equality",
-            "liberty"
-          ],
-          "answer": "efficiency"
-        },
-        {
-          "question": "the property of distributing economic prosperity uniformly among the members of society",
-          "options": [
-            "efficiency",
-            "equity",
-            "equality",
-            "liberty"
-          ],
-          "answer": "equity"
+          "answer": "heuristics"
         }
       ]
     }, 
@@ -5341,7 +5342,7 @@ export const conservationEconomicsJSON = {
       "name": "12",
       "questions": [
         {
-          "question": "As per Wildlife Protection Act 1972 (WPA 1972), wild life includes any animal, aquatic or land vegetation which forms part of any",
+          "question": "As per Wildlife Protection Act 1972 (WPA 1972), wild life includes any animal, aquatic or land vegetation which forms part of any _______.",
           "options": [
             "ecosystem",
             "state",
@@ -5379,7 +5380,7 @@ export const conservationEconomicsJSON = {
             "ex-situ preservation"
           ],
           "answer": "ex-situ conservation"
-        },
+        }, 
         {
           "question": "The fig tree bears fruits in times when animals do not have much access to food. In this context, it would be a good example of",
           "options": [
@@ -5410,7 +5411,7 @@ export const conservationEconomicsJSON = {
           ],
           "answer": "flagship species"
         },
-         {
+        {
           "question": "We prefer those areas for the creation of a conservation reserve where the level of threat is",
           "options": [
             "very high",
@@ -5419,7 +5420,7 @@ export const conservationEconomicsJSON = {
             "non-existent"
           ],
           "answer": "medium"
-        },
+        }, 
         {
           "question": "The elephant has a home range of several square kilometres, regulates the ecosystem by its habit of destructive feeding, and people can relate to this animal which is important for conservation. Given this background, the elephant can be called as",
           "options": [
