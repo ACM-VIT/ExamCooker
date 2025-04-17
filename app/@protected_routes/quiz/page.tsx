@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X } from "lucide-react";
+// import { X } from "lucide-react";
 import QuizModalContent from "@/app/components/QuizModalComponent";
 
 interface Course {
@@ -80,9 +80,9 @@ const QuizPage = () => {
 
   const courses: Course[] = [
     { courseCode: "102104073", courseName: "Wildlife Ecology" },
-    { courseCode: "102104082 ", courseName: "Forest and Management" },
+    { courseCode: "102104082", courseName: "Forest and Management" },
     { courseCode: "109106067", courseName: "Spoken English" },
-    
+    { courseCode: "102104086", courseName: "Conservation Economics" },
   ];
 
   return (

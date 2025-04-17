@@ -7,6 +7,7 @@ import { ChevronRight, Clock, Trophy, Target, ChevronDown, ChevronUp, ArrowLeft,
 import { WildlifeJSON } from "@/public/assets/quizJSON"
 import { ForestJSON } from "@/public/assets/quizJSON"
 import { spokenenglishJSON } from "@/public/assets/quizJSON"
+import { conservationEconomicsJSON } from '@/public/assets/quizJSON'
 
 interface Question {
     question: string
@@ -42,6 +43,8 @@ const getCourseData = (courseCode: string): CourseData => {
             return { ...ForestJSON, code: courseCode } as CourseData
         case "109106067":
             return { ...spokenenglishJSON, code: courseCode } as CourseData
+        case "102104086":
+            return { ...conservationEconomicsJSON, code: courseCode } as CourseData
         default:
             return { ...WildlifeJSON, code: "102104073" } as CourseData
     }
