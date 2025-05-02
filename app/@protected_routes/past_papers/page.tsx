@@ -28,8 +28,8 @@ function performSearch(query: string, dataSet: PastPaperWithTags[]) {
     const options = {
         includeScore: true,
         keys: [
-            { name: 'title', weight: 2 },
-            { name: 'tags.name', weight: 1 }
+            { name: 'title', weight: 1 },
+            { name: 'tags.name', weight: 2 }
         ],
         threshold: 0.4,
         ignoreLocation: true,
