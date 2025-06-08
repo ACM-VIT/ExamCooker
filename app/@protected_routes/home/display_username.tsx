@@ -74,6 +74,8 @@ const UserName: React.FC = () => {
         name = "That's crazy brooo";
     } else if(name === "Parth Goyal 23BCE0411") {
         name = "Broad";
+    } else if(name === "Drashti Shukla 23BIT0127") {
+        name = "Dora Dora di Exploraaaaa"
     } else {
         name = name?.split(' ',1)[0]
     }
