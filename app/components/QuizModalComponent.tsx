@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+"use client";
+
+import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
 
@@ -10,7 +12,32 @@ interface QuizModalContentProps {
   onClose: () => void;
 }
 
-const QuizModalContent: React.FC<QuizModalContentProps> = ({
+interface QuizState {
+  selectedWeeks: number[];
+  numQuestions: number | null;
+  duration: {
+    hours: number;
+    minutes: number;
+    seconds: number;
+  };
+}
+
+interface ValidationState {
+  weeks: {
+    isValid: boolean;
+    message: string;
+  };
+  questions: {
+    isValid: boolean;
+    message: string;
+  };
+  duration: {
+    isValid: boolean;
+    message: string;
+  };
+}
+
+export default function QuizModalContent({
   courseCode,
   courseName,
   weeks,
@@ -20,15 +47,12 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
   const router = useRouter();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const TOTAL_WEEKS = 12;
 
-  const [quizState, setQuizState] = useState({
-    selectedWeeks: [] as number[],
-    numQuestions: 1, 
-    duration: {
-      hours: 0,
-      minutes: 30, 
-      seconds: 0,
-    },
+  const [quizState, setQuizState] = useState<QuizState>({
+    selectedWeeks: [],
+    numQuestions: null,
+    duration: { hours: 0, minutes: 0, seconds: 0 },
   });
 
   const [validation, setValidation] = useState({
@@ -37,19 +61,7 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
     duration: { isValid: true, message: "" },
   });
 
-  const maxQuestions = useMemo(() => {
-    return Math.min(quizState.selectedWeeks.length * 10, availableQuestions);
-  }, [quizState.selectedWeeks.length, availableQuestions]);
-
-  useEffect(() => {
-    validateInputs();
-  }, [quizState.selectedWeeks, quizState.numQuestions, quizState.duration]);
-
-  useEffect(() => {
-    localStorage.setItem("quizSettings", JSON.stringify(quizState));
-  }, [quizState]);
-
-  useEffect(() => {
+  React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
@@ -123,15 +135,6 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
         message: "Please set a duration greater than 0",
       };
       isValid = false;
-    } else if (
-      quizState.numQuestions &&
-      totalSeconds < quizState.numQuestions * 30
-    ) {
-      newValidation.duration = {
-        isValid: false,
-        message: "Duration too short for number of questions",
-      };
-      isValid = false;
     } else {
       newValidation.duration = {
         isValid: true,
@@ -151,10 +154,29 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
         ""
       ); 
       router.push(
-        `/quiz/${courseCode}?weeks=${formattedWeeks}&numQ=${quizState.numQuestions}&time=${formattedDuration}`
+        `/quiz/weeks=${formattedWeeks}&numQ=${quizState.numQuestions}&time=${formattedDuration}&course=${courseCode}`
       );
       onClose();
     }
+  };
+
+  const toggleAllWeeks = () => {
+    setQuizState((prev) => ({
+      ...prev,
+      selectedWeeks:
+        prev.selectedWeeks.length === TOTAL_WEEKS
+          ? []
+          : Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1),
+    }));
+  };
+
+  const toggleWeek = (week: number) => {
+    setQuizState((prev) => ({
+      ...prev,
+      selectedWeeks: prev.selectedWeeks.includes(week)
+        ? prev.selectedWeeks.filter((w) => w !== week)
+        : [...prev.selectedWeeks, week].sort((a, b) => a - b),
+    }));
   };
 
   const toggleWeek = (week: number) => {
@@ -184,7 +206,7 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
   const handleNumQuestionsChange = (value: number) => {
     setQuizState((prev) => ({
       ...prev,
-      numQuestions: value,
+      numQuestions: Math.max(0, value),
     }));
   };
 
@@ -205,7 +227,7 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
   };
 
   return (
-    <div className="relative overflow-hidden p-6 bg-[#C2E6EC] dark:bg-[#0C1222] rounded-lg shadow-lg">
+    <div className="relative p-6 max-w-2xl mx-auto shadow-lg bg-[#C2E6EC] dark:bg-[#0C1222]">
       <div className="flex justify-between items-center mb-6">
         <button
           onClick={onClose}
@@ -217,6 +239,9 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
           <h2 className="text-2xl font-bold text-black dark:text-[#D5D5D5]">
             {courseName}
           </h2>
+          <h3 className="text-lg font-semibold text-black dark:text-[#D5D5D5]">
+            {courseCode}
+          </h3>
         </div>
         <button onClick={handleStartQuiz} className="relative group">
           <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
@@ -247,34 +272,47 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
               } rounded whitespace-nowrap overflow-hidden`}
               onClick={() => setShowDropdown(!showDropdown)}
             >
-              <span>
+              <p className="text-sm sm:text-base">
                 {quizState.selectedWeeks.length === 0
                   ? "Select Weeks"
                   : quizState.selectedWeeks.join(", ")}
-              </span>
-              <Check className="mr-2 text-black dark:text-[#D5D5D5]" size={20} />
+              </p>
+              <Check
+                className="mr-2 text-black dark:text-[#D5D5D5]"
+                size={20}
+              />
             </button>
             {showDropdown && (
-              <div className="absolute z-10 w-full bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] border rounded shadow-lg overflow-y-auto max-h-48 top-full left-0 mt-1">
-                {weeks.map((week) => (
-                  <div
-                    key={week}
-                    onClick={() => toggleWeek(week)}
-                    className={`cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20 flex items-center ${
-                      quizState.selectedWeeks.includes(week)
-                        ? "bg-black/10 dark:bg-white/10"
-                        : ""
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={quizState.selectedWeeks.includes(week)}
-                      readOnly
-                      className="mr-2"
-                    />
-                    <span>Week {week}</span>
-                  </div>
-                ))}
+              <div className="absolute z-10 w-full bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] border mt-1 shadow-lg overflow-y-auto max-h-64">
+                <div
+                  onClick={toggleAllWeeks}
+                  className="cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20 border-b"
+                >
+                  <input
+                    type="checkbox"
+                    checked={quizState.selectedWeeks.length === TOTAL_WEEKS}
+                    readOnly
+                    className="mr-2"
+                  />
+                  <span>All Weeks</span>
+                </div>
+                {Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map(
+                  (week) => (
+                    <div
+                      key={week}
+                      onClick={() => toggleWeek(week)}
+                      className="cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={quizState.selectedWeeks.includes(week)}
+                        readOnly
+                        className="mr-2"
+                      />
+                      <span>Week {week}</span>
+                    </div>
+                  )
+                )}
               </div>
             )}
           </div>
@@ -291,33 +329,26 @@ const QuizModalContent: React.FC<QuizModalContentProps> = ({
           </div>
           <input
             type="number"
+            min="0"
             value={quizState.numQuestions || ""}
             onChange={(e) => handleNumQuestionsChange(Number(e.target.value))}
-            placeholder={
-              quizState.selectedWeeks.length > 0
-                ? `Enter number (max ${maxQuestions})`
-                : "Select weeks first"
-            }
-            className={`w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
-              validation.questions.isValid
-                ? "border-gray-300"
-                : "border-red-500 placeholder-red-500"
-            } rounded`}
+            placeholder="Enter number"
+            className={`text-sm sm:text-base w-full p-2 border dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] placeholder:text-[#D5D5D5] ${
+              validation.questions.isValid ? "border-gray-300" : "border-red-500"
+            }`}
             style={{ height: "3rem" }}
             min={1}
             max={maxQuestions}
             disabled={quizState.selectedWeeks.length === 0}
           />
           {!validation.questions.isValid && (
-            <p className="text-red-500 text-xs mt-1">
-              {validation.questions.message}
-            </p>
+            <p className="text-red-500 text-xs">{validation.questions.message}</p>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
-        <div className="w-full sm:w-1/3">
+      <div className="flex space-x-4 mb-6">
+        <div className="w-1/3">
           <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
             Hours
           </label>

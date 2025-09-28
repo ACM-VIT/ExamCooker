@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState } from "react";
+// import { X } from "lucide-react";
 import QuizModalContent from "@/app/components/QuizModalComponent";
 import QuizCard from "@/app/components/QuizCard";
 import { useCourses, CoursesProvider } from "../../components/CoursesContext";
@@ -86,14 +86,11 @@ const QuizPage: React.FC = () => {
     setSelectedCourse(null);
   }, []);
 
-  const handleCloseUnderConstructionModal = useCallback(() => {
-    setIsUnderConstructionModalOpen(false);
-    setSelectedCourse(null);
-  }, []);
-
-  const hardcodedCourseNames = [
-    "wild life ecology",
-    "noc:forests and their management",
+  const courses: Course[] = [
+    { courseCode: "102104073", courseName: "Wildlife Ecology" },
+    { courseCode: "102104082", courseName: "Forest and Management" },
+    { courseCode: "109106067", courseName: "Spoken English" },
+    { courseCode: "102104086", courseName: "Conservation Economics" },
   ];
 
   const sortedFilteredCourses = useMemo(() => {
@@ -304,10 +301,4 @@ const QuizPage: React.FC = () => {
   );
 };
 
-export default function WrappedQuizPage() {
-  return (
-    <CoursesProvider>
-      <QuizPage />
-    </CoursesProvider>
-  );
-}
+export default QuizPage;

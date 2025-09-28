@@ -26,7 +26,7 @@ function isValidYear(year: string): boolean {
     return regex.test(year);
 }
 
-async function PdfViewerPage({params}: { params: { id: string } }) {
+async function PdfViewerPage({params}: {params: { id: string }}) {
     const prisma = new PrismaClient();
     let paper;
     let current_user;
