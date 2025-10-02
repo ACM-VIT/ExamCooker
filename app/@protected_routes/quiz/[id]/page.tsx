@@ -385,5 +385,3 @@ export default function Component() {
         </div>
     )
 }
-
-export default QuizPage;

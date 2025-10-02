@@ -1,6 +1,6 @@
 'use server'
 
-import { PrismaClient, Tag } from '@prisma/client'
+import { PrismaClient, Tag } from '@/src/generated/prisma'
 import { auth } from '../auth'
 import { revalidatePath } from 'next/cache'
 

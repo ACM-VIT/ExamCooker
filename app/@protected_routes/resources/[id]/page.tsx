@@ -1,4 +1,4 @@
-import {PrismaClient} from '@prisma/client';
+import {PrismaClient} from '@/src/generated/prisma';
 import ModuleDropdown from '../../../components/ModuleDropdown';
 import {auth} from '@/app/auth';
 import {notFound} from "next/navigation";
@@ -12,8 +12,9 @@ async function fetchSubject(id: string) {
     });
 }
 
-export default async function SubjectDetailPage({ params }: { params: { id: string } }) {
-    const subject = await fetchSubject(params.id);
+export default async function SubjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const subject = await fetchSubject(id);
     //Since the Subject datatype only has a "name" field, I assume that the name has to be something like "COURSECODE - COURSENAME" and 
     //am hence, using the '-' character to split the string
     if (!subject) {

@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
-import { syllabi } from '@prisma/client';
+import { syllabi } from '@/src/generated/prisma';
 import { useBookmarks } from './BookmarksProvider';
 import { useToast } from "@/components/ui/use-toast";
 

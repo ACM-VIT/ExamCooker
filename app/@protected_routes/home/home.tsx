@@ -1,6 +1,6 @@
 import React from "react";
 import { auth } from "@/app/auth";
-import { PrismaClient, Note, PastPaper, ForumPost, Subject } from '@prisma/client';
+import { PrismaClient, Note, PastPaper, ForumPost, Subject } from '@/src/generated/prisma';
 import CommonResource from "@/app/components/CommonResource";
 import UserName from "./display_username";
 import { GradientText } from "@/app/components/landing_page/landing";

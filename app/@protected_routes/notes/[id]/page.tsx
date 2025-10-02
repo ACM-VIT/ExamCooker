@@ -1,5 +1,5 @@
 import React from 'react';
-import {PrismaClient} from '@prisma/client';
+import {PrismaClient} from '@/src/generated/prisma';
 import PDFViewer from '@/app/components/pdfviewer';
 import {auth} from '@/app/auth';
 import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
@@ -29,7 +29,7 @@ function isValidYear(year: string): boolean {
     return regex.test(year);
 }
 
-async function PdfViewerPage({params}: { params: { id: string } }) {
+async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
     const prisma = new PrismaClient();
     let year: string = '';
     let slot: string = '';
@@ -37,11 +37,12 @@ async function PdfViewerPage({params}: { params: { id: string } }) {
     let current_user;
     const session = await auth();
     const userId = session?.user?.id;
+    const { id } = await params;
 
     try {
         note = await prisma.note.findUnique({
             where: {
-                id: params.id
+                id: id
             },
             include: {
                 author: true,
@@ -150,11 +151,12 @@ export default PdfViewerPage;
 
 // nextjs metadata
 
-export async function generateMetadata({params}: { params: { id: string } }): Promise<Metadata> {
+export async function generateMetadata({params}: { params: Promise<{ id: string }> }): Promise<Metadata> {
     const prisma = new PrismaClient();
+    const { id } = await params;
     const note = await prisma.note.findUnique({
         where: {
-            id: params.id
+            id: id
         },
         include: {
             tags: true
