@@ -37,8 +37,7 @@ function getClientIp(req: NextRequest): string {
 
 export default async function middleware(request: NextRequest) {
   const url = new URL(request.url);
-  const isCreatePath =
-    url.pathname === "/create" || url.pathname === "/create/";
+  const isCreatePath = url.pathname.endsWith("/create") || url.pathname.endsWith("/create/");
 
   if (isCreatePath) {
     const ip = getClientIp(request);
