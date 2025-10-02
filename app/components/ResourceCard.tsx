@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
-import {Subject} from '@prisma/client';
+import {Subject} from '@/src/generated/prisma';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faHeart} from '@fortawesome/free-solid-svg-icons';
 import {useBookmarks} from './BookmarksProvider';

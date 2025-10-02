@@ -3,7 +3,7 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
-import { Note } from '@prisma/client';
+import { Note } from '@/src/generated/prisma';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
 import {useToast} from "@/components/ui/use-toast";

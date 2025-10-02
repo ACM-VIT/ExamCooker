@@ -2,7 +2,7 @@
 
 // todo delete this file
 
-import { PrismaClient, Prisma } from '@prisma/client'
+import { PrismaClient, Prisma } from '@/src/generated/prisma'
 import { revalidatePath } from 'next/cache'
 
 const prisma = new PrismaClient()

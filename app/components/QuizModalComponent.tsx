@@ -371,4 +371,4 @@ export default function QuizModalContent({
       )}
     </div>
   );
-}
+};

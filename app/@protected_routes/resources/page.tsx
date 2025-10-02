@@ -1,6 +1,6 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import { PrismaClient, Subject } from '@prisma/client';
+import { PrismaClient, Subject } from '@/src/generated/prisma';
 import { redirect } from 'next/navigation';
 import ResourceCard from '../../components/ResourceCard';
 import Pagination from '../../components/Pagination';
@@ -34,10 +34,11 @@ function performSearch(query: string, dataSet: Subject[]) {
         .map((fuseResult) => fuseResult.item);
 }
 
-export default async function ResourcesPage({ searchParams }: { searchParams: { page?: string, search?: string } }) {
+export default async function ResourcesPage({ searchParams }: { searchParams: Promise<{ page?: string, search?: string }> }) {
     const pageSize = 12;
-    const search = searchParams.search || '';
-    const page = parseInt(searchParams.page || '1', 10);
+    const params = await searchParams;
+    const search = params.search || '';
+    const page = parseInt(params.page || '1', 10);
 
     const allSubjects = await prisma.subject.findMany();
 

@@ -5,6 +5,7 @@ import { auth } from "@/app/auth";
 import "@/app/globals.css";
 import SocialMediaFollowToast from "@/components/ui/SocialMediaToast";
 import { redirect } from "next/navigation";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 export const metadata = {
     title: {
@@ -53,6 +54,9 @@ export default async function RootLayout({
                     : unprotected_routes}
                 <Toaster />
                 <SocialMediaFollowToast />
+                {process.env.GA_ID && (
+                    <GoogleAnalytics gaId={process.env.GA_ID }/>
+                )}
             </body>
         </html>
     );
