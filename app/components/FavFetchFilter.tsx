@@ -8,7 +8,7 @@ import PastPaperCard from './PastPaperCard';
 import ResourceCard from './ResourceCard';
 import ForumCard from './ForumCard';
 import { useRouter } from 'next/navigation';
-import { ForumPost, Tag, Comment, PastPaper, Note, Subject, User } from "@prisma/client";
+import { ForumPost, Tag, Comment, PastPaper, Note, Subject, User } from "@/src/generated/prisma";
 
 interface ForumPostItem extends Omit<ForumPost, 'upvoteCount' | 'downvoteCount'> {
   type: 'forumpost';

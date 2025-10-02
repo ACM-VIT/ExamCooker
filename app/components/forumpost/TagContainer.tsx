@@ -1,4 +1,4 @@
-import type { Tag } from "@prisma/client";
+import type { Tag } from "@/src/generated/prisma";
 
 const TagContainer = ({tags}:{tags:Tag[]|undefined}) => {
     return <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:gap-5 md:items-center">

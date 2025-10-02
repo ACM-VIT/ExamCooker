@@ -1,6 +1,6 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import {Note, PrismaClient, Tag} from "@prisma/client";
+import {Note, PrismaClient, Tag} from "@/src/generated/prisma";
 import {redirect} from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import NotesCard from "../../components/NotesCard";

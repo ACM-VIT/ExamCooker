@@ -1,6 +1,6 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import { Comment, ForumPost, PrismaClient, Tag, User, Vote } from "@prisma/client";
+import { Comment, ForumPost, PrismaClient, Tag, User, Vote } from "@/src/generated/prisma"
 import { redirect } from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import ForumCard from "../../components/ForumCard";

@@ -1,6 +1,6 @@
 import React from 'react';
 import Fuse from 'fuse.js';
-import {PastPaper, PrismaClient, Tag} from "@prisma/client";
+import {PastPaper, PrismaClient, Tag} from "@/src/generated/prisma";
 import {redirect} from 'next/navigation';
 import Pagination from '../../components/Pagination';
 import PastPaperCard from '../../components/PastPaperCard';

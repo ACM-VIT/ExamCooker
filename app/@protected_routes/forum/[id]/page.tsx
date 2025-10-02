@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@/src/generated/prisma";
 import ForumPost from "./ForumPost";
 import { auth } from "@/app/auth";
 import {notFound} from "next/navigation";

@@ -1,4 +1,4 @@
-const {PrismaClient} = require('@prisma/client')
+const {PrismaClient} = require('@/src/generated/prisma')
 const fs = require('node:fs');
 const readline = require('node:readline');
 
