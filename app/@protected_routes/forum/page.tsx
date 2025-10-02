@@ -62,16 +62,17 @@ function performSearch(query: string, dataSet: ForumPostWithDetails[]) {
     .map((fuseResult) => fuseResult.item);
 }
 
-async function forum({ searchParams }: { searchParams: { page?: string, search?: string, tags?: string | string[] } }) {
+async function forum({ searchParams }: { searchParams: Promise<{ page?: string, search?: string, tags?: string | string[] }> }) {
   const prisma = new PrismaClient();
   const session = await auth();
   const currentUserId = session?.user?.id;
   const pageSize = 5;
-  const search = searchParams.search || '';
-  const page = parseInt(searchParams.page || '1', 10);
-  const tags: string[] = Array.isArray(searchParams.tags)
-    ? searchParams.tags
-    : (searchParams.tags ? searchParams.tags.split(',') : []);
+  const params = await searchParams;
+  const search = params.search || '';
+  const page = parseInt(params.page || '1', 10);
+  const tags: string[] = Array.isArray(params.tags)
+    ? params.tags
+    : (params.tags ? params.tags.split(',') : []);
 
   let filteredForumPosts = await prisma.forumPost.findMany({
     where: {

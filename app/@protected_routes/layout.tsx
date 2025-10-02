@@ -2,7 +2,7 @@ import React from "react";
 import {auth} from "@/app/auth";
 import {SessionProvider} from "next-auth/react";
 import ClientSide from "./clientSide";
-import {PrismaClient} from "@prisma/client";
+import {PrismaClient} from "@/src/generated/prisma";
 import BookmarksProvider from "@/app/components/BookmarksProvider";
 
 export default async function Layout({

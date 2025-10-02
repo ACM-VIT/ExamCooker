@@ -3,16 +3,17 @@ import ForumPost from "./ForumPost";
 import { auth } from "@/app/auth";
 import {notFound} from "next/navigation";
 
-async function forumPostThread({ params }: { params: { id: string } }) {
+async function forumPostThread({ params }: { params: Promise<{ id: string }> }) {
 
   const prisma = new PrismaClient();
 
   const session = await auth();
   const userId = session?.user?.id;
+  const { id } = await params;
 
   const forumpost = await prisma.forumPost.findUnique({
     where: {
-      id: params.id,
+      id: id,
     },
     include: {
       author: {

@@ -17,7 +17,7 @@ const Header: React.FC<HeaderProps> = () => {
   const { data: session } = useSession();
   const [showOverlay, setShowOverlay] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null!);
 
   const handleClick = () => {
     setShowOverlay(!showOverlay);

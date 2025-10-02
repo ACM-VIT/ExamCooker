@@ -1,5 +1,5 @@
 import React from 'react';
-import { PrismaClient, syllabi } from '@prisma/client';
+import { PrismaClient, syllabi } from '@/src/generated/prisma';
 import SyllabusCard from '@/app/components/SyllabusCard';
 import SearchBar from "../../components/SearchBar";
 import Pagination from "../../components/Pagination";
@@ -37,11 +37,12 @@ function performSearch(query: string, dataSet: syllabi[]) {
         .map((fuseResult) => fuseResult.item);
 }
 
-export default async function SyllabusPage({ searchParams }: { searchParams: { page?: string, search?: string } }) {
+export default async function SyllabusPage({ searchParams }: { searchParams: Promise<{ page?: string, search?: string }> }) {
     const syllabi = await prisma.syllabi.findMany();
     const pageSize = 16; // We'll keep this constant for server-side pagination
-    const search = searchParams.search || '';
-    const page = parseInt(searchParams.page || '1', 10);
+    const params = await searchParams;
+    const search = params.search || '';
+    const page = parseInt(params.page || '1', 10);
     
     let filteredSyllabi = syllabi;
     if (search) {

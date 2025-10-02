@@ -1,9 +1,8 @@
 import React from 'react';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/src/generated/prisma';
 import PDFViewer from '@/app/components/pdfviewer';
 import { auth } from '@/app/auth';
 import { notFound } from "next/navigation";
-import DeleteButton from '@/app/components/DeleteButton';
 
 const prisma = new PrismaClient();
 
@@ -20,14 +19,15 @@ function processSyllabusName(input: string): string {
       .replace(/_/g, ' '); 
   }
 
-async function SyllabusViewerPage({ params }: { params: { id: string } }) {
+async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> }) {
     const prisma = new PrismaClient();
     let syllabus;
     const session = await auth();
     const userId = session?.user?.id;
+    const { id } = await params;
 
     try {
-        syllabus = await getSyllabus(params.id);
+        syllabus = await getSyllabus(id);
 
         if (userId && syllabus?.id) {
             await prisma.viewHistory.upsert({
