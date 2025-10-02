@@ -1,6 +1,6 @@
 import React from "react";
 import CreateForum from "@/app/components/create-forum";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@/src/generated/prisma";
 
 async function NewForumPage () {
     const prisma = new PrismaClient();

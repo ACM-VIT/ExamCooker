@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Note, PastPaper } from "@prisma/client";
+import { Note, PastPaper } from "@/src/generated/prisma";
 import Pagination from "./Pagination";
 import NotesCard from "./NotesCard";
 import PastPaperCard from "./PastPaperCard";

@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
-import { ForumPost, Tag, Comment, User, Vote } from "@prisma/client";
+import { ForumPost, Tag, Comment, User, Vote } from "@/src/generated/prisma";
 import {useToast} from "@/components/ui/use-toast";
 
 

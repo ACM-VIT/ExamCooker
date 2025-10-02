@@ -5,7 +5,7 @@ import CommentContainer from "@/app/components/forumpost/CommentContainer";
 import { NumberOfComments } from "@/app/components/forumpost/CommentContainer";
 import { VoteButtons } from "@/app/components/common/Buttons";
 
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/src/generated/prisma";
 import ForumPostGetPayload = Prisma.ForumPostGetPayload
 
 function ForumPost({ post }: {
