@@ -83,9 +83,6 @@ export default function ClientSide({
             <div ref={navbarRef}>
                 <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
             </div>
-            {isNavOn && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 z-10 transition-opacity duration-300"></div>
-            )}
             <main
                 className={`flex-grow transition-all duration-300 ease-in-out ${
                     isNavOn ? "lg:w-[95vw] md:w-[92vw]" : "w-[100vw]"
