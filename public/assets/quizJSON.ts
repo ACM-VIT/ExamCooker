@@ -256,7 +256,7 @@ export const WildlifeJSON = {
           "answer": "apparent competition"
         },
         {
-          "question": "harmonious competition occur where",
+          "question": "harmonious interactions occur where",
           "options": [
             "at least one participant is benefited",
             "at least one participant is unharmed",
@@ -286,7 +286,7 @@ export const WildlifeJSON = {
           "answer": "ammensalism"
         },
         {
-          "question": "i observe a monkey take a tick out of another monkey's head and ear it. In the social context, this behaviour would be called",
+          "question": "i observe a monkey take a tick out of another monkey's head and eat it. In the social context, this behaviour would be called",
           "options": [
             "tick hunting",
             "auto grooming",
@@ -646,12 +646,12 @@ export const WildlifeJSON = {
           "answer": "allelopathy"
         },
         {
-          "question": "which of these is a physical factor of habitat?",
+          "question": "which of these is not a physical factor of habitat?",
           "options": [
             "soil",
             "moisture",
             "predators",
-            "temperatures"
+            "temperature"
           ],
           "answer": "predators"
         },
@@ -931,7 +931,7 @@ export const WildlifeJSON = {
             "environmental sustainability",
             "economic sustainability",
             "trans- boundary sustainability",
-            "agricultural sustainability"
+            "social sustainability"
           ],
           "answer": "trans- boundary sustainability"
         },
@@ -1161,77 +1161,27 @@ export const WildlifeJSON = {
       "name": "12",
       "content": [
         {
-          "question": "\"Enquiry into plants\" is a book written by",
+          "question": "At the compensation point,",
           "options": [
-            "Theophrastus",
-            "Linnaeus",
-            "Malthus",
-            "Humboldt"
+            "photosynthesis = respiration",
+            "photosynthesis < respiration",
+            "photosynthesis > respiration",
+            "photosynthesis = 0"
           ],
-          "answer": "Theophrastus"
+          "answer": "photosynthesis = respiration"
         },
         {
-          "question": "the mitochondrion is a/an",
+          "question": "Birds on giraffe are an example of",
           "options": [
-            "sub- cellular organelle",
-            "cell",
-            "tissue",
-            "organ"
+            "colony",
+            "commensalism",
+            "protocooperation",
+            "allelopathy"
           ],
-          "answer": "sub- cellular organelle"
+          "answer": "protocooperation"
         },
         {
-          "question": "which of these is not a pillar of sustainability?",
-          "options": [
-            "environmental sustainability",
-            "economic sustainability",
-            "trans- boundary sustainability",
-            "social sustainability"
-          ],
-          "answer": "trans- boundary sustainability"
-        },
-        {
-          "question": "good climate is a",
-          "options": [
-            "chemical factor",
-            "demographic factor",
-            "push factor",
-            "pull factor"
-          ],
-          "answer": "pull factor"
-        },
-        {
-          "question": "importance value varies from",
-          "options": [
-            "0 to 10",
-            "0 to 50",
-            "0 to 100",
-            "0 to 300"
-          ],
-          "answer": "0 to 300"
-        },
-        {
-          "question": "consider the food chain: grass --> grasshopper --> frog --> snake --> hawk. in this food chain",
-          "options": [
-            "frog is producer",
-            "frog is consumer and carnivore",
-            "frog is consumer and herbivore",
-            "frog is decomposer"
-          ],
-          "answer": "frog is consumer and carnivore"
-        },
-        {
-          "question": "the juvenile mortality rate is the annual number of deaths of juvenile per",
-          "options": [
-            "100 births",
-            "1000 births",
-            "100 live births",
-            "1000 live births"
-          ],
-          "answer": "1000 live births"
-        },
-        {
-          "question": "because of climate change, Mudumalai Tiger Reserve is suffering from frequent droughts. the management has built several artificial water holes for animals, and fills them up regularly with tankers. in the context of climate change, such an action would be called",
+          "question": "Because of climate change, Mudumalai Tiger Reserve is suffering from frequent droughts. The management has built several artificial water holes for animals, and fills them up regularly with tankers. In the context of climate change, such an action would be called",
           "options": [
             "adaptation",
             "mitigation",
@@ -1241,24 +1191,74 @@ export const WildlifeJSON = {
           "answer": "adaptation"
         },
         {
-          "question": "the scientific study of animal behaviour is called",
+          "question": "Which of these is a stochastic factor?",
           "options": [
-            "behaviourism",
-            "ecology",
-            "ethology",
-            "prey- predator dynamics"
+            "birth rate",
+            "death rate",
+            "population structure",
+            "environmental fluctuation"
           ],
-          "answer": "ethology"
+          "answer": "environmental fluctuation"
         },
         {
-          "question": "zoo is an example of",
+          "question": "The mitochondrion is a / an",
           "options": [
-            "in-situ conservation",
-            "ex-situ conservation",
-            "in-situ preservation",
-            "ex-situ preservation"
+            "Sub-cellular organelle",
+            "Cell",
+            "Tissue",
+            "Organ"
           ],
-          "answer": "ex-situ conservation"
+          "answer": "Sub-cellular organelle"
+        },
+        {
+          "question": "Which of these is correct?",
+          "options": [
+            "Fundamental niche > Realised niche",
+            "Fundamental niche = Realised niche",
+            "Fundamental niche < Realised niche",
+            "a or b"
+          ],
+          "answer": "a or b"
+        },
+        {
+          "question": "The movement of individuals away from their place of birth or hatching or seed production into a new habitat or area to survive and reproduce is called",
+          "options": [
+            "translocation",
+            "migration",
+            "dispersal",
+            "drifting"
+          ],
+          "answer": "dispersal"
+        },
+        {
+          "question": "The book \"An Essay on the Principle of Population\" was written by",
+          "options": [
+            "Darwin",
+            "Malthus",
+            "Spencer",
+            "Owens"
+          ],
+          "answer": "Malthus"
+        },
+        {
+          "question": "Which of these is not a step in natural selection?",
+          "options": [
+            "variation",
+            "underpopulation",
+            "struggle for existence",
+            "survival of the fittest"
+          ],
+          "answer": "underpopulation"
+        },
+        {
+          "question": "The logistic growth equation, when plotted, appears",
+          "options": [
+            "I shaped",
+            "J shaped",
+            "S shaped",
+            "O shaped"
+          ],
+          "answer": "S shaped"
         }
       ]
     }
