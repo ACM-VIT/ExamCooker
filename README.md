@@ -161,8 +161,8 @@ Exam Cooker uses scalable tech stacks to ensure optimal performance and ease of 
       </a>
     </td>
     <td align="center">
-      <a href="https://github.com/ojasKooL">
-        <img src="https://github.com/ojasKooL.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+      <a href="https://github.com/ojask99">
+        <img src="https://github.com/ojask99.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
         <br>
         <sub><b>Ojas Kulkarni</b></sub>
       </a>
