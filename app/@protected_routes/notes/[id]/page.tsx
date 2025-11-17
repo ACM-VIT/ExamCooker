@@ -34,9 +34,9 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
     let year: string = '';
     let slot: string = '';
     let note;
-    let current_user;
+    let current_user = null;
     const session = await auth();
-    const userId = session?.user?.id;
+    const userId = session?.user?.id ?? null;
     const { id } = await params;
 
     try {
@@ -50,11 +50,13 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
             },
         });
 
-        current_user = await prisma.user.findUnique({
-            where: {
-                id: userId,
-            }
-        })
+        if (userId) {
+            current_user = await prisma.user.findUnique({
+                where: {
+                    id: userId,
+                }
+            });
+        }
 
         if (note && userId) {
             for (let i: number = 0; i < note!.tags.length; i++) {
