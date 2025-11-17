@@ -29,11 +29,11 @@ function isValidYear(year: string): boolean {
 async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
     const prisma = new PrismaClient();
     let paper;
-    let current_user;
+    let current_user = null;
     let year: string = '';
     let slot: string = '';
     const session = await auth();
-    const userId = session?.user?.id;
+    const userId = session?.user?.id ?? null;
     const { id } = await params;
 
     try {
@@ -47,11 +47,13 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
             },
         });
 
-        current_user = await prisma.user.findUnique({
-            where: {
-                id: userId,
-            }
-        })
+        if (userId) {
+            current_user = await prisma.user.findUnique({
+                where: {
+                    id: userId,
+                }
+            });
+        }
 
         if (paper && userId) {
             for (let i: number = 0; i < paper!.tags.length; i++) {
