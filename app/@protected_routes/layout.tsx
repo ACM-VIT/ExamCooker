@@ -1,5 +1,6 @@
 import React from "react";
 import {auth} from "@/app/auth";
+import { redirect } from "next/navigation";
 import {SessionProvider} from "next-auth/react";
 import ClientSide from "./clientSide";
 import {PrismaClient} from "@/src/generated/prisma";
@@ -12,10 +13,13 @@ export default async function Layout({
 }>) {
     const prisma = new PrismaClient();
 
-    const session = (await auth())!;
+    const session = await auth();
+    if (!session || !session.user) {
+        redirect("/");
+    }
 
     const user = await prisma.user.findUniqueOrThrow({
-        where: {email: session.user!.email!},
+        where: { email: session.user.email! },
         include: {
             bookmarkedNotes: true,
             bookmarkedPastPapers: true,
