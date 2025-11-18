@@ -159,7 +159,7 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="fixed rounded-md bg-[#C2E6EC] dark:bg-[#0C1222] shadow-2xl transform transition-all ease-in-out duration-300 opacity-100 z-50 border border-[#5FC4E7] dark:border-[#008A90]"
+          className="fixed rounded-md bg-[#C2E6EC] dark:bg-[#0C1222] shadow-2xl transform transition-all ease-in-out duration-300 opacity-100 z-50 border border-[#5FC4E7] dark:border-[#008A90] min-w-[280px] max-w-[360px]"
           style={{ maxWidth: "90vw", maxHeight: "70vh" }}
         >
           <div className="flex justify-between items-center p-4 border-b border-[#82BEE9] dark:border-[#3BF4C7] rounded-t-md bg-white/60 dark:bg-white/5 backdrop-blur">
@@ -174,10 +174,7 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
               <XIcon size={24} />
             </button>
           </div>
-          <div
-            className="p-4 space-y-4 overflow-y-auto no-scrollbar"
-            style={{ maxHeight: "calc(70vh - 72px)" }}
-          >
+          <div className="p-4 space-y-4 overflow-hidden flex flex-col">
             <div className="flex items-stretch gap-2">
               <input
                 type="text"
@@ -195,7 +192,10 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
                 <PlusIcon size={20} />
               </button>
             </div>
-            <ul className="space-y-2">
+            <ul
+              className="space-y-2 overflow-y-auto no-scrollbar pr-1"
+              style={{ maxHeight: "calc(70vh - 200px)" }}
+            >
               {todos.map((todo) => (
                 <li
                   key={todo.id}
