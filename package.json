@@ -7,9 +7,9 @@
     "build": "npx prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "seed_tags": "node seed-tags.js",
-    "sync_tags": "node sync-missing-tags.js",
-    "sync_tags:dry": "node sync-missing-tags.js --dry-run"
+    "seed_tags": "node scripts/seed-tags.js",
+    "sync_tags": "node scripts/sync-missing-tags.js",
+    "sync_tags:dry": "node scripts/sync-missing-tags.js --dry-run"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
