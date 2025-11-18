@@ -159,36 +159,38 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="overflow-y-scroll no-scrollbar overflow-hidden fixed bg-[#C2E6EC] dark:bg-[#0C1222] shadow-xl transform transition-all ease-in-out duration-300 opacity-100 z-50 border-2 border-[#5FC4E7] dark:border-[#008A90] overflow-hidden"
+          className="fixed rounded-xl bg-[#C2E6EC] dark:bg-[#0C1222] shadow-2xl transform transition-all ease-in-out duration-300 opacity-100 z-50 border border-[#5FC4E7] dark:border-[#008A90]"
           style={{ maxWidth: "90vw", maxHeight: "70vh" }}
         >
-          <div className="flex justify-between items-center p-4 border-b">
-            <h2 className="text-lg font-semibold dark:text-[#D5D5D5]">
+          <div className="flex justify-between items-center p-4 border-b border-[#82BEE9] dark:border-[#3BF4C7] rounded-t-xl bg-white/60 dark:bg-white/5 backdrop-blur">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[#D5D5D5]">
               To-Do List
             </h2>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-500 hover:text-gray-700 rounded-lg p-1 transition-colors"
+              aria-label="Close to-do list"
             >
               <XIcon size={24} />
             </button>
           </div>
           <div
-            className="p-4 overflow-y-auto"
-            style={{ maxHeight: "calc(70vh - 60px)" }}
+            className="p-4 space-y-4 overflow-y-auto no-scrollbar"
+            style={{ maxHeight: "calc(70vh - 72px)" }}
           >
-            <div className="flex mb-4">
+            <div className="flex items-stretch gap-2">
               <input
                 type="text"
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Enter new task"
-                className="flex-grow border px-2 dark:text-white py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white dark:bg-[#3D414E] rounded "
+                className="flex-grow border border-[#5FC4E7] dark:border-[#3BF4C7] px-3 dark:text-white py-2 focus:outline-none focus:ring-2 focus:ring-[#5FC4E7] dark:focus:ring-[#3BF4C7] bg-white dark:bg-[#3D414E] rounded-lg"
               />
               <button
                 onClick={addTodo}
-                className="bg-[#82BEE9] hover:bg-[#5FA0D9] dark:bg-[#008A90] text-white dark:text-[#D5D5D5] px-3 py-1 rounded p-2 transition duration-200"
+                className="flex items-center justify-center bg-[#82BEE9] hover:bg-[#5FA0D9] dark:bg-[#008A90] text-white dark:text-[#D5D5D5] px-4 py-2 rounded-lg transition duration-200 shadow-sm"
+                aria-label="Add task"
               >
                 <PlusIcon size={20} />
               </button>
@@ -197,15 +199,20 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
               {todos.map((todo) => (
                 <li
                   key={todo.id}
-                  className="flex items-center justify-between bg-[#5FC4E7] dark:bg-[#008A90] dark:text-[#D5D5D5] p-2 "
+                  className="flex items-start justify-between gap-3 bg-[#5FC4E7] dark:bg-[#008A90] dark:text-[#D5D5D5] p-3 rounded-lg shadow-sm"
                 >
-                  <span className={todo.completed ? "line-through" : ""}>
+                  <span
+                    className={`flex-1 min-w-0 break-words text-white/95 ${
+                      todo.completed ? "line-through opacity-80" : ""
+                    }`}
+                  >
                     {todo.task}
                   </span>
-                  <div>
+                  <div className="flex items-center shrink-0">
                     <button
                       onClick={() => toggleComplete(todo.id)}
-                      className="text-blue-500 mr-2 hover:text-blue-600 transition duration-200"
+                      className="text-white/90 mr-3 hover:text-white transition duration-200"
+                      aria-label={todo.completed ? "Mark as incomplete" : "Mark as complete"}
                     >
                       {todo.completed ? (
                         <UndoIcon size={16} color="#d5d5d5" />
@@ -215,7 +222,8 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
                     </button>
                     <button
                       onClick={() => removeTodo(todo.id)}
-                      className="text-red-500 hover:text-red-600 transition duration-200"
+                      className="text-red-100 hover:text-white transition duration-200"
+                      aria-label="Delete task"
                     >
                       <TrashIcon size={16} color="#d5d5d5" />
                     </button>
@@ -226,7 +234,8 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
             {todos.length > 0 && (
               <button
                 onClick={clearTodos}
-                className="mt-4 bg-red-500 hover:bg-red-600 text-white dark:text-[#D5D5D5] px-3 py-1 rounded w-full transition duration-200"
+                className="mt-4 bg-red-500 hover:bg-red-600 text-white dark:text-[#D5D5D5] px-3 py-2 rounded-lg w-full transition duration-200 shadow-sm"
+                aria-label="Clear all tasks"
               >
                 Clear All
               </button>
