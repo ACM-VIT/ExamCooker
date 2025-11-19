@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { useBookmarks } from './BookmarksProvider';
 import { PastPaper } from '@/src/generated/prisma';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {useToast} from "@/components/ui/use-toast";
 
 interface PastPaperCardProps {
@@ -19,7 +19,6 @@ function removePdfExtension(title: string) {
 
 function PastPaperCard({ pastPaper }: PastPaperCardProps) {
     const { isBookmarked, toggleBookmark } = useBookmarks();
-    const router = useRouter();
     const isFav = isBookmarked(pastPaper.id, 'pastpaper');
     const { toast } = useToast();
 
@@ -31,8 +30,7 @@ function PastPaperCard({ pastPaper }: PastPaperCardProps) {
 
     return (
         <div className={`max-w-sm w-full h-full text-black dark:text-[#D5D5D5]`}>
-            <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 cursor-pointer"
-                onClick={() => router.push(`/past_papers/${pastPaper.id}`)}>
+            <Link href={`/past_papers/${pastPaper.id}`} className="block hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 cursor-pointer">
                 <div className="bg-[#d9d9d9] w-full h-44 relative overflow-hidden">
                     <img
                         className="w-full object-cover"
@@ -49,7 +47,7 @@ function PastPaperCard({ pastPaper }: PastPaperCardProps) {
                         <FontAwesomeIcon icon={faHeart} color={isFav ? 'red' : 'lightgrey'} />
                     </button>
                 </div>
-            </div>
+            </Link>
         </div>
     );
 }
