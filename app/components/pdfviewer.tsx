@@ -57,7 +57,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                     <div className="flex items-center space-x-2">
                       <GoToPreviousPage>
                         {(props) => {
-                          const { isDisabled, ...buttonProps } = props as {
+                          const { isDisabled, ...buttonProps } = props as unknown as {
                             isDisabled?: boolean;
                             [key: string]: unknown;
                           };
@@ -77,7 +77,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                       <NumberOfPages />
                       <GoToNextPage>
                         {(props) => {
-                          const { isDisabled, ...buttonProps } = props as {
+                          const { isDisabled, ...buttonProps } = props as unknown as {
                             isDisabled?: boolean;
                             [key: string]: unknown;
                           };
@@ -96,7 +96,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                     <div className="flex items-center space-x-2">
                       <ZoomOut>
                         {(props) => {
-                          const { isDisabled, ...buttonProps } = props as {
+                          const { isDisabled, ...buttonProps } = props as unknown as {
                             isDisabled?: boolean;
                             [key: string]: unknown;
                           };
@@ -113,7 +113,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                       </ZoomOut>
                       <ZoomIn>
                         {(props) => {
-                          const { isDisabled, ...buttonProps } = props as {
+                          const { isDisabled, ...buttonProps } = props as unknown as {
                             isDisabled?: boolean;
                             [key: string]: unknown;
                           };
