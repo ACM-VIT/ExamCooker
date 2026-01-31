@@ -11,7 +11,7 @@ import TagsInput from "@/app/components/tagsInput";
 import {useToast} from "@/components/ui/use-toast";
 import {useRouter} from "next/navigation";
 
-const years = ['2020', '2021', '2022', '2023', '2024', '2025'];
+const years = ['2020', '2021', '2022', '2023', '2024', '2025', '2026'];
 
 const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | "Past Papers" }) => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
