@@ -45,6 +45,8 @@ function NothingViewedOrFav({ sectionName }: { sectionName: string }) {
                         <p>|</p>
                         <Link href={'/forum'} className="bg-inherit hover:bg-white/10">Forum</Link>
                         <p>|</p>
+                        <Link href={'/syllabus'} className="bg-inherit hover:bg-white/10">Syllabus</Link>
+                        <p>|</p>
                         <Link href={'/resources'} className="bg-inherit hover:bg-white/10">Resources</Link>
                     </div>
                 </div>
