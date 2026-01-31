@@ -14,7 +14,7 @@ import Fuse from "fuse.js";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faSquareXmark } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from "@/components/ui/use-toast";
-import Loading from "@/app/@protected_routes/loading";
+import Loading from "@/app/(app)/loading";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 const years = ["2020", "2021", "2022", "2023", "2024"];

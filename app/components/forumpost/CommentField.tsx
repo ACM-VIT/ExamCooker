@@ -3,7 +3,7 @@
 import Image from "next/image";
 import React, { useState, useTransition } from "react";
 import { createComment } from "@/app/actions/CreateComment";
-import Loading from "@/app/@protected_routes/loading";
+import Loading from "@/app/(app)/loading";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 interface AddCommentFormProps {

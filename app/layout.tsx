@@ -38,11 +38,9 @@ export const metadata: Metadata = {
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
 export default function RootLayout({
-    protected_routes,
-    unprotected_routes,
+    children,
 }: {
-    protected_routes: React.ReactNode;
-    unprotected_routes: React.ReactNode;
+    children: React.ReactNode;
 }) {
     return (
         <html lang="en">
@@ -50,8 +48,7 @@ export default function RootLayout({
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
-                <Suspense fallback={null}>{protected_routes}</Suspense>
-                <Suspense fallback={null}>{unprotected_routes}</Suspense>
+                <Suspense fallback={null}>{children}</Suspense>
                 <Toaster />
                 <SocialMediaFollowToast />
                 {process.env.GA_ID && (
