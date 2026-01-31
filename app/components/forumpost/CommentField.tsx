@@ -4,6 +4,7 @@ import Image from "next/image";
 import React, { useState, useTransition } from "react";
 import { createComment } from "@/app/actions/CreateComment";
 import Loading from "@/app/@protected_routes/loading";
+import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 interface AddCommentFormProps {
     forumPostId: string;
@@ -16,9 +17,13 @@ const CommentField: React.FC<AddCommentFormProps> = ({
 }) => {
     const [content, setContent] = useState("");
     const [pending, startTransition] = useTransition();
+    const { requireAuth } = useGuestPrompt();
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (!requireAuth("post comments")) {
+            return;
+        }
         startTransition(async () => {
             if (!content.trim()) {
                 alert("Comment cannot be empty");

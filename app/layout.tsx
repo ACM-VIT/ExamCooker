@@ -4,8 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { auth } from "@/app/auth";
 import "@/app/globals.css";
 import SocialMediaFollowToast from "@/components/ui/SocialMediaToast";
-import { redirect } from "next/navigation";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import RouteGate from "@/app/components/RouteGate";
 
 export const metadata = {
     title: {
@@ -42,16 +42,17 @@ export default async function RootLayout({
     unprotected_routes: React.ReactNode;
 }) {
     const session = await auth();
-
     return (
         <html lang="en">
             <body
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
-                {session?.user?.email
-                    ? protected_routes ?? redirect("/")
-                    : unprotected_routes}
+                <RouteGate
+                    isAuthed={Boolean(session?.user)}
+                    protectedRoutes={protected_routes}
+                    unprotectedRoutes={unprotected_routes}
+                />
                 <Toaster />
                 <SocialMediaFollowToast />
                 {process.env.GA_ID && (

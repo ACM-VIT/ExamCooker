@@ -35,7 +35,7 @@ function getClientIp(req: NextRequest): string {
   return "127.0.0.1";
 }
 
-export default async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const url = new URL(request.url);
   const isCreatePath = url.pathname.endsWith("/create") || url.pathname.endsWith("/create/");
 

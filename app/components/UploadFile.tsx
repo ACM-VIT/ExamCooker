@@ -10,6 +10,7 @@ import Loading from '../loading';
 import TagsInput from "@/app/components/tagsInput";
 import {useToast} from "@/components/ui/use-toast";
 import {useRouter} from "next/navigation";
+import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 const years = ['2020', '2021', '2022', '2023', '2024', '2025', '2026'];
 
@@ -25,9 +26,13 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
 
     const {toast} = useToast();
     const router = useRouter();
+    const { requireAuth } = useGuestPrompt();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!requireAuth(`upload ${variant.toLowerCase()}`)) {
+            return;
+        }
         setError("");
 
         if (files.length === 0) {

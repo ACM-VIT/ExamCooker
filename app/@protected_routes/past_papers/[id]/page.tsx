@@ -1,6 +1,6 @@
 import React from 'react';
 import {PrismaClient} from '@/src/generated/prisma';
-import PDFViewer from '@/app/components/pdfviewer';
+import PDFViewerClient from '@/app/components/PDFViewerClient';
 import {auth} from '@/app/auth';
 import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
 import DeleteButton from '@/app/components/DeleteButton';
@@ -10,7 +10,6 @@ import {notFound} from "next/navigation";
 import EditButton from '@/app/components/EditButton';
 
 import ShareLink from '@/app/components/ShareLink';
-
 
 function removePdfExtension(filename: string): string {
     return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
@@ -132,7 +131,7 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
             </div>
             <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
                 <div className="h-full overflow-auto">
-                    <PDFViewer fileUrl={paper.fileUrl}/>
+                    <PDFViewerClient fileUrl={paper.fileUrl}/>
                 </div>
             </div>
         </div>

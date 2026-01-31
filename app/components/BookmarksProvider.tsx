@@ -2,6 +2,7 @@
 
 import React, { createContext, useState, useContext, useCallback, useTransition } from 'react';
 import { Bookmark, toggleBookmarkAction } from '../actions/Favourites';
+import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 type BookmarksContextType = {
     bookmarks: Bookmark[];
@@ -22,8 +23,12 @@ export function useBookmarks() {
 export default function BookmarksProvider({ children, initialBookmarks }: { children: React.ReactNode, initialBookmarks: Bookmark[] }) {
     const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarks);
     const [pending, startTransition] = useTransition();
+    const { requireAuth } = useGuestPrompt();
 
     const toggleBookmark = useCallback(async (bookmark: Bookmark, favourite: boolean) => {
+        if (!requireAuth("save to favourites")) {
+            return;
+        }
         setBookmarks(prevBookmarks => {
             const index = prevBookmarks.findIndex(b => b.id === bookmark.id && b.type === bookmark.type);
             if (index > -1) {

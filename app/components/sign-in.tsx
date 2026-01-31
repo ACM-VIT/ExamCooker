@@ -6,7 +6,7 @@ export function SignIn({ displayText }: { displayText: string }) {
         <form
             action={async () => {
                 "use server"
-                await signIn("google")
+                await signIn("google", { redirectTo: "/home" })
             }}
         >
             <div className="relative group">

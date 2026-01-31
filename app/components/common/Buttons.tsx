@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { upvotePost, downvotePost } from '@/app/actions/forumVote';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faThumbsDown, faThumbsUp } from "@fortawesome/free-solid-svg-icons";
+import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 interface VoteButtonsProps {
     postId: string;
@@ -21,8 +22,10 @@ export function VoteButtons({ postId, initialUpvotes, initialDownvotes, initialU
     });
     const [isLocked, setIsLocked] = useState(false);
     const router = useRouter();
+    const { requireAuth } = useGuestPrompt();
 
     const handleVote = useCallback(async (voteType: 'up' | 'down') => {
+        if (!requireAuth("vote on posts")) return;
         if (isLocked) return;
         setIsLocked(true);
 
@@ -51,7 +54,7 @@ export function VoteButtons({ postId, initialUpvotes, initialDownvotes, initialU
             setIsLocked(false);
             router.refresh();
         }
-    }, [votes, isLocked, postId, router]);
+    }, [votes, isLocked, postId, router, requireAuth]);
 
     return (
         <div className="flex gap-2">

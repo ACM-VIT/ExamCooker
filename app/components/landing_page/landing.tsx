@@ -93,6 +93,19 @@ function LandingPageContent() {
               Presenting ExamCooker, your <br /> one-stop solution to Cram
               before Exams
             </h4>
+            <div className="mt-6">
+              <Link
+                href="/home"
+                title="Open ExamCooker"
+                className="relative group inline-flex"
+              >
+                <span className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
+                <span className="absolute inset-0 blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
+                <span className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#82BEE9] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">
+                  Open ExamCooker
+                </span>
+              </Link>
+            </div>
           </div>
         </div>
         <Image

@@ -39,7 +39,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
         isFullScreen ? "fixed inset-0 z-50 bg-white dark:bg-gray-900" : ""
       }`}
     >
-      <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+      <Worker workerUrl="/pdf.worker.min.mjs">
         <div className="rpv-core__viewer flex flex-col h-full">
           <div className="rpv-core__toolbar">
             <Toolbar>
@@ -56,37 +56,77 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                   <div className="flex items-center justify-between w-full bg-white dark:bg-gray-800 p-2">
                     <div className="flex items-center space-x-2">
                       <GoToPreviousPage>
-                        {(props) => (
-                          <button {...props} className={buttonClass}>
-                            <FontAwesomeIcon icon={faChevronUp} />
-                          </button>
-                        )}
+                        {(props) => {
+                          const { isDisabled, ...buttonProps } = props as {
+                            isDisabled?: boolean;
+                            [key: string]: unknown;
+                          };
+                          return (
+                            <button
+                              {...buttonProps}
+                              disabled={Boolean(isDisabled)}
+                              className={buttonClass}
+                            >
+                              <FontAwesomeIcon icon={faChevronUp} />
+                            </button>
+                          );
+                        }}
                       </GoToPreviousPage>
                       <CurrentPageInput />
                       <span className="mx-1">/</span>
                       <NumberOfPages />
                       <GoToNextPage>
-                        {(props) => (
-                          <button {...props} className={buttonClass}>
-                            <FontAwesomeIcon icon={faChevronDown} />
-                          </button>
-                        )}
+                        {(props) => {
+                          const { isDisabled, ...buttonProps } = props as {
+                            isDisabled?: boolean;
+                            [key: string]: unknown;
+                          };
+                          return (
+                            <button
+                              {...buttonProps}
+                              disabled={Boolean(isDisabled)}
+                              className={buttonClass}
+                            >
+                              <FontAwesomeIcon icon={faChevronDown} />
+                            </button>
+                          );
+                        }}
                       </GoToNextPage>
                     </div>
                     <div className="flex items-center space-x-2">
                       <ZoomOut>
-                        {(props) => (
-                          <button {...props} className={buttonClass}>
-                            <FontAwesomeIcon icon={faMinus} />
-                          </button>
-                        )}
+                        {(props) => {
+                          const { isDisabled, ...buttonProps } = props as {
+                            isDisabled?: boolean;
+                            [key: string]: unknown;
+                          };
+                          return (
+                            <button
+                              {...buttonProps}
+                              disabled={Boolean(isDisabled)}
+                              className={buttonClass}
+                            >
+                              <FontAwesomeIcon icon={faMinus} />
+                            </button>
+                          );
+                        }}
                       </ZoomOut>
                       <ZoomIn>
-                        {(props) => (
-                          <button {...props} className={buttonClass}>
-                            <FontAwesomeIcon icon={faPlus} />
-                          </button>
-                        )}
+                        {(props) => {
+                          const { isDisabled, ...buttonProps } = props as {
+                            isDisabled?: boolean;
+                            [key: string]: unknown;
+                          };
+                          return (
+                            <button
+                              {...buttonProps}
+                              disabled={Boolean(isDisabled)}
+                              className={buttonClass}
+                            >
+                              <FontAwesomeIcon icon={faPlus} />
+                            </button>
+                          );
+                        }}
                       </ZoomIn>
                       <button
                         onClick={toggleFullScreen}
