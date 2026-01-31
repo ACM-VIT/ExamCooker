@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
+import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { Prisma } from "@/src/generated/prisma";
 
 function buildWhere(search: string, tags: string[]): Prisma.NoteWhereInput {
@@ -58,7 +59,7 @@ export async function getNotesPage(input: {
     const where = buildWhere(input.search, input.tags);
     const skip = (input.page - 1) * input.pageSize;
 
-    return prisma.note.findMany({
+    const items = await prisma.note.findMany({
         where,
         orderBy: { createdAt: "desc" },
         skip,
@@ -69,4 +70,9 @@ export async function getNotesPage(input: {
             thumbNailUrl: true,
         },
     });
+
+    return items.map((item) => ({
+        ...item,
+        thumbNailUrl: normalizeGcsUrl(item.thumbNailUrl),
+    }));
 }

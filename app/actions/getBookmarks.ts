@@ -2,6 +2,7 @@
 
 import { auth } from "@/app/auth";
 import prisma from "@/lib/prisma";
+import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import type { Bookmark } from "@/app/actions/Favourites";
 
 type BookmarkWithMeta = Bookmark & {
@@ -55,13 +56,13 @@ export async function getBookmarksAction(): Promise<BookmarkWithMeta[]> {
             id: note.id,
             type: "note" as const,
             title: note.title,
-            thumbNailUrl: note.thumbNailUrl,
+            thumbNailUrl: normalizeGcsUrl(note.thumbNailUrl),
         })),
         ...user.bookmarkedPastPapers.map((paper) => ({
             id: paper.id,
             type: "pastpaper" as const,
             title: paper.title,
-            thumbNailUrl: paper.thumbNailUrl,
+            thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl),
         })),
         ...user.bookmarkedForumPosts.map((post) => ({
             id: post.id,

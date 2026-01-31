@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { normalizeGcsUrl } from '@/lib/normalizeGcsUrl'
 import { Prisma, PastPaper } from '@/src/generated/prisma'
 
 const DEFAULT_LIMIT = 40
@@ -178,8 +179,8 @@ function normalizePaper(paper: PastPaperWithTags): ApiPaper {
     academicYear: parsed.academicYear ?? null,
     subjectCode: courseCode,
     tags: tagNames,
-    thumbnailUrl: paper.thumbNailUrl ?? null,
-    thumbNailUrl: paper.thumbNailUrl ?? null,
+    thumbnailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? null,
+    thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? null,
     createdAt: paper.createdAt.toISOString(),
     updatedAt: paper.updatedAt.toISOString(),
     paperDate: paper.createdAt.toISOString(),

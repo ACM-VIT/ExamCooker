@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
+import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 
 export async function getPastPaperDetail(id: string) {
     "use cache";
@@ -7,11 +8,19 @@ export async function getPastPaperDetail(id: string) {
     cacheTag(`past_paper:${id}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    return prisma.pastPaper.findUnique({
+    const paper = await prisma.pastPaper.findUnique({
         where: { id },
         include: {
             author: true,
             tags: true,
         },
     });
+
+    if (!paper) return null;
+
+    return {
+        ...paper,
+        fileUrl: normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl,
+        thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
+    };
 }
