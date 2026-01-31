@@ -3,10 +3,17 @@ import {type Comment, PrismaClient} from "@/src/generated/prisma";
 const prisma = new PrismaClient();
 
 
-export function NumberOfComments({ commentArray }: { commentArray: Comment[] | undefined }) {
+export function NumberOfComments({
+    commentArray,
+    count,
+}: {
+    commentArray?: Comment[] | undefined;
+    count?: number;
+}) {
+    const total = typeof count === "number" ? count : commentArray?.length ?? 0;
     return (
         <div>
-            <text className="bg-none text-base py-4 px-2">{commentArray?.length} Comments</text>
+            <text className="bg-none text-base py-4 px-2">{total} Comments</text>
         </div>
     );
 }

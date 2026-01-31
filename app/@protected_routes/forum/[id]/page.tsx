@@ -2,6 +2,7 @@ import { PrismaClient } from "@/src/generated/prisma";
 import ForumPost from "./ForumPost";
 import { auth } from "@/app/auth";
 import {notFound} from "next/navigation";
+import ViewTracker from "@/app/components/ViewTracker";
 
 async function forumPostThread({ params }: { params: Promise<{ id: string }> }) {
 
@@ -38,27 +39,15 @@ async function forumPostThread({ params }: { params: Promise<{ id: string }> }) 
     return notFound();
   }
 
-
-  if (userId) {
-    await prisma.viewHistory.upsert({
-      where: { userId_forumPostId: { userId, forumPostId: forumpost.id } },
-      update: {
-        viewedAt: new Date(),
-        count: {
-          increment: 1,
-        },
-      },
-      create: {
-        userId,
-        forumPostId: forumpost.id,
-        viewedAt: new Date(),
-      },
-    })
-  }
-
-
   return (
-    <ForumPost post={forumpost} />
+    <>
+      <ViewTracker
+        id={forumpost.id}
+        type="forumpost"
+        title={forumpost.title}
+      />
+      <ForumPost post={forumpost} />
+    </>
   )
 }
 

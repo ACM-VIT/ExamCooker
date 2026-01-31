@@ -3,7 +3,7 @@
 import {PrismaClient} from "@/src/generated/prisma";
 import {auth} from "../auth";
 import {redirect} from "next/navigation";
-import {revalidatePath} from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 const prisma = new PrismaClient();
 
@@ -157,7 +157,13 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
 
     await prisma.$disconnect();
 
-    revalidatePath('/notes');
+    if (variant === "Notes") {
+        revalidatePath("/notes");
+        revalidateTag("notes", "minutes");
+    } else {
+        revalidatePath("/past_papers");
+        revalidateTag("past_papers", "minutes");
+    }
 
     return {success: true, data};
 }

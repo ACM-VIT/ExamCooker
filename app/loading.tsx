@@ -1,7 +1,8 @@
 "use client";
 import LoadingSvg from "@/public/assets/Loader.svg"
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 function getQuirkyLine() {
     const lines = [
@@ -19,8 +20,16 @@ function getQuirkyLine() {
 }
 
 export default function Loading() {
+    const pathname = usePathname();
+    const [line, setLine] = useState("Loading...");
 
-    const [line, setLine] = useState(getQuirkyLine())
+    useEffect(() => {
+        setLine(getQuirkyLine());
+    }, []);
+
+    if (pathname === "/") {
+        return null;
+    }
 
     return (
         <div

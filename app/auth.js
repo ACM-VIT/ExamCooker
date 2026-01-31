@@ -28,6 +28,7 @@ export const authConfig = {
       if (session?.user) {
         session.user.id = user.id;
         if (!session.user.email) session.user.email = user.email;
+        session.user.role = user.role;
       }
       return session;
     },

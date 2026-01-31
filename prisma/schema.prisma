@@ -86,6 +86,9 @@ model Note {
   updatedAt    DateTime      @updatedAt
   bookmarkedBy User[]        @relation("UserBookmarkedNotes")
   ViewHistory  ViewHistory[]
+
+  @@index([isClear, createdAt])
+  @@index([createdAt])
 }
 
 model ViewHistory {
@@ -138,6 +141,8 @@ model ForumPost {
   bookmarkedBy  User[]        @relation("UserBookmarkedForumPosts")
   viewHistory   ViewHistory[]
   votes         Vote[]
+
+  @@index([createdAt])
 }
 
 model Vote {
@@ -182,6 +187,9 @@ model PastPaper {
   updatedAt    DateTime      @updatedAt
   bookmarkedBy User[]        @relation("UserBookmarkedPastPapers")
   viewHistory  ViewHistory[]
+
+  @@index([isClear, createdAt])
+  @@index([createdAt])
 }
 
 model Tag {

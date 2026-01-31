@@ -1,13 +1,9 @@
-import React from 'react';
-import Fuse from 'fuse.js';
-import { PrismaClient, Subject } from '@/src/generated/prisma';
+import React, { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import ResourceCard from '../../components/ResourceCard';
 import Pagination from '../../components/Pagination';
 import SearchBar from '../../components/SearchBar';
-
-const SCORE_THRESHOLD = 0.8;
-const prisma = new PrismaClient();
+import { getResourcesCount, getResourcesPage } from '@/lib/data/resources';
 
 function validatePage(page: number, totalPages: number): number {
     if (isNaN(page) || page < 1) {
@@ -19,46 +15,74 @@ function validatePage(page: number, totalPages: number): number {
     return page;
 }
 
-function performSearch(query: string, dataSet: Subject[]) {
-    const options = {
-        includeScore: true,
-        keys: ['name'],
-        threshold: 0.6,
-        ignoreLocation: true,
-        minMatchCharLength: 2,
-    };
-    const fuse = new Fuse(dataSet, options);
-    const searchResults = fuse.search(query);
-    return searchResults
-        .filter((fuseResult) => (fuseResult.score || 1) < SCORE_THRESHOLD)
-        .map((fuseResult) => fuseResult.item);
+function ResourcesSkeleton() {
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 12 }).map((_, index) => (
+                <div
+                    key={index}
+                    className="h-28 bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 border-2 border-transparent animate-pulse"
+                />
+            ))}
+        </div>
+    );
 }
 
-export default async function ResourcesPage({ searchParams }: { searchParams: Promise<{ page?: string, search?: string }> }) {
+async function ResourcesResults({ params }: { params: { page?: string; search?: string } }) {
     const pageSize = 12;
-    const params = await searchParams;
     const search = params.search || '';
     const page = parseInt(params.page || '1', 10);
 
-    const allSubjects = await prisma.subject.findMany();
-
-    let filteredSubjects = allSubjects;
-    if (search) {
-        filteredSubjects = performSearch(search, allSubjects);
-    }
-
-    const totalCount = filteredSubjects.length;
+    const totalCount = await getResourcesCount({ search });
     const totalPages = Math.ceil(totalCount / pageSize);
-
     const validatedPage = validatePage(page, totalPages);
-
-    const startIndex = (validatedPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginatedSubjects = filteredSubjects.slice(startIndex, endIndex);
+    const paginatedSubjects = await getResourcesPage({
+        search,
+        page: validatedPage,
+        pageSize,
+    });
 
     if (validatedPage !== page) {
         redirect(`/resources?page=${validatedPage}${search ? `&search=${encodeURIComponent(search)}` : ''}`);
     }
+
+    return (
+        <>
+            {paginatedSubjects.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {paginatedSubjects.map((subject) => (
+                        <ResourceCard key={subject.id} subject={subject} />
+                    ))}
+                </div>
+            ) : (
+                <p className="text-center text-lg">
+                    {search
+                        ? "No subjects found matching your search."
+                        : "No subjects found."}
+                </p>
+            )}
+
+            {totalPages > 1 && (
+                <div className="mt-12">
+                    <Pagination
+                        currentPage={validatedPage}
+                        totalPages={totalPages}
+                        basePath="/resources"
+                        searchQuery={search}
+                    />
+                </div>
+            )}
+        </>
+    );
+}
+
+export default async function ResourcesPage({
+    searchParams,
+}: {
+    searchParams?: Promise<{ page?: string; search?: string }>;
+}) {
+    const params = (await searchParams) ?? {};
+    const search = params.search || '';
 
     return (
         <div className="transition-colors min-h-screen text-black dark:text-gray-200">
@@ -69,30 +93,9 @@ export default async function ResourcesPage({ searchParams }: { searchParams: Pr
                     <SearchBar pageType="resources" initialQuery={search} />
                 </div>
 
-                {paginatedSubjects.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {paginatedSubjects.map((subject) => (
-                            <ResourceCard key={subject.id} subject={subject} />
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-center text-lg">
-                        {search
-                            ? "No subjects found matching your search."
-                            : "No subjects found."}
-                    </p>
-                )}
-
-                {totalPages > 1 && (
-                    <div className="mt-12">
-                        <Pagination
-                            currentPage={validatedPage}
-                            totalPages={totalPages}
-                            basePath="/resources"
-                            searchQuery={search}
-                        />
-                    </div>
-                )}
+                <Suspense fallback={<ResourcesSkeleton />}>
+                    <ResourcesResults params={params} />
+                </Suspense>
             </div>
         </div>
     );

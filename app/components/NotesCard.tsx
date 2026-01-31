@@ -1,15 +1,19 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
-import { Note } from '@/src/generated/prisma';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
 import {useToast} from "@/components/ui/use-toast";
+import Image from "next/image";
 
 interface NotesCardProps {
-    note: Note;
+    note: {
+        id: string;
+        title: string;
+        thumbNailUrl?: string | null;
+    };
     index: number;
     openInNewTab?: boolean;
 }
@@ -22,11 +26,17 @@ export function removePdfExtension(filename: string): string {
     return filename;
 }
 
-function NotesCard({ note }: NotesCardProps) {
+function NotesCard({ note, index }: NotesCardProps) {
     const { isBookmarked, toggleBookmark } = useBookmarks();
     const router = useRouter();
     const isFav = isBookmarked(note.id, 'note');
     const { toast } = useToast();
+
+    useEffect(() => {
+        if (index < 3) {
+            router.prefetch(`/notes/${note.id}`);
+        }
+    }, [index, note.id, router]);
 
     const handleToggleFav = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -40,10 +50,13 @@ function NotesCard({ note }: NotesCardProps) {
     <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 cursor-pointer"
                 onClick={() => router.push(`/notes/${note.id}`)}>
         <div className="bg-[#d9d9d9] w-full h-44 relative overflow-hidden">
-                    <img
-                        className="w-full object-cover"
-                        src={note.thumbNailUrl || "https://topperworld.in/media/2022/11/c-sc.png"} // migration to make thumbnail mandatory 
+                    <Image
+                        src={note.thumbNailUrl || "/assets/ExamCooker.png"}
                         alt={removePdfExtension(note.title)}
+                        fill
+                        sizes="(min-width: 1024px) 320px, (min-width: 768px) 45vw, 90vw"
+                        className="object-cover"
+                        priority={index < 3}
                     />
                 </div>
                 <div className="flex justify-between items-center">

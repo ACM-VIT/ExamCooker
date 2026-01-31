@@ -2,7 +2,7 @@
 
 import { PrismaClient, Tag } from '@/src/generated/prisma'
 import { auth } from '../auth'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 const prisma = new PrismaClient()
 
@@ -58,6 +58,7 @@ export async function createForumPost(inputData: CreateForumPostInput) {
     });
 
     revalidatePath(`/forum`)
+    revalidateTag("forum", "minutes")
     return {success: true, data: newForumPost}
   } catch (error) {
     console.error('Failed to create forum post:', error)

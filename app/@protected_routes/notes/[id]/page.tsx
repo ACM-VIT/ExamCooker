@@ -1,16 +1,13 @@
 import React from 'react';
-import {PrismaClient} from '@/src/generated/prisma';
-import PDFViewer from '@/app/components/pdfviewer';
-import {auth} from '@/app/auth';
+import PDFViewerClient from '@/app/components/PDFViewerClient';
 import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
 import {notFound} from "next/navigation";
-import DeleteButton from '@/app/components/DeleteButton';
 import {Metadata} from "next";
 
-import { Edit } from 'lucide-react';
-import EditButton from '@/app/components/EditButton';
-
 import ShareLink from '@/app/components/ShareLink';
+import ViewTracker from "@/app/components/ViewTracker";
+import ItemActions from "@/app/components/ItemActions";
+import { getNoteDetail } from "@/lib/data/noteDetail";
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
@@ -30,35 +27,15 @@ function isValidYear(year: string): boolean {
 }
 
 async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
-    const prisma = new PrismaClient();
     let year: string = '';
     let slot: string = '';
     let note;
-    let current_user = null;
-    const session = await auth();
-    const userId = session?.user?.id ?? null;
     const { id } = await params;
 
     try {
-        note = await prisma.note.findUnique({
-            where: {
-                id: id
-            },
-            include: {
-                author: true,
-                tags: true,
-            },
-        });
+        note = await getNoteDetail(id);
 
-        if (userId) {
-            current_user = await prisma.user.findUnique({
-                where: {
-                    id: userId,
-                }
-            });
-        }
-
-        if (note && userId) {
+        if (note) {
             for (let i: number = 0; i < note!.tags.length; i++) {
                 if (isValidYear(note!.tags[i].name)) {
                     year = note!.tags[i].name
@@ -66,27 +43,6 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
                     slot = note!.tags[i].name
                 }
             }
-
-
-            await prisma.viewHistory.upsert({
-                where: {
-                    userId_noteId: {
-                        userId,
-                        noteId: note.id
-                    }
-                },
-                update: {
-                    viewedAt: new Date(),
-                    count: {
-                        increment: 1
-                    }
-                },
-                create: {
-                    userId: userId,
-                    noteId: note.id,
-                    viewedAt: new Date()
-                }
-            })
         }
 
     } catch (error) {
@@ -100,7 +56,7 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
             </div>
         );
     } finally {
-        await prisma.$disconnect();
+        // no-op
     }
 
     if (!note) {
@@ -111,6 +67,11 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
 
     return (
         <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
+            <ViewTracker
+                id={note.id}
+                type="note"
+                title={removePdfExtension(note.title)}
+            />
             <div className="lg:w-1/2 flex flex-col overflow-hidden">
                 <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
                     <div className="max-w-2xl mx-auto">
@@ -126,13 +87,12 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
                                 <p className='text-base sm:text-xs'><span
                                     className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
                                 </p>
-                                {current_user?.role === "MODERATOR" &&
-                                    <EditButton itemID={note.id} title={note.title} activeTab='notes'/>
-                                }
-
-                                {note.author?.id === userId &&
-                                    <DeleteButton itemID={note.id} activeTab='notes'/>
-                                }
+                                <ItemActions
+                                    itemId={note.id}
+                                    title={note.title}
+                                    authorId={note.author?.id}
+                                    activeTab="notes"
+                                />
                                 <ShareLink fileType='these Notes'/>
                             </div>
                         </div>
@@ -141,7 +101,7 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
             </div>
             <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
                 <div className="h-full overflow-auto">
-                    <PDFViewer fileUrl={note.fileUrl}/>
+                    <PDFViewerClient fileUrl={note.fileUrl}/>
                 </div>
             </div>
         </div>
@@ -154,16 +114,8 @@ export default PdfViewerPage;
 // nextjs metadata
 
 export async function generateMetadata({params}: { params: Promise<{ id: string }> }): Promise<Metadata> {
-    const prisma = new PrismaClient();
     const { id } = await params;
-    const note = await prisma.note.findUnique({
-        where: {
-            id: id
-        },
-        include: {
-            tags: true
-        }
-    })
+    const note = await getNoteDetail(id);
     if (!note) return {}
     return {
         title: removePdfExtension(note.title),

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+    cacheComponents: true,
     turbopack: {
         resolveAlias: {
             canvas: {
@@ -10,7 +11,13 @@ const nextConfig: NextConfig = {
     },
     serverExternalPackages: ["canvas"],
     images: {
-        domains: ["storage.googleapis.com"],
+        remotePatterns: [
+            {
+                protocol: "https",
+                hostname: "storage.googleapis.com",
+                pathname: "/**",
+            },
+        ],
     },
 };
 

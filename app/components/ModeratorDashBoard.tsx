@@ -42,6 +42,12 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
         "notes"
     );
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [renameDialog, setRenameDialog] = useState<{
+        isOpen: boolean;
+        id?: string;
+        type?: "note" | "pastPaper";
+        value: string;
+    }>({ isOpen: false, value: "" });
 
     const page = parseInt(searchParams.page || "1", 10);
 
@@ -120,6 +126,33 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                 ? prev.filter((item) => item !== id)
                 : [...prev, id]
         );
+    };
+
+    const openRenameDialog = (id: string, type: "note" | "pastPaper", currentTitle: string) => {
+        setRenameDialog({
+            isOpen: true,
+            id,
+            type,
+            value: currentTitle,
+        });
+    };
+
+    const closeRenameDialog = () => {
+        setRenameDialog({ isOpen: false, value: "" });
+    };
+
+    const submitRename = async () => {
+        if (!renameDialog.id || !renameDialog.type) {
+            closeRenameDialog();
+            return;
+        }
+        const trimmed = renameDialog.value.trim();
+        if (!trimmed) {
+            closeRenameDialog();
+            return;
+        }
+        await handleRename(renameDialog.id, renameDialog.type, trimmed);
+        closeRenameDialog();
     };
 
     return (
@@ -202,12 +235,12 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                                 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
                                                 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
                                         onClick={() =>
-                                            handleRename(
+                                            openRenameDialog(
                                                 item.id,
                                                 activeTab === "notes"
                                                     ? "note"
                                                     : "pastPaper",
-                                                prompt("Enter new name:") || item.title
+                                                item.title
                                             )
                                         }
                                     >
@@ -262,6 +295,70 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                         totalPages={totalPages}
                         basePath="/mod"
                     />
+                </div>
+            )}
+
+            {renameDialog.isOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center">
+                    <button
+                        type="button"
+                        onClick={closeRenameDialog}
+                        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+                        aria-label="Close rename dialog"
+                    />
+                    <div className="relative w-[92%] max-w-lg rounded-xl border-2 border-black dark:border-[#D5D5D5] bg-[#C2E6EC] dark:bg-[#0C1222] shadow-[10px_10px_0_rgba(0,0,0,0.2)] p-6">
+                        <div className="flex items-start justify-between gap-3">
+                            <h3 className="text-xl font-bold text-black dark:text-[#D5D5D5]">
+                                Rename item
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={closeRenameDialog}
+                                className="border border-black/30 dark:border-[#D5D5D5]/40 text-xs font-semibold px-2 py-1 hover:bg-white/40 dark:hover:bg-white/5 transition text-black dark:text-[#D5D5D5]"
+                            >
+                                Close
+                            </button>
+                        </div>
+                        <div className="mt-4">
+                            <label className="text-sm text-black/70 dark:text-[#D5D5D5]/80">
+                                New name
+                            </label>
+                            <input
+                                type="text"
+                                value={renameDialog.value}
+                                onChange={(event) =>
+                                    setRenameDialog((prev) => ({
+                                        ...prev,
+                                        value: event.target.value,
+                                    }))
+                                }
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        event.preventDefault();
+                                        submitRename();
+                                    }
+                                }}
+                                className="mt-2 w-full rounded-md border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3 py-2 text-black dark:text-[#D5D5D5] focus:outline-none focus:ring-2 focus:ring-[#5FC4E7]"
+                                autoFocus
+                            />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={closeRenameDialog}
+                                className="px-4 py-2 border border-black/30 dark:border-[#D5D5D5]/40 text-sm font-semibold text-black dark:text-[#D5D5D5] hover:bg-white/40 dark:hover:bg-white/5 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={submitRename}
+                                className="px-4 py-2 bg-[#5FC4E7] text-black font-semibold border-2 border-black hover:translate-x-[-2px] hover:translate-y-[-2px] transition"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

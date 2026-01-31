@@ -2,6 +2,7 @@
 
 import { PrismaClient } from '@/src/generated/prisma';
 import { auth } from "@/app/auth";
+import { revalidateTag } from "next/cache";
 
 const prisma = new PrismaClient()
 
@@ -65,6 +66,7 @@ export async function upvotePost(postId: string) {
             select: { upvoteCount: true },
         });
 
+        revalidateTag("forum", "minutes");
         return { success: true, upvoteCount: updatedPost?.upvoteCount };
     } catch (error) {
         console.error('Error upvoting post:', error);
@@ -134,6 +136,7 @@ export async function downvotePost(postId: string) {
             select: { downvoteCount: true },
         });
 
+        revalidateTag("forum", "minutes");
         return { success: true, downvoteCount: updatedPost?.downvoteCount };
     } catch (error) {
         console.error('Error downvoting post:', error);

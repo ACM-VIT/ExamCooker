@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
-import { ForumPost, Tag, Comment, User, Vote } from "@/src/generated/prisma";
+import { ForumPost, Tag, User, Vote } from "@/src/generated/prisma";
 import {useToast} from "@/components/ui/use-toast";
 
 
@@ -16,7 +16,6 @@ interface ForumCardProps {
     post: ForumPost & {
         author: User;
         tags: Tag[];
-        comments: (Comment & { author: User })[];
         votes: Vote[];
     } | any;
     title: string;
@@ -24,7 +23,7 @@ interface ForumCardProps {
     author: string | null;
     tags: Tag[];
     createdAt: Date;
-    comments: (Comment & { author: User })[];
+    commentCount: number;
 }
 
 function formatTimeDifference(hours: string, minutes: string, seconds: string, amOrPm: string, day: string, month: string, year: number): string {
@@ -63,7 +62,7 @@ function formatTimeDifference(hours: string, minutes: string, seconds: string, a
     }
   }
 
-export default function ForumCard({ post, title, desc, author, tags, createdAt, comments }: ForumCardProps) {
+export default function ForumCard({ post, title, desc, author, tags, createdAt, commentCount }: ForumCardProps) {
     const dateTimeObj = TimeHandler(createdAt.toISOString());
     const router = useRouter();
 
@@ -95,7 +94,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                     <h2 className="font-extrabold lg:text-3xl md:text-xl text-base">{title}</h2>
                     <div className="flex items-center space-x-4">
                         <div className="bg-white dark:bg-[#3F4451] p-1 hidden md:block">
-                            <NumberOfComments commentArray={comments} />
+                            <NumberOfComments count={commentCount} />
                         </div>
                         <div className="flex space-x-2 p-0.5 bg-white dark:bg-[#3F4451]" onClick={handleVoteClick}>
                             <VoteButtons

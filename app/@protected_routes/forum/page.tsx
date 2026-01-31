@@ -1,6 +1,4 @@
-import React from 'react';
-import Fuse from 'fuse.js';
-import { Comment, ForumPost, PrismaClient, Tag, User, Vote } from "@/src/generated/prisma"
+import React, { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import ForumCard from "../../components/ForumCard";
@@ -8,15 +6,7 @@ import SearchBar from "../../components/SearchBar";
 import Dropdown from "../../components/FilterComponent";
 import NewForumButton from "../../components/NewForumButton";
 import { auth } from '@/app/auth';
-
-const SCORE_THRESHOLD = 0.8;
-
-type ForumPostWithDetails = ForumPost & {
-  author: User;
-  tags: Tag[];
-  comments: (Comment & { author: User })[];
-  votes: Vote[];
-};
+import { getForumCount, getForumPage } from "@/lib/data/forum";
 
 function validatePage(page: number, totalPages: number): number {
   if (isNaN(page) || page < 1) {
@@ -28,94 +18,47 @@ function validatePage(page: number, totalPages: number): number {
   return page;
 }
 
-function performSearch(query: string, dataSet: ForumPostWithDetails[]) {
-  const options = {
-    includeScore: true,
-    keys: [
-      { name: 'title', weight: 2 },
-      { name: 'author.name', weight: 1 },
-      { name: 'tags.name', weight: 1 },
-      { name: 'description', weight: 1.5 },
-      { name: 'comments.content', weight: 1 },
-      { name: 'comments.author.name', weight: 0.5 }
-    ],
-    threshold: 0.7,
-    ignoreLocation: true,
-    minMatchCharLength: 2,
-    findAllMatches: true,
-    useExtendedSearch: true,
-  };
-  const fuse = new Fuse(dataSet, options);
-  const searchResults = fuse.search({
-    $or: [
-      { title: query },
-      { 'author.name': query },
-      { 'tags.name': query },
-      { description: query },
-      { 'comments.content': query },
-      { 'comments.author.name': query },
-      { title: `'${query}` }
-    ]
-  });
-  return searchResults
-    .filter((fuseResult) => (fuseResult.score || 1) < SCORE_THRESHOLD)
-    .map((fuseResult) => fuseResult.item);
+function ForumSkeleton() {
+  return (
+    <div className="w-full mx-auto space-y-4">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div
+          key={index}
+          className="bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 border-2 border-transparent p-5 md:p-10 animate-pulse"
+        >
+          <div className="h-5 w-1/2 bg-black/10 dark:bg-white/10 rounded" />
+          <div className="h-3 mt-4 w-full bg-black/10 dark:bg-white/10 rounded" />
+          <div className="h-3 mt-2 w-3/4 bg-black/10 dark:bg-white/10 rounded" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
-async function forum({ searchParams }: { searchParams: Promise<{ page?: string, search?: string, tags?: string | string[] }> }) {
-  const prisma = new PrismaClient();
+async function ForumResults({ params }: { params: { page?: string; search?: string; tags?: string | string[] } }) {
   const session = await auth();
   const currentUserId = session?.user?.id;
   const pageSize = 5;
-  const params = await searchParams;
   const search = params.search || '';
   const page = parseInt(params.page || '1', 10);
   const tags: string[] = Array.isArray(params.tags)
     ? params.tags
     : (params.tags ? params.tags.split(',') : []);
+  const normalizedTags = [...tags].sort();
 
-  let filteredForumPosts = await prisma.forumPost.findMany({
-    where: {
-      ...(tags.length > 0 && {
-        tags: {
-          some: {
-            name: {
-              in: tags,
-            },
-          },
-        },
-      }),
-    },
-    include: {
-      author: true,
-      votes: {
-        where: {
-          userId: currentUserId
-        }
-      },
-      tags: true,
-      comments: {
-        include: {
-          author: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'desc'
-    }
+  const totalCount = await getForumCount({
+    search,
+    tags: normalizedTags,
   });
-  if (search) {
-    filteredForumPosts = performSearch(search, filteredForumPosts);
-  }
-
-  const totalCount = filteredForumPosts.length;
   const totalPages = Math.ceil(totalCount / pageSize);
-
   const validatedPage = validatePage(page, totalPages);
-
-  const startIndex = (validatedPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedForumPosts = filteredForumPosts.slice(startIndex, endIndex);
+  const paginatedForumPosts = await getForumPage({
+    search,
+    tags: normalizedTags,
+    page: validatedPage,
+    pageSize,
+    currentUserId,
+  });
 
   if (validatedPage !== page) {
     const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
@@ -124,23 +67,7 @@ async function forum({ searchParams }: { searchParams: Promise<{ page?: string, 
   }
 
   return (
-    <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-8 py-8">
-      <h1 className="text-center mb-4">Forum</h1>
-
-      <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-        <Dropdown pageType='forum' />
-        <SearchBar pageType="forum" initialQuery={search} />
-        <NewForumButton />
-      </div>
-
-      <div className='flex-col w-5/6 md:hidden space-y-4'>
-        <SearchBar pageType="forum" initialQuery={search} />
-        <div className='flex justify-between'>
-          <Dropdown pageType='forum' />
-          <NewForumButton />
-        </div>
-      </div>
-
+    <>
       <div className="w-full mx-auto">
         {paginatedForumPosts.length > 0 ? (
           <div className="space-y-4">
@@ -153,7 +80,7 @@ async function forum({ searchParams }: { searchParams: Promise<{ page?: string, 
                 createdAt={eachPost.createdAt}
                 tags={eachPost.tags}
                 post={eachPost}
-                comments={eachPost.comments}
+                commentCount={eachPost._count.comments}
               />
             ))}
           </div>
@@ -177,8 +104,38 @@ async function forum({ searchParams }: { searchParams: Promise<{ page?: string, 
           />
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-export default forum;
+export default async function ForumPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+}) {
+  const params = (await searchParams) ?? {};
+  const search = params.search || '';
+  return (
+    <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-8 py-8">
+      <h1 className="text-center mb-4">Forum</h1>
+
+      <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
+        <Dropdown pageType='forum' />
+        <SearchBar pageType="forum" initialQuery={search} />
+        <NewForumButton />
+      </div>
+
+      <div className='flex-col w-5/6 md:hidden space-y-4'>
+        <SearchBar pageType="forum" initialQuery={search} />
+        <div className='flex justify-between'>
+          <Dropdown pageType='forum' />
+          <NewForumButton />
+        </div>
+      </div>
+
+      <Suspense fallback={<ForumSkeleton />}>
+        <ForumResults params={params} />
+      </Suspense>
+    </div>
+  );
+}

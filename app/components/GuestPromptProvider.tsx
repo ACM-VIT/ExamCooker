@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 type GuestPromptContextType = {
     isAuthed: boolean;
+    status: "authenticated" | "unauthenticated" | "loading";
     requireAuth: (action?: string) => boolean;
     openPrompt: (action?: string) => void;
     closePrompt: () => void;
@@ -27,7 +28,7 @@ export function useGuestPrompt() {
 }
 
 export default function GuestPromptProvider({ children }: { children: React.ReactNode }) {
-    const { data: session } = useSession();
+    const { data: session, status } = useSession();
     const isAuthed = Boolean(session?.user);
     const [prompt, setPrompt] = useState<PromptState>({ isOpen: false });
     const pathname = usePathname();
@@ -71,14 +72,14 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
     const actionLabel = prompt.action ? `to ${prompt.action}` : "to continue";
 
     return (
-        <GuestPromptContext.Provider value={{ isAuthed, requireAuth, openPrompt, closePrompt }}>
+        <GuestPromptContext.Provider value={{ isAuthed, status, requireAuth, openPrompt, closePrompt }}>
             {children}
             {prompt.isOpen && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center">
                     <button
                         type="button"
                         onClick={closePrompt}
-                        className="absolute inset-0 bg-black/50 backdrop-blur-[3px]"
+                        className="absolute inset-0 bg-black/40"
                         aria-label="Close sign-in prompt"
                     />
                     <div
@@ -86,9 +87,8 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
                         aria-modal="true"
                         className="relative w-[94%] max-w-lg text-black dark:text-[#D5D5D5]"
                     >
-                        <div className="absolute -inset-1 rounded-xl bg-gradient-to-br from-[#3BF4C7] via-[#82BEE9] to-[#253EE0] opacity-70 blur-[18px]" />
-                        <div className="relative rounded-xl border-2 border-black dark:border-[#D5D5D5] bg-[#C2E6EC] dark:bg-[#0C1222] shadow-[12px_12px_0_rgba(0,0,0,0.25)] overflow-hidden">
-                            <div className="px-6 py-5 border-b border-black/20 dark:border-[#D5D5D5]/20 bg-gradient-to-r from-white/70 to-white/10 dark:from-white/5 dark:to-transparent">
+                        <div className="relative rounded-xl border border-black/30 dark:border-[#D5D5D5]/30 bg-[#C2E6EC] dark:bg-[#0C1222] shadow-lg overflow-hidden">
+                            <div className="px-6 py-5 border-b border-black/10 dark:border-[#D5D5D5]/10">
                                 <div className="flex items-start justify-between gap-3">
                                     <div>
                                         <h3 className="text-2xl md:text-3xl font-extrabold mt-2">
@@ -102,7 +102,7 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
                                     <button
                                         type="button"
                                         onClick={closePrompt}
-                                        className="border border-black/30 dark:border-[#D5D5D5]/40 text-xs font-semibold px-2 py-1 hover:bg-white/40 dark:hover:bg-white/5 transition"
+                                        className="border border-black/20 dark:border-[#D5D5D5]/30 text-xs font-semibold px-2 py-1 hover:bg-white/30 dark:hover:bg-white/5 transition"
                                     >
                                         Close
                                     </button>
@@ -112,18 +112,16 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <a
                                         href={signInHref}
-                                        className="relative group inline-flex w-fit justify-center justify-self-center min-w-[220px]"
+                                        className="inline-flex w-full justify-center"
                                     >
-                                        <span className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
-                                        <span className="absolute inset-0 blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
-                                        <span className="w-full text-center dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">
+                                        <span className="w-full text-center dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold transition duration-150">
                                             Sign in with Google
                                         </span>
                                     </a>
                                     <button
                                         type="button"
                                         onClick={closePrompt}
-                                        className="w-fit min-w-[220px] justify-self-center border border-black/40 dark:border-[#D5D5D5]/40 px-4 py-2 text-sm font-semibold hover:bg-white/40 dark:hover:bg-white/5 transition"
+                                        className="w-full border border-black/30 dark:border-[#D5D5D5]/30 px-4 py-2 text-sm font-semibold hover:bg-white/30 dark:hover:bg-white/5 transition"
                                     >
                                         Continue browsing
                                     </button>

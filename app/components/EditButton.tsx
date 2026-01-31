@@ -37,16 +37,18 @@ const EditButton = ({ itemID, title, activeTab } : { itemID: string, title: stri
       </button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
+        <DialogContent className="bg-[#C2E6EC] dark:bg-[#0C1222] text-black dark:text-[#D5D5D5] border-2 border-black dark:border-[#D5D5D5]">
           <DialogHeader>
-            <DialogTitle>Edit {activeTab === 'notes' ? 'Note' : 'Past Paper'}</DialogTitle>
+            <DialogTitle className="text-black dark:text-[#D5D5D5]">
+              Edit {activeTab === 'notes' ? 'Note' : 'Past Paper'}
+            </DialogTitle>
           </DialogHeader>
           <input
             type="text"
             value={editedTitle}
             onChange={(e) => setEditedTitle(e.target.value)}
             placeholder="Enter new title"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] text-black dark:text-[#D5D5D5] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <DialogFooter className="flex justify-end space-x-2 mt-4">
             {editedTitle !== title && <button
