@@ -1,15 +1,46 @@
-import {PrismaClient} from '@/src/generated/prisma';
-import ModuleDropdown from '../../../components/ModuleDropdown';
-import {notFound} from "next/navigation";
+import type { Metadata } from "next";
+import prisma from "@/lib/prisma";
+import ModuleDropdown from "../../../components/ModuleDropdown";
+import { notFound } from "next/navigation";
 import ViewTracker from "@/app/components/ViewTracker";
-
-const prisma = new PrismaClient();
+import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
 
 async function fetchSubject(id: string) {
     return prisma.subject.findUnique({
         where: {id},
         include: {modules: true},
     });
+}
+
+function parseSubjectName(name: string) {
+    const [courseCode, ...rest] = name.split("-");
+    const courseName = rest.join("-").trim() || "Subject Name";
+    return { courseCode: courseCode?.trim() || "Course", courseName };
+}
+
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+    const { id } = await params;
+    const subject = await fetchSubject(id);
+    if (!subject) return {};
+    const { courseCode, courseName } = parseSubjectName(subject.name);
+    const title = `${courseName} (${courseCode}) resources`;
+    const description = `Browse ${courseName} resources and modules on ExamCooker.`;
+
+    return {
+        title,
+        description,
+        keywords: buildKeywords(DEFAULT_KEYWORDS, [courseCode, courseName]),
+        alternates: { canonical: `/resources/${subject.id}` },
+        openGraph: {
+            title,
+            description,
+            url: `/resources/${subject.id}`,
+        },
+    };
 }
 
 export default async function SubjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,9 +51,7 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
     if (!subject) {
         return notFound();
     }
-    let [courseCode, courseName] = subject.name.split('-');
-
-    courseName = courseName ? courseName : "Subject Name";
+    const { courseCode, courseName } = parseSubjectName(subject.name);
 
 
     return (

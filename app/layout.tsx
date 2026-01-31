@@ -4,30 +4,35 @@ import { Toaster } from "@/components/ui/toaster";
 import "@/app/globals.css";
 import SocialMediaFollowToast from "@/components/ui/SocialMediaToast";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import type { Metadata } from "next";
+import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
 
-export const metadata = {
+const baseUrl = getBaseUrl();
+
+export const metadata: Metadata = {
     title: {
         template: "%s | ExamCooker",
         default: "ExamCooker - ACM-VIT",
     },
-    description: "Cram up for your exams with ExamCooker!! ",
-    keywords: [
-        "vit",
-        "previous year question papers",
-        "pdf",
-        "notes",
-        "question papers",
-        "exam",
-        "examcooker",
-        "acm",
-        "vit acm",
-        "vit acm examcooker",
-    ],
-    metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL!),
+    description: "Cram up for your exams with ExamCooker.",
+    keywords: DEFAULT_KEYWORDS,
+    metadataBase: new URL(baseUrl),
+    alternates: {
+        canonical: "/",
+    },
     openGraph: {
-        images: [
-            { url: `${process.env.NEXT_PUBLIC_BASE_URL!}/opengraph-image.png` },
-        ],
+        type: "website",
+        url: baseUrl,
+        siteName: "ExamCooker",
+        title: "ExamCooker - ACM-VIT",
+        description: "Cram up for your exams with ExamCooker.",
+        images: [{ url: `${baseUrl}/opengraph-image.png` }],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "ExamCooker - ACM-VIT",
+        description: "Cram up for your exams with ExamCooker.",
+        images: [`${baseUrl}/opengraph-image.png`],
     },
 };
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });

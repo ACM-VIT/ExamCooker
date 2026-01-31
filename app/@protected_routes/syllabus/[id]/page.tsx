@@ -3,6 +3,8 @@ import PDFViewerClient from '@/app/components/PDFViewerClient';
 import { notFound } from "next/navigation";
 import ViewTracker from "@/app/components/ViewTracker";
 import { getSyllabusDetail } from "@/lib/data/syllabusDetail";
+import type { Metadata } from "next";
+import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
 
 function processSyllabusName(input: string): string {
     return input
@@ -10,6 +12,30 @@ function processSyllabusName(input: string): string {
       .replace(/\.pdf$/, '') 
       .replace(/_/g, ' '); 
   }
+
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+    const { id } = await params;
+    const syllabus = await getSyllabusDetail(id);
+    if (!syllabus) return {};
+    const title = processSyllabusName(syllabus.name);
+    const description = `View ${title} syllabus on ExamCooker.`;
+
+    return {
+        title,
+        description,
+        keywords: buildKeywords(DEFAULT_KEYWORDS, [title]),
+        alternates: { canonical: `/syllabus/${syllabus.id}` },
+        openGraph: {
+            title,
+            description,
+            url: `/syllabus/${syllabus.id}`,
+        },
+    };
+}
 
 async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> }) {
     let syllabus;

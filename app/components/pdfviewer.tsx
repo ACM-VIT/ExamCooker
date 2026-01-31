@@ -17,6 +17,7 @@ import {
   faMinus,
   faPlus,
   faExpand,
+  faDownload,
 } from "@fortawesome/free-solid-svg-icons";
 
 // Import styles
@@ -24,17 +25,49 @@ import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/toolbar/lib/styles/index.css";
 
 const buttonClass =
-  "p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300";
+  "p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed";
 
 export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
   const toolbarPluginInstance = toolbarPlugin();
   const zoomPluginInstance = zoomPlugin();
   const pageNavigationPluginInstance = pageNavigationPlugin();
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
 
   const { Toolbar } = toolbarPluginInstance;
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
+  };
+
+  const getDownloadFileName = (url: string) => {
+    try {
+      const { pathname } = new URL(url);
+      const name = pathname.split("/").pop();
+      if (!name) return "document.pdf";
+      const decoded = decodeURIComponent(name);
+      return decoded.toLowerCase().endsWith(".pdf")
+        ? decoded
+        : `${decoded}.pdf`;
+    } catch {
+      return "document.pdf";
+    }
+  };
+
+
+  const handleDownload = () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    const fileName = getDownloadFileName(fileUrl);
+    const downloadUrl = `/api/download?url=${encodeURIComponent(
+      fileUrl
+    )}&filename=${encodeURIComponent(fileName)}`;
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => setIsDownloading(false), 400);
   };
 
   return (
@@ -44,7 +77,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
       }`}
     >
       <Worker workerUrl="/pdf.worker.min.mjs">
-        <div className="rpv-core__viewer flex flex-col h-full">
+        <div className="rpv-core__viewer flex flex-col h-full min-h-0">
           <div className="rpv-core__toolbar">
             <Toolbar>
               {(slots) => {
@@ -112,19 +145,29 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                       >
                         <FontAwesomeIcon icon={faExpand} />
                       </button>
+                      <button
+                        onClick={handleDownload}
+                        className={buttonClass}
+                        aria-label="Download PDF"
+                        title="Download PDF"
+                        disabled={isDownloading}
+                      >
+                        <FontAwesomeIcon icon={faDownload} />
+                      </button>
                     </div>
                   </div>
                 );
               }}
             </Toolbar>
           </div>
-          <div className="flex-grow overflow-auto">
+          <div className="flex-1 min-h-0 overflow-auto">
             <Viewer
               fileUrl={fileUrl}
               transformGetDocumentParams={(params) => ({
                 ...params,
                 disableRange: true,
                 disableStream: true,
+                disableAutoFetch: true,
               })}
               plugins={[
                 toolbarPluginInstance,

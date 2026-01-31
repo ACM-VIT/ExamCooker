@@ -163,6 +163,17 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
             />
           </Link>
           <Link
+            href={"/courses"}
+            passHref
+            className={`${pathname?.startsWith("/courses") ? "bg-[#ffffff]/20" : ""}`}
+          >
+            <RenderMenuItem
+              svgSource="/assets/CoursesIcon.svg"
+              alt="Courses"
+              disableAnim={pathname?.startsWith("/courses") ?? false}
+            />
+          </Link>
+          <Link
             href={"/syllabus"}
             passHref
             className={`${pathname == "/syllabus" ? "bg-[#ffffff]/20" : ""}`}

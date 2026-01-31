@@ -1,9 +1,11 @@
 import React, { Suspense } from 'react';
 import { redirect } from 'next/navigation';
+import type { Metadata } from "next";
 import SyllabusCard from '@/app/components/SyllabusCard';
 import SearchBar from "../../components/SearchBar";
 import Pagination from "../../components/Pagination";
 import { getSyllabusCount, getSyllabusPage } from "@/lib/data/syllabus";
+import { DEFAULT_KEYWORDS } from "@/lib/seo";
 
 function validatePage(page: number, totalPages: number): number {
     if (isNaN(page) || page < 1) {
@@ -92,4 +94,24 @@ export default async function SyllabusPage({
             </Suspense>
         </div>
     );
+}
+
+export async function generateMetadata({
+    searchParams,
+}: {
+    searchParams?: Promise<{ page?: string; search?: string }>;
+}): Promise<Metadata> {
+    const params = (await searchParams) ?? {};
+    const search = params.search || "";
+    const page = Number.parseInt(params.page || "1", 10) || 1;
+    const isIndexable = !search && page <= 1;
+    const title = search ? `Syllabus matching \"${search}\"` : "Syllabus";
+
+    return {
+        title,
+        description: "Browse syllabus PDFs on ExamCooker.",
+        keywords: DEFAULT_KEYWORDS,
+        alternates: { canonical: "/syllabus" },
+        robots: { index: isIndexable, follow: true },
+    };
 }
