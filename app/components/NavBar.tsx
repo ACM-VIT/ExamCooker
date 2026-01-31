@@ -130,14 +130,14 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
 
         <div className="flex flex-col items-center mt-8">
           <Link
-            href="/"
+            href="/home"
             passHref
-            className={`${pathname == "/" ? "bg-[#ffffff]/20" : ""}`}
+            className={`${pathname == "/home" ? "bg-[#ffffff]/20" : ""}`}
           >
             <RenderMenuItem
               svgSource="/assets/Home.svg"
               alt="Home"
-              disableAnim={pathname == "/"}
+              disableAnim={pathname == "/home"}
             />
           </Link>
           <Link

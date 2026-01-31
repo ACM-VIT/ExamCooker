@@ -5,6 +5,11 @@ import { Viewer, Worker, SpecialZoomLevel } from "@react-pdf-viewer/core";
 import { toolbarPlugin } from "@react-pdf-viewer/toolbar";
 import { zoomPlugin } from "@react-pdf-viewer/zoom";
 import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
+import type { RenderGoToPageProps } from "@react-pdf-viewer/page-navigation";
+import type {
+  RenderZoomInProps,
+  RenderZoomOutProps,
+} from "@react-pdf-viewer/zoom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronUp,
@@ -39,7 +44,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
         isFullScreen ? "fixed inset-0 z-50 bg-white dark:bg-gray-900" : ""
       }`}
     >
-      <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+      <Worker workerUrl="/pdf.worker.min.mjs">
         <div className="rpv-core__viewer flex flex-col h-full">
           <div className="rpv-core__toolbar">
             <Toolbar>
@@ -56,8 +61,12 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                   <div className="flex items-center justify-between w-full bg-white dark:bg-gray-800 p-2">
                     <div className="flex items-center space-x-2">
                       <GoToPreviousPage>
-                        {(props) => (
-                          <button {...props} className={buttonClass}>
+                        {(props: RenderGoToPageProps) => (
+                          <button
+                            onClick={props.onClick}
+                            disabled={props.isDisabled}
+                            className={buttonClass}
+                          >
                             <FontAwesomeIcon icon={faChevronUp} />
                           </button>
                         )}
@@ -66,8 +75,12 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                       <span className="mx-1">/</span>
                       <NumberOfPages />
                       <GoToNextPage>
-                        {(props) => (
-                          <button {...props} className={buttonClass}>
+                        {(props: RenderGoToPageProps) => (
+                          <button
+                            onClick={props.onClick}
+                            disabled={props.isDisabled}
+                            className={buttonClass}
+                          >
                             <FontAwesomeIcon icon={faChevronDown} />
                           </button>
                         )}
@@ -75,15 +88,21 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                     </div>
                     <div className="flex items-center space-x-2">
                       <ZoomOut>
-                        {(props) => (
-                          <button {...props} className={buttonClass}>
+                        {(props: RenderZoomOutProps) => (
+                          <button
+                            onClick={props.onClick}
+                            className={buttonClass}
+                          >
                             <FontAwesomeIcon icon={faMinus} />
                           </button>
                         )}
                       </ZoomOut>
                       <ZoomIn>
-                        {(props) => (
-                          <button {...props} className={buttonClass}>
+                        {(props: RenderZoomInProps) => (
+                          <button
+                            onClick={props.onClick}
+                            className={buttonClass}
+                          >
                             <FontAwesomeIcon icon={faPlus} />
                           </button>
                         )}

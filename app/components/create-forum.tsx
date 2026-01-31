@@ -15,6 +15,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faSquareXmark } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from "@/components/ui/use-toast";
 import Loading from "@/app/@protected_routes/loading";
+import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 const years = ["2020", "2021", "2022", "2023", "2024"];
 const slots = [
@@ -51,6 +52,7 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
     const forumId = "cly4bhnc0000df02z5tshuhx7";
     const [pending, startTransition] = useTransition();
     const [tagInput, setTagInput] = useState("");
+    const { requireAuth } = useGuestPrompt();
 
     const router = useRouter();
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -84,6 +86,9 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!requireAuth("create forum posts")) {
+            return;
+        }
         startTransition(async () => {
             const result = await createForumPost({
                 title,
