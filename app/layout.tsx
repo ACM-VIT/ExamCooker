@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/toaster";
 import "@/app/globals.css";
 import SocialMediaFollowToast from "@/components/ui/SocialMediaToast";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import ServerRouteGate from "@/app/components/ServerRouteGate";
 
 export const metadata = {
     title: {
@@ -46,20 +45,8 @@ export default function RootLayout({
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
-                <Suspense fallback={null}>
-                    <ServerRouteGate
-                        protectedRoutes={
-                            <Suspense fallback={null}>
-                                {protected_routes}
-                            </Suspense>
-                        }
-                        unprotectedRoutes={
-                            <Suspense fallback={null}>
-                                {unprotected_routes}
-                            </Suspense>
-                        }
-                    />
-                </Suspense>
+                <Suspense fallback={null}>{protected_routes}</Suspense>
+                <Suspense fallback={null}>{unprotected_routes}</Suspense>
                 <Toaster />
                 <SocialMediaFollowToast />
                 {process.env.GA_ID && (
