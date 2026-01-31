@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/toaster";
 import "@/app/globals.css";
 import SocialMediaFollowToast from "@/components/ui/SocialMediaToast";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import RouteGate from "@/app/components/RouteGate";
 
 export const metadata = {
     title: {
@@ -33,7 +32,7 @@ export const metadata = {
 };
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
-export default async function RootLayout({
+export default function RootLayout({
     protected_routes,
     unprotected_routes,
 }: {
@@ -46,17 +45,8 @@ export default async function RootLayout({
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
-                <Suspense fallback={null}>
-                    <RouteGate
-                        isAuthed={false}
-                        protectedRoutes={
-                            <Suspense fallback={null}>
-                                {protected_routes}
-                            </Suspense>
-                        }
-                        unprotectedRoutes={unprotected_routes}
-                    />
-                </Suspense>
+                <Suspense fallback={null}>{protected_routes}</Suspense>
+                <Suspense fallback={null}>{unprotected_routes}</Suspense>
                 <Toaster />
                 <SocialMediaFollowToast />
                 {process.env.GA_ID && (
