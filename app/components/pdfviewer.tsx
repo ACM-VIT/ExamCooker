@@ -5,6 +5,11 @@ import { Viewer, Worker, SpecialZoomLevel } from "@react-pdf-viewer/core";
 import { toolbarPlugin } from "@react-pdf-viewer/toolbar";
 import { zoomPlugin } from "@react-pdf-viewer/zoom";
 import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
+import type { RenderGoToPageProps } from "@react-pdf-viewer/page-navigation";
+import type {
+  RenderZoomInProps,
+  RenderZoomOutProps,
+} from "@react-pdf-viewer/zoom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronUp,
@@ -56,77 +61,51 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                   <div className="flex items-center justify-between w-full bg-white dark:bg-gray-800 p-2">
                     <div className="flex items-center space-x-2">
                       <GoToPreviousPage>
-                        {(props) => {
-                          const { isDisabled, ...buttonProps } = props as unknown as {
-                            isDisabled?: boolean;
-                            [key: string]: unknown;
-                          };
-                          return (
-                            <button
-                              {...buttonProps}
-                              disabled={Boolean(isDisabled)}
-                              className={buttonClass}
-                            >
-                              <FontAwesomeIcon icon={faChevronUp} />
-                            </button>
-                          );
-                        }}
+                        {(props: RenderGoToPageProps) => (
+                          <button
+                            onClick={props.onClick}
+                            disabled={props.isDisabled}
+                            className={buttonClass}
+                          >
+                            <FontAwesomeIcon icon={faChevronUp} />
+                          </button>
+                        )}
                       </GoToPreviousPage>
                       <CurrentPageInput />
                       <span className="mx-1">/</span>
                       <NumberOfPages />
                       <GoToNextPage>
-                        {(props) => {
-                          const { isDisabled, ...buttonProps } = props as unknown as {
-                            isDisabled?: boolean;
-                            [key: string]: unknown;
-                          };
-                          return (
-                            <button
-                              {...buttonProps}
-                              disabled={Boolean(isDisabled)}
-                              className={buttonClass}
-                            >
-                              <FontAwesomeIcon icon={faChevronDown} />
-                            </button>
-                          );
-                        }}
+                        {(props: RenderGoToPageProps) => (
+                          <button
+                            onClick={props.onClick}
+                            disabled={props.isDisabled}
+                            className={buttonClass}
+                          >
+                            <FontAwesomeIcon icon={faChevronDown} />
+                          </button>
+                        )}
                       </GoToNextPage>
                     </div>
                     <div className="flex items-center space-x-2">
                       <ZoomOut>
-                        {(props) => {
-                          const { isDisabled, ...buttonProps } = props as unknown as {
-                            isDisabled?: boolean;
-                            [key: string]: unknown;
-                          };
-                          return (
-                            <button
-                              {...buttonProps}
-                              disabled={Boolean(isDisabled)}
-                              className={buttonClass}
-                            >
-                              <FontAwesomeIcon icon={faMinus} />
-                            </button>
-                          );
-                        }}
+                        {(props: RenderZoomOutProps) => (
+                          <button
+                            onClick={props.onClick}
+                            className={buttonClass}
+                          >
+                            <FontAwesomeIcon icon={faMinus} />
+                          </button>
+                        )}
                       </ZoomOut>
                       <ZoomIn>
-                        {(props) => {
-                          const { isDisabled, ...buttonProps } = props as unknown as {
-                            isDisabled?: boolean;
-                            [key: string]: unknown;
-                          };
-                          return (
-                            <button
-                              {...buttonProps}
-                              disabled={Boolean(isDisabled)}
-                              className={buttonClass}
-                            >
-                              <FontAwesomeIcon icon={faPlus} />
-                            </button>
-                          );
-                        }}
+                        {(props: RenderZoomInProps) => (
+                          <button
+                            onClick={props.onClick}
+                            className={buttonClass}
+                          >
+                            <FontAwesomeIcon icon={faPlus} />
+                          </button>
+                        )}
                       </ZoomIn>
                       <button
                         onClick={toggleFullScreen}
