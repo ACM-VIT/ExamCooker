@@ -1,19 +1,11 @@
-import React from 'react';
-import Fuse from 'fuse.js';
-import {Note, PrismaClient, Tag} from "@/src/generated/prisma";
+import React, { Suspense } from 'react';
 import {redirect} from 'next/navigation';
 import Pagination from "../../components/Pagination";
 import NotesCard from "../../components/NotesCard";
 import SearchBar from "../../components/SearchBar";
 import Dropdown from "../../components/FilterComponent";
 import UploadButtonNotes from "../../components/UploadButtonNotes";
-
-
-const SCORE_THRESHOLD = 0.6;
-
-type NoteWithTags = Note & {
-    tags: Tag[];
-};
+import { getNotesCount, getNotesPage } from "@/lib/data/notes";
 
 function validatePage(page: number, totalPages: number): number {
     if (isNaN(page) || page < 1) {
@@ -25,74 +17,44 @@ function validatePage(page: number, totalPages: number): number {
     return page;
 }
 
-function performSearch(query: string, dataSet: NoteWithTags[]) {
-    const options = {
-        includeScore: true,
-        keys: [
-            { name: 'title', weight: 2 },
-            { name: 'tags.name', weight: 1 }
-        ],
-        threshold: 0.6,
-        ignoreLocation: true,
-        minMatchCharLength: 2,
-        findAllMatches: true,
-        useExtendedSearch: true,
-    };
-    const fuse = new Fuse(dataSet, options);
-    const searchResults = fuse.search({
-        $or: [
-            { title: query },
-            { 'tags.name': query },
-            { title: `'${query}` }
-        ]
-    });
-    return searchResults
-        .filter((fuseResult) => (fuseResult.score || 1) < SCORE_THRESHOLD)
-        .map((fuseResult) => fuseResult.item);
+function NotesSkeleton() {
+    return (
+        <div className="flex justify-center">
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6 place-content-center">
+                {Array.from({ length: 9 }).map((_, index) => (
+                    <div key={index} className="max-w-sm w-full h-full">
+                        <div className="px-5 py-6 w-full text-center bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 border-2 border-transparent animate-pulse">
+                            <div className="bg-[#d9d9d9]/70 w-full h-44" />
+                            <div className="h-4 mt-5 bg-black/10 dark:bg-white/10 rounded" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
 }
 
-async function notesPage({ searchParams }: { searchParams: Promise<{ page?: string, search?: string, tags?: string | string[] }> }) {
-    const prisma = new PrismaClient();
+async function NotesResults({ params }: { params: { page?: string; search?: string; tags?: string | string[] } }) {
     const pageSize = 9;
-    const params = await searchParams;
     const search = params.search || '';
     const page = parseInt(params.page || '1', 10);
     const tags: string[] = Array.isArray(params.tags)
         ? params.tags
         : (params.tags ? params.tags.split(',') : []);
+    const normalizedTags = [...tags].sort();
 
-    let filteredNotes = await prisma.note.findMany({
-        where: {
-            isClear: true,
-            ...(tags.length > 0 && {
-                tags: {
-                    some: {
-                        name: {
-                            in: tags,
-                        },
-                    },
-                },
-            }),
-        },
-        include: {
-            tags: true,
-        },
-        orderBy: {
-            createdAt: 'desc',
-        }
+    const totalCount = await getNotesCount({
+        search,
+        tags: normalizedTags,
     });
-    if (search) {
-        filteredNotes = performSearch(search, filteredNotes);
-    }
-
-    const totalCount = filteredNotes.length;
     const totalPages = Math.ceil(totalCount / pageSize);
-
     const validatedPage = validatePage(page, totalPages);
-
-    const startIndex = (validatedPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginatedNotes = filteredNotes.slice(startIndex, endIndex);
+    const paginatedNotes = await getNotesPage({
+        search,
+        tags: normalizedTags,
+        page: validatedPage,
+        pageSize,
+    });
 
     if (validatedPage !== page) {
         const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
@@ -101,22 +63,7 @@ async function notesPage({ searchParams }: { searchParams: Promise<{ page?: stri
     }
 
     return (
-        <div className="p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
-            <h1 className="text-center mb-4">Notes</h1>
-            <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-                <Dropdown pageType='notes' />
-                <SearchBar pageType="notes" initialQuery={search} />
-                <UploadButtonNotes />
-            </div>
-
-            <div className='flex-col w-5/6 md:hidden space-y-4'>
-                <SearchBar pageType="notes" initialQuery={search} />
-                <div className='flex justify-between'>
-                    <Dropdown pageType='notes' />
-                    <UploadButtonNotes />
-                </div>
-            </div>
-
+        <>
             {tags.length > 0 && (
                 <div className="flex justify-center mb-4">
                     <div className="flex flex-wrap gap-2">
@@ -130,7 +77,7 @@ async function notesPage({ searchParams }: { searchParams: Promise<{ page?: stri
             )}
 
             <div className='flex justify-center'>
-                <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6  place-content-center">
+                <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6 place-content-center">
                     {paginatedNotes.length > 0 ? (
                         paginatedNotes.map((eachNote, index) => (
                             <NotesCard
@@ -160,8 +107,37 @@ async function notesPage({ searchParams }: { searchParams: Promise<{ page?: stri
                     />
                 </div>
             )}
-        </div>
+        </>
     );
 }
 
-export default notesPage;
+export default async function NotesPage({
+    searchParams,
+}: {
+    searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+}) {
+    const params = (await searchParams) ?? {};
+    const search = params.search || '';
+    return (
+        <div className="p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
+            <h1 className="text-center mb-4">Notes</h1>
+            <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
+                <Dropdown pageType='notes' />
+                <SearchBar pageType="notes" initialQuery={search} />
+                <UploadButtonNotes />
+            </div>
+
+            <div className='flex-col w-5/6 md:hidden space-y-4'>
+                <SearchBar pageType="notes" initialQuery={search} />
+                <div className='flex justify-between'>
+                    <Dropdown pageType='notes' />
+                    <UploadButtonNotes />
+                </div>
+            </div>
+
+            <Suspense fallback={<NotesSkeleton />}>
+                <NotesResults params={params} />
+            </Suspense>
+        </div>
+    );
+}

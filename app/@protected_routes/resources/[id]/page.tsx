@@ -1,7 +1,7 @@
 import {PrismaClient} from '@/src/generated/prisma';
 import ModuleDropdown from '../../../components/ModuleDropdown';
-import {auth} from '@/app/auth';
 import {notFound} from "next/navigation";
+import ViewTracker from "@/app/components/ViewTracker";
 
 const prisma = new PrismaClient();
 
@@ -25,32 +25,13 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
     courseName = courseName ? courseName : "Subject Name";
 
 
-    const session = await auth();
-    const userId = session?.user?.id;
-
-    if (userId) {
-        await prisma.viewHistory.upsert({
-            where: {
-                userId_subjectId: {
-                    userId,
-                    subjectId: subject.id,
-                },
-            },
-            update: {
-                viewedAt: new Date(),
-                count: {
-                    increment: 1,
-                },
-            },
-            create: {
-                userId,
-                subjectId: subject.id,
-                viewedAt: new Date(),
-            },
-        });
-    }
     return (
         <div className="transition-colors container mx-auto p-4 text-black dark:text-[#D5D5D5]">
+            <ViewTracker
+                id={subject.id}
+                type="subject"
+                title={subject.name}
+            />
             <h2>{courseName}</h2>
             <br />
             <h3>Course Code: {courseCode}</h3>

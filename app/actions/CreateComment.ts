@@ -2,7 +2,7 @@
 
 import { PrismaClient } from '@/src/generated/prisma'
 import { auth } from '../auth'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 const prisma = new PrismaClient()
 
@@ -40,6 +40,7 @@ export async function createComment(data: CreateCommentInput): Promise<{ success
     })
 
     revalidatePath(`/forum/${data.forumPostId}`);
+    revalidateTag("forum", "minutes");
     return { success: true, data: newComment }
   } catch (error) {
     console.error('Server error creating comment:', error)

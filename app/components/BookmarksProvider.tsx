@@ -1,8 +1,10 @@
 'use client'
 
-import React, { createContext, useState, useContext, useCallback, useTransition } from 'react';
+import React, { createContext, useState, useContext, useCallback, useTransition, useEffect } from 'react';
 import { Bookmark, toggleBookmarkAction } from '../actions/Favourites';
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
+import { loadGuestBookmarks, saveGuestBookmarks } from "@/app/lib/guestStorage";
+import { getBookmarksAction } from "@/app/actions/getBookmarks";
 
 type BookmarksContextType = {
     bookmarks: Bookmark[];
@@ -23,12 +25,40 @@ export function useBookmarks() {
 export default function BookmarksProvider({ children, initialBookmarks }: { children: React.ReactNode, initialBookmarks: Bookmark[] }) {
     const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarks);
     const [pending, startTransition] = useTransition();
-    const { requireAuth } = useGuestPrompt();
+    const { requireAuth, isAuthed, status } = useGuestPrompt();
+
+    useEffect(() => {
+        if (status === "unauthenticated") {
+            setBookmarks(loadGuestBookmarks());
+        }
+        if (status === "authenticated") {
+            if (initialBookmarks.length > 0) {
+                setBookmarks(initialBookmarks);
+                return;
+            }
+            getBookmarksAction()
+                .then((data) => setBookmarks(data))
+                .catch(() => undefined);
+        }
+    }, [status, initialBookmarks]);
 
     const toggleBookmark = useCallback(async (bookmark: Bookmark, favourite: boolean) => {
+        if (!isAuthed) {
+            setBookmarks(prevBookmarks => {
+                const index = prevBookmarks.findIndex(b => b.id === bookmark.id && b.type === bookmark.type);
+                const next = index > -1
+                    ? prevBookmarks.filter((_, i) => i !== index)
+                    : [...prevBookmarks, bookmark];
+                saveGuestBookmarks(next);
+                return next;
+            });
+            return;
+        }
+
         if (!requireAuth("save to favourites")) {
             return;
         }
+
         setBookmarks(prevBookmarks => {
             const index = prevBookmarks.findIndex(b => b.id === bookmark.id && b.type === bookmark.type);
             if (index > -1) {
@@ -68,7 +98,7 @@ export default function BookmarksProvider({ children, initialBookmarks }: { chil
                 console.error('Error toggling bookmark:', error);
             }
         })
-    }, []);
+    }, [isAuthed, requireAuth]);
 
     const isBookmarked = useCallback((id: string, type: Bookmark['type']) => {
         return bookmarks.some(b => b.id === id && b.type === type);

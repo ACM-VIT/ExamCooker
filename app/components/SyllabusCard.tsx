@@ -1,12 +1,14 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
-import { syllabi } from '@/src/generated/prisma';
 import { useBookmarks } from './BookmarksProvider';
 import { useToast } from "@/components/ui/use-toast";
 
 interface SyllabusCardProps {
-    syllabus: syllabi;
+    syllabus: {
+        id: string;
+        name: string;
+    };
 }
 
 function processSyllabusName(input: string): string {

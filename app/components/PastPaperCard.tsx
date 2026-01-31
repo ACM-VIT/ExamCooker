@@ -3,12 +3,16 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart } from "@fortawesome/free-solid-svg-icons";
 import { useBookmarks } from "./BookmarksProvider";
-import { PastPaper } from "@/src/generated/prisma";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
+import Image from "next/image";
 
 interface PastPaperCardProps {
-  pastPaper: PastPaper;
+  pastPaper: {
+    id: string;
+    title: string;
+    thumbNailUrl?: string | null;
+  };
   index: number;
   openInNewTab?: boolean;
 }
@@ -17,7 +21,7 @@ function removePdfExtension(title: string) {
   return title.replace(/\.pdf$/, "");
 }
 
-function PastPaperCard({ pastPaper }: PastPaperCardProps) {
+function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const isFav = isBookmarked(pastPaper.id, "pastpaper");
   const { toast } = useToast();
@@ -40,17 +44,17 @@ function PastPaperCard({ pastPaper }: PastPaperCardProps) {
     <div className={`max-w-sm w-full h-full text-black dark:text-[#D5D5D5]`}>
       <Link
         href={`/past_papers/${pastPaper.id}`}
-        prefetch={false}
+        prefetch={index < 3}
         className="block hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 cursor-pointer"
       >
         <div className="bg-[#d9d9d9] w-full h-44 relative overflow-hidden">
-          <img
-            className="w-full object-cover"
-            src={
-              pastPaper.thumbNailUrl ||
-              "https://topperworld.in/media/2022/11/c-sc.png"
-            } // migration to make thumbnail mandatory
+          <Image
+            src={pastPaper.thumbNailUrl || "/assets/ExamCooker.png"}
             alt={removePdfExtension(pastPaper.title)}
+            fill
+            sizes="(min-width: 1024px) 320px, (min-width: 768px) 45vw, 90vw"
+            className="object-cover"
+            priority={index < 3}
           />
         </div>
         <div className="flex justify-between items-center">

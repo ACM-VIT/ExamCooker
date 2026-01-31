@@ -3,8 +3,10 @@ import {auth} from "../../auth";
 import {fetchUnclearedItems} from "../../actions/moderatorActions";
 import ModeratorDashboardClient from "../../components/ModeratorDashBoard";
 
-async function ModeratorDashboard({searchParams}: {
-    searchParams: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+async function ModeratorDashboard({
+    searchParams,
+}: {
+    searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
 }) {
     const session = await auth();
 
@@ -14,7 +16,7 @@ async function ModeratorDashboard({searchParams}: {
     }
 
     try {
-        const params = await searchParams;
+        const params = (await searchParams) ?? {};
         const {notes, pastPapers, totalUsers} = await fetchUnclearedItems();
         return (
             <ModeratorDashboardClient

@@ -2,7 +2,7 @@
 
 import { PrismaClient } from "@/src/generated/prisma";
 import { auth } from "../auth";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 const prisma = new PrismaClient();
 
@@ -44,6 +44,8 @@ export async function approveItem(id: string, type: "note" | "pastPaper") {
           });
 
     revalidatePath("/mod");
+    revalidateTag("notes", "minutes");
+    revalidateTag("past_papers", "minutes");
 }
 
 export async function renameItem(
@@ -67,6 +69,8 @@ export async function renameItem(
     }
 
     revalidatePath("/mod");
+    revalidateTag("notes", "minutes");
+    revalidateTag("past_papers", "minutes");
 }
 
 export async function deleteItem(id: string, type: "note" | "pastPaper") {
@@ -85,4 +89,6 @@ export async function deleteItem(id: string, type: "note" | "pastPaper") {
         await prisma.pastPaper.delete({ where: { id } });
     }
     revalidatePath("/mod");
+    revalidateTag("notes", "minutes");
+    revalidateTag("past_papers", "minutes");
 }

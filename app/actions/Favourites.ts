@@ -3,6 +3,7 @@
 import { PrismaClient } from '@/src/generated/prisma'
 import { auth } from '../auth'
 import { revalidateFavorites } from './revalidateFavourites'
+import { revalidateTag } from "next/cache";
 
 const prisma = new PrismaClient()
 export type Bookmark = {
@@ -58,6 +59,10 @@ export async function toggleBookmarkAction(bookmark: Bookmark, favourite: boolea
         });
 
         await revalidateFavorites(bookmark.type);
+        if (user?.id) {
+            revalidateTag("home", "minutes");
+            revalidateTag(`home:${user.id}`, "minutes");
+        }
 
         return { success: true, isBookmarked: favourite };
     } catch (error) {

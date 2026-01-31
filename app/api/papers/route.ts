@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { Prisma, PastPaper } from '@/src/generated/prisma'
 
-export const dynamic = 'force-dynamic'
-
 const DEFAULT_LIMIT = 40
 const MAX_LIMIT = 200
 const SLOT_TAG_REGEX = /^[A-G][1-2]$/i

@@ -37,6 +37,30 @@ interface SubjectItem extends Omit<Subject, 'type'> {
 export function mapBookmarkToItem(bookmark: any): Item {
   switch (bookmark.type) {
     case 'forumpost':
+      if (
+        !bookmark.tags ||
+        !bookmark.comments ||
+        !bookmark.createdAt ||
+        !bookmark.updatedAt
+      ) {
+        const now = new Date();
+        return {
+          id: bookmark.id,
+          type: 'forumpost',
+          title: bookmark.title,
+          description: bookmark.description ?? '',
+          authorId: bookmark.authorId ?? '',
+          forumId: bookmark.forumId ?? '',
+          createdAt: bookmark.createdAt ? new Date(bookmark.createdAt) : now,
+          updatedAt: bookmark.updatedAt ? new Date(bookmark.updatedAt) : now,
+          upvoteCount: bookmark.upvoteCount ?? 0,
+          downvoteCount: bookmark.downvoteCount ?? 0,
+          votes: bookmark.votes ?? [],
+          tags: bookmark.tags ?? [],
+          comments: bookmark.comments ?? [],
+          author: bookmark.author ?? { name: 'Unknown' },
+        } as ForumPostItem;
+      }
       return bookmark as ForumPostItem
     case 'note':
       return bookmark as NoteItem;
@@ -117,7 +141,7 @@ const FavFetch: React.FC<FavFetchProps> = ({ items, activeTab }) => {
                   author={forumPostItem.author?.name || null}
                   createdAt={forumPostItem.createdAt}
                   tags={forumPostItem.tags}
-                  comments={forumPostItem.comments}
+                  commentCount={forumPostItem.comments.length}
                 />
               );
             }

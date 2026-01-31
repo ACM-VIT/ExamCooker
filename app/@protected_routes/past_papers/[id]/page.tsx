@@ -1,15 +1,13 @@
 import React from 'react';
-import {PrismaClient} from '@/src/generated/prisma';
 import PDFViewerClient from '@/app/components/PDFViewerClient';
-import {auth} from '@/app/auth';
 import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
-import DeleteButton from '@/app/components/DeleteButton';
 import {Metadata} from "next";
 import {notFound} from "next/navigation";
 
-import EditButton from '@/app/components/EditButton';
-
 import ShareLink from '@/app/components/ShareLink';
+import ViewTracker from "@/app/components/ViewTracker";
+import { getPastPaperDetail } from "@/lib/data/pastPaperDetail";
+import ItemActions from "@/app/components/ItemActions";
 
 function removePdfExtension(filename: string): string {
     return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
@@ -26,35 +24,15 @@ function isValidYear(year: string): boolean {
 }
 
 async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
-    const prisma = new PrismaClient();
     let paper;
-    let current_user = null;
     let year: string = '';
     let slot: string = '';
-    const session = await auth();
-    const userId = session?.user?.id ?? null;
     const { id } = await params;
 
     try {
-        paper = await prisma.pastPaper.findUnique({
-            where: {
-                id: id
-            },
-            include: {
-                author: true,
-                tags: true,
-            },
-        });
+        paper = await getPastPaperDetail(id);
 
-        if (userId) {
-            current_user = await prisma.user.findUnique({
-                where: {
-                    id: userId,
-                }
-            });
-        }
-
-        if (paper && userId) {
+        if (paper) {
             for (let i: number = 0; i < paper!.tags.length; i++) {
                 if (isValidYear(paper!.tags[i].name)) {
                     year = paper!.tags[i].name
@@ -62,27 +40,6 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
                     slot = paper!.tags[i].name
                 }
             }
-
-
-            await prisma.viewHistory.upsert({
-                where: {
-                    userId_pastPaperId: {
-                        userId,
-                        pastPaperId: paper.id
-                    }
-                },
-                update: {
-                    viewedAt: new Date(),
-                    count: {
-                        increment: 1
-                    }
-                },
-                create: {
-                    userId,
-                    pastPaperId: paper.id,
-                    viewedAt: new Date(),
-                }
-            });
         }
     } catch (error) {
         console.error('Error fetching note:', error);
@@ -95,7 +52,7 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
             </div>
         );
     } finally {
-        await prisma.$disconnect();
+        // no-op
     }
 
     if (!paper) return notFound();
@@ -104,6 +61,11 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
 
     return (
         <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
+            <ViewTracker
+                id={paper.id}
+                type="pastpaper"
+                title={removePdfExtension(paper.title)}
+            />
             <div className="lg:w-1/2 flex flex-col overflow-hidden">
                 <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
                     <div className="max-w-2xl mx-auto">
@@ -118,11 +80,12 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
                                 <p className='text-base sm:text-xs'><span
                                     className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
                                 </p>
-                                {current_user?.role === "MODERATOR" &&
-                                    <EditButton itemID={paper.id} title={paper.title} activeTab='pastPaper'/>}
-
-                                {userId === paper.author.id &&
-                                    <DeleteButton itemID={paper.id} activeTab="pastPaper"/>}
+                                <ItemActions
+                                    itemId={paper.id}
+                                    title={paper.title}
+                                    authorId={paper.author?.id}
+                                    activeTab="pastPaper"
+                                />
                                 <ShareLink fileType='this Past Paper'/>
                             </div>
                         </div>
@@ -142,16 +105,8 @@ export default PdfViewerPage;
 
 
 export async function generateMetadata({params}: { params: Promise<{ id: string }> }): Promise<Metadata> {
-    const prisma = new PrismaClient();
     const { id } = await params;
-    const paper = await prisma.pastPaper.findUnique({
-        where: {
-            id: id
-        },
-        include: {
-            tags: true
-        }
-    })
+    const paper = await getPastPaperDetail(id);
     if (!paper) return {}
     return {
         title: removePdfExtension(paper.title),

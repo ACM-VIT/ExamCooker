@@ -1,16 +1,8 @@
 import React from 'react';
-import { PrismaClient } from '@/src/generated/prisma';
-import PDFViewer from '@/app/components/pdfviewer';
-import { auth } from '@/app/auth';
+import PDFViewerClient from '@/app/components/PDFViewerClient';
 import { notFound } from "next/navigation";
-
-const prisma = new PrismaClient();
-
-async function getSyllabus(id: string) {
-    return prisma.syllabi.findUnique({
-        where: { id }
-    });
-}
+import ViewTracker from "@/app/components/ViewTracker";
+import { getSyllabusDetail } from "@/lib/data/syllabusDetail";
 
 function processSyllabusName(input: string): string {
     return input
@@ -20,34 +12,12 @@ function processSyllabusName(input: string): string {
   }
 
 async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> }) {
-    const prisma = new PrismaClient();
     let syllabus;
-    const session = await auth();
-    const userId = session?.user?.id;
     const { id } = await params;
 
     try {
-        syllabus = await getSyllabus(id);
+        syllabus = await getSyllabusDetail(id);
 
-        if (userId && syllabus?.id) {
-            await prisma.viewHistory.upsert({
-                where: {
-                    userId_syllabusId: { userId, syllabusId: syllabus.id}
-                },
-                update: {
-                    viewedAt: new Date(),
-                    count: {
-                        increment: 1,
-                    },
-                },
-                create: {
-                    userId,
-                    syllabusId: syllabus.id,
-                    viewedAt: new Date(),
-                    count: 1,
-                },
-            });
-        }
     } catch (error) {
         console.error('Error fetching syllabus:', error);
         return (
@@ -58,7 +28,7 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
             </div>
         );
     } finally {
-        await prisma.$disconnect();
+        // no-op
     }
 
     if (!syllabus) {
@@ -69,6 +39,11 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
 
     return (
         <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
+            <ViewTracker
+                id={syllabus.id}
+                type="syllabus"
+                title={processSyllabusName(syllabus.name)}
+            />
             <div className="lg:w-1/2 flex flex-col overflow-hidden">
                 <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
                     <div className="max-w-2xl mx-auto">
@@ -85,7 +60,7 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
             </div>
             <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
                 <div className="h-full overflow-auto">
-                    <PDFViewer fileUrl={syllabus.fileUrl} />
+                    <PDFViewerClient fileUrl={syllabus.fileUrl} />
                 </div>
             </div>
         </div>

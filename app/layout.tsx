@@ -1,7 +1,6 @@
-import type React from "react";
+import React, { Suspense } from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
-import { auth } from "@/app/auth";
 import "@/app/globals.css";
 import SocialMediaFollowToast from "@/components/ui/SocialMediaToast";
 import { GoogleAnalytics } from "@next/third-parties/google";
@@ -41,18 +40,23 @@ export default async function RootLayout({
     protected_routes: React.ReactNode;
     unprotected_routes: React.ReactNode;
 }) {
-    const session = await auth();
     return (
         <html lang="en">
             <body
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
-                <RouteGate
-                    isAuthed={Boolean(session?.user)}
-                    protectedRoutes={protected_routes}
-                    unprotectedRoutes={unprotected_routes}
-                />
+                <Suspense fallback={null}>
+                    <RouteGate
+                        isAuthed={false}
+                        protectedRoutes={
+                            <Suspense fallback={null}>
+                                {protected_routes}
+                            </Suspense>
+                        }
+                        unprotectedRoutes={unprotected_routes}
+                    />
+                </Suspense>
                 <Toaster />
                 <SocialMediaFollowToast />
                 {process.env.GA_ID && (
