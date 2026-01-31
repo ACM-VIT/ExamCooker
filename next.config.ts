@@ -10,7 +10,13 @@ const nextConfig: NextConfig = {
     },
     serverExternalPackages: ["canvas"],
     images: {
-        domains: ["storage.googleapis.com"],
+        remotePatterns: [
+            {
+                protocol: "https",
+                hostname: "storage.googleapis.com",
+                pathname: "/**",
+            },
+        ],
     },
 };
 
