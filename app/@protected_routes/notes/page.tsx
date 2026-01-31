@@ -1,11 +1,15 @@
 import React, { Suspense } from 'react';
-import {redirect} from 'next/navigation';
+import Link from "next/link";
+import { redirect } from 'next/navigation';
+import type { Metadata } from "next";
 import Pagination from "../../components/Pagination";
 import NotesCard from "../../components/NotesCard";
 import SearchBar from "../../components/SearchBar";
 import Dropdown from "../../components/FilterComponent";
 import UploadButtonNotes from "../../components/UploadButtonNotes";
 import { getNotesCount, getNotesPage } from "@/lib/data/notes";
+import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
+import { extractCourseFromTag } from "@/lib/courseTags";
 
 function validatePage(page: number, totalPages: number): number {
     if (isNaN(page) || page < 1) {
@@ -71,11 +75,25 @@ async function NotesResults({ params }: { params: { page?: string; search?: stri
             {tags.length > 0 && (
                 <div className="flex justify-center mb-4">
                     <div className="flex flex-wrap gap-2">
-                        {tags.map((tag, index) => (
-                            <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                {tag}
-                            </span>
-                        ))}
+                        {tags.map((tag, index) => {
+                            const course = extractCourseFromTag(tag);
+                            if (course) {
+                                return (
+                                    <Link
+                                        key={`${tag}-${index}`}
+                                        href={`/courses/${encodeURIComponent(course.code)}`}
+                                        className="bg-blue-100 text-blue-800 px-2 py-1 rounded"
+                                    >
+                                        {tag}
+                                    </Link>
+                                );
+                            }
+                            return (
+                                <span key={`${tag}-${index}`} className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                    {tag}
+                                </span>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -144,4 +162,36 @@ export default async function NotesPage({
             </Suspense>
         </div>
     );
+}
+
+export async function generateMetadata({
+    searchParams,
+}: {
+    searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+}): Promise<Metadata> {
+    const params = (await searchParams) ?? {};
+    const search = params.search || "";
+    const page = Number.parseInt(params.page || "1", 10) || 1;
+    const tags: string[] = Array.isArray(params.tags)
+        ? params.tags
+        : (params.tags ? params.tags.split(",") : []);
+    const normalizedTags = tags.map((tag) => tag.trim()).filter(Boolean);
+    const isIndexable = !search && normalizedTags.length === 0 && page <= 1;
+
+    const titleParts = ["Notes"];
+    if (normalizedTags.length) titleParts.push(normalizedTags.join(", "));
+    if (search) titleParts.push(`matching "${search}"`);
+
+    const title = titleParts.join(" - ");
+    const description = normalizedTags.length || search
+        ? `Browse notes ${normalizedTags.length ? `tagged ${normalizedTags.join(", ")}` : ""}${search ? ` matching ${search}` : ""}.`
+        : "Browse VIT notes and study material on ExamCooker.";
+
+    return {
+        title,
+        description,
+        keywords: buildKeywords(DEFAULT_KEYWORDS, normalizedTags),
+        alternates: { canonical: "/notes" },
+        robots: { index: isIndexable, follow: true },
+    };
 }

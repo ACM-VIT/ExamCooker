@@ -82,3 +82,90 @@ export async function getPastPapersPage(input: {
         thumbNailUrl: normalizeGcsUrl(item.thumbNailUrl),
     }));
 }
+
+export async function getRelatedPastPapers(input: {
+    id: string;
+    tagIds: string[];
+    limit?: number;
+}) {
+    "use cache";
+    cacheTag("past_papers");
+    cacheTag(`past_paper:${input.id}`);
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    if (!input.tagIds.length) return [];
+
+    const candidates = await prisma.pastPaper.findMany({
+        where: {
+            isClear: true,
+            id: { not: input.id },
+            tags: { some: { id: { in: input.tagIds } } },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: Math.max(30, input.limit ?? 0),
+        select: {
+            id: true,
+            title: true,
+            thumbNailUrl: true,
+            updatedAt: true,
+            tags: { select: { id: true } },
+        },
+    });
+
+    const tagIdSet = new Set(input.tagIds);
+    const scored = candidates.map((paper) => {
+        const score = paper.tags.reduce(
+            (acc, tag) => acc + (tagIdSet.has(tag.id) ? 1 : 0),
+            0
+        );
+        return { ...paper, score };
+    });
+
+    scored.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return b.updatedAt.getTime() - a.updatedAt.getTime();
+    });
+
+    return scored.slice(0, input.limit ?? 6).map((paper) => ({
+        id: paper.id,
+        title: paper.title,
+        thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
+    }));
+}
+
+export async function getRelatedPastPapersByCourseCode(input: {
+    id: string;
+    courseCode: string;
+    limit?: number;
+}) {
+    "use cache";
+    cacheTag("past_papers");
+    cacheTag(`past_paper:${input.id}`);
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const code = input.courseCode.trim();
+    if (!code) return [];
+
+    const candidates = await prisma.pastPaper.findMany({
+        where: {
+            isClear: true,
+            id: { not: input.id },
+            OR: [
+                { title: { contains: code, mode: "insensitive" } },
+                { tags: { some: { name: { contains: code, mode: "insensitive" } } } },
+            ],
+        },
+        orderBy: { updatedAt: "desc" },
+        take: input.limit ?? 6,
+        select: {
+            id: true,
+            title: true,
+            thumbNailUrl: true,
+        },
+    });
+
+    return candidates.map((paper) => ({
+        ...paper,
+        thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
+    }));
+}

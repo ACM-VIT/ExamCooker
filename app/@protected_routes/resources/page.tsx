@@ -1,9 +1,11 @@
 import React, { Suspense } from 'react';
 import { redirect } from 'next/navigation';
+import type { Metadata } from "next";
 import ResourceCard from '../../components/ResourceCard';
 import Pagination from '../../components/Pagination';
 import SearchBar from '../../components/SearchBar';
 import { getResourcesCount, getResourcesPage } from '@/lib/data/resources';
+import { DEFAULT_KEYWORDS } from "@/lib/seo";
 
 function validatePage(page: number, totalPages: number): number {
     if (isNaN(page) || page < 1) {
@@ -108,4 +110,24 @@ export default async function ResourcesPage({
             </div>
         </div>
     );
+}
+
+export async function generateMetadata({
+    searchParams,
+}: {
+    searchParams?: Promise<{ page?: string; search?: string }>;
+}): Promise<Metadata> {
+    const params = (await searchParams) ?? {};
+    const search = params.search || "";
+    const page = Number.parseInt(params.page || "1", 10) || 1;
+    const isIndexable = !search && page <= 1;
+    const title = search ? `Resources matching \"${search}\"` : "Resources";
+
+    return {
+        title,
+        description: "Browse course resources and reference material on ExamCooker.",
+        keywords: DEFAULT_KEYWORDS,
+        alternates: { canonical: "/resources" },
+        robots: { index: isIndexable, follow: true },
+    };
 }

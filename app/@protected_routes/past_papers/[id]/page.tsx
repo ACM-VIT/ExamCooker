@@ -3,15 +3,18 @@ import PDFViewerClient from '@/app/components/PDFViewerClient';
 import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
 import {Metadata} from "next";
 import {notFound} from "next/navigation";
+import PastPaperCard from "@/app/components/PastPaperCard";
 
 import ShareLink from '@/app/components/ShareLink';
 import ViewTracker from "@/app/components/ViewTracker";
 import { getPastPaperDetail } from "@/lib/data/pastPaperDetail";
 import ItemActions from "@/app/components/ItemActions";
-
-function removePdfExtension(filename: string): string {
-    return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
-}
+import TagContainer from "@/app/components/forumpost/TagContainer";
+import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
+import { extractCourseFromTag } from "@/lib/courseTags";
+import { getRelatedPastPapers } from "@/lib/data/pastPapers";
+import { parsePaperTitle } from "@/lib/paperTitle";
+import { getRelatedPastPapersByCourseCode } from "@/lib/data/pastPapers";
 
 function isValidSlot(str: string): boolean {
     const regex = /^[A-G]\d$/;
@@ -59,23 +62,92 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
 
     const postTime: string = paper.createdAt.toLocaleString("en-US", {timeZone: "Asia/Kolkata"});
 
+    const parsedTitle = parsePaperTitle(paper.title);
+    const courseTags = paper.tags.filter((tag) => extractCourseFromTag(tag.name));
+    const courseFromTag = courseTags.length ? extractCourseFromTag(courseTags[0].name) : null;
+    const courseTitle = courseFromTag?.title ?? parsedTitle.courseName ?? parsedTitle.cleanTitle;
+    const courseCode = courseFromTag?.code ?? parsedTitle.courseCode;
+    const displayTitle = courseCode && !courseTitle.toUpperCase().includes(courseCode)
+        ? `${courseTitle} (${courseCode})`
+        : courseTitle;
+    const courseTagIds = courseTags.map((tag) => tag.id);
+    const relatedPapers = courseTagIds.length
+        ? await getRelatedPastPapers({
+              id: paper.id,
+              tagIds: courseTagIds,
+              limit: 6,
+          })
+        : courseCode
+            ? await getRelatedPastPapersByCourseCode({
+                  id: paper.id,
+                  courseCode,
+                  limit: 6,
+              })
+            : [];
+    const canonical = `/past_papers/${paper.id}`;
+    const keywords = buildKeywords(
+        DEFAULT_KEYWORDS,
+        paper.tags.map((tag) => tag.name)
+    );
+    const description = `View ${displayTitle} past paper on ExamCooker.`;
+    const jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "CreativeWork",
+        name: displayTitle,
+        description,
+        url: absoluteUrl(canonical),
+        datePublished: paper.createdAt.toISOString(),
+        dateModified: paper.updatedAt.toISOString(),
+        keywords: keywords.join(", "),
+        author: paper.author?.name ? { "@type": "Person", name: paper.author.name } : undefined,
+    };
+
+    const relatedSection = relatedPapers.length ? (
+        <div className="space-y-3">
+            <h2 className="text-lg font-semibold">Related past papers</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {relatedPapers.map((item, index) => (
+                    <PastPaperCard
+                        key={item.id}
+                        pastPaper={item}
+                        index={index}
+                    />
+                ))}
+            </div>
+        </div>
+    ) : null;
+
     return (
-        <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
+        <div className="flex flex-col lg:flex-row lg:h-screen text-black dark:text-[#D5D5D5]">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
             <ViewTracker
                 id={paper.id}
                 type="pastpaper"
-                title={removePdfExtension(paper.title)}
+                title={displayTitle}
             />
             <div className="lg:w-1/2 flex flex-col overflow-hidden">
-                <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <div className="lg:flex-grow lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
                     <div className="max-w-2xl mx-auto">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{removePdfExtension(paper.title)}</h1>
+                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{displayTitle}</h1>
                         <div className="space-y-2 sm:space-y-3">
                             <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {slot}</p>
                             <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {year}</p>
                             <p className="text-base sm:text-lg"><span
                                 className="font-semibold">Posted by: </span> {paper.author?.name?.slice(0, -10) || 'Unknown'}
                             </p>
+                            {courseTags.length ? (
+                                <div className="pt-2">
+                                    <TagContainer tags={courseTags} />
+                                </div>
+                            ) : null}
+                            {relatedSection ? (
+                                <div className="hidden lg:block pt-6">
+                                    {relatedSection}
+                                </div>
+                            ) : null}
                             <div className="flex gap-2 items-center justify-between">
                                 <p className='text-base sm:text-xs'><span
                                     className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
@@ -92,11 +164,16 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
                     </div>
                 </div>
             </div>
-            <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
-                <div className="h-full overflow-auto">
+            <div className="lg:flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
+                <div className="h-[70vh] sm:h-[75vh] lg:h-full overflow-auto">
                     <PDFViewerClient fileUrl={paper.fileUrl}/>
                 </div>
             </div>
+            {relatedSection ? (
+                <div className="px-4 pb-6 lg:hidden">
+                    {relatedSection}
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -108,12 +185,37 @@ export async function generateMetadata({params}: { params: Promise<{ id: string 
     const { id } = await params;
     const paper = await getPastPaperDetail(id);
     if (!paper) return {}
+    const parsedTitle = parsePaperTitle(paper.title);
+    const courseTags = paper.tags.filter((tag) => extractCourseFromTag(tag.name));
+    const courseFromTag = courseTags.length ? extractCourseFromTag(courseTags[0].name) : null;
+    const courseTitle = courseFromTag?.title ?? parsedTitle.courseName ?? parsedTitle.cleanTitle;
+    const courseCode = courseFromTag?.code ?? parsedTitle.courseCode;
+    const title = courseCode && !courseTitle.toUpperCase().includes(courseCode)
+        ? `${courseTitle} (${courseCode})`
+        : courseTitle;
+    const canonical = `/past_papers/${paper.id}`;
+    const description = `View ${title} past paper on ExamCooker.`;
+    const keywords = buildKeywords(
+        DEFAULT_KEYWORDS,
+        paper.tags.map((tag) => tag.name)
+    );
     return {
-        title: removePdfExtension(paper.title),
-        description: `View previous question papers here.`,
+        title,
+        description,
         openGraph: {
+            title,
+            description,
+            url: canonical,
             images: paper.thumbNailUrl ? [{url: paper.thumbNailUrl}] : []
         },
-        keywords: ['vit', 'previous year question papers', 'pdf', 'notes', 'question papers', 'exam', 'examcooker', 'acm', ...paper.tags.map(tag => tag.name)]
+        twitter: {
+            card: "summary_large_image",
+            title,
+            description,
+            images: paper.thumbNailUrl ? [paper.thumbNailUrl] : [],
+        },
+        alternates: { canonical },
+        keywords,
+        robots: { index: true, follow: true },
     }
 }
