@@ -121,6 +121,11 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
           <div className="flex-grow overflow-auto">
             <Viewer
               fileUrl={fileUrl}
+              transformGetDocumentParams={(params) => ({
+                ...params,
+                disableRange: true,
+                disableStream: true,
+              })}
               plugins={[
                 toolbarPluginInstance,
                 zoomPluginInstance,
