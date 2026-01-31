@@ -1,12 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Viewer,
-  Worker,
-  SpecialZoomLevel,
-  type SetRenderRange,
-} from "@react-pdf-viewer/core";
+import { Viewer, Worker, SpecialZoomLevel } from "@react-pdf-viewer/core";
 import { toolbarPlugin } from "@react-pdf-viewer/toolbar";
 import { zoomPlugin } from "@react-pdf-viewer/zoom";
 import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
@@ -38,11 +33,6 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
 
   const { Toolbar } = toolbarPluginInstance;
-  const setRenderRange: SetRenderRange = (range) => ({
-    startPage: range.startPage,
-    endPage: Math.min(range.startPage + 1, range.endPage),
-  });
-
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
   };
@@ -137,7 +127,6 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                 pageNavigationPluginInstance,
               ]}
               defaultScale={SpecialZoomLevel.PageFit}
-              setRenderRange={setRenderRange}
               renderLoader={(percentages) => (
                 <div className="flex items-center justify-center h-full text-sm text-gray-500 dark:text-gray-300">
                   Loading PDF… {Math.round(percentages)}%
