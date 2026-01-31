@@ -2,6 +2,7 @@ import React from "react";
 import {auth} from "../../auth";
 import {fetchUnclearedItems} from "../../actions/moderatorActions";
 import ModeratorDashboardClient from "../../components/ModeratorDashBoard";
+import { notFound, redirect } from "next/navigation";
 
 async function ModeratorDashboard({
     searchParams,
@@ -10,9 +11,13 @@ async function ModeratorDashboard({
 }) {
     const session = await auth();
 
-    // @ts-ignore
-    if (session?.user?.role !== "MODERATOR") {
-        return <div>Access denied. Only moderators can view this page.</div>;
+    if (!session?.user) {
+        redirect("/");
+    }
+
+    const role = (session.user as { role?: string }).role;
+    if (role !== "MODERATOR") {
+        notFound();
     }
 
     try {

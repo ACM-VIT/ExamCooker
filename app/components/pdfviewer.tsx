@@ -167,7 +167,6 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                 ...params,
                 disableRange: true,
                 disableStream: true,
-                disableAutoFetch: true,
               })}
               plugins={[
                 toolbarPluginInstance,

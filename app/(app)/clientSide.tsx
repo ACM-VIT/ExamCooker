@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import NavBar from "@/app/components/NavBar";
 import Header from "@/app/components/header";
 import Image from "next/image";
-import HomeFooter from "@/app/@protected_routes/home/home_footer";
+import HomeFooter from "@/app/(app)/home/home_footer";
 import BookmarksProvider from "@/app/components/BookmarksProvider";
 import GuestPromptProvider from "@/app/components/GuestPromptProvider";
 import type { Bookmark } from "@/app/actions/Favourites";
