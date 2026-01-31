@@ -23,9 +23,13 @@ function PastPapersSkeleton() {
             <div className="w-fit grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6 place-content-center">
                 {Array.from({ length: 9 }).map((_, index) => (
                     <div key={index} className="max-w-sm w-full h-full">
-                        <div className="px-5 py-6 w-full text-center bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 border-2 border-transparent animate-pulse">
-                            <div className="bg-[#d9d9d9]/70 w-full h-44" />
-                            <div className="h-4 mt-5 bg-black/10 dark:bg-white/10 rounded" />
+                        <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-transparent transition duration-200 transform max-w-96">
+                            <div className="bg-[#d9d9d9]/70 w-full h-44 relative overflow-hidden animate-pulse" />
+                            <div className="flex justify-between items-center mt-3">
+                                <div />
+                                <div className="h-4 w-2/3 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+                                <div className="h-4 w-4 bg-black/10 dark:bg-white/10 rounded-full animate-pulse" />
+                            </div>
                         </div>
                     </div>
                 ))}
