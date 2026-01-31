@@ -22,13 +22,22 @@ function ForumSkeleton() {
   return (
     <div className="w-full mx-auto space-y-4">
       {Array.from({ length: 5 }).map((_, index) => (
-        <div
-          key={index}
-          className="bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 border-2 border-transparent p-5 md:p-10 animate-pulse"
-        >
-          <div className="h-5 w-1/2 bg-black/10 dark:bg-white/10 rounded" />
-          <div className="h-3 mt-4 w-full bg-black/10 dark:bg-white/10 rounded" />
-          <div className="h-3 mt-2 w-3/4 bg-black/10 dark:bg-white/10 rounded" />
+        <div key={index} className="w-full flex pl-11 pr-7 pt-7 justify-center">
+          <div className="bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 dark:lg:bg-[#0C1222] border-2 border-transparent p-5 md:p-10 size-full md:size-5/6 transition duration-200">
+            <div className="flex justify-between items-center">
+              <div className="h-6 w-1/2 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+              <div className="flex items-center space-x-4">
+                <div className="h-6 w-20 bg-black/10 dark:bg-white/10 rounded animate-pulse hidden md:block" />
+                <div className="h-6 w-16 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+              </div>
+            </div>
+            <div className="h-3 mt-6 w-full bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+            <div className="h-3 mt-2 w-3/4 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+            <div className="flex justify-between items-center mt-6">
+              <div className="h-4 w-2/3 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+              <div className="h-4 w-4 bg-black/10 dark:bg-white/10 rounded-full animate-pulse" />
+            </div>
+          </div>
         </div>
       ))}
     </div>

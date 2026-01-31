@@ -14,8 +14,17 @@ export default function Loading() {
                     {Array.from({ length: 12 }).map((_, index) => (
                         <div
                             key={index}
-                            className="h-28 bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 border-2 border-transparent animate-pulse"
-                        />
+                            className="flex flex-col justify-between w-full h-full p-4 bg-[#5FC4E7]/40 border-2 border-transparent dark:bg-[#ffffff]/5 dark:lg:bg-[#0C1222] dark:border-[#ffffff]/20 transition-all duration-200"
+                        >
+                            <div className="space-y-2">
+                                <div className="h-4 w-3/4 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+                                <div className="h-3 w-1/3 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+                            </div>
+                            <div className="flex justify-between mt-4">
+                                <div />
+                                <div className="h-4 w-4 bg-black/10 dark:bg-white/10 rounded-full animate-pulse" />
+                            </div>
+                        </div>
                     ))}
                 </div>
             </div>
