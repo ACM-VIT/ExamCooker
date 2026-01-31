@@ -4,6 +4,7 @@ import {PrismaClient} from "@/src/generated/prisma";
 import {auth} from "../auth";
 import {redirect} from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 
 const prisma = new PrismaClient();
 
@@ -122,11 +123,13 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
     }
 
     const promises = variant === "Notes" ? results.map(result => {
+        const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
+        const thumbNailUrl = normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
         return prisma.note.create({
             data: {
                 title: result.filename,
-                fileUrl: result.fileUrl,
-                thumbNailUrl: result.thumbnailUrl,
+                fileUrl,
+                thumbNailUrl,
                 authorId: user.id,
                 tags: {
                     connect: allTags.map((tag) => ({id: tag.id})),
@@ -137,11 +140,13 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
             },
         });
     }) : results.map(result => {
+        const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
+        const thumbNailUrl = normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
         return prisma.pastPaper.create({
             data: {
                 title: result.filename,
-                fileUrl: result.fileUrl,
-                thumbNailUrl: result.thumbnailUrl,
+                fileUrl,
+                thumbNailUrl,
                 authorId: user.id,
                 tags: {
                     connect: allTags.map((tag) => ({id: tag.id})),

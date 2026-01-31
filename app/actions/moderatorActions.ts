@@ -3,6 +3,7 @@
 import { PrismaClient } from "@/src/generated/prisma";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 
 const prisma = new PrismaClient();
 
@@ -25,7 +26,19 @@ export async function fetchUnclearedItems() {
 
     const totalUsers = await prisma.user.count();
 
-    return { notes, pastPapers, totalUsers };
+    return {
+        notes: notes.map((note) => ({
+            ...note,
+            fileUrl: normalizeGcsUrl(note.fileUrl) ?? note.fileUrl,
+            thumbNailUrl: normalizeGcsUrl(note.thumbNailUrl) ?? note.thumbNailUrl,
+        })),
+        pastPapers: pastPapers.map((paper) => ({
+            ...paper,
+            fileUrl: normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl,
+            thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
+        })),
+        totalUsers,
+    };
 }
 
 export async function approveItem(id: string, type: "note" | "pastPaper") {

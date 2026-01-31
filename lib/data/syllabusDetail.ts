@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
+import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 
 export async function getSyllabusDetail(id: string) {
     "use cache";
@@ -7,7 +8,7 @@ export async function getSyllabusDetail(id: string) {
     cacheTag(`syllabus:${id}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    return prisma.syllabi.findUnique({
+    const syllabus = await prisma.syllabi.findUnique({
         where: { id },
         select: {
             id: true,
@@ -15,4 +16,11 @@ export async function getSyllabusDetail(id: string) {
             fileUrl: true,
         },
     });
+
+    if (!syllabus) return null;
+
+    return {
+        ...syllabus,
+        fileUrl: normalizeGcsUrl(syllabus.fileUrl) ?? syllabus.fileUrl,
+    };
 }
