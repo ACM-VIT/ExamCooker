@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-
-export default async function Page() {
-    redirect("/home");
+export default function Page() {
+    return null;
 }
