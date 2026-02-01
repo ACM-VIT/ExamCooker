@@ -228,3 +228,7 @@ model syllabi {
   bookmarkedBy User[]        @relation("UserBookmarkedSyllabus")
   viewHistory  ViewHistory[]
 }
+
+enum crdb_internal_region {
+  aws_ap_south_1 @map("aws-ap-south-1")
+} 
