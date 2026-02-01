@@ -6,6 +6,7 @@ import { useBookmarks } from "./BookmarksProvider";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import Image from "next/image";
+import { parsePaperTitle, ParsedPaperTitle } from "@/lib/paperTitle";
 
 interface PastPaperCardProps {
   pastPaper: {
@@ -17,8 +18,10 @@ interface PastPaperCardProps {
   openInNewTab?: boolean;
 }
 
-function removePdfExtension(title: string) {
-  return title.replace(/\.pdf$/, "");
+function getDisplayTitle(title: string, parsed: ParsedPaperTitle) {
+  const courseName = parsed.courseName?.trim();
+  const baseTitle = courseName ?? parsed.cleanTitle;
+  return baseTitle || parsed.cleanTitle || title.replace(/\.pdf$/i, "");
 }
 
 function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
@@ -26,11 +29,21 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
   const isFav = isBookmarked(pastPaper.id, "pastpaper");
   const { toast } = useToast();
 
+  const parsedTitle = parsePaperTitle(pastPaper.title);
+  const displayTitle = getDisplayTitle(pastPaper.title, parsedTitle);
+  const metadataParts = [
+    parsedTitle.examType,
+    parsedTitle.slot ? `Slot ${parsedTitle.slot}` : undefined,
+    parsedTitle.academicYear ?? parsedTitle.year,
+    parsedTitle.courseCode,
+  ].filter(Boolean);
+  const metadata = metadataParts.join(" | ");
+
   const handleToggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     toggleBookmark(
-      { id: pastPaper.id, type: "pastpaper", title: pastPaper.title },
+      { id: pastPaper.id, type: "pastpaper", title: displayTitle },
       !isFav
     ).catch(() =>
       toast({
@@ -50,17 +63,23 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
         <div className="bg-[#d9d9d9] w-full h-44 relative overflow-hidden">
           <Image
             src={pastPaper.thumbNailUrl || "/assets/ExamCooker.png"}
-            alt={removePdfExtension(pastPaper.title)}
+            alt={displayTitle}
             fill
             sizes="(min-width: 1024px) 320px, (min-width: 768px) 45vw, 90vw"
             className="object-cover"
             priority={index < 3}
           />
         </div>
-        <div className="flex justify-between items-center">
-          <div></div>
-          <div className="mb-2 w-full whitespace-nowrap overflow-hidden text-ellipsis text-lg">
-            {removePdfExtension(pastPaper.title)}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 text-left">
+            <div className="mb-1 w-full whitespace-nowrap overflow-hidden text-ellipsis text-lg">
+              {displayTitle}
+            </div>
+            {metadata ? (
+              <div className="text-xs text-black/70 dark:text-white/70 whitespace-nowrap overflow-hidden text-ellipsis">
+                {metadata}
+              </div>
+            ) : null}
           </div>
           <button
             onClick={handleToggleFav}
