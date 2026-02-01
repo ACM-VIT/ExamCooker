@@ -1,12 +1,20 @@
 const {PrismaClient} = require('../src/generated/prisma')
 const fs = require('node:fs');
+const path = require('node:path');
 const readline = require('node:readline');
 
 const prisma = new PrismaClient()
 
 async function main(filepath) {
+    const resolvedPath = filepath
+        ? path.resolve(process.cwd(), filepath)
+        : path.resolve(__dirname, 'tags.txt');
 
-    const fileStream = fs.createReadStream(filepath);
+    if (!fs.existsSync(resolvedPath)) {
+        throw new Error(`Tag seed file not found: ${resolvedPath}`);
+    }
+
+    const fileStream = fs.createReadStream(resolvedPath);
 
     const rl = readline.createInterface({
         input: fileStream,

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Image from "next/image";
 import Link from "next/link";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
+import { getAliasCourseCodes } from "@/lib/courseAliases";
 
 export type CourseResult = {
     code: string;
@@ -26,13 +27,20 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const filteredCourses = useMemo(() => {
-        if (!query.trim()) return [];
-        const lowerQuery = query.toLowerCase();
+        const trimmed = query.trim();
+        if (!trimmed) return [];
+        const lowerQuery = trimmed.toLowerCase();
+        const aliasCodes = getAliasCourseCodes(trimmed);
+        const aliasSet = new Set(aliasCodes.map((code) => code.toUpperCase()));
         return courses
-            .filter(course => 
-                course.code.toLowerCase().includes(lowerQuery) ||
-                course.title.toLowerCase().includes(lowerQuery)
-            )
+            .filter(course => {
+                const codeUpper = course.code.toUpperCase();
+                if (aliasSet.has(codeUpper)) return true;
+                return (
+                    course.code.toLowerCase().includes(lowerQuery) ||
+                    course.title.toLowerCase().includes(lowerQuery)
+                );
+            })
             .slice(0, 8);
     }, [query, courses]);
 

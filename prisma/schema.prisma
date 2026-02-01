@@ -1,4 +1,3 @@
-
 datasource db {
   provider = "cockroachdb"
   url      = env("DATABASE_URL")
@@ -29,7 +28,7 @@ model User {
   bookmarkedPastPapers PastPaper[]   @relation("UserBookmarkedPastPapers")
   bookmarkedResources  Subject[]     @relation("UserBookmarkedResources")
   bookmarkedForumPosts ForumPost[]   @relation("UserBookmarkedForumPosts")
-  bookmarkedSyllabus   syllabi[]    @relation("UserBookmarkedSyllabus")
+  bookmarkedSyllabus   syllabi[]     @relation("UserBookmarkedSyllabus")
   votes                Vote[]
 }
 
@@ -48,15 +47,14 @@ model Account {
   session_state     String?
 
   // for password-based login
-  passwordHash      String? // bcrypt hash
-  passwordSalt      String? 
+  passwordHash String? // bcrypt hash
+  passwordSalt String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
 }
-
 
 model Session {
   id           String   @id @default(cuid())
@@ -105,7 +103,7 @@ model ViewHistory {
   subjectId   String?
   viewedAt    DateTime   @updatedAt
   count       Int        @default(1)
-  syllabi    syllabi?  @relation(fields: [syllabusId], references: [id])
+  syllabi     syllabi?   @relation(fields: [syllabusId], references: [id])
   syllabusId  String?
 
   @@unique([userId, pastPaperId])
@@ -202,6 +200,8 @@ model Tag {
   pastPapers PastPaper[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
+
+  @@index([name], map: "Tag_name_trgm_idx")
 }
 
 model Subject {
