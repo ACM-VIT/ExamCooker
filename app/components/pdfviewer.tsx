@@ -26,6 +26,10 @@ import "@react-pdf-viewer/toolbar/lib/styles/index.css";
 
 const buttonClass =
   "p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed";
+const workerUrl = new URL(
+  "pdfjs-dist/build/pdf.worker.min.js",
+  import.meta.url
+).toString();
 
 export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
   const toolbarPluginInstance = toolbarPlugin();
@@ -76,7 +80,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
         isFullScreen ? "fixed inset-0 z-50 bg-white dark:bg-gray-900" : ""
       }`}
     >
-      <Worker workerUrl="/pdf.worker.min.mjs">
+      <Worker workerUrl={workerUrl}>
         <div className="rpv-core__viewer flex flex-col h-full min-h-0">
           <div className="rpv-core__toolbar">
             <Toolbar>
@@ -167,6 +171,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
                 ...params,
                 disableRange: true,
                 disableStream: true,
+                disableAutoFetch: true,
               })}
               plugins={[
                 toolbarPluginInstance,

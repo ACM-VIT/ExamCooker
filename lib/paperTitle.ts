@@ -96,6 +96,8 @@ export function extractCourseName(title: string, courseCode?: string): string | 
         }
     }
 
+    working = working.replace(/\[[A-Z]{2,5}\s?\d{3,4}[A-Z]{0,3}\]\s*/gi, "");
+    working = working.replace(/[\[\]]\s*$/, "");
     working = working.replace(/[-–—]\s*$/, "").trim();
 
     const tokens = working.split(/\s+/);
@@ -124,6 +126,7 @@ function isMetadataToken(token: string): boolean {
     if (/^(qp|paper|select)$/.test(normalized)) return true;
     if (/^[a-g]\d$/i.test(normalized)) return true;
     if (/^\d{2}-\d{2}$/.test(normalized)) return true;
+    if (/^20\d{2}-20\d{2}$/.test(normalized)) return true;
     if (/^20\d{2}$/.test(normalized)) return true;
     return false;
 }

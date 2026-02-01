@@ -3,8 +3,10 @@
 import {PrismaClient} from "@/src/generated/prisma";
 import {auth} from "../auth";
 import {redirect} from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
+import { generatePastPaperTitleFromPdf } from "@/lib/ai/pastPaperTitle";
 
 const prisma = new PrismaClient();
 
@@ -15,6 +17,7 @@ async function findOrCreateTag(name: string) {
     }
     return tag;
 }
+
 
 // async function preInsert({tags, year, slot, formDatas}: {
 //     tags: string[],
@@ -122,43 +125,73 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
         };
     }
 
-    const promises = variant === "Notes" ? results.map(result => {
-        const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
-        const thumbNailUrl = normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
-        return prisma.note.create({
-            data: {
-                title: result.filename,
-                fileUrl,
-                thumbNailUrl,
-                authorId: user.id,
-                tags: {
-                    connect: allTags.map((tag) => ({id: tag.id})),
-                },
-            },
-            include: {
-                tags: true,
-            },
-        });
-    }) : results.map(result => {
-        const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
-        const thumbNailUrl = normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
-        return prisma.pastPaper.create({
-            data: {
-                title: result.filename,
-                fileUrl,
-                thumbNailUrl,
-                authorId: user.id,
-                tags: {
-                    connect: allTags.map((tag) => ({id: tag.id})),
-                },
-            },
-            include: {
-                tags: true,
-            },
-        });
-    });
+    const promises =
+        variant === "Notes"
+            ? results.map((result) => {
+                  const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
+                  const thumbNailUrl =
+                      normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
+                  return prisma.note.create({
+                      data: {
+                          title: result.filename,
+                          fileUrl,
+                          thumbNailUrl,
+                          authorId: user.id,
+                          tags: {
+                              connect: allTags.map((tag) => ({ id: tag.id })),
+                          },
+                      },
+                      include: {
+                          tags: true,
+                      },
+                  });
+              })
+            : results.map((result) => {
+                  const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
+                  const thumbNailUrl =
+                      normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
+                  return prisma.pastPaper.create({
+                      data: {
+                          title: result.filename,
+                          fileUrl,
+                          thumbNailUrl,
+                          authorId: user.id,
+                          tags: {
+                              connect: allTags.map((tag) => ({ id: tag.id })),
+                          },
+                      },
+                      include: {
+                          tags: true,
+                      },
+                  });
+              });
 
     const data = await Promise.all(promises);
+
+    if (variant === "Past Papers") {
+        const createdPapers = data as { id: string; title: string; fileUrl: string }[];
+        after(async () => {
+            const prismaBg = new PrismaClient();
+            try {
+                await Promise.allSettled(
+                    createdPapers.map(async (paper) => {
+                        const aiTitle = await generatePastPaperTitleFromPdf({
+                            fileUrl: paper.fileUrl,
+                            fallbackTitle: paper.title,
+                        });
+                        if (aiTitle && aiTitle !== paper.title) {
+                            await prismaBg.pastPaper.update({
+                                where: { id: paper.id },
+                                data: { title: aiTitle },
+                            });
+                        }
+                    })
+                );
+            } finally {
+                await prismaBg.$disconnect();
+            }
+        });
+    }
 
     await prisma.$disconnect();
 

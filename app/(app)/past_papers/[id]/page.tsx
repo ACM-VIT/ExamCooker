@@ -70,6 +70,8 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
     const displayTitle = courseCode && !courseTitle.toUpperCase().includes(courseCode)
         ? `${courseTitle} (${courseCode})`
         : courseTitle;
+    const displaySlot = parsedTitle.slot ?? slot;
+    const displayYear = parsedTitle.academicYear ?? parsedTitle.year ?? year;
     const courseTagIds = courseTags.map((tag) => tag.id);
     const relatedPapers = courseTagIds.length
         ? await getRelatedPastPapers({
@@ -133,8 +135,8 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
                     <div className="max-w-2xl mx-auto">
                         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{displayTitle}</h1>
                         <div className="space-y-2 sm:space-y-3">
-                            <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {slot}</p>
-                            <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {year}</p>
+                            <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {displaySlot}</p>
+                            <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {displayYear}</p>
                             <p className="text-base sm:text-lg"><span
                                 className="font-semibold">Posted by: </span> {paper.author?.name?.slice(0, -10) || 'Unknown'}
                             </p>

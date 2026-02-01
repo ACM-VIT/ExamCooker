@@ -4,6 +4,9 @@ import { PrismaClient } from "@/src/generated/prisma";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
+import { generatePastPaperTitleFromPdf } from "@/lib/ai/pastPaperTitle";
+import { parsePaperTitle } from "@/lib/paperTitle";
+import { normalizeCourseCode } from "@/lib/courseTags";
 
 const prisma = new PrismaClient();
 
@@ -41,7 +44,11 @@ export async function fetchUnclearedItems() {
     };
 }
 
-export async function approveItem(id: string, type: "note" | "pastPaper") {
+export async function approveItem(
+    id: string,
+    type: "note" | "pastPaper",
+    options?: { allowDuplicate?: boolean }
+) {
     const session = await auth();
 
     // @ts-ignore
@@ -49,16 +56,168 @@ export async function approveItem(id: string, type: "note" | "pastPaper") {
         throw new Error("Access denied");
     }
 
-    type === "note"
-        ? await prisma.note.update({ where: { id }, data: { isClear: true } })
-        : await prisma.pastPaper.update({
-              where: { id },
-              data: { isClear: true },
-          });
+    const allowDuplicate = options?.allowDuplicate ?? false;
+
+    if (type === "note") {
+        await prisma.note.update({ where: { id }, data: { isClear: true } });
+    } else {
+        const paper = await prisma.pastPaper.findUnique({
+            where: { id },
+            select: { title: true, fileUrl: true },
+        });
+
+        if (!paper) {
+            throw new Error("Past paper not found");
+        }
+
+        if (!allowDuplicate) {
+            const fileDuplicate = await prisma.pastPaper.findFirst({
+                where: {
+                    id: { not: id },
+                    fileUrl: paper.fileUrl,
+                },
+                select: { id: true, title: true },
+            });
+
+            if (fileDuplicate) {
+                return {
+                    status: "duplicate" as const,
+                    duplicateId: fileDuplicate.id,
+                    duplicateTitle: fileDuplicate.title,
+                };
+            }
+
+            const parsed = parsePaperTitle(paper.title);
+            const normalizedCode = parsed.courseCode
+                ? normalizeCourseCode(parsed.courseCode)
+                : null;
+            const normalizedTitle = paper.title.trim().toLowerCase();
+
+            if (normalizedCode) {
+                const candidates = await prisma.pastPaper.findMany({
+                    where: {
+                        id: { not: id },
+                        OR: [
+                            { title: { contains: normalizedCode, mode: "insensitive" } },
+                            { tags: { some: { name: { contains: normalizedCode, mode: "insensitive" } } } },
+                        ],
+                    },
+                    select: { id: true, title: true },
+                    take: 50,
+                });
+
+                for (const candidate of candidates) {
+                    const candidateParsed = parsePaperTitle(candidate.title);
+                    const candidateCode = candidateParsed.courseCode
+                        ? normalizeCourseCode(candidateParsed.courseCode)
+                        : null;
+                    if (!candidateCode || candidateCode !== normalizedCode) continue;
+
+                    if (
+                        !isMetadataCompatible(parsed.examType, candidateParsed.examType) ||
+                        !isMetadataCompatible(parsed.slot, candidateParsed.slot)
+                    ) {
+                        continue;
+                    }
+
+                    if (!isYearCompatible(parsed, candidateParsed)) {
+                        continue;
+                    }
+
+                    if (candidate.title.trim().toLowerCase() === normalizedTitle) {
+                        return {
+                            status: "duplicate" as const,
+                            duplicateId: candidate.id,
+                            duplicateTitle: candidate.title,
+                        };
+                    }
+
+                    return {
+                        status: "duplicate" as const,
+                        duplicateId: candidate.id,
+                        duplicateTitle: candidate.title,
+                    };
+                }
+            } else {
+                const exactTitleDuplicate = await prisma.pastPaper.findFirst({
+                    where: {
+                        id: { not: id },
+                        title: { equals: paper.title, mode: "insensitive" },
+                    },
+                    select: { id: true, title: true },
+                });
+                if (exactTitleDuplicate) {
+                    return {
+                        status: "duplicate" as const,
+                        duplicateId: exactTitleDuplicate.id,
+                        duplicateTitle: exactTitleDuplicate.title,
+                    };
+                }
+            }
+        }
+
+        await prisma.pastPaper.update({
+            where: { id },
+            data: { isClear: true },
+        });
+    }
 
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
     revalidateTag("past_papers", "minutes");
+
+    return { status: "approved" as const };
+}
+
+function getYearRange(parsed: ReturnType<typeof parsePaperTitle>) {
+    if (parsed.academicYear) {
+        const [start, end] = parsed.academicYear.split("-").map((value) => Number(value));
+        if (Number.isFinite(start) && Number.isFinite(end)) {
+            return { start, end };
+        }
+    }
+
+    if (parsed.year) {
+        const year = Number(parsed.year);
+        if (Number.isFinite(year)) {
+            return { start: year, end: year };
+        }
+    }
+
+    return null;
+}
+
+function isMetadataCompatible(a?: string, b?: string) {
+    if (!a || !b) return true;
+    return a.toUpperCase() === b.toUpperCase();
+}
+
+function isYearCompatible(
+    a: ReturnType<typeof parsePaperTitle>,
+    b: ReturnType<typeof parsePaperTitle>
+) {
+    const aRange = getYearRange(a);
+    const bRange = getYearRange(b);
+    const aYear = a.year ? Number(a.year) : null;
+    const bYear = b.year ? Number(b.year) : null;
+
+    if (aRange && bRange) {
+        return aRange.start === bRange.start && aRange.end === bRange.end;
+    }
+
+    if (aRange && bYear) {
+        return aRange.start === bYear;
+    }
+
+    if (bRange && aYear) {
+        return bRange.start === aYear;
+    }
+
+    if (aYear && bYear) {
+        return aYear === bYear;
+    }
+
+    return true;
 }
 
 export async function renameItem(
@@ -104,4 +263,40 @@ export async function deleteItem(id: string, type: "note" | "pastPaper") {
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
     revalidateTag("past_papers", "minutes");
+}
+
+export async function generatePastPaperTitle(id: string) {
+    const session = await auth();
+
+    // @ts-ignore
+    if (session?.user?.role !== "MODERATOR") {
+        throw new Error("Access denied");
+    }
+
+    const paper = await prisma.pastPaper.findUnique({
+        where: { id },
+        select: { title: true, fileUrl: true },
+    });
+
+    if (!paper) {
+        throw new Error("Past paper not found");
+    }
+
+    const fileUrl = normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl;
+    const aiTitle = await generatePastPaperTitleFromPdf({
+        fileUrl,
+        fallbackTitle: paper.title,
+    });
+
+    if (aiTitle && aiTitle !== paper.title) {
+        await prisma.pastPaper.update({
+            where: { id },
+            data: { title: aiTitle },
+        });
+    }
+
+    revalidatePath("/mod");
+    revalidateTag("past_papers", "minutes");
+
+    return { title: aiTitle };
 }

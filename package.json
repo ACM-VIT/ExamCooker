@@ -29,6 +29,7 @@
     "@types/lodash": "^4.17.20",
     "@upstash/ratelimit": "^2.0.6",
     "@upstash/redis": "^1.35.4",
+    "ai": "^6.0.66",
     "canvas": "^3.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -43,6 +44,7 @@
     "next-auth": "^5.0.0-beta.19",
     "nprogress": "^0.2.0",
     "process-env": "^2.0.2",
+    "pdfjs-dist": "^3.0.279",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-dropzone": "^14.3.8",
@@ -51,12 +53,12 @@
     "react-spinners": "^0.17.0",
     "react-switch": "^7.1.0",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@svgr/webpack": "^8.1.0",
     "@tailwindcss/postcss": "^4.1.14",
-    "@types/next": "^9.0.0",
     "@types/node": "^24.6.2",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
