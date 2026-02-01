@@ -106,8 +106,6 @@ export async function approveItem(
                     take: 50,
                 });
 
-                const targetRange = getYearRange(parsed);
-
                 for (const candidate of candidates) {
                     const candidateParsed = parsePaperTitle(candidate.title);
                     const candidateCode = candidateParsed.courseCode
@@ -122,8 +120,7 @@ export async function approveItem(
                         continue;
                     }
 
-                    const candidateRange = getYearRange(candidateParsed);
-                    if (!rangesOverlap(targetRange, candidateRange)) {
+                    if (!isYearCompatible(parsed, candidateParsed)) {
                         continue;
                     }
 
@@ -190,17 +187,37 @@ function getYearRange(parsed: ReturnType<typeof parsePaperTitle>) {
     return null;
 }
 
-function rangesOverlap(
-    a: { start: number; end: number } | null,
-    b: { start: number; end: number } | null
-) {
-    if (!a || !b) return true;
-    return a.start <= b.end && b.start <= a.end;
-}
-
 function isMetadataCompatible(a?: string, b?: string) {
     if (!a || !b) return true;
     return a.toUpperCase() === b.toUpperCase();
+}
+
+function isYearCompatible(
+    a: ReturnType<typeof parsePaperTitle>,
+    b: ReturnType<typeof parsePaperTitle>
+) {
+    const aRange = getYearRange(a);
+    const bRange = getYearRange(b);
+    const aYear = a.year ? Number(a.year) : null;
+    const bYear = b.year ? Number(b.year) : null;
+
+    if (aRange && bRange) {
+        return aRange.start === bRange.start && aRange.end === bRange.end;
+    }
+
+    if (aRange && bYear) {
+        return aRange.start === bYear;
+    }
+
+    if (bRange && aYear) {
+        return bRange.start === aYear;
+    }
+
+    if (aYear && bYear) {
+        return aYear === bYear;
+    }
+
+    return true;
 }
 
 export async function renameItem(
