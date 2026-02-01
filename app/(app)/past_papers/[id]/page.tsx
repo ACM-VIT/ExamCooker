@@ -90,17 +90,20 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
         : courseTitle;
     const displaySlot = parsedTitle.slot ?? slot;
     const displayYear = parsedTitle.academicYear ?? parsedTitle.year ?? year;
+    const examType = parsedTitle.examType;
     const courseTagIds = courseTags.map((tag) => tag.id);
     const relatedPapers = courseTagIds.length
         ? await getRelatedPastPapers({
               id: paper.id,
               tagIds: courseTagIds,
+              examType,
               limit: 6,
           })
         : courseCode
             ? await getRelatedPastPapersByCourseCode({
                   id: paper.id,
                   courseCode,
+                  examType,
                   limit: 6,
               })
             : [];

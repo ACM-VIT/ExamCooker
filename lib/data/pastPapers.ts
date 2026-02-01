@@ -86,6 +86,7 @@ export async function getPastPapersPage(input: {
 export async function getRelatedPastPapers(input: {
     id: string;
     tagIds: string[];
+    examType?: string;
     limit?: number;
 }) {
     "use cache";
@@ -114,10 +115,17 @@ export async function getRelatedPastPapers(input: {
 
     const tagIdSet = new Set(input.tagIds);
     const scored = candidates.map((paper) => {
-        const score = paper.tags.reduce(
+        let score = paper.tags.reduce(
             (acc, tag) => acc + (tagIdSet.has(tag.id) ? 1 : 0),
             0
         );
+        // Boost score significantly if exam type matches
+        if (input.examType) {
+            const examTypeRegex = new RegExp(`\\b${input.examType.replace(/[-\s]/g, "[-\\s]?")}\\b`, "i");
+            if (examTypeRegex.test(paper.title)) {
+                score += 1000; // Large boost to prioritize matching exam types
+            }
+        }
         return { ...paper, score };
     });
 
@@ -136,6 +144,7 @@ export async function getRelatedPastPapers(input: {
 export async function getRelatedPastPapersByCourseCode(input: {
     id: string;
     courseCode: string;
+    examType?: string;
     limit?: number;
 }) {
     "use cache";
@@ -156,16 +165,34 @@ export async function getRelatedPastPapersByCourseCode(input: {
             ],
         },
         orderBy: { updatedAt: "desc" },
-        take: input.limit ?? 6,
+        take: Math.max(30, input.limit ?? 0),
         select: {
             id: true,
             title: true,
             thumbNailUrl: true,
+            updatedAt: true,
         },
     });
 
-    return candidates.map((paper) => ({
-        ...paper,
+    const scored = candidates.map((paper) => {
+        let score = 0;
+        if (input.examType) {
+            const examTypeRegex = new RegExp(`\\b${input.examType.replace(/[-\s]/g, "[-\\s]?")}\\b`, "i");
+            if (examTypeRegex.test(paper.title)) {
+                score += 1000;
+            }
+        }
+        return { ...paper, score };
+    });
+
+    scored.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return b.updatedAt.getTime() - a.updatedAt.getTime();
+    });
+
+    return scored.slice(0, input.limit ?? 6).map((paper) => ({
+        id: paper.id,
+        title: paper.title,
         thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
     }));
 }
