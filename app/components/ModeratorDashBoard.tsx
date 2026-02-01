@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Note, PastPaper } from "@/src/generated/prisma";
 import Pagination from "./Pagination";
 import NotesCard from "./NotesCard";
 import PastPaperCard from "./PastPaperCard";
-import {approveItem, deleteItem, renameItem} from "../actions/moderatorActions";
+import {approveItem, deleteItem, renameItem, generatePastPaperTitle} from "../actions/moderatorActions";
 
 const PAGE_SIZE = 9;
 
@@ -42,12 +43,20 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
         "notes"
     );
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [aiProcessingIds, setAiProcessingIds] = useState<string[]>([]);
     const [renameDialog, setRenameDialog] = useState<{
         isOpen: boolean;
         id?: string;
         type?: "note" | "pastPaper";
         value: string;
     }>({ isOpen: false, value: "" });
+    const [duplicateDialog, setDuplicateDialog] = useState<{
+        isOpen: boolean;
+        duplicateId?: string;
+        duplicateTitle?: string;
+        pendingId?: string;
+        pendingType?: "note" | "pastPaper";
+    }>({ isOpen: false });
 
     const page = parseInt(searchParams.page || "1", 10);
 
@@ -61,17 +70,33 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     const endIndex = startIndex + PAGE_SIZE;
     const paginatedItems = items.slice(startIndex, endIndex);
 
+    const applyApproved = (id: string, type: "note" | "pastPaper") => {
+        if (type === "note") {
+            setNotes(notes.filter((note) => note.id !== id));
+        } else {
+            setPastPapers(pastPapers.filter((paper) => paper.id !== id));
+        }
+        setSelectedItems(selectedItems.filter((item) => item !== id));
+    };
+
     const handleApprove = async (id: string, type: "note" | "pastPaper") => {
         try {
-            await approveItem(id, type);
-            if (type === "note") {
-                setNotes(notes.filter((note) => note.id !== id));
-            } else {
-                setPastPapers(pastPapers.filter((paper) => paper.id !== id));
+            const result = await approveItem(id, type);
+            if (result?.status === "duplicate") {
+                setDuplicateDialog({
+                    isOpen: true,
+                    duplicateId: result.duplicateId,
+                    duplicateTitle: result.duplicateTitle,
+                    pendingId: id,
+                    pendingType: type,
+                });
+                return false;
             }
-            setSelectedItems(selectedItems.filter((item) => item !== id));
+            applyApproved(id, type);
+            return true;
         } catch (error) {
             console.error("Error approving item:", error);
+            return false;
         }
     };
 
@@ -101,12 +126,36 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
         }
     };
 
+    const handleGenerateAiTitle = async (id: string) => {
+        if (!window.confirm("Generate AI title for this past paper?")) {
+            return;
+        }
+        setAiProcessingIds((prev) => [...prev, id]);
+        try {
+            const result = await generatePastPaperTitle(id);
+            if (result?.title) {
+                setPastPapers((prev) =>
+                    prev.map((paper) =>
+                        paper.id === id ? { ...paper, title: result.title } : paper
+                    )
+                );
+            }
+        } catch (error) {
+            console.error("Error generating AI title:", error);
+        } finally {
+            setAiProcessingIds((prev) => prev.filter((itemId) => itemId !== id));
+        }
+    };
+
     const handleBulkApprove = async () => {
         for (const id of selectedItems) {
-            await handleApprove(
+            const approved = await handleApprove(
                 id,
                 activeTab === "notes" ? "note" : "pastPaper"
             );
+            if (!approved) {
+                break;
+            }
         }
         setSelectedItems([]);
     };
@@ -153,6 +202,29 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
         }
         await handleRename(renameDialog.id, renameDialog.type, trimmed);
         closeRenameDialog();
+    };
+
+    const closeDuplicateDialog = () => {
+        setDuplicateDialog({ isOpen: false });
+    };
+
+    const handleApproveOverride = async () => {
+        if (!duplicateDialog.pendingId || !duplicateDialog.pendingType) {
+            closeDuplicateDialog();
+            return;
+        }
+        try {
+            const result = await approveItem(duplicateDialog.pendingId, duplicateDialog.pendingType, {
+                allowDuplicate: true,
+            });
+            if (result?.status === "approved") {
+                applyApproved(duplicateDialog.pendingId, duplicateDialog.pendingType);
+            }
+        } catch (error) {
+            console.error("Error approving with override:", error);
+        } finally {
+            closeDuplicateDialog();
+        }
     };
 
     return (
@@ -229,9 +301,9 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                         openInNewTab={true}
                                     />
                                 )}
-                                <div className="flex gap-2 absolute top-2 right-2">
+                                <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
                                     <button
-                                        className="bg-green-500 text-white px-3 py-1 rounded-md 
+                                        className="bg-green-500 text-white px-2 py-1 text-xs rounded-md 
                                                 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
                                                 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
                                         onClick={() =>
@@ -246,8 +318,21 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                     >
                                         Rename
                                     </button>
+                                    {activeTab === "past_papers" && (
+                                        <button
+                                            className="bg-blue-500 text-white px-2 py-1 text-xs rounded-md
+                                                opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
+                                                hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-60"
+                                            onClick={() => handleGenerateAiTitle(item.id)}
+                                            disabled={aiProcessingIds.includes(item.id)}
+                                        >
+                                            {aiProcessingIds.includes(item.id)
+                                                ? "AI…"
+                                                : "AI Title"}
+                                        </button>
+                                    )}
                                     <button
-                                        className="bg-green-500 text-white px-3 py-1 rounded-md
+                                        className="bg-green-500 text-white px-2 py-1 text-xs rounded-md
                                                 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
                                                 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
                                         onClick={() =>
@@ -262,7 +347,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                         Approve
                                     </button>
                                     <button
-                                        className="bg-red-500 text-white px-3 py-1 rounded-md 
+                                        className="bg-red-500 text-white px-2 py-1 text-xs rounded-md 
                                                 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
                                                 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
                                         onClick={() =>
@@ -356,6 +441,66 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                 className="px-4 py-2 bg-[#5FC4E7] text-black font-semibold border-2 border-black hover:translate-x-[-2px] hover:translate-y-[-2px] transition"
                             >
                                 Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {duplicateDialog.isOpen && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center">
+                    <button
+                        type="button"
+                        onClick={closeDuplicateDialog}
+                        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+                        aria-label="Close duplicate dialog"
+                    />
+                    <div className="relative w-[92%] max-w-lg rounded-xl border-2 border-black dark:border-[#D5D5D5] bg-[#C2E6EC] dark:bg-[#0C1222] shadow-[10px_10px_0_rgba(0,0,0,0.2)] p-6">
+                        <div className="flex items-start justify-between gap-3">
+                            <h3 className="text-xl font-bold text-black dark:text-[#D5D5D5]">
+                                Duplicate detected
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={closeDuplicateDialog}
+                                className="border border-black/30 dark:border-[#D5D5D5]/40 text-xs font-semibold px-2 py-1 hover:bg-white/40 dark:hover:bg-white/5 transition text-black dark:text-[#D5D5D5]"
+                            >
+                                Close
+                            </button>
+                        </div>
+                        <div className="mt-4 space-y-3 text-sm text-black/80 dark:text-[#D5D5D5]/80">
+                            <p>
+                                A similar past paper already exists. Review it before approving this one.
+                            </p>
+                            {duplicateDialog.duplicateTitle ? (
+                                <p className="font-semibold text-black dark:text-[#D5D5D5]">
+                                    {duplicateDialog.duplicateTitle}
+                                </p>
+                            ) : null}
+                            {duplicateDialog.duplicateId ? (
+                                <Link
+                                    href={`/past_papers/${duplicateDialog.duplicateId}`}
+                                    target="_blank"
+                                    className="inline-flex items-center gap-2 text-blue-700 dark:text-[#5FC4E7] underline underline-offset-4"
+                                >
+                                    Open duplicate in new tab
+                                </Link>
+                            ) : null}
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={closeDuplicateDialog}
+                                className="px-4 py-2 border border-black/30 dark:border-[#D5D5D5]/40 text-sm font-semibold text-black dark:text-[#D5D5D5] hover:bg-white/40 dark:hover:bg-white/5 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleApproveOverride}
+                                className="px-4 py-2 bg-[#5FC4E7] text-black font-semibold border-2 border-black hover:translate-x-[-2px] hover:translate-y-[-2px] transition"
+                            >
+                                Approve Anyway
                             </button>
                         </div>
                     </div>
