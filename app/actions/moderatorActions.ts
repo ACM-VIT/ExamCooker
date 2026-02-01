@@ -243,6 +243,10 @@ export async function renameItem(
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
     revalidateTag("past_papers", "minutes");
+    if (type === "pastPaper") {
+        revalidatePath(`/past_papers/${id}`);
+        revalidateTag(`past_paper:${id}`, "minutes");
+    }
 }
 
 export async function deleteItem(id: string, type: "note" | "pastPaper") {
