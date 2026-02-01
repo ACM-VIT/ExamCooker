@@ -65,8 +65,15 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
     const parsedTitle = parsePaperTitle(paper.title);
     const courseTags = paper.tags.filter((tag) => extractCourseFromTag(tag.name));
     const courseFromTag = courseTags.length ? extractCourseFromTag(courseTags[0].name) : null;
-    const courseTitle = courseFromTag?.title ?? parsedTitle.courseName ?? parsedTitle.cleanTitle;
-    const courseCode = courseFromTag?.code ?? parsedTitle.courseCode;
+    const parsedCourseCode = parsedTitle.courseCode?.replace(/\s+/g, "").toUpperCase();
+    const taggedCourseCode = courseFromTag?.code?.replace(/\s+/g, "").toUpperCase();
+    const useParsedCourse = Boolean(
+        parsedCourseCode && (!taggedCourseCode || parsedCourseCode !== taggedCourseCode)
+    );
+    const courseTitle = useParsedCourse
+        ? parsedTitle.courseName ?? parsedTitle.cleanTitle
+        : courseFromTag?.title ?? parsedTitle.courseName ?? parsedTitle.cleanTitle;
+    const courseCode = useParsedCourse ? parsedCourseCode : courseFromTag?.code ?? parsedCourseCode;
     const displayTitle = courseCode && !courseTitle.toUpperCase().includes(courseCode)
         ? `${courseTitle} (${courseCode})`
         : courseTitle;
@@ -190,8 +197,15 @@ export async function generateMetadata({params}: { params: Promise<{ id: string 
     const parsedTitle = parsePaperTitle(paper.title);
     const courseTags = paper.tags.filter((tag) => extractCourseFromTag(tag.name));
     const courseFromTag = courseTags.length ? extractCourseFromTag(courseTags[0].name) : null;
-    const courseTitle = courseFromTag?.title ?? parsedTitle.courseName ?? parsedTitle.cleanTitle;
-    const courseCode = courseFromTag?.code ?? parsedTitle.courseCode;
+    const parsedCourseCode = parsedTitle.courseCode?.replace(/\s+/g, "").toUpperCase();
+    const taggedCourseCode = courseFromTag?.code?.replace(/\s+/g, "").toUpperCase();
+    const useParsedCourse = Boolean(
+        parsedCourseCode && (!taggedCourseCode || parsedCourseCode !== taggedCourseCode)
+    );
+    const courseTitle = useParsedCourse
+        ? parsedTitle.courseName ?? parsedTitle.cleanTitle
+        : courseFromTag?.title ?? parsedTitle.courseName ?? parsedTitle.cleanTitle;
+    const courseCode = useParsedCourse ? parsedCourseCode : courseFromTag?.code ?? parsedCourseCode;
     const title = courseCode && !courseTitle.toUpperCase().includes(courseCode)
         ? `${courseTitle} (${courseCode})`
         : courseTitle;
