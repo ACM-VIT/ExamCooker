@@ -228,7 +228,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     };
 
     return (
-        <div className="p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
+        <div className="w-full p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
             <h1 className="text-center mb-4  font-bold">Moderator Dashboard</h1>
             <h3>Total Users: {totalUsers}</h3>
             <br />
