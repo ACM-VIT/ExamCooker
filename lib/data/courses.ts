@@ -1,5 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { Prisma } from "@/src/generated/prisma";
 import prisma from "@/lib/prisma";
+import { getAliasCourseCodes } from "@/lib/courseAliases";
 import { extractCourseFromTag, normalizeCourseCode } from "@/lib/courseTags";
 
 export type CourseSummary = {
@@ -14,26 +16,18 @@ function computeUsage(count: { notes: number; pastPapers: number; forumPosts: nu
     return count.notes + count.pastPapers + count.forumPosts;
 }
 
-async function buildCourseCatalog(minUsage: number) {
-    "use cache";
-    cacheTag("courses");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+type TagWithCounts = {
+    id: string;
+    name: string;
+    updatedAt: Date | null;
+    _count: {
+        notes: number;
+        pastPapers: number;
+        forumPosts: number;
+    };
+};
 
-    const tags = await prisma.tag.findMany({
-        select: {
-            id: true,
-            name: true,
-            updatedAt: true,
-            _count: {
-                select: {
-                    notes: true,
-                    pastPapers: true,
-                    forumPosts: true,
-                },
-            },
-        },
-    });
-
+function buildCourseSummaries(tags: TagWithCounts[], minUsage: number) {
     const map = new Map<string, CourseSummary & { primaryUsage: number }>();
 
     tags.forEach((tag) => {
@@ -76,8 +70,116 @@ async function buildCourseCatalog(minUsage: number) {
         });
 }
 
+async function buildCourseCatalog(minUsage: number) {
+    "use cache";
+    cacheTag("courses");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const tags = await prisma.tag.findMany({
+        select: {
+            id: true,
+            name: true,
+            updatedAt: true,
+            _count: {
+                select: {
+                    notes: true,
+                    pastPapers: true,
+                    forumPosts: true,
+                },
+            },
+        },
+    });
+
+    return buildCourseSummaries(tags, minUsage);
+}
+
 export async function getCourseCatalog(minUsage = 2) {
     return buildCourseCatalog(minUsage);
+}
+
+type TagSearchRow = {
+    id: string;
+    name: string;
+    updatedAt: Date | null;
+};
+
+export async function searchCourseCatalog(search: string, minUsage = 2) {
+    "use cache";
+    cacheTag("courses");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const rawSearch = search.trim();
+    if (!rawSearch) {
+        return buildCourseCatalog(minUsage);
+    }
+
+    const aliasCodes = getAliasCourseCodes(rawSearch);
+    const terms = new Set<string>();
+    if (rawSearch.length >= 3 || aliasCodes.length === 0) {
+        terms.add(rawSearch);
+    }
+    aliasCodes.forEach((code) => terms.add(code));
+
+    if (!terms.size) {
+        return buildCourseCatalog(minUsage);
+    }
+
+    const likeClauses = Array.from(terms).map(
+        (term) => Prisma.sql`"Tag"."name" ILIKE ${`%${term}%`}`
+    );
+
+    const matchedTags = await prisma.$queryRaw<TagSearchRow[]>(Prisma.sql`
+        SELECT "id", "name", "updatedAt"
+        FROM "Tag"
+        WHERE ${Prisma.join(likeClauses, " OR ")}
+    `);
+
+    if (!matchedTags.length) {
+        return [];
+    }
+
+    const matchedCodes = new Set<string>();
+    matchedTags.forEach((tag) => {
+        const info = extractCourseFromTag(tag.name);
+        if (info) matchedCodes.add(normalizeCourseCode(info.code));
+    });
+
+    if (!matchedCodes.size) {
+        return [];
+    }
+
+    const codeClauses = Array.from(matchedCodes).map(
+        (code) => Prisma.sql`"Tag"."name" ILIKE ${`%${code}%`}`
+    );
+
+    const courseTags = await prisma.$queryRaw<TagSearchRow[]>(Prisma.sql`
+        SELECT "id", "name", "updatedAt"
+        FROM "Tag"
+        WHERE ${Prisma.join(codeClauses, " OR ")}
+    `);
+
+    if (!courseTags.length) {
+        return [];
+    }
+
+    const tagIds = courseTags.map((tag) => tag.id);
+    const tags = await prisma.tag.findMany({
+        where: { id: { in: tagIds } },
+        select: {
+            id: true,
+            name: true,
+            updatedAt: true,
+            _count: {
+                select: {
+                    notes: true,
+                    pastPapers: true,
+                    forumPosts: true,
+                },
+            },
+        },
+    });
+
+    return buildCourseSummaries(tags, minUsage);
 }
 
 export async function getCourseByCode(code: string, minUsage = 2) {

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Pagination from "@/app/components/Pagination";
 import SearchBar from "@/app/components/SearchBar";
-import { getCourseCatalog } from "@/lib/data/courses";
+import { getCourseCatalog, searchCourseCatalog } from "@/lib/data/courses";
 import { DEFAULT_KEYWORDS } from "@/lib/seo";
 import CourseCard from "@/app/components/CourseCard";
 
@@ -55,13 +55,7 @@ async function CoursesResults({ params }: { params: { page?: string; search?: st
     const search = params.search?.trim() || "";
     const page = Number.parseInt(params.page || "1", 10) || 1;
 
-    const courses = await getCourseCatalog();
-    const filtered = search
-        ? courses.filter((course) => {
-              const haystack = `${course.code} ${course.title}`.toLowerCase();
-              return haystack.includes(search.toLowerCase());
-          })
-        : courses;
+    const filtered = search ? await searchCourseCatalog(search) : await getCourseCatalog();
 
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
     const validatedPage = validatePage(page, totalPages);
