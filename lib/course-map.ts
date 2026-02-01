@@ -7,7 +7,7 @@ export const COURSE_ACRONYMS: { [key: string]: string[] } = {
   'DIGITAL DESIGN': ['BECE102L'],
 
   'Artificial Intelligence': ['BCSE306L'],
-
+  
   DAA: ['BCSE204L'], 'DESIGN AND ANALYSIS OF ALGORITHMS': ['BCSE204L'],
   OS: ['BCSE303L', 'BITE303L', 'ISWE204L'],
   'OPERATING SYSTEM': ['BCSE303L', 'BITE303L', 'ISWE204L'],
@@ -99,6 +99,8 @@ export const COURSE_ACRONYMS: { [key: string]: string[] } = {
   MICRO: ['BECE204L', 'ISWE201L'],
 
   MANAGEMENT: ['BMGT101L'],
+  POM: ['BMGT101L'],
+  'PRINCIPLES OF MANAGEMENT': ['BMGT101L'],
   ENTREPRENEURSHIP: ['BMGT108L', 'CFOC508M'],
 
   ENGLISH: ['BENG101L', 'IENG101L'],
