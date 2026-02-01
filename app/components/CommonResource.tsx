@@ -47,7 +47,7 @@ function mapCategoryToType(category: string): FavoriteType {
     }
 }
 
-export default function CommonFav({ category, title, thing }: { category: string, title: string, thing: any }) {
+export default function CommonFav({ category, title, thing, compact = false }: { category: string, title: string, thing: any, compact?: boolean }) {
     const { toggleBookmark, isBookmarked } = useBookmarks();
     const { toast } = useToast()
     const favoriteType = mapCategoryToType(category);
@@ -92,6 +92,33 @@ export default function CommonFav({ category, title, thing }: { category: string
                 return '';
         }
     };
+
+    if (compact) {
+        return (
+            <div 
+                className="w-full p-3 flex items-center justify-between gap-3 bg-[#5FC4E7]/50 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-[#5FC4E7]/70 dark:hover:bg-white/10 transition duration-200 cursor-pointer rounded"
+                onClick={() => router.push(getLink())}
+            >
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-medium uppercase tracking-wide opacity-60 shrink-0">{categoryLabel}</span>
+                    </div>
+                    <h6 className="truncate font-medium text-sm mt-0.5">{displayTitle}</h6>
+                    {metadata ? (
+                        <div className="text-xs text-black/60 dark:text-white/60 truncate mt-0.5">
+                            {metadata}
+                        </div>
+                    ) : null}
+                </div>
+                <button 
+                    onClick={handleFavoriteClick} 
+                    className="transition-colors duration-200 shrink-0 p-1 hover:scale-110"
+                >
+                    <FontAwesomeIcon icon={faHeart} className={`text-sm ${isFav ? "text-red-500" : "text-gray-400"}`} />
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full p-2 flex flex-col justify-between gap-2 bg-[#5FC4E7] dark:bg-white/10 lg:dark:bg-[#0C1222] border-2 border-[#5FC4E7] dark:border-white/20 dark:border-b-[#3BF4C7] lg:dark:border-white/20 hover:dark:bg-white/10 hover:scale-105 hover:border-b-white hover:dark:border-b-[#3BF4C7] transition duration-200 cursor-pointer"

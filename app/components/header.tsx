@@ -41,7 +41,7 @@ const Header: React.FC<HeaderProps> = () => {
   }, []);
 
   return (
-    <header className="transition-colors bg-[#C2E6EC] dark:bg-[#0C1222] border-b border-b-[#82BEE9] dark:border-b-[#3BF4C7] flex flex-row-reverse">
+    <header className="transition-colors bg-[#C2E6EC] dark:bg-[#0C1222] border-b border-black dark:border-b-[#3BF4C7] flex flex-row-reverse">
       <div className="flex items-center text-right m-2 space-x-4">
         <div className="sm:w-[70vw]">
           <TodoListDropdown buttonRef={buttonRef} />
