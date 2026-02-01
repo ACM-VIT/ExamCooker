@@ -99,11 +99,11 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         });
     };
 
-    const convertImageToPdfFile = useCallback(async (file: File) => {
+    const convertImagesToPdfFile = useCallback(async (imageFiles: File[]) => {
         const { PDFDocument } = await import("pdf-lib");
         const pdfDoc = await PDFDocument.create();
 
-        const embedImage = async () => {
+        const embedImage = async (file: File) => {
             if (file.type === "image/png") {
                 return pdfDoc.embedPng(await file.arrayBuffer());
             }
@@ -139,46 +139,62 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
             }
         };
 
-        const embeddedImage = await embedImage();
-        const { width, height } = embeddedImage.scale(1);
-        const page = pdfDoc.addPage([width, height]);
-        page.drawImage(embeddedImage, { x: 0, y: 0, width, height });
+        for (const file of imageFiles) {
+            const embeddedImage = await embedImage(file);
+            const { width, height } = embeddedImage.scale(1);
+            const page = pdfDoc.addPage([width, height]);
+            page.drawImage(embeddedImage, { x: 0, y: 0, width, height });
+        }
 
         const pdfBytes = await pdfDoc.save();
         const pdfByteArray = Uint8Array.from(pdfBytes);
         const blob = new Blob([pdfByteArray.buffer], { type: "application/pdf" });
-        const baseName = stripExtension(file.name) || "capture";
-        return new File([blob], `${baseName}.pdf`, { type: "application/pdf" });
+        const baseName = stripExtension(imageFiles[0]?.name || "capture");
+        const fileName =
+            imageFiles.length > 1 ? `${baseName}-bundle.pdf` : `${baseName}.pdf`;
+        return new File([blob], fileName, { type: "application/pdf" });
     }, []);
 
     const addFiles = useCallback(async (incomingFiles: File[]) => {
         if (!incomingFiles.length) return;
-        setIsConverting(true);
+        const hasImages =
+            variant === "Past Papers" && incomingFiles.some(isImageFile);
+        if (hasImages) {
+            setIsConverting(true);
+        }
         try {
-            const processed = await Promise.all(
-                incomingFiles.map(async (file) => {
-                    if (isPdfFile(file)) return file;
-                    if (variant === "Past Papers" && isImageFile(file)) {
-                        try {
-                            return await convertImageToPdfFile(file);
-                        } catch (error) {
-                            console.error("Failed to convert image:", error);
-                            toast({
-                                title: "Could not convert image",
-                                variant: "destructive",
-                            });
-                            return null;
-                        }
-                    }
+            const pdfFiles: File[] = [];
+            const imageFiles: File[] = [];
+
+            for (const file of incomingFiles) {
+                if (isPdfFile(file)) {
+                    pdfFiles.push(file);
+                    continue;
+                }
+                if (variant === "Past Papers" && isImageFile(file)) {
+                    imageFiles.push(file);
+                    continue;
+                }
+                toast({
+                    title: "Unsupported file type",
+                    variant: "destructive",
+                });
+            }
+
+            if (variant === "Past Papers" && imageFiles.length) {
+                try {
+                    const mergedPdf = await convertImagesToPdfFile(imageFiles);
+                    pdfFiles.push(mergedPdf);
+                } catch (error) {
+                    console.error("Failed to convert images:", error);
                     toast({
-                        title: "Unsupported file type",
+                        title: "Could not convert images",
                         variant: "destructive",
                     });
-                    return null;
-                })
-            );
+                }
+            }
 
-            const nextFiles = processed.filter(Boolean) as File[];
+            const nextFiles = pdfFiles;
             if (nextFiles.length) {
                 setFiles((prev) => [...prev, ...nextFiles]);
                 setFileTitles((prev) => [
@@ -187,9 +203,11 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
                 ]);
             }
         } finally {
-            setIsConverting(false);
+            if (hasImages) {
+                setIsConverting(false);
+            }
         }
-    }, [convertImageToPdfFile, toast, variant]);
+    }, [convertImagesToPdfFile, toast, variant]);
 
     const {getRootProps, getInputProps} = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
@@ -360,7 +378,7 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
                         )}
                         {isConverting && (
                             <p className="text-xs text-gray-500 mt-2">
-                                Converting photos to PDF...
+                                Combining photos into one PDF...
                             </p>
                         )}
                         {files.length > 0 && (
