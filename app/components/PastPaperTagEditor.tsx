@@ -1,17 +1,25 @@
 "use client";
 
-import React, { useMemo, useState, useTransition } from "react";
+import React, {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useTransition,
+} from "react";
 import { useSession } from "next-auth/react";
 import { updatePastPaperTags } from "@/app/actions/updatePastPaperTags";
 import { useToast } from "@/components/ui/use-toast";
+import Fuse from "fuse.js";
 
 type PastPaperTagEditorProps = {
     paperId: string;
     initialTags: string[];
+    allTags: string[];
 };
 
 function normalizeTag(tag: string) {
-    return tag.trim().replace(/\\s+/g, " ");
+    return tag.trim().replace(/\s+/g, " ");
 }
 
 function dedupeTags(tags: string[]) {
@@ -28,6 +36,7 @@ function dedupeTags(tags: string[]) {
 export default function PastPaperTagEditor({
     paperId,
     initialTags,
+    allTags,
 }: PastPaperTagEditorProps) {
     const { data: session } = useSession();
     const role = session?.user?.role;
@@ -37,7 +46,20 @@ export default function PastPaperTagEditor({
         dedupeTags(initialTags)
     );
     const [inputValue, setInputValue] = useState("");
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [filteredTags, setFilteredTags] = useState<string[]>([]);
     const [isPending, startTransition] = useTransition();
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const availableTags = useMemo(() => dedupeTags(allTags), [allTags]);
+    const fuse = useMemo(
+        () =>
+            new Fuse(availableTags, {
+                threshold: 0.6,
+                minMatchCharLength: 2,
+            }),
+        [availableTags]
+    );
 
     const hasChanges = useMemo(() => {
         const initialKeys = new Set(
@@ -63,6 +85,7 @@ export default function PastPaperTagEditor({
             return next;
         });
         setInputValue("");
+        setShowDropdown(false);
     };
 
     const removeTag = (tag: string) => {
@@ -90,6 +113,31 @@ export default function PastPaperTagEditor({
             }
         });
     };
+
+    useEffect(() => {
+        if (!inputValue) {
+            setFilteredTags(availableTags);
+            return;
+        }
+        const results = fuse.search(inputValue);
+        setFilteredTags(results.map((result) => result.item));
+    }, [availableTags, fuse, inputValue]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target as Node)
+            ) {
+                setShowDropdown(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     return (
         <div className="mt-4 rounded-md border border-black/20 dark:border-[#D5D5D5]/30 bg-white/70 dark:bg-[#0C1222] p-3">
@@ -119,19 +167,53 @@ export default function PastPaperTagEditor({
                 )}
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-                <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(event) => setInputValue(event.target.value)}
-                    onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                            event.preventDefault();
-                            addTag();
-                        }
-                    }}
-                    placeholder="Add a tag"
-                    className="min-w-[180px] flex-1 rounded-md border border-black/20 dark:border-[#D5D5D5]/30 bg-white dark:bg-[#0C1222] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div ref={dropdownRef} className="relative min-w-[180px] flex-1">
+                    <input
+                        type="text"
+                        value={inputValue}
+                        onChange={(event) => setInputValue(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                                event.preventDefault();
+                                if (!inputValue.trim()) return;
+                                if (filteredTags.length) {
+                                    addTag(filteredTags[0]);
+                                    return;
+                                }
+                                addTag();
+                            }
+                        }}
+                        onFocus={() => setShowDropdown(true)}
+                        placeholder="Search or add a tag"
+                        className="w-full rounded-md border border-black/20 dark:border-[#D5D5D5]/30 bg-white dark:bg-[#0C1222] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {showDropdown && filteredTags.length ? (
+                        <div className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-black/20 bg-white text-sm shadow-lg dark:border-[#D5D5D5]/20 dark:bg-[#232530]">
+                            {filteredTags
+                                .filter(
+                                    (tag) =>
+                                        !tags
+                                            .map((item) =>
+                                                normalizeTag(item).toLowerCase()
+                                            )
+                                            .includes(
+                                                normalizeTag(tag).toLowerCase()
+                                            )
+                                )
+                                .slice(0, 8)
+                                .map((tag) => (
+                                    <button
+                                        key={tag}
+                                        type="button"
+                                        onClick={() => addTag(tag)}
+                                        className="block w-full px-3 py-2 text-left hover:bg-black/5 dark:hover:bg-white/10"
+                                    >
+                                        {tag}
+                                    </button>
+                                ))}
+                        </div>
+                    ) : null}
+                </div>
                 <button
                     type="button"
                     onClick={() => addTag()}
