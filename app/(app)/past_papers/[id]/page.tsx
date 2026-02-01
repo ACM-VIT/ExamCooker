@@ -16,6 +16,7 @@ import { extractCourseFromTag } from "@/lib/courseTags";
 import { getRelatedPastPapers } from "@/lib/data/pastPapers";
 import { parsePaperTitle } from "@/lib/paperTitle";
 import { getRelatedPastPapersByCourseCode } from "@/lib/data/pastPapers";
+import prisma from "@/lib/prisma";
 
 function isValidSlot(str: string): boolean {
     const regex = /^[A-G]\d$/;
@@ -33,8 +34,13 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
     let slot: string = '';
     const { id } = await params;
 
+    let allTags: Array<{ name: string }> = [];
+
     try {
-        paper = await getPastPaperDetail(id);
+        [paper, allTags] = await Promise.all([
+            getPastPaperDetail(id),
+            prisma.tag.findMany({ select: { name: true } }),
+        ]);
 
         if (paper) {
             for (let i: number = 0; i < paper!.tags.length; i++) {
@@ -156,6 +162,7 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
                             <PastPaperTagEditor
                                 paperId={paper.id}
                                 initialTags={paper.tags.map((tag) => tag.name)}
+                                allTags={allTags.map((tag) => tag.name)}
                             />
                             {relatedSection ? (
                                 <div className="hidden lg:block pt-6">
