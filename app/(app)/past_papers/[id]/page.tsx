@@ -10,6 +10,7 @@ import ViewTracker from "@/app/components/ViewTracker";
 import { getPastPaperDetail } from "@/lib/data/pastPaperDetail";
 import ItemActions from "@/app/components/ItemActions";
 import TagContainer from "@/app/components/forumpost/TagContainer";
+import PastPaperTagEditor from "@/app/components/PastPaperTagEditor";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
 import { extractCourseFromTag } from "@/lib/courseTags";
 import { getRelatedPastPapers } from "@/lib/data/pastPapers";
@@ -152,6 +153,10 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
                                     <TagContainer tags={courseTags} />
                                 </div>
                             ) : null}
+                            <PastPaperTagEditor
+                                paperId={paper.id}
+                                initialTags={paper.tags.map((tag) => tag.name)}
+                            />
                             {relatedSection ? (
                                 <div className="hidden lg:block pt-6">
                                     {relatedSection}
