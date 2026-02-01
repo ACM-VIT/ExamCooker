@@ -14,11 +14,12 @@ const YEAR_REGEX = /\b(20\d{2})\b/;
 const COURSE_CODE_REGEX = /([A-Z]{2,5}\d{3,4}[A-Z]{0,3})/g;
 
 export function parsePaperTitle(rawTitle: string): ParsedPaperTitle {
-    const cleanTitle = rawTitle.replace(/\.pdf$/i, "").replace(/select$/i, "").trim();
-    const examType = extractExamType(cleanTitle);
-    const slot = extractSlot(cleanTitle);
-    const { academicYear, year } = extractYear(cleanTitle);
-    const courseCode = extractCourseCode(cleanTitle);
+    const baseTitle = rawTitle.replace(/\.pdf$/i, "").replace(/select$/i, "").trim();
+    const examType = extractExamType(baseTitle);
+    const slot = extractSlot(baseTitle);
+    const { academicYear, year } = extractYear(baseTitle);
+    const courseCode = extractCourseCode(baseTitle);
+    const cleanTitle = stripTrailingMetadataTokens(stripLeadingMetadataTokens(baseTitle));
     const courseName = extractCourseName(cleanTitle, courseCode);
 
     return {
@@ -36,7 +37,8 @@ export function extractExamType(title: string): string | undefined {
     const patterns: { regex: RegExp; normalize: () => string }[] = [
         { regex: /\bcat[-\s]?1\b/i, normalize: () => "CAT-1" },
         { regex: /\bcat[-\s]?2\b/i, normalize: () => "CAT-2" },
-        { regex: /\bfat\b/i, normalize: () => "FAT" },
+        { regex: /\bfat(?:\s*2)?\b/i, normalize: () => "FAT" },
+        { regex: /\bfat2\b/i, normalize: () => "FAT" },
         { regex: /\bmid(?:term)?\b/i, normalize: () => "MID" },
         { regex: /\bquiz\b/i, normalize: () => "Quiz" },
         { regex: /\bcia\b/i, normalize: () => "CIA" },
@@ -104,12 +106,21 @@ export function extractCourseName(title: string, courseCode?: string): string | 
     const resultTokens: string[] = [];
     let started = false;
 
-    for (const token of tokens) {
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        const nextToken = tokens[i + 1];
+        const skipPair = shouldSkipMetadataPair(token, nextToken);
         if (!started) {
-            if (isMetadataToken(token)) {
+            if (skipPair || isMetadataToken(token)) {
+                if (skipPair) {
+                    i += 1;
+                }
                 continue;
             }
             started = true;
+        }
+        if (started && (skipPair || isMetadataToken(token))) {
+            break;
         }
         resultTokens.push(token);
     }
@@ -122,13 +133,87 @@ function isMetadataToken(token: string): boolean {
     const normalized = token.replace(/[^a-z0-9-]/gi, "").toLowerCase();
     if (!normalized) return true;
     if (/^cat-?\d$/.test(normalized)) return true;
-    if (/^(fat|quiz|mid|cia)$/.test(normalized)) return true;
+    if (/^cat\d$/.test(normalized)) return true;
+    if (/^(fat|fat\d|quiz|mid|midterm|cia)$/.test(normalized)) return true;
     if (/^(qp|paper|select)$/.test(normalized)) return true;
     if (/^[a-g]\d$/i.test(normalized)) return true;
     if (/^\d{2}-\d{2}$/.test(normalized)) return true;
     if (/^20\d{2}-20\d{2}$/.test(normalized)) return true;
     if (/^20\d{2}$/.test(normalized)) return true;
+    if (isSlotComboToken(token)) return true;
     return false;
+}
+
+function isSlotComboToken(token: string): boolean {
+    if (!/[()+]/.test(token) && !/[+]/.test(token)) return false;
+    return /[A-G][1-2]/i.test(token);
+}
+
+function isMetadataLabel(token: string): boolean {
+    const normalized = token.replace(/[^a-z0-9-]/gi, "").toLowerCase();
+    return normalized === "slot" || normalized === "year";
+}
+
+function isExamLabel(token: string): boolean {
+    const normalized = token.replace(/[^a-z0-9-]/gi, "").toLowerCase();
+    return (
+        normalized === "cat" ||
+        normalized === "fat" ||
+        normalized === "mid" ||
+        normalized === "midterm" ||
+        normalized === "quiz" ||
+        normalized === "cia"
+    );
+}
+
+function isExamNumber(token: string): boolean {
+    const normalized = token.replace(/[^0-9]/g, "");
+    return normalized === "1" || normalized === "2";
+}
+
+function shouldSkipMetadataPair(token: string, nextToken?: string): boolean {
+    if (!nextToken) return false;
+    if (isMetadataLabel(token) && isMetadataToken(nextToken)) return true;
+    if (isExamLabel(token) && isExamNumber(nextToken)) return true;
+    return false;
+}
+
+function stripLeadingMetadataTokens(title: string): string {
+    const tokens = title.trim().split(/\s+/);
+    let i = 0;
+    while (i < tokens.length) {
+        const token = tokens[i];
+        const nextToken = tokens[i + 1];
+        if (shouldSkipMetadataPair(token, nextToken)) {
+            i += 2;
+            continue;
+        }
+        if (isMetadataToken(token)) {
+            i += 1;
+            continue;
+        }
+        break;
+    }
+    return tokens.slice(i).join(" ").trim();
+}
+
+function stripTrailingMetadataTokens(title: string): string {
+    const tokens = title.trim().split(/\s+/);
+    let end = tokens.length - 1;
+    while (end >= 0) {
+        const token = tokens[end];
+        const prevToken = tokens[end - 1];
+        if (isMetadataToken(token)) {
+            end -= 1;
+            continue;
+        }
+        if (prevToken && shouldSkipMetadataPair(prevToken, token)) {
+            end -= 2;
+            continue;
+        }
+        break;
+    }
+    return tokens.slice(0, end + 1).join(" ").trim();
 }
 
 function normalizeYear(value?: string): string | undefined {
