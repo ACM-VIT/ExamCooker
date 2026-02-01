@@ -125,7 +125,7 @@ export default async function ForumPage({
   const params = (await searchParams) ?? {};
   const search = params.search || '';
   return (
-    <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-8 py-8">
+    <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-8">
       <h1 className="text-center mb-4">Forum</h1>
 
       <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">

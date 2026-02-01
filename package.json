@@ -38,6 +38,7 @@
     "lucide-react": "^0.544.0",
     "next": "^16.1.6",
     "next-auth": "^5.0.0-beta.19",
+    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^3.0.279",
     "posthog-js": "^1.336.4",
     "posthog-node": "^5.24.7",

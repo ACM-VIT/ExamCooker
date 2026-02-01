@@ -98,7 +98,7 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
                 title={title}
             />
             <div className="lg:w-1/2 flex flex-col overflow-hidden">
-                <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <div className="flex-grow overflow-y-auto p-2 sm:p-4 lg:p-8">
                     <div className="max-w-2xl mx-auto">
                         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{title}</h1>
 

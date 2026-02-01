@@ -71,7 +71,7 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
                 title={processSyllabusName(syllabus.name)}
             />
             <div className="lg:w-1/2 flex flex-col overflow-hidden">
-                <div className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <div className="flex-grow overflow-y-auto p-2 sm:p-4 lg:p-8">
                     <div className="max-w-2xl mx-auto">
                         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{processSyllabusName(syllabus.name)}</h1>
                         <div className="space-y-2 sm:space-y-3">
@@ -84,7 +84,7 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
                     </div>
                 </div>
             </div>
-            <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
+            <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-2 sm:p-4">
                 <div className="h-full overflow-auto">
                     <PDFViewerClient fileUrl={syllabus.fileUrl} />
                 </div>

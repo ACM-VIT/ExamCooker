@@ -6,7 +6,7 @@ import posthog from "posthog-js";
 
 export default function PostHogIdentify() {
     const { data: session, status } = useSession();
-    const hasIdentified = useRef(false);
+    const lastStatus = useRef<string | null>(null);
     const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 
     useEffect(() => {
@@ -18,14 +18,19 @@ export default function PostHogIdentify() {
                 name: session.user.name ?? undefined,
                 role: session.user.role ?? undefined,
             });
-            hasIdentified.current = true;
+            lastStatus.current = "authenticated";
             return;
         }
 
-        if (status === "unauthenticated" && hasIdentified.current) {
-            posthog.reset();
-            hasIdentified.current = false;
+        if (status === "unauthenticated") {
+            if (lastStatus.current !== "unauthenticated") {
+                posthog.reset();
+            }
+            lastStatus.current = "unauthenticated";
+            return;
         }
+
+        lastStatus.current = status;
     }, [
         posthogKey,
         status,

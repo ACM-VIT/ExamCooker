@@ -7,7 +7,6 @@ import React, {
     useState,
     useTransition,
 } from "react";
-import { useSession } from "next-auth/react";
 import { updatePastPaperTags } from "@/app/actions/updatePastPaperTags";
 import { useToast } from "@/components/ui/use-toast";
 import Fuse from "fuse.js";
@@ -38,8 +37,6 @@ export default function PastPaperTagEditor({
     initialTags,
     allTags,
 }: PastPaperTagEditorProps) {
-    const { data: session } = useSession();
-    const role = session?.user?.role;
     const { toast } = useToast();
     const [tags, setTags] = useState(() => dedupeTags(initialTags));
     const [baselineTags, setBaselineTags] = useState(() =>
@@ -74,8 +71,6 @@ export default function PastPaperTagEditor({
         }
         return false;
     }, [baselineTags, tags]);
-
-    if (role !== "MODERATOR") return null;
 
     const addTag = (value?: string) => {
         const cleaned = normalizeTag(value ?? inputValue);

@@ -99,7 +99,7 @@ export default async function CourseDetailPage({
         ]);
     const title = buildCourseTitle(course);
     return (
-        <div className="min-h-screen text-black dark:text-gray-200 flex flex-col p-8">
+        <div className="min-h-screen text-black dark:text-gray-200 flex flex-col p-2 sm:p-4 lg:p-8">
             <div className="w-full max-w-6xl mx-auto flex flex-col gap-10">
                 <header className="space-y-4 text-center">
                     <div className="space-y-2">

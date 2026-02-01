@@ -24,7 +24,7 @@ function validatePage(page: number, totalPages: number): number {
 function PastPapersSkeleton() {
     return (
         <div className="flex justify-center w-full overflow-x-hidden">
-            <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6 place-content-center">
+            <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 p-2 sm:p-4 lg:p-6 place-content-center">
                 {Array.from({ length: 9 }).map((_, index) => (
                     <div key={index} className="max-w-sm w-full h-full">
                         <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-transparent transition duration-200 transform max-w-96">
@@ -99,7 +99,7 @@ async function PastPaperResults({ params }: { params: { page?: string; search?: 
             )}
 
             <div className="flex justify-center w-full overflow-x-hidden">
-                <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-6 place-content-center">
+                <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 p-2 sm:p-4 lg:p-6 place-content-center">
                     {paginatedPastPapers.length > 0 ? (
                         paginatedPastPapers.map((eachPaper, index) => (
                             <div key={eachPaper.id} className="flex justify-center">
@@ -138,7 +138,7 @@ export default async function PastPaperPage({
     const params = (await searchParams) ?? {};
     const search = params.search || '';
     return (
-        <div className="p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5] w-full overflow-x-hidden">
+        <div className="p-2 sm:p-4 lg:p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5] w-full overflow-x-hidden">
             <h1 className="text-center mb-4">Past Papers</h1>
             <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
                 <Dropdown pageType='past_papers' />
