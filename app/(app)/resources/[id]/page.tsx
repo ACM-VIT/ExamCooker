@@ -55,7 +55,7 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
 
 
     return (
-        <div className="transition-colors container mx-auto p-4 text-black dark:text-[#D5D5D5]">
+        <div className="transition-colors container mx-auto p-2 sm:p-4 text-black dark:text-[#D5D5D5]">
             <ViewTracker
                 id={subject.id}
                 type="subject"

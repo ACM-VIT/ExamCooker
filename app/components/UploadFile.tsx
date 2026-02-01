@@ -1,11 +1,10 @@
 "use client"
-import React, {useState, useCallback, useTransition} from 'react';
+import React, {useState, useCallback, useTransition, useRef} from 'react';
 import Link from 'next/link';
 import {useDropzone} from 'react-dropzone';
 import uploadFile from "../actions/uploadFile";
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faArrowLeft, faCircleXmark} from '@fortawesome/free-solid-svg-icons';
-import {removePdfExtension} from './NotesCard';
 import Loading from '../loading';
 import TagsInput from "@/app/components/tagsInput";
 import {useToast} from "@/components/ui/use-toast";
@@ -13,6 +12,10 @@ import {useRouter} from "next/navigation";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 const years = ['2020', '2021', '2022', '2023', '2024', '2025', '2026'];
+const isPdfFile = (file: File) =>
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+const isImageFile = (file: File) => file.type.startsWith("image/");
+const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, "");
 
 const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | "Past Papers" }) => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
@@ -23,6 +26,8 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
     const [isDragging, setIsDragging] = useState(false);
     const [error, setError] = useState("");
     const [pending, startTransition] = useTransition();
+    const [isConverting, setIsConverting] = useState(false);
+    const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
     const {toast} = useToast();
     const router = useRouter();
@@ -94,18 +99,114 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         });
     };
 
+    const convertImageToPdfFile = useCallback(async (file: File) => {
+        const { PDFDocument } = await import("pdf-lib");
+        const pdfDoc = await PDFDocument.create();
+
+        const embedImage = async () => {
+            if (file.type === "image/png") {
+                return pdfDoc.embedPng(await file.arrayBuffer());
+            }
+            if (file.type === "image/jpeg" || file.type === "image/jpg") {
+                return pdfDoc.embedJpg(await file.arrayBuffer());
+            }
+
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+            try {
+                img.src = objectUrl;
+                await img.decode();
+                const canvas = document.createElement("canvas");
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    throw new Error("Canvas not available");
+                }
+                ctx.drawImage(img, 0, 0);
+                const blob = await new Promise<Blob>((resolve, reject) => {
+                    canvas.toBlob((result) => {
+                        if (!result) {
+                            reject(new Error("Image conversion failed"));
+                            return;
+                        }
+                        resolve(result);
+                    }, "image/png");
+                });
+                return pdfDoc.embedPng(await blob.arrayBuffer());
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
+        };
+
+        const embeddedImage = await embedImage();
+        const { width, height } = embeddedImage.scale(1);
+        const page = pdfDoc.addPage([width, height]);
+        page.drawImage(embeddedImage, { x: 0, y: 0, width, height });
+
+        const pdfBytes = await pdfDoc.save();
+        const pdfByteArray = Uint8Array.from(pdfBytes);
+        const blob = new Blob([pdfByteArray.buffer], { type: "application/pdf" });
+        const baseName = stripExtension(file.name) || "capture";
+        return new File([blob], `${baseName}.pdf`, { type: "application/pdf" });
+    }, []);
+
+    const addFiles = useCallback(async (incomingFiles: File[]) => {
+        if (!incomingFiles.length) return;
+        setIsConverting(true);
+        try {
+            const processed = await Promise.all(
+                incomingFiles.map(async (file) => {
+                    if (isPdfFile(file)) return file;
+                    if (variant === "Past Papers" && isImageFile(file)) {
+                        try {
+                            return await convertImageToPdfFile(file);
+                        } catch (error) {
+                            console.error("Failed to convert image:", error);
+                            toast({
+                                title: "Could not convert image",
+                                variant: "destructive",
+                            });
+                            return null;
+                        }
+                    }
+                    toast({
+                        title: "Unsupported file type",
+                        variant: "destructive",
+                    });
+                    return null;
+                })
+            );
+
+            const nextFiles = processed.filter(Boolean) as File[];
+            if (nextFiles.length) {
+                setFiles((prev) => [...prev, ...nextFiles]);
+                setFileTitles((prev) => [
+                    ...prev,
+                    ...nextFiles.map((file) => stripExtension(file.name)),
+                ]);
+            }
+        } finally {
+            setIsConverting(false);
+        }
+    }, [convertImageToPdfFile, toast, variant]);
+
     const {getRootProps, getInputProps} = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
-            setFiles(f => [...f, ...acceptedFiles]);
-            setFileTitles(f => [...f, ...acceptedFiles.map(file => removePdfExtension(file.name))])
+            void addFiles(acceptedFiles);
             setIsDragging(false);
         },
         onDragEnter: () => setIsDragging(true),
         onDragLeave: () => setIsDragging(false),
         multiple: true,
-        accept: {
-            'application/pdf': ['.pdf'],
-        },
+        accept: variant === "Past Papers"
+            ? {
+                'application/pdf': ['.pdf'],
+                'image/*': ['.png', '.jpg', '.jpeg', '.heic', '.heif'],
+            }
+            : {
+                'application/pdf': ['.pdf'],
+            },
     });
 
     const handleTitleChange = useCallback((index: number, value: string) => {
@@ -215,7 +316,22 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
                             mb-4 cursor-pointer
                         `}
                     >
-                        <input {...getInputProps()} />
+                            <input {...getInputProps()} />
+                            {variant === "Past Papers" && (
+                                <input
+                                    ref={cameraInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(event) => {
+                                        if (!event.target.files) return;
+                                        void addFiles(Array.from(event.target.files));
+                                        event.target.value = "";
+                                    }}
+                                />
+                            )}
                         <svg
                             className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-gray-400 mb-2"
                             fill="none"
@@ -233,6 +349,20 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
                         <p className="text-sm sm:text-base md:text-lg text-gray-500 text-center">
                             Drag & drop files here, or click here
                         </p>
+                        {variant === "Past Papers" && (
+                            <button
+                                type="button"
+                                onClick={() => cameraInputRef.current?.click()}
+                                className="mt-2 text-xs sm:text-sm text-blue-600 hover:underline"
+                            >
+                                Use camera (mobile)
+                            </button>
+                        )}
+                        {isConverting && (
+                            <p className="text-xs text-gray-500 mt-2">
+                                Converting photos to PDF...
+                            </p>
+                        )}
                         {files.length > 0 && (
                             <p className="text-xs sm:text-sm md:text-base text-gray-500 mt-2">
                                 {files.length} file(s) selected

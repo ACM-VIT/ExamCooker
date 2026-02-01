@@ -17,6 +17,7 @@ import { getRelatedPastPapers } from "@/lib/data/pastPapers";
 import { parsePaperTitle } from "@/lib/paperTitle";
 import { getRelatedPastPapersByCourseCode } from "@/lib/data/pastPapers";
 import prisma from "@/lib/prisma";
+import { auth } from "@/app/auth";
 
 function isValidSlot(str: string): boolean {
     const regex = /^[A-G]\d$/;
@@ -66,6 +67,9 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
     }
 
     if (!paper) return notFound();
+
+    const session = await auth();
+    const isModerator = (session?.user as { role?: string } | undefined)?.role === "MODERATOR";
 
     const postTime: string = paper.createdAt.toLocaleString("en-US", {timeZone: "Asia/Kolkata"});
 
@@ -145,7 +149,7 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
                 title={displayTitle}
             />
             <div className="lg:w-1/2 flex flex-col overflow-hidden">
-                <div className="lg:flex-grow lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <div className="lg:flex-grow lg:overflow-y-auto p-2 sm:p-4 lg:p-8">
                     <div className="max-w-2xl mx-auto">
                         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{displayTitle}</h1>
                         <div className="space-y-2 sm:space-y-3">
@@ -159,11 +163,13 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
                                     <TagContainer tags={courseTags} />
                                 </div>
                             ) : null}
-                            <PastPaperTagEditor
-                                paperId={paper.id}
-                                initialTags={paper.tags.map((tag) => tag.name)}
-                                allTags={allTags.map((tag) => tag.name)}
-                            />
+                            {isModerator ? (
+                                <PastPaperTagEditor
+                                    paperId={paper.id}
+                                    initialTags={paper.tags.map((tag) => tag.name)}
+                                    allTags={allTags.map((tag) => tag.name)}
+                                />
+                            ) : null}
                             {relatedSection ? (
                                 <div className="hidden lg:block pt-6">
                                     {relatedSection}
@@ -185,13 +191,13 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
                     </div>
                 </div>
             </div>
-            <div className="lg:flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
+            <div className="lg:flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-2 sm:p-4">
                 <div className="h-[70vh] sm:h-[75vh] lg:h-full overflow-auto">
                     <PDFViewerClient fileUrl={paper.fileUrl}/>
                 </div>
             </div>
             {relatedSection ? (
-                <div className="px-4 pb-6 lg:hidden">
+                <div className="px-2 sm:px-4 pb-4 sm:pb-6 lg:hidden">
                     {relatedSection}
                 </div>
             ) : null}

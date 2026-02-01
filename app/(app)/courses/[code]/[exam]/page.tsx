@@ -60,7 +60,7 @@ export default async function CourseExamPage({
     });
 
     return (
-        <div className="min-h-screen text-black dark:text-gray-200 flex flex-col gap-6 p-8">
+        <div className="min-h-screen text-black dark:text-gray-200 flex flex-col gap-6 p-2 sm:p-4 lg:p-8">
             <header className="space-y-2 text-center">
                 <h1 className="text-3xl sm:text-4xl font-bold">{course.title}</h1>
                 <p className="text-sm text-black/70 dark:text-white/70">

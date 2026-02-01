@@ -82,7 +82,7 @@ export default async function SyllabusPage({
     const search = params.search || '';
 
     return (
-        <div className="min-h-screen text-black dark:text-gray-200 flex flex-col items-center justify-start p-8">
+        <div className="min-h-screen text-black dark:text-gray-200 flex flex-col items-center justify-start p-2 sm:p-4 lg:p-8">
             <h1 className="text-center mb-4">Syllabus</h1>
 
             <div className="w-full max-w-3xl mb-6 sm:mb-8 pt-2">
