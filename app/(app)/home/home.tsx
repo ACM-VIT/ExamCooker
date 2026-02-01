@@ -6,6 +6,8 @@ import { GradientText } from "@/app/components/landing_page/landing";
 import GuestHomeSections from "./GuestHomeSections";
 import NothingViewedOrFav from "./NothingViewedOrFav";
 import { getHomeFavorites, getHomeRecentViews, type HomeItem } from "@/lib/data/home";
+import { getCoursesWithCounts } from "@/lib/data/courses";
+import CourseSearch from "./CourseSearch";
 
 function getQuirkyLine() {
     const collection: string[] = [
@@ -31,6 +33,9 @@ const Home = async () => {
     let recentlyViewedItems: HomeItem[] = [];
     let favoriteItems: HomeItem[] = [];
     const isAuthed = Boolean(userId);
+
+    // Fetch courses for search - available to all users
+    const courses = await getCoursesWithCounts();
 
     if (userId) {
         recentlyViewedItems = await getHomeRecentViews(userId);
@@ -60,60 +65,72 @@ const Home = async () => {
   </div>
 </Link>  */}
             <div className="container mx-auto px-4 py-8 max-w-7xl">
-                <header className="text-center mb-12">
+                <header className="text-center mb-8">
                     <h1 className="text-4xl md:text-6xl font-bold mb-4">Welcome <GradientText><UserName /></GradientText></h1>
-                    <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300">{getQuirkyLine()}</p>
+                    <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 mb-8">{getQuirkyLine()}</p>
+                    
+                    {/* Course Search - Centralized and Prominent */}
+                    <div className="max-w-3xl mx-auto">
+                        <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+                            Find resources for your course
+                        </h2>
+                        <CourseSearch courses={courses} />
+                    </div>
                 </header>
 
                 <main>
                     {isAuthed ? (
-                        <>
-                            <section className="mb-16">
-                                <div className="flex items-center justify-center text-xl sm:text-2xl font-bold mb-6 pt-4">
-                                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5] "></div>
-                                    <span className="mx-4">Recently Viewed</span>
+                        <div className="mt-10 lg:mt-25 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Recently Viewed */}
+                            <section>
+                                <div className="flex items-center text-xl sm:text-2xl font-bold mb-6">
+                                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
+                                    <span className="mx-4 whitespace-nowrap">Recently Viewed</span>
                                     <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
                                 </div>
-                                {emptyRecentlyViewed &&
+                                {emptyRecentlyViewed ? (
                                     <div className="flex justify-center">
                                         <NothingViewedOrFav sectionName="RecentlyViewed" />
                                     </div>
-                                }
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
-                                    {recentlyViewedItems.map((item) => (
-                                        <CommonResource
-                                            key={item.item.id}
-                                            category={item.type}
-                                            title={getTitle(item.item)} // maybe run migrations and change subject.name to title and then item.item.tile
-                                            thing={item.item}
-                                        />
-                                    ))}
-                                </div>
+                                ) : (
+                                    <div className="flex flex-col gap-4">
+                                        {recentlyViewedItems.map((item) => (
+                                            <CommonResource
+                                                key={item.item.id}
+                                                category={item.type}
+                                                title={getTitle(item.item)}
+                                                thing={item.item}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </section>
 
+                            {/* Favourites */}
                             <section>
-                                <div className="flex items-center justify-center text-xl sm:text-2xl font-bold mb-6 pt-4">
-                                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5] "></div>
-                                    <span className="mx-4">Favourites</span>
+                                <div className="flex items-center text-xl sm:text-2xl font-bold mb-6">
+                                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
+                                    <span className="mx-4 whitespace-nowrap">Favourites</span>
                                     <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
                                 </div>
-                                {emptyFav &&
+                                {emptyFav ? (
                                     <div className="flex justify-center">
                                         <NothingViewedOrFav sectionName="Favourites" />
                                     </div>
-                                }
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
-                                    {favoriteItems.length > 0 && favoriteItems.slice(0, 9).map((item) => (
-                                        <CommonResource
-                                            key={item.item.id}
-                                            category={item.type}
-                                            title={getTitle(item.item)}
-                                            thing={item.item}
-                                        />
-                                    ))}
-                                </div>
+                                ) : (
+                                    <div className="flex flex-col gap-4">
+                                        {favoriteItems.slice(0, 3).map((item) => (
+                                            <CommonResource
+                                                key={item.item.id}
+                                                category={item.type}
+                                                title={getTitle(item.item)}
+                                                thing={item.item}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </section>
-                        </>
+                        </div>
                     ) : (
                         <GuestHomeSections />
                     )}

@@ -1,14 +1,29 @@
-import { DefaultSession } from "next-auth";
-import "next-auth";
+import type { DefaultSession } from "next-auth";
+
+type AppRole = "USER" | "MODERATOR";
 
 declare module "next-auth" {
+    interface Session {
+        user: (DefaultSession["user"] & {
+            id: string;
+            role?: AppRole;
+        });
+    }
+
     interface User {
-        role?: "USER" | "MODERATOR";
+        role?: AppRole;
+    }
+}
+
+declare module "@auth/core/types" {
+    interface User {
+        role?: AppRole;
     }
 
     interface Session {
-        user: {
-            role?: "USER" | "MODERATOR";
-        } & DefaultSession["user"];
+        user?: (DefaultSession["user"] & {
+            id?: string;
+            role?: AppRole;
+        });
     }
 }

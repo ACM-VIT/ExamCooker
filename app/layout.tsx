@@ -6,6 +6,7 @@ import SocialMediaFollowToast from "@/components/ui/SocialMediaToast";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
+import PostHogProvider from "@/app/posthog-provider";
 
 const baseUrl = getBaseUrl();
 
@@ -48,12 +49,14 @@ export default function RootLayout({
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
-                <Suspense fallback={null}>{children}</Suspense>
-                <Toaster />
-                <SocialMediaFollowToast />
-                {process.env.GA_ID && (
-                    <GoogleAnalytics gaId={process.env.GA_ID }/>
-                )}
+                <PostHogProvider>
+                    <Suspense fallback={null}>{children}</Suspense>
+                    <Toaster />
+                    <SocialMediaFollowToast />
+                    {process.env.GA_ID && (
+                        <GoogleAnalytics gaId={process.env.GA_ID} />
+                    )}
+                </PostHogProvider>
             </body>
         </html>
     );

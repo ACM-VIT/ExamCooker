@@ -63,52 +63,57 @@ export default function GuestHomeSections() {
     const emptyFav = favoriteItems.length === 0;
 
     return (
-        <>
-            <section className="mb-16">
-                <div className="flex items-center justify-center text-xl sm:text-2xl font-bold mb-6 pt-4">
-                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                    <span className="mx-4">Recently Viewed</span>
-                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                </div>
-                {emptyRecentlyViewed && (
-                    <div className="flex justify-center">
-                        <NothingViewedOrFav sectionName="RecentlyViewed" />
-                    </div>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
-                    {recentItems.map((item) => (
-                        <CommonResource
-                            key={item.id}
-                            category={item.type}
-                            title={item.title}
-                            thing={{ id: item.id }}
-                        />
-                    ))}
-                </div>
-            </section>
-
+        <div className="mt-10 lg:mt-25 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Recently Viewed */}
             <section>
-                <div className="flex items-center justify-center text-xl sm:text-2xl font-bold mb-6 pt-4">
-                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                    <span className="mx-4">Favourites</span>
-                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                </div>
-                {emptyFav && (
-                    <div className="flex justify-center">
-                        <NothingViewedOrFav sectionName="Favourites" />
+                    <div className="flex items-center text-xl sm:text-2xl font-bold mb-6">
+                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
+                        <span className="mx-4 whitespace-nowrap">Recently Viewed</span>
+                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
                     </div>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
-                    {favoriteItems.map((item) => (
-                        <CommonResource
-                            key={item.id}
-                            category={item.type}
-                            title={item.title}
-                            thing={{ id: item.id }}
-                        />
-                    ))}
-                </div>
-            </section>
-        </>
+                    {emptyRecentlyViewed ? (
+                        <div className="flex justify-center">
+                            <NothingViewedOrFav sectionName="RecentlyViewed" />
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-4">
+                            {recentItems.map((item) => (
+                                <CommonResource
+                                    key={item.id}
+                                    category={item.type}
+                                    title={item.title}
+                                    thing={{ id: item.id }}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                {/* Favourites */}
+                <section>
+                    <div className="flex items-center text-xl sm:text-2xl font-bold mb-6">
+                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
+                        <span className="mx-4 whitespace-nowrap">Favourites</span>
+                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
+                    </div>
+                    {emptyFav ? (
+                        <div className="flex justify-center">
+                            <NothingViewedOrFav sectionName="Favourites" />
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-4">
+                            {favoriteItems.map((item) => (
+                                <CommonResource
+                                    key={item.id}
+                                    category={item.type}
+                                    title={item.title}
+                                    thing={{ id: item.id }}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </section>
+            </div>
+
     );
 }
