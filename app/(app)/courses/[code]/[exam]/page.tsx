@@ -59,8 +59,6 @@ export default async function CourseExamPage({
         examSlug: examType.slug,
     });
 
-    if (!papers.length) return notFound();
-
     return (
         <div className="min-h-screen text-black dark:text-gray-200 flex flex-col gap-6 p-8">
             <header className="space-y-2 text-center">
@@ -78,19 +76,21 @@ export default async function CourseExamPage({
                 </div>
             </header>
 
-            <section className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Past papers</h2>
-                    <span className="text-xs text-black/60 dark:text-white/60">
-                        {papers.length} results
-                    </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {papers.map((paper, index) => (
-                        <PastPaperCard key={paper.id} pastPaper={paper} index={index} />
-                    ))}
-                </div>
-            </section>
+            {papers.length ? (
+                <section className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold">Past papers</h2>
+                        <span className="text-xs text-black/60 dark:text-white/60">
+                            {papers.length} results
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {papers.map((paper, index) => (
+                            <PastPaperCard key={paper.id} pastPaper={paper} index={index} />
+                        ))}
+                    </div>
+                </section>
+            ) : null}
         </div>
     );
 }

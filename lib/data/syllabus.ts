@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/src/generated/prisma";
+import { normalizeCourseCode } from "@/lib/courseTags";
 
 function buildWhere(search: string): Prisma.syllabiWhereInput {
     if (!search) return {};
@@ -42,5 +43,28 @@ export async function getSyllabusPage(input: {
             id: true,
             name: true,
         },
+    });
+}
+
+export async function getSyllabusByCourseCode(code: string) {
+    "use cache";
+    cacheTag("syllabus");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const normalized = normalizeCourseCode(code);
+    if (!normalized) return null;
+
+    return prisma.syllabi.findFirst({
+        where: {
+            name: {
+                startsWith: `${normalized}_`,
+                mode: "insensitive",
+            },
+        },
+        select: {
+            id: true,
+            name: true,
+        },
+        orderBy: { name: "asc" },
     });
 }
