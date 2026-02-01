@@ -71,12 +71,12 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
           />
         </div>
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1 text-left">
-            <div className="mb-1 w-full whitespace-nowrap overflow-hidden text-ellipsis text-lg">
+          <div className="min-w-0 flex-1 text-left select-text">
+            <div className="mb-1 w-full whitespace-nowrap overflow-hidden text-ellipsis text-lg select-text">
               {displayTitle}
             </div>
             {metadata ? (
-              <div className="text-xs text-black/70 dark:text-white/70 whitespace-nowrap overflow-hidden text-ellipsis">
+              <div className="text-xs text-black/70 dark:text-white/70 whitespace-nowrap overflow-hidden text-ellipsis select-text">
                 {metadata}
               </div>
             ) : null}
