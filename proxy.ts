@@ -3,17 +3,21 @@ import { NextResponse } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-const ratelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(5, "10 s"),
-});
+const ratelimit =
+  redisUrl && redisToken
+    ? new Ratelimit({
+        redis: new Redis({
+          url: redisUrl,
+          token: redisToken,
+        }),
+        limiter: Ratelimit.slidingWindow(20, "10 s"),
+      })
+    : null;
 
-function getClientIp(req: NextRequest): string {
+function getClientIp(req: NextRequest): string | null {
   const xff = req.headers.get("x-forwarded-for");
   if (xff) {
     const ip = xff.split(",")[0]?.trim();
@@ -32,18 +36,45 @@ function getClientIp(req: NextRequest): string {
     if (v) return v;
   }
 
-  return "127.0.0.1";
+  return null;
+}
+
+function isPrefetchRequest(req: NextRequest): boolean {
+  if (req.headers.get("purpose") === "prefetch") return true;
+  if (req.headers.get("next-router-prefetch")) return true;
+  if (req.headers.get("x-middleware-prefetch")) return true;
+  return false;
+}
+
+function hasSessionCookie(req: NextRequest): boolean {
+  return (
+    Boolean(req.cookies.get("authjs.session-token")) ||
+    Boolean(req.cookies.get("__Secure-authjs.session-token")) ||
+    Boolean(req.cookies.get("next-auth.session-token")) ||
+    Boolean(req.cookies.get("__Secure-next-auth.session-token"))
+  );
 }
 
 export default async function proxy(request: NextRequest) {
   const url = new URL(request.url);
   const isCreatePath = url.pathname.endsWith("/create") || url.pathname.endsWith("/create/");
+  const shouldRateLimit =
+    isCreatePath &&
+    request.method === "GET" &&
+    !isPrefetchRequest(request) &&
+    !hasSessionCookie(request);
 
-  if (isCreatePath) {
+  if (shouldRateLimit && ratelimit) {
     const ip = getClientIp(request);
-    const { success } = await ratelimit.limit(ip);
-    if (!success) {
-      return NextResponse.redirect(new URL("/blocked", request.url));
+    if (ip) {
+      try {
+        const { success } = await ratelimit.limit(ip);
+        if (!success) {
+          return NextResponse.redirect(new URL("/blocked", request.url));
+        }
+      } catch (error) {
+        console.error("[proxy] rate limit failed; allowing request", error);
+      }
     }
   }
 
