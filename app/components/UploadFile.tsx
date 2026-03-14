@@ -27,6 +27,8 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
     const [error, setError] = useState("");
     const [pending, startTransition] = useTransition();
     const [isConverting, setIsConverting] = useState(false);
+    const [imageBundleFiles, setImageBundleFiles] = useState<File[]>([]);
+    const [isImageBundleMode, setIsImageBundleMode] = useState(false);
     const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
     const {toast} = useToast();
@@ -157,57 +159,79 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
 
     const addFiles = useCallback(async (incomingFiles: File[]) => {
         if (!incomingFiles.length) return;
-        const hasImages =
-            variant === "Past Papers" && incomingFiles.some(isImageFile);
-        if (hasImages) {
-            setIsConverting(true);
-        }
-        try {
-            const pdfFiles: File[] = [];
-            const imageFiles: File[] = [];
+        const pdfFiles: File[] = [];
+        const imageFiles: File[] = [];
 
-            for (const file of incomingFiles) {
-                if (isPdfFile(file)) {
-                    pdfFiles.push(file);
-                    continue;
-                }
-                if (variant === "Past Papers" && isImageFile(file)) {
-                    imageFiles.push(file);
-                    continue;
-                }
+        for (const file of incomingFiles) {
+            if (isPdfFile(file)) {
+                pdfFiles.push(file);
+                continue;
+            }
+            if (variant === "Past Papers" && isImageFile(file)) {
+                imageFiles.push(file);
+                continue;
+            }
+            toast({
+                title: "Unsupported file type",
+                variant: "destructive",
+            });
+        }
+
+        if (variant === "Past Papers" && imageFiles.length && pdfFiles.length) {
+            toast({
+                title: "Choose either images or PDFs at once",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (variant === "Past Papers" && imageFiles.length) {
+            if (files.length > 0 && !isImageBundleMode) {
                 toast({
-                    title: "Unsupported file type",
+                    title: "Images can only create one paper",
                     variant: "destructive",
                 });
+                return;
             }
 
-            if (variant === "Past Papers" && imageFiles.length) {
-                try {
-                    const mergedPdf = await convertImagesToPdfFile(imageFiles);
-                    pdfFiles.push(mergedPdf);
-                } catch (error) {
-                    console.error("Failed to convert images:", error);
-                    toast({
-                        title: "Could not convert images",
-                        variant: "destructive",
-                    });
-                }
-            }
+            setIsConverting(true);
+            try {
+                const mergedImageFiles = [...imageBundleFiles, ...imageFiles];
+                const mergedPdf = await convertImagesToPdfFile(mergedImageFiles);
+                const existingTitle = fileTitles[0]?.trim();
 
-            const nextFiles = pdfFiles;
-            if (nextFiles.length) {
-                setFiles((prev) => [...prev, ...nextFiles]);
-                setFileTitles((prev) => [
-                    ...prev,
-                    ...nextFiles.map((file) => stripExtension(file.name)),
-                ]);
-            }
-        } finally {
-            if (hasImages) {
+                setImageBundleFiles(mergedImageFiles);
+                setIsImageBundleMode(true);
+                setFiles([mergedPdf]);
+                setFileTitles([existingTitle || stripExtension(mergedPdf.name)]);
+            } catch (error) {
+                console.error("Failed to convert images:", error);
+                toast({
+                    title: "Could not convert images",
+                    variant: "destructive",
+                });
+            } finally {
                 setIsConverting(false);
             }
+            return;
         }
-    }, [convertImagesToPdfFile, toast, variant]);
+
+        if (variant === "Past Papers" && pdfFiles.length && isImageBundleMode) {
+            toast({
+                title: "Remove image paper before adding PDFs",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (pdfFiles.length) {
+            setFiles((prev) => [...prev, ...pdfFiles]);
+            setFileTitles((prev) => [
+                ...prev,
+                ...pdfFiles.map((file) => stripExtension(file.name)),
+            ]);
+        }
+    }, [convertImagesToPdfFile, fileTitles, files.length, imageBundleFiles, isImageBundleMode, toast, variant]);
 
     const {getRootProps, getInputProps} = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
@@ -236,8 +260,14 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
     }, []);
 
     const handleRemoveFile = (index: number) => {
-        setFiles(f => f.filter((_, i) => i !== index));
-        setFileTitles(f => f.filter((_, i) => i !== index));
+        const nextFiles = files.filter((_, i) => i !== index);
+        const nextTitles = fileTitles.filter((_, i) => i !== index);
+        setFiles(nextFiles);
+        setFileTitles(nextTitles);
+        if (variant === "Past Papers" && nextFiles.length === 0) {
+            setImageBundleFiles([]);
+            setIsImageBundleMode(false);
+        }
     };
 
     const TextField = useCallback(({value, onChange, index}: {
@@ -248,7 +278,7 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         return (
             <input
                 type="text"
-                className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold`}
+                className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-sm sm:text-base font-bold`}
                 value={value}
                 onChange={(e) => onChange(index, e.target.value)}
                 required
@@ -256,31 +286,31 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         );
     }, []);
     return (
-        <div className="flex justify-center items-center min-h-screen">
+        <div className="flex justify-center items-start sm:items-center min-h-screen px-3 py-4 sm:p-6">
             {pending && <Loading/>}
             <div
-                className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5] text-black dark:text-[#D5D5D5] ">
-                <div className="flex justify-between items-center mb-4">
-                    <Link href={'/notes'}>
+                className="bg-white dark:bg-[#0C1222] p-4 sm:p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5] text-black dark:text-[#D5D5D5]">
+                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:gap-4 mb-4">
+                    <Link href={variant === "Past Papers" ? "/past_papers" : "/notes"}>
                         <button
-                            className="text-[#3BF3C7] px-2 py-2 border-2 border-[#3BF3C7] flex items-center justify-center font-bold hover:bg-[#ffffff]/10">
+                            className="text-[#3BF3C7] h-10 w-10 border-2 border-[#3BF3C7] flex items-center justify-center font-bold hover:bg-[#ffffff]/10">
                             <FontAwesomeIcon icon={faArrowLeft}/>
                         </button>
                     </Link>
-                    <h3>New {variant}</h3>
+                    <h3 className="text-center text-base sm:text-xl font-semibold truncate">New {variant}</h3>
                     <div className="relative group">
                         <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]"/>
                         <div
                             className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000"/>
                         <button type="submit" onClick={handleSubmit} disabled={pending}
-                                className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">
+                                className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-3 sm:px-4 py-2 text-sm sm:text-lg whitespace-nowrap bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">
                             {pending ? "Uploading..." : "Upload"}
                         </button>
                     </div>
 
                 </div>
-                <form onSubmit={handleSubmit} className='w-full'>
-                    <div className="grid grid-cols-2 gap-4 mb-4 place-content-center">
+                <form onSubmit={handleSubmit} className='w-full space-y-4'>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 place-content-center">
                         <div>
                             <select
                                 className="p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85"
@@ -330,8 +360,8 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
                             transition-all duration-300 ease-in-out
                             flex flex-col items-center justify-center
                             p-4 sm:p-6 md:p-8
-                            h-32 sm:h-40 md:h-48
-                            mb-4 cursor-pointer
+                            min-h-[10rem] sm:min-h-[12rem]
+                            cursor-pointer
                         `}
                     >
                             <input {...getInputProps()} />
@@ -389,10 +419,9 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
                     </div>
 
                     {files.length > 0 && (
-                        <div className="flex flex-col gap-2 w-[100%]">
+                        <div className="flex flex-col gap-2 w-full">
                             {files.map((_, index) => (
                                 <div key={index} className="text-gray-700 flex items-center text-xs w-full">
-                                    {/* <span key={index} className="text-gray-700 flex gap-2 items-center text-xs"> */}
                                     <TextField
                                         value={fileTitles[index]}
                                         onChange={handleTitleChange}
@@ -400,12 +429,12 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
 
                                     <button
                                         type="button"
-                                        className="ml-2 text-red-500"
+                                        className="ml-2 text-red-500 h-10 w-10 flex items-center justify-center shrink-0"
                                         onClick={() => handleRemoveFile(index)}
+                                        aria-label="Remove file"
                                     >
                                         <FontAwesomeIcon icon={faCircleXmark}/>
                                     </button>
-                                    {/* </span> */}
                                 </div>
                             ))}
                         </div>

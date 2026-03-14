@@ -44,7 +44,7 @@ const Header: React.FC<HeaderProps> = () => {
     <header className="transition-colors bg-[#C2E6EC] dark:bg-[#0C1222] border-b border-black dark:border-b-[#3BF4C7] flex flex-row-reverse">
       <div className="flex items-center text-right m-2 space-x-4">
         <div className="sm:w-[70vw]">
-          <TodoListDropdown buttonRef={buttonRef} />
+          {/* <TodoListDropdown buttonRef={buttonRef} /> */}
         </div>
         <ThemeToggleSwitch />
         {isAuthed ? (
@@ -98,9 +98,6 @@ const Header: React.FC<HeaderProps> = () => {
           </>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600 dark:text-gray-300">
-              Guest
-            </span>
             <a
               href="/api/auth/init"
               className="border border-black dark:border-[#D5D5D5] px-3 py-1 text-sm font-semibold bg-[#3BF4C7] text-black dark:bg-[#0C1222] dark:text-[#D5D5D5] hover:-translate-x-0.5 hover:-translate-y-0.5 transition"
