@@ -1,6 +1,6 @@
 import React from "react";
 import FavouriteIcon from "/public/FavouriteIcon.svg";
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 interface QuizCardProps {
   courseName: string;
   courseCode: string;

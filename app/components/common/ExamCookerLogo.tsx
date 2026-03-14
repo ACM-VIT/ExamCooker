@@ -1,4 +1,4 @@
-import Image from "next/image"
+import Image from "@/app/components/common/AppImage"
 import ExamCookerLogoIcon from "@/public/assets/LogoIcon.svg"
 
 function GradientText({ children }: { children: React.ReactNode }) {

@@ -1,5 +1,5 @@
 import React from 'react';
-import Image from 'next/image';
+import Image from "@/app/components/common/AppImage";
 import { faInstagram } from '@fortawesome/free-brands-svg-icons';
 import { faLinkedinIn } from '@fortawesome/free-brands-svg-icons';
 import { faYoutube } from '@fortawesome/free-brands-svg-icons';

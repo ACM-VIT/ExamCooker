@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 import Link from "next/link";
 import NothingViewedOrFavSvg from "@/public/assets/nothingviewedorfav.svg";
 

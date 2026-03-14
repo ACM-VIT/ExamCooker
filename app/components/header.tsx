@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 import profile from "@/public/assets/Profile.svg";
 import { SignOut } from "./sign-out";
 import ThemeToggleSwitch from "./common/ThemeToggle";

@@ -1,16 +1,20 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
     cacheComponents: true,
     turbopack: {
+        root: __dirname,
         resolveAlias: {
             canvas: {
                 browser: "./lib/shims/canvas",
             },
+            tailwindcss: path.join(__dirname, "node_modules/tailwindcss"),
         },
     },
     serverExternalPackages: ["canvas"],
     images: {
+        unoptimized: true,
         remotePatterns: [
             {
                 protocol: "https",
@@ -48,6 +52,13 @@ const nextConfig: NextConfig = {
                 destination: `${normalizedPosthogHost}/:path*`,
             },
         ];
+    },
+    webpack(config, { dev, isServer }) {
+        if (dev && !isServer) {
+            config.devtool = "cheap-module-source-map";
+        }
+
+        return config;
     },
 };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import LoadingSvg from "@/public/assets/Loader.svg";
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 import { useEffect, useState } from "react";
 
 function getQuirkyLine() {

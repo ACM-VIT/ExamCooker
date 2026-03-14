@@ -48,6 +48,10 @@ export async function GET(req: NextRequest) {
   const filename = filenameParam
     ? sanitizeFilename(filenameParam)
     : extractFileNameFromUrl(targetUrl);
+  const disposition =
+    req.nextUrl.searchParams.get("disposition") === "inline"
+      ? "inline"
+      : "attachment";
 
   const upstream = await fetch(targetUrl.toString(), { cache: "no-store" });
   if (!upstream.ok || !upstream.body) {
@@ -59,7 +63,7 @@ export async function GET(req: NextRequest) {
     headers: {
       "Content-Type":
         upstream.headers.get("content-type") || "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `${disposition}; filename="${filename}"`,
       "Cache-Control": "private, max-age=0, no-store",
     },
   });
