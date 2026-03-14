@@ -1,3 +1,4 @@
+import { unstable_rethrow } from 'next/navigation'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { normalizeGcsUrl } from '@/lib/normalizeGcsUrl'
@@ -108,6 +109,7 @@ export async function GET(req: NextRequest) {
       papers,
     })
   } catch (error) {
+    unstable_rethrow(error)
     console.error('papers api error', error)
     const message = error instanceof Error ? error.message : 'Unexpected error while fetching papers'
     return NextResponse.json(
