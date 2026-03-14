@@ -1,5 +1,5 @@
 import React from "react";
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 import PastPaper from "@/public/LandingPage/LandingPagePastPapers.svg";
 import Forum from "@/public/LandingPage/LandingPageForum.svg";
 import Notes from "@/public/LandingPage/LandingPageNotes.svg";

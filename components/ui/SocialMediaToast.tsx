@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Image from 'next/image';
+import Image from "@/app/components/common/AppImage";
 import { X } from 'lucide-react';
 import GiftBoxIcon from '@/public/assets/GiftBox.svg';
 

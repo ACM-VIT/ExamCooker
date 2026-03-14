@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 import debounce from 'lodash/debounce';
 import Seacrh from "@/app/components/assets/seacrh.svg";
 

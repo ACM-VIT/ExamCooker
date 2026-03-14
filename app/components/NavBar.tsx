@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 import { usePathname } from "next/navigation";
 import Loading from "@/app/components/LoadingOverlay";
 

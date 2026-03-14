@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 import Link from "next/link";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { getAliasCourseCodes } from "@/lib/courseAliases";

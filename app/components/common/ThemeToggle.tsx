@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 
 function ThemeToggleSwitch() {
     const [mounted, setMounted] = useState(false);

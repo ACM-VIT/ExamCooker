@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { useBookmarks } from './BookmarksProvider';
 import {useToast} from "@/components/ui/use-toast";
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 
 interface NotesCardProps {
     note: {

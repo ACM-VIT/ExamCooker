@@ -5,7 +5,7 @@ import { faHeart } from "@fortawesome/free-solid-svg-icons";
 import { useBookmarks } from "./BookmarksProvider";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
-import Image from "next/image";
+import Image from "@/app/components/common/AppImage";
 import { parsePaperTitle, ParsedPaperTitle } from "@/lib/paperTitle";
 
 interface PastPaperCardProps {
