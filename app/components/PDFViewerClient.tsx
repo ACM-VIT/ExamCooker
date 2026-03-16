@@ -3,7 +3,6 @@
 import React, {
     startTransition,
     useEffect,
-    useMemo,
     useState,
 } from "react";
 
@@ -19,10 +18,6 @@ export default function PDFViewerClient({ fileUrl }: { fileUrl: string }) {
     const [ViewerComponent, setViewerComponent] =
         useState<PdfViewerComponent | null>(null);
     const [hasImportFailed, setHasImportFailed] = useState(false);
-    const fallbackSrc = useMemo(
-        () => `/api/download?url=${encodeURIComponent(fileUrl)}&disposition=inline`,
-        [fileUrl]
-    );
 
     useEffect(() => {
         let isActive = true;
@@ -53,8 +48,8 @@ export default function PDFViewerClient({ fileUrl }: { fileUrl: string }) {
     if (hasImportFailed) {
         return (
             <iframe
-                key={fallbackSrc}
-                src={fallbackSrc}
+                key={fileUrl}
+                src={fileUrl}
                 title="PDF preview"
                 className="h-full w-full border-0 bg-white dark:bg-gray-900"
             />
