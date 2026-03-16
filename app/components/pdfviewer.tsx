@@ -218,26 +218,44 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
     () => getDownloadFileName(fileUrl),
     [fileUrl]
   );
-  const proxiedFileUrl = useMemo(
-    () =>
-      `/api/download?url=${encodeURIComponent(
-        fileUrl
-      )}&filename=${encodeURIComponent(downloadFileName)}`,
-    [downloadFileName, fileUrl]
-  );
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (isDownloading) return;
     setIsDownloading(true);
 
-    const link = document.createElement("a");
-    link.href = proxiedFileUrl;
-    link.download = downloadFileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    let objectUrl: string | null = null;
 
-    window.setTimeout(() => setIsDownloading(false), 400);
+    try {
+      const response = await fetch(fileUrl, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Failed to fetch PDF for download");
+      }
+
+      const blob = await response.blob();
+      objectUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = downloadFileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch {
+      const fallbackLink = document.createElement("a");
+      fallbackLink.href = fileUrl;
+      fallbackLink.target = "_blank";
+      fallbackLink.rel = "noopener noreferrer";
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      fallbackLink.remove();
+    } finally {
+      if (objectUrl) {
+        const urlToRevoke = objectUrl;
+        window.setTimeout(() => window.URL.revokeObjectURL(urlToRevoke), 1000);
+      }
+
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -331,7 +349,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
 
       <div ref={containerRef} className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950">
         <Document
-          file={proxiedFileUrl}
+          file={fileUrl}
           options={PDF_OPTIONS}
           onItemClick={({ pageNumber: nextPageNumber }) => {
             if (typeof nextPageNumber === "number") {
