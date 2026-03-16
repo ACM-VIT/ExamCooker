@@ -2,6 +2,7 @@
 
 import React, {
   startTransition,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -45,9 +46,25 @@ function clampScale(scale: number) {
   return Math.min(Math.max(scale, MIN_SCALE), MAX_SCALE);
 }
 
+function getDownloadFileName(url: string) {
+  try {
+    const { pathname } = new URL(url);
+    const name = pathname.split("/").pop();
+    if (!name) return "document.pdf";
+    const decoded = decodeURIComponent(name);
+    return decoded.toLowerCase().endsWith(".pdf")
+      ? decoded
+      : `${decoded}.pdf`;
+  } catch {
+    return "document.pdf";
+  }
+}
+
 export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const currentPageRef = useRef(1);
+  const loadProgressRef = useRef<number | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
@@ -61,8 +78,19 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
   const canGoPrevious = currentPage > 1;
   const canGoNext = numPages ? currentPage < numPages : false;
 
+  const updateCurrentPage = useCallback((nextPage: number) => {
+    if (currentPageRef.current === nextPage) return;
+
+    currentPageRef.current = nextPage;
+    startTransition(() => {
+      setPageNumber(nextPage);
+    });
+  }, []);
+
   useEffect(() => {
     pageRefs.current = [];
+    currentPageRef.current = 1;
+    loadProgressRef.current = null;
     setNumPages(null);
     setPageNumber(1);
     setPageInput("1");
@@ -71,7 +99,11 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
   }, [fileUrl]);
 
   useEffect(() => {
-    setPageInput(String(pageNumber));
+    const nextInput = String(pageNumber);
+    currentPageRef.current = pageNumber;
+    setPageInput((currentValue) =>
+      currentValue === nextInput ? currentValue : nextInput
+    );
   }, [pageNumber]);
 
   useEffect(() => {
@@ -130,11 +162,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
         }
       }
 
-      startTransition(() => {
-        setPageNumber((currentValue) =>
-          currentValue === closestPage ? currentValue : closestPage
-        );
-      });
+      updateCurrentPage(closestPage);
     };
 
     const handleScroll = () => {
@@ -151,7 +179,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
         window.cancelAnimationFrame(frameId);
       }
     };
-  }, [numPages, pageWidth]);
+  }, [numPages, pageWidth, updateCurrentPage]);
 
   const documentLoading = useMemo(() => {
     const percentage = loadProgress === null ? null : Math.round(loadProgress);
@@ -168,9 +196,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
     const nextPage = clampPage(requestedPage, numPages);
     const pageElement = pageRefs.current[nextPage - 1];
 
-    startTransition(() => {
-      setPageNumber(nextPage);
-    });
+    updateCurrentPage(nextPage);
 
     if (pageElement) {
       pageElement.scrollIntoView({ block: "start" });
@@ -200,24 +226,46 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
     });
   };
 
-  const getDownloadFileName = (url: string) => {
-    try {
-      const { pathname } = new URL(url);
-      const name = pathname.split("/").pop();
-      if (!name) return "document.pdf";
-      const decoded = decodeURIComponent(name);
-      return decoded.toLowerCase().endsWith(".pdf")
-        ? decoded
-        : `${decoded}.pdf`;
-    } catch {
-      return "document.pdf";
-    }
-  };
-
   const downloadFileName = useMemo(
     () => getDownloadFileName(fileUrl),
     [fileUrl]
   );
+
+  const renderedPages = useMemo(() => {
+    if (pageWidth <= 0 || !numPages) return null;
+
+    return Array.from({ length: numPages }, (_, index) => {
+      const renderedPageNumber = index + 1;
+
+      return (
+        <div
+          key={renderedPageNumber}
+          ref={(node) => {
+            pageRefs.current[index] = node;
+          }}
+          className="w-full max-w-full"
+        >
+          <Page
+            pageNumber={renderedPageNumber}
+            width={pageWidth}
+            scale={scale}
+            renderAnnotationLayer
+            renderTextLayer
+            loading={
+              <div className="flex h-[320px] items-center justify-center text-sm text-gray-500 dark:text-gray-300">
+                Loading page…
+              </div>
+            }
+            error={
+              <div className="flex h-[320px] items-center justify-center text-sm text-red-500">
+                Failed to render page.
+              </div>
+            }
+          />
+        </div>
+      );
+    });
+  }, [numPages, pageWidth, scale]);
 
   const handleDownload = async () => {
     if (isDownloading) return;
@@ -347,7 +395,11 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
         </div>
       </div>
 
-      <div ref={containerRef} className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950">
+      <div
+        ref={containerRef}
+        className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950"
+        style={{ scrollbarGutter: "stable" }}
+      >
         <Document
           file={fileUrl}
           options={PDF_OPTIONS}
@@ -358,19 +410,25 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
           }}
           onLoadSuccess={({ numPages: nextNumPages }) => {
             setNumPages(nextNumPages);
-            setLoadProgress(100);
-            startTransition(() => {
-              setPageNumber((currentValue) =>
-                clampPage(currentValue, nextNumPages)
-              );
-            });
+            loadProgressRef.current = 100;
+            setLoadProgress((currentValue) =>
+              currentValue === 100 ? currentValue : 100
+            );
+
+            const nextPage = clampPage(currentPageRef.current, nextNumPages);
+            updateCurrentPage(nextPage);
           }}
           onLoadProgress={({ loaded, total }) => {
             if (typeof total === "number" && total > 0) {
-              setLoadProgress((loaded / total) * 100);
+              const nextProgress = Math.round((loaded / total) * 100);
+              if (loadProgressRef.current === nextProgress) return;
+
+              loadProgressRef.current = nextProgress;
+              setLoadProgress(nextProgress);
             }
           }}
           onLoadError={() => {
+            loadProgressRef.current = null;
             setLoadProgress(null);
           }}
           loading={documentLoading}
@@ -386,39 +444,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
           }
           className="flex min-h-full flex-col items-center gap-4 p-4"
         >
-          {pageWidth > 0 && numPages
-            ? Array.from({ length: numPages }, (_, index) => {
-                const renderedPageNumber = index + 1;
-
-                return (
-                  <div
-                    key={`${renderedPageNumber}-${scale}-${pageWidth}`}
-                    ref={(node) => {
-                      pageRefs.current[index] = node;
-                    }}
-                    className="w-full max-w-full"
-                  >
-                    <Page
-                      pageNumber={renderedPageNumber}
-                      width={pageWidth}
-                      scale={scale}
-                      renderAnnotationLayer
-                      renderTextLayer
-                      loading={
-                        <div className="flex h-[320px] items-center justify-center text-sm text-gray-500 dark:text-gray-300">
-                          Loading page…
-                        </div>
-                      }
-                      error={
-                        <div className="flex h-[320px] items-center justify-center text-sm text-red-500">
-                          Failed to render page.
-                        </div>
-                      }
-                    />
-                  </div>
-                );
-              })
-            : null}
+          {renderedPages}
         </Document>
       </div>
     </div>
