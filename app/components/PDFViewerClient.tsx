@@ -42,7 +42,7 @@ export default function PDFViewerClient({ fileUrl }: { fileUrl: string }) {
     }, []);
 
     if (ViewerComponent) {
-        return <ViewerComponent fileUrl={fileUrl} />;
+        return <ViewerComponent key={fileUrl} fileUrl={fileUrl} />;
     }
 
     if (hasImportFailed) {

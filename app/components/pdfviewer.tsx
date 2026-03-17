@@ -38,6 +38,85 @@ const PDF_OPTIONS = {
   disableStream: true,
 };
 
+type PdfViewerBoundaryProps = {
+  viewerKey: string;
+  children: (disableTextLayerFallback: boolean) => React.ReactNode;
+};
+
+type PdfViewerBoundaryState = {
+  disableTextLayerFallback: boolean;
+  hasFatalError: boolean;
+};
+
+function createViewerBoundaryState(): PdfViewerBoundaryState {
+  return {
+    disableTextLayerFallback: false,
+    hasFatalError: false,
+  };
+}
+
+function isPdfTransportRaceError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /sendWith(Stream|Promise)|messageHandler/i.test(error.message);
+}
+
+class PdfViewerBoundary extends React.Component<
+  PdfViewerBoundaryProps,
+  PdfViewerBoundaryState
+> {
+  state = createViewerBoundaryState();
+
+  static getDerivedStateFromError(error: unknown): PdfViewerBoundaryState {
+    if (isPdfTransportRaceError(error)) {
+      return {
+        disableTextLayerFallback: true,
+        hasFatalError: false,
+      };
+    }
+
+    return {
+      disableTextLayerFallback: false,
+      hasFatalError: true,
+    };
+  }
+
+  componentDidUpdate(prevProps: Readonly<PdfViewerBoundaryProps>) {
+    if (
+      prevProps.viewerKey !== this.props.viewerKey &&
+      (this.state.disableTextLayerFallback || this.state.hasFatalError)
+    ) {
+      this.setState(createViewerBoundaryState());
+    }
+  }
+
+  componentDidCatch(error: unknown) {
+    if (!isPdfTransportRaceError(error)) {
+      console.error("PDF viewer failed to render.", error);
+      return;
+    }
+
+    console.warn(
+      "PDF viewer hit a pdf.js transport race, retrying without the text layer.",
+      error
+    );
+  }
+
+  render() {
+    if (this.state.hasFatalError) {
+      return (
+        <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-red-500">
+          Failed to load PDF.
+        </div>
+      );
+    }
+
+    return this.props.children(this.state.disableTextLayerFallback);
+  }
+}
+
 function clampPage(pageNumber: number, numPages: number) {
   return Math.min(Math.max(pageNumber, 1), Math.max(numPages, 1));
 }
@@ -73,6 +152,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [loadProgress, setLoadProgress] = useState<number | null>(null);
+  const viewerKey = fileUrl;
   const pageWidth = containerWidth > 0 ? Math.max(containerWidth - 32, 240) : 0;
   const currentPage = numPages ? clampPage(pageNumber, numPages) : pageNumber;
   const canGoPrevious = currentPage > 1;
@@ -231,7 +311,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
     [fileUrl]
   );
 
-  const renderedPages = useMemo(() => {
+  const renderPages = (disableTextLayerFallback: boolean) => {
     if (pageWidth <= 0 || !numPages) return null;
 
     return Array.from({ length: numPages }, (_, index) => {
@@ -250,7 +330,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
             width={pageWidth}
             scale={scale}
             renderAnnotationLayer
-            renderTextLayer
+            renderTextLayer={!disableTextLayerFallback}
             loading={
               <div className="flex h-[320px] items-center justify-center text-sm text-gray-500 dark:text-gray-300">
                 Loading page…
@@ -265,7 +345,7 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
         </div>
       );
     });
-  }, [numPages, pageWidth, scale]);
+  };
 
   const handleDownload = async () => {
     if (isDownloading) return;
@@ -307,146 +387,155 @@ export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
   };
 
   return (
-    <div
-      className={`flex h-full w-full flex-col ${
-        isFullScreen ? "fixed inset-0 z-50 bg-white dark:bg-gray-900" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between bg-white p-2 dark:bg-gray-800">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => scrollToPage(currentPage - 1)}
-            disabled={!canGoPrevious}
-            className={buttonClass}
-            aria-label="Previous page"
-            title="Previous page"
-          >
-            <FontAwesomeIcon icon={faChevronLeft} />
-          </button>
-          <input
-            type="number"
-            min={1}
-            max={numPages ?? undefined}
-            value={pageInput}
-            onChange={(event) => setPageInput(event.target.value)}
-            onBlur={(event) => commitPageNumber(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                commitPageNumber(pageInput);
-              }
-            }}
-            disabled={!numPages}
-            className={inputClass}
-            aria-label="Current page"
-          />
-          <span className="text-sm text-gray-600 dark:text-gray-300">/</span>
-          <span className="min-w-8 text-sm text-gray-600 dark:text-gray-300">
-            {numPages ?? "—"}
-          </span>
-          <button
-            onClick={() => scrollToPage(currentPage + 1)}
-            disabled={!canGoNext}
-            className={buttonClass}
-            aria-label="Next page"
-            title="Next page"
-          >
-            <FontAwesomeIcon icon={faChevronRight} />
-          </button>
-        </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => adjustScale(-SCALE_STEP)}
-            disabled={scale <= MIN_SCALE}
-            className={buttonClass}
-            aria-label="Zoom out"
-            title="Zoom out"
-          >
-            <FontAwesomeIcon icon={faMinus} />
-          </button>
-          <span className="min-w-14 text-center text-sm text-gray-600 dark:text-gray-300">
-            {Math.round(scale * 100)}%
-          </span>
-          <button
-            onClick={() => adjustScale(SCALE_STEP)}
-            disabled={scale >= MAX_SCALE}
-            className={buttonClass}
-            aria-label="Zoom in"
-            title="Zoom in"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-          </button>
-          <button
-            onClick={() => setIsFullScreen((currentValue) => !currentValue)}
-            className={buttonClass}
-            aria-label="Toggle fullscreen"
-            title="Toggle fullscreen"
-          >
-            <FontAwesomeIcon icon={faExpand} />
-          </button>
-          <button
-            onClick={handleDownload}
-            className={buttonClass}
-            aria-label="Download PDF"
-            title="Download PDF"
-            disabled={isDownloading}
-          >
-            <FontAwesomeIcon icon={faDownload} />
-          </button>
-        </div>
-      </div>
+    <PdfViewerBoundary viewerKey={viewerKey}>
+      {(disableTextLayerFallback) => {
+        const documentKey = `${viewerKey}:${disableTextLayerFallback ? "safe" : "full"}`;
 
-      <div
-        ref={containerRef}
-        className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950"
-        style={{ scrollbarGutter: "stable" }}
-      >
-        <Document
-          file={fileUrl}
-          options={PDF_OPTIONS}
-          onItemClick={({ pageNumber: nextPageNumber }) => {
-            if (typeof nextPageNumber === "number") {
-              scrollToPage(nextPageNumber);
-            }
-          }}
-          onLoadSuccess={({ numPages: nextNumPages }) => {
-            setNumPages(nextNumPages);
-            loadProgressRef.current = 100;
-            setLoadProgress((currentValue) =>
-              currentValue === 100 ? currentValue : 100
-            );
-
-            const nextPage = clampPage(currentPageRef.current, nextNumPages);
-            updateCurrentPage(nextPage);
-          }}
-          onLoadProgress={({ loaded, total }) => {
-            if (typeof total === "number" && total > 0) {
-              const nextProgress = Math.round((loaded / total) * 100);
-              if (loadProgressRef.current === nextProgress) return;
-
-              loadProgressRef.current = nextProgress;
-              setLoadProgress(nextProgress);
-            }
-          }}
-          onLoadError={() => {
-            loadProgressRef.current = null;
-            setLoadProgress(null);
-          }}
-          loading={documentLoading}
-          error={
-            <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-red-500">
-              Failed to load PDF.
+        return (
+          <div
+            className={`flex h-full w-full flex-col ${
+              isFullScreen ? "fixed inset-0 z-50 bg-white dark:bg-gray-900" : ""
+            }`}
+          >
+            <div className="flex items-center justify-between bg-white p-2 dark:bg-gray-800">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => scrollToPage(currentPage - 1)}
+                  disabled={!canGoPrevious}
+                  className={buttonClass}
+                  aria-label="Previous page"
+                  title="Previous page"
+                >
+                  <FontAwesomeIcon icon={faChevronLeft} />
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={numPages ?? undefined}
+                  value={pageInput}
+                  onChange={(event) => setPageInput(event.target.value)}
+                  onBlur={(event) => commitPageNumber(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      commitPageNumber(pageInput);
+                    }
+                  }}
+                  disabled={!numPages}
+                  className={inputClass}
+                  aria-label="Current page"
+                />
+                <span className="text-sm text-gray-600 dark:text-gray-300">/</span>
+                <span className="min-w-8 text-sm text-gray-600 dark:text-gray-300">
+                  {numPages ?? "—"}
+                </span>
+                <button
+                  onClick={() => scrollToPage(currentPage + 1)}
+                  disabled={!canGoNext}
+                  className={buttonClass}
+                  aria-label="Next page"
+                  title="Next page"
+                >
+                  <FontAwesomeIcon icon={faChevronRight} />
+                </button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => adjustScale(-SCALE_STEP)}
+                  disabled={scale <= MIN_SCALE}
+                  className={buttonClass}
+                  aria-label="Zoom out"
+                  title="Zoom out"
+                >
+                  <FontAwesomeIcon icon={faMinus} />
+                </button>
+                <span className="min-w-14 text-center text-sm text-gray-600 dark:text-gray-300">
+                  {Math.round(scale * 100)}%
+                </span>
+                <button
+                  onClick={() => adjustScale(SCALE_STEP)}
+                  disabled={scale >= MAX_SCALE}
+                  className={buttonClass}
+                  aria-label="Zoom in"
+                  title="Zoom in"
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </button>
+                <button
+                  onClick={() => setIsFullScreen((currentValue) => !currentValue)}
+                  className={buttonClass}
+                  aria-label="Toggle fullscreen"
+                  title="Toggle fullscreen"
+                >
+                  <FontAwesomeIcon icon={faExpand} />
+                </button>
+                <button
+                  onClick={handleDownload}
+                  className={buttonClass}
+                  aria-label="Download PDF"
+                  title="Download PDF"
+                  disabled={isDownloading}
+                >
+                  <FontAwesomeIcon icon={faDownload} />
+                </button>
+              </div>
             </div>
-          }
-          noData={
-            <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-gray-500 dark:text-gray-300">
-              No PDF file specified.
+
+            <div
+              ref={containerRef}
+              className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950"
+              style={{ scrollbarGutter: "stable" }}
+            >
+              <Document
+                key={documentKey}
+                file={fileUrl}
+                options={PDF_OPTIONS}
+                onItemClick={({ pageNumber: nextPageNumber }) => {
+                  if (typeof nextPageNumber === "number") {
+                    scrollToPage(nextPageNumber);
+                  }
+                }}
+                onLoadSuccess={({ numPages: nextNumPages }) => {
+                  setNumPages(nextNumPages);
+                  loadProgressRef.current = 100;
+                  setLoadProgress((currentValue) =>
+                    currentValue === 100 ? currentValue : 100
+                  );
+
+                  const nextPage = clampPage(currentPageRef.current, nextNumPages);
+                  updateCurrentPage(nextPage);
+                }}
+                onLoadProgress={({ loaded, total }) => {
+                  if (typeof total === "number" && total > 0) {
+                    const nextProgress = Math.round((loaded / total) * 100);
+                    if (loadProgressRef.current === nextProgress) return;
+
+                    loadProgressRef.current = nextProgress;
+                    setLoadProgress(nextProgress);
+                  }
+                }}
+                onLoadError={() => {
+                  loadProgressRef.current = null;
+                  setLoadProgress(null);
+                }}
+                loading={documentLoading}
+                error={
+                  <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-red-500">
+                    Failed to load PDF.
+                  </div>
+                }
+                noData={
+                  <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-gray-500 dark:text-gray-300">
+                    No PDF file specified.
+                  </div>
+                }
+                className="flex min-h-full flex-col items-center gap-4 p-4"
+              >
+                {renderPages(disableTextLayerFallback)}
+              </Document>
             </div>
-          }
-          className="flex min-h-full flex-col items-center gap-4 p-4"
-        >
-          {renderedPages}
-        </Document>
-      </div>
-    </div>
+          </div>
+        );
+      }}
+    </PdfViewerBoundary>
   );
 }
