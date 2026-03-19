@@ -32,6 +32,21 @@ function ensureReportDir() {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
 }
 
+function mergeAliases(existingAliases, canonicalAliases) {
+  const seen = new Set();
+  const merged = [];
+
+  for (const alias of [...(existingAliases || []), ...(canonicalAliases || [])]) {
+    const value = String(alias || "").trim();
+    const key = value.toLowerCase();
+    if (!value || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(value);
+  }
+
+  return merged;
+}
+
 function writeReport({ dryRun, rows, summary }) {
   ensureReportDir();
   const stamp = timestamp();
@@ -125,14 +140,36 @@ Title: ${row.title}`,
 
 async function ensureExamTags() {
   const labels = Object.keys(TAGS_BY_LABEL);
+  const existingTags = await prisma.tag.findMany({
+    where: {
+      name: {
+        in: labels,
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      aliases: true,
+    },
+  });
+  const existingByName = new Map(existingTags.map((tag) => [tag.name, tag]));
+
   const tags = await Promise.all(
-    labels.map((name) =>
-      prisma.tag.upsert({
-        where: { name },
-        update: {},
-        create: { name, aliases: TAGS_BY_LABEL[name].aliases },
-      }),
-    ),
+    labels.map((name) => {
+      const existing = existingByName.get(name);
+      const canonicalAliases = TAGS_BY_LABEL[name].aliases;
+      if (existing) {
+        return prisma.tag.update({
+          where: { id: existing.id },
+          data: { aliases: mergeAliases(existing.aliases, canonicalAliases) },
+          select: { id: true, name: true },
+        });
+      }
+      return prisma.tag.create({
+        data: { name, aliases: canonicalAliases },
+        select: { id: true, name: true },
+      });
+    }),
   );
   return new Map(tags.map((tag) => [tag.name, tag.id]));
 }
