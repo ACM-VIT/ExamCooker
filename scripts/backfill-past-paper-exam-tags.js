@@ -153,9 +153,22 @@ async function getExistingExamTags() {
   return new Map(tags.map((tag) => [tag.name, tag.id]));
 }
 
+async function getExamTagsForRun({ dryRun }) {
+  if (!dryRun) {
+    return ensureExamTags();
+  }
+
+  const existingTags = await getExistingExamTags();
+  const labels = Object.keys(TAGS_BY_LABEL);
+
+  return new Map(
+    labels.map((label) => [label, existingTags.get(label) ?? `dry-run:${label}`]),
+  );
+}
+
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
-  const examTags = dryRun ? await getExistingExamTags() : await ensureExamTags();
+  const examTags = await getExamTagsForRun({ dryRun });
   const papers = await prisma.pastPaper.findMany({
     select: {
       id: true,
