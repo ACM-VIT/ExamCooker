@@ -10,24 +10,38 @@ interface Props {
   options: Option[];
   onSelectionChange: (selection: string[]) => void;
   selectedOptions: string[];
-  isSlotCategory ?: boolean;
+  isSlotCategory?: boolean;
   searchBar?: React.ReactNode;
 }
 
-const FilterComp: React.FC<Props> = ({ title, options, onSelectionChange, selectedOptions, isSlotCategory }) => {
+const FilterComp: React.FC<Props> = ({
+  title,
+  options,
+  onSelectionChange,
+  selectedOptions,
+  isSlotCategory,
+}) => {
   const handleCheckboxChange = (label: string) => {
     const updatedSelection = selectedOptions.includes(label)
-      ? selectedOptions.filter(item => item !== label)
+      ? selectedOptions.filter((item) => item !== label)
       : [...selectedOptions, label];
     onSelectionChange(updatedSelection);
   };
 
   return (
-    <div className="w-full sm:w-[182px] dark:bg-none p-4 text-center">
-      <h6 className="[text-shadow:_0_1px_0_rgb(0_0_0_/_40%)] font-bold mb-2">{title}</h6>
-      <div className={`${isSlotCategory ? 'grid grid-cols-2 gap-x-2 gap-y-2 sm:gap-x-2 gap-y-2' : ''}`}>
+    <div className="w-full p-3 text-left sm:w-[182px] sm:p-4 sm:text-center">
+      <h6 className="[text-shadow:_0_1px_0_rgb(0_0_0_/_40%)] mb-3 font-bold">
+        {title}
+      </h6>
+      <div
+        className={
+          isSlotCategory
+            ? "grid grid-cols-2 gap-x-3 gap-y-2"
+            : "flex flex-col gap-2"
+        }
+      >
         {options.map((option) => (
-          <div key={option.id} className="flex items-center mb-2">
+          <div key={option.id} className="flex items-center min-w-0">
             <input
               id={`checkbox-${option.id}`}
               type="checkbox"
@@ -37,7 +51,7 @@ const FilterComp: React.FC<Props> = ({ title, options, onSelectionChange, select
             />
             <label
               htmlFor={`checkbox-${option.id}`}
-              className="ml-2 block text-sm text-black dark:text-[#D5D5D5] [text-shadow:_0_1px_0_rgb(0_0_0_/_40%)]"
+              className="ml-2 block text-sm text-black dark:text-[#D5D5D5] [text-shadow:_0_1px_0_rgb(0_0_0_/_40%)] whitespace-nowrap"
             >
               {option.label}
             </label>
