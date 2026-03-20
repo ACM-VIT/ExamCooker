@@ -47,6 +47,10 @@ function mergeAliases(existingAliases, canonicalAliases) {
   return merged;
 }
 
+function createExamTypeCounter() {
+  return Object.fromEntries(Object.keys(TAGS_BY_LABEL).map((label) => [label, 0]));
+}
+
 function writeReport({ dryRun, rows, summary }) {
   ensureReportDir();
   const stamp = timestamp();
@@ -85,6 +89,12 @@ function writeReport({ dryRun, rows, summary }) {
     `- Already correct / skipped: ${summary.skipped}`,
     `- Unmatched: ${summary.unmatched}`,
     `- Missing canonical tag rows: ${summary.missingTargetTagCount}`,
+    `- Newly tagged as CAT-1: ${summary.newlyTaggedByExamType["CAT-1"]}`,
+    `- Newly tagged as CAT-2: ${summary.newlyTaggedByExamType["CAT-2"]}`,
+    `- Newly tagged as FAT: ${summary.newlyTaggedByExamType.FAT}`,
+    `- Total matched as CAT-1: ${summary.totalMatchedByExamType["CAT-1"]}`,
+    `- Total matched as CAT-2: ${summary.totalMatchedByExamType["CAT-2"]}`,
+    `- Total matched as FAT: ${summary.totalMatchedByExamType.FAT}`,
     "",
     section(
       dryRun ? "Would Update" : "Updated",
@@ -218,6 +228,8 @@ async function main() {
   let skipped = 0;
   let unmatched = 0;
   let missingTargetTagCount = 0;
+  const newlyTaggedByExamType = createExamTypeCounter();
+  const totalMatchedByExamType = createExamTypeCounter();
   const rows = [];
 
   for (const paper of papers) {
@@ -253,6 +265,8 @@ async function main() {
       continue;
     }
 
+    totalMatchedByExamType[detectedLabel] += 1;
+
     const nextTagIds = [
       ...paper.tags
         .filter((tag) => !TAGS_BY_LABEL[tag.name])
@@ -278,6 +292,7 @@ async function main() {
 
     if (dryRun) {
       updated += 1;
+      newlyTaggedByExamType[detectedLabel] += 1;
       rows.push({
         status: "would_update",
         paperId: paper.id,
@@ -299,6 +314,7 @@ async function main() {
     });
     console.log(`Updated ${paper.id} -> ${detectedLabel}`);
     updated += 1;
+    newlyTaggedByExamType[detectedLabel] += 1;
     rows.push({
       status: "updated",
       paperId: paper.id,
@@ -315,6 +331,8 @@ async function main() {
     skipped,
     unmatched,
     missingTargetTagCount,
+    newlyTaggedByExamType,
+    totalMatchedByExamType,
     dryRun,
   };
   const reportPaths = writeReport({ dryRun, rows, summary });
