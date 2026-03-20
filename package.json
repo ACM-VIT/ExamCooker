@@ -8,8 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "seed_tags": "node scripts/seed-tags.js",
+    "seed_exam_tags": "node scripts/seed-exam-tags.js",
     "sync_tags": "node scripts/sync-missing-tags.js",
     "sync_tags:dry": "node scripts/sync-missing-tags.js --dry-run",
+    "backfill_exam_tags": "node scripts/backfill-past-paper-exam-tags.js",
+    "backfill_exam_tags:dry": "node scripts/backfill-past-paper-exam-tags.js --dry-run",
     "copy_prod_to_dev": "node scripts/db/copy-prod-to-dev.js"
   },
   "dependencies": {
