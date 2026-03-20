@@ -80,8 +80,8 @@ async function PastPaperResults({
   return (
     <>
       {tags.length > 0 && (
-        <div className="flex justify-center mb-4">
-          <div className="flex flex-wrap gap-2">
+        <div className="mt-3 mb-5 flex justify-center px-4">
+          <div className="flex max-w-6xl flex-wrap justify-center gap-2">
             {tags.map((tag, index) => {
               const course = extractCourseFromTag(tag);
               if (course) {
@@ -163,7 +163,9 @@ export default async function PastPaperPage({
       <div className="flex-col w-5/6 md:hidden space-y-4">
         <SearchBar pageType="past_papers" initialQuery={search} />
         <div className="flex items-start gap-3">
-          <Dropdown pageType="past_papers" />
+          <div className="flex-1">
+            <Dropdown pageType="past_papers" />
+          </div>
           <UploadButtonPaper />
         </div>
       </div>

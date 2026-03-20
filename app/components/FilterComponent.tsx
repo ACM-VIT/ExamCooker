@@ -124,7 +124,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
     >
       <button
         onClick={toggleDropdown}
-        className="inline-flex w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-4 py-2 text-lg font-bold dark:border-[#D5D5D5] dark:bg-[#7D7467]/20 md:w-auto"
+        className="inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-3 py-2 text-base font-semibold dark:border-[#D5D5D5] dark:bg-[#7D7467]/20 md:h-auto md:w-auto md:px-4 md:text-lg md:font-bold"
       >
         Filter
         {isOpen ? (
@@ -134,24 +134,9 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
         )}
       </button>
       <div
-        className={`hide-scrollbar absolute left-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-3rem))] overflow-auto border-2 border-black bg-[#4AD0FF] dark:border-white dark:bg-[#232530] md:w-auto md:min-w-[22rem] md:max-w-[1200px] ${isOpen ? "" : "hidden"}`}
+        className={`hide-scrollbar absolute left-0 top-full z-50 mt-2 w-[min(19rem,calc(100vw-3rem))] max-h-[18.5rem] overflow-y-auto overflow-x-hidden overscroll-contain border-2 border-black bg-[#4AD0FF] shadow-xl dark:border-white dark:bg-[#232530] md:w-auto md:min-w-[22rem] md:max-w-[1200px] md:max-h-none md:overflow-visible ${isOpen ? "" : "hidden"}`}
       >
-        <div className="flex flex-col items-stretch gap-1 p-1 md:flex-row md:items-start md:gap-4 md:p-2">
-          {checkboxOptions.slots && (
-            <div className="w-full font-bold md:w-auto">
-              <FilterComp
-                title="Slots"
-                options={checkboxOptions.slots}
-                onSelectionChange={(selection) =>
-                  handleSelectionChange("slots", selection)
-                }
-                selectedOptions={selectedTags.filter((tag) =>
-                  checkboxOptions.slots!.some((option) => option.label === tag),
-                )}
-                isSlotCategory={true}
-              />
-            </div>
-          )}
+        <div className="flex flex-col items-stretch gap-1 p-2 md:flex-row md:items-start md:gap-4 md:p-2">
           {checkboxOptions.examTypes && (
             <div className="w-full font-bold md:w-auto">
               <FilterComp
@@ -165,6 +150,21 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
                     (option) => option.label === tag,
                   ),
                 )}
+              />
+            </div>
+          )}
+          {checkboxOptions.slots && (
+            <div className="w-full font-bold md:w-auto">
+              <FilterComp
+                title="Slots"
+                options={checkboxOptions.slots}
+                onSelectionChange={(selection) =>
+                  handleSelectionChange("slots", selection)
+                }
+                selectedOptions={selectedTags.filter((tag) =>
+                  checkboxOptions.slots!.some((option) => option.label === tag),
+                )}
+                isSlotCategory={true}
               />
             </div>
           )}
