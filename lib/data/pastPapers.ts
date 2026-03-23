@@ -2,12 +2,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { Prisma } from "@/src/generated/prisma";
-import {
-  PAST_PAPER_EXAM_TAGS,
-  PAST_PAPER_SLOT_TAGS,
-} from "@/lib/pastPaperTags";
+import { PAST_PAPER_EXAM_TAGS } from "@/lib/pastPaperTags";
 
-const SLOT_TAG_LABELS = new Set<string>(PAST_PAPER_SLOT_TAGS);
 const EXAM_TAG_LABELS = new Set<string>(PAST_PAPER_EXAM_TAGS);
 
 function buildTagFilters(tags: string[]): Prisma.PastPaperWhereInput[] {
@@ -15,25 +11,12 @@ function buildTagFilters(tags: string[]): Prisma.PastPaperWhereInput[] {
     new Set(tags.map((tag) => tag.trim().toUpperCase()).filter(Boolean)),
   );
 
-  const slotTags = normalizedTags.filter((tag) => SLOT_TAG_LABELS.has(tag));
   const examTags = normalizedTags.filter((tag) => EXAM_TAG_LABELS.has(tag));
   const uncategorizedTags = normalizedTags.filter(
-    (tag) => !SLOT_TAG_LABELS.has(tag) && !EXAM_TAG_LABELS.has(tag),
+    (tag) => !EXAM_TAG_LABELS.has(tag),
   );
 
   const filters: Prisma.PastPaperWhereInput[] = [];
-
-  if (slotTags.length > 0) {
-    filters.push({
-      tags: {
-        some: {
-          name: {
-            in: slotTags,
-          },
-        },
-      },
-    });
-  }
 
   if (examTags.length > 0) {
     filters.push({

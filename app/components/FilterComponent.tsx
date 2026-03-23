@@ -5,10 +5,7 @@ import { faCaretDown, faCaretUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter, useSearchParams } from "next/navigation";
 import FilterComp from "./filter/FilterComp";
-import {
-  PAST_PAPER_EXAM_TAGS,
-  PAST_PAPER_SLOT_TAGS,
-} from "@/lib/pastPaperTags";
+import { PAST_PAPER_EXAM_TAGS } from "@/lib/pastPaperTags";
 
 interface Option {
   id: string;
@@ -16,7 +13,6 @@ interface Option {
 }
 
 interface CheckboxOptions {
-  slots?: Option[];
   examTypes?: Option[];
 }
 
@@ -31,11 +27,6 @@ const FILTER_SHEET_TITLES: Record<DropdownProps["pageType"], string> = {
   forum: "Filter forum",
   favourites: "Filter favourites",
 };
-
-const SLOT_OPTIONS: Option[] = PAST_PAPER_SLOT_TAGS.map((tag) => ({
-  id: tag,
-  label: tag,
-}));
 
 const EXAM_OPTIONS: Option[] = PAST_PAPER_EXAM_TAGS.map((tag) => ({
   id: tag,
@@ -70,21 +61,6 @@ function FilterSections({
           />
         </div>
       )}
-      {checkboxOptions.slots && (
-        <div className="w-full font-bold md:w-auto">
-          <FilterComp
-            title="Slots"
-            options={checkboxOptions.slots}
-            onSelectionChange={(selection) =>
-              handleSelectionChange("slots", selection)
-            }
-            selectedOptions={selectedTags.filter((tag) =>
-              checkboxOptions.slots!.some((option) => option.label === tag),
-            )}
-            isSlotCategory={true}
-          />
-        </div>
-      )}
     </>
   );
 }
@@ -102,7 +78,6 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
 
   const checkboxOptions = useMemo<CheckboxOptions>(
     () => ({
-      slots: SLOT_OPTIONS,
       examTypes: EXAM_OPTIONS,
     }),
     [],
@@ -217,7 +192,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
           />
         </button>
         {desktopOpen && (
-          <div className="hide-scrollbar absolute left-0 top-full z-50 mt-2 min-w-[22rem] max-w-[1200px] overflow-x-hidden border-2 border-black bg-[#4AD0FF] shadow-xl dark:border-white dark:bg-[#232530]">
+          <div className="hide-scrollbar absolute left-0 top-full z-50 mt-2 min-w-[18rem] max-w-[1200px] overflow-x-hidden border-2 border-black bg-[#4AD0FF] shadow-xl dark:border-white dark:bg-[#232530]">
             <div className="flex flex-col items-stretch gap-1 p-2 md:flex-row md:items-start md:gap-4">
               <FilterSections
                 checkboxOptions={checkboxOptions}
@@ -229,10 +204,10 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
         )}
       </div>
 
-      <div className="w-full md:hidden">
+      <div className="w-auto md:hidden">
         <button
           onClick={() => setMobileOpen(true)}
-          className="inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-3 py-2 text-base font-semibold dark:border-[#D5D5D5] dark:bg-[#7D7467]/20"
+          className="inline-flex h-11 items-center justify-center border-2 border-black bg-[#5FC4E7] px-8 text-base font-semibold dark:border-[#D5D5D5] dark:bg-[#7D7467]/20"
         >
           Filter
           <FontAwesomeIcon icon={faCaretDown} className="ml-2" />
@@ -247,7 +222,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
             onClick={() => setMobileOpen(false)}
           />
           <div
-            className="hide-scrollbar absolute inset-x-0 bottom-0 max-h-[72vh] overflow-y-auto overscroll-contain rounded-t-3xl border-2 border-black bg-[#4AD0FF] shadow-2xl transition-transform duration-200 dark:border-white dark:bg-[#232530]"
+            className="hide-scrollbar absolute inset-x-0 bottom-0 max-h-[72vh] overflow-y-auto overscroll-contain border-2 border-black bg-[#4AD0FF] shadow-2xl transition-transform duration-200 dark:border-white dark:bg-[#232530]"
             style={{ transform: `translateY(${sheetOffset}px)` }}
           >
             <div
@@ -256,7 +231,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
               onTouchMove={handleSheetTouchMove}
               onTouchStart={handleSheetTouchStart}
             >
-              <div className="mx-auto h-1.5 w-14 rounded-full bg-black/20 dark:bg-white/25" />
+              <div className="mx-auto h-1.5 w-14 bg-black/20 dark:bg-white/25" />
             </div>
             <div className="px-5 pb-2 pt-1">
               <h2 className="text-left text-xl font-bold text-black dark:text-[#D5D5D5]">
@@ -264,7 +239,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
               </h2>
             </div>
             <div className="px-3 pb-6">
-              <div className="overflow-hidden rounded-2xl border border-black/15 bg-white/12 dark:border-white/20 dark:bg-white/5">
+              <div className="overflow-hidden border border-black/15 bg-white/12 dark:border-white/20 dark:bg-white/5">
                 <FilterSections
                   checkboxOptions={checkboxOptions}
                   handleSelectionChange={handleSelectionChange}

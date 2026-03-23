@@ -10,6 +10,9 @@ import Dropdown from "../../components/FilterComponent";
 import { getPastPapersCount, getPastPapersPage } from "@/lib/data/pastPapers";
 import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
 import { extractCourseFromTag } from "@/lib/courseTags";
+import { PAST_PAPER_SLOT_TAGS } from "@/lib/pastPaperTags";
+
+const SLOT_TAGS = new Set(PAST_PAPER_SLOT_TAGS);
 
 function validatePage(page: number, totalPages: number): number {
   if (isNaN(page) || page < 1) {
@@ -50,11 +53,12 @@ async function PastPaperResults({
   const pageSize = 9;
   const search = params.search || "";
   const page = parseInt(params.page || "1", 10);
-  const tags: string[] = Array.isArray(params.tags)
+  const tags: string[] = (Array.isArray(params.tags)
     ? params.tags
     : params.tags
       ? params.tags.split(",")
-      : [];
+      : []
+  ).filter((tag) => !SLOT_TAGS.has(tag.trim().toUpperCase() as typeof PAST_PAPER_SLOT_TAGS[number]));
   const normalizedTags = [...tags].sort();
 
   const totalCount = await getPastPapersCount({
@@ -162,11 +166,11 @@ export default async function PastPaperPage({
 
       <div className="w-5/6 space-y-4 md:hidden">
         <SearchBar pageType="past_papers" initialQuery={search} />
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-3">
-          <div className="min-w-0">
+        <div className="flex items-center justify-center gap-3">
+          <div className="shrink-0">
             <Dropdown pageType="past_papers" />
           </div>
-          <div className="shrink-0 self-stretch">
+          <div className="shrink-0">
             <UploadButtonPaper />
           </div>
         </div>
@@ -191,11 +195,12 @@ export async function generateMetadata({
   const params = (await searchParams) ?? {};
   const search = params.search || "";
   const page = Number.parseInt(params.page || "1", 10) || 1;
-  const tags: string[] = Array.isArray(params.tags)
+  const tags: string[] = (Array.isArray(params.tags)
     ? params.tags
     : params.tags
       ? params.tags.split(",")
-      : [];
+      : []
+  ).filter((tag) => !SLOT_TAGS.has(tag.trim().toUpperCase() as typeof PAST_PAPER_SLOT_TAGS[number]));
   const normalizedTags = tags.map((tag) => tag.trim()).filter(Boolean);
   const isIndexable = !search && normalizedTags.length === 0 && page <= 1;
 
