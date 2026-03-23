@@ -24,6 +24,14 @@ interface DropdownProps {
   pageType: "notes" | "past_papers" | "resources" | "forum" | "favourites";
 }
 
+const FILTER_SHEET_TITLES: Record<DropdownProps["pageType"], string> = {
+  notes: "Filter notes",
+  past_papers: "Filter past papers",
+  resources: "Filter resources",
+  forum: "Filter forum",
+  favourites: "Filter favourites",
+};
+
 const SLOT_OPTIONS: Option[] = PAST_PAPER_SLOT_TAGS.map((tag) => ({
   id: tag,
   label: tag,
@@ -90,6 +98,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
   const searchParams = useSearchParams();
   const desktopRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
+  const mobileSheetTitle = FILTER_SHEET_TITLES[pageType];
 
   const checkboxOptions = useMemo<CheckboxOptions>(
     () => ({
@@ -251,7 +260,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
             </div>
             <div className="px-5 pb-2 pt-1">
               <h2 className="text-left text-xl font-bold text-black dark:text-[#D5D5D5]">
-                Filter past papers
+                {mobileSheetTitle}
               </h2>
             </div>
             <div className="hide-scrollbar max-h-[75vh] overflow-y-auto px-3 pb-6">
