@@ -30,7 +30,7 @@ const FilterComp: React.FC<Props> = ({
 
   return (
     <div className="w-full p-3 text-left sm:w-[182px] sm:p-4 sm:text-center">
-      <h6 className="[text-shadow:_0_1px_0_rgb(0_0_0_/_40%)] mb-3 text-sm font-bold sm:text-base">
+      <h6 className="[text-shadow:_0_1px_0_rgb(0_0_0_/_40%)] mb-3 text-sm font-bold text-black dark:text-[#D5D5D5] sm:text-base">
         {title}
       </h6>
       <div

@@ -160,13 +160,15 @@ export default async function PastPaperPage({
         <UploadButtonPaper />
       </div>
 
-      <div className="flex-col w-5/6 md:hidden space-y-4">
+      <div className="w-5/6 space-y-4 md:hidden">
         <SearchBar pageType="past_papers" initialQuery={search} />
-        <div className="flex items-start gap-3">
-          <div className="flex-1">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-3">
+          <div className="min-w-0">
             <Dropdown pageType="past_papers" />
           </div>
-          <UploadButtonPaper />
+          <div className="shrink-0 self-stretch">
+            <UploadButtonPaper />
+          </div>
         </div>
       </div>
 
