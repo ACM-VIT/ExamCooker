@@ -12,19 +12,13 @@ const EXAM_TAG_LABELS = new Set<string>(PAST_PAPER_EXAM_TAGS);
 
 function buildTagFilters(tags: string[]): Prisma.PastPaperWhereInput[] {
   const normalizedTags = Array.from(
-    new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
+    new Set(tags.map((tag) => tag.trim().toUpperCase()).filter(Boolean)),
   );
 
-  const slotTags = normalizedTags.filter((tag) =>
-    SLOT_TAG_LABELS.has(tag.toUpperCase()),
-  );
-  const examTags = normalizedTags.filter((tag) =>
-    EXAM_TAG_LABELS.has(tag.toUpperCase()),
-  );
+  const slotTags = normalizedTags.filter((tag) => SLOT_TAG_LABELS.has(tag));
+  const examTags = normalizedTags.filter((tag) => EXAM_TAG_LABELS.has(tag));
   const uncategorizedTags = normalizedTags.filter(
-    (tag) =>
-      !SLOT_TAG_LABELS.has(tag.toUpperCase()) &&
-      !EXAM_TAG_LABELS.has(tag.toUpperCase()),
+    (tag) => !SLOT_TAG_LABELS.has(tag) && !EXAM_TAG_LABELS.has(tag),
   );
 
   const filters: Prisma.PastPaperWhereInput[] = [];
