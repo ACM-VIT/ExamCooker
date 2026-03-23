@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/app/auth";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 type UploadDiagnosticFile = {
     name: string | null;
     type: string | null;
