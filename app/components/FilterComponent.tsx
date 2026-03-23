@@ -247,7 +247,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
             onClick={() => setMobileOpen(false)}
           />
           <div
-            className="absolute inset-x-0 bottom-0 flex max-h-[72vh] flex-col overflow-hidden rounded-t-3xl border-2 border-black bg-[#4AD0FF] shadow-2xl transition-transform duration-200 dark:border-white dark:bg-[#232530]"
+            className="hide-scrollbar absolute inset-x-0 bottom-0 max-h-[72vh] overflow-y-auto overscroll-contain rounded-t-3xl border-2 border-black bg-[#4AD0FF] shadow-2xl transition-transform duration-200 dark:border-white dark:bg-[#232530]"
             style={{ transform: `translateY(${sheetOffset}px)` }}
           >
             <div
@@ -263,7 +263,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
                 {mobileSheetTitle}
               </h2>
             </div>
-            <div className="hide-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6">
+            <div className="px-3 pb-6">
               <div className="overflow-hidden rounded-2xl border border-black/15 bg-white/12 dark:border-white/20 dark:bg-white/5">
                 <FilterSections
                   checkboxOptions={checkboxOptions}
