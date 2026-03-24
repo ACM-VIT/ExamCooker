@@ -222,7 +222,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
             onClick={() => setMobileOpen(false)}
           />
           <div
-            className="hide-scrollbar absolute inset-x-0 bottom-0 max-h-[72vh] overflow-y-auto overscroll-contain border-2 border-black bg-[#4AD0FF] shadow-2xl transition-transform duration-200 dark:border-[#3BF4C7]/50 dark:bg-[#0C1222]"
+            className="hide-scrollbar absolute inset-x-0 bottom-0 max-h-[72vh] overflow-y-auto overscroll-contain bg-[#4AD0FF] shadow-2xl transition-transform duration-200 dark:bg-[#0C1222]"
             style={{ transform: `translateY(${sheetOffset}px)` }}
           >
             <div
