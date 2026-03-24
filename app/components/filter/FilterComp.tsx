@@ -40,14 +40,14 @@ const FilterComp: React.FC<Props> = ({
             htmlFor={`checkbox-${option.id}`}
             className={`flex min-w-0 cursor-pointer items-center border px-4 py-4 transition md:px-3 md:py-2 ${
               selectedOptions.includes(option.label)
-                ? "border-black bg-[#C2E6EC] dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/12"
-                : "border-black/15 bg-white/50 dark:border-white/15 dark:bg-white/5"
-            } md:hover:bg-black/5 md:dark:hover:bg-white/8`}
+                ? "border-black bg-[#C2E6EC] dark:border-[#3BF4C7] dark:bg-[#0F1E33]"
+                : "border-black/20 bg-[#8EDCFA]/35 dark:border-[#3BF4C7]/20 dark:bg-[#102039]"
+            } md:hover:bg-black/5 md:dark:hover:bg-[#132744]`}
           >
             <input
               id={`checkbox-${option.id}`}
               type="checkbox"
-              className="h-5 w-5 shrink-0 cursor-pointer border-2 border-black accent-black dark:border-[#D5D5D5] dark:accent-[#3BF4C7] md:h-4 md:w-4"
+              className="h-5 w-5 shrink-0 cursor-pointer border-2 border-black accent-black dark:border-[#3BF4C7] dark:accent-[#3BF4C7] md:h-4 md:w-4"
               checked={selectedOptions.includes(option.label)}
               onChange={() => handleCheckboxChange(option.label)}
             />

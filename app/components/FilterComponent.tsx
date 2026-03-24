@@ -21,11 +21,11 @@ interface DropdownProps {
 }
 
 const FILTER_SHEET_TITLES: Record<DropdownProps["pageType"], string> = {
-  notes: "Filter notes",
-  past_papers: "Filter past papers",
-  resources: "Filter resources",
-  forum: "Filter forum",
-  favourites: "Filter favourites",
+  notes: "Filters",
+  past_papers: "Filters",
+  resources: "Filters",
+  forum: "Filters",
+  favourites: "Filters",
 };
 
 const EXAM_OPTIONS: Option[] = PAST_PAPER_EXAM_TAGS.map((tag) => ({
@@ -50,7 +50,7 @@ function FilterSections({
       {checkboxOptions.examTypes && (
         <div className="w-full font-bold md:w-auto">
           <FilterComp
-            title="Exam Types"
+            title=""
             options={checkboxOptions.examTypes}
             onSelectionChange={(selection) =>
               handleSelectionChange("examTypes", selection)
@@ -192,7 +192,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
           />
         </button>
         {desktopOpen && (
-          <div className="hide-scrollbar absolute left-0 top-full z-50 mt-2 min-w-[18rem] max-w-[1200px] overflow-x-hidden border-2 border-black bg-[#4AD0FF] shadow-xl dark:border-white dark:bg-[#232530]">
+          <div className="hide-scrollbar absolute left-0 top-full z-50 mt-2 min-w-[18rem] max-w-[1200px] overflow-x-hidden border-2 border-black bg-[#4AD0FF] shadow-xl dark:border-[#3BF4C7]/50 dark:bg-[#0C1222]">
             <div className="flex flex-col items-stretch gap-1 p-2 md:flex-row md:items-start md:gap-4">
               <FilterSections
                 checkboxOptions={checkboxOptions}
@@ -222,7 +222,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
             onClick={() => setMobileOpen(false)}
           />
           <div
-            className="hide-scrollbar absolute inset-x-0 bottom-0 max-h-[72vh] overflow-y-auto overscroll-contain border-2 border-black bg-[#4AD0FF] shadow-2xl transition-transform duration-200 dark:border-white dark:bg-[#232530]"
+            className="hide-scrollbar absolute inset-x-0 bottom-0 max-h-[72vh] overflow-y-auto overscroll-contain border-2 border-black bg-[#4AD0FF] shadow-2xl transition-transform duration-200 dark:border-[#3BF4C7]/50 dark:bg-[#0C1222]"
             style={{ transform: `translateY(${sheetOffset}px)` }}
           >
             <div
@@ -234,18 +234,16 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
               <div className="mx-auto h-1.5 w-14 bg-black/20 dark:bg-white/25" />
             </div>
             <div className="px-5 pb-2 pt-1">
-              <h2 className="text-left text-xl font-bold text-black dark:text-[#D5D5D5]">
+              <h2 className="text-center text-xl font-bold text-black dark:text-[#D5D5D5]">
                 {mobileSheetTitle}
               </h2>
             </div>
             <div className="px-3 pb-6">
-              <div className="overflow-hidden border border-black/15 bg-white/12 dark:border-white/20 dark:bg-white/5">
-                <FilterSections
-                  checkboxOptions={checkboxOptions}
-                  handleSelectionChange={handleSelectionChange}
-                  selectedTags={selectedTags}
-                />
-              </div>
+              <FilterSections
+                checkboxOptions={checkboxOptions}
+                handleSelectionChange={handleSelectionChange}
+                selectedTags={selectedTags}
+              />
             </div>
           </div>
         </div>
