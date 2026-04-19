@@ -29,6 +29,8 @@ export default function Search({ pageType, availableTags, initialQuery = '' }: S
         const tags = searchParams.getAll('tags');
         if (tags.length > 0) {
             setSelectedTags(tags);
+        } else {
+            setSelectedTags([]);
         }
     }, [searchParams]);
 

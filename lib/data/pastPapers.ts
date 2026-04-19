@@ -3,10 +3,15 @@ import prisma from "@/lib/prisma";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { Prisma } from "@/src/generated/prisma";
 
+const COURSE_CODE_REGEX = /^[A-Z]{2,5}\d{3,4}[A-Z]{0,3}$/i;
+
 function buildWhere(
     search: string,
     tags: string[]
 ): Prisma.PastPaperWhereInput {
+    const trimmedSearch = search.trim();
+    const isCourseCodeSearch = COURSE_CODE_REGEX.test(trimmedSearch);
+
     return {
         isClear: true,
         ...(tags.length > 0
@@ -20,21 +25,35 @@ function buildWhere(
                   },
               }
             : {}),
-        ...(search
+        ...(trimmedSearch
             ? {
-                  OR: [
-                      { title: { contains: search, mode: "insensitive" } },
-                      {
-                          tags: {
-                              some: {
-                                  name: {
-                                      contains: search,
-                                      mode: "insensitive",
-                                  },
-                              },
-                          },
-                      },
-                  ],
+                  OR: isCourseCodeSearch
+                      ? [
+                            { title: { contains: trimmedSearch, mode: "insensitive" } },
+                            {
+                                tags: {
+                                    some: {
+                                        name: {
+                                            equals: trimmedSearch,
+                                            mode: "insensitive",
+                                        },
+                                    },
+                                },
+                            },
+                        ]
+                      : [
+                            { title: { contains: trimmedSearch, mode: "insensitive" } },
+                            {
+                                tags: {
+                                    some: {
+                                        name: {
+                                            contains: trimmedSearch,
+                                            mode: "insensitive",
+                                        },
+                                    },
+                                },
+                            },
+                        ],
               }
             : {}),
     };

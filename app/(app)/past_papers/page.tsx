@@ -4,12 +4,12 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from "next";
 import Pagination from '../../components/Pagination';
 import PastPaperCard from '../../components/PastPaperCard';
-import SearchBar from '../../components/SearchBar';
-import UploadButtonPaper from '../../components/uploadButtonPaper';
-import Dropdown from '../../components/FilterComponent';
+import PastPapersToolbar from '../../components/PastPapersToolbar';
 import { getPastPapersCount, getPastPapersPage } from "@/lib/data/pastPapers";
 import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
 import { extractCourseFromTag } from "@/lib/courseTags";
+
+const SLOT_TAG_REGEX = /^[A-G][1-2]$/i;
 
 function validatePage(page: number, totalPages: number): number {
     if (isNaN(page) || page < 1) {
@@ -49,6 +49,7 @@ async function PastPaperResults({ params }: { params: { page?: string; search?: 
     const tags: string[] = Array.isArray(params.tags)
         ? params.tags
         : (params.tags ? params.tags.split(',') : []);
+    const visibleTags = tags.filter((tag) => !SLOT_TAG_REGEX.test(tag.trim()));
     const normalizedTags = [...tags].sort();
 
     const totalCount = await getPastPapersCount({
@@ -72,10 +73,10 @@ async function PastPaperResults({ params }: { params: { page?: string; search?: 
 
     return (
         <>
-            {tags.length > 0 && (
+            {visibleTags.length > 0 && (
                 <div className="flex justify-center mb-4">
                     <div className="flex flex-wrap gap-2">
-                        {tags.map((tag, index) => {
+                        {visibleTags.map((tag, index) => {
                             const course = extractCourseFromTag(tag);
                             if (course) {
                                 return (
@@ -133,26 +134,15 @@ async function PastPaperResults({ params }: { params: { page?: string; search?: 
 export default async function PastPaperPage({
     searchParams,
 }: {
-    searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+    searchParams?: Promise<{ page?: string; search?: string; label?: string; tags?: string | string[] }>;
 }) {
     const params = (await searchParams) ?? {};
     const search = params.search || '';
+    const label = params.label || '';
     return (
         <div className="p-2 sm:p-4 lg:p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5] w-full overflow-x-hidden">
             <h1 className="text-center mb-4">Past Papers</h1>
-            <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-                <Dropdown pageType='past_papers' />
-                <SearchBar pageType="past_papers" initialQuery={search} />
-                <UploadButtonPaper />
-            </div>
-
-            <div className='flex-col w-5/6 md:hidden space-y-4'>
-                <SearchBar pageType="past_papers" initialQuery={search} />
-                <div className='flex justify-between'>
-                    <Dropdown pageType='past_papers' />
-                    <UploadButtonPaper />
-                </div>
-            </div>
+            <PastPapersToolbar initialQuery={search} initialDisplay={label} />
 
             <Suspense fallback={<PastPapersSkeleton />}>
                 <PastPaperResults params={params} />
