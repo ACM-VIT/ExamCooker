@@ -7,7 +7,73 @@ import SearchBar from "../../components/SearchBar";
 import UploadButtonPaper from "../../components/uploadButtonPaper";
 import Dropdown from "../../components/FilterComponent";
 import { getPastPapersCount, getPastPapersPage } from "@/lib/data/pastPapers";
+import { parsePaperTitle } from "@/lib/paperTitle";
 import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
+
+const YEAR_TAG_REGEX = /^20\d{2}$/;
+
+type PastPaperListItem = Awaited<ReturnType<typeof getPastPapersPage>>[number];
+
+type YearSection = {
+  key: string;
+  title: string;
+  sortValue: number;
+  papers: PastPaperListItem[];
+};
+
+function getPaperYearInfo(paper: PastPaperListItem) {
+  const parsed = parsePaperTitle(paper.title);
+  const yearFromTags = paper.tags.find((tag) => YEAR_TAG_REGEX.test(tag.name))?.name;
+  const sectionTitle = parsed.academicYear ?? parsed.year ?? yearFromTags;
+  const yearValues = sectionTitle?.match(/20\d{2}/g);
+  const sortValue = yearValues?.length
+    ? Number(yearValues[yearValues.length - 1])
+    : -1;
+
+  if (sectionTitle) {
+    return {
+      key: sectionTitle,
+      title: sectionTitle,
+      sortValue,
+    };
+  }
+
+  return {
+    key: "other",
+    title: "Other Papers",
+    sortValue: -1,
+  };
+}
+
+function groupPapersByYear(papers: PastPaperListItem[]) {
+  const sections = new Map<string, YearSection>();
+
+  papers.forEach((paper) => {
+    const yearInfo = getPaperYearInfo(paper);
+    const existing = sections.get(yearInfo.key);
+
+    if (existing) {
+      existing.papers.push(paper);
+      return;
+    }
+
+    sections.set(yearInfo.key, {
+      ...yearInfo,
+      papers: [paper],
+    });
+  });
+
+  return Array.from(sections.values()).sort((a, b) => {
+    if (a.sortValue !== b.sortValue) {
+      return b.sortValue - a.sortValue;
+    }
+
+    if (a.key === "other") return 1;
+    if (b.key === "other") return -1;
+
+    return b.title.localeCompare(a.title, "en", { sensitivity: "base" });
+  });
+}
 
 function validatePage(page: number, totalPages: number): number {
   if (isNaN(page) || page < 1) {
@@ -69,6 +135,10 @@ async function PastPaperResults({
   ]);
   const totalPages = Math.ceil(totalCount / pageSize);
   const validatedPage = validatePage(page, totalPages);
+  const paperOrder = new Map(
+    paginatedPastPapers.map((paper, index) => [paper.id, index] as const),
+  );
+  const yearSections = groupPapersByYear(paginatedPastPapers);
 
   if (validatedPage !== page) {
     const searchQuery = search ? `&search=${encodeURIComponent(search)}` : "";
@@ -80,15 +150,30 @@ async function PastPaperResults({
   return (
     <>
       <div className="flex justify-center w-full overflow-x-hidden">
-        <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 p-2 sm:p-4 lg:p-6 place-content-center">
-          {paginatedPastPapers.length > 0 ? (
-            paginatedPastPapers.map((eachPaper, index) => (
-              <div key={eachPaper.id} className="flex justify-center">
-                <PastPaperCard pastPaper={eachPaper} index={index} />
-              </div>
+        <div className="w-full max-w-6xl p-2 sm:p-4 lg:px-14 lg:py-6 2xl:px-6">
+          {yearSections.length > 0 ? (
+            yearSections.map((section, sectionIndex) => (
+              <section
+                key={section.key}
+                className={sectionIndex > 0 ? "mt-8 pt-8" : ""}
+              >
+                <h2 className="mb-5 break-words pr-2 text-xl font-semibold sm:text-2xl">
+                  {section.title}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 place-content-center">
+                  {section.papers.map((eachPaper, index) => (
+                    <div key={eachPaper.id} className="flex justify-center">
+                      <PastPaperCard
+                        pastPaper={eachPaper}
+                        index={paperOrder.get(eachPaper.id) ?? index}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
             ))
           ) : (
-            <p className="col-span-3 text-center">
+            <p className="text-center">
               {search || tags.length > 0
                 ? "No past papers found matching your search or selected tags."
                 : "No past papers found."}
