@@ -16,199 +16,6 @@ const isPdfFile = (file: File) =>
     file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 const isImageFile = (file: File) => file.type.startsWith("image/");
 const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, "");
-const MICROSERVICE_BASE_URL =
-    process.env.NEXT_PUBLIC_MICROSERVICE_URL?.replace(/\/$/, "") ?? "";
-const PROCESS_PDF_ROUTE = MICROSERVICE_BASE_URL
-    ? `${MICROSERVICE_BASE_URL}/process_pdf`
-    : "";
-const UPLOAD_DIAGNOSTICS_ROUTE = "/api/upload-diagnostics";
-
-type UploadDiagnosticPhase =
-    | "upload_started"
-    | "upload_upstream_error"
-    | "upload_fetch_exception"
-    | "upload_metadata_save_failed"
-    | "upload_attempt_failed"
-    | "upload_succeeded"
-    | "upload_config_error";
-
-type UploadDiagnosticFile = {
-    name: string;
-    type: string;
-    size: number;
-    lastModified: number;
-};
-
-type UploadDiagnosticPayload = {
-    attemptId: string;
-    phase: UploadDiagnosticPhase;
-    variant: "Notes" | "Past Papers";
-    year?: string;
-    slot?: string;
-    selectedTags?: string[];
-    endpoint?: string;
-    fileIndex?: number;
-    fileTitle?: string;
-    fileCount?: number;
-    files?: UploadDiagnosticFile[];
-    status?: number;
-    statusText?: string;
-    contentType?: string | null;
-    responseBodySnippet?: string | null;
-    resultsCount?: number;
-    errorName?: string;
-    errorMessage?: string;
-};
-
-type NavigatorConnectionLike = {
-    effectiveType?: string;
-    type?: string;
-    downlink?: number;
-    rtt?: number;
-    saveData?: boolean;
-};
-
-type NavigatorWithDiagnostics = Navigator & {
-    connection?: NavigatorConnectionLike;
-    mozConnection?: NavigatorConnectionLike;
-    webkitConnection?: NavigatorConnectionLike;
-    deviceMemory?: number;
-};
-
-class UploadRequestError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = "UploadRequestError";
-    }
-}
-
-function createUploadAttemptId() {
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-        return crypto.randomUUID();
-    }
-
-    return `upload-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function serializeUploadFile(file: File): UploadDiagnosticFile {
-    return {
-        name: file.name,
-        type: file.type || "unknown",
-        size: file.size,
-        lastModified: file.lastModified,
-    };
-}
-
-function getClientContext() {
-    if (typeof window === "undefined" || typeof navigator === "undefined") {
-        return null;
-    }
-
-    const nav = navigator as NavigatorWithDiagnostics;
-    const connection =
-        nav.connection ?? nav.mozConnection ?? nav.webkitConnection;
-
-    return {
-        href: window.location.href,
-        online: navigator.onLine,
-        language: navigator.language,
-        userAgent: navigator.userAgent,
-        deviceMemoryGb:
-            typeof nav.deviceMemory === "number" ? nav.deviceMemory : null,
-        maxTouchPoints:
-            typeof navigator.maxTouchPoints === "number"
-                ? navigator.maxTouchPoints
-                : null,
-        viewport: {
-            width: window.innerWidth,
-            height: window.innerHeight,
-            pixelRatio: window.devicePixelRatio,
-        },
-        connection: connection
-            ? {
-                  effectiveType: connection.effectiveType ?? null,
-                  type: connection.type ?? null,
-                  downlink:
-                      typeof connection.downlink === "number"
-                          ? connection.downlink
-                          : null,
-                  rtt:
-                      typeof connection.rtt === "number"
-                          ? connection.rtt
-                          : null,
-                  saveData:
-                      typeof connection.saveData === "boolean"
-                          ? connection.saveData
-                          : null,
-              }
-            : null,
-    };
-}
-
-async function logUploadDiagnostic(payload: UploadDiagnosticPayload) {
-    const body = JSON.stringify({
-        ...payload,
-        clientLoggedAt: new Date().toISOString(),
-        clientContext: getClientContext(),
-    });
-
-    try {
-        if (
-            typeof navigator !== "undefined" &&
-            typeof navigator.sendBeacon === "function"
-        ) {
-            const beaconBody = new Blob([body], { type: "application/json" });
-            const queued = navigator.sendBeacon(
-                UPLOAD_DIAGNOSTICS_ROUTE,
-                beaconBody
-            );
-            if (queued) {
-                return;
-            }
-        }
-
-        await fetch(UPLOAD_DIAGNOSTICS_ROUTE, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body,
-            cache: "no-store",
-            keepalive: true,
-        });
-    } catch (error) {
-        console.error("Failed to report upload diagnostic:", error);
-    }
-}
-
-async function readUploadErrorResponse(response: Response) {
-    const contentType = response.headers.get("content-type");
-
-    if (contentType?.includes("application/json")) {
-        const body = await response.json().catch(() => null);
-        const candidateMessage =
-            typeof body?.error === "string"
-                ? body.error
-                : typeof body?.message === "string"
-                    ? body.message
-                    : typeof body?.detail === "string"
-                        ? body.detail
-                        : null;
-
-        return {
-            contentType,
-            responseBodySnippet: body ? JSON.stringify(body).slice(0, 1000) : null,
-            userMessage: candidateMessage?.trim() || null,
-        };
-    }
-
-    const text = (await response.text().catch(() => "")).trim();
-    return {
-        contentType,
-        responseBodySnippet: text ? text.slice(0, 1000) : null,
-        userMessage: text ? text.slice(0, 180) : null,
-    };
-}
 
 const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | "Past Papers" }) => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
@@ -241,101 +48,26 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         }
 
         startTransition(async () => {
-            const attemptId = createUploadAttemptId();
-            const diagnosticFiles = files.map(serializeUploadFile);
-
             try {
-                if (!PROCESS_PDF_ROUTE) {
-                    void logUploadDiagnostic({
-                        attemptId,
-                        phase: "upload_config_error",
-                        variant,
-                        year,
-                        slot,
-                        selectedTags,
-                        fileCount: files.length,
-                        files: diagnosticFiles,
-                        errorMessage: "NEXT_PUBLIC_MICROSERVICE_URL is not configured.",
-                    });
-                    setError("Upload service is not configured.");
-                    return;
-                }
-
-                void logUploadDiagnostic({
-                    attemptId,
-                    phase: "upload_started",
-                    variant,
-                    year,
-                    slot,
-                    selectedTags,
-                    endpoint: PROCESS_PDF_ROUTE,
-                    fileCount: files.length,
-                    files: diagnosticFiles,
-                });
-
-                const promises = files.map(async (file, index) => {
+                const formDatas = files.map((file, index) => {
                     const formData = new FormData();
-                    const displayTitle =
-                        fileTitles[index]?.trim() || stripExtension(file.name);
                     formData.append("file", file);
-                    formData.append("filetitle", displayTitle);
+                    formData.append("filetitle", fileTitles[index]);
+                    return formData;
+                })
+                const promises = formDatas.map(async (formData) => {
 
-                    try {
-                        const response = await fetch(PROCESS_PDF_ROUTE, {
-                            method: "POST",
-                            body: formData,
-                        });
+                    const response = await fetch(`${process.env.NEXT_PUBLIC_MICROSERVICE_URL}/process_pdf`, {
+                        method: "POST",
+                        body: formData,
+                    });
 
-                        if (!response.ok) {
-                            const errorResponse = await readUploadErrorResponse(response);
-                            void logUploadDiagnostic({
-                                attemptId,
-                                phase: "upload_upstream_error",
-                                variant,
-                                endpoint: PROCESS_PDF_ROUTE,
-                                fileIndex: index,
-                                fileTitle: displayTitle,
-                                files: [serializeUploadFile(file)],
-                                status: response.status,
-                                statusText: response.statusText,
-                                contentType: errorResponse.contentType,
-                                responseBodySnippet: errorResponse.responseBodySnippet,
-                                errorMessage:
-                                    errorResponse.userMessage ||
-                                    `Failed to upload ${displayTitle} (HTTP ${response.status})`,
-                            });
-                            throw new UploadRequestError(
-                                errorResponse.userMessage ||
-                                    `Failed to upload ${displayTitle} (HTTP ${response.status})`
-                            );
-                        }
-
-                        return await response.json();
-                    } catch (error) {
-                        if (error instanceof UploadRequestError) {
-                            throw error;
-                        }
-
-                        void logUploadDiagnostic({
-                            attemptId,
-                            phase: "upload_fetch_exception",
-                            variant,
-                            endpoint: PROCESS_PDF_ROUTE,
-                            fileIndex: index,
-                            fileTitle: displayTitle,
-                            files: [serializeUploadFile(file)],
-                            errorName:
-                                error instanceof Error ? error.name : "UnknownError",
-                            errorMessage:
-                                error instanceof Error
-                                    ? error.message
-                                    : "Unknown upload error",
-                        });
-
-                        throw error instanceof Error
-                            ? error
-                            : new Error("Unknown upload error");
+                    if (!response.ok) {
+                        console.log(response);
+                        throw new Error(`Failed to upload file ${formData.get("fileTitle")}`);
                     }
+
+                    return await response.json();
                 });
 
                 const results = await Promise.all(promises) as {
@@ -347,35 +79,10 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
 
                 const response = await uploadFile({results, tags: selectedTags, year, slot, variant});
                 if (!response.success) {
-                    void logUploadDiagnostic({
-                        attemptId,
-                        phase: "upload_metadata_save_failed",
-                        variant,
-                        year,
-                        slot,
-                        selectedTags,
-                        endpoint: PROCESS_PDF_ROUTE,
-                        fileCount: files.length,
-                        files: diagnosticFiles,
-                        resultsCount: results.length,
-                        errorMessage: response.error,
-                    });
                     setError("Error uploading files: " + response.error);
                     return;
                 }
 
-                void logUploadDiagnostic({
-                    attemptId,
-                    phase: "upload_succeeded",
-                    variant,
-                    year,
-                    slot,
-                    selectedTags,
-                    endpoint: PROCESS_PDF_ROUTE,
-                    fileCount: files.length,
-                    files: diagnosticFiles,
-                    resultsCount: results.length,
-                });
                 toast({title: "Selected files uploaded successfully."})
 
                 router.push(`/past_papers`)
@@ -389,20 +96,6 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
 
             } catch (error) {
                 console.error("Error uploading files:", error);
-                void logUploadDiagnostic({
-                    attemptId,
-                    phase: "upload_attempt_failed",
-                    variant,
-                    year,
-                    slot,
-                    selectedTags,
-                    endpoint: PROCESS_PDF_ROUTE,
-                    fileCount: files.length,
-                    files: diagnosticFiles,
-                    errorName: error instanceof Error ? error.name : "UnknownError",
-                    errorMessage:
-                        error instanceof Error ? error.message : "Unknown error",
-                });
                 setError(`Error uploading files: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
         });
