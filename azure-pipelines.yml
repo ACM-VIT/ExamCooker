@@ -23,7 +23,7 @@ stages:
       - job: Build
         displayName: Build
         pool:
-          vmImage: ubuntu-latest
+          name: Default
         steps:
           - checkout: self
             clean: true
@@ -89,6 +89,8 @@ stages:
     jobs:
       - deployment: DeployWebApp
         displayName: Deploy to Azure App Service
+        pool:
+          name: Default
         environment: examcooker-prod
         strategy:
           runOnce:
