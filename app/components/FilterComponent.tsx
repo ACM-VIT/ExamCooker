@@ -5,7 +5,10 @@ import { faCaretDown, faCaretUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter, useSearchParams } from "next/navigation";
 import FilterComp from "./filter/FilterComp";
-import { PAST_PAPER_EXAM_TAGS } from "@/lib/pastPaperTags";
+import {
+  PAST_PAPER_EXAM_TAGS,
+  canonicalizePastPaperExamTag,
+} from "@/lib/pastPaperTags";
 
 interface Option {
   id: string;
@@ -33,6 +36,23 @@ const EXAM_OPTIONS: Option[] = PAST_PAPER_EXAM_TAGS.map((tag) => ({
   label: tag,
 }));
 
+function selectedCategoryOptions(
+  selectedTags: string[],
+  options: Option[] | undefined,
+) {
+  if (!options) return [];
+  const optionLabels = new Set(options.map((option) => option.label));
+  return selectedTags
+    .map((tag) => canonicalizePastPaperExamTag(tag) ?? tag)
+    .filter((tag) => optionLabels.has(tag));
+}
+
+function isCategoryTag(tag: string, options: Option[] | undefined) {
+  if (!options) return false;
+  const normalizedTag = canonicalizePastPaperExamTag(tag) ?? tag;
+  return options.some((option) => option.label === normalizedTag);
+}
+
 function FilterSections({
   checkboxOptions,
   handleSelectionChange,
@@ -55,8 +75,9 @@ function FilterSections({
             onSelectionChange={(selection) =>
               handleSelectionChange("examTypes", selection)
             }
-            selectedOptions={selectedTags.filter((tag) =>
-              checkboxOptions.examTypes!.some((option) => option.label === tag),
+            selectedOptions={selectedCategoryOptions(
+              selectedTags,
+              checkboxOptions.examTypes,
             )}
           />
         </div>
@@ -140,10 +161,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
       const nextTags = Array.from(
         new Set([
           ...selectedTags.filter(
-            (tag) =>
-              !checkboxOptions[category]?.some(
-                (option) => option.label === tag,
-              ),
+            (tag) => !isCategoryTag(tag, checkboxOptions[category]),
           ),
           ...selection,
         ]),

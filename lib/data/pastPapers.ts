@@ -2,35 +2,69 @@ import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { Prisma } from "@/src/generated/prisma";
-import { PAST_PAPER_EXAM_TAGS } from "@/lib/pastPaperTags";
+import {
+  canonicalizePastPaperExamTag,
+  getPastPaperExamTagSearchTokens,
+} from "@/lib/pastPaperTags";
+import type { PastPaperExamTag } from "@/lib/pastPaperTags";
 
-const EXAM_TAG_LABELS = new Set<string>(PAST_PAPER_EXAM_TAGS);
+function addUnique<T extends string>(value: T, values: T[], seen: Set<string>) {
+  const key = value.toLowerCase();
+  if (seen.has(key)) return;
+  seen.add(key);
+  values.push(value);
+}
+
+function buildExamTagFilter(
+  examTags: PastPaperExamTag[],
+): Prisma.PastPaperWhereInput {
+  return {
+    OR: examTags.map((tag) => ({
+      OR: [
+        {
+          tags: {
+            some: {
+              name: tag,
+            },
+          },
+        },
+        ...getPastPaperExamTagSearchTokens(tag).map((token) => ({
+          title: {
+            contains: token,
+            mode: "insensitive" as const,
+          },
+        })),
+      ],
+    })),
+  };
+}
 
 function buildTagFilters(tags: string[]): Prisma.PastPaperWhereInput[] {
-  const normalizedTags = Array.from(
-    new Set(tags.map((tag) => tag.trim().toUpperCase()).filter(Boolean)),
-  );
+  const examTags: PastPaperExamTag[] = [];
+  const otherTags: string[] = [];
+  const seenExamTags = new Set<string>();
+  const seenOtherTags = new Set<string>();
 
-  const examTags = normalizedTags.filter((tag) => EXAM_TAG_LABELS.has(tag));
-  const uncategorizedTags = normalizedTags.filter(
-    (tag) => !EXAM_TAG_LABELS.has(tag),
-  );
+  tags.forEach((tag) => {
+    const trimmedTag = tag.trim();
+    if (!trimmedTag) return;
+
+    const examTag = canonicalizePastPaperExamTag(trimmedTag);
+    if (examTag) {
+      addUnique(examTag, examTags, seenExamTags);
+      return;
+    }
+
+    addUnique(trimmedTag, otherTags, seenOtherTags);
+  });
 
   const filters: Prisma.PastPaperWhereInput[] = [];
 
   if (examTags.length > 0) {
-    filters.push({
-      tags: {
-        some: {
-          name: {
-            in: examTags,
-          },
-        },
-      },
-    });
+    filters.push(buildExamTagFilter(examTags));
   }
 
-  uncategorizedTags.forEach((tag) => {
+  otherTags.forEach((tag) => {
     filters.push({
       tags: {
         some: {
