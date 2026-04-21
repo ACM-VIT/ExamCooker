@@ -1,11 +1,11 @@
-import React, { Suspense } from 'react';
-import { redirect } from 'next/navigation';
+import React, { Suspense } from "react";
+import { redirect } from "next/navigation";
 import Pagination from "../../components/Pagination";
 import ForumCard from "../../components/ForumCard";
 import SearchBar from "../../components/SearchBar";
-import Dropdown from "../../components/FilterComponent";
+// import Dropdown from "../../components/FilterComponent";
 import NewForumButton from "../../components/NewForumButton";
-import { auth } from '@/app/auth';
+import { auth } from "@/app/auth";
 import { getForumCount, getForumPage } from "@/lib/data/forum";
 
 function validatePage(page: number, totalPages: number): number {
@@ -44,15 +44,21 @@ function ForumSkeleton() {
   );
 }
 
-async function ForumResults({ params }: { params: { page?: string; search?: string; tags?: string | string[] } }) {
+async function ForumResults({
+  params,
+}: {
+  params: { page?: string; search?: string; tags?: string | string[] };
+}) {
   const session = await auth();
   const currentUserId = session?.user?.id;
   const pageSize = 5;
-  const search = params.search || '';
-  const page = parseInt(params.page || '1', 10);
+  const search = params.search || "";
+  const page = parseInt(params.page || "1", 10);
   const tags: string[] = Array.isArray(params.tags)
     ? params.tags
-    : (params.tags ? params.tags.split(',') : []);
+    : params.tags
+      ? params.tags.split(",")
+      : [];
   const normalizedTags = [...tags].sort();
 
   const totalCount = await getForumCount({
@@ -70,8 +76,9 @@ async function ForumResults({ params }: { params: { page?: string; search?: stri
   });
 
   if (validatedPage !== page) {
-    const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
-    const tagsQuery = tags.length > 0 ? `&tags=${encodeURIComponent(tags.join(','))}` : '';
+    const searchQuery = search ? `&search=${encodeURIComponent(search)}` : "";
+    const tagsQuery =
+      tags.length > 0 ? `&tags=${encodeURIComponent(tags.join(","))}` : "";
     redirect(`/forum?page=${validatedPage}${searchQuery}${tagsQuery}`);
   }
 
@@ -84,8 +91,8 @@ async function ForumResults({ params }: { params: { page?: string; search?: stri
               <ForumCard
                 key={eachPost.id}
                 title={eachPost.title}
-                author={eachPost.author.name || 'Unknown'}
-                desc={eachPost.description || 'No description available'}
+                author={eachPost.author.name || "Unknown"}
+                desc={eachPost.description || "No description available"}
                 createdAt={eachPost.createdAt}
                 tags={eachPost.tags}
                 post={eachPost}
@@ -109,7 +116,7 @@ async function ForumResults({ params }: { params: { page?: string; search?: stri
             totalPages={totalPages}
             basePath="/forum"
             searchQuery={search}
-            tagsQuery={tags.join(',')}
+            tagsQuery={tags.join(",")}
           />
         </div>
       )}
@@ -120,24 +127,28 @@ async function ForumResults({ params }: { params: { page?: string; search?: stri
 export default async function ForumPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+  searchParams?: Promise<{
+    page?: string;
+    search?: string;
+    tags?: string | string[];
+  }>;
 }) {
   const params = (await searchParams) ?? {};
-  const search = params.search || '';
+  const search = params.search || "";
   return (
     <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-8">
       <h1 className="text-center mb-4">Forum</h1>
 
       <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-        <Dropdown pageType='forum' />
+        {/*<Dropdown pageType='forum' />*/}
         <SearchBar pageType="forum" initialQuery={search} />
         <NewForumButton />
       </div>
 
-      <div className='flex-col w-5/6 md:hidden space-y-4'>
+      <div className="flex-col w-5/6 md:hidden space-y-4">
         <SearchBar pageType="forum" initialQuery={search} />
-        <div className='flex justify-between'>
-          <Dropdown pageType='forum' />
+        <div className="flex justify-between">
+          {/*<Dropdown pageType='forum' />*/}
           <NewForumButton />
         </div>
       </div>
