@@ -112,12 +112,12 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
 
         if (e.key === 'ArrowDown') {
             e.preventDefault();
-            setHighlightedIndex(prev => 
+            setHighlightedIndex(prev =>
                 prev < filteredCourses.length - 1 ? prev + 1 : 0
             );
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            setHighlightedIndex(prev => 
+            setHighlightedIndex(prev =>
                 prev > 0 ? prev - 1 : filteredCourses.length - 1
             );
         } else if (e.key === 'Enter' && highlightedIndex >= 0) {
@@ -137,15 +137,14 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     };
 
     return (
-        <div className="w-full max-w-2xl mx-auto">
-            {/* Search Input */}
+        <div className="w-full max-w-2xl mx-auto text-left">
             <div className="relative">
-                <div className="relative flex items-center bg-white dark:bg-[#1e2330] border-2 border-[#82BEE9] dark:border-[#D5D5D5] w-full px-4 py-1 shadow-[3px_3px_0_0_rgba(130,190,233,0.5)] dark:shadow-[3px_3px_0_0_rgba(213,213,213,0.3)] rounded-lg">
-                    <Image src={SearchIcon} alt="search" className="dark:invert-[.835] w-5 h-5" />
+                <div className="relative flex items-center bg-white dark:bg-[#3D414E] border border-black dark:border-[#D5D5D5] w-full px-2 py-0.5 shadow-[2px_2px_0_0_rgba(0,0,0,1)] dark:shadow-[2px_2px_0_0_rgba(213,213,213,0.4)]">
+                    <Image src={SearchIcon} alt="search" className="dark:invert-[.835]" />
                     <input
                         ref={inputRef}
                         type="text"
-                        className="px-4 py-3 w-full focus:outline-none bg-transparent text-lg placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                        className="px-4 py-2 w-full focus:outline-none bg-transparent text-black dark:text-[#D5D5D5] placeholder:text-black/50 dark:placeholder:text-[#D5D5D5]/60"
                         placeholder="Search for a course by code or title..."
                         value={query}
                         onChange={handleInputChange}
@@ -155,42 +154,56 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                     {query && (
                         <button
                             onClick={clearSelection}
-                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors"
+                            className="inline-flex h-7 w-7 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
                             type="button"
+                            aria-label="Clear search"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            <svg
+                                viewBox="0 0 14 14"
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                            >
+                                <path d="M1 1L13 13M13 1L1 13" />
                             </svg>
                         </button>
                     )}
                 </div>
 
-                {/* Dropdown Results */}
                 {isOpen && filteredCourses.length > 0 && (
                     <div
                         ref={dropdownRef}
-                        className="absolute z-50 w-full mt-2 bg-white dark:bg-[#1a1f2e] border-2 border-black dark:border-[#D5D5D5] shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.3)] max-h-80 overflow-y-auto"
+                        className="absolute z-50 w-full mt-2 bg-white dark:bg-[#0C1222] border-2 border-black dark:border-[#D5D5D5] shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)] max-h-80 overflow-y-auto"
                     >
                         {filteredCourses.map((course, index) => (
                             <button
                                 key={course.code}
                                 onClick={() => handleSelectCourse(course)}
-                                className={`w-full px-4 py-3 text-left flex justify-between items-center hover:bg-[#5FC4E7]/30 dark:hover:bg-[#3BF4C7]/20 transition-colors border-b border-gray-200 dark:border-gray-700 last:border-b-0 ${
-                                    highlightedIndex === index ? 'bg-[#5FC4E7]/30 dark:bg-[#3BF4C7]/20' : ''
+                                className={`w-full px-4 py-3 text-left flex justify-between items-center gap-3 transition-colors border-b border-black/10 dark:border-[#D5D5D5]/15 last:border-b-0 hover:bg-[#5FC4E7]/25 dark:hover:bg-[#3BF4C7]/10 ${
+                                    highlightedIndex === index
+                                        ? 'bg-[#5FC4E7]/25 dark:bg-[#3BF4C7]/10'
+                                        : ''
                                 }`}
                             >
-                                <div>
-                                    <div className="font-semibold">{course.title}</div>
-                                    <div className="text-sm text-gray-600 dark:text-gray-400">{course.code}</div>
+                                <div className="min-w-0 flex-1">
+                                    <div className="font-semibold text-black dark:text-[#D5D5D5] truncate">
+                                        {course.title}
+                                    </div>
+                                    <div className="text-xs uppercase tracking-wide text-black/60 dark:text-[#D5D5D5]/60 mt-0.5">
+                                        {course.code}
+                                    </div>
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 flex gap-3">
+                                <div className="flex gap-1.5 shrink-0 text-[11px] font-semibold">
                                     {course.paperCount > 0 && (
-                                        <span className="bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">
+                                        <span className="border border-black/40 dark:border-[#5FC4E7]/50 px-1.5 py-0.5 text-black/70 dark:text-[#5FC4E7]">
                                             {course.paperCount} papers
                                         </span>
                                     )}
                                     {course.noteCount > 0 && (
-                                        <span className="bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">
+                                        <span className="border border-black/40 dark:border-[#3BF4C7]/50 px-1.5 py-0.5 text-black/70 dark:text-[#3BF4C7]">
                                             {course.noteCount} notes
                                         </span>
                                     )}
@@ -203,73 +216,92 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                 {isOpen && query.trim() && filteredCourses.length === 0 && (
                     <div
                         ref={dropdownRef}
-                        className="absolute z-50 w-full mt-2 bg-white dark:bg-[#1a1f2e] border-2 border-black dark:border-[#D5D5D5] shadow-[3px_3px_0_0_rgba(0,0,0,1)] px-4 py-6 text-center text-gray-500 dark:text-gray-400"
+                        className="absolute z-50 w-full mt-2 bg-white dark:bg-[#0C1222] border-2 border-black dark:border-[#D5D5D5] shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)] px-4 py-6 text-center text-sm text-black/60 dark:text-[#D5D5D5]/60"
                     >
                         No courses found for &quot;{query}&quot;
                     </div>
                 )}
             </div>
 
-            {/* Selected Course Preview */}
             {selectedCourse && (
                 <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="border border-[#82BEE9] dark:border-[#D5D5D5] rounded-lg p-5">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
-                            <div>
-                                <h3 className="text-lg font-bold">{selectedCourse.title}</h3>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">{selectedCourse.code}</p>
+                    <div className="border-2 border-black bg-white text-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)]">
+                        <div className="flex flex-col gap-3 border-b border-black/15 dark:border-[#D5D5D5]/15 p-5 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-black/55 dark:text-[#3BF4C7]/80">
+                                    {selectedCourse.code}
+                                </p>
+                                <h3 className="mt-1 text-lg font-bold leading-snug">
+                                    {selectedCourse.title}
+                                </h3>
                             </div>
                             <Link
                                 href={`/courses/${encodeURIComponent(selectedCourse.code)}`}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-[#E2E8F0] dark:bg-[#232530] border border-[#CBD5E1] dark:border-[#D5D5D5] rounded-lg text-sm font-medium hover:bg-[#CBD5E1] dark:hover:bg-[#2d323f] transition-colors"
+                                className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 border-2 border-black bg-[#3BF4C7] px-4 text-sm font-bold text-black transition duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:text-[#3BF4C7]"
                             >
-                                View Full Course Page
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                                View full course
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        fillRule="evenodd"
+                                        d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                                        clipRule="evenodd"
+                                    />
                                 </svg>
                             </Link>
                         </div>
 
-                        <div className="flex flex-wrap gap-1 p-2 bg-[#E2E8F0] dark:bg-[#232530] rounded-lg justify-center items-center text-sm">
-                            {(() => {
-                                const actions: Array<{ href: string; label: string }> = [];
+                        {(() => {
+                            const actions: Array<{ href: string; label: string }> = [];
 
-                                if (selectedCourse.paperCount > 0) {
-                                    actions.push({
-                                        href: `/past_papers?search=${encodeURIComponent(selectedCourse.code)}`,
-                                        label: `Past Papers (${selectedCourse.paperCount})`,
-                                    });
-                                }
+                            if (selectedCourse.paperCount > 0) {
+                                actions.push({
+                                    href: `/past_papers?search=${encodeURIComponent(selectedCourse.code)}`,
+                                    label: `Past Papers (${selectedCourse.paperCount})`,
+                                });
+                            }
 
-                                if (selectedCourse.noteCount > 0) {
-                                    actions.push({
-                                        href: `/notes?search=${encodeURIComponent(selectedCourse.code)}`,
-                                        label: `Notes (${selectedCourse.noteCount})`,
-                                    });
-                                }
+                            if (selectedCourse.noteCount > 0) {
+                                actions.push({
+                                    href: `/notes?search=${encodeURIComponent(selectedCourse.code)}`,
+                                    label: `Notes (${selectedCourse.noteCount})`,
+                                });
+                            }
 
-                                if (syllabusId) {
-                                    actions.push({
-                                        href: `/syllabus/${encodeURIComponent(syllabusId)}`,
-                                        label: 'Syllabus',
-                                    });
-                                }
+                            if (syllabusId) {
+                                actions.push({
+                                    href: `/syllabus/${encodeURIComponent(syllabusId)}`,
+                                    label: 'Syllabus',
+                                });
+                            }
 
-                                return actions.map((action, idx) => (
-                                    <React.Fragment key={action.href}>
+                            if (actions.length === 0) {
+                                return (
+                                    <p className="px-5 py-4 text-center text-sm text-black/55 dark:text-[#D5D5D5]/55">
+                                        No resources yet for this course.
+                                    </p>
+                                );
+                            }
+
+                            return (
+                                <div className="flex flex-wrap gap-2 p-3 sm:p-4">
+                                    {actions.map((action) => (
                                         <Link
+                                            key={action.href}
                                             href={action.href}
-                                            className="px-2 py-1 hover:bg-white/20 rounded"
+                                            className="inline-flex h-9 items-center justify-center border border-black/70 px-3 text-sm font-semibold text-black transition-colors hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/60 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7]/10 dark:hover:text-[#3BF4C7]"
                                         >
                                             {action.label}
                                         </Link>
-                                        {idx < actions.length - 1 ? (
-                                            <span className="text-gray-500 dark:text-gray-400">|</span>
-                                        ) : null}
-                                    </React.Fragment>
-                                ));
-                            })()}
-                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             )}

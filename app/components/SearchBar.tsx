@@ -79,7 +79,7 @@ export default function Search({ pageType, availableTags, initialQuery = '' }: S
                 <Image src={Seacrh} alt="search" className="dark:invert-[.835]" />
                 <input
                     type="text"
-                    className="px-4 py-2 w-full focus:outline-none bg-white dark:bg-[#3D414E]"
+                    className="px-4 py-2 w-full focus:outline-none bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] placeholder:text-black/50 dark:placeholder:text-[#D5D5D5]/60"
                     placeholder="Search"
                     value={query}
                     onChange={handleChange}

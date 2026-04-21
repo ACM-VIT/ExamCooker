@@ -60,37 +60,55 @@ export default async function CourseExamPage({
     });
 
     return (
-        <div className="min-h-screen text-black dark:text-gray-200 flex flex-col gap-6 p-2 sm:p-4 lg:p-8">
-            <header className="space-y-2 text-center">
-                <h1 className="text-3xl sm:text-4xl font-bold">{course.title}</h1>
-                <p className="text-sm text-black/70 dark:text-white/70">
-                    {course.code} · {examType.label}
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                    <Link
-                        href={`/courses/${course.code}`}
-                        className="text-xs underline text-black/70 dark:text-white/70"
-                    >
-                        Back to course
-                    </Link>
-                </div>
-            </header>
-
-            {papers.length ? (
-                <section className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-semibold">Past papers</h2>
-                        <span className="text-xs text-black/60 dark:text-white/60">
-                            {papers.length} results
+        <div className="min-h-screen text-black dark:text-[#D5D5D5] flex flex-col px-3 py-3 sm:p-4 lg:p-8">
+            <div className="w-full max-w-6xl mx-auto flex flex-col">
+                <header className="text-center mb-6 sm:mb-8">
+                    <h1 className="leading-tight">
+                        {examType.label}
+                        <span className="block text-base font-normal text-black/60 dark:text-[#D5D5D5]/60 mt-2">
+                            {course.title}
                         </span>
+                    </h1>
+                    <div className="mt-3">
+                        <Link
+                            href={`/courses/${course.code}`}
+                            className="text-sm text-black/70 underline underline-offset-2 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
+                        >
+                            ← Back to {course.code}
+                        </Link>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {papers.map((paper, index) => (
-                            <PastPaperCard key={paper.id} pastPaper={paper} index={index} />
-                        ))}
-                    </div>
-                </section>
-            ) : null}
+                </header>
+
+                {papers.length > 0 ? (
+                    <section>
+                        <div className="mb-4 flex items-end justify-between gap-3">
+                            <h2 className="text-xl sm:text-2xl font-bold text-black dark:text-[#D5D5D5]">
+                                Past papers
+                            </h2>
+                            <span className="text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                                {papers.length} {papers.length === 1 ? "result" : "results"}
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+                            {papers.map((paper, index) => (
+                                <div
+                                    key={paper.id}
+                                    className="flex justify-center"
+                                >
+                                    <PastPaperCard
+                                        pastPaper={paper}
+                                        index={index}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                ) : (
+                    <p className="text-center text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                        No {examType.label} papers yet for this course.
+                    </p>
+                )}
+            </div>
         </div>
     );
 }

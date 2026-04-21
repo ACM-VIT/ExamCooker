@@ -6,19 +6,19 @@ import Image from "@/app/components/common/AppImage";
 import profile from "@/public/assets/Profile.svg";
 import { SignOut } from "./sign-out";
 import ThemeToggleSwitch from "./common/ThemeToggle";
-import TodoListDropdown from "./TodoListModal";
 
 interface HeaderProps {
   toggleTheme: () => void;
   darkMode: boolean;
+  toggleNavbar?: () => void;
+  isNavOn?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = () => {
+const Header: React.FC<HeaderProps> = ({ toggleNavbar, isNavOn }) => {
   const { data: session } = useSession();
   const isAuthed = Boolean(session?.user);
   const [showOverlay, setShowOverlay] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null!);
 
   const handleClick = () => {
     setShowOverlay(!showOverlay);
@@ -41,15 +41,32 @@ const Header: React.FC<HeaderProps> = () => {
   }, []);
 
   return (
-    <header className="transition-colors bg-[#C2E6EC] dark:bg-[#0C1222] border-b border-black dark:border-b-[#3BF4C7] flex flex-row-reverse">
-      <div className="flex items-center text-right m-2 space-x-4">
-        <div className="sm:w-[70vw]">
-          {/* <TodoListDropdown buttonRef={buttonRef} /> */}
-        </div>
+    <header className="transition-colors bg-[#C2E6EC] dark:bg-[#0C1222] border-b border-black dark:border-b-[#3BF4C7] flex items-center justify-between px-3 py-2 min-h-[56px]">
+      <div className="flex items-center">
+        {toggleNavbar && !isNavOn && (
+          <button
+            type="button"
+            title="Open navigation"
+            aria-label="Open navigation"
+            onClick={toggleNavbar}
+            className="inline-flex h-10 w-10 items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-black/40 dark:focus-visible:ring-[#3BF4C7]/50"
+          >
+            <Image
+              src="/assets/HamburgerIcon.svg"
+              alt="Menu"
+              width={26}
+              height={26}
+              className="dark:invert-[.835] transition-transform transform-gpu can-hover:hover:scale-110"
+            />
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-4">
         <ThemeToggleSwitch />
         {isAuthed ? (
           <>
-            <div className="hidden sm:flex sm:flex-col mr-4">
+            <div className="hidden sm:flex sm:flex-col text-right">
               <p className="lg:text-base font-medium text-gray-900 dark:text-[#D5D5D5]">
                 {session?.user?.name}
               </p>
@@ -97,14 +114,12 @@ const Header: React.FC<HeaderProps> = () => {
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-3">
-            <a
-              href="/api/auth/init"
-              className="border border-black dark:border-[#D5D5D5] px-3 py-1 text-sm font-semibold bg-[#3BF4C7] text-black dark:bg-[#0C1222] dark:text-[#D5D5D5] hover:-translate-x-0.5 hover:-translate-y-0.5 transition"
-            >
-              Sign In
-            </a>
-          </div>
+          <a
+            href="/api/auth/init"
+            className="border border-black dark:border-[#D5D5D5] px-3 py-1 text-sm font-semibold bg-[#3BF4C7] text-black dark:bg-[#0C1222] dark:text-[#D5D5D5] hover:-translate-x-0.5 hover:-translate-y-0.5 transition"
+          >
+            Sign In
+          </a>
         )}
       </div>
     </header>

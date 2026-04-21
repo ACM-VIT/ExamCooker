@@ -97,107 +97,110 @@ export default async function CourseDetailPage({
             getCourseExamCounts(course.tagIds),
             getSyllabusByCourseCode(course.code),
         ]);
-    const title = buildCourseTitle(course);
+
+    const hasAnyResource = paperCount > 0 || noteCount > 0 || Boolean(syllabus);
+
     return (
-        <div className="min-h-screen text-black dark:text-gray-200 flex flex-col p-2 sm:p-4 lg:p-8">
-            <div className="w-full max-w-6xl mx-auto flex flex-col gap-10">
-                <header className="space-y-4 text-center">
-                    <div className="space-y-2">
-                        <h1 className="text-3xl sm:text-4xl font-bold">{course.title}</h1>
-                        <p className="text-sm text-black/70 dark:text-white/70 tracking-wide">
-                            {course.code}
-                        </p>
-                    </div>
-                    {/** Keep all header actions visually consistent */}
-                    {(() => {
-                        const pillClass =
-                            "inline-flex items-center gap-2 rounded-full border border-black/20 dark:border-white/20 bg-white/60 dark:bg-white/5 text-black dark:text-white text-xs font-semibold px-3 py-1 hover:border-black/40 dark:hover:border-white/40 hover:bg-white/90 dark:hover:bg-white/10 transition";
-                        const mutedPillClass =
-                            "inline-flex items-center gap-2 rounded-full border border-black/15 dark:border-white/15 bg-white/40 dark:bg-white/5 text-black/70 dark:text-white/70 text-xs font-semibold px-3 py-1";
-                        return (
+        <div className="min-h-screen text-black dark:text-[#D5D5D5] flex flex-col px-3 py-3 sm:p-4 lg:p-8">
+            <div className="w-full max-w-6xl mx-auto flex flex-col">
+                <header className="text-center mb-6 sm:mb-8">
+                    <h1 className="leading-tight">{course.title}</h1>
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                        <span>{course.code}</span>
+                        {syllabus && (
                             <>
-                    <div className="flex flex-wrap items-center justify-center gap-3">
-                        {syllabus ? (
-                            <Link
-                                href={`/syllabus/${syllabus.id}`}
-                                className={pillClass}
-                            >
-                                View syllabus
-                            </Link>
-                        ) : null}
-                        {paperCount > 0 ? (
-                            <span className={mutedPillClass}>
-                                {paperCount} past papers
-                            </span>
-                        ) : null}
-                        {noteCount > 0 ? (
-                            <span className={mutedPillClass}>
-                                {noteCount} notes
-                            </span>
-                        ) : null}
-                    </div>
-                    {examCounts.length ? (
-                        <div className="flex flex-wrap items-center justify-center gap-2">
-                            {examCounts.map((exam) => (
+                                <span aria-hidden="true">·</span>
                                 <Link
-                                    key={exam.slug}
-                                    href={`/courses/${encodeURIComponent(course.code)}/${exam.slug}`}
-                                    className={pillClass}
+                                    href={`/syllabus/${syllabus.id}`}
+                                    className="underline underline-offset-2 hover:text-black dark:hover:text-[#3BF4C7]"
                                 >
-                                    <span>{exam.label}</span>
-                                    <span className="text-[10px] px-2 py-[1px] rounded-full border border-black/20 dark:border-white/20 bg-white/70 dark:bg-white/10">
-                                        {exam.count}
-                                    </span>
+                                    View syllabus
                                 </Link>
-                            ))}
-                        </div>
-                    ) : null}
                             </>
-                        );
-                    })()}
+                        )}
+                    </div>
                 </header>
 
-                <section className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-semibold">Past papers</h2>
-                        {paperCount > PREVIEW_PAGE_SIZE ? (
+                {examCounts.length > 0 && (
+                    <div className="mb-6 sm:mb-8 flex flex-wrap justify-center gap-2">
+                        {examCounts.map((exam) => (
                             <Link
-                                href={`/past_papers?search=${encodeURIComponent(course.code)}`}
-                                className="text-sm underline"
+                                key={exam.slug}
+                                href={`/courses/${encodeURIComponent(course.code)}/${exam.slug}`}
+                                className="inline-flex h-9 items-center gap-2 border border-black/70 px-3 text-sm font-semibold text-black transition-colors hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/60 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7]/10 dark:hover:text-[#3BF4C7]"
                             >
-                                View all
+                                {exam.label}
+                                <span className="text-black/55 dark:text-[#D5D5D5]/55 font-normal">
+                                    {exam.count}
+                                </span>
                             </Link>
-                        ) : null}
-                    </div>
-                {pastPapers.length ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {pastPapers.map((paper, index) => (
-                            <PastPaperCard key={paper.id} pastPaper={paper} index={index} />
                         ))}
                     </div>
-                ) : null}
-            </section>
+                )}
 
-            {notes.length ? (
-                <section className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-semibold">Notes</h2>
-                        {noteCount > PREVIEW_PAGE_SIZE ? (
-                            <Link
-                                href={`/notes?search=${encodeURIComponent(course.code)}`}
-                                className="text-sm underline"
-                            >
-                                View all
-                            </Link>
-                        ) : null}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {notes.map((note, index) => (
-                            <NotesCard key={note.id} note={note} index={index} />
-                        ))}
-                    </div>
-                </section>
-            ) : null}
+                {pastPapers.length > 0 && (
+                    <section className="mb-10 sm:mb-12">
+                        <div className="mb-4 flex items-end justify-between gap-3">
+                            <h2 className="text-xl sm:text-2xl font-bold text-black dark:text-[#D5D5D5]">
+                                Past papers
+                            </h2>
+                            {paperCount > PREVIEW_PAGE_SIZE && (
+                                <Link
+                                    href={`/past_papers?search=${encodeURIComponent(course.code)}`}
+                                    className="text-sm text-black/70 underline underline-offset-2 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
+                                >
+                                    View all {paperCount} →
+                                </Link>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+                            {pastPapers.map((paper, index) => (
+                                <div
+                                    key={paper.id}
+                                    className="flex justify-center"
+                                >
+                                    <PastPaperCard
+                                        pastPaper={paper}
+                                        index={index}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {notes.length > 0 && (
+                    <section>
+                        <div className="mb-4 flex items-end justify-between gap-3">
+                            <h2 className="text-xl sm:text-2xl font-bold text-black dark:text-[#D5D5D5]">
+                                Notes
+                            </h2>
+                            {noteCount > PREVIEW_PAGE_SIZE && (
+                                <Link
+                                    href={`/notes?search=${encodeURIComponent(course.code)}`}
+                                    className="text-sm text-black/70 underline underline-offset-2 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
+                                >
+                                    View all {noteCount} →
+                                </Link>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+                            {notes.map((note, index) => (
+                                <NotesCard
+                                    key={note.id}
+                                    note={note}
+                                    index={index}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {!hasAnyResource && (
+                    <p className="text-center text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                        No resources yet for this course.
+                    </p>
+                )}
             </div>
         </div>
     );

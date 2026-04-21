@@ -1,125 +1,317 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import FilterComp from './filter/FilterComp';
-import { faCaretDown, faCaretUp } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { faCaretDown, faCaretUp } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useRouter, useSearchParams } from "next/navigation";
+import FilterComp from "./filter/FilterComp";
+import {
+  PAST_PAPER_EXAM_TAGS,
+  PAST_PAPER_SLOT_TAGS,
+} from "@/lib/pastPaperTags";
 
 interface Option {
-    id: string;
-    label: string;
+  id: string;
+  label: string;
 }
 
 interface CheckboxOptions {
-    courses?: Option[];
-    slots?: Option[];
-    years?: Option[];
+  slots?: Option[];
+  examTypes?: Option[];
 }
 
 interface DropdownProps {
-    pageType: 'notes' | 'past_papers' | 'resources' | 'forum' | 'favourites';
+  pageType: "notes" | "past_papers" | "resources" | "forum" | "favourites";
+}
+
+const FILTER_SHEET_TITLES: Record<DropdownProps["pageType"], string> = {
+  notes: "Filter notes",
+  past_papers: "Filter past papers",
+  resources: "Filter resources",
+  forum: "Filter forum",
+  favourites: "Filter favourites",
+};
+
+const SLOT_OPTIONS: Option[] = PAST_PAPER_SLOT_TAGS.map((tag) => ({
+  id: tag,
+  label: tag,
+}));
+
+const EXAM_OPTIONS: Option[] = PAST_PAPER_EXAM_TAGS.map((tag) => ({
+  id: tag,
+  label: tag,
+}));
+
+const SHEET_ANIMATION_MS = 280;
+
+function FilterSections({
+  checkboxOptions,
+  handleSelectionChange,
+  selectedTags,
+}: {
+  checkboxOptions: CheckboxOptions;
+  handleSelectionChange: (
+    category: keyof CheckboxOptions,
+    selection: string[],
+  ) => void;
+  selectedTags: string[];
+}) {
+  return (
+    <>
+      {checkboxOptions.examTypes && (
+        <div className="w-full md:w-auto">
+          <FilterComp
+            title="Exam Types"
+            options={checkboxOptions.examTypes}
+            onSelectionChange={(selection) =>
+              handleSelectionChange("examTypes", selection)
+            }
+            selectedOptions={selectedTags.filter((tag) =>
+              checkboxOptions.examTypes!.some((option) => option.label === tag),
+            )}
+          />
+        </div>
+      )}
+      {checkboxOptions.slots && (
+        <div className="w-full md:w-auto">
+          <FilterComp
+            title="Slots"
+            options={checkboxOptions.slots}
+            onSelectionChange={(selection) =>
+              handleSelectionChange("slots", selection)
+            }
+            selectedOptions={selectedTags.filter((tag) =>
+              checkboxOptions.slots!.some((option) => option.label === tag),
+            )}
+            isSlotCategory={true}
+          />
+        </div>
+      )}
+    </>
+  );
 }
 
 const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const dropdownRef = useRef<HTMLDivElement>(null);
+  const [desktopOpen, setDesktopOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sheetMounted, setSheetMounted] = useState(false);
+  const [sheetShowing, setSheetShowing] = useState(false);
+  const [sheetOffset, setSheetOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const desktopRef = useRef<HTMLDivElement>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const mobileSheetTitle = FILTER_SHEET_TITLES[pageType];
 
-    useEffect(() => {
-        const tags = searchParams.getAll('tags');
-        if (tags.length > 0) {
-            setSelectedTags(tags);
-        } else {
-            setSelectedTags([]);
-        }
-    }, [searchParams]);
+  const checkboxOptions = useMemo<CheckboxOptions>(
+    () => ({
+      slots: SLOT_OPTIONS,
+      examTypes: EXAM_OPTIONS,
+    }),
+    [],
+  );
 
-    const toggleDropdown = () => {
-        setIsOpen(!isOpen);
+  useEffect(() => {
+    const tags = searchParams
+      .getAll("tags")
+      .flatMap((tag) => tag.split(","))
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+    setSelectedTags(tags.length > 0 ? Array.from(new Set(tags)) : []);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!desktopOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        desktopRef.current &&
+        !desktopRef.current.contains(event.target as Node)
+      ) {
+        setDesktopOpen(false);
+      }
     };
 
-    const handleClickOutside = useCallback((event: MouseEvent) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-            setIsOpen(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        } else {
-            document.removeEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isOpen, handleClickOutside]);
-
-    const checkboxOptions: CheckboxOptions = {
-        slots: [
-            { id: 'A1', label: 'A1' },
-            { id: 'A2', label: 'A2' },
-            { id: 'B1', label: 'B1' },
-            { id: 'B2', label: 'B2' },
-            { id: 'C1', label: 'C1' },
-            { id: 'C2', label: 'C2' },
-            { id: 'D1', label: 'D1' },
-            { id: 'D2', label: 'D2' },
-            { id: 'E1', label: 'E1' },
-            { id: 'E2', label: 'E2' },
-            { id: 'F1', label: 'F1' },
-            { id: 'F2', label: 'F2' },
-            { id: 'G1', label: 'G1' },
-            { id: 'G2', label: 'G2' },
-
-        ], 
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
     };
+  }, [desktopOpen]);
 
-    const handleSelectionChange = useCallback((category: keyof CheckboxOptions, selection: string[]) => {
-        const newTags = Array.from(new Set([
-            ...selectedTags.filter(tag => !checkboxOptions[category]?.some(option => option.label === tag)),
-            ...selection
-        ]));
-        setSelectedTags(newTags);
-        updateURL(newTags);
-    }, [selectedTags, checkboxOptions]);
+  useEffect(() => {
+    if (mobileOpen) {
+      setSheetMounted(true);
+      setSheetOffset(0);
+      const raf = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setSheetShowing(true));
+      });
+      document.body.style.overflow = "hidden";
+      return () => {
+        cancelAnimationFrame(raf);
+        document.body.style.overflow = "";
+      };
+    }
 
-    const updateURL = useCallback((tags: string[]) => {
-        const params = new URLSearchParams(searchParams);
-        params.delete('tags');
-        tags.forEach(tag => params.append('tags', tag));
-        const newURL = `/${pageType}?${params.toString()}`;
-        router.push(newURL);
-    }, [searchParams, router, pageType]);
+    setSheetShowing(false);
+    document.body.style.overflow = "";
+    const timer = window.setTimeout(() => {
+      setSheetMounted(false);
+      setSheetOffset(0);
+      touchStartYRef.current = null;
+    }, SHEET_ANIMATION_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [mobileOpen]);
 
-    return (
-        <div className="relative inline-block text-left" ref={dropdownRef}>
-            <button
-                onClick={toggleDropdown}
-                className="inline-flex items-center justify-center w-full border-black dark:border-[#D5D5D5] border-2 text-lg font-bold px-4 py-2 bg-[#5FC4E7] dark:bg-[#7D7467]/20"
-            >
-                Filter
-                {isOpen ? <FontAwesomeIcon icon={faCaretUp} className="ml-2" /> : <FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
-            </button>
-            <div className={`hide-scrollbar flex flex-col sm:flex-row sm:space-x-4 justify-center items-start absolute left-0 mt-2 w-full w-[80vw] sm:w-auto sm:max-w-[1200px] border-2 border-black dark:border-white bg-[#4AD0FF] dark:bg-[#232530] z-50 overflow-auto ${isOpen ? '' : 'hidden'}`}>
-            {checkboxOptions.slots && (
-                <div className="w-full p-4 sm:p-2 flex flex-wrap justify-center font-bold">
-                        <FilterComp
-                            title="Slots"
-                            options={checkboxOptions.slots}
-                            onSelectionChange={(selection) => handleSelectionChange('slots', selection)}
-                            selectedOptions={selectedTags.filter(tag => checkboxOptions.slots!.some(option => option.label === tag))}
-                            isSlotCategory={true}
-                        />
-                    </div>
-                )}
+  const updateURL = useCallback(
+    (tags: string[]) => {
+      const params = new URLSearchParams(searchParams);
+      params.delete("tags");
+      tags.forEach((tag) => params.append("tags", tag));
+      router.push(`/${pageType}?${params.toString()}`);
+    },
+    [pageType, router, searchParams],
+  );
+
+  const handleSelectionChange = useCallback(
+    (category: keyof CheckboxOptions, selection: string[]) => {
+      const nextTags = Array.from(
+        new Set([
+          ...selectedTags.filter(
+            (tag) =>
+              !checkboxOptions[category]?.some(
+                (option) => option.label === tag,
+              ),
+          ),
+          ...selection,
+        ]),
+      );
+
+      setSelectedTags(nextTags);
+      updateURL(nextTags);
+    },
+    [checkboxOptions, selectedTags, updateURL],
+  );
+
+  const handleSheetTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartYRef.current = event.touches[0]?.clientY ?? null;
+    setDragging(true);
+  };
+
+  const handleSheetTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartYRef.current === null) return;
+
+    const currentY = event.touches[0]?.clientY ?? touchStartYRef.current;
+    setSheetOffset(Math.max(0, currentY - touchStartYRef.current));
+  };
+
+  const handleSheetTouchEnd = () => {
+    setDragging(false);
+    if (sheetOffset > 80) {
+      setMobileOpen(false);
+    } else {
+      setSheetOffset(0);
+    }
+    touchStartYRef.current = null;
+  };
+
+  const sheetTransform = sheetShowing
+    ? `translateY(${sheetOffset}px)`
+    : "translateY(100%)";
+
+  return (
+    <>
+      <div
+        className="relative hidden w-full min-w-0 text-left md:block md:w-auto md:min-w-fit"
+        ref={desktopRef}
+      >
+        <button
+          onClick={() => setDesktopOpen((open) => !open)}
+          className="inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-3 py-2 text-base font-semibold text-black dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] md:h-auto md:w-auto md:px-4 md:text-lg md:font-bold"
+        >
+          Filter
+          <FontAwesomeIcon
+            icon={desktopOpen ? faCaretUp : faCaretDown}
+            className="ml-2"
+          />
+        </button>
+        {desktopOpen && (
+          <div className="absolute left-1/2 top-full z-50 mt-2 w-[min(28rem,90vw)] -translate-x-1/2 border-2 border-black bg-[#5FC4E7] shadow-xl dark:border-[#D5D5D5] dark:bg-[#0C1222]">
+            <div className="flex flex-col items-stretch gap-1 p-2 md:flex-row md:items-start md:justify-center md:gap-4">
+              <FilterSections
+                checkboxOptions={checkboxOptions}
+                handleSelectionChange={handleSelectionChange}
+                selectedTags={selectedTags}
+              />
             </div>
+          </div>
+        )}
+      </div>
+
+      <div className="w-full md:hidden">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="inline-flex h-12 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-4 text-lg font-bold leading-none text-black dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5]"
+        >
+          Filter
+          <FontAwesomeIcon icon={faCaretDown} className="ml-2" />
+        </button>
+      </div>
+
+      {sheetMounted && (
+        <div className="fixed inset-0 z-[60] md:hidden">
+          <button
+            aria-label="Close filters"
+            className={`absolute inset-0 bg-black/60 transition-opacity duration-[280ms] ease-out ${
+              sheetShowing ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={() => setMobileOpen(false)}
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 max-h-[78vh] overflow-y-auto overscroll-contain rounded-t-3xl bg-[#5FC4E7] shadow-[0_-12px_30px_-12px_rgba(0,0,0,0.35)] dark:bg-[#0C1222] no-scrollbar"
+            style={{
+              transform: sheetTransform,
+              transition: dragging
+                ? "none"
+                : `transform ${SHEET_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+              paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
+            }}
+          >
+            <div
+              className="flex justify-center px-5 pb-2 pt-3 touch-none"
+              onTouchEnd={handleSheetTouchEnd}
+              onTouchMove={handleSheetTouchMove}
+              onTouchStart={handleSheetTouchStart}
+            >
+              <div className="h-1.5 w-12 rounded-full bg-black/30 dark:bg-[#D5D5D5]/30" />
+            </div>
+            <div className="px-5 pb-2 pt-1">
+              <h2 className="text-left text-xl font-bold text-black dark:text-[#D5D5D5]">
+                {mobileSheetTitle}
+              </h2>
+            </div>
+            <div className="px-3 pb-4 pt-1">
+              <FilterSections
+                checkboxOptions={checkboxOptions}
+                handleSelectionChange={handleSelectionChange}
+                selectedTags={selectedTags}
+              />
+            </div>
+          </div>
         </div>
-    );
+      )}
+    </>
+  );
 };
 
 export default Dropdown;

@@ -1,5 +1,4 @@
 import React, { Suspense } from 'react';
-import Link from "next/link";
 import { redirect } from 'next/navigation';
 import type { Metadata } from "next";
 import Pagination from "../../components/Pagination";
@@ -9,7 +8,6 @@ import Dropdown from "../../components/FilterComponent";
 import UploadButtonNotes from "../../components/UploadButtonNotes";
 import { getNotesCount, getNotesPage } from "@/lib/data/notes";
 import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
-import { extractCourseFromTag } from "@/lib/courseTags";
 
 function validatePage(page: number, totalPages: number): number {
     if (isNaN(page) || page < 1) {
@@ -72,32 +70,6 @@ async function NotesResults({ params }: { params: { page?: string; search?: stri
 
     return (
         <>
-            {tags.length > 0 && (
-                <div className="flex justify-center mb-4">
-                    <div className="flex flex-wrap gap-2">
-                        {tags.map((tag, index) => {
-                            const course = extractCourseFromTag(tag);
-                            if (course) {
-                                return (
-                                    <Link
-                                        key={`${tag}-${index}`}
-                                        href={`/courses/${encodeURIComponent(course.code)}`}
-                                        className="bg-blue-100 text-blue-800 px-2 py-1 rounded"
-                                    >
-                                        {tag}
-                                    </Link>
-                                );
-                            }
-                            return (
-                                <span key={`${tag}-${index}`} className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                    {tag}
-                                </span>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
             <div className='flex justify-center'>
                 <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 p-2 sm:p-4 lg:p-6 place-content-center">
                     {paginatedNotes.length > 0 ? (
@@ -149,11 +121,15 @@ export default async function NotesPage({
                 <UploadButtonNotes />
             </div>
 
-            <div className='flex-col w-5/6 md:hidden space-y-4'>
+            <div className='w-5/6 space-y-4 md:hidden'>
                 <SearchBar pageType="notes" initialQuery={search} />
-                <div className='flex justify-between'>
-                    <Dropdown pageType='notes' />
-                    <UploadButtonNotes />
+                <div className='grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-3'>
+                    <div className='min-w-0'>
+                        <Dropdown pageType='notes' />
+                    </div>
+                    <div className='shrink-0 self-stretch'>
+                        <UploadButtonNotes />
+                    </div>
                 </div>
             </div>
 
