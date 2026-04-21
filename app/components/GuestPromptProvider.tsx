@@ -19,6 +19,8 @@ type PromptState = {
 
 const GuestPromptContext = createContext<GuestPromptContextType | undefined>(undefined);
 
+const PROMPT_ANIMATION_MS = 180;
+
 export function useGuestPrompt() {
     const context = useContext(GuestPromptContext);
     if (!context) {
@@ -31,6 +33,8 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
     const { data: session, status } = useSession();
     const isAuthed = Boolean(session?.user);
     const [prompt, setPrompt] = useState<PromptState>({ isOpen: false });
+    const [mounted, setMounted] = useState(false);
+    const [visible, setVisible] = useState(false);
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
@@ -53,14 +57,34 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
 
     useEffect(() => {
         if (prompt.isOpen) {
+            setMounted(true);
             document.body.style.overflow = "hidden";
-        } else {
-            document.body.style.overflow = "";
+            const raf = requestAnimationFrame(() => {
+                requestAnimationFrame(() => setVisible(true));
+            });
+            return () => {
+                cancelAnimationFrame(raf);
+                document.body.style.overflow = "";
+            };
         }
+        setVisible(false);
+        document.body.style.overflow = "";
+        const timer = window.setTimeout(() => {
+            setMounted(false);
+        }, PROMPT_ANIMATION_MS);
         return () => {
-            document.body.style.overflow = "";
+            window.clearTimeout(timer);
         };
     }, [prompt.isOpen]);
+
+    useEffect(() => {
+        if (!prompt.isOpen) return;
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key === "Escape") closePrompt();
+        };
+        document.addEventListener("keydown", handleKey);
+        return () => document.removeEventListener("keydown", handleKey);
+    }, [prompt.isOpen, closePrompt]);
 
     const redirectTarget = useMemo(() => {
         if (pathname === "/") return "/home";
@@ -74,59 +98,60 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
     return (
         <GuestPromptContext.Provider value={{ isAuthed, status, requireAuth, openPrompt, closePrompt }}>
             {children}
-            {prompt.isOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center">
+            {mounted && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
                     <button
                         type="button"
                         onClick={closePrompt}
-                        className="absolute inset-0 bg-black/40"
-                        aria-label="Close sign-in prompt"
+                        className={`absolute inset-0 bg-black/50 transition-opacity ease-out ${
+                            visible ? "opacity-100" : "opacity-0"
+                        }`}
+                        style={{ transitionDuration: `${PROMPT_ANIMATION_MS}ms` }}
+                        aria-label="Dismiss"
                     />
                     <div
                         role="dialog"
                         aria-modal="true"
-                        className="relative w-[94%] max-w-lg text-black dark:text-[#D5D5D5]"
+                        aria-labelledby="guest-prompt-title"
+                        className={`relative w-full max-w-sm border-2 border-black bg-white text-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all ease-out dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)] ${
+                            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                        }`}
+                        style={{ transitionDuration: `${PROMPT_ANIMATION_MS}ms` }}
                     >
-                        <div className="relative rounded-xl border border-black/30 dark:border-[#D5D5D5]/30 bg-[#C2E6EC] dark:bg-[#0C1222] shadow-lg overflow-hidden">
-                            <div className="px-6 py-5 border-b border-black/10 dark:border-[#D5D5D5]/10">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <h3 className="text-2xl md:text-3xl font-extrabold mt-2">
-                                            Sign in {actionLabel}
-                                        </h3>
-                                        <p className="text-sm mt-2 text-black/70 dark:text-[#D5D5D5]/80">
-                                            You can browse everything. To save, post, or vote you
-                                            need a quick sign-in.
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={closePrompt}
-                                        className="border border-black/20 dark:border-[#D5D5D5]/30 text-xs font-semibold px-2 py-1 hover:bg-white/30 dark:hover:bg-white/5 transition"
-                                    >
-                                        Close
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="px-6 py-5 space-y-4">
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    <a
-                                        href={signInHref}
-                                        className="inline-flex w-full justify-center"
-                                    >
-                                        <span className="w-full text-center dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold transition duration-150">
-                                            Sign in with Google
-                                        </span>
-                                    </a>
-                                    <button
-                                        type="button"
-                                        onClick={closePrompt}
-                                        className="w-full border border-black/30 dark:border-[#D5D5D5]/30 px-4 py-2 text-sm font-semibold hover:bg-white/30 dark:hover:bg-white/5 transition"
-                                    >
-                                        Continue browsing
-                                    </button>
-                                </div>
-                            </div>
+                        <button
+                            type="button"
+                            onClick={closePrompt}
+                            aria-label="Close"
+                            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center text-black/50 transition-colors hover:text-black dark:text-[#D5D5D5]/60 dark:hover:text-[#3BF4C7]"
+                        >
+                            <svg
+                                viewBox="0 0 14 14"
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                            >
+                                <path d="M1 1L13 13M13 1L1 13" />
+                            </svg>
+                        </button>
+                        <div className="px-6 pb-6 pt-8">
+                            <h3
+                                id="guest-prompt-title"
+                                className="pr-8 text-xl font-bold leading-tight"
+                            >
+                                Sign in {actionLabel}
+                            </h3>
+                            <p className="mt-2 text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                                A quick sign-in is all it takes.
+                            </p>
+                            <a
+                                href={signInHref}
+                                className="mt-5 inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-base font-bold text-black transition duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:text-[#3BF4C7]"
+                            >
+                                Sign in with Google
+                            </a>
                         </div>
                     </div>
                 </div>
