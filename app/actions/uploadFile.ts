@@ -7,138 +7,15 @@ import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/pastPaperTitle";
-import {
-    canonicalizePastPaperExamTag,
-    getPastPaperExamTagAliases,
-    getPastPaperExamTagFromTitle,
-} from "@/lib/pastPaperTags";
-import type { PastPaperExamTag } from "@/lib/pastPaperTags";
 
 const prisma = new PrismaClient();
 
-function mergeAliases(existingAliases: string[], canonicalAliases: readonly string[]) {
-    const seen = new Set<string>();
-    const merged: string[] = [];
-
-    for (const alias of [...existingAliases, ...canonicalAliases]) {
-        const value = String(alias || "").trim();
-        const key = value.toLowerCase();
-        if (!value || seen.has(key)) continue;
-        seen.add(key);
-        merged.push(value);
-    }
-
-    return merged;
-}
-
-async function findOrCreateTagWithClient(
-    client: PrismaClient,
-    name: string,
-    aliases: readonly string[] = [],
-) {
-    const trimmedName = name.trim();
-    let tag = await client.tag.findUnique({
-        where: {name: trimmedName},
-        select: {id: true, name: true, aliases: true},
-    });
-
-    if (!tag) {
-        try {
-            return await client.tag.create({
-                data: {name: trimmedName, aliases: [...aliases]},
-                select: {id: true, name: true, aliases: true},
-            });
-        } catch (error) {
-            tag = await client.tag.findUnique({
-                where: {name: trimmedName},
-                select: {id: true, name: true, aliases: true},
-            });
-            if (!tag) throw error;
-        }
-    }
-
-    if (aliases.length > 0) {
-        const mergedAliases = mergeAliases(tag.aliases, aliases);
-        if (mergedAliases.length !== tag.aliases.length) {
-            tag = await client.tag.update({
-                where: {id: tag.id},
-                data: {aliases: mergedAliases},
-                select: {id: true, name: true, aliases: true},
-            });
-        }
-    }
-
-    return tag;
-}
-
 async function findOrCreateTag(name: string) {
-    return findOrCreateTagWithClient(prisma, name);
-}
-
-async function ensureExamTag(client: PrismaClient, tag: PastPaperExamTag) {
-    return findOrCreateTagWithClient(
-        client,
-        tag,
-        getPastPaperExamTagAliases(tag),
-    );
-}
-
-function uniqueTags<T extends {id: string}>(tags: T[]) {
-    const seen = new Set<string>();
-    return tags.filter((tag) => {
-        if (seen.has(tag.id)) return false;
-        seen.add(tag.id);
-        return true;
-    });
-}
-
-async function buildPastPaperTagsForTitle(
-    title: string,
-    baseTags: Awaited<ReturnType<typeof findOrCreateTag>>[],
-) {
-    const examTag = getPastPaperExamTagFromTitle(title);
-    if (!examTag) return uniqueTags(baseTags);
-
-    const canonicalExamTag = await ensureExamTag(prisma, examTag);
-    return uniqueTags([
-        ...baseTags.filter((tag) => !canonicalizePastPaperExamTag(tag.name)),
-        canonicalExamTag,
-    ]);
-}
-
-async function syncPastPaperExamTagFromTitle(
-    client: PrismaClient,
-    paperId: string,
-    title: string,
-) {
-    const examTag = getPastPaperExamTagFromTitle(title);
-    if (!examTag) return;
-
-    const [canonicalExamTag, paper] = await Promise.all([
-        ensureExamTag(client, examTag),
-        client.pastPaper.findUnique({
-            where: {id: paperId},
-            select: {
-                tags: {select: {id: true, name: true}},
-            },
-        }),
-    ]);
-
-    if (!paper) return;
-
-    const nextTagIds = uniqueTags([
-        ...paper.tags.filter((tag) => !canonicalizePastPaperExamTag(tag.name)),
-        canonicalExamTag,
-    ]).map((tag) => tag.id);
-
-    await client.pastPaper.update({
-        where: {id: paperId},
-        data: {
-            tags: {
-                set: nextTagIds.map((id) => ({id})),
-            },
-        },
-    });
+    let tag = await prisma.tag.findUnique({where: {name}});
+    if (!tag) {
+        tag = await prisma.tag.create({data: {name}});
+    }
+    return tag;
 }
 
 
@@ -269,14 +146,10 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
                       },
                   });
               })
-            : results.map(async (result) => {
+            : results.map((result) => {
                   const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
                   const thumbNailUrl =
                       normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
-                  const paperTags = await buildPastPaperTagsForTitle(
-                      result.filename,
-                      allTags,
-                  );
                   return prisma.pastPaper.create({
                       data: {
                           title: result.filename,
@@ -284,7 +157,7 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
                           thumbNailUrl,
                           authorId: user.id,
                           tags: {
-                              connect: paperTags.map((tag) => ({ id: tag.id })),
+                              connect: allTags.map((tag) => ({ id: tag.id })),
                           },
                       },
                       include: {
@@ -306,21 +179,14 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
                             fileUrl: paper.fileUrl,
                             fallbackTitle: paper.title,
                         });
-                        const nextTitle = aiTitle || paper.title;
                         if (aiTitle && aiTitle !== paper.title) {
                             await prismaBg.pastPaper.update({
                                 where: { id: paper.id },
                                 data: { title: aiTitle },
                             });
                         }
-                        await syncPastPaperExamTagFromTitle(
-                            prismaBg,
-                            paper.id,
-                            nextTitle,
-                        );
                     })
                 );
-                revalidateTag("past_papers", "minutes");
             } finally {
                 await prismaBg.$disconnect();
             }

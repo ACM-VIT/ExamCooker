@@ -1,10 +1,30 @@
 const { PrismaClient } = require("../src/generated/prisma");
-const { EXAM_TAGS, mergeAliases } = require("./lib/past-paper-exam-tags");
 
 const prisma = new PrismaClient();
 
+const EXAM_TAGS = {
+  "CAT-1": ["cat1", "cat 1", "cat-1"],
+  "CAT-2": ["cat2", "cat 2", "cat-2"],
+  FAT: ["fat"],
+};
+
+function mergeAliases(existingAliases, canonicalAliases) {
+  const seen = new Set();
+  const merged = [];
+
+  for (const alias of [...(existingAliases || []), ...(canonicalAliases || [])]) {
+    const value = String(alias || "").trim();
+    const key = value.toLowerCase();
+    if (!value || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(value);
+  }
+
+  return merged;
+}
+
 async function main() {
-  for (const { label: name, aliases } of EXAM_TAGS) {
+  for (const [name, aliases] of Object.entries(EXAM_TAGS)) {
     const existing = await prisma.tag.findUnique({
       where: { name },
       select: { id: true, aliases: true },

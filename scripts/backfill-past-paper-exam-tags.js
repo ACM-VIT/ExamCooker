@@ -1,16 +1,23 @@
 const fs = require("fs");
 const path = require("path");
 const { PrismaClient } = require("../src/generated/prisma");
-const {
-  EXAM_TAGS,
-  canonicalizeExamTag,
-  createExamTypeCounter,
-  detectExamTagFromTitle,
-  mergeAliases,
-} = require("./lib/past-paper-exam-tags");
 
 const prisma = new PrismaClient();
 const REPORT_DIR = path.resolve(__dirname, "reports");
+
+const TAGS_BY_LABEL = {
+  "CAT-1": { slug: "cat-1", aliases: ["cat1", "cat 1", "cat-1"] },
+  "CAT-2": { slug: "cat-2", aliases: ["cat2", "cat 2", "cat-2"] },
+  FAT: { slug: "fat", aliases: ["fat"] },
+};
+
+function detectExamTag(title) {
+  const normalized = String(title || "").toLowerCase();
+  if (/\bcat[-\s]?1\b/i.test(normalized)) return "CAT-1";
+  if (/\bcat[-\s]?2\b/i.test(normalized)) return "CAT-2";
+  if (/\bfat(?:\s*2)?\b/i.test(normalized)) return "FAT";
+  return null;
+}
 
 function timestamp() {
   return new Date().toISOString().replace(/[:.]/g, "-");
@@ -23,6 +30,25 @@ function formatTagList(tags) {
 
 function ensureReportDir() {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
+}
+
+function mergeAliases(existingAliases, canonicalAliases) {
+  const seen = new Set();
+  const merged = [];
+
+  for (const alias of [...(existingAliases || []), ...(canonicalAliases || [])]) {
+    const value = String(alias || "").trim();
+    const key = value.toLowerCase();
+    if (!value || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(value);
+  }
+
+  return merged;
+}
+
+function createExamTypeCounter() {
+  return Object.fromEntries(Object.keys(TAGS_BY_LABEL).map((label) => [label, 0]));
 }
 
 function writeReport({ dryRun, rows, summary }) {
@@ -63,8 +89,6 @@ function writeReport({ dryRun, rows, summary }) {
     `- Already correct / skipped: ${summary.skipped}`,
     `- Unmatched: ${summary.unmatched}`,
     `- Missing canonical tag rows: ${summary.missingTargetTagCount}`,
-    `- Canonical tags ${dryRun ? "to create" : "created"}: ${summary.examTagsToCreate.join(", ") || "(none)"}`,
-    `- Canonical tags ${dryRun ? "to update aliases" : "updated aliases"}: ${summary.examTagsToUpdateAliases.join(", ") || "(none)"}`,
     `- Newly tagged as CAT-1: ${summary.newlyTaggedByExamType["CAT-1"]}`,
     `- Newly tagged as CAT-2: ${summary.newlyTaggedByExamType["CAT-2"]}`,
     `- Newly tagged as FAT: ${summary.newlyTaggedByExamType.FAT}`,
@@ -124,8 +148,8 @@ Title: ${row.title}`,
   return { markdownPath, jsonPath };
 }
 
-async function getExamTagSetup({ dryRun }) {
-  const labels = EXAM_TAGS.map((tag) => tag.label);
+async function ensureExamTags() {
+  const labels = Object.keys(TAGS_BY_LABEL);
   const existingTags = await prisma.tag.findMany({
     where: {
       name: {
@@ -139,55 +163,59 @@ async function getExamTagSetup({ dryRun }) {
     },
   });
   const existingByName = new Map(existingTags.map((tag) => [tag.name, tag]));
-  const tagIds = new Map();
-  const examTagsToCreate = [];
-  const examTagsToUpdateAliases = [];
 
-  for (const tagConfig of EXAM_TAGS) {
-    const { label, aliases } = tagConfig;
-    const existing = existingByName.get(label);
-
-    if (!existing) {
-      examTagsToCreate.push(label);
-      if (dryRun) {
-        tagIds.set(label, `dry-run:${label}`);
-        continue;
+  const tags = await Promise.all(
+    labels.map((name) => {
+      const existing = existingByName.get(name);
+      const canonicalAliases = TAGS_BY_LABEL[name].aliases;
+      if (existing) {
+        return prisma.tag.update({
+          where: { id: existing.id },
+          data: { aliases: mergeAliases(existing.aliases, canonicalAliases) },
+          select: { id: true, name: true },
+        });
       }
-
-      const tag = await prisma.tag.create({
-        data: { name: label, aliases },
+      return prisma.tag.create({
+        data: { name, aliases: canonicalAliases },
         select: { id: true, name: true },
       });
-      tagIds.set(tag.name, tag.id);
-      continue;
-    }
+    }),
+  );
+  return new Map(tags.map((tag) => [tag.name, tag.id]));
+}
 
-    const mergedAliases = mergeAliases(existing.aliases, aliases);
-    const needsAliasUpdate = mergedAliases.length !== existing.aliases.length;
-    if (needsAliasUpdate) {
-      examTagsToUpdateAliases.push(label);
-    }
+async function getExistingExamTags() {
+  const labels = Object.keys(TAGS_BY_LABEL);
+  const tags = await prisma.tag.findMany({
+    where: {
+      name: {
+        in: labels,
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+  return new Map(tags.map((tag) => [tag.name, tag.id]));
+}
 
-    if (!dryRun && needsAliasUpdate) {
-      await prisma.tag.update({
-        where: { id: existing.id },
-        data: { aliases: mergedAliases },
-      });
-    }
-
-    tagIds.set(label, existing.id);
+async function getExamTagsForRun({ dryRun }) {
+  if (!dryRun) {
+    return ensureExamTags();
   }
 
-  return { tagIds, examTagsToCreate, examTagsToUpdateAliases };
+  const existingTags = await getExistingExamTags();
+  const labels = Object.keys(TAGS_BY_LABEL);
+
+  return new Map(
+    labels.map((label) => [label, existingTags.get(label) ?? `dry-run:${label}`]),
+  );
 }
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
-  const {
-    tagIds: examTags,
-    examTagsToCreate,
-    examTagsToUpdateAliases,
-  } = await getExamTagSetup({ dryRun });
+  const examTags = await getExamTagsForRun({ dryRun });
   const papers = await prisma.pastPaper.findMany({
     select: {
       id: true,
@@ -205,7 +233,7 @@ async function main() {
   const rows = [];
 
   for (const paper of papers) {
-    const detectedLabel = detectExamTagFromTitle(paper.title);
+    const detectedLabel = detectExamTag(paper.title);
     if (!detectedLabel) {
       unmatched += 1;
       rows.push({
@@ -214,16 +242,14 @@ async function main() {
         title: paper.title,
         detectedLabel: null,
         currentExamTags: paper.tags
-          .filter((tag) => canonicalizeExamTag(tag.name))
+          .filter((tag) => TAGS_BY_LABEL[tag.name])
           .map((tag) => tag.name),
         allTags: formatTagList(paper.tags),
       });
       continue;
     }
 
-    const currentExamTags = paper.tags.filter((tag) =>
-      canonicalizeExamTag(tag.name),
-    );
+    const currentExamTags = paper.tags.filter((tag) => TAGS_BY_LABEL[tag.name]);
     const targetId = examTags.get(detectedLabel);
     if (!targetId) {
       skipped += 1;
@@ -243,7 +269,7 @@ async function main() {
 
     const nextTagIds = [
       ...paper.tags
-        .filter((tag) => !canonicalizeExamTag(tag.name))
+        .filter((tag) => !TAGS_BY_LABEL[tag.name])
         .map((tag) => tag.id),
       targetId,
     ];
@@ -305,8 +331,6 @@ async function main() {
     skipped,
     unmatched,
     missingTargetTagCount,
-    examTagsToCreate,
-    examTagsToUpdateAliases,
     newlyTaggedByExamType,
     totalMatchedByExamType,
     dryRun,
