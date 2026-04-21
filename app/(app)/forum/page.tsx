@@ -55,19 +55,21 @@ async function ForumResults({ params }: { params: { page?: string; search?: stri
     : (params.tags ? params.tags.split(',') : []);
   const normalizedTags = [...tags].sort();
 
-  const totalCount = await getForumCount({
-    search,
-    tags: normalizedTags,
-  });
+  const [totalCount, paginatedForumPosts] = await Promise.all([
+    getForumCount({
+      search,
+      tags: normalizedTags,
+    }),
+    getForumPage({
+      search,
+      tags: normalizedTags,
+      page: page > 0 ? page : 1,
+      pageSize,
+      currentUserId,
+    }),
+  ]);
   const totalPages = Math.ceil(totalCount / pageSize);
   const validatedPage = validatePage(page, totalPages);
-  const paginatedForumPosts = await getForumPage({
-    search,
-    tags: normalizedTags,
-    page: validatedPage,
-    pageSize,
-    currentUserId,
-  });
 
   if (validatedPage !== page) {
     const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';

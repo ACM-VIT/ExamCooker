@@ -38,14 +38,16 @@ async function SyllabusResults({ params }: { params: { page?: string; search?: s
     const search = params.search || '';
     const page = parseInt(params.page || '1', 10);
 
-    const totalCount = await getSyllabusCount({ search });
+    const [totalCount, paginatedSyllabi] = await Promise.all([
+        getSyllabusCount({ search }),
+        getSyllabusPage({
+            search,
+            page: page > 0 ? page : 1,
+            pageSize,
+        }),
+    ]);
     const totalPages = Math.ceil(totalCount / pageSize);
     const validatedPage = validatePage(page, totalPages);
-    const paginatedSyllabi = await getSyllabusPage({
-        search,
-        page: validatedPage,
-        pageSize,
-    });
 
     if (validatedPage !== page) {
         redirect(`/syllabus?page=${validatedPage}${search ? `&search=${encodeURIComponent(search)}` : ''}`);

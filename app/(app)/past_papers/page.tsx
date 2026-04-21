@@ -55,18 +55,20 @@ async function PastPaperResults({
       : [];
   const normalizedTags = [...tags].sort();
 
-  const totalCount = await getPastPapersCount({
-    search,
-    tags: normalizedTags,
-  });
+  const [totalCount, paginatedPastPapers] = await Promise.all([
+    getPastPapersCount({
+      search,
+      tags: normalizedTags,
+    }),
+    getPastPapersPage({
+      search,
+      tags: normalizedTags,
+      page: page > 0 ? page : 1,
+      pageSize,
+    }),
+  ]);
   const totalPages = Math.ceil(totalCount / pageSize);
   const validatedPage = validatePage(page, totalPages);
-  const paginatedPastPapers = await getPastPapersPage({
-    search,
-    tags: normalizedTags,
-    page: validatedPage,
-    pageSize,
-  });
 
   if (validatedPage !== page) {
     const searchQuery = search ? `&search=${encodeURIComponent(search)}` : "";
