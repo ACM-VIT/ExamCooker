@@ -17,9 +17,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build
+  deploy:
+    name: Build and Deploy
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://exam-cooker.acmvit.in
 
     steps:
       - name: Checkout
@@ -31,14 +34,19 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('package-lock.json') }}-${{ hashFiles('next.config.ts', 'tsconfig.json', 'tailwind.config.ts', 'postcss.config.mjs') }}
+          restore-keys: |
+            ${{ runner.os }}-next-${{ hashFiles('package-lock.json') }}-
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --prefer-offline
 
       - name: Build application
         run: npm run build
-
-      - name: Trim dev dependencies
-        run: npm prune --omit=dev
 
       - name: Package deployment payload
         run: |
@@ -46,54 +54,26 @@ jobs:
           rm -rf deploy
           mkdir -p deploy
 
-          rsync -a .next/ deploy/.next/
-          rsync -a node_modules/ deploy/node_modules/
-
-          mkdir -p deploy/src/generated
-          rsync -a src/generated/ deploy/src/generated/
-
-          cp package.json deploy/package.json
-          cp next.config.ts deploy/next.config.ts
+          rsync -a .next/standalone/ deploy/
+          mkdir -p deploy/.next
+          rsync -a .next/static/ deploy/.next/static/
           cp startup.sh deploy/startup.sh
-
-          if [ -f package-lock.json ]; then
-            cp package-lock.json deploy/package-lock.json
-          fi
 
           if [ -d public ]; then
             rsync -a public/ deploy/public/
+          fi
+
+          if [ -d src/generated ]; then
+            mkdir -p deploy/src/generated
+            rsync -a src/generated/ deploy/src/generated/
           fi
 
           if [ -d prisma ]; then
             rsync -a prisma/ deploy/prisma/
           fi
 
-          rm -rf deploy/.next/cache
-
           cd deploy
           zip -qry ../webapp-package.zip .
-
-      - name: Upload deployment artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: webapp-package
-          path: webapp-package.zip
-          if-no-files-found: error
-
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: production
-      url: https://exam-cooker.acmvit.in
-
-    steps:
-      - name: Download deployment artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: webapp-package
-          path: .
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3

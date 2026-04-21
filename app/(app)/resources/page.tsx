@@ -44,14 +44,16 @@ async function ResourcesResults({ params }: { params: { page?: string; search?: 
     const search = params.search || '';
     const page = parseInt(params.page || '1', 10);
 
-    const totalCount = await getResourcesCount({ search });
+    const [totalCount, paginatedSubjects] = await Promise.all([
+        getResourcesCount({ search }),
+        getResourcesPage({
+            search,
+            page: page > 0 ? page : 1,
+            pageSize,
+        }),
+    ]);
     const totalPages = Math.ceil(totalCount / pageSize);
     const validatedPage = validatePage(page, totalPages);
-    const paginatedSubjects = await getResourcesPage({
-        search,
-        page: validatedPage,
-        pageSize,
-    });
 
     if (validatedPage !== page) {
         redirect(`/resources?page=${validatedPage}${search ? `&search=${encodeURIComponent(search)}` : ''}`);

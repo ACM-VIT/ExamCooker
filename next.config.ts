@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
+    output: "standalone",
     cacheComponents: true,
     turbopack: {
         root: __dirname,
@@ -9,7 +9,6 @@ const nextConfig: NextConfig = {
             canvas: {
                 browser: "./lib/shims/canvas",
             },
-            tailwindcss: path.join(__dirname, "node_modules/tailwindcss"),
         },
     },
     serverExternalPackages: ["canvas"],
