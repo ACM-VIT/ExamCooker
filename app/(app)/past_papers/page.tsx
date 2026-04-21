@@ -155,7 +155,7 @@ async function PastPaperResults({
             yearSections.map((section, sectionIndex) => (
               <section
                 key={section.key}
-                className={sectionIndex > 0 ? "mt-8 pt-8" : ""}
+                className={`mx-auto w-full max-w-sm md:max-w-none ${sectionIndex > 0 ? "mt-8 pt-8" : ""}`}
               >
                 <h2 className="mb-5 break-words pr-2 text-xl font-semibold sm:text-2xl">
                   {section.title}
