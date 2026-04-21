@@ -2,10 +2,9 @@
 
 // todo delete this file
 
-import { PrismaClient, Prisma } from '@/src/generated/prisma'
+import prisma from '@/lib/prisma'
+import { Prisma } from '@/src/generated/prisma'
 import { revalidatePath } from 'next/cache'
-
-const prisma = new PrismaClient()
 
 type ViewableItemType = 'pastPaper' | 'note' | 'forumPost' | 'subject'
 

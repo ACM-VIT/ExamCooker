@@ -1,14 +1,12 @@
 "use server";
 
-import { PrismaClient } from "@/src/generated/prisma";
+import prisma from "@/lib/prisma";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/pastPaperTitle";
 import { parsePaperTitle } from "@/lib/paperTitle";
 import { normalizeCourseCode } from "@/lib/courseTags";
-
-const prisma = new PrismaClient();
 
 export async function fetchUnclearedItems() {
     const session = await auth();

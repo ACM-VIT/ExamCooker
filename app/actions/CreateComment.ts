@@ -1,10 +1,8 @@
 'use server'
 
-import { PrismaClient } from '@/src/generated/prisma'
+import prisma from '@/lib/prisma'
 import { auth } from '../auth'
 import { revalidatePath, revalidateTag } from 'next/cache'
-
-const prisma = new PrismaClient()
 
 type CreateCommentInput = {
   content: string

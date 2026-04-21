@@ -1,6 +1,6 @@
 "use server";
 
-import {PrismaClient} from "@/src/generated/prisma";
+import prisma from "@/lib/prisma";
 import {auth} from "../auth";
 import {redirect} from "next/navigation";
 import { after } from "next/server";
@@ -13,8 +13,7 @@ import {
     getPastPaperExamTagFromTitle,
 } from "@/lib/pastPaperTags";
 import type { PastPaperExamTag } from "@/lib/pastPaperTags";
-
-const prisma = new PrismaClient();
+import type { PrismaClient } from "@/src/generated/prisma";
 
 function mergeAliases(existingAliases: string[], canonicalAliases: readonly string[]) {
     const seen = new Set<string>();
@@ -304,7 +303,6 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
     if (variant === "Past Papers") {
         const createdPapers = data as { id: string; title: string; fileUrl: string }[];
         after(async () => {
-            const prismaBg = new PrismaClient();
             try {
                 await Promise.allSettled(
                     createdPapers.map(async (paper) => {
@@ -314,26 +312,24 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
                         });
                         const nextTitle = aiTitle || paper.title;
                         if (aiTitle && aiTitle !== paper.title) {
-                            await prismaBg.pastPaper.update({
+                            await prisma.pastPaper.update({
                                 where: { id: paper.id },
                                 data: { title: aiTitle },
                             });
                         }
                         await syncPastPaperExamTagFromTitle(
-                            prismaBg,
+                            prisma,
                             paper.id,
                             nextTitle,
                         );
                     })
                 );
                 revalidateTag("past_papers", "minutes");
-            } finally {
-                await prismaBg.$disconnect();
+            } catch (error) {
+                console.error("Failed to post-process uploaded past papers:", error);
             }
         });
     }
-
-    await prisma.$disconnect();
 
     if (variant === "Notes") {
         revalidatePath("/notes");

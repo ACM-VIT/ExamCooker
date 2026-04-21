@@ -1,12 +1,10 @@
-import { PrismaClient } from "@/src/generated/prisma";
+import prisma from "@/lib/prisma";
 import ForumPost from "./ForumPost";
 import { auth } from "@/app/auth";
 import {notFound} from "next/navigation";
 import ViewTracker from "@/app/components/ViewTracker";
 
 async function forumPostThread({ params }: { params: Promise<{ id: string }> }) {
-
-  const prisma = new PrismaClient();
 
   const session = await auth();
   const userId = session?.user?.id;

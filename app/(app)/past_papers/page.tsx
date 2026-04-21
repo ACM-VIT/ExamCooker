@@ -1,5 +1,4 @@
 import React, { Suspense } from "react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Pagination from "../../components/Pagination";
@@ -9,7 +8,6 @@ import UploadButtonPaper from "../../components/uploadButtonPaper";
 import Dropdown from "../../components/FilterComponent";
 import { getPastPapersCount, getPastPapersPage } from "@/lib/data/pastPapers";
 import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
-import { extractCourseFromTag } from "@/lib/courseTags";
 
 function validatePage(page: number, totalPages: number): number {
   if (isNaN(page) || page < 1) {
@@ -79,35 +77,6 @@ async function PastPaperResults({
 
   return (
     <>
-      {tags.length > 0 && (
-        <div className="mt-3 mb-5 flex justify-center px-4">
-          <div className="flex max-w-6xl flex-wrap justify-center gap-2">
-            {tags.map((tag, index) => {
-              const course = extractCourseFromTag(tag);
-              if (course) {
-                return (
-                  <Link
-                    key={`${tag}-${index}`}
-                    href={`/courses/${encodeURIComponent(course.code)}`}
-                    className="bg-blue-100 text-blue-800 px-2 py-1 rounded"
-                  >
-                    {tag}
-                  </Link>
-                );
-              }
-              return (
-                <span
-                  key={`${tag}-${index}`}
-                  className="bg-blue-100 text-blue-800 px-2 py-1 rounded"
-                >
-                  {tag}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div className="flex justify-center w-full overflow-x-hidden">
         <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 p-2 sm:p-4 lg:p-6 place-content-center">
           {paginatedPastPapers.length > 0 ? (

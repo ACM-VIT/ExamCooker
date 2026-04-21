@@ -1,10 +1,8 @@
 import React from "react";
 import CreateForum from "@/app/components/create-forum";
-import { PrismaClient } from "@/src/generated/prisma";
+import prisma from "@/lib/prisma";
 
 async function NewForumPage () {
-    const prisma = new PrismaClient();
-
     const allTags = await prisma.tag.findMany();
     return (
         <div className="create-foum">

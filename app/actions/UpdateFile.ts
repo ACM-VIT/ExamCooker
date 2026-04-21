@@ -1,9 +1,7 @@
 'use server'
 
-import { PrismaClient } from '@/src/generated/prisma'
+import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-
-const prisma = new PrismaClient();
 
 export async function updateFile(itemID: string, newTitle: string, activeTab: string) {
 

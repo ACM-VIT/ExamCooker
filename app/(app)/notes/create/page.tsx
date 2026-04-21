@@ -1,10 +1,8 @@
 import React from "react";
 import UploadFile from "@/app/components/UploadFile";
-import { PrismaClient } from "@/src/generated/prisma";
+import prisma from "@/lib/prisma";
 
 async function NewForumPage() {
-    const prisma = new PrismaClient();
-
     const allTags = await prisma.tag.findMany();
     return (
         <div className="create-notes">
