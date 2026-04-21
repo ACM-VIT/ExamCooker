@@ -74,28 +74,8 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
     return () => clearTimeout(timer);
   }, [pathname]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const nav = document.querySelector("nav");
-      if (nav && !nav.contains(event.target as Node) && isNavOn) {
-        setIsExpanded(false);
-        toggleNavbar();
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isNavOn, toggleNavbar]);
-
   const handleLinkClick = () => {
     setLoading(true);
-    if (isNavOn) {
-      setIsExpanded(false);
-      toggleNavbar();
-    }
   };
 
   return (
@@ -104,25 +84,27 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
       <nav
         className={`fixed top-0 left-0 z-50 flex flex-col justify-between items-center h-screen ${
           isNavOn
-            ? "bg-[#5fc4e7] dark:bg-[#232530] dark:border-[#3BF4C7] dark:border w-fit"
+            ? "bg-[#C2E6EC] dark:bg-[#0C1222] border-r border-black/15 dark:border-r-[#D5D5D5]/15 w-fit"
             : ""
-        } text-white p-1 transition-colors duration-300 ease-in-out`}
+        } p-1 transition-colors duration-300 ease-in-out`}
       >
         {isNavOn && (
-          <div className="mt-4">
+          <div className="self-start mt-1 ml-2">
             <button
               onClick={() => {
                 setIsExpanded(false);
                 toggleNavbar();
               }}
-              className="opacity-100"
+              title="Close navigation"
+              aria-label="Close navigation"
+              className="inline-flex h-10 w-10 items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-black/40 dark:focus-visible:ring-[#3BF4C7]/50"
             >
               <Image
                 src="/assets/HamburgerIcon.svg"
                 alt="Close"
-                width={30}
-                height={30}
-                className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110 hover:-translate-y-1"
+                width={26}
+                height={26}
+                className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110"
               />
             </button>
           </div>

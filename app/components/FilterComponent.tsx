@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { faCaretDown, faCaretUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -42,6 +48,8 @@ const EXAM_OPTIONS: Option[] = PAST_PAPER_EXAM_TAGS.map((tag) => ({
   label: tag,
 }));
 
+const SHEET_ANIMATION_MS = 280;
+
 function FilterSections({
   checkboxOptions,
   handleSelectionChange,
@@ -57,7 +65,7 @@ function FilterSections({
   return (
     <>
       {checkboxOptions.examTypes && (
-        <div className="w-full font-bold md:w-auto">
+        <div className="w-full md:w-auto">
           <FilterComp
             title="Exam Types"
             options={checkboxOptions.examTypes}
@@ -71,7 +79,7 @@ function FilterSections({
         </div>
       )}
       {checkboxOptions.slots && (
-        <div className="w-full font-bold md:w-auto">
+        <div className="w-full md:w-auto">
           <FilterComp
             title="Slots"
             options={checkboxOptions.slots}
@@ -92,7 +100,10 @@ function FilterSections({
 const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sheetMounted, setSheetMounted] = useState(false);
+  const [sheetShowing, setSheetShowing] = useState(false);
   const [sheetOffset, setSheetOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -137,16 +148,28 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
   }, [desktopOpen]);
 
   useEffect(() => {
-    if (!mobileOpen) {
+    if (mobileOpen) {
+      setSheetMounted(true);
       setSheetOffset(0);
-      touchStartYRef.current = null;
-      document.body.style.overflow = "";
-      return;
+      const raf = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setSheetShowing(true));
+      });
+      document.body.style.overflow = "hidden";
+      return () => {
+        cancelAnimationFrame(raf);
+        document.body.style.overflow = "";
+      };
     }
 
-    document.body.style.overflow = "hidden";
+    setSheetShowing(false);
+    document.body.style.overflow = "";
+    const timer = window.setTimeout(() => {
+      setSheetMounted(false);
+      setSheetOffset(0);
+      touchStartYRef.current = null;
+    }, SHEET_ANIMATION_MS);
     return () => {
-      document.body.style.overflow = "";
+      window.clearTimeout(timer);
     };
   }, [mobileOpen]);
 
@@ -182,6 +205,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
 
   const handleSheetTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
     touchStartYRef.current = event.touches[0]?.clientY ?? null;
+    setDragging(true);
   };
 
   const handleSheetTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -192,6 +216,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
   };
 
   const handleSheetTouchEnd = () => {
+    setDragging(false);
     if (sheetOffset > 80) {
       setMobileOpen(false);
     } else {
@@ -199,6 +224,10 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
     }
     touchStartYRef.current = null;
   };
+
+  const sheetTransform = sheetShowing
+    ? `translateY(${sheetOffset}px)`
+    : "translateY(100%)";
 
   return (
     <>
@@ -208,7 +237,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
       >
         <button
           onClick={() => setDesktopOpen((open) => !open)}
-          className="inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-3 py-2 text-base font-semibold dark:border-[#D5D5D5] dark:bg-[#7D7467]/20 md:h-auto md:w-auto md:px-4 md:text-lg md:font-bold"
+          className="inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-3 py-2 text-base font-semibold text-black dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] md:h-auto md:w-auto md:px-4 md:text-lg md:font-bold"
         >
           Filter
           <FontAwesomeIcon
@@ -217,8 +246,8 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
           />
         </button>
         {desktopOpen && (
-          <div className="hide-scrollbar absolute left-0 top-full z-50 mt-2 min-w-[22rem] max-w-[1200px] overflow-x-hidden border-2 border-black bg-[#4AD0FF] shadow-xl dark:border-white dark:bg-[#232530]">
-            <div className="flex flex-col items-stretch gap-1 p-2 md:flex-row md:items-start md:gap-4">
+          <div className="absolute left-1/2 top-full z-50 mt-2 w-[min(28rem,90vw)] -translate-x-1/2 border-2 border-black bg-[#5FC4E7] shadow-xl dark:border-[#D5D5D5] dark:bg-[#0C1222]">
+            <div className="flex flex-col items-stretch gap-1 p-2 md:flex-row md:items-start md:justify-center md:gap-4">
               <FilterSections
                 checkboxOptions={checkboxOptions}
                 handleSelectionChange={handleSelectionChange}
@@ -232,45 +261,51 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
       <div className="w-full md:hidden">
         <button
           onClick={() => setMobileOpen(true)}
-          className="inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-3 py-2 text-base font-semibold dark:border-[#D5D5D5] dark:bg-[#7D7467]/20"
+          className="inline-flex h-12 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-4 text-lg font-bold leading-none text-black dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5]"
         >
           Filter
           <FontAwesomeIcon icon={faCaretDown} className="ml-2" />
         </button>
       </div>
 
-      {mobileOpen && (
+      {sheetMounted && (
         <div className="fixed inset-0 z-[60] md:hidden">
           <button
             aria-label="Close filters"
-            className="absolute inset-0 bg-black/60"
+            className={`absolute inset-0 bg-black/60 transition-opacity duration-[280ms] ease-out ${
+              sheetShowing ? "opacity-100" : "opacity-0"
+            }`}
             onClick={() => setMobileOpen(false)}
           />
           <div
-            className="hide-scrollbar absolute inset-x-0 bottom-0 max-h-[72vh] overflow-y-auto overscroll-contain rounded-t-3xl border-2 border-black bg-[#4AD0FF] shadow-2xl transition-transform duration-200 dark:border-white dark:bg-[#232530]"
-            style={{ transform: `translateY(${sheetOffset}px)` }}
+            className="absolute inset-x-0 bottom-0 max-h-[78vh] overflow-y-auto overscroll-contain rounded-t-3xl bg-[#5FC4E7] shadow-[0_-12px_30px_-12px_rgba(0,0,0,0.35)] dark:bg-[#0C1222] no-scrollbar"
+            style={{
+              transform: sheetTransform,
+              transition: dragging
+                ? "none"
+                : `transform ${SHEET_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+              paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
+            }}
           >
             <div
-              className="px-5 pb-2 pt-3"
+              className="flex justify-center px-5 pb-2 pt-3 touch-none"
               onTouchEnd={handleSheetTouchEnd}
               onTouchMove={handleSheetTouchMove}
               onTouchStart={handleSheetTouchStart}
             >
-              <div className="mx-auto h-1.5 w-14 rounded-full bg-black/20 dark:bg-white/25" />
+              <div className="h-1.5 w-12 rounded-full bg-black/30 dark:bg-[#D5D5D5]/30" />
             </div>
             <div className="px-5 pb-2 pt-1">
               <h2 className="text-left text-xl font-bold text-black dark:text-[#D5D5D5]">
                 {mobileSheetTitle}
               </h2>
             </div>
-            <div className="px-3 pb-6">
-              <div className="overflow-hidden rounded-2xl border border-black/15 bg-white/12 dark:border-white/20 dark:bg-white/5">
-                <FilterSections
-                  checkboxOptions={checkboxOptions}
-                  handleSelectionChange={handleSelectionChange}
-                  selectedTags={selectedTags}
-                />
-              </div>
+            <div className="px-3 pb-4 pt-1">
+              <FilterSections
+                checkboxOptions={checkboxOptions}
+                handleSelectionChange={handleSelectionChange}
+                selectedTags={selectedTags}
+              />
             </div>
           </div>
         </div>
