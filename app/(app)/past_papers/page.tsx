@@ -87,7 +87,7 @@ function validatePage(page: number, totalPages: number): number {
 
 function PastPapersSkeleton() {
   return (
-    <div className="flex justify-center w-full overflow-x-hidden">
+    <div className="mt-6 flex justify-center w-full overflow-x-hidden">
       <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 p-2 sm:p-4 lg:p-6 place-content-center">
         {Array.from({ length: 9 }).map((_, index) => (
           <div key={index} className="max-w-sm w-full h-full">
@@ -149,7 +149,7 @@ async function PastPaperResults({
 
   return (
     <>
-      <div className="flex justify-center w-full overflow-x-hidden">
+      <div className="mt-6 flex justify-center w-full overflow-x-hidden">
         <div className="w-full max-w-6xl p-2 sm:p-4 lg:px-14 lg:py-6 2xl:px-6">
           {yearSections.length > 0 ? (
             yearSections.map((section, sectionIndex) => (
@@ -162,7 +162,7 @@ async function PastPaperResults({
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 place-content-center">
                   {section.papers.map((eachPaper, index) => (
-                    <div key={eachPaper.id} className="flex justify-center">
+                    <div key={eachPaper.id} className="w-full">
                       <PastPaperCard
                         pastPaper={eachPaper}
                         index={paperOrder.get(eachPaper.id) ?? index}
