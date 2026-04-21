@@ -1,5 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { Prisma } from "@/src/generated/prisma";
+import Fuse from "fuse.js";
 import prisma from "@/lib/prisma";
 import { getAliasCourseCodes } from "@/lib/courseAliases";
 import { extractCourseFromTag, normalizeCourseCode } from "@/lib/courseTags";
@@ -97,89 +97,67 @@ export async function getCourseCatalog(minUsage = 2) {
     return buildCourseCatalog(minUsage);
 }
 
-type TagSearchRow = {
-    id: string;
-    name: string;
-    updatedAt: Date | null;
-};
+function normalizeCourseSearch(search: string) {
+    return search.trim().replace(/\s+/g, " ");
+}
+
+function normalizeForMatching(value: string) {
+    return value.toLowerCase().replace(/[_\s]+/g, " ").trim();
+}
 
 export async function searchCourseCatalog(search: string, minUsage = 2) {
     "use cache";
     cacheTag("courses");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const rawSearch = search.trim();
+    const rawSearch = normalizeCourseSearch(search);
+    const catalog = await buildCourseCatalog(minUsage);
     if (!rawSearch) {
-        return buildCourseCatalog(minUsage);
+        return catalog;
     }
 
-    const aliasCodes = getAliasCourseCodes(rawSearch);
-    const terms = new Set<string>();
-    if (rawSearch.length >= 3 || aliasCodes.length === 0) {
-        terms.add(rawSearch);
-    }
-    aliasCodes.forEach((code) => terms.add(code));
-
-    if (!terms.size) {
-        return buildCourseCatalog(minUsage);
-    }
-
-    const likeClauses = Array.from(terms).map(
-        (term) => Prisma.sql`"Tag"."name" ILIKE ${`%${term}%`}`
+    const aliasCodes = getAliasCourseCodes(rawSearch).map(normalizeCourseCode);
+    const normalizedQuery = normalizeCourseCode(rawSearch);
+    const normalizedTextQuery = normalizeForMatching(rawSearch);
+    const queryTerms = normalizedTextQuery.split(" ").filter(Boolean);
+    const exactMatches = catalog.filter((course) =>
+        course.code === normalizedQuery || aliasCodes.includes(course.code)
     );
-
-    const matchedTags = await prisma.$queryRaw<TagSearchRow[]>(Prisma.sql`
-        SELECT "id", "name", "updatedAt"
-        FROM "Tag"
-        WHERE ${Prisma.join(likeClauses, " OR ")}
-    `);
-
-    if (!matchedTags.length) {
-        return [];
-    }
-
-    const matchedCodes = new Set<string>();
-    matchedTags.forEach((tag) => {
-        const info = extractCourseFromTag(tag.name);
-        if (info) matchedCodes.add(normalizeCourseCode(info.code));
+    const normalizedMatches = catalog.filter((course) => {
+        const searchableText = normalizeForMatching(`${course.code} ${course.title}`);
+        return queryTerms.every((term) => searchableText.includes(term));
     });
 
-    if (!matchedCodes.size) {
-        return [];
-    }
+    const uniqueResults = new Map<string, CourseSummary>();
 
-    const codeClauses = Array.from(matchedCodes).map(
-        (code) => Prisma.sql`"Tag"."name" ILIKE ${`%${code}%`}`
-    );
-
-    const courseTags = await prisma.$queryRaw<TagSearchRow[]>(Prisma.sql`
-        SELECT "id", "name", "updatedAt"
-        FROM "Tag"
-        WHERE ${Prisma.join(codeClauses, " OR ")}
-    `);
-
-    if (!courseTags.length) {
-        return [];
-    }
-
-    const tagIds = courseTags.map((tag) => tag.id);
-    const tags = await prisma.tag.findMany({
-        where: { id: { in: tagIds } },
-        select: {
-            id: true,
-            name: true,
-            updatedAt: true,
-            _count: {
-                select: {
-                    notes: true,
-                    pastPapers: true,
-                    forumPosts: true,
-                },
-            },
-        },
+    [...exactMatches, ...normalizedMatches].forEach((course) => {
+        uniqueResults.set(course.code, course);
     });
 
-    return buildCourseSummaries(tags, minUsage);
+    if (uniqueResults.size > 0) {
+        return Array.from(uniqueResults.values());
+    }
+
+    const fuse = new Fuse(catalog, {
+        keys: [
+            { name: "title", weight: 0.8 },
+            { name: "code", weight: 0.2 },
+        ],
+        threshold: 0.22,
+        ignoreLocation: true,
+        minMatchCharLength: 3,
+    });
+
+    const fuzzyMatches = fuse
+        .search(rawSearch)
+        .filter((result) => typeof result.score === "number" && result.score <= 0.22)
+        .map((result) => result.item);
+
+    fuzzyMatches.forEach((course) => {
+        uniqueResults.set(course.code, course);
+    });
+
+    return Array.from(uniqueResults.values());
 }
 
 export async function getCourseByCode(code: string, minUsage = 2) {
