@@ -56,7 +56,7 @@ const Header: React.FC<HeaderProps> = ({ toggleNavbar, isNavOn }) => {
               alt="Menu"
               width={26}
               height={26}
-              className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110"
+              className="dark:invert-[.835] transition-transform transform-gpu can-hover:hover:scale-110"
             />
           </button>
         )}

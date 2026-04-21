@@ -6,6 +6,7 @@ import HomeFooter from "@/app/(app)/home/home_footer";
 import BookmarksProvider from "@/app/components/BookmarksProvider";
 import GuestPromptProvider from "@/app/components/GuestPromptProvider";
 import type { Bookmark } from "@/app/actions/Favourites";
+import { usePathname } from "next/navigation";
 
 export default function ClientSide({
     children,
@@ -14,6 +15,7 @@ export default function ClientSide({
     children: React.ReactNode;
     initialBookmarks: Bookmark[];
 }) {
+    const pathname = usePathname();
     const [isNavOn, setIsNavOn] = useState(true);
     const [darkMode, setDarkMode] = useState(false);
 
@@ -23,6 +25,14 @@ export default function ClientSide({
             setDarkMode(savedDarkMode === "true");
         }
     }, []);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const isMobileViewport = window.matchMedia("(max-width: 1023px)").matches;
+        if (isMobileViewport) {
+            setIsNavOn(false);
+        }
+    }, [pathname]);
 
     const toggleNavbar = () => {
         setIsNavOn((prevState) => !prevState);

@@ -67,11 +67,10 @@ const Home = async () => {
             <div className="container mx-auto px-4 py-8 max-w-7xl">
                 <header className="text-center mb-8">
                     <h1 className="text-4xl md:text-6xl font-bold mb-4">Welcome <GradientText><UserName /></GradientText></h1>
-                    <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 mb-8">{getQuirkyLine()}</p>
-                    
-                    {/* Course Search - Centralized and Prominent */}
+                    <p className="text-base md:text-xl text-black/70 dark:text-[#D5D5D5]/70 mb-8">{getQuirkyLine()}</p>
+
                     <div className="max-w-3xl mx-auto">
-                        <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+                        <h2 className="text-base sm:text-lg font-bold mb-3 text-black dark:text-[#D5D5D5]">
                             Find resources for your course
                         </h2>
                         <CourseSearch courses={courses} />
@@ -81,7 +80,6 @@ const Home = async () => {
                 <main>
                     {isAuthed ? (
                         <div className="mt-10 lg:mt-25 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Recently Viewed */}
                             <section>
                                 <div className="flex items-center text-xl sm:text-2xl font-bold mb-6">
                                     <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>

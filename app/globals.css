@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
+@custom-variant can-hover (@media (hover: hover) and (pointer: fine));
   
 :root {
     --foreground-rgb: 0, 0, 0;

@@ -15,9 +15,9 @@ const Tooltip = ({
   return (
     <div className="group relative">
       {children}
-      <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-gradient-to-r from-[#5fc4e7] to-[#4db3d6] dark:from-[#3BF4C7] dark:to-[#2ad3a7] text-white dark:text-[#232530] rounded-md text-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-50 whitespace-nowrap shadow-lg backdrop-blur-sm backdrop-filter max-w-xs break-words">
+      <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-gradient-to-r from-[#5fc4e7] to-[#4db3d6] dark:from-[#3BF4C7] dark:to-[#2ad3a7] text-white dark:text-[#232530] rounded-md text-sm opacity-0 invisible can-hover:group-hover:opacity-100 can-hover:group-hover:visible transition-all duration-300 ease-in-out z-50 whitespace-nowrap shadow-lg backdrop-blur-sm backdrop-filter max-w-xs break-words">
         <span className="font-medium">{content}</span>
-        <div className="absolute w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-[#5fc4e7] dark:border-r-[#3BF4C7] -left-[6px] top-1/2 -translate-y-1/2 transform transition-transform duration-300 ease-in-out group-hover:scale-110"></div>
+        <div className="absolute w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-[#5fc4e7] dark:border-r-[#3BF4C7] -left-[6px] top-1/2 -translate-y-1/2 transform transition-transform duration-300 ease-in-out can-hover:group-hover:scale-110"></div>
       </div>
     </div>
   );
@@ -51,15 +51,15 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
             alt={alt}
             width={24}
             height={25}
-            className={`dark:invert-[.835] transition-all transform-gpu group-hover:scale-110 ${
+            className={`dark:invert-[.835] transition-all transform-gpu can-hover:group-hover:scale-110 ${
               !disableAnim
-                ? "group-hover:-translate-y-1 group-hover:rotate-[-5deg]"
+                ? "can-hover:group-hover:-translate-y-1 can-hover:group-hover:rotate-[-5deg]"
                 : ""
             }`}
           />
           <p
             className={`transition-all text-black font-extrabold ${
-              !disableAnim ? "group-hover:-translate-y-1" : ""
+              !disableAnim ? "can-hover:group-hover:-translate-y-1" : ""
             }  dark:text-[#D5D5D5] ${isExpanded ? "block" : "hidden"}`}
           >
             {alt}
@@ -104,7 +104,7 @@ const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
                 alt="Close"
                 width={26}
                 height={26}
-                className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110"
+                className="dark:invert-[.835] transition-transform transform-gpu can-hover:hover:scale-110"
               />
             </button>
           </div>
