@@ -1,11 +1,10 @@
 'use server'
 
-import { PrismaClient } from '@/src/generated/prisma'
+import prisma from '@/lib/prisma'
 import { auth } from '../auth'
 import { revalidateFavorites } from './revalidateFavourites'
 import { revalidateTag } from "next/cache";
 
-const prisma = new PrismaClient()
 export type Bookmark = {
     id: string;
     type: 'note' | 'pastpaper' | 'forumpost' | 'subject';

@@ -1,6 +1,5 @@
-import {type Comment, PrismaClient} from "@/src/generated/prisma";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
+import {type Comment} from "@/src/generated/prisma";
 
 
 export function NumberOfComments({

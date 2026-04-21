@@ -1,10 +1,9 @@
 'use server'
 
-import { PrismaClient, Tag } from '@/src/generated/prisma'
+import prisma from '@/lib/prisma'
+import type { Tag } from '@/src/generated/prisma'
 import { auth } from '../auth'
 import { revalidatePath, revalidateTag } from 'next/cache'
-
-const prisma = new PrismaClient()
 
 type CreateForumPostInput = {
   title: string

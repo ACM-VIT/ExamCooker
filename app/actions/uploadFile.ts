@@ -1,14 +1,12 @@
 "use server";
 
-import {PrismaClient} from "@/src/generated/prisma";
+import prisma from "@/lib/prisma";
 import {auth} from "../auth";
 import {redirect} from "next/navigation";
 import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/pastPaperTitle";
-
-const prisma = new PrismaClient();
 
 async function findOrCreateTag(name: string) {
     let tag = await prisma.tag.findUnique({where: {name}});
@@ -171,7 +169,6 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
     if (variant === "Past Papers") {
         const createdPapers = data as { id: string; title: string; fileUrl: string }[];
         after(async () => {
-            const prismaBg = new PrismaClient();
             try {
                 await Promise.allSettled(
                     createdPapers.map(async (paper) => {
@@ -180,20 +177,18 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
                             fallbackTitle: paper.title,
                         });
                         if (aiTitle && aiTitle !== paper.title) {
-                            await prismaBg.pastPaper.update({
+                            await prisma.pastPaper.update({
                                 where: { id: paper.id },
                                 data: { title: aiTitle },
                             });
                         }
                     })
                 );
-            } finally {
-                await prismaBg.$disconnect();
+            } catch (error) {
+                console.error("Failed to post-process uploaded past papers:", error);
             }
         });
     }
-
-    await prisma.$disconnect();
 
     if (variant === "Notes") {
         revalidatePath("/notes");

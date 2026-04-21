@@ -1,10 +1,8 @@
 'use server'
 
-import { PrismaClient } from '@/src/generated/prisma';
+import prisma from '@/lib/prisma';
 import { auth } from "@/app/auth";
 import { revalidateTag } from "next/cache";
-
-const prisma = new PrismaClient()
 
 export async function upvotePost(postId: string) {
     const session = await auth();
