@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import "@/app/globals.css";
-// import SocialMediaFollowToast from "@/components/ui/SocialMediaToast";
+import UpsellToast from "@/components/ui/UpsellToast";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
@@ -52,7 +52,7 @@ export default function RootLayout({
                 <PostHogProvider>
                     <Suspense fallback={null}>{children}</Suspense>
                     <Toaster />
-                    {/* <SocialMediaFollowToast /> */}
+                    <UpsellToast />
                     {process.env.GA_ID && (
                         <GoogleAnalytics gaId={process.env.GA_ID} />
                     )}
