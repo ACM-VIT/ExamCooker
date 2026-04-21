@@ -21,4 +21,13 @@ export NODE_ENV="${NODE_ENV:-production}"
 export NODE_PATH="${NODE_MODULES_PATH}:/usr/local/lib/node_modules:${NODE_PATH:-}"
 export PATH="${NODE_MODULES_PATH}/.bin:${PATH}:/home/site/wwwroot"
 
-exec npm run start
+if [ -x "${NODE_MODULES_PATH}/.bin/next" ]; then
+  exec "${NODE_MODULES_PATH}/.bin/next" start
+fi
+
+if [ -f "${NODE_MODULES_PATH}/next/dist/bin/next" ]; then
+  exec node "${NODE_MODULES_PATH}/next/dist/bin/next" start
+fi
+
+echo "Could not find the Next.js runtime in ${NODE_MODULES_PATH}." >&2
+exit 1
