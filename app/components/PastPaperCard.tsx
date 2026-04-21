@@ -31,13 +31,7 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
 
   const parsedTitle = parsePaperTitle(pastPaper.title);
   const displayTitle = getDisplayTitle(pastPaper.title, parsedTitle);
-  const metadataParts = [
-    parsedTitle.examType,
-    parsedTitle.slot ? `Slot ${parsedTitle.slot}` : undefined,
-    parsedTitle.academicYear ?? parsedTitle.year,
-    parsedTitle.courseCode,
-  ].filter(Boolean);
-  const metadata = metadataParts.join(" | ");
+  const metadata = parsedTitle.examType ?? "";
 
   const handleToggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -58,7 +52,7 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
       <Link
         href={`/past_papers/${pastPaper.id}`}
         prefetch={index < 3}
-        className="block hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 cursor-pointer"
+        className="block hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 cursor-pointer"
       >
         <div className="bg-[#d9d9d9] w-full h-44 relative overflow-hidden">
           <Image
@@ -72,11 +66,11 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
         </div>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1 text-left select-text">
-            <div className="mb-1 w-full whitespace-nowrap overflow-hidden text-ellipsis text-lg select-text">
+            <div className="mb-1 w-full overflow-hidden text-ellipsis whitespace-nowrap text-lg font-semibold select-text">
               {displayTitle}
             </div>
             {metadata ? (
-              <div className="text-xs text-black/70 dark:text-white/70 whitespace-nowrap overflow-hidden text-ellipsis select-text">
+              <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium uppercase tracking-[0.12em] text-black/65 dark:text-white/65 select-text">
                 {metadata}
               </div>
             ) : null}

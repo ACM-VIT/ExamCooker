@@ -76,14 +76,14 @@ export default function ClientSide({
                         <button
                             title="Open Navbar"
                             onClick={toggleNavbar}
-                            className="absolute top-4 left-4 z-50 opacity-100"
+                            className="absolute top-2 left-2 z-50 flex h-10 w-10 items-center justify-center p-0 opacity-100"
                         >
                             <Image
                                 src="/assets/HamburgerIcon.svg"
                                 alt="Menu"
                                 width={30}
                                 height={30}
-                                className="dark:invert-[.835] transition-transform transform-gpu hover:scale-110 hover:-translate-y-1"
+                                className="block dark:invert-[.835] transition-transform transform-gpu hover:scale-110 hover:-translate-y-1"
                             />
                         </button>
                     )}
