@@ -22,7 +22,10 @@ import {
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
 
 const buttonClass =
   "p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed";
@@ -32,10 +35,11 @@ const MIN_SCALE = 0.6;
 const MAX_SCALE = 2.4;
 const SCALE_STEP = 0.2;
 const DEFAULT_SCALE = 1;
+const RENDER_WINDOW = 2;
 const PDF_OPTIONS = {
-  disableAutoFetch: true,
-  disableRange: true,
-  disableStream: true,
+  disableAutoFetch: false,
+  disableRange: false,
+  disableStream: false,
 };
 
 type PdfViewerBoundaryProps = {
@@ -185,10 +189,15 @@ function PDFViewerContent({
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [loadProgress, setLoadProgress] = useState<number | null>(null);
+  const [pagesInView, setPagesInView] = useState<Set<number>>(() => new Set([1]));
   const pageWidth = containerWidth > 0 ? Math.max(containerWidth - 32, 240) : 0;
   const currentPage = numPages ? clampPage(pageNumber, numPages) : pageNumber;
   const canGoPrevious = currentPage > 1;
   const canGoNext = numPages ? currentPage < numPages : false;
+  const estimatedPageHeight = Math.max(
+    Math.round(pageWidth * scale * 1.4142),
+    320
+  );
 
   const updateCurrentPage = useCallback((nextPage: number) => {
     if (currentPageRef.current === nextPage) return;
@@ -208,6 +217,7 @@ function PDFViewerContent({
     setPageInput("1");
     setScale(DEFAULT_SCALE);
     setLoadProgress(null);
+    setPagesInView(new Set([1]));
   }, [fileUrl]);
 
   useEffect(() => {
@@ -293,6 +303,52 @@ function PDFViewerContent({
     };
   }, [numPages, pageWidth, updateCurrentPage]);
 
+  useEffect(() => {
+    if (!numPages) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setPagesInView((currentValue) => {
+          const nextValue = new Set(currentValue);
+          let hasChanged = false;
+
+          for (const entry of entries) {
+            const pageAttribute = entry.target.getAttribute("data-page-number");
+            const page = pageAttribute ? Number.parseInt(pageAttribute, 10) : NaN;
+            if (!Number.isFinite(page)) continue;
+
+            if (entry.isIntersecting) {
+              if (!nextValue.has(page)) {
+                nextValue.add(page);
+                hasChanged = true;
+              }
+            } else if (nextValue.delete(page)) {
+              hasChanged = true;
+            }
+          }
+
+          return hasChanged ? nextValue : currentValue;
+        });
+      },
+      {
+        root: containerRef.current,
+        rootMargin: "200% 0px",
+        threshold: 0,
+      }
+    );
+
+    for (let index = 0; index < numPages; index += 1) {
+      const pageElement = pageRefs.current[index];
+      if (pageElement) {
+        observer.observe(pageElement);
+      }
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [estimatedPageHeight, numPages, pageWidth, scale]);
+
   const documentLoading = useMemo(() => {
     const percentage = loadProgress === null ? null : Math.round(loadProgress);
     return (
@@ -348,6 +404,9 @@ function PDFViewerContent({
 
     return Array.from({ length: numPages }, (_, index) => {
       const renderedPageNumber = index + 1;
+      const shouldRenderPage =
+        Math.abs(renderedPageNumber - currentPage) <= RENDER_WINDOW ||
+        pagesInView.has(renderedPageNumber);
 
       return (
         <div
@@ -355,29 +414,45 @@ function PDFViewerContent({
           ref={(node) => {
             pageRefs.current[index] = node;
           }}
+          data-page-number={renderedPageNumber}
           className="w-full max-w-full"
+          style={{ minHeight: estimatedPageHeight }}
         >
-          <Page
-            pageNumber={renderedPageNumber}
-            width={pageWidth}
-            scale={scale}
-            renderAnnotationLayer={!disableEnhancementsFallback}
-            renderTextLayer={!disableEnhancementsFallback}
-            loading={
-              <div className="flex h-[320px] items-center justify-center text-sm text-gray-500 dark:text-gray-300">
-                Loading page…
-              </div>
-            }
-            error={
-              <div className="flex h-[320px] items-center justify-center text-sm text-red-500">
-                Failed to render page.
-              </div>
-            }
-          />
+          {shouldRenderPage ? (
+            <Page
+              pageNumber={renderedPageNumber}
+              width={pageWidth}
+              scale={scale}
+              renderAnnotationLayer={!disableEnhancementsFallback}
+              renderTextLayer={!disableEnhancementsFallback}
+              loading={
+                <div className="flex h-[320px] items-center justify-center text-sm text-gray-500 dark:text-gray-300">
+                  Loading page…
+                </div>
+              }
+              error={
+                <div className="flex h-[320px] items-center justify-center text-sm text-red-500">
+                  Failed to render page.
+                </div>
+              }
+            />
+          ) : (
+            <div className="flex h-full min-h-[320px] items-center justify-center rounded bg-white/70 text-sm text-gray-400 dark:bg-gray-900/40 dark:text-gray-500">
+              Page {renderedPageNumber}
+            </div>
+          )}
         </div>
       );
     });
-  }, [disableEnhancementsFallback, numPages, pageWidth, scale]);
+  }, [
+    currentPage,
+    disableEnhancementsFallback,
+    estimatedPageHeight,
+    numPages,
+    pageWidth,
+    pagesInView,
+    scale,
+  ]);
 
   const handleDownload = async () => {
     if (isDownloading) return;
