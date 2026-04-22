@@ -13,6 +13,10 @@
     "sync_tags:dry": "node scripts/sync-missing-tags.js --dry-run",
     "backfill_exam_tags": "node scripts/backfill-past-paper-exam-tags.js",
     "backfill_exam_tags:dry": "node scripts/backfill-past-paper-exam-tags.js --dry-run",
+    "seed_courses": "node scripts/seed-courses.js",
+    "seed_courses:dry": "node scripts/seed-courses.js --dry-run",
+    "backfill_metadata": "node scripts/backfill-paper-metadata.js",
+    "backfill_metadata:dry": "node scripts/backfill-paper-metadata.js --dry-run",
     "copy_prod_to_dev": "node scripts/db/copy-prod-to-dev.js"
   },
   "dependencies": {
