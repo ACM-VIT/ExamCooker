@@ -5,6 +5,7 @@ import Image from "@/app/components/common/AppImage";
 import Link from "next/link";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { getAliasCourseCodes } from "@/lib/courseAliases";
+import { normalizeCourseCode } from "@/lib/courseTags";
 
 export type CourseResult = {
     code: string;
@@ -15,6 +16,14 @@ export type CourseResult = {
 
 interface CourseSearchProps {
     courses: CourseResult[];
+}
+
+function normalizeSearchInput(value: string) {
+    return value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 }
 
 export default function CourseSearch({ courses }: CourseSearchProps) {
@@ -29,17 +38,19 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     const filteredCourses = useMemo(() => {
         const trimmed = query.trim();
         if (!trimmed) return [];
-        const lowerQuery = trimmed.toLowerCase();
         const aliasCodes = getAliasCourseCodes(trimmed);
         const aliasSet = new Set(aliasCodes.map((code) => code.toUpperCase()));
+        const normalizedCodeQuery = normalizeCourseCode(trimmed);
+        const normalizedQuery = normalizeSearchInput(trimmed);
+        const queryTerms = normalizedQuery.split(" ").filter(Boolean);
+
         return courses
             .filter(course => {
                 const codeUpper = course.code.toUpperCase();
-                if (aliasSet.has(codeUpper)) return true;
-                return (
-                    course.code.toLowerCase().includes(lowerQuery) ||
-                    course.title.toLowerCase().includes(lowerQuery)
-                );
+                if (aliasSet.has(codeUpper) || codeUpper === normalizedCodeQuery) return true;
+
+                const normalizedSearchable = normalizeSearchInput(`${course.code} ${course.title}`);
+                return queryTerms.every((term) => normalizedSearchable.includes(term));
             })
             .slice(0, 8);
     }, [query, courses]);
