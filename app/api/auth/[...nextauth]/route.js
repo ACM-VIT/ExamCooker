@@ -26,14 +26,35 @@ function getPublicOriginFromCookie(request) {
   }
 }
 
+function getAllowedHost(value) {
+  if (!value) return null;
+
+  for (const candidate of value.split(",")) {
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+
+    try {
+      const url = new URL(`https://${trimmed}`);
+      if (PUBLIC_AUTH_HOSTS.has(url.hostname)) {
+        return url.hostname;
+      }
+    } catch {
+      // Ignore malformed forwarded host values.
+    }
+  }
+
+  return null;
+}
+
 function getPublicOrigin(request) {
   const headers = request.headers;
-  const forwardedHost = headers.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const host = forwardedHost || headers.get("host")?.split(",")[0]?.trim();
+  const forwardedHost = getAllowedHost(headers.get("x-forwarded-host"));
+  const host = forwardedHost || getAllowedHost(headers.get("host"));
 
-  if (host && PUBLIC_AUTH_HOSTS.has(host)) {
+  if (host) {
     const forwardedProto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-    return `${forwardedProto || "https"}://${host}`;
+    const proto = forwardedProto === "http" ? "http" : "https";
+    return `${proto}://${host}`;
   }
 
   return getPublicOriginFromCookie(request);
@@ -46,12 +67,14 @@ function normalizeAuthRequest(request) {
   const currentUrl = new URL(request.url);
   const publicUrl = new URL(publicOrigin);
   currentUrl.protocol = publicUrl.protocol;
-  currentUrl.host = publicUrl.host;
+  currentUrl.hostname = publicUrl.hostname;
+  currentUrl.port = publicUrl.port;
 
   const headers = new Headers(request.headers);
   headers.set("host", publicUrl.host);
   headers.set("x-forwarded-host", publicUrl.host);
   headers.set("x-forwarded-proto", publicUrl.protocol.replace(":", ""));
+  headers.set("x-forwarded-port", publicUrl.port || "443");
 
   return new Request(currentUrl, {
     method: request.method,
