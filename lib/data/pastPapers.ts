@@ -166,6 +166,11 @@ export async function getPastPapersPage(input: {
       id: true,
       title: true,
       thumbNailUrl: true,
+      tags: {
+        select: {
+          name: true,
+        },
+      },
     },
   });
 
