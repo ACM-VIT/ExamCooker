@@ -3,13 +3,34 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@/src/generated/prisma";
 import { normalizeCourseCode } from "@/lib/courseTags";
 
+function buildSearchTerms(search: string) {
+    const rawSearch = search.trim().replace(/\s+/g, " ");
+    if (!rawSearch) return [];
+
+    const compactCourseCode = normalizeCourseCode(rawSearch);
+    const terms = new Set<string>([
+        rawSearch,
+        rawSearch.replace(/\s+/g, "_"),
+    ]);
+
+    if (compactCourseCode) {
+        terms.add(compactCourseCode);
+    }
+
+    return Array.from(terms);
+}
+
 function buildWhere(search: string): Prisma.syllabiWhereInput {
-    if (!search) return {};
+    const terms = buildSearchTerms(search);
+    if (!terms.length) return {};
+
     return {
-        name: {
-            contains: search,
-            mode: "insensitive",
-        },
+        OR: terms.map((term) => ({
+            name: {
+                contains: term,
+                mode: "insensitive",
+            },
+        })),
     };
 }
 

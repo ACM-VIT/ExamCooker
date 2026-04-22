@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Image from "@/app/components/common/AppImage";
 import debounce from 'lodash/debounce';
 import Seacrh from "@/app/components/assets/seacrh.svg";
@@ -21,25 +21,40 @@ interface SearchProps {
 
 export default function Search({ pageType, availableTags, initialQuery = '' }: SearchProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
-    const [query, setQuery] = useState(initialQuery || searchParams.get('search') || '');
+    const urlQuery = searchParams.get('search') || '';
+    const [query, setQuery] = useState(initialQuery || urlQuery);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     useEffect(() => {
         const tags = searchParams.getAll('tags');
-        if (tags.length > 0) {
-            setSelectedTags(tags);
-        }
+        setSelectedTags(tags);
     }, [searchParams]);
 
+    useEffect(() => {
+        const nextQuery = initialQuery || urlQuery;
+        setQuery((currentQuery) => currentQuery === nextQuery ? currentQuery : nextQuery);
+    }, [initialQuery, urlQuery]);
+
     const updateURL = useCallback((newQuery: string, newTags: string[]) => {
-        const params = new URLSearchParams(searchParams);
-        params.set('search', newQuery);
+        const params = new URLSearchParams(searchParams.toString());
+        const normalizedQuery = newQuery.trim();
+
+        if (normalizedQuery) {
+            params.set('search', normalizedQuery);
+        } else {
+            params.delete('search');
+        }
+
+        params.delete('page');
         params.delete('tags');
         newTags.forEach(tag => params.append('tags', tag));
-        const newURL = `/${pageType}?${params.toString()}`;
-        router.push(newURL);
-    }, [pageType, router, searchParams]);
+        const nextQueryString = params.toString();
+        const nextPath = pathname || `/${pageType}`;
+        const newURL = nextQueryString ? `${nextPath}?${nextQueryString}` : nextPath;
+        router.replace(newURL, { scroll: false });
+    }, [pageType, pathname, router, searchParams]);
 
     const debouncedSearch = useMemo(
         () => debounce((newQuery: string, newTags: string[]) => updateURL(newQuery, newTags), 300),
@@ -70,6 +85,7 @@ export default function Search({ pageType, availableTags, initialQuery = '' }: S
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        debouncedSearch.cancel();
         updateURL(query, selectedTags);
     };
 
