@@ -1,3 +1,93 @@
 import { handlers } from "@/app/auth";
 
-export const { GET, POST } = handlers;
+const PUBLIC_AUTH_HOSTS = new Set([
+  "exam-cooker.acmvit.in",
+  "examcooker.acmvit.in",
+  "examcooker-2024.azurewebsites.net",
+]);
+
+function getPublicOriginFromCookie(request) {
+  const rawCookie = request.headers.get("cookie");
+  if (!rawCookie) return null;
+
+  const callbackCookie = rawCookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("__Secure-authjs.callback-url=") || part.startsWith("authjs.callback-url="));
+
+  if (!callbackCookie) return null;
+
+  try {
+    const value = decodeURIComponent(callbackCookie.split("=").slice(1).join("="));
+    const url = new URL(value);
+    return PUBLIC_AUTH_HOSTS.has(url.host) ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+function getAllowedHost(value) {
+  if (!value) return null;
+
+  for (const candidate of value.split(",")) {
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+
+    try {
+      const url = new URL(`https://${trimmed}`);
+      if (PUBLIC_AUTH_HOSTS.has(url.hostname)) {
+        return url.hostname;
+      }
+    } catch {
+      // Ignore malformed forwarded host values.
+    }
+  }
+
+  return null;
+}
+
+function getPublicOrigin(request) {
+  const headers = request.headers;
+  const forwardedHost = getAllowedHost(headers.get("x-forwarded-host"));
+  const host = forwardedHost || getAllowedHost(headers.get("host"));
+
+  if (host) {
+    const forwardedProto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const proto = forwardedProto === "http" ? "http" : "https";
+    return `${proto}://${host}`;
+  }
+
+  return getPublicOriginFromCookie(request);
+}
+
+function normalizeAuthRequest(request) {
+  const publicOrigin = getPublicOrigin(request);
+  if (!publicOrigin) return request;
+
+  const currentUrl = new URL(request.url);
+  const publicUrl = new URL(publicOrigin);
+  currentUrl.protocol = publicUrl.protocol;
+  currentUrl.hostname = publicUrl.hostname;
+  currentUrl.port = publicUrl.port;
+
+  const headers = new Headers(request.headers);
+  headers.set("host", publicUrl.host);
+  headers.set("x-forwarded-host", publicUrl.host);
+  headers.set("x-forwarded-proto", publicUrl.protocol.replace(":", ""));
+  headers.set("x-forwarded-port", publicUrl.port || "443");
+
+  return new Request(currentUrl, {
+    method: request.method,
+    headers,
+    body: request.body,
+    duplex: "half",
+  });
+}
+
+export function GET(request) {
+  return handlers.GET(normalizeAuthRequest(request));
+}
+
+export function POST(request) {
+  return handlers.POST(normalizeAuthRequest(request));
+}

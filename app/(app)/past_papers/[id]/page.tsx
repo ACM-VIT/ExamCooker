@@ -38,10 +38,7 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
     let allTags: Array<{ name: string }> = [];
 
     try {
-        [paper, allTags] = await Promise.all([
-            getPastPaperDetail(id),
-            prisma.tag.findMany({ select: { name: true } }),
-        ]);
+        paper = await getPastPaperDetail(id);
 
         if (paper) {
             for (let i: number = 0; i < paper!.tags.length; i++) {
@@ -70,6 +67,13 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
 
     const session = await auth();
     const isModerator = (session?.user as { role?: string } | undefined)?.role === "MODERATOR";
+    if (isModerator) {
+        try {
+            allTags = await prisma.tag.findMany({ select: { name: true } });
+        } catch (error) {
+            console.error("Error fetching tags:", error);
+        }
+    }
 
     const postTime: string = paper.createdAt.toLocaleString("en-US", {timeZone: "Asia/Kolkata"});
 
