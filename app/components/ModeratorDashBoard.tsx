@@ -231,6 +231,20 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
         <div className="w-full p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
             <h1 className="text-center mb-4  font-bold">Moderator Dashboard</h1>
             <h3>Total Users: {totalUsers}</h3>
+            <div className="mt-4 mb-6 flex flex-wrap justify-center gap-3">
+                <Link
+                    href="/mod/papers/review"
+                    className="border-2 border-black bg-[#5FC4E7] px-4 py-2 text-sm font-semibold text-black transition hover:translate-x-[-2px] hover:translate-y-[-2px] dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/10 dark:text-[#3BF4C7]"
+                >
+                    Review paper metadata →
+                </Link>
+                <Link
+                    href="/mod/notes/review"
+                    className="border-2 border-black bg-[#5FC4E7] px-4 py-2 text-sm font-semibold text-black transition hover:translate-x-[-2px] hover:translate-y-[-2px] dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/10 dark:text-[#3BF4C7]"
+                >
+                    Review note courses →
+                </Link>
+            </div>
             <br />
             <div className="w-full flex justify-center mb-6">
                 <button
