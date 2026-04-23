@@ -1,9 +1,10 @@
 import { generateText, Output } from "ai";
+import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { normalizeCourseCode } from "@/lib/courseTags";
 
-const AI_PAST_PAPER_MODEL = "google/gemini-3-flash";
-const COURSE_CODE_REGEX = /^[A-Z]{2,5}\s?\d{3,4}[A-Z]{0,3}$/i;
+const AI_PAST_PAPER_MODEL = process.env.OPENAI_PAST_PAPER_MODEL?.trim() || "gpt-5.4-mini";
+const COURSE_CODE_REGEX = /^[A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3}$/i;
 const SLOT_OPTIONS = [
     "A1",
     "A2",
@@ -77,7 +78,7 @@ export async function generatePastPaperTitleFromPdf(input: {
         const data = Buffer.from(await response.arrayBuffer());
 
         const { output } = await generateText({
-            model: AI_PAST_PAPER_MODEL,
+            model: openai.responses(AI_PAST_PAPER_MODEL),
             output: Output.object({
                 name: "PastPaperMetadata",
                 description:
@@ -105,6 +106,11 @@ export async function generatePastPaperTitleFromPdf(input: {
                     ],
                 },
             ],
+            providerOptions: {
+                openai: {
+                    store: false,
+                },
+            },
         });
 
         return buildPastPaperTitle(output);
