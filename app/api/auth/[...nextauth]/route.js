@@ -2,9 +2,11 @@ import { NextRequest } from "next/server";
 import { authHandler } from "@/app/auth";
 
 const PUBLIC_AUTH_HOSTS = new Set([
+  "beta.examcooker.acmvit.in",
   "exam-cooker.acmvit.in",
   "examcooker.acmvit.in",
   "examcooker-2024.azurewebsites.net",
+  "examcooker-beta-2024.azurewebsites.net",
 ]);
 
 function getPublicOriginFromCookie(request) {
