@@ -40,14 +40,14 @@ export const metadata: Metadata = {
         title: "ExamCooker - VIT Past Papers, Notes & Syllabus",
         description:
             "Find VIT past papers, notes, syllabus PDFs, and study resources for every course on ExamCooker.",
-        images: [{ url: `${baseUrl}/opengraph-image.png` }],
+        images: [{ url: `${baseUrl}/opengraph-image` }],
     },
     twitter: {
         card: "summary_large_image",
         title: "ExamCooker - VIT Past Papers, Notes & Syllabus",
         description:
             "Find VIT past papers, notes, syllabus PDFs, and study resources for every course on ExamCooker.",
-        images: [`${baseUrl}/opengraph-image.png`],
+        images: [`${baseUrl}/twitter-image`],
     },
 };
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });

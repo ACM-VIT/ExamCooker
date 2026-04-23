@@ -2,7 +2,9 @@ import { examTypeLabel } from "@/lib/examSlug";
 import { normalizeCourseCode } from "@/lib/courseTags";
 import type { ExamType } from "@/prisma/generated/client";
 
-const FALLBACK_BASE_URL = "https://examcooker.acmvit.in";
+const PRODUCTION_BASE_URL = "https://examcooker.acmvit.in";
+const BETA_BASE_URL = "https://beta.examcooker.acmvit.in";
+const FALLBACK_BASE_URL = PRODUCTION_BASE_URL;
 const COURSE_CODE_PATTERN = /^[A-Z]{2,6}\d{3,5}[A-Z]?$/;
 
 const EXAM_TYPE_KEYWORDS: Partial<Record<ExamType, string[]>> = {
@@ -104,8 +106,45 @@ export const DEFAULT_KEYWORDS = [
     "study material pdf",
 ];
 
+function stripTrailingSlash(value: string) {
+    return value.replace(/\/$/, "");
+}
+
+function isLocalhostUrl(value: string) {
+    try {
+        const url = new URL(value);
+        return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    } catch {
+        return value.includes("localhost") || value.includes("127.0.0.1");
+    }
+}
+
+function isBetaDeployment() {
+    return [
+        process.env.NEXT_PUBLIC_DEPLOYMENT_ENV,
+        process.env.NEXT_PUBLIC_APP_ENV,
+        process.env.APP_ENV,
+        process.env.DEPLOYMENT_ENV,
+        process.env.WEBSITE_SITE_NAME,
+        process.env.WEBSITE_HOSTNAME,
+    ].some((value) => value?.toLowerCase().includes("beta"));
+}
+
 export function getBaseUrl() {
-    return (process.env.NEXT_PUBLIC_BASE_URL || FALLBACK_BASE_URL).replace(/\/$/, "");
+    const configuredUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.SITE_URL;
+    if (configuredUrl && !isLocalhostUrl(configuredUrl)) {
+        return stripTrailingSlash(configuredUrl);
+    }
+
+    if (process.env.NODE_ENV === "production" && isBetaDeployment()) {
+        return BETA_BASE_URL;
+    }
+
+    if (process.env.NODE_ENV === "production" && configuredUrl && isLocalhostUrl(configuredUrl)) {
+        return FALLBACK_BASE_URL;
+    }
+
+    return stripTrailingSlash(configuredUrl || FALLBACK_BASE_URL);
 }
 
 export function absoluteUrl(path: string) {
