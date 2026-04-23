@@ -1,22 +1,8 @@
 import prisma from "@/lib/prisma";
-import {type Comment} from "@/src/generated/prisma";
+import type { Comment } from "@/prisma/generated/client";
 
 
-export function NumberOfComments({
-    commentArray,
-    count,
-}: {
-    commentArray?: Comment[] | undefined;
-    count?: number;
-}) {
-    const total = typeof count === "number" ? count : commentArray?.length ?? 0;
-    return (
-        <div>
-            <text className="bg-none text-base py-4 px-2">{total} Comments</text>
-        </div>
-    );
-}
-
+import { TimeHandler } from "./CommentHelpers";
 
 export default function CommentContainer({ comments }: { comments: Comment[] | undefined }) {
 
@@ -26,34 +12,12 @@ export default function CommentContainer({ comments }: { comments: Comment[] | u
                 <Comment
                     key={comment.id}
                     commentId={comment.id}
-                    time={comment.createdAt.toLocaleString("en-US", {timeZone: "Asia/Kolkata"})}
+                    time={comment.createdAt.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })}
                     content={comment.content}
                 />
             ))}
         </div>
     );
-}
-
-export function TimeHandler(isoString: string) {
-    const dateObj = new Date(isoString);
-
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const hours = String((dateObj.getHours() > 12 ? dateObj.getHours() - 12 : dateObj.getHours())).padStart(2, '0');
-    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-    const seconds = String(dateObj.getSeconds()).padStart(2, '0');
-    const amOrPm = Number(dateObj.getHours()) < 12 ? 'am' : 'pm';
-
-    return {
-        year,
-        month,
-        day,
-        hours,
-        minutes,
-        seconds,
-        amOrPm,
-    };
 }
 
 export async function Comment({ commentId, time, content }: { commentId: string, time: string, content: string }) {

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Module } from '@/src/generated/prisma';
+import type { Module } from '@/prisma/generated/client';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faAngleRight, faAngleDown } from '@fortawesome/free-solid-svg-icons';
 

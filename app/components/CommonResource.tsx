@@ -6,6 +6,7 @@ import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
 import {useToast} from "@/components/ui/use-toast";
 import { parsePaperTitle, ParsedPaperTitle } from "@/lib/paperTitle";
+import { getCourseResourcesPath, getPastPaperDetailPath, parseSubjectName } from "@/lib/seo";
 
 type FavoriteType = "note" | "pastpaper" | "forumpost" | "subject";
 
@@ -83,11 +84,15 @@ export default function CommonFav({ category, title, thing, compact = false }: {
             case 'note':
                 return `/notes/${thing.id}`;
             case 'pastpaper':
-                return `/past_papers/${thing.id}`;
+                return getPastPaperDetailPath(thing.id, parsedTitle?.courseCode);
             case 'forumpost':
                 return `/forum/${thing.id}`;
-            case 'subject':
-                return `/resources/${thing.id}`;
+            case 'subject': {
+                const parsedSubject = parseSubjectName(title);
+                return parsedSubject.courseCode
+                    ? getCourseResourcesPath(parsedSubject.courseCode)
+                    : `/resources/${thing.id}`;
+            }
             default:
                 return '';
         }

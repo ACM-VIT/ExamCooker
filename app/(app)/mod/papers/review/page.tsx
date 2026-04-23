@@ -25,6 +25,7 @@ export default async function PaperReviewPage() {
                 OR: [{ courseId: null }, { examType: null }, { year: null }],
             },
             orderBy: { createdAt: "desc" },
+            take: 100,
             select: {
                 id: true,
                 title: true,
@@ -41,6 +42,7 @@ export default async function PaperReviewPage() {
         prisma.course.findMany({
             select: { id: true, code: true, title: true, aliases: true },
             orderBy: { code: "asc" },
+            take: 500,
         }),
     ]);
 

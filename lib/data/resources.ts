@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
-import { Prisma } from "@/src/generated/prisma";
+import type { Prisma } from "@/prisma/generated/client";
+import { normalizeCourseCode } from "@/lib/courseTags";
 
 function buildWhere(search: string): Prisma.SubjectWhereInput {
     if (!search) return {};
@@ -41,6 +42,46 @@ export async function getResourcesPage(input: {
         select: {
             id: true,
             name: true,
+        },
+    });
+}
+
+export async function getSubjectByCourseCode(code: string) {
+    "use cache";
+    cacheTag("resources");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const normalized = normalizeCourseCode(code);
+    if (!normalized) return null;
+
+    return prisma.subject.findFirst({
+        where: {
+            OR: [
+                {
+                    name: {
+                        startsWith: `${normalized} -`,
+                        mode: "insensitive",
+                    },
+                },
+                {
+                    name: {
+                        startsWith: `${normalized}-`,
+                        mode: "insensitive",
+                    },
+                },
+                {
+                    name: {
+                        equals: normalized,
+                        mode: "insensitive",
+                    },
+                },
+            ],
+        },
+        include: {
+            modules: true,
+        },
+        orderBy: {
+            name: "asc",
         },
     });
 }

@@ -23,7 +23,7 @@ elif command -v psql >/dev/null 2>&1; then
 else
   node - <<'NODE'
 const path = require('node:path');
-const { PrismaClient } = require(path.resolve(process.cwd(), 'src/generated/prisma'));
+const { PrismaClient } = require('@/prisma/generated/client');
 
 const prisma = new PrismaClient();
 

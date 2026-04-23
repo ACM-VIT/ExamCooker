@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { PrismaClient } = require("../src/generated/prisma");
+const { PrismaClient } = require("@/prisma/generated/client");
 
 const prisma = new PrismaClient();
 const REPORT_DIR = path.resolve(__dirname, "reports");

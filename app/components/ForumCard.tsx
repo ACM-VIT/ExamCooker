@@ -1,15 +1,15 @@
 "use client";
 
 import React from 'react';
-import { NumberOfComments, TimeHandler } from "@/app/components/forumpost/CommentContainer";
+import { NumberOfComments, TimeHandler } from "@/app/components/forumpost/CommentHelpers";
 import TagContainer from "@/app/components/forumpost/TagContainer";
 import { VoteButtons } from "@/app/components/common/Buttons";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
-import { ForumPost, Tag, User, Vote } from "@/src/generated/prisma";
-import {useToast} from "@/components/ui/use-toast";
+import type { ForumPost, Tag, User, Vote } from "@/prisma/generated/client";
+import { useToast } from "@/components/ui/use-toast";
 
 
 interface ForumCardProps {
@@ -36,9 +36,9 @@ function formatTimeDifference(hours: string, minutes: string, seconds: string, a
     const inputYear = year;
 
     if (amOrPm.toLowerCase() === 'pm' && inputHours < 12) {
-      inputHours += 12;
+        inputHours += 12;
     } else if (amOrPm.toLowerCase() === 'am' && inputHours === 12) {
-      inputHours = 0;
+        inputHours = 0;
     }
 
     const inputDate = new Date(inputYear, inputMonth, inputDay, inputHours, inputMinutes, inputSeconds);
@@ -52,21 +52,21 @@ function formatTimeDifference(hours: string, minutes: string, seconds: string, a
     const diffDays = Math.floor(diffMillis / (1000 * 60 * 60 * 24));
 
     if (diffMillis < 0) {
-      return "Input time is in the future";
+        return "Input time is in the future";
     } else if (diffMinutes < 60) {
-      return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`;
+        return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`;
     } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+        return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
     } else {
-      return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+        return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
     }
-  }
+}
 
 export default function ForumCard({ post, title, desc, author, tags, createdAt, commentCount }: ForumCardProps) {
     const dateTimeObj = TimeHandler(createdAt.toISOString());
     const router = useRouter();
 
-    const {toast} = useToast();
+    const { toast } = useToast();
     const { isBookmarked, toggleBookmark } = useBookmarks();
 
     const isFav = isBookmarked(post.id, 'forumpost');
@@ -74,7 +74,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
     const handleToggleFav = (e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
-        toggleBookmark({ id: post.id, type: 'forumpost', title: post.title }, !isFav).catch(()=> toast({title: "Error! Could not add to favorites", variant: "destructive"}));
+        toggleBookmark({ id: post.id, type: 'forumpost', title: post.title }, !isFav).catch(() => toast({ title: "Error! Could not add to favorites", variant: "destructive" }));
     };
 
     const userVote = post.votes && post.votes.length > 0 ? post.votes[0].type : null;

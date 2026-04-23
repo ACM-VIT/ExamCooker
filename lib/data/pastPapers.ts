@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
-import { Prisma } from "@/src/generated/prisma";
+import type { Prisma } from "@/prisma/generated/client";
 import {
   PAST_PAPER_SLOT_TAGS,
   canonicalizePastPaperExamTag,
@@ -109,25 +109,25 @@ function buildWhere(
     isClear: true,
     ...(tagFilters.length > 0
       ? {
-          AND: tagFilters,
-        }
+        AND: tagFilters,
+      }
       : {}),
     ...(search
       ? {
-          OR: [
-            { title: { contains: search, mode: "insensitive" } },
-            {
-              tags: {
-                some: {
-                  name: {
-                    contains: search,
-                    mode: "insensitive",
-                  },
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          {
+            tags: {
+              some: {
+                name: {
+                  contains: search,
+                  mode: "insensitive",
                 },
               },
             },
-          ],
-        }
+          },
+        ],
+      }
       : {}),
   };
 }

@@ -1,8 +1,8 @@
 import React from 'react';
 import PDFViewerClient from '@/app/components/PDFViewerClient';
-import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
+import {TimeHandler} from '@/app/components/forumpost/CommentHelpers';
 import {Metadata} from "next";
-import {notFound} from "next/navigation";
+import {notFound, permanentRedirect} from "next/navigation";
 import PastPaperCard from "@/app/components/PastPaperCard";
 
 import ShareLink from '@/app/components/ShareLink';
@@ -11,8 +11,8 @@ import { getPastPaperDetail } from "@/lib/data/pastPaperDetail";
 import ItemActions from "@/app/components/ItemActions";
 import TagContainer from "@/app/components/forumpost/TagContainer";
 import PastPaperTagEditor from "@/app/components/PastPaperTagEditor";
-import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
-import { extractCourseFromTag } from "@/lib/courseTags";
+import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } from "@/lib/seo";
+import { extractCourseFromTag, normalizeCourseCode } from "@/lib/courseTags";
 import { getRelatedPastPapers } from "@/lib/data/pastPapers";
 import { parsePaperTitle } from "@/lib/paperTitle";
 import { getRelatedPastPapersByCourseCode } from "@/lib/data/pastPapers";
@@ -29,11 +29,34 @@ function isValidYear(year: string): boolean {
     return regex.test(year);
 }
 
-async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
+function resolveCanonicalCourseCode(input: {
+    requestedCode: string;
+    relatedCode?: string | null;
+    taggedCode?: string | null;
+    parsedCode?: string | null;
+}) {
+    const candidates = [
+        input.relatedCode,
+        input.taggedCode,
+        input.parsedCode,
+        input.requestedCode,
+    ];
+
+    for (const candidate of candidates) {
+        const normalized = normalizeCourseCode(candidate ?? "");
+        if (normalized) {
+            return normalized;
+        }
+    }
+
+    return "unassigned";
+}
+
+async function PdfViewerPage({params}: {params: Promise<{ code: string; id: string }>}) {
     let paper;
     let year: string = '';
     let slot: string = '';
-    const { id } = await params;
+    const { code, id } = await params;
 
     let allTags: Array<{ name: string }> = [];
 
@@ -82,6 +105,18 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
     const courseFromTag = courseTags.length ? extractCourseFromTag(courseTags[0].name) : null;
     const parsedCourseCode = parsedTitle.courseCode?.replace(/\s+/g, "").toUpperCase();
     const taggedCourseCode = courseFromTag?.code?.replace(/\s+/g, "").toUpperCase();
+    const relatedCourseCode = paper.course?.code?.replace(/\s+/g, "").toUpperCase();
+    const canonicalCode = resolveCanonicalCourseCode({
+        requestedCode: code,
+        relatedCode: relatedCourseCode,
+        taggedCode: taggedCourseCode,
+        parsedCode: parsedCourseCode,
+    });
+
+    if (normalizeCourseCode(code) !== canonicalCode) {
+        permanentRedirect(getPastPaperDetailPath(paper.id, canonicalCode));
+    }
+
     const useParsedCourse = Boolean(
         parsedCourseCode && (!taggedCourseCode || parsedCourseCode !== taggedCourseCode)
     );
@@ -111,7 +146,7 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
                   limit: 6,
               })
             : [];
-    const canonical = `/past_papers/${paper.id}`;
+    const canonical = getPastPaperDetailPath(paper.id, canonicalCode);
     const keywords = buildKeywords(
         DEFAULT_KEYWORDS,
         paper.tags.map((tag) => tag.name)
@@ -215,8 +250,8 @@ async function PdfViewerPage({params}: {params: Promise<{ id: string }>}) {
 export default PdfViewerPage;
 
 
-export async function generateMetadata({params}: { params: Promise<{ id: string }> }): Promise<Metadata> {
-    const { id } = await params;
+export async function generateMetadata({params}: { params: Promise<{ code: string; id: string }> }): Promise<Metadata> {
+    const { code, id } = await params;
     const paper = await getPastPaperDetail(id);
     if (!paper) return {}
     const parsedTitle = parsePaperTitle(paper.title);
@@ -224,6 +259,13 @@ export async function generateMetadata({params}: { params: Promise<{ id: string 
     const courseFromTag = courseTags.length ? extractCourseFromTag(courseTags[0].name) : null;
     const parsedCourseCode = parsedTitle.courseCode?.replace(/\s+/g, "").toUpperCase();
     const taggedCourseCode = courseFromTag?.code?.replace(/\s+/g, "").toUpperCase();
+    const relatedCourseCode = paper.course?.code?.replace(/\s+/g, "").toUpperCase();
+    const canonicalCode = resolveCanonicalCourseCode({
+        requestedCode: code,
+        relatedCode: relatedCourseCode,
+        taggedCode: taggedCourseCode,
+        parsedCode: parsedCourseCode,
+    });
     const useParsedCourse = Boolean(
         parsedCourseCode && (!taggedCourseCode || parsedCourseCode !== taggedCourseCode)
     );
@@ -234,7 +276,7 @@ export async function generateMetadata({params}: { params: Promise<{ id: string 
     const title = courseCode && !courseTitle.toUpperCase().includes(courseCode)
         ? `${courseTitle} (${courseCode})`
         : courseTitle;
-    const canonical = `/past_papers/${paper.id}`;
+    const canonical = getPastPaperDetailPath(paper.id, canonicalCode);
     const description = `View ${title} past paper on ExamCooker.`;
     const keywords = buildKeywords(
         DEFAULT_KEYWORDS,

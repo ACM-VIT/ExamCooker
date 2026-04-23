@@ -13,6 +13,12 @@ export async function getPastPaperDetail(id: string) {
         include: {
             author: true,
             tags: true,
+            course: {
+                select: {
+                    code: true,
+                    title: true,
+                },
+            },
         },
     });
 

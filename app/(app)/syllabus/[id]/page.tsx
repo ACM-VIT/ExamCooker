@@ -1,17 +1,16 @@
 import React from 'react';
 import PDFViewerClient from '@/app/components/PDFViewerClient';
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import ViewTracker from "@/app/components/ViewTracker";
 import { getSyllabusDetail } from "@/lib/data/syllabusDetail";
 import type { Metadata } from "next";
-import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
-
-function processSyllabusName(input: string): string {
-    return input
-      .slice(9) 
-      .replace(/\.pdf$/, '') 
-      .replace(/_/g, ' '); 
-  }
+import {
+    buildKeywords,
+    DEFAULT_KEYWORDS,
+    formatSyllabusDisplayName,
+    getCourseSyllabusPath,
+    parseSyllabusName,
+} from "@/lib/seo";
 
 export async function generateMetadata({
     params,
@@ -21,18 +20,26 @@ export async function generateMetadata({
     const { id } = await params;
     const syllabus = await getSyllabusDetail(id);
     if (!syllabus) return {};
-    const title = processSyllabusName(syllabus.name);
+    const parsed = parseSyllabusName(syllabus.name);
+    const title = parsed.displayName;
     const description = `View ${title} syllabus on ExamCooker.`;
+    const canonical = parsed.courseCode
+        ? getCourseSyllabusPath(parsed.courseCode)
+        : `/syllabus/${syllabus.id}`;
 
     return {
         title,
         description,
-        keywords: buildKeywords(DEFAULT_KEYWORDS, [title]),
-        alternates: { canonical: `/syllabus/${syllabus.id}` },
+        keywords: buildKeywords(DEFAULT_KEYWORDS, [
+            title,
+            parsed.courseCode ?? "",
+            parsed.courseName ?? "",
+        ]),
+        alternates: { canonical },
         openGraph: {
             title,
             description,
-            url: `/syllabus/${syllabus.id}`,
+            url: canonical,
         },
     };
 }
@@ -60,6 +67,11 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
     if (!syllabus) {
         return notFound();
     }
+    const parsed = parseSyllabusName(syllabus.name);
+
+    if (parsed.courseCode) {
+        permanentRedirect(getCourseSyllabusPath(parsed.courseCode));
+    }
 
     //const postTime: string = syllabus.createdAt.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
 
@@ -68,12 +80,12 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
             <ViewTracker
                 id={syllabus.id}
                 type="syllabus"
-                title={processSyllabusName(syllabus.name)}
+                title={formatSyllabusDisplayName(syllabus.name)}
             />
             <div className="lg:w-1/2 flex flex-col overflow-hidden">
                 <div className="flex-grow overflow-y-auto p-2 sm:p-4 lg:p-8">
                     <div className="max-w-2xl mx-auto">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{processSyllabusName(syllabus.name)}</h1>
+                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{formatSyllabusDisplayName(syllabus.name)}</h1>
                         <div className="space-y-2 sm:space-y-3">
                             <div className="flex gap-2 items-center">
                                 {/* {syllabus.author?.id === userId &&

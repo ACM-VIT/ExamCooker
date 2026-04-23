@@ -3,19 +3,17 @@ import React from 'react';
 import Link from 'next/link';
 import { useBookmarks } from './BookmarksProvider';
 import { useToast } from "@/components/ui/use-toast";
+import {
+    formatSyllabusDisplayName,
+    getCourseSyllabusPath,
+    parseSyllabusName,
+} from "@/lib/seo";
 
 interface SyllabusCardProps {
     syllabus: {
         id: string;
         name: string;
     };
-}
-
-function processSyllabusName(input: string): string {
-    return input
-        .slice(9)
-        .replace(/\.pdf$/, '')
-        .replace(/_/g, ' ');
 }
 
 function SyllabusCard({ syllabus }: SyllabusCardProps) {
@@ -31,11 +29,15 @@ function SyllabusCard({ syllabus }: SyllabusCardProps) {
         }, !isFav).catch(() => toast({ title: "Error! Could not add to favorites", variant: "destructive" }));
     };
 
-    const syllabusName = processSyllabusName(syllabus.name);
-    const courseCode = syllabus.name.split('_')[0];
+    const parsed = parseSyllabusName(syllabus.name);
+    const syllabusName = formatSyllabusDisplayName(syllabus.name);
+    const courseCode = parsed.courseCode ?? syllabus.name.split('_')[0];
+    const href = parsed.courseCode
+        ? getCourseSyllabusPath(parsed.courseCode)
+        : `/syllabus/${syllabus.id}`;
 
     return (
-        <Link href={`/syllabus/${syllabus.id}`}>
+        <Link href={href}>
             <div
                 className="flex flex-col justify-start w-full h-full p-4 bg-[#5FC4E7] border-2 border-[#5FC4E7] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 hover:border-b-2 hover:border-b-[#ffffff]  dark:hover:border-b-[#3BF4C7] dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] dark:hover:bg-[#ffffff]/10 transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                 <h4>{syllabusName}</h4>

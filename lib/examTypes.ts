@@ -1,4 +1,4 @@
-import type { Prisma } from "@/src/generated/prisma";
+import type { Prisma } from "@/prisma/generated/client";
 
 export type ExamTypeDef = {
     slug: string;

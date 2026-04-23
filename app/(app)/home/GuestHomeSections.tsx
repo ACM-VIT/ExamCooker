@@ -2,20 +2,24 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import CommonResource from "@/app/components/CommonResource";
-import NothingViewedOrFav from "./NothingViewedOrFav";
 import {
     GUEST_BOOKMARKS_EVENT,
     GUEST_RECENTS_EVENT,
     loadGuestBookmarks,
     loadGuestRecentViews,
     type GuestRecentItem,
-} from "@/app/lib/guestStorage";
+} from "@/lib/guestStorage";
 import type { Bookmark } from "@/app/actions/Favourites";
+import NothingViewedOrFav from "./NothingViewedOrFav";
 
 type GuestDisplayItem = {
     id: string;
     type: string;
     title: string;
+};
+
+type GuestHomeSectionsProps = {
+    courses?: unknown;
 };
 
 function mapRecentsToDisplay(items: GuestRecentItem[]): GuestDisplayItem[] {
@@ -34,7 +38,7 @@ function mapBookmarksToDisplay(items: Bookmark[]): GuestDisplayItem[] {
     }));
 }
 
-export default function GuestHomeSections() {
+export default function GuestHomeSections(_props: GuestHomeSectionsProps) {
     const [recentItems, setRecentItems] = useState<GuestDisplayItem[]>([]);
     const [favoriteItems, setFavoriteItems] = useState<GuestDisplayItem[]>([]);
 
@@ -62,58 +66,36 @@ export default function GuestHomeSections() {
     const emptyRecentlyViewed = recentItems.length === 0;
     const emptyFav = favoriteItems.length === 0;
 
-    return (
-        <div className="mt-10 lg:mt-25 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Recently Viewed */}
-            <section>
-                    <div className="flex items-center text-xl sm:text-2xl font-bold mb-6">
-                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                        <span className="mx-4 whitespace-nowrap">Recently Viewed</span>
-                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                    </div>
-                    {emptyRecentlyViewed ? (
-                        <div className="flex justify-center">
-                            <NothingViewedOrFav sectionName="RecentlyViewed" />
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-4">
-                            {recentItems.map((item) => (
-                                <CommonResource
-                                    key={item.id}
-                                    category={item.type}
-                                    title={item.title}
-                                    thing={{ id: item.id }}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </section>
+    if (emptyRecentlyViewed && emptyFav) return null;
 
-                {/* Favourites */}
-                <section>
-                    <div className="flex items-center text-xl sm:text-2xl font-bold mb-6">
-                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                        <span className="mx-4 whitespace-nowrap">Favourites</span>
-                        <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                    </div>
-                    {emptyFav ? (
-                        <div className="flex justify-center">
-                            <NothingViewedOrFav sectionName="Favourites" />
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-4">
-                            {favoriteItems.map((item) => (
-                                <CommonResource
-                                    key={item.id}
-                                    category={item.type}
-                                    title={item.title}
-                                    thing={{ id: item.id }}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </section>
+    const renderSection = (sectionName: "Recently Viewed" | "Favourites", items: GuestDisplayItem[]) => (
+        <section>
+            <div className="flex items-center text-xl sm:text-2xl font-bold mb-6">
+                <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
+                <span className="mx-4 whitespace-nowrap">{sectionName}</span>
+                <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
             </div>
+            <div className="flex flex-col gap-4">
+                {items.length > 0 ? (
+                    items.map((item) => (
+                        <CommonResource
+                            key={item.id}
+                            category={item.type}
+                            title={item.title}
+                            thing={{ id: item.id }}
+                        />
+                    ))
+                ) : (
+                    <NothingViewedOrFav sectionName={sectionName} />
+                )}
+            </div>
+        </section>
+    );
 
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {renderSection("Recently Viewed", recentItems)}
+            {renderSection("Favourites", favoriteItems)}
+        </div>
     );
 }

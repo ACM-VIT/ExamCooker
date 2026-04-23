@@ -1,190 +1,315 @@
 import React, { Suspense } from "react";
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import type { Metadata } from "next";
-import Pagination from "../../components/Pagination";
-import PastPaperCard from "../../components/PastPaperCard";
-import SearchBar from "../../components/SearchBar";
-import UploadButtonPaper from "../../components/uploadButtonPaper";
-import Dropdown from "../../components/FilterComponent";
-import { getPastPapersCount, getPastPapersPage } from "@/lib/data/pastPapers";
-import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
+import { redirect } from "next/navigation";
+import UploadButtonPaper from "@/app/components/uploadButtonPaper";
+import StructuredData from "@/app/components/seo/StructuredData";
+import { GradientText } from "@/app/components/landing_page/landing";
+import CourseGridCard from "@/app/components/past_papers/CourseGridCard";
+import CoursePagination from "@/app/components/past_papers/CoursePagination";
+import RecentPaperStrip from "@/app/components/past_papers/RecentPaperStrip";
+import PastPapersCourseSearch from "@/app/components/past_papers/PastPapersCourseSearch";
+import UpcomingExamsStrip from "@/app/components/past_papers/UpcomingExamsStrip";
+import {
+    getCatalogStats,
+    getCourseGrid,
+    getRecentPapers,
+    getSearchableCourses,
+    searchCourseGrid,
+    type CourseGridItem,
+} from "@/lib/data/courseCatalog";
+import { getExamHubSummaries } from "@/lib/data/courseExams";
+import { getUpcomingExams } from "@/lib/data/upcomingExams";
+import {
+    buildKeywords,
+    DEFAULT_KEYWORDS,
+    getExamHubPath,
+} from "@/lib/seo";
+import {
+    buildCollectionPage,
+    buildFaqPage,
+    buildItemList,
+} from "@/lib/structuredData";
 
-function validatePage(page: number, totalPages: number): number {
-  if (isNaN(page) || page < 1) {
-    return 1;
-  }
-  if (page > totalPages && totalPages > 0) {
-    return totalPages;
-  }
-  return page;
-}
-
-function PastPapersSkeleton() {
-  return (
-    <div className="flex justify-center w-full overflow-x-hidden">
-      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 p-2 sm:p-4 lg:p-6 place-content-center">
-        {Array.from({ length: 9 }).map((_, index) => (
-          <div key={index} className="max-w-sm w-full h-full">
-            <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-transparent transition duration-200 transform max-w-96">
-              <div className="bg-[#d9d9d9]/70 w-full h-44 relative overflow-hidden animate-pulse" />
-              <div className="flex justify-between items-center mt-3">
-                <div />
-                <div className="h-4 w-2/3 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
-                <div className="h-4 w-4 bg-black/10 dark:bg-white/10 rounded-full animate-pulse" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-async function PastPaperResults({
-  params,
-}: {
-  params: { page?: string; search?: string; tags?: string | string[] };
-}) {
-  const pageSize = 9;
-  const search = params.search || "";
-  const page = parseInt(params.page || "1", 10);
-  const tags: string[] = Array.isArray(params.tags)
-    ? params.tags
-    : params.tags
-      ? params.tags.split(",")
-      : [];
-  const normalizedTags = [...tags].sort();
-
-  const [totalCount, paginatedPastPapers] = await Promise.all([
-    getPastPapersCount({
-      search,
-      tags: normalizedTags,
-    }),
-    getPastPapersPage({
-      search,
-      tags: normalizedTags,
-      page: page > 0 ? page : 1,
-      pageSize,
-    }),
-  ]);
-  const totalPages = Math.ceil(totalCount / pageSize);
-  const validatedPage = validatePage(page, totalPages);
-
-  if (validatedPage !== page) {
-    const searchQuery = search ? `&search=${encodeURIComponent(search)}` : "";
-    const tagsQuery =
-      tags.length > 0 ? `&tags=${encodeURIComponent(tags.join(","))}` : "";
-    redirect(`/past_papers?page=${validatedPage}${searchQuery}${tagsQuery}`);
-  }
-
-  return (
-    <>
-      <div className="flex justify-center w-full overflow-x-hidden">
-        <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 p-2 sm:p-4 lg:p-6 place-content-center">
-          {paginatedPastPapers.length > 0 ? (
-            paginatedPastPapers.map((eachPaper, index) => (
-              <div key={eachPaper.id} className="flex justify-center">
-                <PastPaperCard pastPaper={eachPaper} index={index} />
-              </div>
-            ))
-          ) : (
-            <p className="col-span-3 text-center">
-              {search || tags.length > 0
-                ? "No past papers found matching your search or selected tags."
-                : "No past papers found."}
-            </p>
-          )}
-        </div>
-      </div>
-      {totalPages > 1 && (
-        <div className="mt-4">
-          <Pagination
-            currentPage={validatedPage}
-            totalPages={totalPages}
-            basePath="/past_papers"
-            searchQuery={search}
-            tagsQuery={tags.join(",")}
-          />
-        </div>
-      )}
-    </>
-  );
-}
-
-export default async function PastPaperPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{
-    page?: string;
-    search?: string;
-    tags?: string | string[];
-  }>;
-}) {
-  const params = (await searchParams) ?? {};
-  const search = params.search || "";
-  return (
-    <div className="p-2 sm:p-4 lg:p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5] w-full overflow-x-hidden">
-      <h1 className="text-center mb-4">Past Papers</h1>
-      <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-        <Dropdown pageType="past_papers" />
-        <SearchBar pageType="past_papers" initialQuery={search} />
-        <UploadButtonPaper />
-      </div>
-
-      <div className="w-5/6 space-y-4 md:hidden">
-        <SearchBar pageType="past_papers" initialQuery={search} />
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-3">
-          <div className="min-w-0">
-            <Dropdown pageType="past_papers" />
-          </div>
-          <div className="shrink-0 self-stretch">
-            <UploadButtonPaper />
-          </div>
-        </div>
-      </div>
-
-      <Suspense fallback={<PastPapersSkeleton />}>
-        <PastPaperResults params={params} />
-      </Suspense>
-    </div>
-  );
-}
+const PAGE_SIZE = 24;
+const POPULAR_LIMIT = 6;
+const COURSE_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
 
 export async function generateMetadata({
-  searchParams,
+    searchParams,
 }: {
-  searchParams?: Promise<{
-    page?: string;
-    search?: string;
-    tags?: string | string[];
-  }>;
+    searchParams?: Promise<{ search?: string; page?: string }>;
 }): Promise<Metadata> {
-  const params = (await searchParams) ?? {};
-  const search = params.search || "";
-  const page = Number.parseInt(params.page || "1", 10) || 1;
-  const tags: string[] = Array.isArray(params.tags)
-    ? params.tags
-    : params.tags
-      ? params.tags.split(",")
-      : [];
-  const normalizedTags = tags.map((tag) => tag.trim()).filter(Boolean);
-  const isIndexable = !search && normalizedTags.length === 0 && page <= 1;
+    const params = (await searchParams) ?? {};
+    const search = params.search?.trim() || "";
+    const page = Number.parseInt(params.page || "1", 10) || 1;
+    const isIndexable = !search && page <= 1;
+    const title = search ? `Past papers matching "${search}"` : "Past papers";
+    const description = search
+        ? `Courses matching ${search} on ExamCooker.`
+        : "Browse VIT past papers by course — CAT-1, CAT-2, FAT, and quiz question papers filtered by slot, year, and more.";
 
-  const titleParts = ["Past Papers"];
-  if (normalizedTags.length) titleParts.push(normalizedTags.join(", "));
-  if (search) titleParts.push(`matching \"${search}\"`);
+    return {
+        title,
+        description,
+        keywords: buildKeywords(DEFAULT_KEYWORDS, search ? [search] : []),
+        alternates: { canonical: "/past_papers" },
+        robots: { index: isIndexable, follow: true },
+    };
+}
 
-  const title = titleParts.join(" - ");
-  const description =
-    normalizedTags.length || search
-      ? `Browse past papers ${normalizedTags.length ? `tagged ${normalizedTags.join(", ")}` : ""}${search ? ` matching ${search}` : ""}.`
-      : "Browse VIT past papers and previous year question papers on ExamCooker.";
+function validatePage(page: number, totalPages: number): number {
+    if (Number.isNaN(page) || page < 1) return 1;
+    if (totalPages > 0 && page > totalPages) return totalPages;
+    return page;
+}
 
-  return {
-    title,
-    description,
-    keywords: buildKeywords(DEFAULT_KEYWORDS, normalizedTags),
-    alternates: { canonical: "/past_papers" },
-    robots: { index: isIndexable, follow: true },
-  };
+function formatNumber(n: number) {
+    return n.toLocaleString("en-US");
+}
+
+function HeroStats({
+    stats,
+}: {
+    stats: { courseCount: number; paperCount: number; noteCount: number };
+}) {
+    const items = [
+        { label: "courses", value: stats.courseCount },
+        { label: "papers", value: stats.paperCount },
+        { label: "notes", value: stats.noteCount },
+    ];
+    return (
+        <div className="grid grid-cols-3 gap-2 text-black/70 dark:text-[#D5D5D5]/70 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-5 sm:gap-y-1">
+            {items.map((item, idx) => (
+                <div
+                    key={item.label}
+                    className="flex min-w-0 flex-col items-start gap-0.5 text-left sm:flex-row sm:items-baseline sm:gap-1.5"
+                >
+                    <span className="text-[1.7rem] font-black leading-none text-black dark:text-[#D5D5D5] sm:text-xl">
+                        {formatNumber(item.value)}
+                    </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-xs sm:tracking-wider">
+                        {item.label}
+                    </span>
+                    {idx < items.length - 1 && (
+                        <span
+                            aria-hidden="true"
+                            className="ml-3 hidden text-black/30 dark:text-[#D5D5D5]/25 sm:inline"
+                        >
+                            ·
+                        </span>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function CourseGridSkeleton() {
+    return (
+        <div className={COURSE_GRID_CLASS}>
+            {Array.from({ length: 20 }).map((_, i) => (
+                <div
+                    key={i}
+                    className="h-32 animate-pulse border-2 border-[#5FC4E7]/50 bg-[#5FC4E7]/25 dark:border-[#ffffff]/10 dark:bg-[#ffffff]/5"
+                />
+            ))}
+        </div>
+    );
+}
+
+async function CourseGridSection({
+    params,
+}: {
+    params: { search?: string; page?: string };
+}) {
+    const search = params.search?.trim() || "";
+    const rawPage = Number.parseInt(params.page || "1", 10) || 1;
+
+    const courses: CourseGridItem[] = search
+        ? await searchCourseGrid(search)
+        : await getCourseGrid();
+
+    let popular: CourseGridItem[] = [];
+    let rest = courses;
+    if (!search) {
+        popular = [...courses]
+            .sort((a, b) => b.paperCount - a.paperCount || b.noteCount - a.noteCount)
+            .slice(0, POPULAR_LIMIT);
+        const popularIds = new Set(popular.map((c) => c.id));
+        rest = courses.filter((c) => !popularIds.has(c.id));
+    }
+
+    const totalPages = Math.max(1, Math.ceil(rest.length / PAGE_SIZE));
+    const page = validatePage(rawPage, totalPages);
+    if (page !== rawPage) {
+        const qs = new URLSearchParams();
+        if (search) qs.set("search", search);
+        if (page > 1) qs.set("page", String(page));
+        const query = qs.toString();
+        redirect(`/past_papers${query ? `?${query}` : ""}`);
+    }
+
+    const start = (page - 1) * PAGE_SIZE;
+    const slice = rest.slice(start, start + PAGE_SIZE);
+
+    if (courses.length === 0) {
+        return (
+            <div className="border-2 border-dashed border-black/30 p-10 text-center dark:border-[#D5D5D5]/30">
+                <p className="text-sm text-black/70 dark:text-[#D5D5D5]/70">
+                    {search
+                        ? `No courses match "${search}".`
+                        : "No courses with papers or notes yet."}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            {page === 1 && popular.length > 0 && (
+                <section className="flex flex-col gap-4">
+                    <header className="flex items-end justify-between">
+                        <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                            Popular courses
+                        </h2>
+                    </header>
+                    <div className={COURSE_GRID_CLASS}>
+                        {popular.map((course) => (
+                            <CourseGridCard key={course.id} course={course} />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            <section className="flex flex-col gap-4">
+                <header className="flex items-end justify-between gap-3">
+                    <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                        {search ? `${courses.length} match${courses.length === 1 ? "" : "es"}` : "All courses"}
+                    </h2>
+                    {!search && (
+                        <span className="text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                            {rest.length} more
+                        </span>
+                    )}
+                </header>
+                <div className={COURSE_GRID_CLASS}>
+                    {slice.map((course) => (
+                        <CourseGridCard key={course.id} course={course} />
+                    ))}
+                </div>
+                {totalPages > 1 && (
+                    <div className="mt-4">
+                        <CoursePagination currentPage={page} totalPages={totalPages} />
+                    </div>
+                )}
+            </section>
+        </>
+    );
+}
+
+async function RecentSection() {
+    const recents = await getRecentPapers(10);
+    return <RecentPaperStrip items={recents} />;
+}
+
+export default async function PastPapersPage({
+    searchParams,
+}: {
+    searchParams?: Promise<{ search?: string; page?: string }>;
+}) {
+    const params = (await searchParams) ?? {};
+    const search = params.search || "";
+    const [stats, searchable, upcomingExams, examHubs] = await Promise.all([
+        getCatalogStats(),
+        getSearchableCourses(),
+        getUpcomingExams(12),
+        getExamHubSummaries(),
+    ]);
+    const faq = [
+        {
+            question: "Where can I find VIT past papers by exam type?",
+            answer: "Use the links on this page to browse CAT-1, CAT-2, FAT, quiz, and other paper collections across all indexed courses.",
+        },
+        {
+            question: "Can I browse papers course by course?",
+            answer: "Yes. The course grid on this page links directly into a canonical paper collection for each course, with additional exam filters inside the course page.",
+        },
+    ];
+
+    return (
+        <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+            <StructuredData
+                data={[
+                    buildCollectionPage({
+                        name: "VIT past papers",
+                        description:
+                            "Browse VIT past papers, previous year question papers, and course-wise paper collections on ExamCooker.",
+                        path: "/past_papers",
+                        keywords: DEFAULT_KEYWORDS,
+                        about: "VIT past papers",
+                    }),
+                    buildItemList(
+                        examHubs.map((hub) => ({
+                            name: `${hub.label} past papers`,
+                            path: getExamHubPath(hub.slug),
+                        })),
+                    ),
+                    buildFaqPage(faq),
+                ]}
+            />
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
+                <section className="flex flex-col gap-5">
+                    <h1 className="whitespace-nowrap text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
+                        Every paper.{" "}
+                        <GradientText>Every course.</GradientText>
+                    </h1>
+
+                    <HeroStats stats={stats} />
+
+                    <div className="flex w-full items-stretch gap-2 sm:gap-3">
+                        <div className="min-w-0 flex-1">
+                            <PastPapersCourseSearch
+                                courses={searchable}
+                                initialQuery={search}
+                            />
+                        </div>
+                        <div className="shrink-0">
+                            <UploadButtonPaper />
+                        </div>
+                    </div>
+                </section>
+
+                {!search && upcomingExams.length > 0 && (
+                    <UpcomingExamsStrip items={upcomingExams} emptyPrompt={null} />
+                )}
+
+                <Suspense fallback={<CourseGridSkeleton />}>
+                    <CourseGridSection params={params} />
+                </Suspense>
+
+                {!search && (
+                    <Suspense fallback={null}>
+                        <RecentSection />
+                    </Suspense>
+                )}
+
+                {!search && (
+                    <section className="sr-only">
+                        {faq.map((item) => (
+                            <article
+                                key={item.question}
+                                className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                            >
+                                <h2 className="text-base font-bold">{item.question}</h2>
+                                <p className="mt-2 text-sm text-black/70 dark:text-[#D5D5D5]/70">
+                                    {item.answer}
+                                </p>
+                            </article>
+                        ))}
+                    </section>
+                )}
+            </div>
+        </div>
+    );
 }

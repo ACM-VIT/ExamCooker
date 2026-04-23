@@ -1,13 +1,13 @@
 import Link from "next/link";
-import type { Tag } from "@/src/generated/prisma";
+import type { Tag } from "@/prisma/generated/client";
 import { extractCourseFromTag } from "@/lib/courseTags";
 
-const TagContainer = ({tags}:{tags:Tag[]|undefined}) => {
+const TagContainer = ({ tags }: { tags: Tag[] | undefined }) => {
     return <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:gap-5 md:items-center">
         {tags?.map((tag) => {
             return (<div key={tag.id}>
                 <Tag tagName={tag.name} />
-                </div>
+            </div>
             );
         })}
     </div>

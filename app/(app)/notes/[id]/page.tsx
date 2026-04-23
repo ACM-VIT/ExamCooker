@@ -1,6 +1,6 @@
 import React from 'react';
 import PDFViewerClient from '@/app/components/PDFViewerClient';
-import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
+import {TimeHandler} from '@/app/components/forumpost/CommentHelpers';
 import {notFound} from "next/navigation";
 import {Metadata} from "next";
 

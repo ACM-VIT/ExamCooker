@@ -3,7 +3,7 @@
 import React, { createContext, useState, useContext, useCallback, useTransition, useEffect } from 'react';
 import { Bookmark, toggleBookmarkAction } from '../actions/Favourites';
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
-import { loadGuestBookmarks, saveGuestBookmarks } from "@/app/lib/guestStorage";
+import { loadGuestBookmarks, saveGuestBookmarks } from "@/lib/guestStorage";
 import { getBookmarksAction } from "@/app/actions/getBookmarks";
 
 type BookmarksContextType = {

@@ -1,5 +1,7 @@
-import { signOutAction } from "../actions/SignOut";
+"use client";
+
 import React from "react";
+import { signOut } from "next-auth/react";
 
 export function SignOut({
     children,
@@ -7,8 +9,8 @@ export function SignOut({
     children: React.ReactNode;
 }>) {
     return (
-        <form action={signOutAction}>
-            <button>{children}</button>
-        </form>
+        <button type="button" onClick={() => signOut({ callbackUrl: "/" })}>
+            {children}
+        </button>
     );
 }

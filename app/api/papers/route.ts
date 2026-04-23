@@ -2,8 +2,9 @@ import { unstable_rethrow } from 'next/navigation'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { normalizeGcsUrl } from '@/lib/normalizeGcsUrl'
-import { Prisma, PastPaper } from '@/src/generated/prisma'
+import type { Prisma, PastPaper } from '@/prisma/generated/client'
 import { parsePaperTitle, ParsedPaperTitle } from '@/lib/paperTitle'
+import { getPastPaperDetailPath } from '@/lib/seo'
 
 const DEFAULT_LIMIT = 40
 const MAX_LIMIT = 200
@@ -67,11 +68,11 @@ export async function GET(req: NextRequest) {
       ...(includeDrafts ? {} : { isClear: true }),
       ...(subjectQuery
         ? {
-            OR: [
-              { title: { contains: subjectQuery, mode: 'insensitive' } },
-              { tags: { some: { name: { equals: subjectQuery, mode: 'insensitive' } } } },
-            ],
-          }
+          OR: [
+            { title: { contains: subjectQuery, mode: 'insensitive' } },
+            { tags: { some: { name: { equals: subjectQuery, mode: 'insensitive' } } } },
+          ],
+        }
         : {}),
     }
 
@@ -138,7 +139,7 @@ function normalizePaper(paper: PastPaperWithTags): ApiPaper {
   const displayTitle = parsed.cleanTitle
   const courseName = parsed.courseName ?? null
   const courseCode = parsed.courseCode ?? null
-  const paperUrl = buildPaperUrl(paper.id)
+  const paperUrl = buildPaperUrl(paper.id, courseCode)
   const metadata = metadataParts.length > 0 ? metadataParts.join(' · ') : null
 
   return {
@@ -190,8 +191,8 @@ function clampNumber(value: string | null, fallback: number, max: number): numbe
   return Math.min(Math.floor(parsed), max)
 }
 
-function buildPaperUrl(id: string): string {
-  return `${BASE_URL}/past_papers/${id}`
+function buildPaperUrl(id: string, courseCode?: string | null): string {
+  return `${BASE_URL}${getPastPaperDetailPath(id, courseCode)}`
 }
 
 function buildDescription(courseName: string | null, meta: ParsedPaperTitle, metadata: string | null): string | null {

@@ -1,12 +1,11 @@
-datasource db {
-  provider = "cockroachdb"
-  url      = env("DATABASE_URL")
+generator client {
+  provider        = "prisma-client"
+  previewFeatures = ["relationJoins"]
+  output          = "./generated"
 }
 
-generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+datasource db {
+  provider = "cockroachdb"
 }
 
 model User {
@@ -104,16 +103,31 @@ enum Campus {
 }
 
 model Course {
-  id        String      @id @default(cuid())
-  code      String      @unique
-  title     String
-  aliases   String[]
-  papers    PastPaper[]
-  notes     Note[]
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id            String         @id @default(cuid())
+  code          String         @unique
+  title         String
+  aliases       String[]
+  papers        PastPaper[]
+  notes         Note[]
+  upcomingExams UpcomingExam[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([title])
+}
+
+model UpcomingExam {
+  id          String    @id @default(cuid())
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  slots       String[]
+  examType    ExamType?
+  scheduledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([courseId])
+  @@index([scheduledAt])
 }
 
 model Note {

@@ -4,7 +4,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { ExamType, Semester, Campus } from "@/src/generated/prisma";
+import { ExamType, Semester, Campus } from "@/prisma/generated/client";
 
 const schema = z.object({
     id: z.string().min(1),

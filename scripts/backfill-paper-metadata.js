@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { PrismaClient } = require("../src/generated/prisma");
+const { PrismaClient } = require("@/prisma/generated/client");
 
 const prisma = new PrismaClient();
 const REPORT_DIR = path.resolve(__dirname, "reports");
@@ -39,6 +39,9 @@ function extractCourseCodeFromTitle(title) {
 
 function extractExamType(title) {
   const t = String(title || "");
+  if (/\bmodel\s+cat[-\s]?1\b/i.test(t)) return "MODEL_CAT_1";
+  if (/\bmodel\s+cat[-\s]?2\b/i.test(t)) return "MODEL_CAT_2";
+  if (/\bmodel\s+fat\b/i.test(t)) return "MODEL_FAT";
   if (/\bcat[-\s]?1\b/i.test(t)) return "CAT_1";
   if (/\bcat[-\s]?2\b/i.test(t)) return "CAT_2";
   if (/\bfat(?:\s*2)?\b/i.test(t)) return "FAT";

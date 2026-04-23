@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/seo";
 import { getCourseCatalog } from "@/lib/data/courses";
 import { getCourseExamCombos } from "@/lib/data/courseExams";
+import { getCoursesWithCounts } from "@/lib/data/courses";
+import { getExamHubSummaries } from "@/lib/data/courseExams";
 
 const PAGE_SIZE = 40000;
 
@@ -15,7 +17,16 @@ function buildSitemapIndexXml(entries: string[]) {
 
 export async function GET() {
     const baseUrl = getBaseUrl();
-    const [noteCount, pastPaperCount, resourceCount, syllabusCount, courses, courseExamCombos] =
+    const [
+        noteCount,
+        pastPaperCount,
+        resourceCount,
+        syllabusCount,
+        courses,
+        courseExamCombos,
+        courseNoteRoutes,
+        examHubs,
+    ] =
         await Promise.all([
             prisma.note.count({ where: { isClear: true } }),
             prisma.pastPaper.count({ where: { isClear: true } }),
@@ -23,10 +34,14 @@ export async function GET() {
             prisma.syllabi.count(),
             getCourseCatalog(2),
             getCourseExamCombos(),
+            getCoursesWithCounts(),
+            getExamHubSummaries(),
         ]);
 
     const courseCount = courses.length;
     const courseExamCount = courseExamCombos.length;
+    const courseNoteCount = courseNoteRoutes.filter((course) => course.noteCount > 0).length;
+    const examHubCount = examHubs.length;
 
     const entries: string[] = [];
 
@@ -37,8 +52,10 @@ export async function GET() {
         { key: "past-papers", count: pastPaperCount },
         { key: "courses", count: courseCount },
         { key: "course-exams", count: courseExamCount },
+        { key: "course-notes", count: courseNoteCount },
         { key: "resources", count: resourceCount },
         { key: "syllabus", count: syllabusCount },
+        { key: "exam-hubs", count: examHubCount },
     ];
 
     collections.forEach(({ key, count }) => {

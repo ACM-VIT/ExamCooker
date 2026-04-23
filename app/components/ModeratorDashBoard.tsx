@@ -2,11 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Note, PastPaper } from "@/src/generated/prisma";
+import type { Note, PastPaper } from "@/prisma/generated/client";
 import Pagination from "./Pagination";
 import NotesCard from "./NotesCard";
 import PastPaperCard from "./PastPaperCard";
-import {approveItem, deleteItem, renameItem, generatePastPaperTitle} from "../actions/moderatorActions";
+import { approveItem, deleteItem, renameItem, generatePastPaperTitle } from "../actions/moderatorActions";
 
 const PAGE_SIZE = 9;
 
@@ -104,9 +104,9 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
         try {
             await renameItem(id, type, newName);
             if (type === "note") {
-                setNotes(notes.map((note) => note.id === id ? {...note, title: newName} : note));
+                setNotes(notes.map((note) => note.id === id ? { ...note, title: newName } : note));
             } else {
-                setPastPapers(pastPapers.map((paper) => paper.id === id ? {...paper, title: newName} : paper));
+                setPastPapers(pastPapers.map((paper) => paper.id === id ? { ...paper, title: newName } : paper));
             }
         } catch (error) {
             console.error("Error renaming item:", error);
@@ -249,10 +249,9 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
             <div className="w-full flex justify-center mb-6">
                 <button
                     className={`mr-2 px-4 py-2 rounded-lg font-semibold transition-colors duration-200 ease-in-out
-                        ${
-                            activeTab === "notes"
-                                ? "bg-blue-500 text-white shadow-md"
-                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        ${activeTab === "notes"
+                            ? "bg-blue-500 text-white shadow-md"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                         }`}
                     onClick={() => setActiveTab("notes")}
                 >
@@ -260,10 +259,9 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                 </button>
                 <button
                     className={`ml-2 px-4 py-2 rounded-lg font-semibold transition-colors duration-200 ease-in-out
-                        ${
-                            activeTab === "past_papers"
-                                ? "bg-blue-500 text-white shadow-md"
-                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        ${activeTab === "past_papers"
+                            ? "bg-blue-500 text-white shadow-md"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                         }`}
                     onClick={() => setActiveTab("past_papers")}
                 >

@@ -1,4 +1,5 @@
-import { handlers } from "@/app/auth";
+import { NextRequest } from "next/server";
+import { authHandler } from "@/app/auth";
 
 const PUBLIC_AUTH_HOSTS = new Set([
   "exam-cooker.acmvit.in",
@@ -13,7 +14,13 @@ function getPublicOriginFromCookie(request) {
   const callbackCookie = rawCookie
     .split(";")
     .map((part) => part.trim())
-    .find((part) => part.startsWith("__Secure-authjs.callback-url=") || part.startsWith("authjs.callback-url="));
+    .find(
+      (part) =>
+        part.startsWith("__Secure-authjs.callback-url=") ||
+        part.startsWith("authjs.callback-url=") ||
+        part.startsWith("__Secure-next-auth.callback-url=") ||
+        part.startsWith("next-auth.callback-url="),
+    );
 
   if (!callbackCookie) return null;
 
@@ -76,7 +83,7 @@ function normalizeAuthRequest(request) {
   headers.set("x-forwarded-proto", publicUrl.protocol.replace(":", ""));
   headers.set("x-forwarded-port", publicUrl.port || "443");
 
-  return new Request(currentUrl, {
+  return new NextRequest(currentUrl, {
     method: request.method,
     headers,
     body: request.body,
@@ -84,10 +91,10 @@ function normalizeAuthRequest(request) {
   });
 }
 
-export function GET(request) {
-  return handlers.GET(normalizeAuthRequest(request));
+export function GET(request, context) {
+  return authHandler(normalizeAuthRequest(request), context);
 }
 
-export function POST(request) {
-  return handlers.POST(normalizeAuthRequest(request));
+export function POST(request, context) {
+  return authHandler(normalizeAuthRequest(request), context);
 }

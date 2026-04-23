@@ -1,9 +1,11 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { usePathname } from "next/navigation";
-import Loading from "@/app/components/LoadingOverlay";
+import { useSession } from "next-auth/react";
+import ThemeToggleSwitch from "@/app/components/common/ThemeToggle";
+import { SignOut } from "@/app/components/sign-out";
 
 const Tooltip = ({
   children,
@@ -23,195 +25,191 @@ const Tooltip = ({
   );
 };
 
-const NavBar: React.FC<{ isNavOn: boolean; toggleNavbar: () => void }> = ({
-  isNavOn,
-  toggleNavbar,
-}) => {
-  const pathname = usePathname();
-  const [loading, setLoading] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+type MenuLink = {
+  href: string;
+  svgSource: string;
+  alt: string;
+  matches?: (pathname: string | null) => boolean;
+};
 
-  function RenderMenuItem({
-    svgSource,
-    alt,
-    disableAnim,
-  }: {
-    svgSource: string;
-    alt: string;
-    disableAnim: boolean;
-  }) {
-    return (
-      <Tooltip content={alt}>
-        <div
-          onClick={handleLinkClick}
-          className={`flex gap-2 m-2 group ${isNavOn ? "block" : "hidden"}`}
-        >
-          <Image
-            src={svgSource}
-            alt={alt}
-            width={24}
-            height={25}
-            className={`dark:invert-[.835] transition-all transform-gpu can-hover:group-hover:scale-110 ${
-              !disableAnim
-                ? "can-hover:group-hover:-translate-y-1 can-hover:group-hover:rotate-[-5deg]"
-                : ""
-            }`}
-          />
-          <p
-            className={`transition-all text-black font-extrabold ${
-              !disableAnim ? "can-hover:group-hover:-translate-y-1" : ""
-            }  dark:text-[#D5D5D5] ${isExpanded ? "block" : "hidden"}`}
-          >
-            {alt}
-          </p>
-        </div>
-      </Tooltip>
-    );
-  }
+const LINKS: MenuLink[] = [
+  { href: "/home", svgSource: "/assets/Home.svg", alt: "Home" },
+  { href: "/past_papers", svgSource: "/assets/PastPapersIcon.svg", alt: "Papers" },
+  { href: "/notes", svgSource: "/assets/NotesIcon.svg", alt: "Notes" },
+  // {
+  //   href: "/courses",
+  //   svgSource: "/assets/CoursesIcon.svg",
+  //   alt: "Courses",
+  //   matches: (p) => !!p?.startsWith("/courses"),
+  // },
+  { href: "/syllabus", svgSource: "/assets/SyllabusLogo.svg", alt: "Syllabus" },
+  // { href: "/forum", svgSource: "/assets/ForumIcon.svg", alt: "Forum" },
+  { href: "/resources", svgSource: "/assets/BookIcon.svg", alt: "Resources" },
+  { href: "/favourites", svgSource: "/assets/NavFavouriteIcon.svg", alt: "Favourites" },
+  { href: "/quiz", svgSource: "/assets/QuizIcon.svg", alt: "Quiz" },
+];
+
+type Props = {
+  isNavOn: boolean;
+  toggleNavbar: () => void;
+};
+
+const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
+  const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAuthed = Boolean(session?.user);
+  const [showProfile, setShowProfile] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false));
-    return () => clearTimeout(timer);
-  }, [pathname]);
-
-  const handleLinkClick = () => {
-    setLoading(true);
-  };
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(event.target as Node)
+      ) {
+        setShowProfile(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <>
-      {loading && <Loading />}
-      <nav
-        className={`fixed top-0 left-0 z-50 flex flex-col justify-between items-center h-screen ${
-          isNavOn
-            ? "bg-[#C2E6EC] dark:bg-[#0C1222] border-r border-black/15 dark:border-r-[#D5D5D5]/15 w-fit"
-            : ""
-        } p-1 transition-colors duration-300 ease-in-out`}
+      <button
+        type="button"
+        onClick={toggleNavbar}
+        aria-label={isNavOn ? "Close navigation" : "Open navigation"}
+        aria-expanded={isNavOn}
+        className={`fixed top-3 left-3 z-[60] inline-flex h-10 w-10 items-center justify-center rounded-md border border-black/10 bg-white/90 text-black backdrop-blur transition-all duration-200 hover:border-black/25 hover:shadow-md dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 lg:hidden ${isNavOn ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
       >
-        {isNavOn && (
-          <div className="self-start mt-1 ml-2">
-            <button
-              onClick={() => {
-                setIsExpanded(false);
-                toggleNavbar();
-              }}
-              title="Close navigation"
-              aria-label="Close navigation"
-              className="inline-flex h-10 w-10 items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-black/40 dark:focus-visible:ring-[#3BF4C7]/50"
-            >
-              <Image
-                src="/assets/HamburgerIcon.svg"
-                alt="Close"
-                width={26}
-                height={26}
-                className="dark:invert-[.835] transition-transform transform-gpu can-hover:hover:scale-110"
-              />
-            </button>
-          </div>
-        )}
+        <Image
+          src="/assets/HamburgerIcon.svg"
+          alt="Menu"
+          width={20}
+          height={20}
+          className="dark:invert-[.835]"
+        />
+      </button>
 
-        <div className="flex flex-col items-center mt-8">
-          <Link
-            href="/home"
-            passHref
-            className={`${pathname == "/home" ? "bg-[#ffffff]/20" : ""}`}
+      <div
+        onClick={toggleNavbar}
+        aria-hidden="true"
+        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${isNavOn ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+      />
+
+      <nav
+        className={`fixed top-0 left-0 z-50 flex h-screen w-fit flex-col items-center justify-between border-r border-black/15 bg-[#C2E6EC] p-2 transition-transform duration-200 ease-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          }`}
+      >
+        <div className="flex w-full min-h-[2.5rem] items-center justify-start px-1">
+          <button
+            type="button"
+            onClick={toggleNavbar}
+            aria-label="Close navigation"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-black/60 transition-colors hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5] lg:hidden"
           >
-            <RenderMenuItem
-              svgSource="/assets/Home.svg"
-              alt="Home"
-              disableAnim={pathname == "/home"}
-            />
-          </Link>
-          <Link
-            href={"/past_papers"}
-            passHref
-            className={`${pathname == "/past_papers" ? "bg-[#ffffff]/20" : ""}`}
-          >
-            <RenderMenuItem
-              svgSource="/assets/PastPapersIcon.svg"
-              alt="Papers"
-              disableAnim={pathname == "/past_papers"}
-            />
-          </Link>
-          <Link
-            href={"/notes"}
-            passHref
-            className={`${pathname == "/notes" ? "bg-[#ffffff]/20" : ""}`}
-          >
-            <RenderMenuItem
-              svgSource="/assets/NotesIcon.svg"
-              alt="Notes"
-              disableAnim={pathname == "/notes"}
-            />
-          </Link>
-          <Link
-            href={"/courses"}
-            passHref
-            className={`${pathname?.startsWith("/courses") ? "bg-[#ffffff]/20" : ""}`}
-          >
-            <RenderMenuItem
-              svgSource="/assets/CoursesIcon.svg"
-              alt="Courses"
-              disableAnim={pathname?.startsWith("/courses") ?? false}
-            />
-          </Link>
-          <Link
-            href={"/syllabus"}
-            passHref
-            className={`${pathname == "/syllabus" ? "bg-[#ffffff]/20" : ""}`}
-          >
-            <RenderMenuItem
-              svgSource="/assets/SyllabusLogo.svg"
-              alt="Syllabus"
-              disableAnim={pathname == "/syllabus"}
-            />
-          </Link>
-          <Link
-            href={"/forum"}
-            passHref
-            className={`${pathname == "/forum" ? "bg-[#ffffff]/20" : ""}`}
-          >
-            <RenderMenuItem
-              svgSource="/assets/ForumIcon.svg"
-              alt="Forum"
-              disableAnim={pathname == "/forum"}
-            />
-          </Link>
-          <Link
-            href={"/resources"}
-            passHref
-            className={`${pathname == "/resources" ? "bg-[#ffffff]/20" : ""}`}
-          >
-            <RenderMenuItem
-              svgSource="/assets/BookIcon.svg"
-              alt="Resources"
-              disableAnim={pathname == "/resources"}
-            />
-          </Link>
-          <Link
-            href={"/favourites"}
-            passHref
-            className={`${pathname == "/favourites" ? "bg-[#ffffff]/20" : ""}`}
-          >
-            <RenderMenuItem
-              svgSource="/assets/NavFavouriteIcon.svg"
-              alt="Favourites"
-              disableAnim={pathname == "/favourites"}
-            />
-          </Link>
-          <Link
-            href={"/quiz"}
-            passHref
-            className={`${pathname == "/quiz" ? "" : ""}`}
-          >
-            <RenderMenuItem
-              svgSource="/assets/QuizIcon.svg"
-              alt="Quiz"
-              disableAnim={pathname == "/quiz"}
-            />
-          </Link>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
         </div>
-        <div />
+
+        <div className="flex flex-col items-center">
+          {LINKS.map((link) => {
+            const isActive = link.matches
+              ? link.matches(pathname)
+              : pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={isActive ? "bg-[#ffffff]/20" : ""}
+              >
+                <Tooltip content={link.alt}>
+                  <div className="flex m-2 group">
+                    <Image
+                      src={link.svgSource}
+                      alt={link.alt}
+                      width={24}
+                      height={25}
+                      className={`dark:invert-[.835] transition-all transform-gpu can-hover:group-hover:scale-110 ${!isActive
+                        ? "can-hover:group-hover:-translate-y-1 can-hover:group-hover:rotate-[-5deg]"
+                        : ""
+                        }`}
+                    />
+                  </div>
+                </Tooltip>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-col items-center gap-2 mb-2">
+          <ThemeToggleSwitch />
+          {isAuthed ? (
+            <div className="relative" ref={profileRef}>
+              <button
+                type="button"
+                title="Profile"
+                aria-label="Profile"
+                onClick={() => setShowProfile((v) => !v)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-black/15 bg-white text-xs font-bold text-black/70 transition-colors duration-200 hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:bg-transparent dark:text-[#D5D5D5]/70 dark:hover:border-[#3BF4C7]/60 dark:hover:text-[#3BF4C7]"
+              >
+                {(session?.user?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+              </button>
+              {showProfile && (
+                <div className="absolute bottom-0 left-full ml-3 w-56 rounded-md border border-black/10 bg-white p-3 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#121B31]">
+                  <p className="mb-1 text-sm font-semibold text-black dark:text-[#D5D5D5]">
+                    {session?.user?.name}
+                  </p>
+                  <p className="mb-3 break-words text-xs text-black/60 dark:text-[#D5D5D5]/60">
+                    {session?.user?.email}
+                  </p>
+                  <SignOut>
+                    <span className="text-xs font-semibold text-red-500 hover:underline dark:text-red-400">
+                      Sign out
+                    </span>
+                  </SignOut>
+                </div>
+              )}
+            </div>
+          ) : (
+            <a
+              href="/api/auth/init"
+              title="Sign in"
+              aria-label="Sign in"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-black/70 hover:text-black hover:bg-black/5 dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] dark:hover:bg-white/5 transition-colors duration-200"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                <polyline points="10 17 15 12 10 7" />
+                <line x1="15" y1="12" x2="3" y2="12" />
+              </svg>
+            </a>
+          )}
+        </div>
       </nav>
     </>
   );

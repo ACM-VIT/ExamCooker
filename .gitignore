@@ -41,5 +41,9 @@ next-env.d.ts
 # generated reports
 scripts/reports/
 
+# generated files 
+prisma/generated/*
+lib/generated/*
+
 # local working plan
 PLAN.md

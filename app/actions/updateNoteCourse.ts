@@ -27,6 +27,7 @@ export async function updateNoteCourse(input: UpdateNoteCourseInput) {
     });
 
     revalidatePath("/mod/notes/review");
+    revalidateTag("notes", "minutes");
     revalidateTag("courses", "minutes");
     return { success: true };
 }

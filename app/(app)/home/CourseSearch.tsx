@@ -6,6 +6,11 @@ import Link from "next/link";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { getAliasCourseCodes } from "@/lib/courseAliases";
 import { normalizeCourseCode } from "@/lib/courseTags";
+import {
+    getCourseNotesPath,
+    getCoursePastPapersPath,
+    getCourseSyllabusPath,
+} from "@/lib/seo";
 
 export type CourseResult = {
     code: string;
@@ -272,21 +277,21 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
 
                             if (selectedCourse.paperCount > 0) {
                                 actions.push({
-                                    href: `/past_papers?search=${encodeURIComponent(selectedCourse.code)}`,
+                                    href: getCoursePastPapersPath(selectedCourse.code),
                                     label: `Past Papers (${selectedCourse.paperCount})`,
                                 });
                             }
 
                             if (selectedCourse.noteCount > 0) {
                                 actions.push({
-                                    href: `/notes?search=${encodeURIComponent(selectedCourse.code)}`,
+                                    href: getCourseNotesPath(selectedCourse.code),
                                     label: `Notes (${selectedCourse.noteCount})`,
                                 });
                             }
 
                             if (syllabusId) {
                                 actions.push({
-                                    href: `/syllabus/${encodeURIComponent(syllabusId)}`,
+                                    href: getCourseSyllabusPath(selectedCourse.code),
                                     label: 'Syllabus',
                                 });
                             }

@@ -1,7 +1,7 @@
 import React from "react";
-import {SessionProvider} from "next-auth/react";
 import ClientSide from "./clientSide";
 import PostHogIdentify from "@/app/components/PostHogIdentify";
+import AuthSessionProvider from "@/app/components/AuthSessionProvider";
 
 export default function Layout({
                                          children,
@@ -29,11 +29,11 @@ export default function Layout({
     }> = [];
 
     return (
-        <SessionProvider>
+        <AuthSessionProvider>
             <PostHogIdentify />
             <ClientSide initialBookmarks={initialBookmarks}>
                 {children}
             </ClientSide>
-        </SessionProvider>
+        </AuthSessionProvider>
     );
 }
