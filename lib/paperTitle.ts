@@ -11,7 +11,7 @@ export type ParsedPaperTitle = {
 const SLOT_REGEX = /\b([A-G][1-2])\b/i;
 const YEAR_RANGE_REGEX = /\b((?:20)?\d{2})\s*-\s*((?:20)?\d{2})\b/;
 const YEAR_REGEX = /\b(20\d{2})\b/;
-const COURSE_CODE_REGEX = /([A-Z]{2,5}\d{3,4}[A-Z]{0,3})/g;
+const COURSE_CODE_REGEX = /([A-Z]{2,7}\d{2,5}[A-Z]{0,3})/g;
 
 export function parsePaperTitle(rawTitle: string): ParsedPaperTitle {
     const baseTitle = rawTitle.replace(/\.pdf$/i, "").replace(/select$/i, "").trim();
@@ -98,7 +98,7 @@ export function extractCourseName(title: string, courseCode?: string): string | 
         }
     }
 
-    working = working.replace(/\[[A-Z]{2,5}\s?\d{3,4}[A-Z]{0,3}\]\s*/gi, "");
+    working = working.replace(/\[[A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3}\]\s*/gi, "");
     working = working.replace(/[\[\]]\s*$/, "");
     working = working.replace(/[-–—]\s*$/, "").trim();
 

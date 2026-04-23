@@ -3,7 +3,7 @@ import { z } from "zod";
 import { normalizeCourseCode } from "@/lib/courseTags";
 
 const AI_PAST_PAPER_MODEL = "google/gemini-3-flash";
-const COURSE_CODE_REGEX = /^[A-Z]{2,5}\s?\d{3,4}[A-Z]{0,3}$/i;
+const COURSE_CODE_REGEX = /^[A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3}$/i;
 const SLOT_OPTIONS = [
     "A1",
     "A2",

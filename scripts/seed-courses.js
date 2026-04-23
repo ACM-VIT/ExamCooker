@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const REPORT_DIR = path.resolve(__dirname, "reports");
 
 // Inlined from lib/courseTags.ts — keep in sync if that regex changes.
-const COURSE_TAG_REGEX = /^(.*?)\s*\[([A-Z]{2,5}\s?\d{3,4}[A-Z]{0,3})\]\s*$/i;
+const COURSE_TAG_REGEX = /^(.*?)\s*\[([A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3})\]\s*$/i;
 
 function normalizeCourseCode(code) {
   return String(code || "").replace(/\s+/g, "").toUpperCase();

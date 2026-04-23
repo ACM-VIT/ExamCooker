@@ -41,9 +41,12 @@ next-env.d.ts
 # generated reports
 scripts/reports/
 
+
 # generated files 
 prisma/generated/*
 lib/generated/*
+scripts/import-answer-key-papers.ts
+scripts/import-missing-courses.ts
 
 # local working plan
 PLAN.md

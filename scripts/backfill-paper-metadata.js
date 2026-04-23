@@ -11,11 +11,11 @@ const BATCH_SIZE = 500;
 // Keep in sync if those change.
 // ---------------------------------------------------------------------------
 
-const COURSE_TAG_REGEX = /^(.*?)\s*\[([A-Z]{2,5}\s?\d{3,4}[A-Z]{0,3})\]\s*$/i;
+const COURSE_TAG_REGEX = /^(.*?)\s*\[([A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3})\]\s*$/i;
 const SLOT_REGEX = /\b([A-G][1-2])\b/i;
 const YEAR_RANGE_REGEX = /\b((?:20)?\d{2})\s*-\s*((?:20)?\d{2})\b/;
 const YEAR_REGEX = /\b(20\d{2})\b/;
-const COURSE_CODE_REGEX = /([A-Z]{2,5}\d{3,4}[A-Z]{0,3})/g;
+const COURSE_CODE_REGEX = /([A-Z]{2,7}\d{2,5}[A-Z]{0,3})/g;
 
 function normalizeCourseCode(code) {
   return String(code || "").replace(/\s+/g, "").toUpperCase();

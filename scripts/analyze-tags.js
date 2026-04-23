@@ -9,8 +9,8 @@ const prisma = new PrismaClient();
 
 const YEAR_REGEX = /^(19|20)\d{2}$/;
 const SLOT_REGEX = /^[A-G][1-2]$/i;
-const COURSE_CODE_REGEX = /^[A-Z]{2,5}\s?\d{3,4}[A-Z]{0,3}$/;
-const COURSE_CODE_IN_BRACKETS_REGEX = /\[(?<code>[A-Z]{2,5}\s?\d{3,4}[A-Z]{0,3})\]/;
+const COURSE_CODE_REGEX = /^[A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3}$/;
+const COURSE_CODE_IN_BRACKETS_REGEX = /\[(?<code>[A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3})\]/;
 const EXAM_TYPE_REGEX = /^(cat-?1|cat-?2|fat|mid|midterm|quiz|cia)$/i;
 const WORDY_REGEX = /[a-zA-Z]{3,}/;
 const ONLY_ALNUM_REGEX = /^[a-zA-Z0-9]+$/;

@@ -18,7 +18,8 @@
     "seed_courses:dry": "node scripts/seed-courses.js --dry-run",
     "backfill_metadata": "node scripts/backfill-paper-metadata.js",
     "backfill_metadata:dry": "node scripts/backfill-paper-metadata.js --dry-run",
-    "copy_prod_to_dev": "node scripts/db/copy-prod-to-dev.js"
+    "copy_prod_to_dev": "node scripts/db/copy-prod-to-dev.js",
+    "migrate_dev_bucket": "tsx scripts/storage/migrate-dev-bucket.ts"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.1.0",
@@ -64,6 +65,7 @@
     "postcss": "^8.5.6",
     "prisma": "^7.8.0",
     "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.3"
   },
   "overrides": {

@@ -23,7 +23,13 @@ import FilterBar from "@/app/components/past_papers/FilterBar";
 import SortDropdown from "@/app/components/past_papers/SortDropdown";
 import CoursePaperGrid from "@/app/components/past_papers/CoursePaperGrid";
 import CoursePagination from "@/app/components/past_papers/CoursePagination";
-import type { ExamType, Semester, Campus } from "@/prisma/generated/client";
+import {
+    Campus as CampusEnum,
+    Semester as SemesterEnum,
+    type Campus,
+    type ExamType,
+    type Semester,
+} from "@/prisma/generated/client";
 import {
     buildBreadcrumbList,
     buildCollectionPage,
@@ -33,6 +39,8 @@ import {
 
 const PAGE_SIZE = 24;
 const CUID_REGEX = /^c[a-z0-9]{20,}$/i;
+const SEMESTER_VALUES = new Set<Semester>(Object.values(SemesterEnum));
+const CAMPUS_VALUES = new Set<Campus>(Object.values(CampusEnum));
 
 type SearchParamsRaw = {
     exam?: string;
@@ -61,6 +69,15 @@ function splitList(raw: string | undefined): string[] {
     return raw.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+function parseUppercaseEnumList<T extends string>(
+    raw: string | undefined,
+    allowed: ReadonlySet<T>,
+): T[] {
+    return splitList(raw)
+        .map((value) => value.toUpperCase())
+        .filter((value): value is T => allowed.has(value as T));
+}
+
 function parseSearchParams(raw: SearchParamsRaw): ParsedFilters {
     const sortParam = raw.sort?.toLowerCase();
     const sort: CoursePaperSort =
@@ -73,8 +90,8 @@ function parseSearchParams(raw: SearchParamsRaw): ParsedFilters {
             .filter((v): v is ExamType => v !== null),
         slots: splitList(raw.slot).map((s) => s.toUpperCase()),
         years: splitList(raw.year).map((y) => Number(y)).filter((y) => !Number.isNaN(y)),
-        semesters: splitList(raw.semester).map((s) => s.toUpperCase() as Semester),
-        campuses: splitList(raw.campus).map((c) => c.toUpperCase() as Campus),
+        semesters: parseUppercaseEnumList(raw.semester, SEMESTER_VALUES),
+        campuses: parseUppercaseEnumList(raw.campus, CAMPUS_VALUES),
         hasAnswerKey: raw.answer_key === "1",
         sort,
         page,
