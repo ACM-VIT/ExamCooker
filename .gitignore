@@ -52,3 +52,4 @@ scripts/import-missing-courses.ts
 PLAN.md
 
 .playwright-mcp
+creds.json
