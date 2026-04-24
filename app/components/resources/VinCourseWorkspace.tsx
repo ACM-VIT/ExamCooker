@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import AppImage from "@/app/components/common/AppImage";
 import InlineYouTubePlayer from "@/app/components/resources/InlineYouTubePlayer";
+import { cn } from "@/lib/utils";
 import type {
     VinCourse,
     VinModule,
@@ -186,11 +187,12 @@ function PlaylistTile({
             type="button"
             onClick={onSelect}
             aria-pressed={active}
-            className={`group/tile relative flex w-full shrink-0 flex-col overflow-hidden border-2 text-left transition ${
+            className={cn(
+                "group/tile relative flex w-full shrink-0 flex-col overflow-hidden border text-left shadow-sm transition",
                 active
-                    ? "border-[#5FC4E7] bg-[#5FC4E7]/25 dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/10"
-                    : "border-black/10 bg-white hover:border-[#5FC4E7] dark:border-[#ffffff]/15 dark:bg-[#0C1222] dark:hover:border-[#3BF4C7]/50"
-            }`}
+                    ? "border-[#5FC4E7] bg-[#5FC4E7]/10"
+                    : "border-black/10 bg-white hover:border-[#5FC4E7] dark:border-[#ffffff]/15 dark:bg-[#0C1222] dark:hover:border-[#5FC4E7]/50",
+            )}
         >
             <div className="relative aspect-[16/9] bg-[#0d1320]">
                 {item.thumbnail ? (
@@ -202,22 +204,33 @@ function PlaylistTile({
                     />
                 ) : null}
                 <div
-                    className={`absolute inset-0 transition ${
-                        active ? "bg-black/10" : "bg-black/30 group-hover/tile:bg-black/15"
-                    }`}
+                    className={cn(
+                        "absolute inset-0 transition",
+                        active
+                            ? "bg-black/15"
+                            : "bg-black/30 group-hover/tile:bg-black/20",
+                    )}
                 />
-                <div className="absolute left-2 top-2 inline-flex h-6 items-center gap-1 bg-black/60 px-2 text-[10px] font-bold uppercase tracking-wider text-white">
+                <div className="absolute left-2 top-2 inline-flex h-6 items-center gap-1 rounded-full bg-black/60 px-2 text-[10px] font-bold uppercase tracking-wider text-white">
                     {item.kind === "lecture" ? "Lecture" : "Example"}
                 </div>
-                {active ? (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="inline-flex h-9 w-9 items-center justify-center bg-[#5FC4E7] text-black dark:bg-[#3BF4C7]">
-                            <Play className="h-4 w-4" fill="currentColor" />
-                        </span>
-                    </div>
-                ) : null}
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <span
+                        className={cn(
+                            "inline-flex h-16 w-16 items-center justify-center rounded-full text-white transition",
+                            active
+                                ? "bg-[#5FC4E7]/85 text-black"
+                                : "bg-black/20 group-hover/tile:bg-black/40",
+                        )}
+                    >
+                        <Play className="h-8 w-8 translate-x-0.5" fill="currentColor" />
+                    </span>
+                </div>
+                <div className="absolute bottom-3 left-3 rounded-full bg-black/20 px-2 py-1 text-xs text-white/85 backdrop-blur-sm">
+                    {active ? "Playing" : "Paused"}
+                </div>
             </div>
-            <div className="flex items-center justify-between gap-2 px-2.5 py-2 text-[12px] font-semibold text-black/75 dark:text-[#D5D5D5]/75">
+            <div className="flex items-center justify-between gap-2 px-3 py-2.5 text-[12px] font-semibold text-black/75 dark:text-[#D5D5D5]/75">
                 <span className="truncate">{label}</span>
             </div>
         </button>
