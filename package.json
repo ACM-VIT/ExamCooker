@@ -19,10 +19,12 @@
     "backfill_metadata": "node scripts/backfill-paper-metadata.js",
     "backfill_metadata:dry": "node scripts/backfill-paper-metadata.js --dry-run",
     "copy_prod_to_dev": "node scripts/db/copy-prod-to-dev.js",
-    "migrate_dev_bucket": "tsx scripts/storage/migrate-dev-bucket.ts"
+    "migrate_dev_bucket": "tsx scripts/storage/migrate-dev-bucket.ts",
+    "migrate_gcs_to_azure": "tsx scripts/storage/migrate-gcs-to-azure.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
+    "@azure/storage-blob": "^12.31.0",
     "@fortawesome/fontawesome-svg-core": "^7.1.0",
     "@fortawesome/free-brands-svg-icons": "^7.1.0",
     "@fortawesome/free-solid-svg-icons": "^7.1.0",
