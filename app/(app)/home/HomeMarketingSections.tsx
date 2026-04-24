@@ -19,8 +19,8 @@ export default async function HomeMarketingSections() {
     const isAuthed = Boolean(session?.user);
 
     return (
-        <div className="bg-[#C2E6EC] dark:bg-[#0C1222] text-black dark:text-[#D5D5D5] transition-colors">
-            <section className="min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-10 md:gap-12 px-4 py-16 md:py-24">
+        <div className="space-y-24 bg-[#C2E6EC] pt-24 text-black transition-colors dark:bg-[#0C1222] dark:text-[#D5D5D5] md:space-y-40 lg:pt-40">
+            <section className="min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-10 px-4 py-16 md:gap-12 md:py-24 lg:sticky lg:top-[-50px]">
                 <WordBetweenLine>
                     <div className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                         For Crammers By Crammers
@@ -58,7 +58,7 @@ export default async function HomeMarketingSections() {
                 </div>
             </section>
 
-            <section className="min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-8 px-4 py-16 md:py-24">
+            <section className="relative z-10 min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-8 px-4 py-16 md:py-24 lg:sticky lg:top-0">
                 <WordBetweenLine>
                     <div className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                         Why Exam<GradientText>Cooker</GradientText>?
@@ -78,7 +78,7 @@ export default async function HomeMarketingSections() {
             </section>
 
             {!isAuthed && (
-                <section className="relative min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] overflow-hidden flex flex-col justify-center gap-8 px-4 py-16 md:py-24">
+                <section className="relative z-20 min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] overflow-hidden flex flex-col justify-center gap-8 px-4 py-16 md:py-24 lg:sticky lg:top-0">
                     <div className="pointer-events-none absolute -top-32 -right-32 h-[22rem] w-[22rem] rounded-full bg-[#3BF4C7]/25 blur-[140px] dark:bg-[#3BF4C7]/20" />
                     <div className="pointer-events-none absolute -bottom-32 -left-32 h-[22rem] w-[22rem] rounded-full bg-[#253EE0]/20 blur-[140px] dark:bg-[#27BAEC]/25" />
 
@@ -96,7 +96,7 @@ export default async function HomeMarketingSections() {
                 </section>
             )}
 
-            <section className="min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] flex flex-col justify-center gap-6 px-4 py-16 md:py-24">
+            <section className="relative z-30 min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] flex flex-col justify-center gap-6 px-4 py-16 md:py-24 lg:sticky lg:top-0">
                 <WordBetweenLine>
                     <div className="flex items-center justify-center">
                         <span className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">
