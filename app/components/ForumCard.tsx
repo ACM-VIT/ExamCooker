@@ -84,11 +84,25 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
         e.preventDefault();
     };
 
+    const navigateToPost = () => {
+        router.push(`/forum/${post.id}`);
+    };
+
+    const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            navigateToPost();
+        }
+    };
+
     return (
         <div className="w-full flex pl-11 pr-7 pt-7 justify-center text-black dark:text-[#D5D5D5]">
             <div
                 className="bg-[#5FC4E7] dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] border-2 border-[#5FC4E7] dark:border-[#ffffff]/20 dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:hover:bg-[#ffffff]/10 hover:border-b-2 dark:hover:border-b-[#3BF4C7] hover:border-b-white p-5 md:p-10 size-full md:size-5/6 transition duration-200 transform hover:scale-105 hover:shadow-xl cursor-pointer"
-                onClick={() => router.push(`/forum/${post.id}`)}
+                onClick={navigateToPost}
+                onKeyDown={handleCardKeyDown}
+                role="link"
+                tabIndex={0}
             >
                 <div className="flex justify-between items-center">
                     <h2 className="font-extrabold lg:text-3xl md:text-xl text-base">{title}</h2>
@@ -96,7 +110,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                         <div className="bg-white dark:bg-[#3F4451] p-1 hidden md:block">
                             <NumberOfComments count={commentCount} />
                         </div>
-                        <div className="flex space-x-2 p-0.5 bg-white dark:bg-[#3F4451]" onClick={handleVoteClick}>
+                        <div className="flex space-x-2 p-0.5 bg-white dark:bg-[#3F4451]" onClickCapture={handleVoteClick}>
                             <VoteButtons
                                 postId={post.id}
                                 initialUpvotes={post.upvoteCount ?? 0}
@@ -115,7 +129,12 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                     <div className="sm:w-2/3 md:flex md:w-full md:justify-between">
                         <TagContainer tags={tags} />
                     </div>
-                    <button onClick={handleToggleFav} className="transition-colors duration-200">
+                    <button
+                        type="button"
+                        onClick={handleToggleFav}
+                        aria-label={isFav ? "Remove from favourites" : "Add to favourites"}
+                        className="transition-colors duration-200"
+                    >
                         <FontAwesomeIcon icon={faHeart} color={isFav ? 'red' : 'lightgrey'} />
                     </button>
                 </div>

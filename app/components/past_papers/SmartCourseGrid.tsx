@@ -44,12 +44,10 @@ export default function SmartCourseGrid({
     pageSize,
     rankCourses = true,
 }: Props) {
-    const [records, setRecords] = useState<Record<string, CourseVisitRecord>>({});
-    const [mounted, setMounted] = useState(false);
+    const [records, setRecords] = useState<Record<string, CourseVisitRecord> | null>(null);
 
     useEffect(() => {
         setRecords(loadCourseVisitRecords());
-        setMounted(true);
         return subscribeToCourseVisitChanges(() => {
             setRecords(loadCourseVisitRecords());
         });
@@ -58,12 +56,13 @@ export default function SmartCourseGrid({
     const sortedCourses = useMemo(() => {
         if (!rankCourses) return courses;
 
-        const usePersonalSignal = mounted && hasUsefulPersonalSignal(records);
+        const currentRecords = records ?? {};
+        const usePersonalSignal = records !== null && hasUsefulPersonalSignal(currentRecords);
 
         return [...courses].sort((a, b) => {
             if (usePersonalSignal) {
                 const personalDelta =
-                    personalScore(records[b.code]) - personalScore(records[a.code]);
+                    personalScore(currentRecords[b.code]) - personalScore(currentRecords[a.code]);
                 if (personalDelta !== 0) return personalDelta;
             }
 
@@ -74,7 +73,7 @@ export default function SmartCourseGrid({
                 a.title.localeCompare(b.title)
             );
         });
-    }, [courses, mounted, rankCourses, records]);
+    }, [courses, rankCourses, records]);
 
     const start = (page - 1) * pageSize;
     const visibleCourses = sortedCourses.slice(start, start + pageSize);

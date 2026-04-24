@@ -1,7 +1,7 @@
 "use client";
 
 import React, { addTransitionType, memo, useCallback, useMemo, useState, useTransition } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/examSlug";
@@ -20,6 +20,7 @@ type Props = {
     examCounts: Partial<Record<ExamType, number>>;
     yearCounts: Partial<Record<number, number>>;
     slotCounts: Partial<Record<string, number>>;
+    searchString: string;
 };
 
 const SEMESTER_LABEL: Record<Semester, string> = {
@@ -49,12 +50,16 @@ export default function FilterBar({
     examCounts,
     yearCounts,
     slotCounts,
+    searchString,
 }: Props) {
     const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
     const [pending, startTransition] = useTransition();
     const [moreOpen, setMoreOpen] = useState(false);
+    const searchParams = useMemo(
+        () => new URLSearchParams(searchString),
+        [searchString],
+    );
 
     const selected = useMemo(
         () => ({
@@ -261,7 +266,7 @@ export default function FilterBar({
     );
 }
 
-const FilterButton = memo(function FilterButton({
+function FilterButton({
     label,
     count,
     active,
@@ -285,7 +290,7 @@ const FilterButton = memo(function FilterButton({
             {count !== undefined && <FilterCount count={count} active={active} />}
         </button>
     );
-});
+}
 
 function FilterCount({ count, active }: { count: number; active: boolean }) {
     return (

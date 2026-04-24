@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import CoursePicker, { type CourseOption } from "./CoursePicker";
@@ -57,7 +57,8 @@ const CAMPUS_OPTIONS: { value: Campus; label: string }[] = [
 ];
 
 export default function PaperReviewRow({ paper, courses, onResolved }: Props) {
-    const [draft, setDraft] = useState<PaperRowData>(paper);
+    const initialDraftRef = useRef(paper);
+    const [draft, setDraft] = useState<PaperRowData>(initialDraftRef.current);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 

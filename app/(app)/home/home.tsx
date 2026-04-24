@@ -8,6 +8,7 @@ import { getSearchableCourses } from "@/lib/data/courseCatalog";
 import { getUpcomingExams } from "@/lib/data/upcomingExams";
 import CourseSearch from "./CourseSearch";
 import HomeMarketingSections from "./HomeMarketingSections";
+import WelcomeBackSubtitle from "./WelcomeBackSubtitle";
 
 const HOME_SUBTITLE = "Your one-stop solution to cram before exams.";
 
@@ -26,13 +27,18 @@ async function HomeMarqueeSection() {
     return <ExamsMarquee items={upcomingExams} />;
 }
 
-async function HomeWelcomeBack() {
+const subtitleClass =
+    "text-base md:text-xl text-black/70 dark:text-[#D5D5D5]/70 mb-10 max-w-2xl mx-auto";
+
+async function HomeSubtitle() {
     const session = await auth();
-    if (!session?.user) return null;
+    if (!session?.user) {
+        return <p className={subtitleClass}>{HOME_SUBTITLE}</p>;
+    }
     return (
-        <p className="mt-4 text-xs md:text-sm font-semibold uppercase tracking-[0.2em] text-black/50 dark:text-[#D5D5D5]/55">
+        <WelcomeBackSubtitle className={subtitleClass}>
             Welcome back, <UserName />
-        </p>
+        </WelcomeBackSubtitle>
     );
 }
 
@@ -43,9 +49,6 @@ const Home = () => {
                 <div className="flex flex-1 flex-col justify-center text-center py-10 md:py-14">
                     <div className="mb-10 md:mb-12 flex flex-col items-center">
                         <ExamCookerLogo />
-                        <Suspense fallback={null}>
-                            <HomeWelcomeBack />
-                        </Suspense>
                     </div>
 
                     <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold leading-[1.02] drop-shadow-[0px_2px_rgba(59,244,199,1)]">
@@ -54,9 +57,9 @@ const Home = () => {
                     <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold leading-[1.02] mb-6">
                         Made Easy.
                     </h1>
-                    <p className="text-base md:text-xl text-black/70 dark:text-[#D5D5D5]/70 mb-10 max-w-2xl mx-auto">
-                        {HOME_SUBTITLE}
-                    </p>
+                    <Suspense fallback={<p className={subtitleClass}>{HOME_SUBTITLE}</p>}>
+                        <HomeSubtitle />
+                    </Suspense>
 
                     <HomeSearchSection />
                 </div>

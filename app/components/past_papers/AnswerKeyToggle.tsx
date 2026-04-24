@@ -1,17 +1,18 @@
 "use client";
 
 import React, { addTransitionType, useTransition } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 type Props = {
     count: number;
+    searchString: string;
 };
 
-export default function AnswerKeyToggle({ count }: Props) {
+export default function AnswerKeyToggle({ count, searchString }: Props) {
     const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
     const [, startTransition] = useTransition();
+    const searchParams = new URLSearchParams(searchString);
     const checked = searchParams.get("answer_key") === "1";
 
     const onChange = (enabled: boolean) => {

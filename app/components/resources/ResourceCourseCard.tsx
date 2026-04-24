@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo } from "react";
 import Link from "next/link";
 import type { VinCourse } from "@/lib/data/vinTogether";
 
@@ -14,7 +14,7 @@ type ResourceCourseCardProps = {
 const formatCount = (count: number) => Intl.NumberFormat("en-IN").format(count);
 
 function ResourceCourseCard({ course }: ResourceCourseCardProps) {
-    const href = useMemo(() => `/resources/${course.slug}`, [course.slug]);
+    const href = `/resources/${course.slug}`;
     const totalVideos = course.counts.videoCount + course.counts.exampleVideoCount;
 
     return (

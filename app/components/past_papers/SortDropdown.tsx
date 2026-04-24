@@ -1,7 +1,7 @@
 "use client";
 
 import React, { addTransitionType, useTransition } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const OPTIONS = [
     { value: "year_desc", label: "Year (newest first)" },
@@ -11,14 +11,19 @@ const OPTIONS = [
 
 type SortValue = (typeof OPTIONS)[number]["value"];
 
-export default function SortDropdown({ value }: { value: SortValue }) {
+export default function SortDropdown({
+    value,
+    searchString,
+}: {
+    value: SortValue;
+    searchString: string;
+}) {
     const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
     const [, startTransition] = useTransition();
 
     const onChange = (next: string) => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(searchString);
         if (next === "year_desc") {
             params.delete("sort");
         } else {

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useState, useContext, useCallback, useTransition, useEffect } from 'react';
+import React, { createContext, useState, useContext, useCallback, useTransition, useEffect, useRef } from 'react';
 import { Bookmark, toggleBookmarkAction } from '../actions/Favourites';
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 import { loadGuestBookmarks, saveGuestBookmarks } from "@/lib/guestStorage";
@@ -23,24 +23,42 @@ export function useBookmarks() {
 }
 
 export default function BookmarksProvider({ children, initialBookmarks }: { children: React.ReactNode, initialBookmarks: Bookmark[] }) {
-    const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarks);
+    const initialBookmarksRef = useRef(initialBookmarks);
+    const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarksRef.current);
     const [pending, startTransition] = useTransition();
     const { requireAuth, isAuthed, status } = useGuestPrompt();
 
     useEffect(() => {
-        if (status === "unauthenticated") {
-            setBookmarks(loadGuestBookmarks());
-        }
-        if (status === "authenticated") {
-            if (initialBookmarks.length > 0) {
-                setBookmarks(initialBookmarks);
+        let cancelled = false;
+
+        async function syncBookmarks() {
+            if (status === "unauthenticated") {
+                if (!cancelled) {
+                    setBookmarks(loadGuestBookmarks());
+                }
                 return;
             }
-            getBookmarksAction()
-                .then((data) => setBookmarks(data))
-                .catch(() => undefined);
+
+            if (status !== "authenticated") {
+                return;
+            }
+
+            let nextBookmarks = initialBookmarksRef.current;
+            if (nextBookmarks.length === 0) {
+                nextBookmarks = await getBookmarksAction().catch(() => []);
+            }
+
+            if (!cancelled) {
+                setBookmarks(nextBookmarks);
+            }
         }
-    }, [status, initialBookmarks]);
+
+        void syncBookmarks();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [status]);
 
     const toggleBookmark = useCallback(async (bookmark: Bookmark, favourite: boolean) => {
         if (!isAuthed) {

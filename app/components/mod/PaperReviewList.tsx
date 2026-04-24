@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import PaperReviewRow, { type PaperRowData } from "./PaperReviewRow";
 import type { CourseOption } from "./CoursePicker";
 
@@ -10,7 +10,8 @@ type Props = {
 };
 
 export default function PaperReviewList({ initialPapers, courses }: Props) {
-    const [papers, setPapers] = useState(initialPapers);
+    const initialPapersRef = useRef(initialPapers);
+    const [papers, setPapers] = useState(initialPapersRef.current);
     const [filter, setFilter] = useState<
         "all" | "no_course" | "no_exam" | "no_year"
     >("all");

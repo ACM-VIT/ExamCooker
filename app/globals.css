@@ -136,6 +136,11 @@
     to { transform: translateY(0); }
 }
 
+@keyframes subtitleSwap {
+    from { opacity: 0; transform: translateY(4px); filter: blur(2px); }
+    to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
 ::view-transition-old(.fade-out) {
     animation: var(--duration-exit) ease-in fade reverse;
 }

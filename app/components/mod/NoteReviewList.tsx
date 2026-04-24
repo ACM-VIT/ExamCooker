@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import NoteReviewRow, { type NoteRowData } from "./NoteReviewRow";
 import type { CourseOption } from "./CoursePicker";
 
@@ -10,7 +10,8 @@ type Props = {
 };
 
 export default function NoteReviewList({ initialNotes, courses }: Props) {
-    const [notes, setNotes] = useState(initialNotes);
+    const initialNotesRef = useRef(initialNotes);
+    const [notes, setNotes] = useState(initialNotesRef.current);
 
     const onResolved = (id: string) => {
         setNotes((prev) => prev.filter((n) => n.id !== id));

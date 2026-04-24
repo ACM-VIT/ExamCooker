@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 type JsonLd = Record<string, unknown>;
 
 function isJsonLdItem(item: JsonLd | null | undefined): item is JsonLd {
@@ -25,15 +27,25 @@ export default function StructuredData({
 
     return (
         <>
-            {items.map((item, index) => (
-                <script
-                    key={`${String(item["@type"] ?? "jsonld")}-${index}`}
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{
-                        __html: JSON.stringify(item),
-                    }}
-                />
-            ))}
+            {items.map((item, index) => {
+                const baseKey = String(
+                    item["@id"] ?? item.url ?? JSON.stringify(item),
+                );
+                const itemKey = `${baseKey}-${index}`;
+                const scriptId = `jsonld-${baseKey
+                    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+                    .slice(0, 72) || "item"}-${index}`;
+
+                return (
+                    <Script
+                        key={itemKey}
+                        id={scriptId}
+                        type="application/ld+json"
+                    >
+                        {JSON.stringify(item)}
+                    </Script>
+                );
+            })}
         </>
     );
 }

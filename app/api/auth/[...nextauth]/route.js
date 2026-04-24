@@ -9,6 +9,21 @@ const PUBLIC_AUTH_HOSTS = new Set([
   "examcooker-beta-2024.azurewebsites.net",
 ]);
 
+const LOCAL_AUTH_HOSTS = new Set([
+  "localhost",
+  "127.0.0.1",
+  "::1",
+  "[::1]",
+]);
+
+function isAllowedAuthHost(hostname) {
+  return PUBLIC_AUTH_HOSTS.has(hostname) || LOCAL_AUTH_HOSTS.has(hostname);
+}
+
+function isLocalAuthHost(hostname) {
+  return LOCAL_AUTH_HOSTS.has(hostname);
+}
+
 function getPublicOriginFromCookie(request) {
   const rawCookie = request.headers.get("cookie");
   if (!rawCookie) return null;
@@ -29,7 +44,7 @@ function getPublicOriginFromCookie(request) {
   try {
     const value = decodeURIComponent(callbackCookie.split("=").slice(1).join("="));
     const url = new URL(value);
-    return PUBLIC_AUTH_HOSTS.has(url.host) ? url.origin : null;
+    return isAllowedAuthHost(url.hostname) ? url.origin : null;
   } catch {
     return null;
   }
@@ -44,8 +59,11 @@ function getAllowedHost(value) {
 
     try {
       const url = new URL(`https://${trimmed}`);
-      if (PUBLIC_AUTH_HOSTS.has(url.hostname)) {
-        return url.hostname;
+      if (isAllowedAuthHost(url.hostname)) {
+        return {
+          host: url.host,
+          hostname: url.hostname,
+        };
       }
     } catch {
       // Ignore malformed forwarded host values.
@@ -62,8 +80,14 @@ function getPublicOrigin(request) {
 
   if (host) {
     const forwardedProto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-    const proto = forwardedProto === "http" ? "http" : "https";
-    return `${proto}://${host}`;
+    const normalizedProto =
+      forwardedProto === "http" || forwardedProto === "https"
+        ? forwardedProto
+        : undefined;
+    const proto = isLocalAuthHost(host.hostname)
+      ? normalizedProto || "http"
+      : normalizedProto || "https";
+    return `${proto}://${host.host}`;
   }
 
   return getPublicOriginFromCookie(request);
@@ -83,7 +107,7 @@ function normalizeAuthRequest(request) {
   headers.set("host", publicUrl.host);
   headers.set("x-forwarded-host", publicUrl.host);
   headers.set("x-forwarded-proto", publicUrl.protocol.replace(":", ""));
-  headers.set("x-forwarded-port", publicUrl.port || "443");
+  headers.set("x-forwarded-port", publicUrl.port || (publicUrl.protocol === "http:" ? "80" : "443"));
 
   return new NextRequest(currentUrl, {
     method: request.method,

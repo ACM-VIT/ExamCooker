@@ -87,6 +87,7 @@ export default async function ResourcesPage({
                         <div className="flex w-full items-stretch gap-2 sm:gap-3">
                             <div className="min-w-0 flex-1">
                                 <ResourceFilters
+                                    key={`${search}:${year}`}
                                     initialSearch={search}
                                     initialYear={year}
                                     years={years}

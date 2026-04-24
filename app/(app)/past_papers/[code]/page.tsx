@@ -101,6 +101,18 @@ function parseSearchParams(raw: SearchParamsRaw): ParsedFilters {
     };
 }
 
+function buildSearchString(raw: SearchParamsRaw): string {
+    const searchParams = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(raw)) {
+        if (value) {
+            searchParams.set(key, value);
+        }
+    }
+
+    return searchParams.toString();
+}
+
 /**
  * Legacy `/past_papers/<cuid>` URLs redirect to the new canonical
  * `/past_papers/<code>/paper/<cuid>`.
@@ -134,6 +146,7 @@ export async function generateMetadata({
 
     const raw = (await searchParams) ?? {};
     const filters = parseSearchParams(raw);
+    const searchString = buildSearchString(raw);
     const hasFilters =
         filters.examTypes.length > 0 ||
         filters.slots.length > 0 ||
@@ -189,6 +202,7 @@ export default async function CoursePastPapersPage({
 
     const raw = (await searchParams) ?? {};
     const filters = parseSearchParams(raw);
+    const searchString = buildSearchString(raw);
 
     const [options, { papers, totalCount }, syllabus] = await Promise.all([
         getCoursePaperFilterOptions(course.id),
@@ -275,12 +289,19 @@ export default async function CoursePastPapersPage({
                             examCounts={options.examCounts}
                             yearCounts={options.yearCounts}
                             slotCounts={options.slotCounts}
+                            searchString={searchString}
                         />
 
                         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-[#D5D5D5]/10">
                             <div className="flex flex-wrap items-center gap-3">
-                                <AnswerKeyToggle count={options.answerKeyCount} />
-                                <SortDropdown value={filters.sort} />
+                                <AnswerKeyToggle
+                                    count={options.answerKeyCount}
+                                    searchString={searchString}
+                                />
+                                <SortDropdown
+                                    value={filters.sort}
+                                    searchString={searchString}
+                                />
                             </div>
                             <p className="text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
                                 {totalCount} result{totalCount === 1 ? "" : "s"}
@@ -316,6 +337,7 @@ export default async function CoursePastPapersPage({
                             <CoursePagination
                                 currentPage={filters.page}
                                 totalPages={totalPages}
+                                searchString={searchString}
                             />
                         </div>
                     )}

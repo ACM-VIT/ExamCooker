@@ -33,6 +33,17 @@ const PAGE_SIZE = 24;
 const POPULAR_LIMIT = 6;
 const COURSE_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
 
+function buildSearchString(params: { search?: string; page?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params.search) {
+        searchParams.set("search", params.search);
+    }
+    if (params.page) {
+        searchParams.set("page", params.page);
+    }
+    return searchParams.toString();
+}
+
 export async function generateMetadata({
     searchParams,
 }: {
@@ -240,6 +251,10 @@ async function CourseGridSection({
 
     const totalPages = Math.max(1, Math.ceil(courses.length / PAGE_SIZE));
     const page = validatePage(rawPage, totalPages);
+    const paginationSearchString = buildSearchString({
+        search,
+        page: page > 1 ? String(page) : undefined,
+    });
     if (page !== rawPage) {
         const qs = new URLSearchParams();
         if (search) qs.set("search", search);
@@ -282,7 +297,11 @@ async function CourseGridSection({
                 />
                 {totalPages > 1 && (
                     <div className="mt-4">
-                        <CoursePagination currentPage={page} totalPages={totalPages} />
+                        <CoursePagination
+                            currentPage={page}
+                            totalPages={totalPages}
+                            searchString={paginationSearchString}
+                        />
                     </div>
                 )}
             </section>

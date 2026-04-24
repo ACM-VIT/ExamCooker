@@ -6,6 +6,7 @@ const PRODUCTION_BASE_URL = "https://examcooker.acmvit.in";
 const BETA_BASE_URL = "https://beta.examcooker.acmvit.in";
 const FALLBACK_BASE_URL = PRODUCTION_BASE_URL;
 const COURSE_CODE_PATTERN = /^[A-Z]{2,6}\d{3,5}[A-Z]?$/;
+const UNASSIGNED_COURSE_SEGMENT = "unassigned";
 
 const EXAM_TYPE_KEYWORDS: Partial<Record<ExamType, string[]>> = {
     CAT_1: ["cat 1", "cat-1", "cat1", "cat 1 exam", "cat 1 question paper"],
@@ -315,11 +316,17 @@ export function getExamHubPath(examSlug: string) {
 }
 
 export function getPastPaperDetailPath(paperId: string, courseCode?: string | null) {
-    const normalizedCode = courseCode ? normalizeCourseCode(courseCode) : "";
-    if (!normalizedCode) {
-        return `/past_papers/${safeEncodeURIComponent(paperId)}`;
+    const trimmedCode = courseCode?.trim();
+    if (!trimmedCode) {
+        return `${getCoursePastPapersPath(UNASSIGNED_COURSE_SEGMENT)}/paper/${safeEncodeURIComponent(paperId)}`;
     }
-    return `${getCoursePastPapersPath(normalizedCode)}/paper/${safeEncodeURIComponent(paperId)}`;
+
+    const normalizedCode =
+        trimmedCode.toLowerCase() === UNASSIGNED_COURSE_SEGMENT
+            ? UNASSIGNED_COURSE_SEGMENT
+            : normalizeCourseCode(trimmedCode);
+
+    return `${getCoursePastPapersPath(normalizedCode || UNASSIGNED_COURSE_SEGMENT)}/paper/${safeEncodeURIComponent(paperId)}`;
 }
 
 export function isLikelyCourseCode(value: string | null | undefined) {

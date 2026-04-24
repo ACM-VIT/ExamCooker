@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import CoursePicker, { type CourseOption } from "./CoursePicker";
 import { useToast } from "@/components/ui/use-toast";
@@ -42,6 +42,9 @@ function CreateForm({ courses }: { courses: CourseOption[] }) {
     const [slotsText, setSlotsText] = useState("");
     const [examType, setExamType] = useState<ExamType | "">("");
     const [scheduledAt, setScheduledAt] = useState("");
+    const slotsFieldId = useId();
+    const examTypeFieldId = useId();
+    const scheduledAtFieldId = useId();
 
     const reset = () => {
         setCourseId(null);
@@ -84,7 +87,7 @@ function CreateForm({ courses }: { courses: CourseOption[] }) {
                 Add upcoming exam
             </h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="flex flex-col gap-1 text-xs">
+                <div className="flex flex-col gap-1 text-xs">
                     <span className="font-semibold text-black/70 dark:text-[#D5D5D5]/70">
                         Course
                     </span>
@@ -94,23 +97,25 @@ function CreateForm({ courses }: { courses: CourseOption[] }) {
                         onChange={setCourseId}
                         placeholder="Search course"
                     />
-                </label>
-                <label className="flex flex-col gap-1 text-xs">
+                </div>
+                <label htmlFor={slotsFieldId} className="flex flex-col gap-1 text-xs">
                     <span className="font-semibold text-black/70 dark:text-[#D5D5D5]/70">
                         Slots (comma-separated, e.g. A1, C2)
                     </span>
                     <input
+                        id={slotsFieldId}
                         value={slotsText}
                         onChange={(e) => setSlotsText(e.target.value)}
                         className="w-full border border-black/30 bg-white px-3 py-2 text-sm text-black dark:border-[#D5D5D5]/40 dark:bg-[#0C1222] dark:text-[#D5D5D5]"
                         placeholder="A1, C2"
                     />
                 </label>
-                <label className="flex flex-col gap-1 text-xs">
+                <label htmlFor={examTypeFieldId} className="flex flex-col gap-1 text-xs">
                     <span className="font-semibold text-black/70 dark:text-[#D5D5D5]/70">
                         Exam type
                     </span>
                     <select
+                        id={examTypeFieldId}
                         value={examType}
                         onChange={(e) => setExamType(e.target.value as ExamType | "")}
                         className="w-full border border-black/30 bg-white px-3 py-2 text-sm text-black dark:border-[#D5D5D5]/40 dark:bg-[#0C1222] dark:text-[#D5D5D5]"
@@ -123,11 +128,12 @@ function CreateForm({ courses }: { courses: CourseOption[] }) {
                         ))}
                     </select>
                 </label>
-                <label className="flex flex-col gap-1 text-xs">
+                <label htmlFor={scheduledAtFieldId} className="flex flex-col gap-1 text-xs">
                     <span className="font-semibold text-black/70 dark:text-[#D5D5D5]/70">
                         Scheduled at (optional)
                     </span>
                     <input
+                        id={scheduledAtFieldId}
                         type="datetime-local"
                         value={scheduledAt}
                         onChange={(e) => setScheduledAt(e.target.value)}
@@ -174,6 +180,7 @@ function Row({
         item.examType ?? "",
     );
     const [scheduledAt, setScheduledAt] = useState(
+        () =>
         item.scheduledAt
             ? new Date(item.scheduledAt).toISOString().slice(0, 16)
             : "",

@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     experimental: {
         viewTransition: true,
     },
+    reactCompiler: true,
     turbopack: {
         root: __dirname,
         resolveAlias: {
@@ -22,6 +23,11 @@ const nextConfig: NextConfig = {
                 protocol: "https",
                 hostname: "storage.googleapis.com",
                 pathname: "/**",
+            },
+            {
+                protocol: "https",
+                hostname: "www.everything-assistant.com",
+                pathname: "/onboarding-artwork/**",
             },
         ],
     },

@@ -35,7 +35,8 @@ export default function PastPapersCourseSearch({
     initialQuery = "",
 }: Props) {
     const router = useRouter();
-    const [query, setQuery] = useState(initialQuery);
+    const initialQueryRef = useRef(initialQuery);
+    const [query, setQuery] = useState(initialQueryRef.current);
     const [isOpen, setIsOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);

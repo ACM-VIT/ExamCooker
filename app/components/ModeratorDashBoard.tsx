@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import type { Note, PastPaper } from "@/prisma/generated/client";
 import Pagination from "./Pagination";
@@ -36,9 +36,11 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     searchParams,
     totalUsers,
 }) => {
-    const [notes, setNotes] = useState<NoteWithoutTags[]>(initialNotes);
+    const initialNotesRef = useRef(initialNotes);
+    const initialPastPapersRef = useRef(initialPastPapers);
+    const [notes, setNotes] = useState<NoteWithoutTags[]>(initialNotesRef.current);
     const [pastPapers, setPastPapers] =
-        useState<PastPaperWithoutTags[]>(initialPastPapers);
+        useState<PastPaperWithoutTags[]>(initialPastPapersRef.current);
     const [activeTab, setActiveTab] = useState<"notes" | "past_papers">(
         "notes"
     );
@@ -57,6 +59,8 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
         pendingId?: string;
         pendingType?: "note" | "pastPaper";
     }>({ isOpen: false });
+    const renameInputId = useId();
+    const renameInputRef = useRef<HTMLInputElement>(null);
 
     const page = parseInt(searchParams.page || "1", 10);
 
@@ -207,6 +211,12 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     const closeDuplicateDialog = () => {
         setDuplicateDialog({ isOpen: false });
     };
+
+    useEffect(() => {
+        if (renameDialog.isOpen) {
+            renameInputRef.current?.focus();
+        }
+    }, [renameDialog.isOpen]);
 
     const handleApproveOverride = async () => {
         if (!duplicateDialog.pendingId || !duplicateDialog.pendingType) {
@@ -417,10 +427,12 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                             </button>
                         </div>
                         <div className="mt-4">
-                            <label className="text-sm text-black/70 dark:text-[#D5D5D5]/80">
+                            <label htmlFor={renameInputId} className="text-sm text-black/70 dark:text-[#D5D5D5]/80">
                                 New name
                             </label>
                             <input
+                                id={renameInputId}
+                                ref={renameInputRef}
                                 type="text"
                                 value={renameDialog.value}
                                 onChange={(event) =>
@@ -436,7 +448,6 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                     }
                                 }}
                                 className="mt-2 w-full rounded-md border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3 py-2 text-black dark:text-[#D5D5D5] focus:outline-none focus:ring-2 focus:ring-[#5FC4E7]"
-                                autoFocus
                             />
                         </div>
                         <div className="mt-5 flex justify-end gap-2">

@@ -1,26 +1,12 @@
-"use client";
+import { redirect } from "next/navigation";
+import { auth } from "@/app/auth";
 
-import { SessionProvider, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+export default async function SessionRedirect() {
+    const session = await auth();
 
-function SessionRedirectInner() {
-    const { status } = useSession();
-    const router = useRouter();
-
-    useEffect(() => {
-        if (status === "authenticated") {
-            router.replace("/");
-        }
-    }, [status, router]);
+    if (session?.user) {
+        redirect("/");
+    }
 
     return null;
-}
-
-export default function SessionRedirect() {
-    return (
-        <SessionProvider>
-            <SessionRedirectInner />
-        </SessionProvider>
-    );
 }

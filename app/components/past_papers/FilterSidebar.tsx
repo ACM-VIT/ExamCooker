@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useTransition } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/examSlug";
 import type { ExamType, Semester, Campus } from "@/prisma/generated/client";
 
@@ -15,6 +15,7 @@ type Props = {
         answerKeyCount: number;
         totalPapers: number;
     };
+    searchString?: string;
 };
 
 const SEMESTER_LABEL: Record<Semester, string> = {
@@ -42,11 +43,14 @@ function readList(param: string | null): string[] {
         .filter(Boolean);
 }
 
-export default function FilterSidebar({ options }: Props) {
+export default function FilterSidebar({ options, searchString = "" }: Props) {
     const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
     const [pending, startTransition] = useTransition();
+    const searchParams = useMemo(
+        () => new URLSearchParams(searchString),
+        [searchString],
+    );
 
     const selected = useMemo(
         () => ({

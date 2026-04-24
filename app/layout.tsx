@@ -1,5 +1,6 @@
 import React, { Suspense } from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import Script from "next/script";
 import { Toaster } from "@/components/ui/toaster";
 import "@/app/globals.css";
 import UpsellToast from "@/components/ui/UpsellToast";
@@ -67,11 +68,9 @@ export default function RootLayout({
                         buildWebSiteStructuredData(),
                     ]}
                 />
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
-                    }}
-                />
+                <Script id="theme-init" strategy="beforeInteractive">
+                    {"(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();"}
+                </Script>
             </head>
             <body
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}

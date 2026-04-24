@@ -68,7 +68,7 @@ export default function VinCoursePage({
                     <nav className="flex flex-wrap items-center gap-1.5 text-[12px] text-black/50 dark:text-[#D5D5D5]/50">
                         {breadcrumbs.map((crumb, i) => (
                             <span
-                                key={`${crumb.label}-${i}`}
+                                key={crumb.href ?? `${crumb.label}-${i === breadcrumbs.length - 1 ? "current" : "crumb"}`}
                                 className="inline-flex items-center gap-1.5"
                             >
                                 {crumb.href ? (

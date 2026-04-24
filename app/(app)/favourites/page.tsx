@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { Suspense, useState, useEffect, useMemo } from "react";
 import Fuse from "fuse.js";
 import Pagination from "@/app/components/Pagination";
 import SearchBar from "@/app/components/SearchBar";
@@ -26,7 +26,7 @@ function performSearch<T>(query: string, dataSet: T[]): T[] {
     .map((fuseResult) => fuseResult.item);
 }
 
-function FavouritesPage() {
+function FavouritesPageContent() {
   const { bookmarks } = useBookmarks();
   const searchParams = useSearchParams();
 
@@ -73,7 +73,11 @@ function FavouritesPage() {
     <div className="flex flex-col justify-start min-h-screen transition-colors mx-auto text-black dark:text-[#D5D5D5] overflow-hidden w-[90vw] pt-8">
       <h1 className="text-center pb-6">Favourites</h1>
       <div className="container w-5/6 lg:w-1/2 flex items-center mx-auto pb-10 pt-4">
-        <SearchBar pageType="favourites" initialQuery={search} />
+        <SearchBar
+          pageType="favourites"
+          initialQuery={search}
+          searchString={searchParams.toString()}
+        />
       </div>
       <div className="flex items-center justify-center p-6">
         <FavFetch items={itemsToDisplay} activeTab={type} />
@@ -91,4 +95,10 @@ function FavouritesPage() {
   );
 }
 
-export default FavouritesPage;
+export default function FavouritesPage() {
+  return (
+    <Suspense fallback={null}>
+      <FavouritesPageContent />
+    </Suspense>
+  );
+}

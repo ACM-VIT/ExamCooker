@@ -191,10 +191,11 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
               )}
             </div>
           ) : (
-            <a
-              href="/api/auth/init"
+            <button
+              type="button"
               title="Sign in"
               aria-label="Sign in"
+              onClick={() => window.location.assign("/api/auth/init")}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full text-black/70 hover:text-black hover:bg-black/5 dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] dark:hover:bg-white/5 transition-colors duration-200"
             >
               <svg
@@ -211,7 +212,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                 <polyline points="10 17 15 12 10 7" />
                 <line x1="15" y1="12" x2="3" y2="12" />
               </svg>
-            </a>
+            </button>
           )}
         </div>
       </nav>

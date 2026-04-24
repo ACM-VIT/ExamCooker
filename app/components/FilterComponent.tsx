@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { faCaretDown, faCaretUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import FilterComp from "./filter/FilterComp";
 const PAST_PAPER_SLOT_TAGS = ["A1","A2","B1","B2","C1","C2","D1","D2","E1","E2","F1","F2","G1","G2"] as const;
 const PAST_PAPER_EXAM_TAGS = ["CAT-1","CAT-2","FAT","Mid","Quiz","CIA"] as const;
@@ -26,6 +26,7 @@ interface CheckboxOptions {
 
 interface DropdownProps {
   pageType: "notes" | "past_papers" | "resources" | "forum" | "favourites";
+  searchString?: string;
 }
 
 const FILTER_SHEET_TITLES: Record<DropdownProps["pageType"], string> = {
@@ -95,18 +96,16 @@ function FilterSections({
   );
 }
 
-const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
+const Dropdown: React.FC<DropdownProps> = ({ pageType, searchString = "" }) => {
   const [desktopOpen, setDesktopOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [sheetMounted, setSheetMounted] = useState(false);
   const [sheetShowing, setSheetShowing] = useState(false);
   const [sheetOffset, setSheetOffset] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const desktopRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
+  const openRafRef = useRef<number | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
   const mobileSheetTitle = FILTER_SHEET_TITLES[pageType];
 
   const checkboxOptions = useMemo<CheckboxOptions>(
@@ -117,15 +116,15 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
     [],
   );
 
-  useEffect(() => {
-    const tags = searchParams
+  const selectedTags = useMemo(() => {
+    const tags = new URLSearchParams(searchString)
       .getAll("tags")
       .flatMap((tag) => tag.split(","))
       .map((tag) => tag.trim())
       .filter(Boolean);
 
-    setSelectedTags(tags.length > 0 ? Array.from(new Set(tags)) : []);
-  }, [searchParams]);
+    return tags.length > 0 ? Array.from(new Set(tags)) : [];
+  }, [searchString]);
 
   useEffect(() => {
     if (!desktopOpen) return;
@@ -145,40 +144,57 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
     };
   }, [desktopOpen]);
 
-  useEffect(() => {
-    if (mobileOpen) {
-      setSheetMounted(true);
-      setSheetOffset(0);
-      const raf = requestAnimationFrame(() => {
-        requestAnimationFrame(() => setSheetShowing(true));
-      });
-      document.body.style.overflow = "hidden";
-      return () => {
-        cancelAnimationFrame(raf);
-        document.body.style.overflow = "";
-      };
+  const clearSheetTimers = useCallback(() => {
+    if (openRafRef.current !== null) {
+      cancelAnimationFrame(openRafRef.current);
+      openRafRef.current = null;
     }
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
 
+  const openMobileSheet = useCallback(() => {
+    clearSheetTimers();
+    setSheetMounted(true);
+    setSheetOffset(0);
+    document.body.style.overflow = "hidden";
+    openRafRef.current = requestAnimationFrame(() => {
+      openRafRef.current = requestAnimationFrame(() => {
+        setSheetShowing(true);
+        openRafRef.current = null;
+      });
+    });
+  }, [clearSheetTimers]);
+
+  const closeMobileSheet = useCallback(() => {
+    clearSheetTimers();
     setSheetShowing(false);
     document.body.style.overflow = "";
-    const timer = window.setTimeout(() => {
+    closeTimerRef.current = window.setTimeout(() => {
       setSheetMounted(false);
       setSheetOffset(0);
       touchStartYRef.current = null;
+      closeTimerRef.current = null;
     }, SHEET_ANIMATION_MS);
+  }, [clearSheetTimers]);
+
+  useEffect(() => {
     return () => {
-      window.clearTimeout(timer);
+      clearSheetTimers();
+      document.body.style.overflow = "";
     };
-  }, [mobileOpen]);
+  }, [clearSheetTimers]);
 
   const updateURL = useCallback(
     (tags: string[]) => {
-      const params = new URLSearchParams(searchParams);
+      const params = new URLSearchParams(searchString);
       params.delete("tags");
       tags.forEach((tag) => params.append("tags", tag));
       router.push(`/${pageType}?${params.toString()}`);
     },
-    [pageType, router, searchParams],
+    [pageType, router, searchString],
   );
 
   const handleSelectionChange = useCallback(
@@ -195,7 +211,6 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
         ]),
       );
 
-      setSelectedTags(nextTags);
       updateURL(nextTags);
     },
     [checkboxOptions, selectedTags, updateURL],
@@ -203,7 +218,6 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
 
   const handleSheetTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
     touchStartYRef.current = event.touches[0]?.clientY ?? null;
-    setDragging(true);
   };
 
   const handleSheetTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -214,9 +228,8 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
   };
 
   const handleSheetTouchEnd = () => {
-    setDragging(false);
     if (sheetOffset > 80) {
-      setMobileOpen(false);
+      closeMobileSheet();
     } else {
       setSheetOffset(0);
     }
@@ -258,7 +271,7 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
 
       <div className="w-full md:hidden">
         <button
-          onClick={() => setMobileOpen(true)}
+          onClick={openMobileSheet}
           className="inline-flex h-12 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-4 text-lg font-bold leading-none text-black dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5]"
         >
           Filter
@@ -273,13 +286,13 @@ const Dropdown: React.FC<DropdownProps> = ({ pageType }) => {
             className={`absolute inset-0 bg-black/60 transition-opacity duration-[280ms] ease-out ${
               sheetShowing ? "opacity-100" : "opacity-0"
             }`}
-            onClick={() => setMobileOpen(false)}
+            onClick={closeMobileSheet}
           />
           <div
             className="absolute inset-x-0 bottom-0 max-h-[78vh] overflow-y-auto overscroll-contain rounded-t-3xl bg-[#5FC4E7] shadow-[0_-12px_30px_-12px_rgba(0,0,0,0.35)] dark:bg-[#0C1222] no-scrollbar"
             style={{
               transform: sheetTransform,
-              transition: dragging
+              transition: touchStartYRef.current !== null
                 ? "none"
                 : `transform ${SHEET_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
               paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",

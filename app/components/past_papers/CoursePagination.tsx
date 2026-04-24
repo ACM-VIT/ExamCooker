@@ -2,25 +2,25 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAngleLeft, faAngleRight } from "@fortawesome/free-solid-svg-icons";
 
 type Props = {
     currentPage: number;
     totalPages: number;
+    searchString: string;
 };
 
 const MAX_VISIBLE = 5;
 
-export default function CoursePagination({ currentPage, totalPages }: Props) {
+export default function CoursePagination({ currentPage, totalPages, searchString }: Props) {
     const pathname = usePathname();
-    const searchParams = useSearchParams();
 
     if (totalPages <= 1) return null;
 
     const buildHref = (page: number) => {
-        const next = new URLSearchParams(searchParams.toString());
+        const next = new URLSearchParams(searchString);
         if (page <= 1) next.delete("page");
         else next.set("page", String(page));
         const qs = next.toString();

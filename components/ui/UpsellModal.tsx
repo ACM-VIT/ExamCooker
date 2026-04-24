@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { GradientText } from "@/app/components/landing_page/landing";
 
 /* ─── storage ─── */
@@ -97,18 +99,21 @@ const UpsellModal = () => {
             <div
                 className="relative w-full max-w-[26rem] overflow-hidden border-2 border-[#5FC4E7] bg-white dark:border-[#3BF4C7]/25 dark:bg-[#0C1222] sm:max-w-[28rem]"
                 style={{
-                    transition: "all 320ms cubic-bezier(0.16, 1, 0.3, 1)",
+                    transitionProperty: "transform, opacity",
+                    transitionDuration: "320ms",
+                    transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
                     transform: isVisible ? "scale(1) translateY(0)" : "scale(0.95) translateY(16px)",
                     opacity: isVisible ? 1 : 0,
                 }}
             >
                 {/* ── ARTWORK (top 1/3) ── */}
                 <div className="relative h-44 overflow-hidden sm:h-52">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                         src="https://www.everything-assistant.com/onboarding-artwork/artwork.png"
                         alt=""
-                        className="h-full w-full object-cover"
+                        fill
+                        sizes="(min-width: 640px) 28rem, 26rem"
+                        className="object-cover"
                     />
                     {/* gradient fade into content */}
                     <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white dark:from-[#0C1222]" />
@@ -172,13 +177,13 @@ const UpsellModal = () => {
                         <div className="absolute inset-0 dark:bg-[#3BF4C7]" />
                         <div className="absolute inset-0 bg-[#3BF4C7] blur-[60px] opacity-0 transition duration-200 group-hover:opacity-20 dark:hidden" />
                         <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
-                        <a
+                        <Link
                             href="/"
                             onClick={handleCtaClick}
                             className="relative inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-0.5 dark:group-hover:-translate-y-0.5"
                         >
                             Explore what&apos;s new
-                        </a>
+                        </Link>
                     </div>
 
                     {/* dismiss */}

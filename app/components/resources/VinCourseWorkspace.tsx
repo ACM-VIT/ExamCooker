@@ -44,6 +44,12 @@ type PlaylistItem = {
 
 type TabId = "notes" | "practice" | "resource";
 
+type TopicViewState = {
+    activeVideoIndex: number;
+    activeTab: TabId | null;
+    userPickedVideo: boolean;
+};
+
 function getYouTubeVideoId(url: string) {
     const match = url.match(
         /(?:youtube\.com\/embed\/|youtube\.com\/watch\?v=|youtu\.be\/)([^?&/]+)/i,
@@ -119,6 +125,18 @@ function pickDefaultTab(topic: VinSubtopic): TabId | null {
     if (topic.questions.length > 0) return "practice";
     if (topic.pdfLink) return "resource";
     return null;
+}
+
+function getRichItemKey(prefix: string, item: VinRichItem) {
+    return `${prefix}-${item.text ?? ""}-${item.image ?? ""}`;
+}
+
+function createTopicViewState(topic: VinSubtopic | null): TopicViewState {
+    return {
+        activeVideoIndex: 0,
+        activeTab: topic ? pickDefaultTab(topic) : null,
+        userPickedVideo: false,
+    };
 }
 
 function RichBlock({ item, index }: { item: VinRichItem; index: number }) {
@@ -232,18 +250,28 @@ export default function VinCourseWorkspace({
         return map;
     }, [flatTopics]);
 
-    const firstTopicId = flatTopics[0]?.topic.id ?? null;
+    const firstTopic = flatTopics[0]?.topic ?? null;
+    const firstTopicId = firstTopic?.id ?? null;
 
     const [activeTopicId, setActiveTopicId] = useState<string | null>(
         firstTopicId,
     );
-    const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+    const [topicView, setTopicView] = useState<TopicViewState>(() =>
+        createTopicViewState(firstTopic),
+    );
     const [query, setQuery] = useState("");
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<TabId | null>(null);
-    const [userPickedVideo, setUserPickedVideo] = useState(false);
     const topicTopRef = useRef<HTMLDivElement | null>(null);
     const isInitialMount = useRef(true);
+
+    const activateTopic = useCallback((id: string, closeDrawer = false) => {
+        const nextTopic = topicIndexById.get(id)?.topic ?? null;
+        setActiveTopicId(id);
+        setTopicView(createTopicViewState(nextTopic));
+        if (closeDrawer) {
+            setDrawerOpen(false);
+        }
+    }, [topicIndexById]);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -251,19 +279,19 @@ export default function VinCourseWorkspace({
         if (hash) {
             const fromHash = topicIndexById.get(hash);
             if (fromHash) {
-                setActiveTopicId(fromHash.topic.id);
+                activateTopic(fromHash.topic.id);
             }
         }
         const handler = () => {
             const nextHash = window.location.hash.replace(/^#/, "");
             const next = topicIndexById.get(nextHash);
             if (next) {
-                setActiveTopicId(next.topic.id);
+                activateTopic(next.topic.id);
             }
         };
         window.addEventListener("hashchange", handler);
         return () => window.removeEventListener("hashchange", handler);
-    }, [topicIndexById]);
+    }, [activateTopic, topicIndexById]);
 
     useEffect(() => {
         if (!activeTopicId) return;
@@ -281,12 +309,6 @@ export default function VinCourseWorkspace({
         () => (activeTopic ? buildPlaylist(activeTopic) : []),
         [activeTopic],
     );
-
-    useEffect(() => {
-        setActiveVideoIndex(0);
-        setUserPickedVideo(false);
-        setActiveTab(activeTopic ? pickDefaultTab(activeTopic) : null);
-    }, [activeTopicId, activeTopic]);
 
     useEffect(() => {
         if (isInitialMount.current) {
@@ -312,10 +334,9 @@ export default function VinCourseWorkspace({
 
     const selectTopic = useCallback(
         (id: string) => {
-            setActiveTopicId(id);
-            setDrawerOpen(false);
+            activateTopic(id, true);
         },
-        [],
+        [activateTopic],
     );
 
     const goNeighbour = useCallback(
@@ -323,12 +344,12 @@ export default function VinCourseWorkspace({
             if (!activeEntry) return;
             const nextIndex = activeEntry.globalIndex + delta;
             if (nextIndex < 0 || nextIndex >= flatTopics.length) return;
-            setActiveTopicId(flatTopics[nextIndex].topic.id);
+            activateTopic(flatTopics[nextIndex].topic.id);
         },
-        [activeEntry, flatTopics],
+        [activateTopic, activeEntry, flatTopics],
     );
 
-    const activeVideo = playlist[activeVideoIndex] ?? null;
+    const activeVideo = playlist[topicView.activeVideoIndex] ?? null;
     const hasNotes = (activeTopic?.takeaways.length ?? 0) > 0;
     const hasQuestions = (activeTopic?.questions.length ?? 0) > 0;
     const hasResource = Boolean(activeTopic?.pdfLink);
@@ -374,14 +395,22 @@ export default function VinCourseWorkspace({
                             topic={activeTopic}
                             playlist={playlist}
                             activeVideo={activeVideo}
-                            activeVideoIndex={activeVideoIndex}
+                            activeVideoIndex={topicView.activeVideoIndex}
                             onSelectVideo={(i) => {
-                                setActiveVideoIndex(i);
-                                setUserPickedVideo(true);
+                                setTopicView((current) => ({
+                                    ...current,
+                                    activeVideoIndex: i,
+                                    userPickedVideo: true,
+                                }));
                             }}
-                            autoplay={userPickedVideo}
-                            activeTab={activeTab}
-                            setActiveTab={setActiveTab}
+                            autoplay={topicView.userPickedVideo}
+                            activeTab={topicView.activeTab}
+                            setActiveTab={(tab) =>
+                                setTopicView((current) => ({
+                                    ...current,
+                                    activeTab: tab,
+                                }))
+                            }
                             hasNotes={hasNotes}
                             hasQuestions={hasQuestions}
                             hasResource={hasResource}
@@ -732,7 +761,7 @@ function TopicWorkspace({
                             <div className="divide-y divide-black/10 dark:divide-[#D5D5D5]/10">
                                 {topic.takeaways.map((item, i) => (
                                     <RichBlock
-                                        key={`takeaway-${i}`}
+                                        key={getRichItemKey(`${topic.id}-takeaway`, item)}
                                         item={item}
                                         index={i}
                                     />
@@ -743,7 +772,7 @@ function TopicWorkspace({
                             <div className="divide-y divide-black/10 dark:divide-[#D5D5D5]/10">
                                 {topic.questions.map((item, i) => (
                                     <RichBlock
-                                        key={`question-${i}`}
+                                        key={getRichItemKey(`${topic.id}-question`, item)}
                                         item={item}
                                         index={i}
                                     />

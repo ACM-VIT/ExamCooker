@@ -43,7 +43,9 @@ function MarqueeRow({
     items: UpcomingExamItem[];
     reverse?: boolean;
 }) {
-    const loop = [...items, ...items];
+    const loop = (["base", "clone"] as const).flatMap((copy) =>
+        items.map((item) => ({ item, copy })),
+    );
     return (
         <div className="overflow-hidden">
             <div
@@ -51,8 +53,8 @@ function MarqueeRow({
                     reverse ? "animate-marquee-reverse" : "animate-marquee"
                 }`}
             >
-                {loop.map((item, i) => (
-                    <React.Fragment key={`${item.id}-${i}`}>
+                {loop.map(({ item, copy }) => (
+                    <React.Fragment key={`${copy}-${item.id}`}>
                         <MarqueeItem item={item} />
                         <span
                             aria-hidden="true"

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useCallback, useMemo } from "react";
+import React, { memo, useCallback } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -40,10 +40,7 @@ function CoursePaperCard({
     selected,
     onToggleSelect,
 }: Props) {
-    const href = useMemo(
-        () => `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`,
-        [courseCode, paper.id],
-    );
+    const href = `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`;
 
     const handleToggleSelect = useCallback((e: React.MouseEvent | React.ChangeEvent) => {
         e.stopPropagation();

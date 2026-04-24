@@ -1,8 +1,7 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { usePathname, useSearchParams } from "next/navigation";
 
 type GuestPromptContextType = {
     isAuthed: boolean;
@@ -13,8 +12,8 @@ type GuestPromptContextType = {
 };
 
 type PromptState = {
-    isOpen: boolean;
     action?: string;
+    redirect?: string;
 };
 
 const GuestPromptContext = createContext<GuestPromptContextType | undefined>(undefined);
@@ -32,19 +31,48 @@ export function useGuestPrompt() {
 export default function GuestPromptProvider({ children }: { children: React.ReactNode }) {
     const { data: session, status } = useSession();
     const isAuthed = Boolean(session?.user);
-    const [prompt, setPrompt] = useState<PromptState>({ isOpen: false });
-    const [mounted, setMounted] = useState(false);
-    const [visible, setVisible] = useState(false);
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
+    const [prompt, setPrompt] = useState<PromptState>({});
+    const [phase, setPhase] = useState<"closed" | "entering" | "open" | "leaving">("closed");
+    const openRafRef = useRef<number | null>(null);
+    const closeTimerRef = useRef<number | null>(null);
+
+    const clearPhaseTimers = useCallback(() => {
+        if (openRafRef.current !== null) {
+            cancelAnimationFrame(openRafRef.current);
+            openRafRef.current = null;
+        }
+        if (closeTimerRef.current !== null) {
+            window.clearTimeout(closeTimerRef.current);
+            closeTimerRef.current = null;
+        }
+    }, []);
 
     const openPrompt = useCallback((action?: string) => {
-        setPrompt({ isOpen: true, action });
-    }, []);
+        const redirect =
+            typeof window === "undefined"
+                ? "/"
+                : `${window.location.pathname}${window.location.search}`;
+        clearPhaseTimers();
+        setPrompt({ action, redirect });
+        if (phase === "open" || phase === "entering") return;
+        setPhase("entering");
+        openRafRef.current = requestAnimationFrame(() => {
+            openRafRef.current = requestAnimationFrame(() => {
+                setPhase("open");
+                openRafRef.current = null;
+            });
+        });
+    }, [clearPhaseTimers, phase]);
 
     const closePrompt = useCallback(() => {
-        setPrompt((prev) => ({ ...prev, isOpen: false }));
-    }, []);
+        if (phase === "closed" || phase === "leaving") return;
+        clearPhaseTimers();
+        setPhase("leaving");
+        closeTimerRef.current = window.setTimeout(() => {
+            setPhase("closed");
+            closeTimerRef.current = null;
+        }, PROMPT_ANIMATION_MS);
+    }, [clearPhaseTimers, phase]);
 
     const requireAuth = useCallback(
         (action?: string) => {
@@ -56,43 +84,37 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
     );
 
     useEffect(() => {
-        if (prompt.isOpen) {
-            setMounted(true);
-            document.body.style.overflow = "hidden";
-            const raf = requestAnimationFrame(() => {
-                requestAnimationFrame(() => setVisible(true));
-            });
-            return () => {
-                cancelAnimationFrame(raf);
-                document.body.style.overflow = "";
-            };
-        }
-        setVisible(false);
-        document.body.style.overflow = "";
-        const timer = window.setTimeout(() => {
-            setMounted(false);
-        }, PROMPT_ANIMATION_MS);
+        document.body.style.overflow = phase === "closed" ? "" : "hidden";
         return () => {
-            window.clearTimeout(timer);
+            document.body.style.overflow = "";
         };
-    }, [prompt.isOpen]);
+    }, [phase]);
 
     useEffect(() => {
-        if (!prompt.isOpen) return;
+        if (phase === "closed") return;
         const handleKey = (event: KeyboardEvent) => {
             if (event.key === "Escape") closePrompt();
         };
         document.addEventListener("keydown", handleKey);
         return () => document.removeEventListener("keydown", handleKey);
-    }, [prompt.isOpen, closePrompt]);
+    }, [phase, closePrompt]);
 
-    const redirectTarget = useMemo(() => {
-        const query = searchParams?.toString();
-        return `${pathname || "/"}${query ? `?${query}` : ""}`;
-    }, [pathname, searchParams]);
+    useEffect(() => {
+        return () => {
+            clearPhaseTimers();
+            document.body.style.overflow = "";
+        };
+    }, [clearPhaseTimers]);
 
-    const signInHref = `/api/auth/init?redirect=${encodeURIComponent(redirectTarget)}`;
+    const signInHref = `/api/auth/init?redirect=${encodeURIComponent(prompt.redirect ?? "/")}`;
     const actionLabel = prompt.action ? `to ${prompt.action}` : "to continue";
+    const visible = phase === "open";
+    const mounted = phase !== "closed";
+    const handleSignIn = useCallback(() => {
+        if (typeof window !== "undefined") {
+            window.location.assign(signInHref);
+        }
+    }, [signInHref]);
 
     return (
         <GuestPromptContext.Provider value={{ isAuthed, status, requireAuth, openPrompt, closePrompt }}>
@@ -112,7 +134,7 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="guest-prompt-title"
-                        className={`relative w-full max-w-sm border-2 border-black bg-white text-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all ease-out dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)] ${
+                        className={`relative w-full max-w-sm border-2 border-black bg-white text-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-[opacity,transform] ease-out dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)] ${
                             visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
                         }`}
                         style={{ transitionDuration: `${PROMPT_ANIMATION_MS}ms` }}
@@ -145,12 +167,13 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
                             <p className="mt-2 text-sm text-black/60 dark:text-[#D5D5D5]/60">
                                 A quick sign-in is all it takes.
                             </p>
-                            <a
-                                href={signInHref}
+                            <button
+                                type="button"
+                                onClick={handleSignIn}
                                 className="mt-5 inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-base font-bold text-black transition duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:text-[#3BF4C7]"
                             >
                                 Sign in with Google
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>

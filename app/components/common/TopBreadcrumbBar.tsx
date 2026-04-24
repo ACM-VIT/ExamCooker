@@ -19,9 +19,10 @@ export default function TopBreadcrumbBar({ items, className }: Props) {
             <ol className="flex min-w-0 items-center gap-1.5 text-sm">
                 {items.map((item, index) => {
                     const isLast = index === items.length - 1;
+                    const itemKey = item.href ?? `${item.label}-${isLast ? "current" : "crumb"}`;
 
                     return (
-                        <li key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-1.5">
+                        <li key={itemKey} className="flex min-w-0 items-center gap-1.5">
                             {item.href && !isLast ? (
                                 <Link
                                     href={item.href}

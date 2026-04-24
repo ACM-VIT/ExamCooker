@@ -5,7 +5,7 @@ import debounce from "lodash/debounce";
 import Image from "@/app/components/common/AppImage";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { X } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 type ResourceFiltersProps = {
     initialSearch: string;
@@ -20,17 +20,16 @@ function ResourceFilters({
 }: ResourceFiltersProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const [query, setQuery] = useState(initialSearch);
+    const [query, setQuery] = useState("");
 
     useEffect(() => {
-        setQuery(initialSearch);
+        setQuery((currentQuery) => currentQuery === initialSearch ? currentQuery : initialSearch);
     }, [initialSearch]);
 
     const updateUrl = useMemo(
         () =>
             debounce((nextQuery: string, nextYear: string) => {
-                const params = new URLSearchParams(searchParams.toString());
+                const params = new URLSearchParams(window.location.search);
                 const trimmedQuery = nextQuery.trim();
 
                 if (trimmedQuery) {
@@ -53,7 +52,7 @@ function ResourceFilters({
                     });
                 });
             }, 200),
-        [pathname, router, searchParams],
+        [pathname, router],
     );
 
     useEffect(
@@ -82,7 +81,7 @@ function ResourceFilters({
         });
     }, [pathname, router, updateUrl]);
 
-    const hasFilters = Boolean(initialSearch || initialYear);
+    const hasFilters = Boolean(query.trim() || initialYear);
     const activeYearClass =
         "border-black bg-[#82BEE9] text-black dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/15 dark:text-[#3BF4C7]";
     const inactiveYearClass =

@@ -35,11 +35,32 @@ export default function NotesCourseSearch({
     initialQuery = "",
 }: Props) {
     const router = useRouter();
-    const [query, setQuery] = useState(initialQuery);
-    const [isOpen, setIsOpen] = useState(false);
-    const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const [uiState, setUiState] = useState({
+        query: "",
+        isOpen: false,
+        highlightedIndex: -1,
+    });
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const { query, isOpen, highlightedIndex } = uiState;
+
+    useEffect(() => {
+        setUiState((currentState) => {
+            if (
+                currentState.query === initialQuery &&
+                !currentState.isOpen &&
+                currentState.highlightedIndex === -1
+            ) {
+                return currentState;
+            }
+
+            return {
+                query: initialQuery,
+                isOpen: false,
+                highlightedIndex: -1,
+            };
+        });
+    }, [initialQuery]);
 
     const filtered = useMemo(() => {
         const trimmed = query.trim();
@@ -69,7 +90,7 @@ export default function NotesCourseSearch({
                 inputRef.current &&
                 !inputRef.current.contains(event.target as Node)
             ) {
-                setIsOpen(false);
+                setUiState((currentState) => ({ ...currentState, isOpen: false }));
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -81,7 +102,7 @@ export default function NotesCourseSearch({
             addTransitionType("nav-forward");
             router.push(`/notes/course/${encodeURIComponent(course.code)}`);
         });
-        setIsOpen(false);
+        setUiState((currentState) => ({ ...currentState, isOpen: false }));
     };
 
     const submitFreeText = () => {
@@ -97,18 +118,30 @@ export default function NotesCourseSearch({
             addTransitionType("filter-results");
             router.push(`/notes?search=${encodeURIComponent(trimmed)}`);
         });
-        setIsOpen(false);
+        setUiState((currentState) => ({ ...currentState, isOpen: false }));
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "ArrowDown") {
             if (!isOpen || filtered.length === 0) return;
             e.preventDefault();
-            setHighlightedIndex((i) => (i < filtered.length - 1 ? i + 1 : 0));
+            setUiState((currentState) => ({
+                ...currentState,
+                highlightedIndex:
+                    currentState.highlightedIndex < filtered.length - 1
+                        ? currentState.highlightedIndex + 1
+                        : 0,
+            }));
         } else if (e.key === "ArrowUp") {
             if (!isOpen || filtered.length === 0) return;
             e.preventDefault();
-            setHighlightedIndex((i) => (i > 0 ? i - 1 : filtered.length - 1));
+            setUiState((currentState) => ({
+                ...currentState,
+                highlightedIndex:
+                    currentState.highlightedIndex > 0
+                        ? currentState.highlightedIndex - 1
+                        : filtered.length - 1,
+            }));
         } else if (e.key === "Enter") {
             e.preventDefault();
             if (isOpen && highlightedIndex >= 0 && filtered[highlightedIndex]) {
@@ -117,14 +150,16 @@ export default function NotesCourseSearch({
                 submitFreeText();
             }
         } else if (e.key === "Escape") {
-            setIsOpen(false);
+            setUiState((currentState) => ({ ...currentState, isOpen: false }));
         }
     };
 
     const clear = () => {
-        setQuery("");
-        setIsOpen(false);
-        setHighlightedIndex(-1);
+        setUiState({
+            query: "",
+            isOpen: false,
+            highlightedIndex: -1,
+        });
         inputRef.current?.focus();
     };
 
@@ -139,11 +174,16 @@ export default function NotesCourseSearch({
                     placeholder="Search course or code..."
                     value={query}
                     onChange={(e) => {
-                        setQuery(e.target.value);
-                        setIsOpen(e.target.value.trim().length > 0);
-                        setHighlightedIndex(-1);
+                        setUiState({
+                            query: e.target.value,
+                            isOpen: e.target.value.trim().length > 0,
+                            highlightedIndex: -1,
+                        });
                     }}
-                    onFocus={() => query.trim() && setIsOpen(true)}
+                    onFocus={() => {
+                        if (!query.trim()) return;
+                        setUiState((currentState) => ({ ...currentState, isOpen: true }));
+                    }}
                     onKeyDown={handleKeyDown}
                 />
                 {query && (
@@ -181,7 +221,12 @@ export default function NotesCourseSearch({
                                 e.preventDefault();
                                 navigate(course);
                             }}
-                            onMouseEnter={() => setHighlightedIndex(index)}
+                            onMouseEnter={() =>
+                                setUiState((currentState) => ({
+                                    ...currentState,
+                                    highlightedIndex: index,
+                                }))
+                            }
                             className={`flex w-full items-center justify-between gap-3 border-b border-black/10 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/15 dark:hover:bg-[#3BF4C7]/10 ${
                                 highlightedIndex === index
                                     ? "bg-[#5FC4E7]/25 dark:bg-[#3BF4C7]/10"

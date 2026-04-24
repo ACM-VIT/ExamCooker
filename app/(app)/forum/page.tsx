@@ -44,6 +44,30 @@ function ForumSkeleton() {
   );
 }
 
+function buildForumSearchString(params: {
+  page?: string;
+  search?: string;
+  tags?: string | string[];
+}) {
+  const searchParams = new URLSearchParams();
+
+  if (params.page) {
+    searchParams.set("page", params.page);
+  }
+  if (params.search) {
+    searchParams.set("search", params.search);
+  }
+
+  const tags = Array.isArray(params.tags)
+    ? params.tags
+    : params.tags
+      ? [params.tags]
+      : [];
+
+  tags.forEach((tag) => searchParams.append("tags", tag));
+  return searchParams.toString();
+}
+
 async function ForumResults({ params }: { params: { page?: string; search?: string; tags?: string | string[] } }) {
   const session = await auth();
   const currentUserId = session?.user?.id;
@@ -126,20 +150,21 @@ export default async function ForumPage({
 }) {
   const params = (await searchParams) ?? {};
   const search = params.search || '';
+  const toolbarSearchString = buildForumSearchString(params);
   return (
     <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-8">
       <h1 className="text-center mb-4">Forum</h1>
 
       <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-        <Dropdown pageType='forum' />
-        <SearchBar pageType="forum" initialQuery={search} />
+        <Dropdown pageType='forum' searchString={toolbarSearchString} />
+        <SearchBar pageType="forum" initialQuery={search} searchString={toolbarSearchString} />
         <NewForumButton />
       </div>
 
       <div className='flex-col w-5/6 md:hidden space-y-4'>
-        <SearchBar pageType="forum" initialQuery={search} />
+        <SearchBar pageType="forum" initialQuery={search} searchString={toolbarSearchString} />
         <div className='flex justify-between'>
-          <Dropdown pageType='forum' />
+          <Dropdown pageType='forum' searchString={toolbarSearchString} />
           <NewForumButton />
         </div>
       </div>

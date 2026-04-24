@@ -4,6 +4,7 @@ import {TimeHandler} from '@/app/components/forumpost/CommentHelpers';
 import {notFound} from "next/navigation";
 import {Metadata} from "next";
 import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import StructuredData from "@/app/components/seo/StructuredData";
 
 import ShareLink from '@/app/components/ShareLink';
 import ViewTracker from "@/app/components/ViewTracker";
@@ -90,10 +91,7 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
     return (
         <DirectionalTransition>
             <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
-                <script
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-                />
+                <StructuredData data={jsonLd} />
                 <ViewTracker
                     id={note.id}
                     type="note"
