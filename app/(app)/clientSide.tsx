@@ -62,16 +62,16 @@ export default function ClientSide({
                             href="/"
                             aria-label="ExamCooker home"
                             style={{ viewTransitionName: "persistent-mobile-logo" }}
-                            className="fixed left-16 top-3 z-[55] flex h-10 max-w-[calc(100vw-5.5rem)] items-center gap-2 rounded-md border border-black/10 bg-white/90 px-3 text-sm font-semibold text-black backdrop-blur transition-colors hover:border-black/25 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 lg:hidden"
+                            className="fixed left-16 top-3 z-[55] flex h-11 max-w-[calc(100vw-5.5rem)] items-center gap-2.5 rounded-xl border border-black/10 bg-white/90 px-3.5 text-[15px] font-semibold leading-none text-black shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur transition-colors hover:border-black/25 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 lg:hidden"
                         >
                             <AppImage
                                 src={ExamCookerLogoIcon}
                                 alt="ExamCooker"
-                                width={18}
-                                height={18}
-                                className="h-[18px] w-[18px] shrink-0"
+                                width={20}
+                                height={20}
+                                className="h-5 w-5 shrink-0"
                             />
-                            <span className="truncate">
+                            <span className="truncate pt-px">
                                 Exam
                                 <span className="bg-gradient-to-tr from-[#253EE0] to-[#27BAEC] bg-clip-text text-transparent">
                                     Cooker
