@@ -147,9 +147,8 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                     />
                     <button
                         onClick={clearSelection}
-                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] ${
-                            query ? "visible" : "invisible pointer-events-none"
-                        }`}
+                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] ${query ? "visible" : "invisible pointer-events-none"
+                            }`}
                         type="button"
                         aria-label="Clear search"
                         tabIndex={query ? 0 : -1}
@@ -177,11 +176,10 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                             <button
                                 key={course.code}
                                 onClick={() => handleSelectCourse(course)}
-                                className={`w-full px-4 py-3 text-left flex justify-between items-center gap-3 transition-colors border-b border-black/10 dark:border-[#D5D5D5]/15 last:border-b-0 hover:bg-[#5FC4E7]/25 dark:hover:bg-[#3BF4C7]/10 ${
-                                    highlightedIndex === index
+                                className={`w-full px-4 py-3 text-left flex justify-between items-center gap-3 transition-colors border-b border-black/10 dark:border-[#D5D5D5]/15 last:border-b-0 hover:bg-[#5FC4E7]/25 dark:hover:bg-[#3BF4C7]/10 ${highlightedIndex === index
                                         ? 'bg-[#5FC4E7]/25 dark:bg-[#3BF4C7]/10'
                                         : ''
-                                }`}
+                                    }`}
                             >
                                 <div className="min-w-0 flex-1">
                                     <div className="font-semibold text-black dark:text-[#D5D5D5] truncate">
