@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -32,7 +32,7 @@ type Props = {
     onToggleSelect: (id: string) => void;
 };
 
-export default function CoursePaperCard({
+function CoursePaperCard({
     paper,
     courseCode,
     courseTitle,
@@ -40,24 +40,28 @@ export default function CoursePaperCard({
     selected,
     onToggleSelect,
 }: Props) {
-    const href = `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`;
+    const href = useMemo(
+        () => `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`,
+        [courseCode, paper.id],
+    );
 
-    const handleToggleSelect = (e: React.MouseEvent | React.ChangeEvent) => {
+    const handleToggleSelect = useCallback((e: React.MouseEvent | React.ChangeEvent) => {
         e.stopPropagation();
         e.preventDefault();
         onToggleSelect(paper.id);
-    };
+    }, [onToggleSelect, paper.id]);
 
-    const handleDownload = (e: React.MouseEvent) => {
+    const handleDownload = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
         window.open(paper.fileUrl, "_blank", "noopener,noreferrer");
-    };
+    }, [paper.fileUrl]);
 
     return (
         <Link
             href={href}
             prefetch={index < 3}
+            transitionTypes={["nav-forward"]}
             className={`group relative flex h-full flex-col border-2 p-3 text-black transition duration-200 hover:scale-[1.02] hover:shadow-xl dark:text-[#D5D5D5] ${selected
                     ? "border-black bg-[#5FC4E7] shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:border-[#3BF4C7] dark:bg-[#0C1222] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)]"
                     : "border-[#5FC4E7] bg-[#5FC4E7] hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
@@ -130,3 +134,5 @@ export default function CoursePaperCard({
         </Link>
     );
 }
+
+export default memo(CoursePaperCard);

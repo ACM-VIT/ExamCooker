@@ -1,14 +1,16 @@
 import React from "react";
 import UploadFile from "@/app/components/UploadFile";
-import prisma from "@/lib/prisma";
-
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import { getSearchableCourses } from "@/lib/data/courseCatalog";
 
 async function UploadPaperPage() {
-    const allTags = await prisma.tag.findMany();
+    const courses = await getSearchableCourses();
     return (
-        <div className="create-papers">
-            <UploadFile allTags={allTags.map((i: { name: string }) => i.name)} variant="Past Papers"/>
-        </div>
+        <DirectionalTransition>
+            <div className="create-papers">
+                <UploadFile variant="Past Papers" courses={courses} />
+            </div>
+        </DirectionalTransition>
     );
 }
 

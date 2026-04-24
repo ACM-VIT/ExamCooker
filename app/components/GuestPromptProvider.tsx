@@ -87,9 +87,8 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
     }, [prompt.isOpen, closePrompt]);
 
     const redirectTarget = useMemo(() => {
-        if (pathname === "/") return "/home";
         const query = searchParams?.toString();
-        return `${pathname || "/home"}${query ? `?${query}` : ""}`;
+        return `${pathname || "/"}${query ? `?${query}` : ""}`;
     }, [pathname, searchParams]);
 
     const signInHref = `/api/auth/init?redirect=${encodeURIComponent(redirectTarget)}`;

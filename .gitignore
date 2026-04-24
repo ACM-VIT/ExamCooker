@@ -50,3 +50,5 @@ scripts/import-missing-courses.ts
 
 # local working plan
 PLAN.md
+
+.playwright-mcp

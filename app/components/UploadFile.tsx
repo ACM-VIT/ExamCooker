@@ -6,10 +6,10 @@ import uploadFile from "../actions/uploadFile";
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import {faArrowLeft, faCircleXmark} from '@fortawesome/free-solid-svg-icons';
 import Loading from '../loading';
-import TagsInput from "@/app/components/tagsInput";
 import {useToast} from "@/components/ui/use-toast";
 import {useRouter} from "next/navigation";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
+import CoursePicker, { type CourseOption } from "@/app/components/mod/CoursePicker";
 
 const years = ['2020', '2021', '2022', '2023', '2024', '2025', '2026'];
 const isPdfFile = (file: File) =>
@@ -17,11 +17,45 @@ const isPdfFile = (file: File) =>
 const isImageFile = (file: File) => file.type.startsWith("image/");
 const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, "");
 
-const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | "Past Papers" }) => {
+const EXAM_TYPES = [
+    { value: 'CAT_1', label: 'CAT-1' },
+    { value: 'CAT_2', label: 'CAT-2' },
+    { value: 'FAT', label: 'FAT' },
+    { value: 'MODEL_CAT_1', label: 'Model CAT-1' },
+    { value: 'MODEL_CAT_2', label: 'Model CAT-2' },
+    { value: 'MODEL_FAT', label: 'Model FAT' },
+    { value: 'MID', label: 'Mid' },
+    { value: 'QUIZ', label: 'Quiz' },
+    { value: 'CIA', label: 'CIA' },
+    { value: 'OTHER', label: 'Other' },
+];
+
+const SEMESTERS = [
+    { value: 'FALL', label: 'Fall' },
+    { value: 'WINTER', label: 'Winter' },
+    { value: 'SUMMER', label: 'Summer' },
+    { value: 'WEEKEND', label: 'Weekend' },
+];
+
+const CAMPUSES = [
+    { value: 'CHENNAI', label: 'Chennai' },
+    { value: 'AP', label: 'AP' },
+    { value: 'BHOPAL', label: 'Bhopal' },
+    { value: 'BANGALORE', label: 'Bangalore' },
+    { value: 'MAURITIUS', label: 'Mauritius' },
+];
+
+const SELECT_CLASS = "p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85 text-sm";
+
+const UploadFile = ({variant, courses}: { variant: "Notes" | "Past Papers", courses?: CourseOption[] }) => {
     const [fileTitles, setFileTitles] = useState<string[]>([]);
     const [year, setYear] = useState('');
     const [slot, setSlot] = useState('');
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [courseId, setCourseId] = useState<string | null>(null);
+    const [examType, setExamType] = useState('');
+    const [semesterVal, setSemesterVal] = useState('');
+    const [campusVal, setCampusVal] = useState('');
+    const [hasAnswerKey, setHasAnswerKey] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [error, setError] = useState("");
@@ -45,6 +79,16 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         if (files.length === 0) {
             setError("Please select at least one file to upload.");
             return;
+        }
+
+        if (courses?.length && !courseId) {
+            setError("Please select a course.");
+            return;
+        }
+
+        if (variant === "Past Papers" && courses?.length) {
+            if (!examType) { setError("Please select an exam type."); return; }
+            if (!year) { setError("Please select a year."); return; }
         }
 
         startTransition(async () => {
@@ -77,7 +121,17 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
                     message: string
                 }[];
 
-                const response = await uploadFile({results, tags: selectedTags, year, slot, variant});
+                const response = await uploadFile({
+                    results,
+                    year,
+                    slot,
+                    variant,
+                    courseId,
+                    examType: examType || null,
+                    semester: semesterVal || null,
+                    campus: campusVal || null,
+                    hasAnswerKey,
+                });
                 if (!response.success) {
                     setError("Error uploading files: " + response.error);
                     return;
@@ -106,39 +160,23 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         const pdfDoc = await PDFDocument.create();
 
         const embedImage = async (file: File) => {
-            if (file.type === "image/png") {
-                return pdfDoc.embedPng(await file.arrayBuffer());
-            }
-            if (file.type === "image/jpeg" || file.type === "image/jpg") {
-                return pdfDoc.embedJpg(await file.arrayBuffer());
-            }
+            // createImageBitmap with imageOrientation respects EXIF rotation on mobile photos.
+            const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+            const canvas = document.createElement("canvas");
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) { bitmap.close(); throw new Error("Canvas not available"); }
+            ctx.drawImage(bitmap, 0, 0);
+            bitmap.close();
 
-            const img = new Image();
-            const objectUrl = URL.createObjectURL(file);
-            try {
-                img.src = objectUrl;
-                await img.decode();
-                const canvas = document.createElement("canvas");
-                canvas.width = img.naturalWidth || img.width;
-                canvas.height = img.naturalHeight || img.height;
-                const ctx = canvas.getContext("2d");
-                if (!ctx) {
-                    throw new Error("Canvas not available");
-                }
-                ctx.drawImage(img, 0, 0);
-                const blob = await new Promise<Blob>((resolve, reject) => {
-                    canvas.toBlob((result) => {
-                        if (!result) {
-                            reject(new Error("Image conversion failed"));
-                            return;
-                        }
-                        resolve(result);
-                    }, "image/png");
-                });
-                return pdfDoc.embedPng(await blob.arrayBuffer());
-            } finally {
-                URL.revokeObjectURL(objectUrl);
-            }
+            const blob = await new Promise<Blob>((resolve, reject) => {
+                canvas.toBlob((result) => {
+                    if (!result) { reject(new Error("Image conversion failed")); return; }
+                    resolve(result);
+                }, "image/jpeg", 0.92);
+            });
+            return pdfDoc.embedJpg(await blob.arrayBuffer());
         };
 
         for (const file of imageFiles) {
@@ -149,11 +187,9 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         }
 
         const pdfBytes = await pdfDoc.save();
-        const pdfByteArray = Uint8Array.from(pdfBytes);
-        const blob = new Blob([pdfByteArray.buffer], { type: "application/pdf" });
+        const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: "application/pdf" });
         const baseName = stripExtension(imageFiles[0]?.name || "capture");
-        const fileName =
-            imageFiles.length > 1 ? `${baseName}-bundle.pdf` : `${baseName}.pdf`;
+        const fileName = `${baseName}-bundle.pdf`;
         return new File([blob], fileName, { type: "application/pdf" });
     }, []);
 
@@ -178,38 +214,27 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         }
 
         if (variant === "Past Papers" && imageFiles.length && pdfFiles.length) {
-            toast({
-                title: "Choose either images or PDFs at once",
-                variant: "destructive",
-            });
+            toast({ title: "Drop images or a PDF — not both at once", variant: "destructive" });
             return;
         }
 
         if (variant === "Past Papers" && imageFiles.length) {
             if (files.length > 0 && !isImageBundleMode) {
-                toast({
-                    title: "Images can only create one paper",
-                    variant: "destructive",
-                });
+                toast({ title: "Remove the existing PDF before adding images", variant: "destructive" });
                 return;
             }
-
             setIsConverting(true);
             try {
                 const mergedImageFiles = [...imageBundleFiles, ...imageFiles];
                 const mergedPdf = await convertImagesToPdfFile(mergedImageFiles);
                 const existingTitle = fileTitles[0]?.trim();
-
                 setImageBundleFiles(mergedImageFiles);
                 setIsImageBundleMode(true);
                 setFiles([mergedPdf]);
                 setFileTitles([existingTitle || stripExtension(mergedPdf.name)]);
             } catch (error) {
                 console.error("Failed to convert images:", error);
-                toast({
-                    title: "Could not convert images",
-                    variant: "destructive",
-                });
+                toast({ title: "Could not process images", variant: "destructive" });
             } finally {
                 setIsConverting(false);
             }
@@ -217,14 +242,15 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         }
 
         if (variant === "Past Papers" && pdfFiles.length && isImageBundleMode) {
-            toast({
-                title: "Remove image paper before adding PDFs",
-                variant: "destructive",
-            });
+            toast({ title: "Remove the image pages before adding a PDF", variant: "destructive" });
             return;
         }
 
         if (pdfFiles.length) {
+            if (variant === "Past Papers" && (files.length > 0 || pdfFiles.length > 1)) {
+                toast({ title: "Only one PDF allowed per upload", variant: "destructive" });
+                return;
+            }
             setFiles((prev) => [...prev, ...pdfFiles]);
             setFileTitles((prev) => [
                 ...prev,
@@ -240,8 +266,9 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
         },
         onDragEnter: () => setIsDragging(true),
         onDragLeave: () => setIsDragging(false),
-        multiple: true,
-        accept: variant === "Past Papers"
+        multiple: variant !== "Past Papers",
+        maxFiles: variant === "Past Papers" ? 1 : undefined,
+        accept: variant === "Past Papers" && !isImageBundleMode
             ? {
                 'application/pdf': ['.pdf'],
                 'image/*': ['.png', '.jpg', '.jpeg', '.heic', '.heif'],
@@ -285,6 +312,9 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
             />
         );
     }, []);
+
+    const canSelectMoreFiles = variant !== "Past Papers" || files.length === 0;
+
     return (
         <div className="flex justify-center items-start sm:items-center min-h-screen px-3 py-4 sm:p-6">
             {pending && <Loading/>}
@@ -310,134 +340,287 @@ const UploadFile = ({allTags, variant}: { allTags: string[], variant: "Notes" | 
 
                 </div>
                 <form onSubmit={handleSubmit} className='w-full space-y-4'>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 place-content-center">
+                    {courses && courses.length > 0 && (
                         <div>
-                            <select
-                                className="p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85"
-                                value={year}
-                                onChange={(e) => setYear(e.target.value)}
-                                required
-                            >
-                                <option value="">Select Year</option>
-                                {years.map((y) => (
-                                    <option key={y} value={y}>{y}</option>
-                                ))}
-                            </select>
+                            <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-black/60 dark:text-[#D5D5D5]/60">
+                                Course <span className="text-red-500">*</span>
+                            </label>
+                            <CoursePicker courses={courses} value={courseId} onChange={setCourseId} />
                         </div>
-                        <div>
-                            <select
-                                className="p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85"
-                                value={slot}
-                                onChange={(e) => setSlot(e.target.value)}
-                                required
-                            >
-                                <option value="">Slot</option>
-                                <option value="A1">A1</option>
-                                <option value="A2">A2</option>
-                                <option value="B1">B1</option>
-                                <option value="B2">B2</option>
-                                <option value="C1">C1</option>
-                                <option value="C2">C2</option>
-                                <option value="D1">D1</option>
-                                <option value="D2">D2</option>
-                                <option value="E1">E1</option>
-                                <option value="E2">E2</option>
-                                <option value="F1">F1</option>
-                                <option value="F2">F2</option>
-                                <option value="G1">G1</option>
-                                <option value="G2">G2</option>
-                            </select>
-                        </div>
-                    </div>
+                    )}
 
-                    <TagsInput allTags={allTags} selectedTags={selectedTags} setSelectedTags={setSelectedTags}/>
-
-                    <div
-                        {...getRootProps()}
-                        className={`
-                            border-2 border-dashed
-                            ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
-                            transition-all duration-300 ease-in-out
-                            flex flex-col items-center justify-center
-                            p-4 sm:p-6 md:p-8
-                            min-h-[10rem] sm:min-h-[12rem]
-                            cursor-pointer
-                        `}
-                    >
-                            <input {...getInputProps()} />
-                            {variant === "Past Papers" && (
-                                <input
-                                    ref={cameraInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    capture="environment"
-                                    multiple
-                                    className="hidden"
-                                    onChange={(event) => {
-                                        if (!event.target.files) return;
-                                        void addFiles(Array.from(event.target.files));
-                                        event.target.value = "";
-                                    }}
-                                />
-                            )}
-                        <svg
-                            className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-gray-400 mb-2"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                            />
-                        </svg>
-                        <p className="text-sm sm:text-base md:text-lg text-gray-500 text-center">
-                            Drag & drop files here, or click here
-                        </p>
-                        {variant === "Past Papers" && (
-                            <button
-                                type="button"
-                                onClick={() => cameraInputRef.current?.click()}
-                                className="mt-2 text-xs sm:text-sm text-blue-600 hover:underline"
-                            >
-                                Use camera (mobile)
-                            </button>
-                        )}
-                        {isConverting && (
-                            <p className="text-xs text-gray-500 mt-2">
-                                Combining photos into one PDF...
-                            </p>
-                        )}
-                        {files.length > 0 && (
-                            <p className="text-xs sm:text-sm md:text-base text-gray-500 mt-2">
-                                {files.length} file(s) selected
-                            </p>
-                        )}
-                    </div>
-
-                    {files.length > 0 && (
-                        <div className="flex flex-col gap-2 w-full">
-                            {files.map((_, index) => (
-                                <div key={index} className="text-gray-700 flex items-center text-xs w-full">
-                                    <TextField
-                                        value={fileTitles[index]}
-                                        onChange={handleTitleChange}
-                                        index={index}/>
-
-                                    <button
-                                        type="button"
-                                        className="ml-2 text-red-500 h-10 w-10 flex items-center justify-center shrink-0"
-                                        onClick={() => handleRemoveFile(index)}
-                                        aria-label="Remove file"
-                                    >
-                                        <FontAwesomeIcon icon={faCircleXmark}/>
-                                    </button>
+                    {variant === "Past Papers" && courses && courses.length > 0 && (
+                        <>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-black/60 dark:text-[#D5D5D5]/60">
+                                        Exam type <span className="text-red-500">*</span>
+                                    </label>
+                                    <select className={SELECT_CLASS} value={examType} onChange={(e) => setExamType(e.target.value)}>
+                                        <option value="">Select</option>
+                                        {EXAM_TYPES.map((t) => (
+                                            <option key={t.value} value={t.value}>{t.label}</option>
+                                        ))}
+                                    </select>
                                 </div>
-                            ))}
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-black/60 dark:text-[#D5D5D5]/60">
+                                        Slot
+                                    </label>
+                                    <select className={SELECT_CLASS} value={slot} onChange={(e) => setSlot(e.target.value)}>
+                                        <option value="">None</option>
+                                        {["A1","A2","B1","B2","C1","C2","D1","D2","E1","E2","F1","F2","G1","G2"].map((s) => (
+                                            <option key={s} value={s}>{s}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-black/60 dark:text-[#D5D5D5]/60">
+                                        Year <span className="text-red-500">*</span>
+                                    </label>
+                                    <select className={SELECT_CLASS} value={year} onChange={(e) => setYear(e.target.value)}>
+                                        <option value="">Select</option>
+                                        {years.map((y) => (
+                                            <option key={y} value={y}>{y}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-black/60 dark:text-[#D5D5D5]/60">
+                                        Semester
+                                    </label>
+                                    <select className={SELECT_CLASS} value={semesterVal} onChange={(e) => setSemesterVal(e.target.value)}>
+                                        <option value="">Unknown</option>
+                                        {SEMESTERS.map((s) => (
+                                            <option key={s.value} value={s.value}>{s.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-black/60 dark:text-[#D5D5D5]/60">
+                                        Campus
+                                    </label>
+                                    <select className={SELECT_CLASS} value={campusVal} onChange={(e) => setCampusVal(e.target.value)}>
+                                        <option value="">Vellore</option>
+                                        {CAMPUSES.map((c) => (
+                                            <option key={c.value} value={c.value}>{c.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex items-end pb-2">
+                                    <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-black dark:text-[#D5D5D5]">
+                                        <input
+                                            type="checkbox"
+                                            checked={hasAnswerKey}
+                                            onChange={(e) => setHasAnswerKey(e.target.checked)}
+                                            className="h-4 w-4 accent-[#5FC4E7]"
+                                        />
+                                        Has answer key
+                                    </label>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {!(courses && courses.length > 0) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 place-content-center">
+                            <div>
+                                <select
+                                    className="p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85"
+                                    value={year}
+                                    onChange={(e) => setYear(e.target.value)}
+                                >
+                                    <option value="">Select Year</option>
+                                    {years.map((y) => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <select
+                                    className="p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85"
+                                    value={slot}
+                                    onChange={(e) => setSlot(e.target.value)}
+                                >
+                                    <option value="">Slot</option>
+                                    {["A1","A2","B1","B2","C1","C2","D1","D2","E1","E2","F1","F2","G1","G2"].map((s) => (
+                                        <option key={s} value={s}>{s}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
+                    )}
+
+                    {variant === "Past Papers" && isImageBundleMode ? (
+                        <div className="border-2 border-[#5FC4E7] dark:border-[#3BF4C7]/40 bg-[#5FC4E7]/10 dark:bg-[#3BF4C7]/5 p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-sm font-semibold text-black dark:text-[#D5D5D5]">
+                                    {imageBundleFiles.length} image{imageBundleFiles.length !== 1 ? "s" : ""} selected
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveFile(0)}
+                                    className="text-red-500 shrink-0"
+                                    aria-label="Remove all"
+                                >
+                                    <FontAwesomeIcon icon={faCircleXmark} />
+                                </button>
+                            </div>
+
+                            <div className="flex gap-2 flex-wrap">
+                                {imageBundleFiles.map((img, i) => (
+                                    <img
+                                        key={i}
+                                        src={URL.createObjectURL(img)}
+                                        alt={`Page ${i + 1}`}
+                                        className="h-16 w-auto object-cover border border-black/20 dark:border-white/20"
+                                    />
+                                ))}
+                            </div>
+
+                            {isConverting && (
+                                <p className="text-xs text-black/50 dark:text-[#D5D5D5]/50">
+                                    Processing...
+                                </p>
+                            )}
+
+                            <input
+                                ref={cameraInputRef}
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                multiple
+                                className="hidden"
+                                onChange={(event) => {
+                                    if (!event.target.files) return;
+                                    void addFiles(Array.from(event.target.files));
+                                    event.target.value = "";
+                                }}
+                            />
+                            <input
+                                id="add-more-images"
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={(event) => {
+                                    if (!event.target.files) return;
+                                    void addFiles(Array.from(event.target.files));
+                                    event.target.value = "";
+                                }}
+                            />
+
+                            <div className="flex gap-2 flex-wrap">
+                                <label
+                                    htmlFor="add-more-images"
+                                    className="cursor-pointer inline-flex h-8 items-center border border-black/30 dark:border-[#D5D5D5]/30 px-3 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/5"
+                                >
+                                    Add more pages
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => cameraInputRef.current?.click()}
+                                    className="inline-flex h-8 items-center border border-black/30 dark:border-[#D5D5D5]/30 px-3 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/5"
+                                >
+                                    Use camera
+                                </button>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 text-black/60 dark:text-[#D5D5D5]/60">
+                                    Title
+                                </label>
+                                <TextField value={fileTitles[0] ?? ""} onChange={handleTitleChange} index={0} />
+                            </div>
+                        </div>
+                    ) : (
+                        /* PDF dropzone */
+                        <>
+                            <div
+                                {...getRootProps()}
+                                className={`
+                                    border-2 border-dashed
+                                    ${isDragging ? 'border-[#5FC4E7] bg-[#5FC4E7]/10' : 'border-gray-300'}
+                                    transition-all duration-300 ease-in-out
+                                    flex flex-col items-center justify-center
+                                    p-4 sm:p-6 md:p-8
+                                    min-h-[10rem] sm:min-h-[12rem]
+                                    ${canSelectMoreFiles ? "cursor-pointer" : "cursor-default"}
+                                `}
+                            >
+                                <input {...getInputProps()} disabled={!canSelectMoreFiles} />
+                                {variant === "Past Papers" && (
+                                    <input
+                                        ref={cameraInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        multiple
+                                        className="hidden"
+                                        onChange={(event) => {
+                                            if (!event.target.files) return;
+                                            void addFiles(Array.from(event.target.files));
+                                            event.target.value = "";
+                                        }}
+                                    />
+                                )}
+                                <svg
+                                    className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 mb-2"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+
+                                {files.length === 0 ? (
+                                    <>
+                                        <p className="text-sm text-gray-500 text-center">
+                                            {variant === "Past Papers"
+                                                ? "Drop a PDF or photo here"
+                                                : "Drop a PDF here"}
+                                        </p>
+                                        <p className="text-xs text-gray-400 text-center mt-1">or click to browse</p>
+                                        {variant === "Past Papers" && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click(); }}
+                                                className="mt-3 text-xs text-blue-600 hover:underline"
+                                            >
+                                                Use camera
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-gray-500 text-center">
+                                        {variant === "Notes"
+                                            ? `${files.length} PDF${files.length === 1 ? "" : "s"} selected`
+                                            : "PDF ready"}
+                                    </p>
+                                )}
+                            </div>
+
+                            {files.length > 0 && (
+                                <div className="w-full space-y-2">
+                                    {files.map((file, index) => (
+                                        <div key={`${file.name}-${file.lastModified}-${index}`} className="flex items-center gap-2 w-full">
+                                            <TextField value={fileTitles[index] ?? ""} onChange={handleTitleChange} index={index} />
+                                            <button
+                                                type="button"
+                                                className="text-red-500 h-10 w-10 flex items-center justify-center shrink-0"
+                                                onClick={() => handleRemoveFile(index)}
+                                                aria-label={`Remove ${file.name}`}
+                                            >
+                                                <FontAwesomeIcon icon={faCircleXmark} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
                     )}
                     {error && (
                         <div className="mb-4 text-center">

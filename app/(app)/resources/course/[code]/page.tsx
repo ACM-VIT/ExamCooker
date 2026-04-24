@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ModuleDropdown from "@/app/components/ModuleDropdown";
 import VinCoursePage from "@/app/components/resources/VinCoursePage";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import ViewTracker from "@/app/components/ViewTracker";
 import StructuredData from "@/app/components/seo/StructuredData";
 import { getCourseByCodeAny } from "@/lib/data/courses";
@@ -168,7 +169,7 @@ export default async function CourseResourcesPage({
     ];
 
     return (
-        <>
+        <DirectionalTransition>
             <StructuredData
                 data={[
                     buildBreadcrumbList([
@@ -218,12 +219,17 @@ export default async function CourseResourcesPage({
 
                         <header className="mx-auto flex max-w-6xl flex-col gap-4">
                             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                                <Link href="/resources" className="hover:text-black dark:hover:text-[#D5D5D5]">
+                                <Link
+                                    href="/resources"
+                                    transitionTypes={["nav-back"]}
+                                    className="hover:text-black dark:hover:text-[#D5D5D5]"
+                                >
                                     Resources
                                 </Link>
                                 <span aria-hidden="true">›</span>
                                 <Link
                                     href={getCoursePath(context.code)}
+                                    transitionTypes={["nav-back"]}
                                     className="hover:text-black dark:hover:text-[#D5D5D5]"
                                 >
                                     {context.code}
@@ -245,6 +251,7 @@ export default async function CourseResourcesPage({
                                         <Link
                                             key={action.label}
                                             href={action.href}
+                                            transitionTypes={["nav-forward"]}
                                             className="inline-flex h-9 items-center border border-black/20 px-3 text-sm font-semibold transition hover:bg-black/5 dark:border-[#D5D5D5]/20 dark:hover:bg-white/5"
                                         >
                                             {action.label}
@@ -301,6 +308,6 @@ export default async function CourseResourcesPage({
                     </div>
                 </div>
             ) : null}
-        </>
+        </DirectionalTransition>
     );
 }

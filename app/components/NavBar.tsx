@@ -33,15 +33,9 @@ type MenuLink = {
 };
 
 const LINKS: MenuLink[] = [
-  { href: "/home", svgSource: "/assets/Home.svg", alt: "Home" },
+  { href: "/", svgSource: "/assets/Home.svg", alt: "Home" },
   { href: "/past_papers", svgSource: "/assets/PastPapersIcon.svg", alt: "Papers" },
   { href: "/notes", svgSource: "/assets/NotesIcon.svg", alt: "Notes" },
-  // {
-  //   href: "/courses",
-  //   svgSource: "/assets/CoursesIcon.svg",
-  //   alt: "Courses",
-  //   matches: (p) => !!p?.startsWith("/courses"),
-  // },
   { href: "/syllabus", svgSource: "/assets/SyllabusLogo.svg", alt: "Syllabus" },
   // { href: "/forum", svgSource: "/assets/ForumIcon.svg", alt: "Forum" },
   { href: "/resources", svgSource: "/assets/BookIcon.svg", alt: "Resources" },
@@ -81,16 +75,24 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
         onClick={toggleNavbar}
         aria-label={isNavOn ? "Close navigation" : "Open navigation"}
         aria-expanded={isNavOn}
-        className={`fixed top-3 left-3 z-[60] inline-flex h-10 w-10 items-center justify-center rounded-md border border-black/10 bg-white/90 text-black backdrop-blur transition-all duration-200 hover:border-black/25 hover:shadow-md dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 lg:hidden ${isNavOn ? "opacity-0 pointer-events-none" : "opacity-100"
+        style={{ viewTransitionName: "persistent-menu-button" }}
+        className={`fixed top-3 left-3 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-xl border border-black/10 bg-white/75 text-black shadow-sm backdrop-blur-md transition-all duration-200 active:scale-95 hover:border-black/25 hover:bg-white hover:shadow-md dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/75 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/40 dark:hover:bg-[#0C1222] lg:hidden ${isNavOn ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
       >
-        <Image
-          src="/assets/HamburgerIcon.svg"
-          alt="Menu"
-          width={20}
-          height={20}
-          className="dark:invert-[.835]"
-        />
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className="h-[22px] w-[22px]"
+        >
+          <path d="M4 7h16" />
+          <path d="M4 12h16" />
+          <path d="M4 17h10" />
+        </svg>
       </button>
 
       <div
@@ -101,6 +103,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
       />
 
       <nav
+        style={{ viewTransitionName: "persistent-nav" }}
         className={`fixed top-0 left-0 z-50 flex h-screen w-fit flex-col items-center justify-between border-r border-black/15 bg-[#C2E6EC] p-2 transition-transform duration-200 ease-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
       >
@@ -136,6 +139,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
               <Link
                 key={link.href}
                 href={link.href}
+                transitionTypes={isActive ? undefined : ["nav-lateral"]}
                 className={isActive ? "bg-[#ffffff]/20" : ""}
               >
                 <Tooltip content={link.alt}>

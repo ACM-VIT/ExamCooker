@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import PastPaperCard from "@/app/components/PastPaperCard";
 import StructuredData from "@/app/components/seo/StructuredData";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import {
     getExamHubPageData,
     getExamHubSummaries,
@@ -86,42 +87,47 @@ export default async function ExamHubPage({
     ];
 
     return (
-        <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-            <StructuredData
-                data={[
-                    buildBreadcrumbList([
-                        { name: "Past papers", path: "/past_papers" },
-                        {
+        <DirectionalTransition>
+            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <StructuredData
+                    data={[
+                        buildBreadcrumbList([
+                            { name: "Past papers", path: "/past_papers" },
+                            {
+                                name: `${data.label} past papers`,
+                                path: getExamHubPath(data.slug),
+                            },
+                        ]),
+                        buildCollectionPage({
                             name: `${data.label} past papers`,
+                            description,
                             path: getExamHubPath(data.slug),
-                        },
-                    ]),
-                    buildCollectionPage({
-                        name: `${data.label} past papers`,
-                        description,
-                        path: getExamHubPath(data.slug),
-                        keywords: buildExamHubKeywordSet(examType),
-                        about: `${data.label} exam papers`,
-                    }),
-                    buildItemList(
-                        data.courses.map((course) => ({
-                            name: `${course.code} ${data.label} past papers`,
-                            path: getCourseExamPath(course.code, data.slug),
-                        })),
-                    ),
-                    buildFaqPage(faq),
-                ]}
-            />
+                            keywords: buildExamHubKeywordSet(examType),
+                            about: `${data.label} exam papers`,
+                        }),
+                        buildItemList(
+                            data.courses.map((course) => ({
+                                name: `${course.code} ${data.label} past papers`,
+                                path: getCourseExamPath(course.code, data.slug),
+                            })),
+                        ),
+                        buildFaqPage(faq),
+                    ]}
+                />
 
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
-                <header className="flex flex-col gap-4">
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                        <Link href="/past_papers" className="hover:text-black dark:hover:text-[#D5D5D5]">
-                            Past papers
-                        </Link>
-                        <span aria-hidden="true">›</span>
-                        <span>{data.label}</span>
-                    </div>
+                <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
+                    <header className="flex flex-col gap-4">
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
+                            <Link
+                                href="/past_papers"
+                                transitionTypes={["nav-back"]}
+                                className="hover:text-black dark:hover:text-[#D5D5D5]"
+                            >
+                                Past papers
+                            </Link>
+                            <span aria-hidden="true">›</span>
+                            <span>{data.label}</span>
+                        </div>
 
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                         <div className="max-w-4xl">
@@ -223,12 +229,14 @@ export default async function ExamHubPage({
                                 <div className="mt-4 flex flex-wrap gap-2">
                                     <Link
                                         href={getCourseExamPath(course.code, data.slug)}
+                                        transitionTypes={["nav-forward"]}
                                         className="inline-flex h-9 items-center border border-black/20 px-3 text-sm font-semibold transition hover:bg-black/5 dark:border-[#D5D5D5]/20 dark:hover:bg-white/5"
                                     >
                                         {data.label} papers
                                     </Link>
                                     <Link
                                         href={getCoursePastPapersPath(course.code)}
+                                        transitionTypes={["nav-forward"]}
                                         className="inline-flex h-9 items-center border border-black/20 px-3 text-sm font-semibold transition hover:bg-black/5 dark:border-[#D5D5D5]/20 dark:hover:bg-white/5"
                                     >
                                         All papers
@@ -282,7 +290,8 @@ export default async function ExamHubPage({
                         </article>
                     ))}
                 </section>
+                </div>
             </div>
-        </div>
+        </DirectionalTransition>
     );
 }

@@ -3,6 +3,7 @@ import PDFViewerClient from '@/app/components/PDFViewerClient';
 import {TimeHandler} from '@/app/components/forumpost/CommentHelpers';
 import {notFound} from "next/navigation";
 import {Metadata} from "next";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 
 import ShareLink from '@/app/components/ShareLink';
 import ViewTracker from "@/app/components/ViewTracker";
@@ -87,54 +88,56 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-            />
-            <ViewTracker
-                id={note.id}
-                type="note"
-                title={title}
-            />
-            <div className="lg:w-1/2 flex flex-col overflow-hidden">
-                <div className="flex-grow overflow-y-auto p-2 sm:p-4 lg:p-8">
-                    <div className="max-w-2xl mx-auto">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{title}</h1>
+        <DirectionalTransition>
+            <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                />
+                <ViewTracker
+                    id={note.id}
+                    type="note"
+                    title={title}
+                />
+                <div className="lg:w-1/2 flex flex-col overflow-hidden">
+                    <div className="flex-grow overflow-y-auto p-2 sm:p-4 lg:p-8">
+                        <div className="max-w-2xl mx-auto">
+                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{title}</h1>
 
-                        <div className="space-y-2 sm:space-y-3">
-                            <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {slot}</p>
-                            <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {year}</p>
-                            <p className="text-base sm:text-lg"><span
-                                className="font-semibold">Posted by: </span> {note.author?.name?.slice(0, -10) || 'Unknown'}
-                            </p>
-                            {note.tags?.length ? (
-                                <div className="pt-2">
-                                    <TagContainer tags={note.tags} />
-                                </div>
-                            ) : null}
-                            <div className="flex gap-2 items-center justify-between">
-                                <p className='text-base sm:text-xs'><span
-                                    className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
+                            <div className="space-y-2 sm:space-y-3">
+                                <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {slot}</p>
+                                <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {year}</p>
+                                <p className="text-base sm:text-lg"><span
+                                    className="font-semibold">Posted by: </span> {note.author?.name?.slice(0, -10) || 'Unknown'}
                                 </p>
-                                <ItemActions
-                                    itemId={note.id}
-                                    title={note.title}
-                                    authorId={note.author?.id}
-                                    activeTab="notes"
-                                />
-                                <ShareLink fileType='these Notes'/>
+                                {note.tags?.length ? (
+                                    <div className="pt-2">
+                                        <TagContainer tags={note.tags} />
+                                    </div>
+                                ) : null}
+                                <div className="flex gap-2 items-center justify-between">
+                                    <p className='text-base sm:text-xs'><span
+                                        className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
+                                    </p>
+                                    <ItemActions
+                                        itemId={note.id}
+                                        title={note.title}
+                                        authorId={note.author?.id}
+                                        activeTab="notes"
+                                    />
+                                    <ShareLink fileType='these Notes'/>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
-                <div className="h-full overflow-auto">
-                    <PDFViewerClient fileUrl={note.fileUrl}/>
+                <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
+                    <div className="h-full overflow-auto">
+                        <PDFViewerClient fileUrl={note.fileUrl}/>
+                    </div>
                 </div>
             </div>
-        </div>
+        </DirectionalTransition>
     );
 
 }

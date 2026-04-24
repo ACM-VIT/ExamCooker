@@ -5,8 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
 import {useToast} from "@/components/ui/use-toast";
-import { parsePaperTitle, ParsedPaperTitle } from "@/lib/paperTitle";
-import { getCourseResourcesPath, getPastPaperDetailPath, parseSubjectName } from "@/lib/seo";
+import { getCourseResourcesPath, parseSubjectName } from "@/lib/seo";
 
 type FavoriteType = "note" | "pastpaper" | "forumpost" | "subject";
 
@@ -25,12 +24,6 @@ function humanizeCategory(category: string) {
     if (normalized === "note") return "Note";
     if (normalized === "subject") return "Subject";
     return normalized.replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function getPastPaperDisplayTitle(title: string, parsed: ParsedPaperTitle) {
-    const courseName = parsed.courseName?.trim();
-    const baseTitle = courseName ?? parsed.cleanTitle;
-    return baseTitle || parsed.cleanTitle || title.replace(/\.pdf$/i, "");
 }
 
 function mapCategoryToType(category: string): FavoriteType {
@@ -54,19 +47,8 @@ export default function CommonFav({ category, title, thing, compact = false }: {
     const favoriteType = mapCategoryToType(category);
     const isFav = isBookmarked(thing.id, favoriteType);
     const router = useRouter();
-    const parsedTitle = favoriteType === "pastpaper" ? parsePaperTitle(title) : null;
-    const displayTitle = favoriteType === "pastpaper" && parsedTitle
-        ? getPastPaperDisplayTitle(title, parsedTitle)
-        : removePdfExtension(title);
-    const metadataParts = favoriteType === "pastpaper" && parsedTitle
-        ? [
-              parsedTitle.examType,
-              parsedTitle.slot ? `Slot ${parsedTitle.slot}` : undefined,
-              parsedTitle.academicYear ?? parsedTitle.year,
-              parsedTitle.courseCode,
-          ].filter(Boolean)
-        : [];
-    const metadata = metadataParts.join(" | ");
+    const displayTitle = removePdfExtension(title);
+    const metadata = "";
     const categoryLabel = humanizeCategory(category);
 
     const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -84,7 +66,7 @@ export default function CommonFav({ category, title, thing, compact = false }: {
             case 'note':
                 return `/notes/${thing.id}`;
             case 'pastpaper':
-                return getPastPaperDetailPath(thing.id, parsedTitle?.courseCode);
+                return `/past_papers/${thing.id}`;
             case 'forumpost':
                 return `/forum/${thing.id}`;
             case 'subject': {

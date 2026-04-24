@@ -27,6 +27,11 @@ export default function CoursePagination({ currentPage, totalPages }: Props) {
         return qs ? `${pathname}?${qs}` : pathname;
     };
 
+    const transitionForPage = (page: number) => {
+        if (page === currentPage) return undefined;
+        return page > currentPage ? ["nav-forward"] : ["nav-back"];
+    };
+
     const startPage = Math.max(
         1,
         Math.min(
@@ -50,6 +55,7 @@ export default function CoursePagination({ currentPage, totalPages }: Props) {
         <nav className="flex flex-wrap items-center justify-center gap-1">
             <Link
                 href={buildHref(currentPage - 1)}
+                transitionTypes={transitionForPage(currentPage - 1)}
                 aria-label="Previous page"
                 className={`${base} ${inactive} ${currentPage <= 1 ? disabled : ""}`}
             >
@@ -58,7 +64,11 @@ export default function CoursePagination({ currentPage, totalPages }: Props) {
 
             {startPage > 1 && (
                 <>
-                    <Link href={buildHref(1)} className={`${base} ${inactive}`}>
+                    <Link
+                        href={buildHref(1)}
+                        transitionTypes={transitionForPage(1)}
+                        className={`${base} ${inactive}`}
+                    >
                         1
                     </Link>
                     {startPage > 2 && (
@@ -73,6 +83,7 @@ export default function CoursePagination({ currentPage, totalPages }: Props) {
                 <Link
                     key={page}
                     href={buildHref(page)}
+                    transitionTypes={transitionForPage(page)}
                     className={`${base} ${page === currentPage ? active : inactive}`}
                 >
                     {page}
@@ -88,6 +99,7 @@ export default function CoursePagination({ currentPage, totalPages }: Props) {
                     )}
                     <Link
                         href={buildHref(totalPages)}
+                        transitionTypes={transitionForPage(totalPages)}
                         className={`${base} ${inactive}`}
                     >
                         {totalPages}
@@ -97,6 +109,7 @@ export default function CoursePagination({ currentPage, totalPages }: Props) {
 
             <Link
                 href={buildHref(currentPage + 1)}
+                transitionTypes={transitionForPage(currentPage + 1)}
                 aria-label="Next page"
                 className={`${base} ${inactive} ${currentPage >= totalPages ? disabled : ""}`}
             >

@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/seo";
-import { getCourseCatalog } from "@/lib/data/courses";
+import { getCourseGrid, getSearchableCourses } from "@/lib/data/courseCatalog";
 import { getCourseExamCombos } from "@/lib/data/courseExams";
-import { getCoursesWithCounts } from "@/lib/data/courses";
 import { getExamHubSummaries } from "@/lib/data/courseExams";
 
 const PAGE_SIZE = 40000;
@@ -32,9 +31,9 @@ export async function GET() {
             prisma.pastPaper.count({ where: { isClear: true } }),
             prisma.subject.count(),
             prisma.syllabi.count(),
-            getCourseCatalog(2),
+            getCourseGrid(),
             getCourseExamCombos(),
-            getCoursesWithCounts(),
+            getSearchableCourses(),
             getExamHubSummaries(),
         ]);
 

@@ -33,6 +33,8 @@ export default function RecentPaperStrip({ items }: { items: RecentItem[] }) {
                         <Link
                             key={item.id}
                             href={href}
+                            prefetch={i < 3}
+                            transitionTypes={["nav-forward"]}
                             className="group relative flex w-40 shrink-0 snap-start flex-col overflow-hidden rounded-md border border-black/10 bg-white transition-all duration-200 hover:border-black/30 hover:shadow-md dark:border-[#D5D5D5]/10 dark:bg-[#0C1222] dark:hover:border-[#D5D5D5]/35 dark:hover:shadow-[0_4px_18px_rgba(59,244,199,0.08)] sm:w-44"
                         >
                             <div className="relative aspect-[4/5] w-full overflow-hidden bg-black/5 dark:bg-white/5">

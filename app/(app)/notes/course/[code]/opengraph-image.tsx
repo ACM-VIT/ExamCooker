@@ -1,5 +1,4 @@
 import { normalizeCourseCode } from "@/lib/courseTags";
-import { getCourseByCodeAny } from "@/lib/data/courses";
 import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
 import { getCourseNotesCount } from "@/lib/data/notes";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
@@ -33,12 +32,8 @@ export default async function Image({
         });
     }
 
-    const [tagCourse, courseDetail] = await Promise.all([
-        getCourseByCodeAny(normalized),
-        getCourseDetailByCode(normalized),
-    ]);
-
-    if (!tagCourse && !courseDetail) {
+    const courseDetail = await getCourseDetailByCode(normalized);
+    if (!courseDetail) {
         return renderExamCookerOgImage({
             eyebrow: "Course Notes",
             title: normalized,
@@ -46,27 +41,20 @@ export default async function Image({
         });
     }
 
-    const courseCode = courseDetail?.code ?? tagCourse?.code ?? normalized;
-    const courseTitle = courseDetail?.title ?? tagCourse?.title ?? normalized;
-    const tagIds = tagCourse?.tagIds ?? [];
-
     const [noteCount, syllabus, subject] = await Promise.all([
-        getCourseNotesCount({
-            courseId: courseDetail?.id ?? null,
-            tagIds,
-        }),
-        getSyllabusByCourseCode(courseCode),
-        getSubjectByCourseCode(courseCode),
+        getCourseNotesCount({ courseId: courseDetail.id }),
+        getSyllabusByCourseCode(courseDetail.code),
+        getSubjectByCourseCode(courseDetail.code),
     ]);
 
     return renderExamCookerOgImage({
         eyebrow: "Course Notes",
-        title: `${courseCode} Notes`,
-        subtitle: courseTitle,
+        title: `${courseDetail.code} Notes`,
+        subtitle: courseDetail.title,
         description: "Lecture notes, study material, and revision PDFs for this course.",
         chips: [
             formatCountChip("notes", noteCount),
-            formatCountChip("papers", courseDetail?.paperCount ?? 0),
+            formatCountChip("papers", courseDetail.paperCount),
             syllabus || subject ? "Syllabus and resources" : undefined,
         ],
     });

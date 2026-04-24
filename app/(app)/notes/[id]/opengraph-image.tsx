@@ -1,4 +1,3 @@
-import { extractCourseFromTag } from "@/lib/courseTags";
 import { getNoteDetail } from "@/lib/data/noteDetail";
 import {
     OG_ALT,
@@ -14,14 +13,6 @@ export const contentType = OG_CONTENT_TYPE;
 
 function removePdfExtension(filename: string) {
     return filename.endsWith(".pdf") ? filename.slice(0, -4) : filename;
-}
-
-function isValidSlot(value: string) {
-    return /^[A-G]\d$/i.test(value);
-}
-
-function isValidYear(value: string) {
-    return /^20\d{2}$/.test(value);
 }
 
 export default async function Image({
@@ -41,19 +32,14 @@ export default async function Image({
     }
 
     const cleanTitle = removePdfExtension(note.title);
-    const courseInfo = note.tags.map((tag) => extractCourseFromTag(tag.name)).find(Boolean) ?? null;
-    const slot = note.tags.find((tag) => isValidSlot(tag.name))?.name?.toUpperCase();
-    const year = note.tags.find((tag) => isValidYear(tag.name))?.name;
+    const courseCode = note.course?.code;
+    const courseTitle = note.course?.title;
 
     return renderExamCookerOgImage({
         eyebrow: "Study Notes",
-        title: courseInfo ? `${courseInfo.code} Notes` : cleanTitle,
-        subtitle: courseInfo ? courseInfo.title : "Study notes on ExamCooker.",
-        description: courseInfo ? cleanTitle : undefined,
-        chips: [
-            slot ? `Slot ${slot}` : undefined,
-            year,
-            "PDF note",
-        ],
+        title: courseCode ? `${courseCode} Notes` : cleanTitle,
+        subtitle: courseTitle ?? "Study notes on ExamCooker.",
+        description: courseCode ? cleanTitle : undefined,
+        chips: ["PDF note"],
     });
 }

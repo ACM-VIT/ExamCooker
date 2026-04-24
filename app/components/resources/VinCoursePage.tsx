@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import AppImage from "@/app/components/common/AppImage";
-import ResourceBookmarkButton from "@/app/components/resources/ResourceBookmarkButton";
-import ModuleJourney from "@/app/components/resources/ModuleJourney";
-import VinCourseExplorer from "@/app/components/resources/VinCourseExplorer";
+import VinCourseWorkspace from "@/app/components/resources/VinCourseWorkspace";
 import { getVinCatalogMeta, type VinCourse } from "@/lib/data/vinTogether";
 
 type ResourceBreadcrumb = {
@@ -25,6 +22,32 @@ type VinCoursePageProps = {
     intro?: string;
 };
 
+function buildSummaryParts(course: VinCourse) {
+    const moduleCount = course.counts.moduleCount;
+    const topicCount = course.counts.topicCount;
+    const videoCount = course.counts.videoCount + course.counts.exampleVideoCount;
+    const questionCount = course.counts.questionCount;
+    const exampleCount = course.counts.exampleVideoCount;
+
+    const parts: string[] = [];
+    parts.push(`${moduleCount} module${moduleCount === 1 ? "" : "s"}`);
+    parts.push(`${topicCount} topic${topicCount === 1 ? "" : "s"}`);
+    if (videoCount > 0) {
+        parts.push(`${videoCount} video${videoCount === 1 ? "" : "s"}`);
+    }
+    if (exampleCount > 0) {
+        parts.push(
+            `${exampleCount} worked example${exampleCount === 1 ? "" : "s"}`,
+        );
+    }
+    if (questionCount > 0) {
+        parts.push(
+            `${questionCount} practice question${questionCount === 1 ? "" : "s"}`,
+        );
+    }
+    return parts;
+}
+
 export default function VinCoursePage({
     course,
     breadcrumbs,
@@ -32,104 +55,81 @@ export default function VinCoursePage({
 }: VinCoursePageProps) {
     const meta = getVinCatalogMeta();
     const sourceCourseUrl = `${meta.source.origin}${course.remotePath}`;
-    const totalVideos = course.counts.videoCount + course.counts.exampleVideoCount;
     const actionItems: ResourceAction[] = [
         ...(actions ?? []),
         { label: "Original source", href: sourceCourseUrl, external: true },
     ];
+    const summaryParts = buildSummaryParts(course);
 
     return (
         <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
-                {/* Breadcrumbs */}
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 pt-6 sm:gap-8 sm:px-6 sm:pt-8 lg:px-10 lg:pt-10">
                 {breadcrumbs?.length ? (
-                    <nav className="flex flex-wrap items-center gap-1.5 text-sm text-black/50 dark:text-[#D5D5D5]/50">
+                    <nav className="flex flex-wrap items-center gap-1.5 text-[12px] text-black/50 dark:text-[#D5D5D5]/50">
                         {breadcrumbs.map((crumb, i) => (
-                            <span key={`${crumb.label}-${i}`} className="inline-flex items-center gap-1.5">
+                            <span
+                                key={`${crumb.label}-${i}`}
+                                className="inline-flex items-center gap-1.5"
+                            >
                                 {crumb.href ? (
-                                    <Link href={crumb.href} className="hover:text-black dark:hover:text-[#D5D5D5]">
+                                    <Link
+                                        href={crumb.href}
+                                        transitionTypes={["nav-back"]}
+                                        className="hover:text-black dark:hover:text-[#D5D5D5]"
+                                    >
                                         {crumb.label}
                                     </Link>
                                 ) : (
-                                    <span className="text-black dark:text-[#D5D5D5]">{crumb.label}</span>
+                                    <span className="text-black dark:text-[#D5D5D5]">
+                                        {crumb.label}
+                                    </span>
                                 )}
-                                {i < breadcrumbs.length - 1 && <span aria-hidden="true">/</span>}
+                                {i < breadcrumbs.length - 1 && (
+                                    <span aria-hidden="true">/</span>
+                                )}
                             </span>
                         ))}
                     </nav>
                 ) : null}
 
-                {/* Hero: Title + image side by side */}
-                <section className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-start">
-                    <div className="flex flex-col gap-4">
-                        <h1 className="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-                            {course.displayName}
-                        </h1>
-
-                        {/* Compact stats line */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-black/60 dark:text-[#D5D5D5]/60">
-                            <span><b className="text-black dark:text-[#D5D5D5]">{course.counts.moduleCount}</b> modules</span>
-                            <span><b className="text-black dark:text-[#D5D5D5]">{course.counts.topicCount}</b> topics</span>
-                            {totalVideos > 0 && <span><b className="text-black dark:text-[#D5D5D5]">{totalVideos}</b> videos</span>}
-                            {course.counts.questionCount > 0 && <span><b className="text-black dark:text-[#D5D5D5]">{course.counts.questionCount}</b> questions</span>}
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="flex flex-wrap gap-2">
-                            {actionItems.map((action) =>
-                                action.external ? (
-                                    <a
-                                        key={action.label}
-                                        href={action.href}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex h-9 items-center gap-1.5 border-2 border-[#5FC4E7] bg-[#5FC4E7]/40 px-3 text-sm font-semibold text-black transition hover:bg-[#5FC4E7]/60 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:hover:bg-[#ffffff]/15"
-                                    >
-                                        {action.label}
-                                        <ArrowUpRight className="h-3.5 w-3.5" />
-                                    </a>
-                                ) : (
-                                    <Link
-                                        key={action.label}
-                                        href={action.href}
-                                        className="inline-flex h-9 items-center gap-1.5 border-2 border-[#5FC4E7] bg-[#5FC4E7]/40 px-3 text-sm font-semibold text-black transition hover:bg-[#5FC4E7]/60 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:hover:bg-[#ffffff]/15"
-                                    >
-                                        {action.label}
-                                    </Link>
-                                ),
-                            )}
-                        </div>
+                <header className="flex flex-col gap-3 pb-6 sm:pb-8">
+                    <h1 className="text-3xl font-black leading-[1.05] tracking-tight text-black dark:text-[#D5D5D5] sm:text-4xl lg:text-5xl">
+                        {course.displayName}
+                    </h1>
+                    {summaryParts.length > 0 ? (
+                        <p className="text-[15px] leading-relaxed text-black/65 dark:text-[#D5D5D5]/65 sm:text-base">
+                            {summaryParts.join(" · ")}
+                        </p>
+                    ) : null}
+                    <div className="mt-1 flex flex-wrap gap-2">
+                        {actionItems.map((action) =>
+                            action.external ? (
+                                <a
+                                    key={action.label}
+                                    href={action.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex h-8 items-center gap-1.5 border border-black/20 bg-transparent px-2.5 text-[12px] font-semibold text-black/80 transition hover:border-black/45 hover:text-black dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/80 dark:hover:border-[#D5D5D5]/45 dark:hover:text-[#D5D5D5]"
+                                >
+                                    {action.label}
+                                    <ArrowUpRight className="h-3 w-3" />
+                                </a>
+                            ) : (
+                                <Link
+                                    key={action.label}
+                                    href={action.href}
+                                    transitionTypes={["nav-forward"]}
+                                    className="inline-flex h-8 items-center gap-1.5 border border-black/20 bg-transparent px-2.5 text-[12px] font-semibold text-black/80 transition hover:border-black/45 hover:text-black dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/80 dark:hover:border-[#D5D5D5]/45 dark:hover:text-[#D5D5D5]"
+                                >
+                                    {action.label}
+                                </Link>
+                            ),
+                        )}
                     </div>
-
-                    {/* Course image — clean, no text overlay */}
-                    {course.image && (
-                        <div className="relative w-full overflow-hidden border-2 border-[#5FC4E7] dark:border-[#ffffff]/20 lg:w-80">
-                            <div className="aspect-[4/3]">
-                                <AppImage
-                                    src={course.image}
-                                    alt={course.displayName}
-                                    fill
-                                    priority
-                                    className="object-cover"
-                                />
-                            </div>
-                            <div className="absolute right-2 top-2">
-                                <ResourceBookmarkButton
-                                    id={course.id}
-                                    title={course.displayName}
-                                    className="border-white/20 bg-black/40 text-white hover:bg-black/55 dark:border-white/20 dark:bg-black/45 dark:text-white"
-                                />
-                            </div>
-                        </div>
-                    )}
-                </section>
+                </header>
             </div>
 
-            {/* Module journey */}
-            <ModuleJourney modules={course.modules} />
-
-            {/* Explorer */}
-            <VinCourseExplorer course={course} sourceOrigin={meta.source.origin} />
+            <VinCourseWorkspace course={course} />
         </div>
     );
 }

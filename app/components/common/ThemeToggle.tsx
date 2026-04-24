@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 function ThemeToggleSwitch() {
     const [darkMode, setDarkMode] = useState(false);
+    const buttonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         setDarkMode(document.documentElement.classList.contains("dark"));
@@ -21,20 +22,70 @@ function ThemeToggleSwitch() {
         setDarkMode(next);
     };
 
-    const toggleTheme = () => {
-        applyTheme(!darkMode);
+    const toggleTheme = async () => {
+        const next = !darkMode;
+        const button = buttonRef.current;
+        const supportsViewTransitions = "startViewTransition" in document;
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        if (!supportsViewTransitions || prefersReducedMotion || !button) {
+            applyTheme(next);
+            return;
+        }
+
+        const rect = button.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const endRadius = Math.hypot(
+            Math.max(x, window.innerWidth - x),
+            Math.max(y, window.innerHeight - y),
+        );
+
+        document.documentElement.classList.add("theme-transition");
+
+        const transition = (document as Document & {
+            startViewTransition: (callback: () => void) => {
+                ready: Promise<void>;
+                finished: Promise<void>;
+            };
+        }).startViewTransition(() => {
+            applyTheme(next);
+        });
+
+        try {
+            await transition.ready;
+            document.documentElement.animate(
+                {
+                    clipPath: [
+                        `circle(0px at ${x}px ${y}px)`,
+                        `circle(${endRadius}px at ${x}px ${y}px)`,
+                    ],
+                },
+                {
+                    duration: 680,
+                    easing: "cubic-bezier(0.76, 0, 0.24, 1)",
+                    pseudoElement: "::view-transition-new(root)",
+                },
+            );
+            await transition.finished;
+        } catch {
+            applyTheme(next);
+        } finally {
+            document.documentElement.classList.remove("theme-transition");
+        }
     };
 
     const isDark = darkMode === true;
 
     return (
         <button
+            ref={buttonRef}
             type="button"
             onClick={toggleTheme}
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
             aria-pressed={isDark}
-            className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/15 bg-white/40 text-black/70 transition-colors duration-200 hover:border-black/40 hover:text-black hover:bg-white dark:border-[#D5D5D5]/20 dark:bg-white/5 dark:text-[#D5D5D5]/70 dark:hover:border-[#3BF4C7]/60 dark:hover:text-[#3BF4C7] dark:hover:bg-white/10"
+            className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent bg-transparent text-black/70 shadow-none transition-colors duration-200 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] dark:focus-visible:ring-[#3BF4C7]/50"
         >
             <svg
                 viewBox="0 0 24 24"

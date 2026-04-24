@@ -10,7 +10,7 @@ function SessionRedirectInner() {
 
     useEffect(() => {
         if (status === "authenticated") {
-            router.replace("/home");
+            router.replace("/");
         }
     }, [status, router]);
 

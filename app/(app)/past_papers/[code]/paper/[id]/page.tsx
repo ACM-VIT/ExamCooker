@@ -1,95 +1,36 @@
 import React from 'react';
 import PDFViewerClient from '@/app/components/PDFViewerClient';
-import {TimeHandler} from '@/app/components/forumpost/CommentHelpers';
-import {Metadata} from "next";
-import {notFound, permanentRedirect} from "next/navigation";
+import { TimeHandler } from '@/app/components/forumpost/CommentHelpers';
+import type { Metadata } from "next";
+import { notFound, permanentRedirect } from "next/navigation";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import PastPaperCard from "@/app/components/PastPaperCard";
-
 import ShareLink from '@/app/components/ShareLink';
 import ViewTracker from "@/app/components/ViewTracker";
-import { getPastPaperDetail } from "@/lib/data/pastPaperDetail";
+import { getPastPaperDetail, getRelatedPapersForCourse } from "@/lib/data/pastPaperDetail";
 import ItemActions from "@/app/components/ItemActions";
-import TagContainer from "@/app/components/forumpost/TagContainer";
 import PastPaperTagEditor from "@/app/components/PastPaperTagEditor";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } from "@/lib/seo";
-import { extractCourseFromTag, normalizeCourseCode } from "@/lib/courseTags";
-import { getRelatedPastPapers } from "@/lib/data/pastPapers";
-import { parsePaperTitle } from "@/lib/paperTitle";
-import { getRelatedPastPapersByCourseCode } from "@/lib/data/pastPapers";
+import { normalizeCourseCode } from "@/lib/courseTags";
+import { examTypeLabel } from "@/lib/examSlug";
 import prisma from "@/lib/prisma";
 import { auth } from "@/app/auth";
 
-function isValidSlot(str: string): boolean {
-    const regex = /^[A-G]\d$/;
-    return regex.test(str);
-}
-
-function isValidYear(year: string): boolean {
-    const regex = /^20\d{2}$/;
-    return regex.test(year);
-}
-
-function resolveCanonicalCourseCode(input: {
-    requestedCode: string;
-    relatedCode?: string | null;
-    taggedCode?: string | null;
-    parsedCode?: string | null;
-}) {
-    const candidates = [
-        input.relatedCode,
-        input.taggedCode,
-        input.parsedCode,
-        input.requestedCode,
-    ];
-
-    for (const candidate of candidates) {
-        const normalized = normalizeCourseCode(candidate ?? "");
-        if (normalized) {
-            return normalized;
-        }
-    }
-
-    return "unassigned";
-}
-
-async function PdfViewerPage({params}: {params: Promise<{ code: string; id: string }>}) {
-    let paper;
-    let year: string = '';
-    let slot: string = '';
+async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: string }> }) {
     const { code, id } = await params;
 
-    let allTags: Array<{ name: string }> = [];
-
-    try {
-        paper = await getPastPaperDetail(id);
-
-        if (paper) {
-            for (let i: number = 0; i < paper!.tags.length; i++) {
-                if (isValidYear(paper!.tags[i].name)) {
-                    year = paper!.tags[i].name
-                } else if (isValidSlot(paper!.tags[i].name)) {
-                    slot = paper!.tags[i].name
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Error fetching note:', error);
-        return (
-            <div>
-                <div className="text-center p-8 dark:text-[#d5d5d5]">Error loading paper. Please refresh, or try again
-                    later.
-                </div>
-                {/* <div><FontAwesomeIcon icon={faArrowLeft}/>Go Back</div> */}
-            </div>
-        );
-    } finally {
-        // no-op
-    }
-
+    const paper = await getPastPaperDetail(id);
     if (!paper) return notFound();
+
+    const canonicalCode = paper.course?.code ?? "unassigned";
+
+    if (normalizeCourseCode(code) !== canonicalCode && code !== canonicalCode) {
+        permanentRedirect(getPastPaperDetailPath(paper.id, canonicalCode));
+    }
 
     const session = await auth();
     const isModerator = (session?.user as { role?: string } | undefined)?.role === "MODERATOR";
+    let allTags: Array<{ name: string }> = [];
     if (isModerator) {
         try {
             allTags = await prisma.tag.findMany({ select: { name: true } });
@@ -98,71 +39,20 @@ async function PdfViewerPage({params}: {params: Promise<{ code: string; id: stri
         }
     }
 
-    const postTime: string = paper.createdAt.toLocaleString("en-US", {timeZone: "Asia/Kolkata"});
+    const postTime = paper.createdAt.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+    const displayTitle = paper.course?.title ?? paper.title.replace(/\.pdf$/i, "");
+    const displaySlot = paper.slot ?? undefined;
+    const displayYear = paper.year?.toString() ?? undefined;
+    const displayExam = paper.examType ? examTypeLabel(paper.examType) : undefined;
 
-    const parsedTitle = parsePaperTitle(paper.title);
-    const courseTags = paper.tags.filter((tag) => extractCourseFromTag(tag.name));
-    const courseFromTag = courseTags.length ? extractCourseFromTag(courseTags[0].name) : null;
-    const parsedCourseCode = parsedTitle.courseCode?.replace(/\s+/g, "").toUpperCase();
-    const taggedCourseCode = courseFromTag?.code?.replace(/\s+/g, "").toUpperCase();
-    const relatedCourseCode = paper.course?.code?.replace(/\s+/g, "").toUpperCase();
-    const canonicalCode = resolveCanonicalCourseCode({
-        requestedCode: code,
-        relatedCode: relatedCourseCode,
-        taggedCode: taggedCourseCode,
-        parsedCode: parsedCourseCode,
-    });
-
-    if (normalizeCourseCode(code) !== canonicalCode) {
-        permanentRedirect(getPastPaperDetailPath(paper.id, canonicalCode));
-    }
-
-    const useParsedCourse = Boolean(
-        parsedCourseCode && (!taggedCourseCode || parsedCourseCode !== taggedCourseCode)
-    );
-    const courseTitle = useParsedCourse
-        ? parsedTitle.courseName ?? parsedTitle.cleanTitle
-        : courseFromTag?.title ?? parsedTitle.courseName ?? parsedTitle.cleanTitle;
-    const courseCode = useParsedCourse ? parsedCourseCode : courseFromTag?.code ?? parsedCourseCode;
-    const displayTitle = courseCode && !courseTitle.toUpperCase().includes(courseCode)
-        ? `${courseTitle} (${courseCode})`
-        : courseTitle;
-    const displaySlot = parsedTitle.slot ?? slot;
-    const displayYear = parsedTitle.academicYear ?? parsedTitle.year ?? year;
-    const examType = parsedTitle.examType;
-    const courseTagIds = courseTags.map((tag) => tag.id);
-    const relatedPapers = courseTagIds.length
-        ? await getRelatedPastPapers({
-              id: paper.id,
-              tagIds: courseTagIds,
-              examType,
+    const relatedPapers = paper.courseId
+        ? await getRelatedPapersForCourse({
+              paperId: paper.id,
+              courseId: paper.courseId,
+              examType: paper.examType,
               limit: 6,
           })
-        : courseCode
-            ? await getRelatedPastPapersByCourseCode({
-                  id: paper.id,
-                  courseCode,
-                  examType,
-                  limit: 6,
-              })
-            : [];
-    const canonical = getPastPaperDetailPath(paper.id, canonicalCode);
-    const keywords = buildKeywords(
-        DEFAULT_KEYWORDS,
-        paper.tags.map((tag) => tag.name)
-    );
-    const description = `View ${displayTitle} past paper on ExamCooker.`;
-    const jsonLd = {
-        "@context": "https://schema.org",
-        "@type": "CreativeWork",
-        name: displayTitle,
-        description,
-        url: absoluteUrl(canonical),
-        datePublished: paper.createdAt.toISOString(),
-        dateModified: paper.updatedAt.toISOString(),
-        keywords: keywords.join(", "),
-        author: paper.author?.name ? { "@type": "Person", name: paper.author.name } : undefined,
-    };
+        : [];
 
     const relatedSection = relatedPapers.length ? (
         <div className="space-y-3">
@@ -173,6 +63,7 @@ async function PdfViewerPage({params}: {params: Promise<{ code: string; id: stri
                         key={item.id}
                         pastPaper={item}
                         index={index}
+                        transitionTypes={false}
                     />
                 ))}
             </div>
@@ -180,125 +71,105 @@ async function PdfViewerPage({params}: {params: Promise<{ code: string; id: stri
     ) : null;
 
     return (
-        <div className="flex flex-col lg:flex-row lg:h-screen text-black dark:text-[#D5D5D5]">
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-            />
-            <ViewTracker
-                id={paper.id}
-                type="pastpaper"
-                title={displayTitle}
-            />
-            <div className="lg:w-1/2 flex flex-col overflow-hidden">
-                <div className="lg:flex-grow lg:overflow-y-auto p-2 sm:p-4 lg:p-8">
-                    <div className="max-w-2xl mx-auto">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{displayTitle}</h1>
-                        <div className="space-y-2 sm:space-y-3">
-                            <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {displaySlot}</p>
-                            <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {displayYear}</p>
-                            <p className="text-base sm:text-lg"><span
-                                className="font-semibold">Posted by: </span> {paper.author?.name?.slice(0, -10) || 'Unknown'}
-                            </p>
-                            {courseTags.length ? (
-                                <div className="pt-2">
-                                    <TagContainer tags={courseTags} />
-                                </div>
-                            ) : null}
-                            {isModerator ? (
-                                <PastPaperTagEditor
-                                    paperId={paper.id}
-                                    initialTags={paper.tags.map((tag) => tag.name)}
-                                    allTags={allTags.map((tag) => tag.name)}
-                                />
-                            ) : null}
-                            {relatedSection ? (
-                                <div className="hidden lg:block pt-6">
-                                    {relatedSection}
-                                </div>
-                            ) : null}
-                            <div className="flex gap-2 items-center justify-between">
-                                <p className='text-base sm:text-xs'><span
-                                    className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
+        <DirectionalTransition>
+            <div className="flex flex-col lg:flex-row lg:h-screen text-black dark:text-[#D5D5D5]">
+                <ViewTracker id={paper.id} type="pastpaper" title={displayTitle} />
+                <div className="lg:w-1/2 flex flex-col overflow-hidden">
+                    <div className="lg:flex-grow lg:overflow-y-auto p-2 sm:p-4 lg:p-8">
+                        <div className="max-w-2xl mx-auto">
+                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{displayTitle}</h1>
+                            <div className="space-y-2 sm:space-y-3">
+                                {displaySlot && (
+                                    <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {displaySlot}</p>
+                                )}
+                                {displayYear && (
+                                    <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {displayYear}</p>
+                                )}
+                                {displayExam && (
+                                    <p className="text-base sm:text-lg"><span className="font-semibold">Exam:</span> {displayExam}</p>
+                                )}
+                                <p className="text-base sm:text-lg">
+                                    <span className="font-semibold">Posted by: </span>
+                                    {paper.author?.name?.slice(0, -10) || 'Unknown'}
                                 </p>
-                                <ItemActions
-                                    itemId={paper.id}
-                                    title={paper.title}
-                                    authorId={paper.author?.id}
-                                    activeTab="pastPaper"
-                                />
-                                <ShareLink fileType='this Past Paper'/>
+                                {isModerator && (
+                                    <PastPaperTagEditor
+                                        paperId={paper.id}
+                                        initialTags={paper.tags.map((tag) => tag.name)}
+                                        allTags={allTags.map((tag) => tag.name)}
+                                    />
+                                )}
+                                {relatedSection ? (
+                                    <div className="hidden lg:block pt-6">{relatedSection}</div>
+                                ) : null}
+                                <div className="flex gap-2 items-center justify-between">
+                                    <p className="text-base sm:text-xs">
+                                        <span className="font-semibold">
+                                            Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}
+                                        </span>
+                                    </p>
+                                    <ItemActions
+                                        itemId={paper.id}
+                                        title={paper.title}
+                                        authorId={paper.author?.id}
+                                        activeTab="pastPaper"
+                                    />
+                                    <ShareLink fileType='this Past Paper' />
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div className="lg:flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-2 sm:p-4">
-                <div className="h-[70vh] sm:h-[75vh] lg:h-full overflow-auto">
-                    <PDFViewerClient fileUrl={paper.fileUrl}/>
+                <div className="lg:flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-2 sm:p-4">
+                    <div className="h-[70vh] sm:h-[75vh] lg:h-full overflow-auto">
+                        <PDFViewerClient fileUrl={paper.fileUrl} />
+                    </div>
                 </div>
+                {relatedSection ? (
+                    <div className="px-2 sm:px-4 pb-4 sm:pb-6 lg:hidden">{relatedSection}</div>
+                ) : null}
             </div>
-            {relatedSection ? (
-                <div className="px-2 sm:px-4 pb-4 sm:pb-6 lg:hidden">
-                    {relatedSection}
-                </div>
-            ) : null}
-        </div>
+        </DirectionalTransition>
     );
 }
 
 export default PdfViewerPage;
 
-
-export async function generateMetadata({params}: { params: Promise<{ code: string; id: string }> }): Promise<Metadata> {
-    const { code, id } = await params;
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ code: string; id: string }>;
+}): Promise<Metadata> {
+    const { id } = await params;
     const paper = await getPastPaperDetail(id);
-    if (!paper) return {}
-    const parsedTitle = parsePaperTitle(paper.title);
-    const courseTags = paper.tags.filter((tag) => extractCourseFromTag(tag.name));
-    const courseFromTag = courseTags.length ? extractCourseFromTag(courseTags[0].name) : null;
-    const parsedCourseCode = parsedTitle.courseCode?.replace(/\s+/g, "").toUpperCase();
-    const taggedCourseCode = courseFromTag?.code?.replace(/\s+/g, "").toUpperCase();
-    const relatedCourseCode = paper.course?.code?.replace(/\s+/g, "").toUpperCase();
-    const canonicalCode = resolveCanonicalCourseCode({
-        requestedCode: code,
-        relatedCode: relatedCourseCode,
-        taggedCode: taggedCourseCode,
-        parsedCode: parsedCourseCode,
-    });
-    const useParsedCourse = Boolean(
-        parsedCourseCode && (!taggedCourseCode || parsedCourseCode !== taggedCourseCode)
-    );
-    const courseTitle = useParsedCourse
-        ? parsedTitle.courseName ?? parsedTitle.cleanTitle
-        : courseFromTag?.title ?? parsedTitle.courseName ?? parsedTitle.cleanTitle;
-    const courseCode = useParsedCourse ? parsedCourseCode : courseFromTag?.code ?? parsedCourseCode;
-    const title = courseCode && !courseTitle.toUpperCase().includes(courseCode)
-        ? `${courseTitle} (${courseCode})`
-        : courseTitle;
+    if (!paper) return {};
+
+    const canonicalCode = paper.course?.code ?? "unassigned";
+    const displayTitle = paper.course?.title ?? paper.title.replace(/\.pdf$/i, "");
     const canonical = getPastPaperDetailPath(paper.id, canonicalCode);
-    const description = `View ${title} past paper on ExamCooker.`;
+    const description = `View ${displayTitle} past paper on ExamCooker.`;
     const keywords = buildKeywords(
         DEFAULT_KEYWORDS,
-        paper.tags.map((tag) => tag.name)
+        paper.tags.map((tag) => tag.name),
     );
+
     return {
-        title,
+        title: displayTitle,
         description,
         openGraph: {
-            title,
+            title: displayTitle,
             description,
-            url: canonical,
-            images: paper.thumbNailUrl ? [{url: paper.thumbNailUrl}] : []
+            url: absoluteUrl(canonical),
+            images: paper.thumbNailUrl ? [{ url: paper.thumbNailUrl }] : [],
         },
         twitter: {
             card: "summary_large_image",
-            title,
+            title: displayTitle,
             description,
             images: paper.thumbNailUrl ? [paper.thumbNailUrl] : [],
         },
         alternates: { canonical },
         keywords,
         robots: { index: true, follow: true },
-    }
+    };
 }

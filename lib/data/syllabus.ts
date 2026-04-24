@@ -35,6 +35,17 @@ function buildWhere(search: string): Prisma.syllabiWhereInput {
     };
 }
 
+export async function getAllSyllabi() {
+    "use cache";
+    cacheTag("syllabus");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    return prisma.syllabi.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+    });
+}
+
 export async function getSyllabusCount(input: { search: string }) {
     "use cache";
     cacheTag("syllabus");

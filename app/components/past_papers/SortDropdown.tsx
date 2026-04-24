@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useTransition } from "react";
+import React, { addTransitionType, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const OPTIONS = [
@@ -27,6 +27,7 @@ export default function SortDropdown({ value }: { value: SortValue }) {
         params.delete("page");
         const qs = params.toString();
         startTransition(() => {
+            addTransitionType("filter-results");
             router.replace(qs ? `${pathname}?${qs}` : pathname);
         });
     };

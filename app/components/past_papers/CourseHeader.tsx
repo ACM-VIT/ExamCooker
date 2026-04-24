@@ -2,7 +2,6 @@ import React from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileLines, faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import PinButton from "./PinButton";
 import TopBreadcrumbBar from "@/app/components/common/TopBreadcrumbBar";
 import { getCourseNotesPath, getCourseSyllabusPath } from "@/lib/seo";
 
@@ -31,17 +30,9 @@ export default function CourseHeader({
             />
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0 sm:flex-1">
-                    <div className="flex min-w-0 items-start gap-2">
-                        <h1 className="min-w-0 flex-1 text-pretty text-[1.08rem] font-bold leading-[1.08] text-black dark:text-[#D5D5D5] min-[360px]:text-[1.18rem] min-[400px]:text-[1.28rem] sm:text-3xl lg:text-4xl">
-                            {title}
-                        </h1>
-                        <PinButton
-                            code={code}
-                            size="md"
-                            stopPropagation={false}
-                            className="mt-0.5"
-                        />
-                    </div>
+                    <h1 className="min-w-0 text-pretty text-[1.08rem] font-bold leading-[1.08] text-black dark:text-[#D5D5D5] min-[360px]:text-[1.18rem] min-[400px]:text-[1.28rem] sm:text-3xl lg:text-4xl">
+                        {title}
+                    </h1>
                     <p className="mt-1 text-sm text-black/60 dark:text-[#D5D5D5]/60">
                         <span className="font-bold text-black dark:text-[#D5D5D5]">
                             {paperCount}
@@ -64,7 +55,7 @@ export default function CourseHeader({
                     {noteCount > 0 && (
                         <Link
                             href={getCourseNotesPath(code)}
-                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-black/15 px-3 font-semibold text-black transition-colors hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 dark:hover:bg-white/5 sm:h-8"
+                            className="inline-flex h-9 items-center justify-center gap-1.5 border border-black/15 px-3 font-semibold text-black transition-colors hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 dark:hover:bg-white/5 sm:h-8"
                         >
                             <FontAwesomeIcon icon={faFileLines} className="h-3 w-3" />
                             Notes
@@ -73,7 +64,7 @@ export default function CourseHeader({
                     {syllabusId && (
                         <Link
                             href={getCourseSyllabusPath(code)}
-                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-black/15 px-3 font-semibold text-black transition-colors hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 dark:hover:bg-white/5 sm:h-8"
+                            className="inline-flex h-9 items-center justify-center gap-1.5 border border-black/15 px-3 font-semibold text-black transition-colors hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 dark:hover:bg-white/5 sm:h-8"
                         >
                             <FontAwesomeIcon icon={faBookOpen} className="h-3 w-3" />
                             Syllabus

@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
     output: "standalone",
     cacheComponents: true,
+    experimental: {
+        viewTransition: true,
+    },
     turbopack: {
         root: __dirname,
         resolveAlias: {
@@ -21,6 +24,17 @@ const nextConfig: NextConfig = {
                 pathname: "/**",
             },
         ],
+    },
+    async redirects() {
+        return [
+            { source: "/courses", destination: "/past_papers", permanent: true },
+            { source: "/courses/:code", destination: "/past_papers/:code", permanent: true },
+            {
+                source: "/courses/:code/:exam",
+                destination: "/past_papers/:code/:exam",
+                permanent: true,
+            },
+        ];
     },
     async rewrites() {
         const proxyPath =

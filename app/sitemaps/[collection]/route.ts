@@ -12,12 +12,11 @@ import {
     parseSyllabusName,
     safeEncodeURIComponent,
 } from "@/lib/seo";
-import { getCourseCatalog, getCoursesWithCounts } from "@/lib/data/courses";
+import { getCourseGrid, getSearchableCourses } from "@/lib/data/courseCatalog";
 import {
     getCourseExamCombos,
     getExamHubSummaries,
 } from "@/lib/data/courseExams";
-import { parsePaperTitle } from "@/lib/paperTitle";
 
 const PAGE_SIZE = 40000;
 
@@ -62,7 +61,6 @@ export async function GET(
             { loc: `${baseUrl}/` },
             { loc: `${baseUrl}/notes` },
             { loc: `${baseUrl}/past_papers` },
-            { loc: `${baseUrl}/courses` },
             { loc: `${baseUrl}/resources` },
             { loc: `${baseUrl}/syllabus` },
         ];
@@ -96,17 +94,14 @@ export async function GET(
             },
         });
         entries = papers.map((paper) => ({
-            loc: `${baseUrl}${getPastPaperDetailPath(
-                paper.id,
-                paper.course?.code ?? parsePaperTitle(paper.title).courseCode ?? null,
-            )}`,
+            loc: `${baseUrl}${getPastPaperDetailPath(paper.id, paper.course?.code ?? null)}`,
             lastmod: paper.updatedAt.toISOString(),
         }));
     } else if (collectionName === "courses") {
-        const courses = await getCourseCatalog(2);
+        const courses = await getCourseGrid();
         const pageItems = courses.slice(skip, skip + PAGE_SIZE);
         entries = pageItems.map((course) => ({
-            loc: `${baseUrl}/courses/${safeEncodeURIComponent(course.code)}`,
+            loc: `${baseUrl}/past_papers/${safeEncodeURIComponent(course.code)}`,
         }));
     } else if (collectionName === "course-exams") {
         const combos = await getCourseExamCombos();
@@ -115,7 +110,7 @@ export async function GET(
             loc: `${baseUrl}${getCourseExamPath(combo.code, combo.examSlug)}`,
         }));
     } else if (collectionName === "course-notes") {
-        const courses = await getCoursesWithCounts();
+        const courses = await getSearchableCourses();
         const pageItems = courses
             .filter((course) => course.noteCount > 0)
             .slice(skip, skip + PAGE_SIZE);

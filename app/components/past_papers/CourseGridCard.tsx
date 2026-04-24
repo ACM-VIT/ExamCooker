@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import PinButton from "./PinButton";
 
 type Props = {
     course: {
@@ -16,9 +15,11 @@ export default function CourseGridCard({ course }: Props) {
         <div className="group relative h-full">
             <Link
                 href={`/past_papers/${encodeURIComponent(course.code)}`}
-                className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 pr-10 text-black transition duration-200 hover:scale-[1.03] hover:shadow-xl hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
+                prefetch
+                transitionTypes={["nav-forward"]}
+                className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 hover:scale-[1.03] hover:shadow-xl hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
             >
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-black/55 dark:text-[#D5D5D5]/55">
+                <span className="font-mono text-xs font-bold uppercase tracking-wide text-black/75 dark:text-[#D5D5D5]/70">
                     {course.code}
                 </span>
                 <h3 className="line-clamp-3 text-base font-bold leading-snug text-black dark:text-[#D5D5D5]">
@@ -35,9 +36,6 @@ export default function CourseGridCard({ course }: Props) {
                     </div>
                 </div>
             </Link>
-            <div className="absolute right-2 top-2">
-                <PinButton code={course.code} size="sm" />
-            </div>
         </div>
     );
 }

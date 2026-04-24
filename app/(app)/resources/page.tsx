@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { ViewTransition } from "react";
 import { ArrowUpRight } from "lucide-react";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import ResourceFilters from "@/app/components/resources/ResourceFilters";
 import ResourceCourseCard from "@/app/components/resources/ResourceCourseCard";
 import { GradientText } from "@/app/components/landing_page/landing";
@@ -70,86 +72,70 @@ export default async function ResourcesPage({
     const meta = getVinCatalogMeta();
 
     return (
-        <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
-                {/* Hero */}
-                <section className="flex flex-col gap-5">
-                    <h1 className="whitespace-nowrap text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
-                        Resource{" "}
-                        <GradientText>Repository</GradientText>
-                    </h1>
+        <DirectionalTransition>
+            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
+                    {/* Hero */}
+                    <section className="flex flex-col gap-5">
+                        <h1 className="whitespace-nowrap text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
+                            Resource{" "}
+                            <GradientText>Repository</GradientText>
+                        </h1>
 
-                    <HeroStats stats={meta.counts} />
+                        <HeroStats stats={meta.counts} />
 
-                    <div className="flex w-full items-stretch gap-2 sm:gap-3">
-                        <div className="min-w-0 flex-1">
-                            <ResourceFilters
-                                initialSearch={search}
-                                initialYear={year}
-                                years={years}
-                            />
-                        </div>
-                        <div className="shrink-0 self-start">
-                            <a
-                                href={meta.source.coursesUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="relative group inline-flex"
-                            >
-                                <span className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
-                                <span className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-3 py-2 text-sm bg-[#82BEE9] text-black font-bold group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition duration-150 inline-flex items-center gap-1.5"
+                        <div className="flex w-full items-stretch gap-2 sm:gap-3">
+                            <div className="min-w-0 flex-1">
+                                <ResourceFilters
+                                    initialSearch={search}
+                                    initialYear={year}
+                                    years={years}
+                                />
+                            </div>
+                            <div className="group relative inline-flex h-12 shrink-0 items-stretch">
+                                <div className="absolute inset-0 dark:bg-[#3BF4C7]" />
+                                <div className="absolute inset-0 blur-[60px] bg-[#82BEE9] opacity-0 transition duration-200 group-hover:opacity-25 dark:hidden" />
+                                <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
+                                <a
+                                    href={meta.source.coursesUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="relative inline-flex h-full items-center gap-1.5 border-2 border-black bg-[#82BEE9] px-4 text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-0.5 dark:group-hover:-translate-y-0.5"
                                 >
                                     Source
                                     <ArrowUpRight className="h-4 w-4" />
-                                </span>
-                            </a>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Results info */}
-                <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-black/60 dark:text-[#D5D5D5]/60">
-                    <div>
-                        Showing {formatCount(courseCards.length)} course
-                        {courseCards.length === 1 ? "" : "s"}
-                        {search ? ` for "${search}"` : ""}
-                        {year ? ` in ${year}` : ""}
-                    </div>
-                    <div>
-                        Last synced{" "}
-                        {new Date(meta.syncedAt).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                        })}
-                    </div>
-                </div>
-
-                {/* Course grid */}
-                {courseCards.length > 0 ? (
-                    <section className="flex flex-col gap-4">
-                        <header>
-                            <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
-                                {search || year ? `${courseCards.length} match${courseCards.length === 1 ? "" : "es"}` : "All courses"}
-                            </h2>
-                        </header>
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                            {courseCards.map((course) => (
-                                <ResourceCourseCard key={course.id} course={course} />
-                            ))}
+                                </a>
+                            </div>
                         </div>
                     </section>
-                ) : (
-                    <div className="border-2 border-dashed border-black/30 p-10 text-center dark:border-[#D5D5D5]/30">
-                        <p className="text-sm text-black/70 dark:text-[#D5D5D5]/70">
-                            {search || year
-                                ? `No courses match those filters.`
-                                : "No courses with resources yet."}
-                        </p>
-                    </div>
-                )}
+
+                    {courseCards.length > 0 ? (
+                        <section className="flex flex-col gap-4">
+                            <header>
+                                <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                                    {search || year ? `${courseCards.length} match${courseCards.length === 1 ? "" : "es"}` : "All courses"}
+                                </h2>
+                            </header>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                                {courseCards.map((course) => (
+                                    <ViewTransition key={course.id}>
+                                        <ResourceCourseCard course={course} />
+                                    </ViewTransition>
+                                ))}
+                            </div>
+                        </section>
+                    ) : (
+                        <div className="border-2 border-dashed border-black/30 p-10 text-center dark:border-[#D5D5D5]/30">
+                            <p className="text-sm text-black/70 dark:text-[#D5D5D5]/70">
+                                {search || year
+                                    ? `No courses match those filters.`
+                                    : "No courses with resources yet."}
+                            </p>
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+        </DirectionalTransition>
     );
 }
 

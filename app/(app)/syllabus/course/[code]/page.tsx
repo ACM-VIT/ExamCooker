@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import PDFViewerClient from "@/app/components/PDFViewerClient";
 import ViewTracker from "@/app/components/ViewTracker";
 import StructuredData from "@/app/components/seo/StructuredData";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import { getCourseByCodeAny } from "@/lib/data/courses";
 import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
@@ -89,61 +90,69 @@ export default async function CourseSyllabusPage({
     const description = `View the ${context.code} syllabus PDF for ${context.title} on ExamCooker.`;
 
     return (
-        <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
-            <StructuredData
-                data={[
-                    buildBreadcrumbList([
-                        { name: "Syllabus", path: "/syllabus" },
-                        { name: context.title, path: getCoursePath(context.code) },
-                        { name: `${context.code} syllabus`, path: getCourseSyllabusPath(context.code) },
-                    ]),
-                    buildCourseStructuredData({
-                        code: context.code,
-                        title: context.title,
-                        description,
-                        path: getCourseSyllabusPath(context.code),
-                    }),
-                    {
-                        "@context": "https://schema.org",
-                        "@type": "DigitalDocument",
-                        name: `${context.title} syllabus`,
-                        description,
-                        url: absoluteUrl(getCourseSyllabusPath(context.code)),
-                        encodingFormat: "application/pdf",
-                    },
-                    buildFaqPage([
+        <DirectionalTransition>
+            <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
+                <StructuredData
+                    data={[
+                        buildBreadcrumbList([
+                            { name: "Syllabus", path: "/syllabus" },
+                            { name: context.title, path: getCoursePath(context.code) },
+                            { name: `${context.code} syllabus`, path: getCourseSyllabusPath(context.code) },
+                        ]),
+                        buildCourseStructuredData({
+                            code: context.code,
+                            title: context.title,
+                            description,
+                            path: getCourseSyllabusPath(context.code),
+                        }),
                         {
-                            question: `Where can I find the ${context.code} syllabus PDF?`,
-                            answer: `This page hosts the ${context.code} syllabus PDF for ${context.title}.`,
+                            "@context": "https://schema.org",
+                            "@type": "DigitalDocument",
+                            name: `${context.title} syllabus`,
+                            description,
+                            url: absoluteUrl(getCourseSyllabusPath(context.code)),
+                            encodingFormat: "application/pdf",
                         },
-                    ]),
-                ]}
-            />
+                        buildFaqPage([
+                            {
+                                question: `Where can I find the ${context.code} syllabus PDF?`,
+                                answer: `This page hosts the ${context.code} syllabus PDF for ${context.title}.`,
+                            },
+                        ]),
+                    ]}
+                />
 
-            <ViewTracker
-                id={context.syllabus.id}
-                type="syllabus"
-                title={`${context.title} syllabus`}
-            />
+                <ViewTracker
+                    id={context.syllabus.id}
+                    type="syllabus"
+                    title={`${context.title} syllabus`}
+                />
 
-            <div className="lg:w-1/2 flex flex-col overflow-hidden">
-                <div className="flex-grow overflow-y-auto p-2 sm:p-4 lg:p-8">
-                    <div className="max-w-2xl mx-auto">
-                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55 mb-4">
-                            <Link href="/syllabus" className="hover:text-black dark:hover:text-[#D5D5D5]">Syllabus</Link>
-                            <span aria-hidden="true">›</span>
-                            <span>{context.code}</span>
+                <div className="lg:w-1/2 flex flex-col overflow-hidden">
+                    <div className="flex-grow overflow-y-auto p-2 sm:p-4 lg:p-8">
+                        <div className="max-w-2xl mx-auto">
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55 mb-4">
+                                <Link
+                                    href="/syllabus"
+                                    transitionTypes={["nav-back"]}
+                                    className="hover:text-black dark:hover:text-[#D5D5D5]"
+                                >
+                                    Syllabus
+                                </Link>
+                                <span aria-hidden="true">›</span>
+                                <span>{context.code}</span>
+                            </div>
+                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{context.title}</h1>
                         </div>
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{context.title}</h1>
+                    </div>
+                </div>
+
+                <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-2 sm:p-4">
+                    <div className="h-full overflow-auto">
+                        <PDFViewerClient fileUrl={context.syllabus.fileUrl} />
                     </div>
                 </div>
             </div>
-
-            <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-2 sm:p-4">
-                <div className="h-full overflow-auto">
-                    <PDFViewerClient fileUrl={context.syllabus.fileUrl} />
-                </div>
-            </div>
-        </div>
+        </DirectionalTransition>
     );
 }

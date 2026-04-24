@@ -3,18 +3,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { normalizeGcsUrl } from '@/lib/normalizeGcsUrl'
 import type { Prisma, PastPaper } from '@/prisma/generated/client'
-import { parsePaperTitle, ParsedPaperTitle } from '@/lib/paperTitle'
 import { getPastPaperDetailPath } from '@/lib/seo'
+import { examTypeLabel } from '@/lib/examSlug'
 
 const DEFAULT_LIMIT = 40
 const MAX_LIMIT = 200
-const SLOT_TAG_REGEX = /^[A-G][1-2]$/i
-const YEAR_TAG_REGEX = /^20\d{2}$/
 const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || 'https://examcooker.acmvit.in').replace(/\/$/, '')
 const SOURCE_HOST = safeHostname(BASE_URL)
 const API_KEYS = loadApiKeys()
 
-type PastPaperWithTags = PastPaper & { tags: { name: string }[] }
+type PastPaperWithTags = PastPaper & {
+  tags: { name: string }[]
+  course?: { code: string; title: string } | null
+}
 
 interface ApiPaper {
   _id: string
@@ -81,7 +82,10 @@ export async function GET(req: NextRequest) {
     const [records, total] = await Promise.all([
       prisma.pastPaper.findMany({
         where,
-        include: { tags: { select: { name: true } } },
+        include: {
+          tags: { select: { name: true } },
+          course: { select: { code: true, title: true } },
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
@@ -125,29 +129,23 @@ export async function GET(req: NextRequest) {
 }
 
 function normalizePaper(paper: PastPaperWithTags): ApiPaper {
-  const parsed = parsePaperTitle(paper.title)
   const tagNames = paper.tags.map(tag => tag.name)
-  const slotFromTags = parsed.slot ?? findFirst(tagNames, value => SLOT_TAG_REGEX.test(value))
-  const yearFromTags = parsed.year ?? findFirst(tagNames, value => YEAR_TAG_REGEX.test(value))
-  const metadataParts = [
-    parsed.examType,
-    slotFromTags ? `Slot ${slotFromTags.toUpperCase()}` : undefined,
-    parsed.academicYear ?? yearFromTags,
-    parsed.courseCode,
-  ].filter(Boolean)
-
-  const displayTitle = parsed.cleanTitle
-  const courseName = parsed.courseName ?? null
-  const courseCode = parsed.courseCode ?? null
-  const paperUrl = buildPaperUrl(paper.id, courseCode)
+  const courseCode = paper.course?.code ?? null
+  const courseName = paper.course?.title ?? null
+  const examTypeStr = paper.examType ? examTypeLabel(paper.examType) : null
+  const yearStr = paper.year?.toString() ?? null
+  const metadataParts = [examTypeStr, paper.slot ? `Slot ${paper.slot}` : undefined, yearStr, courseCode].filter(Boolean)
   const metadata = metadataParts.length > 0 ? metadataParts.join(' · ') : null
+  const paperTitle = paper.title.replace(/\.pdf$/i, '')
+  const paperUrl = buildPaperUrl(paper.id, courseCode)
+  const description = [paperTitle, courseName, metadata].filter(Boolean).join(' — ') || null
 
   return {
     _id: paper.id,
     id: paper.id,
-    title: displayTitle,
+    title: paperTitle,
     name: courseName,
-    paperName: courseName,
+    paperName: paperTitle,
     subject: courseName,
     courseName,
     courseCode,
@@ -160,13 +158,13 @@ function normalizePaper(paper: PastPaperWithTags): ApiPaper {
     final_url: paperUrl,
     file_url: paperUrl,
     metadata,
-    description: buildDescription(courseName, parsed, metadata),
-    examType: parsed.examType ?? null,
-    exam: parsed.examType ?? null,
-    paperType: parsed.examType ?? null,
-    slot: slotFromTags?.toUpperCase() ?? null,
-    year: yearFromTags ?? parsed.year ?? null,
-    academicYear: parsed.academicYear ?? null,
+    description,
+    examType: examTypeStr,
+    exam: examTypeStr,
+    paperType: examTypeStr,
+    slot: paper.slot ?? null,
+    year: yearStr,
+    academicYear: null,
     subjectCode: courseCode,
     tags: tagNames,
     thumbnailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? null,
@@ -193,21 +191,6 @@ function clampNumber(value: string | null, fallback: number, max: number): numbe
 
 function buildPaperUrl(id: string, courseCode?: string | null): string {
   return `${BASE_URL}${getPastPaperDetailPath(id, courseCode)}`
-}
-
-function buildDescription(courseName: string | null, meta: ParsedPaperTitle, metadata: string | null): string | null {
-  const pieces = [courseName ?? meta.cleanTitle, metadata]
-  const description = pieces.filter(Boolean).join(' — ')
-  return description || null
-}
-
-function findFirst<T>(items: T[], predicate: (value: T) => boolean): T | undefined {
-  for (const item of items) {
-    if (predicate(item)) {
-      return item
-    }
-  }
-  return undefined
 }
 
 function safeHostname(url: string): string {

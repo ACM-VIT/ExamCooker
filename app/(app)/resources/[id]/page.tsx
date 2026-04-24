@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import ModuleDropdown from "@/app/components/ModuleDropdown";
 import VinCoursePage from "@/app/components/resources/VinCoursePage";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import { notFound, permanentRedirect } from "next/navigation";
 import ViewTracker from "@/app/components/ViewTracker";
 import type { Module, Subject } from "@/prisma/generated/client";
@@ -32,23 +33,25 @@ function renderLegacySubject(subject: Subject & { modules: Module[] }) {
     }
 
     return (
-        <div className="transition-colors container mx-auto p-2 text-black dark:text-[#D5D5D5] sm:p-4">
-            <ViewTracker id={subject.id} type="subject" title={subject.name} />
-            <h2>{courseName}</h2>
-            <br />
-            {courseCode ? (
-                <>
-                    <h3>Course Code: {courseCode}</h3>
-                    <br />
-                </>
-            ) : null}
-            <br />
-            <div className="space-y-6">
-                {subject.modules.map((module) => (
-                    <ModuleDropdown key={module.id} module={module} />
-                ))}
+        <DirectionalTransition>
+            <div className="transition-colors container mx-auto p-2 text-black dark:text-[#D5D5D5] sm:p-4">
+                <ViewTracker id={subject.id} type="subject" title={subject.name} />
+                <h2>{courseName}</h2>
+                <br />
+                {courseCode ? (
+                    <>
+                        <h3>Course Code: {courseCode}</h3>
+                        <br />
+                    </>
+                ) : null}
+                <br />
+                <div className="space-y-6">
+                    {subject.modules.map((module) => (
+                        <ModuleDropdown key={module.id} module={module} />
+                    ))}
+                </div>
             </div>
-        </div>
+        </DirectionalTransition>
     );
 }
 
@@ -123,13 +126,15 @@ export default async function SubjectDetailPage({
         }
 
         return (
-            <VinCoursePage
-                course={remoteCourse}
-                breadcrumbs={[
-                    { label: "Resources", href: "/resources" },
-                    { label: remoteCourse.displayName },
-                ]}
-            />
+            <DirectionalTransition>
+                <VinCoursePage
+                    course={remoteCourse}
+                    breadcrumbs={[
+                        { label: "Resources", href: "/resources" },
+                        { label: remoteCourse.displayName },
+                    ]}
+                />
+            </DirectionalTransition>
         );
     }
 

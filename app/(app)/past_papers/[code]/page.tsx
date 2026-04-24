@@ -13,6 +13,7 @@ import {
 } from "@/lib/data/coursePapers";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
 import StructuredData from "@/app/components/seo/StructuredData";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import {
     buildCourseKeywordSet,
     getCoursePastPapersPath,
@@ -21,8 +22,10 @@ import {
 import CourseHeader from "@/app/components/past_papers/CourseHeader";
 import FilterBar from "@/app/components/past_papers/FilterBar";
 import SortDropdown from "@/app/components/past_papers/SortDropdown";
+import AnswerKeyToggle from "@/app/components/past_papers/AnswerKeyToggle";
 import CoursePaperGrid from "@/app/components/past_papers/CoursePaperGrid";
 import CoursePagination from "@/app/components/past_papers/CoursePagination";
+import CourseVisitTracker from "@/app/components/past_papers/CourseVisitTracker";
 import {
     Campus as CampusEnum,
     Semester as SemesterEnum,
@@ -233,103 +236,112 @@ export default async function CoursePastPapersPage({
     ];
 
     return (
-        <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-            <StructuredData
-                data={[
-                    buildBreadcrumbList([
-                        { name: "Past papers", path: "/past_papers" },
-                        { name: course.title, path: getCoursePastPapersPath(course.code) },
-                    ]),
-                    buildCollectionPage({
-                        name: `${course.code} past papers`,
-                        description,
-                        path: getCoursePastPapersPath(course.code),
-                        about: course.title,
-                    }),
-                    buildItemList(
-                        papers.map((paper) => ({
-                            name: paper.title,
-                            path: getPastPaperDetailPath(paper.id, course.code),
-                        })),
-                    ),
-                    buildFaqPage(faq),
-                ]}
-            />
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
-                <CourseHeader
-                    code={course.code}
-                    title={course.title}
-                    paperCount={course.paperCount}
-                    noteCount={course.noteCount}
-                    syllabusId={syllabus?.id ?? null}
+        <DirectionalTransition>
+            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <CourseVisitTracker code={course.code} />
+                <StructuredData
+                    data={[
+                        buildBreadcrumbList([
+                            { name: "Past papers", path: "/past_papers" },
+                            { name: course.title, path: getCoursePastPapersPath(course.code) },
+                        ]),
+                        buildCollectionPage({
+                            name: `${course.code} past papers`,
+                            description,
+                            path: getCoursePastPapersPath(course.code),
+                            about: course.title,
+                        }),
+                        buildItemList(
+                            papers.map((paper) => ({
+                                name: paper.title,
+                                path: getPastPaperDetailPath(paper.id, course.code),
+                            })),
+                        ),
+                        buildFaqPage(faq),
+                    ]}
                 />
+                <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
+                    <CourseHeader
+                        code={course.code}
+                        title={course.title}
+                        paperCount={course.paperCount}
+                        noteCount={course.noteCount}
+                        syllabusId={syllabus?.id ?? null}
+                    />
 
-                <FilterBar
-                    options={options}
-                    examCounts={options.examCounts}
-                    yearCounts={options.yearCounts}
-                    slotCounts={options.slotCounts}
-                />
+                    <section className="flex flex-col gap-2">
+                        <FilterBar
+                            options={options}
+                            examCounts={options.examCounts}
+                            yearCounts={options.yearCounts}
+                            slotCounts={options.slotCounts}
+                        />
 
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-[#D5D5D5]/10">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                        {totalCount} result{totalCount === 1 ? "" : "s"}
-                    </p>
-                    <SortDropdown value={filters.sort} />
-                </div>
-
-                <Suspense fallback={null}>
-                    {papers.length === 0 ? (
-                        <div className="border border-dashed border-black/20 p-10 text-center dark:border-[#D5D5D5]/20">
-                            <p className="text-sm text-black/70 dark:text-[#D5D5D5]/70">
-                                No papers match the current filters.
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-[#D5D5D5]/10">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <AnswerKeyToggle count={options.answerKeyCount} />
+                                <SortDropdown value={filters.sort} />
+                            </div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
+                                {totalCount} result{totalCount === 1 ? "" : "s"}
                             </p>
-                            <Link
-                                href={`/past_papers/${course.code}`}
-                                className="mt-3 inline-block text-sm font-semibold text-black underline underline-offset-2 hover:text-black dark:text-[#D5D5D5] dark:hover:text-[#D5D5D5]"
-                            >
-                                Clear filters
-                            </Link>
                         </div>
-                    ) : (
-                        <CoursePaperGrid
-                            papers={papers}
-                            courseCode={course.code}
-                            courseTitle={course.title}
-                        />
-                    )}
-                </Suspense>
+                    </section>
 
-                {totalPages > 1 && (
-                    <div className="mt-4">
-                        <CoursePagination
-                            currentPage={filters.page}
-                            totalPages={totalPages}
-                        />
-                    </div>
-                )}
-
-                {!filters.examTypes.length &&
-                    !filters.slots.length &&
-                    !filters.years.length &&
-                    !filters.semesters.length &&
-                    !filters.campuses.length &&
-                    !filters.hasAnswerKey && (
-                        <section className="sr-only">
-                            {faq.map((item) => (
-                                <article
-                                    key={item.question}
-                                    className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                    <Suspense fallback={null}>
+                        {papers.length === 0 ? (
+                            <div className="border border-dashed border-black/20 p-10 text-center dark:border-[#D5D5D5]/20">
+                                <p className="text-sm text-black/70 dark:text-[#D5D5D5]/70">
+                                    No papers match the current filters.
+                                </p>
+                                <Link
+                                    href={`/past_papers/${course.code}`}
+                                    transitionTypes={["nav-back"]}
+                                    className="mt-3 inline-block text-sm font-semibold text-black underline underline-offset-2 hover:text-black dark:text-[#D5D5D5] dark:hover:text-[#D5D5D5]"
                                 >
-                                    <h2 className="text-base font-bold">{item.question}</h2>
-                                    <p className="mt-2 text-sm text-black/70 dark:text-[#D5D5D5]/70">
-                                        {item.answer}
-                                    </p>
-                                </article>
-                            ))}
-                        </section>
+                                    Clear filters
+                                </Link>
+                            </div>
+                        ) : (
+                            <CoursePaperGrid
+                                papers={papers}
+                                courseCode={course.code}
+                                courseTitle={course.title}
+                            />
+                        )}
+                    </Suspense>
+
+                    {totalPages > 1 && (
+                        <div className="mt-4">
+                            <CoursePagination
+                                currentPage={filters.page}
+                                totalPages={totalPages}
+                            />
+                        </div>
                     )}
+
+                    {!filters.examTypes.length &&
+                        !filters.slots.length &&
+                        !filters.years.length &&
+                        !filters.semesters.length &&
+                        !filters.campuses.length &&
+                        !filters.hasAnswerKey && (
+                            <section className="sr-only">
+                                {faq.map((item) => (
+                                    <article
+                                        key={item.question}
+                                        className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                                    >
+                                        <h2 className="text-base font-bold">{item.question}</h2>
+                                        <p className="mt-2 text-sm text-black/70 dark:text-[#D5D5D5]/70">
+                                            {item.answer}
+                                        </p>
+                                    </article>
+                                ))}
+                            </section>
+                        )}
+                </div>
             </div>
-        </div>
+        </DirectionalTransition>
     );
 }

@@ -1,11 +1,11 @@
 import React, { Suspense } from "react";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import UploadButtonPaper from "@/app/components/uploadButtonPaper";
 import StructuredData from "@/app/components/seo/StructuredData";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import { GradientText } from "@/app/components/landing_page/landing";
-import CourseGridCard from "@/app/components/past_papers/CourseGridCard";
+import SmartCourseGrid from "@/app/components/past_papers/SmartCourseGrid";
 import CoursePagination from "@/app/components/past_papers/CoursePagination";
 import RecentPaperStrip from "@/app/components/past_papers/RecentPaperStrip";
 import PastPapersCourseSearch from "@/app/components/past_papers/PastPapersCourseSearch";
@@ -13,22 +13,20 @@ import UpcomingExamsStrip from "@/app/components/past_papers/UpcomingExamsStrip"
 import {
     getCatalogStats,
     getCourseGrid,
+    getPopularCourseGrid,
     getRecentPapers,
     getSearchableCourses,
     searchCourseGrid,
     type CourseGridItem,
 } from "@/lib/data/courseCatalog";
-import { getExamHubSummaries } from "@/lib/data/courseExams";
 import { getUpcomingExams } from "@/lib/data/upcomingExams";
 import {
     buildKeywords,
     DEFAULT_KEYWORDS,
-    getExamHubPath,
 } from "@/lib/seo";
 import {
     buildCollectionPage,
     buildFaqPage,
-    buildItemList,
 } from "@/lib/structuredData";
 
 const PAGE_SIZE = 24;
@@ -105,16 +103,126 @@ function HeroStats({
     );
 }
 
-function CourseGridSkeleton() {
+function HeroStatsSkeleton() {
+    return (
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-x-5">
+            {["courses", "papers", "notes"].map((label) => (
+                <div key={label} className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-1.5">
+                    <div className="h-7 w-12 animate-pulse bg-black/10 dark:bg-white/10 sm:h-5" />
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/45 dark:text-[#D5D5D5]/45 sm:text-xs">
+                        {label}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+async function HeroStatsSection() {
+    const stats = await getCatalogStats();
+    return <HeroStats stats={stats} />;
+}
+
+function CourseSearchSkeleton() {
+    return (
+        <div className="flex w-full items-stretch gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
+                <div className="h-11 animate-pulse border-2 border-black/15 bg-white/40 dark:border-[#D5D5D5]/15 dark:bg-white/5" />
+            </div>
+            <div className="shrink-0">
+                <UploadButtonPaper />
+            </div>
+        </div>
+    );
+}
+
+async function CourseSearchSection({ search }: { search: string }) {
+    const searchable = await getSearchableCourses();
+
+    return (
+        <div className="flex w-full items-stretch gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
+                <PastPapersCourseSearch
+                    courses={searchable}
+                    initialQuery={search}
+                />
+            </div>
+            <div className="shrink-0">
+                <UploadButtonPaper />
+            </div>
+        </div>
+    );
+}
+
+function CourseCardsSkeleton({ count }: { count: number }) {
     return (
         <div className={COURSE_GRID_CLASS}>
-            {Array.from({ length: 20 }).map((_, i) => (
+            {Array.from({ length: count }).map((_, i) => (
                 <div
                     key={i}
                     className="h-32 animate-pulse border-2 border-[#5FC4E7]/50 bg-[#5FC4E7]/25 dark:border-[#ffffff]/10 dark:bg-[#ffffff]/5"
                 />
             ))}
         </div>
+    );
+}
+
+function PopularCoursesSkeleton() {
+    return (
+        <section className="flex flex-col gap-4">
+            <header className="flex items-end justify-between">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                    Popular courses
+                </h2>
+                <span className="text-sm text-black/50 dark:text-[#D5D5D5]/50">
+                    Loading
+                </span>
+            </header>
+            <CourseCardsSkeleton count={POPULAR_LIMIT} />
+        </section>
+    );
+}
+
+function CourseGridSectionSkeleton({ search }: { search: string }) {
+    return (
+        <section className="flex flex-col gap-4">
+            <header className="flex items-end justify-between gap-3">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                    {search ? "Matches" : "All courses"}
+                </h2>
+                {!search && (
+                    <span className="text-sm text-black/50 dark:text-[#D5D5D5]/50">
+                        Loading
+                    </span>
+                )}
+            </header>
+            <CourseCardsSkeleton count={PAGE_SIZE} />
+            <div className="mt-4 flex justify-center">
+                <div className="h-9 w-64 animate-pulse border border-black/20 bg-[#5FC4E7]/20 dark:border-[#D5D5D5]/20 dark:bg-white/5" />
+            </div>
+        </section>
+    );
+}
+
+async function PopularCoursesSection() {
+    const popular = await getPopularCourseGrid(POPULAR_LIMIT);
+    if (popular.length === 0) return null;
+
+    return (
+        <section className="flex flex-col gap-4">
+            <header className="flex items-end justify-between">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                    Popular courses
+                </h2>
+            </header>
+            <SmartCourseGrid
+                courses={popular}
+                className={COURSE_GRID_CLASS}
+                page={1}
+                pageSize={POPULAR_LIMIT}
+                rankCourses={false}
+            />
+        </section>
     );
 }
 
@@ -130,17 +238,7 @@ async function CourseGridSection({
         ? await searchCourseGrid(search)
         : await getCourseGrid();
 
-    let popular: CourseGridItem[] = [];
-    let rest = courses;
-    if (!search) {
-        popular = [...courses]
-            .sort((a, b) => b.paperCount - a.paperCount || b.noteCount - a.noteCount)
-            .slice(0, POPULAR_LIMIT);
-        const popularIds = new Set(popular.map((c) => c.id));
-        rest = courses.filter((c) => !popularIds.has(c.id));
-    }
-
-    const totalPages = Math.max(1, Math.ceil(rest.length / PAGE_SIZE));
+    const totalPages = Math.max(1, Math.ceil(courses.length / PAGE_SIZE));
     const page = validatePage(rawPage, totalPages);
     if (page !== rawPage) {
         const qs = new URLSearchParams();
@@ -149,9 +247,6 @@ async function CourseGridSection({
         const query = qs.toString();
         redirect(`/past_papers${query ? `?${query}` : ""}`);
     }
-
-    const start = (page - 1) * PAGE_SIZE;
-    const slice = rest.slice(start, start + PAGE_SIZE);
 
     if (courses.length === 0) {
         return (
@@ -167,21 +262,6 @@ async function CourseGridSection({
 
     return (
         <>
-            {page === 1 && popular.length > 0 && (
-                <section className="flex flex-col gap-4">
-                    <header className="flex items-end justify-between">
-                        <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
-                            Popular courses
-                        </h2>
-                    </header>
-                    <div className={COURSE_GRID_CLASS}>
-                        {popular.map((course) => (
-                            <CourseGridCard key={course.id} course={course} />
-                        ))}
-                    </div>
-                </section>
-            )}
-
             <section className="flex flex-col gap-4">
                 <header className="flex items-end justify-between gap-3">
                     <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
@@ -189,15 +269,17 @@ async function CourseGridSection({
                     </h2>
                     {!search && (
                         <span className="text-sm text-black/60 dark:text-[#D5D5D5]/60">
-                            {rest.length} more
+                            {courses.length} total
                         </span>
                     )}
                 </header>
-                <div className={COURSE_GRID_CLASS}>
-                    {slice.map((course) => (
-                        <CourseGridCard key={course.id} course={course} />
-                    ))}
-                </div>
+                <SmartCourseGrid
+                    courses={courses}
+                    className={COURSE_GRID_CLASS}
+                    page={page}
+                    pageSize={PAGE_SIZE}
+                    rankCourses={!search}
+                />
                 {totalPages > 1 && (
                     <div className="mt-4">
                         <CoursePagination currentPage={page} totalPages={totalPages} />
@@ -213,6 +295,12 @@ async function RecentSection() {
     return <RecentPaperStrip items={recents} />;
 }
 
+async function UpcomingSection() {
+    const upcomingExams = await getUpcomingExams(12);
+    if (upcomingExams.length === 0) return null;
+    return <UpcomingExamsStrip items={upcomingExams} emptyPrompt={null} />;
+}
+
 export default async function PastPapersPage({
     searchParams,
 }: {
@@ -220,12 +308,6 @@ export default async function PastPapersPage({
 }) {
     const params = (await searchParams) ?? {};
     const search = params.search || "";
-    const [stats, searchable, upcomingExams, examHubs] = await Promise.all([
-        getCatalogStats(),
-        getSearchableCourses(),
-        getUpcomingExams(12),
-        getExamHubSummaries(),
-    ]);
     const faq = [
         {
             question: "Where can I find VIT past papers by exam type?",
@@ -238,78 +320,70 @@ export default async function PastPapersPage({
     ];
 
     return (
-        <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-            <StructuredData
-                data={[
-                    buildCollectionPage({
-                        name: "VIT past papers",
-                        description:
-                            "Browse VIT past papers, previous year question papers, and course-wise paper collections on ExamCooker.",
-                        path: "/past_papers",
-                        keywords: DEFAULT_KEYWORDS,
-                        about: "VIT past papers",
-                    }),
-                    buildItemList(
-                        examHubs.map((hub) => ({
-                            name: `${hub.label} past papers`,
-                            path: getExamHubPath(hub.slug),
-                        })),
-                    ),
-                    buildFaqPage(faq),
-                ]}
-            />
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
-                <section className="flex flex-col gap-5">
-                    <h1 className="whitespace-nowrap text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
-                        Every paper.{" "}
-                        <GradientText>Every course.</GradientText>
-                    </h1>
+        <DirectionalTransition>
+            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <StructuredData
+                    data={[
+                        buildCollectionPage({
+                            name: "VIT past papers",
+                            description:
+                                "Browse VIT past papers, previous year question papers, and course-wise paper collections on ExamCooker.",
+                            path: "/past_papers",
+                            keywords: DEFAULT_KEYWORDS,
+                            about: "VIT past papers",
+                        }),
+                        buildFaqPage(faq),
+                    ]}
+                />
+                <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
+                    <section className="flex flex-col gap-5">
+                        <h1 className="whitespace-nowrap text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
+                            Every paper.{" "}
+                            <GradientText>Every course.</GradientText>
+                        </h1>
 
-                    <HeroStats stats={stats} />
+                        <Suspense fallback={<HeroStatsSkeleton />}>
+                            <HeroStatsSection />
+                        </Suspense>
 
-                    <div className="flex w-full items-stretch gap-2 sm:gap-3">
-                        <div className="min-w-0 flex-1">
-                            <PastPapersCourseSearch
-                                courses={searchable}
-                                initialQuery={search}
-                            />
-                        </div>
-                        <div className="shrink-0">
-                            <UploadButtonPaper />
-                        </div>
-                    </div>
-                </section>
-
-                {!search && upcomingExams.length > 0 && (
-                    <UpcomingExamsStrip items={upcomingExams} emptyPrompt={null} />
-                )}
-
-                <Suspense fallback={<CourseGridSkeleton />}>
-                    <CourseGridSection params={params} />
-                </Suspense>
-
-                {!search && (
-                    <Suspense fallback={null}>
-                        <RecentSection />
-                    </Suspense>
-                )}
-
-                {!search && (
-                    <section className="sr-only">
-                        {faq.map((item) => (
-                            <article
-                                key={item.question}
-                                className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
-                            >
-                                <h2 className="text-base font-bold">{item.question}</h2>
-                                <p className="mt-2 text-sm text-black/70 dark:text-[#D5D5D5]/70">
-                                    {item.answer}
-                                </p>
-                            </article>
-                        ))}
+                        <Suspense fallback={<CourseSearchSkeleton />}>
+                            <CourseSearchSection search={search} />
+                        </Suspense>
                     </section>
-                )}
+
+                    {!search && (
+                        <Suspense fallback={<PopularCoursesSkeleton />}>
+                            <PopularCoursesSection />
+                        </Suspense>
+                    )}
+
+                    <Suspense fallback={<CourseGridSectionSkeleton search={search} />}>
+                        <CourseGridSection params={params} />
+                    </Suspense>
+
+                    {!search && (
+                        <Suspense fallback={null}>
+                            <RecentSection />
+                        </Suspense>
+                    )}
+
+                    {!search && (
+                        <section className="sr-only">
+                            {faq.map((item) => (
+                                <article
+                                    key={item.question}
+                                    className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                                >
+                                    <h2 className="text-base font-bold">{item.question}</h2>
+                                    <p className="mt-2 text-sm text-black/70 dark:text-[#D5D5D5]/70">
+                                        {item.answer}
+                                    </p>
+                                </article>
+                            ))}
+                        </section>
+                    )}
+                </div>
             </div>
-        </div>
+        </DirectionalTransition>
     );
 }

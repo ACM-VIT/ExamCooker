@@ -287,7 +287,7 @@ export function buildExamHubKeywordSet(examType: ExamType) {
 }
 
 export function getCoursePath(code: string) {
-    return `/courses/${safeEncodeURIComponent(code)}`;
+    return `/past_papers/${safeEncodeURIComponent(code)}`;
 }
 
 export function getCoursePastPapersPath(code: string) {

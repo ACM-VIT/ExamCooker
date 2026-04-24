@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { addTransitionType, memo, startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import debounce from "lodash/debounce";
 import Image from "@/app/components/common/AppImage";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
@@ -13,7 +13,7 @@ type ResourceFiltersProps = {
     years: string[];
 };
 
-export default function ResourceFilters({
+function ResourceFilters({
     initialSearch,
     initialYear,
     years,
@@ -46,8 +46,11 @@ export default function ResourceFilters({
                 }
 
                 const queryString = params.toString();
-                router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
-                    scroll: false,
+                startTransition(() => {
+                    addTransitionType("filter-results");
+                    router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+                        scroll: false,
+                    });
                 });
             }, 200),
         [pathname, router, searchParams],
@@ -60,28 +63,35 @@ export default function ResourceFilters({
         [updateUrl],
     );
 
-    const handleQueryChange = (value: string) => {
+    const handleQueryChange = useCallback((value: string) => {
         setQuery(value);
         updateUrl(value, initialYear);
-    };
+    }, [initialYear, updateUrl]);
 
-    const handleYearSelect = (value: string) => {
+    const handleYearSelect = useCallback((value: string) => {
         updateUrl.cancel();
         updateUrl(query, value === initialYear ? "" : value);
-    };
+    }, [initialYear, query, updateUrl]);
 
-    const clearFilters = () => {
+    const clearFilters = useCallback(() => {
         updateUrl.cancel();
         setQuery("");
-        router.replace(pathname, { scroll: false });
-    };
+        startTransition(() => {
+            addTransitionType("filter-results");
+            router.replace(pathname, { scroll: false });
+        });
+    }, [pathname, router, updateUrl]);
 
     const hasFilters = Boolean(initialSearch || initialYear);
+    const activeYearClass =
+        "border-black bg-[#82BEE9] text-black dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/15 dark:text-[#3BF4C7]";
+    const inactiveYearClass =
+        "border-[#5FC4E7] bg-[#5FC4E7]/20 text-black hover:bg-[#5FC4E7]/40 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/5 dark:text-[#D5D5D5] dark:hover:bg-[#ffffff]/10";
 
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-stretch gap-2 sm:gap-3">
-                <div className="relative flex h-12 min-w-0 flex-1 items-center border border-black bg-white px-2 shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-colors focus-within:border-black dark:border-[#D5D5D5] dark:bg-[#3D414E] dark:shadow-[2px_2px_0_0_rgba(213,213,213,0.4)]">
+                <div className="relative flex h-12 min-w-0 flex-1 items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]">
                     <Image src={SearchIcon} alt="search" className="dark:invert-[.835]" />
                     <input
                         type="search"
@@ -118,9 +128,7 @@ export default function ResourceFilters({
                     type="button"
                     onClick={() => handleYearSelect("")}
                     className={`inline-flex h-9 items-center border-2 px-3 text-sm font-semibold transition ${
-                        !initialYear
-                            ? "border-black bg-black text-white dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/15 dark:text-[#3BF4C7]"
-                            : "border-[#5FC4E7] bg-[#5FC4E7]/20 text-black hover:bg-[#5FC4E7]/40 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/5 dark:text-[#D5D5D5] dark:hover:bg-[#ffffff]/10"
+                        !initialYear ? activeYearClass : inactiveYearClass
                     }`}
                 >
                     All years
@@ -131,9 +139,7 @@ export default function ResourceFilters({
                         type="button"
                         onClick={() => handleYearSelect(year)}
                         className={`inline-flex h-9 items-center border-2 px-3 text-sm font-semibold transition ${
-                            initialYear === year
-                                ? "border-black bg-black text-white dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/15 dark:text-[#3BF4C7]"
-                                : "border-[#5FC4E7] bg-[#5FC4E7]/20 text-black hover:bg-[#5FC4E7]/40 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/5 dark:text-[#D5D5D5] dark:hover:bg-[#ffffff]/10"
+                            initialYear === year ? activeYearClass : inactiveYearClass
                         }`}
                     >
                         {year}
@@ -153,3 +159,5 @@ export default function ResourceFilters({
         </div>
     );
 }
+
+export default memo(ResourceFilters);

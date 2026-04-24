@@ -1,0 +1,198 @@
+"use client";
+
+import React, { useCallback, useEffect, useState } from "react";
+import { GradientText } from "@/app/components/landing_page/landing";
+
+/* ─── storage ─── */
+const MODAL_STORAGE_KEY = "examcooker.upsellModal.v1";
+const MODAL_SHOW_DELAY_MS = 1400;
+
+function hasSeenModal(): boolean {
+    if (typeof window === "undefined") return true;
+    try {
+        return window.localStorage.getItem(MODAL_STORAGE_KEY) === "1";
+    } catch {
+        return false;
+    }
+}
+
+function markModalSeen() {
+    if (typeof window === "undefined") return;
+    try {
+        window.localStorage.setItem(MODAL_STORAGE_KEY, "1");
+    } catch {
+        /* fail silently */
+    }
+}
+
+/* ─── features list ─── */
+const FEATURES = [
+    {
+        title: "Resource Repository",
+        desc: "Video lectures, key takeaways, and practice sets, all organized by module and topic.",
+    },
+    {
+        title: "Smarter Navigation",
+        desc: "We reworked search, filters, and course maps so you can actually find what you're looking for.",
+    },
+    {
+        title: "Polished Interface",
+        desc: "Everything feels snappier and cleaner. We've been sweating the small stuff.",
+    },
+];
+
+/* ─── main component ─── */
+const UpsellModal = () => {
+    const [phase, setPhase] = useState<"idle" | "entering" | "open" | "leaving" | "closed">("idle");
+
+    useEffect(() => {
+        if (hasSeenModal()) {
+            setPhase("closed");
+            return;
+        }
+        const timer = window.setTimeout(() => setPhase("entering"), MODAL_SHOW_DELAY_MS);
+        return () => window.clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (phase === "entering") {
+            const raf = requestAnimationFrame(() => {
+                requestAnimationFrame(() => setPhase("open"));
+            });
+            return () => cancelAnimationFrame(raf);
+        }
+    }, [phase]);
+
+    const handleDismiss = useCallback(() => {
+        markModalSeen();
+        setPhase("leaving");
+        window.setTimeout(() => setPhase("closed"), 320);
+    }, []);
+
+    const handleCtaClick = useCallback(() => {
+        markModalSeen();
+    }, []);
+
+    const isVisible = phase === "open";
+    const isRendered = phase !== "idle" && phase !== "closed";
+
+    if (!isRendered) return null;
+
+    return (
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Introducing the refreshed ExamCooker"
+            className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
+        >
+            {/* backdrop */}
+            <div
+                onClick={handleDismiss}
+                aria-hidden="true"
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+                style={{ opacity: isVisible ? 1 : 0 }}
+            />
+
+            {/* modal card */}
+            <div
+                className="relative w-full max-w-[26rem] overflow-hidden border-2 border-[#5FC4E7] bg-white dark:border-[#3BF4C7]/25 dark:bg-[#0C1222] sm:max-w-[28rem]"
+                style={{
+                    transition: "all 320ms cubic-bezier(0.16, 1, 0.3, 1)",
+                    transform: isVisible ? "scale(1) translateY(0)" : "scale(0.95) translateY(16px)",
+                    opacity: isVisible ? 1 : 0,
+                }}
+            >
+                {/* ── ARTWORK (top 1/3) ── */}
+                <div className="relative h-44 overflow-hidden sm:h-52">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src="https://www.everything-assistant.com/onboarding-artwork/artwork.png"
+                        alt=""
+                        className="h-full w-full object-cover"
+                    />
+                    {/* gradient fade into content */}
+                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white dark:from-[#0C1222]" />
+
+                    {/* close button */}
+                    <button
+                        type="button"
+                        onClick={handleDismiss}
+                        aria-label="Close"
+                        className="absolute right-2.5 top-2.5 z-10 inline-flex h-7 w-7 items-center justify-center text-white/60 transition-colors hover:text-white"
+                    >
+                        <svg
+                            viewBox="0 0 14 14"
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                        >
+                            <path d="M1 1L13 13M13 1L1 13" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* ── CONTENT (bottom 2/3) ── */}
+                <div className="px-5 pb-6 pt-0 sm:px-7 sm:pb-7">
+                    {/* centered title */}
+                    <div className="text-center">
+                        <h2 className="text-xl font-extrabold leading-tight tracking-tight text-black dark:text-white sm:text-2xl">
+                            Introducing the refreshed{" "}
+                            <GradientText>ExamCooker</GradientText>
+                        </h2>
+                        <p className="mx-auto mt-2 max-w-[30ch] text-[13px] leading-relaxed text-black/50 dark:text-[#D5D5D5]/50 sm:text-sm">
+                            We rebuilt the experience from the ground up to get you exam-ready, faster.
+                        </p>
+                    </div>
+
+                    {/* features */}
+                    <div className="mt-5 sm:mt-6">
+                        {FEATURES.map((f) => (
+                            <div
+                                key={f.title}
+                                className="flex items-start gap-3 border-t border-black/[0.08] py-3 first:border-t-0 first:pt-0 last:pb-0 dark:border-[#D5D5D5]/[0.08]"
+                            >
+                                <div className="mt-[5px] h-2 w-2 shrink-0 bg-[#3BF4C7]" />
+                                <div className="min-w-0">
+                                    <p className="text-[13px] font-semibold text-black dark:text-[#D5D5D5] sm:text-sm">
+                                        {f.title}
+                                    </p>
+                                    <p className="mt-0.5 text-[12px] leading-snug text-black/50 dark:text-[#D5D5D5]/45 sm:text-[13px]">
+                                        {f.desc}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* CTA */}
+                    <div className="group relative mt-5 inline-flex w-full items-stretch sm:mt-6">
+                        <div className="absolute inset-0 dark:bg-[#3BF4C7]" />
+                        <div className="absolute inset-0 bg-[#3BF4C7] blur-[60px] opacity-0 transition duration-200 group-hover:opacity-20 dark:hidden" />
+                        <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
+                        <a
+                            href="/"
+                            onClick={handleCtaClick}
+                            className="relative inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-0.5 dark:group-hover:-translate-y-0.5"
+                        >
+                            Explore what&apos;s new
+                        </a>
+                    </div>
+
+                    {/* dismiss */}
+                    <button
+                        type="button"
+                        onClick={handleDismiss}
+                        className="mt-3 w-full text-center text-xs font-medium text-black/35 transition-colors hover:text-black/60 dark:text-[#D5D5D5]/30 dark:hover:text-[#D5D5D5]/55"
+                    >
+                        Maybe later
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default UpsellModal;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, ViewTransition } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
 import CoursePaperCard from "./CoursePaperCard";
@@ -30,32 +30,35 @@ export default function CoursePaperGrid({
 
     const clear = useCallback(() => setSelected(new Set()), []);
 
-    const selectedPapers = useMemo(
-        () => papers.filter((p) => selected.has(p.id)),
-        [papers, selected],
+    const paperById = useMemo(
+        () => new Map(papers.map((paper) => [paper.id, paper])),
+        [papers],
     );
 
     const downloadSelected = useCallback(() => {
-        for (const paper of selectedPapers) {
+        for (const id of selected) {
+            const paper = paperById.get(id);
+            if (!paper) continue;
             window.open(paper.fileUrl, "_blank", "noopener,noreferrer");
         }
-    }, [selectedPapers]);
+    }, [paperById, selected]);
 
-    const count = selectedPapers.length;
+    const count = selected.size;
 
     return (
         <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {papers.map((paper, index) => (
-                    <CoursePaperCard
-                        key={paper.id}
-                        paper={paper}
-                        courseCode={courseCode}
-                        courseTitle={courseTitle}
-                        index={index}
-                        selected={selected.has(paper.id)}
-                        onToggleSelect={toggle}
-                    />
+                    <ViewTransition key={paper.id}>
+                        <CoursePaperCard
+                            paper={paper}
+                            courseCode={courseCode}
+                            courseTitle={courseTitle}
+                            index={index}
+                            selected={selected.has(paper.id)}
+                            onToggleSelect={toggle}
+                        />
+                    </ViewTransition>
                 ))}
             </div>
 

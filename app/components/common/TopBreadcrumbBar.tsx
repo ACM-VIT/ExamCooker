@@ -25,6 +25,7 @@ export default function TopBreadcrumbBar({ items, className }: Props) {
                             {item.href && !isLast ? (
                                 <Link
                                     href={item.href}
+                                    transitionTypes={["nav-back"]}
                                     className="shrink-0 text-black/55 transition-colors hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
                                 >
                                     {item.label}

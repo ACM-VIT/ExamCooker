@@ -11,6 +11,7 @@ import {
 } from "@/lib/data/coursePapers";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
 import StructuredData from "@/app/components/seo/StructuredData";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import {
     buildCourseExamKeywordSet,
     getCourseExamPath,
@@ -103,40 +104,41 @@ export default async function CourseExamPage({
     ];
 
     return (
-        <div className="min-h-screen text-black dark:text-[#D5D5D5]">
-            <StructuredData
-                data={[
-                    buildBreadcrumbList([
-                        { name: "Past papers", path: "/past_papers" },
-                        { name: course.title, path: getCoursePastPapersPath(course.code) },
-                        {
-                            name: `${course.code} ${label}`,
+        <DirectionalTransition>
+            <div className="min-h-screen text-black dark:text-[#D5D5D5]">
+                <StructuredData
+                    data={[
+                        buildBreadcrumbList([
+                            { name: "Past papers", path: "/past_papers" },
+                            { name: course.title, path: getCoursePastPapersPath(course.code) },
+                            {
+                                name: `${course.code} ${label}`,
+                                path: getCourseExamPath(course.code, examTypeToSlug(examType)),
+                            },
+                        ]),
+                        buildCollectionPage({
+                            name: `${course.code} ${label} past papers`,
+                            description,
                             path: getCourseExamPath(course.code, examTypeToSlug(examType)),
-                        },
-                    ]),
-                    buildCollectionPage({
-                        name: `${course.code} ${label} past papers`,
-                        description,
-                        path: getCourseExamPath(course.code, examTypeToSlug(examType)),
-                        about: course.title,
-                    }),
-                    buildItemList(
-                        papers.map((paper) => ({
-                            name: paper.title,
-                            path: getPastPaperDetailPath(paper.id, course.code),
-                        })),
-                    ),
-                    buildFaqPage(faq),
-                ]}
-            />
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
-                <CourseHeader
-                    code={course.code}
-                    title={course.title}
-                    paperCount={course.paperCount}
-                    noteCount={course.noteCount}
-                    syllabusId={syllabus?.id ?? null}
+                            about: course.title,
+                        }),
+                        buildItemList(
+                            papers.map((paper) => ({
+                                name: paper.title,
+                                path: getPastPaperDetailPath(paper.id, course.code),
+                            })),
+                        ),
+                        buildFaqPage(faq),
+                    ]}
                 />
+                <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
+                    <CourseHeader
+                        code={course.code}
+                        title={course.title}
+                        paperCount={course.paperCount}
+                        noteCount={course.noteCount}
+                        syllabusId={syllabus?.id ?? null}
+                    />
 
                 <section className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]">
                     <p className="sr-only">
@@ -175,6 +177,7 @@ export default async function CourseExamPage({
                     </div>
                     <Link
                         href={getCoursePastPapersPath(course.code)}
+                        transitionTypes={["nav-back"]}
                         className="inline-flex h-9 items-center border border-black/60 px-3 text-sm font-semibold text-black transition hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/60 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7]/10 dark:hover:text-[#3BF4C7]"
                     >
                         All filters →
@@ -189,6 +192,7 @@ export default async function CourseExamPage({
                                 <Link
                                     key={type}
                                     href={getCourseExamPath(course.code, examTypeToSlug(type))}
+                                    transitionTypes={["nav-forward"]}
                                     className="inline-flex h-8 items-center border border-black/30 px-3 text-xs font-semibold text-black transition hover:bg-black/5 dark:border-[#D5D5D5]/40 dark:text-[#D5D5D5] dark:hover:bg-white/5"
                                 >
                                     {examTypeLabel(type)}
@@ -224,7 +228,8 @@ export default async function CourseExamPage({
                         </article>
                     ))}
                 </section>
+                </div>
             </div>
-        </div>
+        </DirectionalTransition>
     );
 }

@@ -27,7 +27,7 @@ function getAllowedHost(value: string | null) {
 }
 
 export async function GET(req: NextRequest) {
-    const callbackUrl = req.nextUrl.searchParams.get("redirect") || "/home";
+    const callbackUrl = req.nextUrl.searchParams.get("redirect") || "/";
     const forwardedHost = getAllowedHost(req.headers.get("x-forwarded-host"));
     const host = forwardedHost || getAllowedHost(req.headers.get("host"));
     const forwardedProto =

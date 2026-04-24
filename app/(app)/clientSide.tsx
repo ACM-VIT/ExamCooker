@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import NavBar from "@/app/components/NavBar";
-import HomeFooter from "@/app/(app)/home/home_footer";
 import BookmarksProvider from "@/app/components/BookmarksProvider";
 import GuestPromptProvider from "@/app/components/GuestPromptProvider";
 import type { Bookmark } from "@/app/actions/Favourites";
@@ -20,6 +19,7 @@ export default function ClientSide({
     const pathname = usePathname();
     const [isNavOn, setIsNavOn] = useState(false);
     const pathSegments = (pathname ?? "").split("/").filter(Boolean);
+    const isHome = pathSegments.length === 0;
     const hasPastPapersBreadcrumbBar =
         pathSegments[0] === "past_papers" &&
         pathSegments[1] !== undefined &&
@@ -31,6 +31,7 @@ export default function ClientSide({
         pathSegments[1] === "course" &&
         pathSegments[2] !== undefined;
     const hasBreadcrumbBar = hasPastPapersBreadcrumbBar || hasSyllabusBreadcrumbBar;
+    const showMobileLogo = !hasBreadcrumbBar && !isHome;
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -56,10 +57,11 @@ export default function ClientSide({
             <BookmarksProvider initialBookmarks={initialBookmarks}>
                 <div className="relative flex">
                     <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
-                    {!hasBreadcrumbBar && (
+                    {showMobileLogo && (
                         <Link
-                            href="/home"
+                            href="/"
                             aria-label="ExamCooker home"
+                            style={{ viewTransitionName: "persistent-mobile-logo" }}
                             className="fixed left-16 top-3 z-[55] flex h-10 max-w-[calc(100vw-5.5rem)] items-center gap-2 rounded-md border border-black/10 bg-white/90 px-3 text-sm font-semibold text-black backdrop-blur transition-colors hover:border-black/25 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 lg:hidden"
                         >
                             <AppImage
@@ -78,12 +80,7 @@ export default function ClientSide({
                         </Link>
                     )}
                     <main className="min-w-0 flex-1 pt-14 lg:pt-0 lg:pl-14">
-                        <div className="flex min-h-screen min-w-0 flex-col">
-                            <div className="min-h-0 flex-1">
-                                {children}
-                            </div>
-                            <HomeFooter />
-                        </div>
+                        {children}
                     </main>
                 </div>
             </BookmarksProvider>

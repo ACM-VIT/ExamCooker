@@ -6,7 +6,6 @@ import { useBookmarks } from "./BookmarksProvider";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import Image from "@/app/components/common/AppImage";
-import { parsePaperTitle, ParsedPaperTitle } from "@/lib/paperTitle";
 import { getPastPaperDetailPath } from "@/lib/seo";
 
 interface PastPaperCardProps {
@@ -14,31 +13,42 @@ interface PastPaperCardProps {
     id: string;
     title: string;
     thumbNailUrl?: string | null;
+    examType?: string | null;
+    slot?: string | null;
+    year?: number | null;
+    course?: { code: string; title?: string } | null;
   };
   index: number;
   openInNewTab?: boolean;
+  transitionTypes?: string[] | false;
 }
 
-function getDisplayTitle(title: string, parsed: ParsedPaperTitle) {
-  const courseName = parsed.courseName?.trim();
-  const baseTitle = courseName ?? parsed.cleanTitle;
-  return baseTitle || parsed.cleanTitle || title.replace(/\.pdf$/i, "");
+function buildMetadata(p: PastPaperCardProps["pastPaper"]) {
+  return [
+    p.examType?.replace(/_/g, "-"),
+    p.slot ? `Slot ${p.slot}` : undefined,
+    p.year?.toString(),
+    p.course?.code,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
-function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
+function PastPaperCard({
+  pastPaper,
+  index,
+  openInNewTab,
+  transitionTypes,
+}: PastPaperCardProps) {
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const isFav = isBookmarked(pastPaper.id, "pastpaper");
   const { toast } = useToast();
 
-  const parsedTitle = parsePaperTitle(pastPaper.title);
-  const displayTitle = getDisplayTitle(pastPaper.title, parsedTitle);
-  const metadataParts = [
-    parsedTitle.examType,
-    parsedTitle.slot ? `Slot ${parsedTitle.slot}` : undefined,
-    parsedTitle.academicYear ?? parsedTitle.year,
-    parsedTitle.courseCode,
-  ].filter(Boolean);
-  const metadata = metadataParts.join(" · ");
+  const displayTitle =
+    pastPaper.course?.title ??
+    pastPaper.title.replace(/\.pdf$/i, "");
+  const metadata = buildMetadata(pastPaper);
+  const href = getPastPaperDetailPath(pastPaper.id, pastPaper.course?.code);
 
   const handleToggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -57,11 +67,12 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
   return (
     <div className={`max-w-sm w-full h-full text-black dark:text-[#D5D5D5]`}>
       <Link
-        href={getPastPaperDetailPath(pastPaper.id, parsedTitle.courseCode)}
+        href={href}
         prefetch={index < 3}
+        transitionTypes={openInNewTab || transitionTypes === false ? undefined : transitionTypes ?? ["nav-forward"]}
+        target={openInNewTab ? "_blank" : undefined}
         className="group block max-w-96 cursor-pointer border-2 border-[#5FC4E7] bg-[#5FC4E7] text-center transition duration-200 hover:scale-105 hover:shadow-xl hover:border-b-2 hover:border-b-[#ffffff] dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 lg:dark:bg-[#0C1222]"
       >
-        {/* Metadata + title at top */}
         <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">
           <div className="min-w-0 flex-1 text-left">
             {metadata ? (
@@ -84,7 +95,6 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
           </button>
         </div>
 
-        {/* Thumbnail below */}
         <div className="bg-[#d9d9d9] w-full h-44 relative overflow-hidden">
           <Image
             src={pastPaper.thumbNailUrl || "/assets/ExamCooker.png"}

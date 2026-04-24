@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { addTransitionType, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import Image from "@/app/components/common/AppImage";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
@@ -77,7 +77,10 @@ export default function PastPapersCourseSearch({
     }, []);
 
     const navigate = (course: SearchableCourse) => {
-        router.push(`/past_papers/${encodeURIComponent(course.code)}`);
+        startTransition(() => {
+            addTransitionType("nav-forward");
+            router.push(`/past_papers/${encodeURIComponent(course.code)}`);
+        });
         setIsOpen(false);
     };
 
@@ -90,7 +93,9 @@ export default function PastPapersCourseSearch({
             navigate(exact);
             return;
         }
-        router.push(`/past_papers?search=${encodeURIComponent(trimmed)}`);
+        startTransition(() => {
+            router.push(`/past_papers?search=${encodeURIComponent(trimmed)}`);
+        });
         setIsOpen(false);
     };
 
@@ -124,12 +129,12 @@ export default function PastPapersCourseSearch({
 
     return (
         <div className="relative w-full text-left">
-            <div className="relative flex h-12 w-full items-center border border-black bg-white px-2 shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-colors focus-within:border-black dark:border-[#D5D5D5] dark:bg-[#3D414E] dark:shadow-[2px_2px_0_0_rgba(213,213,213,0.4)]">
+            <div className="relative flex h-12 w-full items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]">
                 <Image src={SearchIcon} alt="search" className="dark:invert-[.835]" />
                 <input
                     ref={inputRef}
                     type="text"
-                    className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 focus:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
+                    className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 outline-none focus:outline-none focus-visible:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
                     placeholder="Search course or code..."
                     value={query}
                     onChange={(e) => {
@@ -165,7 +170,7 @@ export default function PastPapersCourseSearch({
             {isOpen && filtered.length > 0 && (
                 <div
                     ref={dropdownRef}
-                    className="absolute z-50 mt-2 max-h-80 w-full overflow-y-auto border-2 border-black bg-white shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)]"
+                    className="absolute z-50 mt-2 max-h-80 w-full overflow-y-auto border border-black/15 bg-white shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]"
                 >
                     {filtered.map((course, index) => (
                         <button
@@ -210,7 +215,7 @@ export default function PastPapersCourseSearch({
             {isOpen && query.trim() && filtered.length === 0 && (
                 <div
                     ref={dropdownRef}
-                    className="absolute z-50 mt-2 w-full border-2 border-black bg-white px-4 py-4 text-center text-sm text-black/60 shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5]/60 dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)]"
+                    className="absolute z-50 mt-2 w-full border border-black/15 bg-white px-4 py-4 text-center text-sm text-black/60 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/60"
                 >
                     No courses found for &quot;{query}&quot;.
                 </div>

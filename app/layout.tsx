@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import "@/app/globals.css";
 import UpsellToast from "@/components/ui/UpsellToast";
+import UpsellModal from "@/components/ui/UpsellModal";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
@@ -80,6 +81,7 @@ export default function RootLayout({
                     <Suspense fallback={null}>{children}</Suspense>
                     <Toaster />
                     <UpsellToast />
+                    <UpsellModal />
                     {process.env.GA_ID && (
                         <GoogleAnalytics gaId={process.env.GA_ID} />
                     )}
