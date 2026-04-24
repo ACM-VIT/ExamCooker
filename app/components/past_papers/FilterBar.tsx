@@ -1,9 +1,7 @@
 "use client";
 
-import React, { addTransitionType, memo, useCallback, useMemo, useState, useTransition } from "react";
+import React, { addTransitionType, memo, useCallback, useMemo, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/examSlug";
 import type { ExamType, Semester, Campus } from "@/prisma/generated/client";
 
@@ -55,7 +53,6 @@ export default function FilterBar({
     const router = useRouter();
     const pathname = usePathname();
     const [pending, startTransition] = useTransition();
-    const [moreOpen, setMoreOpen] = useState(false);
     const searchParams = useMemo(
         () => new URLSearchParams(searchString),
         [searchString],
@@ -79,13 +76,6 @@ export default function FilterBar({
         }),
         [searchParams],
     );
-
-    const activeCount =
-        selected.exams.length +
-        selected.slots.length +
-        selected.years.length +
-        selected.semesters.length +
-        selected.campuses.length;
 
     const pushParams = useCallback((next: URLSearchParams) => {
         next.delete("page");
@@ -212,30 +202,8 @@ export default function FilterBar({
                     </div>
                 </div>
             )}
-
             {hasMoreFilters && (
-                <div className="flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setMoreOpen((o) => !o)}
-                        className="inline-flex h-8 items-center gap-1.5 border border-black/15 bg-white px-3 text-xs font-semibold text-black transition hover:border-black/30 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/40 sm:hidden"
-                    >
-                        <span>More filters</span>
-                        {activeCount > 0 && (
-                            <span className="inline-flex h-4 min-w-[1rem] items-center justify-center bg-black/10 px-1 text-[10px] font-bold dark:bg-white/10">
-                                {activeCount}
-                            </span>
-                        )}
-                        <FontAwesomeIcon
-                            icon={faChevronDown}
-                            className={`h-3 w-3 transition-transform ${moreOpen ? "rotate-180" : ""}`}
-                        />
-                    </button>
-                </div>
-            )}
-
-            {hasMoreFilters && (
-                <div className={`${moreOpen ? "flex" : "hidden"} flex-col gap-2 sm:flex sm:gap-1.5`}>
+                <div className="flex flex-col gap-2 sm:gap-1.5">
                     {options.years.length > 0 && (
                         <ChipRow
                             items={yearItems}
