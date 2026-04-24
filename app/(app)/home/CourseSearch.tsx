@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Image from "@/app/components/common/AppImage";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { getAliasCourseCodes } from "@/lib/courseAliases";
 import { normalizeCourseCode } from "@/lib/courseTags";
@@ -33,6 +34,7 @@ function normalizeSearchInput(value: string) {
 }
 
 export default function CourseSearch({ courses }: CourseSearchProps) {
+    const router = useRouter();
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const [selectedCourse, setSelectedCourse] = useState<CourseResult | null>(null);
@@ -87,6 +89,13 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     };
 
     const handleSelectCourse = (course: CourseResult) => {
+        if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) {
+            setIsOpen(false);
+            setHighlightedIndex(-1);
+            router.push(getCoursePastPapersPath(course.code));
+            return;
+        }
+
         setSelectedCourse(course);
         setQuery(`${course.title} (${course.code})`);
         setIsOpen(false);
@@ -130,7 +139,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                         ref={inputRef}
                         type="text"
                         className="h-full min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap bg-transparent px-3 text-base text-black focus:outline-none placeholder:text-black/50 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60 sm:px-4 sm:text-lg"
-                        placeholder="Search for a course by code or title..."
+                        placeholder="Search for a course..."
                         value={query}
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
