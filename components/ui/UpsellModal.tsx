@@ -186,7 +186,6 @@ const UpsellModal = () => {
                         </Link>
                     </div>
 
-                    {/* dismiss */}
                     <button
                         type="button"
                         onClick={handleDismiss}

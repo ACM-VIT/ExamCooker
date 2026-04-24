@@ -3,7 +3,7 @@ import Image from "@/app/components/common/AppImage";
 import PastPaper from "@/public/LandingPage/LandingPagePastPapers.svg";
 import Notes from "@/public/LandingPage/LandingPageNotes.svg";
 import Resources from "@/public/LandingPage/LandingPageResourceRepo.svg";
-import Forum from "@/public/LandingPage/LandingPageForum.svg";
+import Syllabus from "@/public/LandingPage/LandingPageSyllabus.svg";
 import GradientHeart from "@/public/LandingPage/GradientHeart.svg";
 import GradientACMLogo from "@/public/assets/ACM logo.svg";
 import {
@@ -44,7 +44,7 @@ export default async function HomeMarketingSections() {
                     <LandingPageCard
                         title="Syllabus"
                         content="Know exactly what's in scope before you even start to cram"
-                        imagePath={Forum}
+                        imagePath={Syllabus}
                         altOfImage="Syllabus"
                         href="/syllabus"
                     />

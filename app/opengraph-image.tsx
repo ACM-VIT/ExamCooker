@@ -16,7 +16,7 @@ export default async function Image() {
     const stats = await getCatalogStats();
 
     return renderExamCookerOgImage({
-        eyebrow: "VIT Study Hub",
+        eyebrow: "",
         title: "Cram like a Champ.",
         subtitle: "Past papers, notes, syllabus PDFs, and course resources in one place.",
         chips: [

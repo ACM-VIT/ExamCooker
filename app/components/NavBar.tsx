@@ -39,7 +39,7 @@ const LINKS: MenuLink[] = [
   { href: "/syllabus", svgSource: "/assets/SyllabusLogo.svg", alt: "Syllabus" },
   // { href: "/forum", svgSource: "/assets/ForumIcon.svg", alt: "Forum" },
   { href: "/resources", svgSource: "/assets/BookIcon.svg", alt: "Resources" },
-  { href: "/favourites", svgSource: "/assets/NavFavouriteIcon.svg", alt: "Favourites" },
+  // { href: "/favourites", svgSource: "/assets/NavFavouriteIcon.svg", alt: "Favourites" },
   { href: "/quiz", svgSource: "/assets/QuizIcon.svg", alt: "Quiz" },
 ];
 
@@ -104,7 +104,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
 
       <nav
         style={{ viewTransitionName: "persistent-nav" }}
-        className={`fixed top-0 left-0 z-50 flex h-screen w-fit flex-col items-center justify-between border-r border-black/15 bg-[#C2E6EC] p-2 transition-transform duration-200 ease-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        className={`fixed top-0 left-0 z-50 flex h-dvh max-h-dvh w-fit flex-col items-center justify-between overflow-y-auto overscroll-contain border-r border-black/15 bg-[#C2E6EC] p-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] transition-transform duration-200 ease-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
       >
         <div className="flex w-full min-h-[2.5rem] items-center justify-start px-1">

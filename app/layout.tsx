@@ -26,10 +26,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
     title: {
         template: "%s | ExamCooker",
-        default: "ExamCooker - VIT Past Papers, Notes & Syllabus",
+        default: "ExamCooker - Past Papers, Notes & Syllabus",
     },
     description:
-        "ExamCooker helps VIT students find past papers, previous year question papers, notes, syllabus PDFs, and course resources in one place.",
+        "ExamCooker helps students find past papers, previous year question papers, notes, syllabus PDFs, and course resources in one place.",
     keywords: DEFAULT_KEYWORDS,
     metadataBase: new URL(baseUrl),
     alternates: {
@@ -39,16 +39,16 @@ export const metadata: Metadata = {
         type: "website",
         url: baseUrl,
         siteName: "ExamCooker",
-        title: "ExamCooker - VIT Past Papers, Notes & Syllabus",
+        title: "ExamCooker - Past Papers, Notes & Syllabus",
         description:
-            "Find VIT past papers, notes, syllabus PDFs, and study resources for every course on ExamCooker.",
+            "Find past papers, notes, syllabus PDFs, and study resources for every course on ExamCooker.",
         images: [{ url: `${baseUrl}/opengraph-image` }],
     },
     twitter: {
         card: "summary_large_image",
-        title: "ExamCooker - VIT Past Papers, Notes & Syllabus",
+        title: "ExamCooker - Past Papers, Notes & Syllabus",
         description:
-            "Find VIT past papers, notes, syllabus PDFs, and study resources for every course on ExamCooker.",
+            "Find past papers, notes, syllabus PDFs, and study resources for every course on ExamCooker.",
         images: [`${baseUrl}/twitter-image`],
     },
 };
