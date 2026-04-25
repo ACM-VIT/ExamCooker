@@ -1,9 +1,28 @@
 const fs = require("fs");
 const path = require("path");
-const { PrismaClient } = require("@/prisma/generated/client");
-
-const prisma = new PrismaClient();
+const dotenv = require("dotenv");
 const REPORT_DIR = path.resolve(__dirname, "reports");
+
+dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true, quiet: true });
+
+let prismaPromise;
+function getPrisma() {
+  prismaPromise ??= (async () => {
+    const [{ default: prismaClient }, { PrismaPg }] = await Promise.all([
+      import("../prisma/generated/client.ts"),
+      import("@prisma/adapter-pg"),
+    ]);
+    const { PrismaClient } = prismaClient;
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL is not set.");
+    }
+    return new PrismaClient({
+      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+    });
+  })();
+  return prismaPromise;
+}
 
 // Inlined from lib/courseTags.ts — keep in sync if that regex changes.
 const COURSE_TAG_REGEX = /^(.*?)\s*\[([A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3})\]\s*$/i;
@@ -156,6 +175,7 @@ function writeReport({ dryRun, summary, rows, conflicts, ignoredTags }) {
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
+  const prisma = await getPrisma();
 
   console.log(`Running course seed (${dryRun ? "dry-run" : "apply"} mode)...`);
 
@@ -328,5 +348,6 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
+    const prisma = await getPrisma();
     await prisma.$disconnect();
   });

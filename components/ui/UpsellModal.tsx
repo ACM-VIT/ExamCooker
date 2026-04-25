@@ -41,7 +41,6 @@ const FEATURES = [
     },
 ];
 
-/* ─── main component ─── */
 const UpsellModal = () => {
     const [phase, setPhase] = useState<"idle" | "entering" | "open" | "leaving" | "closed">("idle");
 
@@ -81,7 +80,6 @@ const UpsellModal = () => {
             aria-label="Introducing the refreshed ExamCooker"
             className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
         >
-            {/* backdrop */}
             <div
                 onClick={handleDismiss}
                 aria-hidden="true"
@@ -89,7 +87,6 @@ const UpsellModal = () => {
                 style={{ opacity: isVisible ? 1 : 0 }}
             />
 
-            {/* modal card */}
             <div
                 className="relative w-full max-w-[26rem] overflow-hidden bg-white dark:bg-[#0C1222] sm:max-w-[28rem]"
                 style={{
@@ -100,19 +97,16 @@ const UpsellModal = () => {
                     opacity: isVisible ? 1 : 0,
                 }}
             >
-                {/* ── ARTWORK (top 1/3) ── */}
                 <div className="relative h-44 overflow-hidden sm:h-52">
                     <Image
-                        src="https://www.everything-assistant.com/onboarding-artwork/artwork.png"
+                        src="/upsell1.png"
                         alt=""
                         fill
                         sizes="(min-width: 640px) 28rem, 26rem"
                         className="object-cover"
                     />
-                    {/* gradient fade into content */}
                     <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white dark:from-[#0C1222]" />
 
-                    {/* close button */}
                     <button
                         type="button"
                         onClick={handleDismiss}
@@ -165,13 +159,12 @@ const UpsellModal = () => {
 
                     {/* CTA */}
                     <div className="group relative mt-5 inline-flex w-full items-stretch sm:mt-6">
-                        <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
+                        <div className="absolute inset-0 bg-black dark:bg-white/10" />
                         <div className="absolute inset-0 bg-[#3BF4C7] blur-[60px] opacity-0 transition duration-200 group-hover:opacity-20 dark:hidden" />
-                        <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
                         <Link
                             href="/"
                             onClick={handleDismiss}
-                            className="relative inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]"
+                            className="relative inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-white/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/80 dark:group-hover:border-white/30 dark:group-hover:text-[#D5D5D5]"
                         >
                             Explore what&apos;s new
                         </Link>

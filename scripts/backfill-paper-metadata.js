@@ -1,10 +1,35 @@
 const fs = require("fs");
 const path = require("path");
-const { PrismaClient } = require("@/prisma/generated/client");
-
-const prisma = new PrismaClient();
+const dotenv = require("dotenv");
 const REPORT_DIR = path.resolve(__dirname, "reports");
-const BATCH_SIZE = 500;
+const BATCH_SIZE = Number.parseInt(process.env.BACKFILL_BATCH_SIZE || "100", 10);
+const TRANSACTION_TIMEOUT_MS = Number.parseInt(
+  process.env.BACKFILL_TX_TIMEOUT_MS || "60000",
+  10,
+);
+const ANSWER_KEY_REGEX =
+  /\b(answer\s*key|with\s*answer\s*key|answers\b|solution\s*key|solutions\b)\b/i;
+
+dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true, quiet: true });
+
+let prismaPromise;
+function getPrisma() {
+  prismaPromise ??= (async () => {
+    const [{ default: prismaClient }, { PrismaPg }] = await Promise.all([
+      import("../prisma/generated/client.ts"),
+      import("@prisma/adapter-pg"),
+    ]);
+    const { PrismaClient } = prismaClient;
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL is not set.");
+    }
+    return new PrismaClient({
+      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+    });
+  })();
+  return prismaPromise;
+}
 
 // ---------------------------------------------------------------------------
 // Parsing helpers (inlined from lib/courseTags.ts + lib/paperTitle.ts).
@@ -86,6 +111,10 @@ function isSlotTagName(name) {
   return /^[A-G][1-2]$/i.test(String(name || "").trim());
 }
 
+function inferHasAnswerKey(title) {
+  return ANSWER_KEY_REGEX.test(String(title || ""));
+}
+
 // ---------------------------------------------------------------------------
 // Report helpers
 // ---------------------------------------------------------------------------
@@ -155,6 +184,7 @@ function writeReport({ dryRun, summary, samples }) {
     `- Would update / updated: ${summary.notes.toUpdate}`,
     `- Skipped: ${summary.notes.skipped}`,
     `- Course resolved (tag): ${summary.notes.courseResolvedTag}`,
+    `- Course resolved (title fallback): ${summary.notes.courseResolvedTitleFallback}`,
     `- Course unresolved: ${summary.notes.courseUnresolved}`,
     "",
     section(
@@ -199,8 +229,21 @@ function writeReport({ dryRun, summary, samples }) {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const dryRun = process.argv.includes("--dry-run");
-  console.log(`Running backfill (${dryRun ? "dry-run" : "apply"} mode)...`);
+  const args = new Set(process.argv.slice(2));
+  const dryRun = args.has("--dry-run");
+  const papersOnly = args.has("--papers-only");
+  const notesOnly = args.has("--notes-only");
+  if (papersOnly && notesOnly) {
+    throw new Error("Use at most one of --papers-only or --notes-only.");
+  }
+  const runPapers = !notesOnly;
+  const runNotes = !papersOnly;
+  const prisma = await getPrisma();
+  console.log(
+    `Running backfill (${dryRun ? "dry-run" : "apply"} mode, ${runPapers ? "papers" : ""}${
+      runPapers && runNotes ? "+" : ""
+    }${runNotes ? "notes" : ""})...`,
+  );
 
   // Build alias → courseId lookup. Aliases include all "Title [CODE]" tag names
   // and any entries from COURSE_ACRONYMS seeded into Course.aliases.
@@ -225,21 +268,8 @@ async function main() {
   // Papers
   // -------------------------------------------------------------------------
 
-  const papers = await prisma.pastPaper.findMany({
-    select: {
-      id: true,
-      title: true,
-      courseId: true,
-      examType: true,
-      slot: true,
-      year: true,
-      tags: { select: { id: true, name: true } },
-    },
-  });
-  console.log(`Loaded ${papers.length} papers.`);
-
   const paperSummary = {
-    total: papers.length,
+    total: 0,
     toUpdate: 0,
     skipped: 0,
     courseResolvedTag: 0,
@@ -253,6 +283,7 @@ async function main() {
     examTypeNull: 0,
     yearNull: 0,
     slotFilled: 0,
+    answerKeyFlagged: 0,
     incomplete: 0,
   };
 
@@ -264,134 +295,162 @@ async function main() {
     noteNoCourse: [],
   };
 
-  for (const paper of papers) {
-    // Idempotency: skip rows already fully resolved.
-    const alreadyComplete =
-      paper.courseId !== null &&
-      paper.examType !== null &&
-      paper.year !== null;
-    if (alreadyComplete) {
-      paperSummary.skipped++;
-      continue;
-    }
+  if (runPapers) {
+    const papers = await prisma.pastPaper.findMany({
+      select: {
+        id: true,
+        title: true,
+        courseId: true,
+        examType: true,
+        slot: true,
+        year: true,
+        hasAnswerKey: true,
+        tags: { select: { id: true, name: true } },
+      },
+    });
+    paperSummary.total = papers.length;
+    console.log(`Loaded ${papers.length} papers.`);
 
-    const update = {};
-
-    // ----- Course resolution -----
-    if (paper.courseId === null) {
-      const tagNames = paper.tags.map((t) => t.name);
-      /** @type {Map<courseId, number>} */
-      const candidateCounts = new Map();
-      for (const tagName of tagNames) {
-        let courseId = courseLookup.get(tagName);
-        if (!courseId) {
-          const extracted = extractCourseFromTag(tagName);
-          if (extracted) courseId = courseLookup.get(extracted.code);
-        }
-        if (courseId) {
-          candidateCounts.set(courseId, (candidateCounts.get(courseId) || 0) + 1);
-        }
+    for (const paper of papers) {
+      const inferredAnswerKey = inferHasAnswerKey(paper.title);
+      const titleCode = extractCourseCodeFromTitle(paper.title);
+      const titleCourseId =
+        titleCode && courseLookup.has(titleCode) ? courseLookup.get(titleCode) : null;
+      const courseNeedsCorrection =
+        paper.courseId !== null && titleCourseId !== null && paper.courseId !== titleCourseId;
+      // Idempotency: skip rows already fully resolved.
+      const alreadyComplete =
+        paper.courseId !== null &&
+        paper.examType !== null &&
+        paper.year !== null &&
+        !courseNeedsCorrection &&
+        (!inferredAnswerKey || paper.hasAnswerKey === true);
+      if (alreadyComplete) {
+        paperSummary.skipped++;
+        continue;
       }
 
-      if (candidateCounts.size === 0) {
-        // Try title fallback.
-        const titleCode = extractCourseCodeFromTitle(paper.title);
-        if (titleCode && courseLookup.has(titleCode)) {
-          update.courseId = courseLookup.get(titleCode);
+      const update = {};
+
+      // ----- Course resolution -----
+      if (paper.courseId === null || courseNeedsCorrection) {
+        const tagNames = paper.tags.map((t) => t.name);
+        if (titleCourseId) {
+          update.courseId = titleCourseId;
           paperSummary.courseResolvedTitleFallback++;
         } else {
-          paperSummary.courseUnresolved++;
-          if (samples.paperNoCourse.length < 30) {
-            samples.paperNoCourse.push({
-              id: paper.id,
-              title: paper.title,
-              tagNames,
-            });
+          /** @type {Map<courseId, number>} */
+          const candidateCounts = new Map();
+          for (const tagName of tagNames) {
+            let courseId = courseLookup.get(tagName);
+            if (!courseId) {
+              const extracted = extractCourseFromTag(tagName);
+              if (extracted) courseId = courseLookup.get(extracted.code);
+            }
+            if (courseId) {
+              candidateCounts.set(courseId, (candidateCounts.get(courseId) || 0) + 1);
+            }
+          }
+
+          if (candidateCounts.size === 0) {
+            paperSummary.courseUnresolved++;
+            if (samples.paperNoCourse.length < 30) {
+              samples.paperNoCourse.push({
+                id: paper.id,
+                title: paper.title,
+                tagNames,
+              });
+            }
+          } else if (candidateCounts.size === 1) {
+            update.courseId = candidateCounts.keys().next().value;
+            paperSummary.courseResolvedTag++;
+          } else {
+            const sorted = Array.from(candidateCounts.entries()).sort((a, b) => b[1] - a[1]);
+            if (sorted[0][1] > sorted[1][1]) {
+              update.courseId = sorted[0][0];
+              paperSummary.courseResolvedTag++;
+            } else {
+              paperSummary.courseAmbiguous++;
+              if (samples.paperAmbiguous.length < 30) {
+                const courseById = new Map(courses.map((c) => [c.id, c.code]));
+                samples.paperAmbiguous.push({
+                  id: paper.id,
+                  title: paper.title,
+                  candidates: sorted.map(([cid, count]) => ({
+                    code: courseById.get(cid) || cid,
+                    count,
+                  })),
+                });
+              }
+            }
           }
         }
-      } else if (candidateCounts.size === 1) {
-        update.courseId = candidateCounts.keys().next().value;
-        paperSummary.courseResolvedTag++;
+      }
+
+      // ----- Exam type -----
+      if (paper.examType === null) {
+        const examType = extractExamType(paper.title);
+        if (examType) {
+          update.examType = examType;
+          paperSummary.examTypeHistogram[examType]++;
+        }
+      }
+
+      // ----- Slot -----
+      if (paper.slot === null) {
+        let slot = extractSlot(paper.title);
+        if (!slot) {
+          const slotTag = paper.tags.find((t) => isSlotTagName(t.name));
+          if (slotTag) slot = slotTag.name.toUpperCase();
+        }
+        if (slot) {
+          update.slot = slot;
+        }
+      }
+
+      // ----- Year -----
+      if (paper.year === null) {
+        const year = extractYear(paper.title);
+        if (year) update.year = year;
+      }
+
+      // ----- Answer key -----
+      if (!paper.hasAnswerKey && inferredAnswerKey) {
+        update.hasAnswerKey = true;
+        paperSummary.answerKeyFlagged++;
+      }
+
+      if (Object.keys(update).length > 0) {
+        paperUpdates.push({ id: paper.id, data: update });
+        paperSummary.toUpdate++;
       } else {
-        // Ambiguous — pick majority if strict, else leave null.
-        const sorted = Array.from(candidateCounts.entries()).sort((a, b) => b[1] - a[1]);
-        if (sorted[0][1] > sorted[1][1]) {
-          update.courseId = sorted[0][0];
-          paperSummary.courseResolvedTag++;
-        } else {
-          paperSummary.courseAmbiguous++;
-          if (samples.paperAmbiguous.length < 30) {
-            const courseById = new Map(courses.map((c) => [c.id, c.code]));
-            samples.paperAmbiguous.push({
-              id: paper.id,
-              title: paper.title,
-              candidates: sorted.map(([cid, count]) => ({
-                code: courseById.get(cid) || cid,
-                count,
-              })),
-            });
-          }
-        }
+        paperSummary.skipped++;
       }
-    }
 
-    // ----- Exam type -----
-    if (paper.examType === null) {
-      const examType = extractExamType(paper.title);
-      if (examType) {
-        update.examType = examType;
-        paperSummary.examTypeHistogram[examType]++;
+      // Post-state for incomplete tracking.
+      const finalCourseId = update.courseId ?? paper.courseId;
+      const finalExamType = update.examType ?? paper.examType;
+      const finalYear = update.year ?? paper.year;
+      const finalSlot = update.slot ?? paper.slot;
+      if (finalExamType === null) paperSummary.examTypeNull++;
+      if (finalYear === null) paperSummary.yearNull++;
+      if (finalSlot !== null) paperSummary.slotFilled++;
+      const incomplete = finalCourseId === null || finalExamType === null || finalYear === null;
+      if (incomplete) paperSummary.incomplete++;
+      if (
+        finalCourseId !== null &&
+        (finalExamType === null || finalYear === null) &&
+        samples.paperMissingExamOrYear.length < 30
+      ) {
+        const courseById = new Map(courses.map((c) => [c.id, c.code]));
+        samples.paperMissingExamOrYear.push({
+          id: paper.id,
+          title: paper.title,
+          code: courseById.get(finalCourseId) || finalCourseId,
+          examType: finalExamType,
+          year: finalYear,
+        });
       }
-    }
-
-    // ----- Slot -----
-    if (paper.slot === null) {
-      let slot = extractSlot(paper.title);
-      if (!slot) {
-        const slotTag = paper.tags.find((t) => isSlotTagName(t.name));
-        if (slotTag) slot = slotTag.name.toUpperCase();
-      }
-      if (slot) {
-        update.slot = slot;
-      }
-    }
-
-    // ----- Year -----
-    if (paper.year === null) {
-      const year = extractYear(paper.title);
-      if (year) update.year = year;
-    }
-
-    if (Object.keys(update).length > 0) {
-      paperUpdates.push({ id: paper.id, data: update });
-      paperSummary.toUpdate++;
-    } else {
-      paperSummary.skipped++;
-    }
-
-    // Post-state for incomplete tracking.
-    const finalCourseId = update.courseId ?? paper.courseId;
-    const finalExamType = update.examType ?? paper.examType;
-    const finalYear = update.year ?? paper.year;
-    const finalSlot = update.slot ?? paper.slot;
-    if (finalExamType === null) paperSummary.examTypeNull++;
-    if (finalYear === null) paperSummary.yearNull++;
-    if (finalSlot !== null) paperSummary.slotFilled++;
-    const incomplete = finalCourseId === null || finalExamType === null || finalYear === null;
-    if (incomplete) paperSummary.incomplete++;
-    if (
-      finalCourseId !== null &&
-      (finalExamType === null || finalYear === null) &&
-      samples.paperMissingExamOrYear.length < 30
-    ) {
-      const courseById = new Map(courses.map((c) => [c.id, c.code]));
-      samples.paperMissingExamOrYear.push({
-        id: paper.id,
-        title: paper.title,
-        code: courseById.get(finalCourseId) || finalCourseId,
-        examType: finalExamType,
-        year: finalYear,
-      });
     }
   }
 
@@ -399,61 +458,76 @@ async function main() {
   // Notes
   // -------------------------------------------------------------------------
 
-  const notes = await prisma.note.findMany({
-    select: {
-      id: true,
-      title: true,
-      courseId: true,
-      tags: { select: { id: true, name: true } },
-    },
-  });
-  console.log(`Loaded ${notes.length} notes.`);
-
   const noteSummary = {
-    total: notes.length,
+    total: 0,
     toUpdate: 0,
     skipped: 0,
     courseResolvedTag: 0,
+    courseResolvedTitleFallback: 0,
     courseUnresolved: 0,
   };
 
   const noteUpdates = [];
 
-  for (const note of notes) {
-    if (note.courseId !== null) {
-      noteSummary.skipped++;
-      continue;
-    }
-    const tagNames = note.tags.map((t) => t.name);
-    const candidateCounts = new Map();
-    for (const tagName of tagNames) {
-      let courseId = courseLookup.get(tagName);
-      if (!courseId) {
-        const extracted = extractCourseFromTag(tagName);
-        if (extracted) courseId = courseLookup.get(extracted.code);
-      }
-      if (courseId) {
-        candidateCounts.set(courseId, (candidateCounts.get(courseId) || 0) + 1);
-      }
-    }
+  if (runNotes) {
+    const notes = await prisma.note.findMany({
+      select: {
+        id: true,
+        title: true,
+        courseId: true,
+        tags: { select: { id: true, name: true } },
+      },
+    });
+    noteSummary.total = notes.length;
+    console.log(`Loaded ${notes.length} notes.`);
 
-    let chosen = null;
-    if (candidateCounts.size === 1) {
-      chosen = candidateCounts.keys().next().value;
-    } else if (candidateCounts.size > 1) {
-      const sorted = Array.from(candidateCounts.entries()).sort((a, b) => b[1] - a[1]);
-      if (sorted[0][1] > sorted[1][1]) chosen = sorted[0][0];
-    }
+    for (const note of notes) {
+      const titleCode = extractCourseCodeFromTitle(note.title);
+      const titleCourseId =
+        titleCode && courseLookup.has(titleCode) ? courseLookup.get(titleCode) : null;
+      const courseNeedsCorrection =
+        note.courseId !== null && titleCourseId !== null && note.courseId !== titleCourseId;
 
-    if (chosen) {
-      noteUpdates.push({ id: note.id, data: { courseId: chosen } });
-      noteSummary.toUpdate++;
-      noteSummary.courseResolvedTag++;
-    } else {
-      noteSummary.courseUnresolved++;
-      noteSummary.skipped++;
-      if (samples.noteNoCourse.length < 30) {
-        samples.noteNoCourse.push({ id: note.id, title: note.title, tagNames });
+      if (note.courseId !== null && !courseNeedsCorrection) {
+        noteSummary.skipped++;
+        continue;
+      }
+      const tagNames = note.tags.map((t) => t.name);
+      let chosen = null;
+      if (titleCourseId) {
+        chosen = titleCourseId;
+        noteSummary.courseResolvedTitleFallback++;
+      } else {
+        const candidateCounts = new Map();
+        for (const tagName of tagNames) {
+          let courseId = courseLookup.get(tagName);
+          if (!courseId) {
+            const extracted = extractCourseFromTag(tagName);
+            if (extracted) courseId = courseLookup.get(extracted.code);
+          }
+          if (courseId) {
+            candidateCounts.set(courseId, (candidateCounts.get(courseId) || 0) + 1);
+          }
+        }
+
+        if (candidateCounts.size === 1) {
+          chosen = candidateCounts.keys().next().value;
+        } else if (candidateCounts.size > 1) {
+          const sorted = Array.from(candidateCounts.entries()).sort((a, b) => b[1] - a[1]);
+          if (sorted[0][1] > sorted[1][1]) chosen = sorted[0][0];
+        }
+      }
+
+      if (chosen) {
+        noteUpdates.push({ id: note.id, data: { courseId: chosen } });
+        noteSummary.toUpdate++;
+        noteSummary.courseResolvedTag++;
+      } else {
+        noteSummary.courseUnresolved++;
+        noteSummary.skipped++;
+        if (samples.noteNoCourse.length < 30) {
+          samples.noteNoCourse.push({ id: note.id, title: note.title, tagNames });
+        }
       }
     }
   }
@@ -465,30 +539,36 @@ async function main() {
   // -------------------------------------------------------------------------
 
   if (!dryRun) {
-    console.log(`\nApplying ${paperUpdates.length} paper updates...`);
-    let done = 0;
-    for (let i = 0; i < paperUpdates.length; i += BATCH_SIZE) {
-      const batch = paperUpdates.slice(i, i + BATCH_SIZE);
-      await prisma.$transaction(
-        batch.map((u) =>
-          prisma.pastPaper.update({ where: { id: u.id }, data: u.data }),
-        ),
-      );
-      done += batch.length;
-      console.log(`  ${done}/${paperUpdates.length}`);
+    if (runPapers) {
+      console.log(`\nApplying ${paperUpdates.length} paper updates...`);
+      let done = 0;
+      for (let i = 0; i < paperUpdates.length; i += BATCH_SIZE) {
+        const batch = paperUpdates.slice(i, i + BATCH_SIZE);
+        await prisma.$transaction(
+          batch.map((u) =>
+            prisma.pastPaper.update({ where: { id: u.id }, data: u.data }),
+          ),
+          { timeout: TRANSACTION_TIMEOUT_MS, maxWait: TRANSACTION_TIMEOUT_MS },
+        );
+        done += batch.length;
+        console.log(`  ${done}/${paperUpdates.length}`);
+      }
     }
 
-    console.log(`\nApplying ${noteUpdates.length} note updates...`);
-    done = 0;
-    for (let i = 0; i < noteUpdates.length; i += BATCH_SIZE) {
-      const batch = noteUpdates.slice(i, i + BATCH_SIZE);
-      await prisma.$transaction(
-        batch.map((u) =>
-          prisma.note.update({ where: { id: u.id }, data: u.data }),
-        ),
-      );
-      done += batch.length;
-      console.log(`  ${done}/${noteUpdates.length}`);
+    if (runNotes) {
+      console.log(`\nApplying ${noteUpdates.length} note updates...`);
+      let done = 0;
+      for (let i = 0; i < noteUpdates.length; i += BATCH_SIZE) {
+        const batch = noteUpdates.slice(i, i + BATCH_SIZE);
+        await prisma.$transaction(
+          batch.map((u) =>
+            prisma.note.update({ where: { id: u.id }, data: u.data }),
+          ),
+          { timeout: TRANSACTION_TIMEOUT_MS, maxWait: TRANSACTION_TIMEOUT_MS },
+        );
+        done += batch.length;
+        console.log(`  ${done}/${noteUpdates.length}`);
+      }
     }
   }
 
@@ -505,12 +585,14 @@ async function main() {
   console.log(`  examType null:        ${paperSummary.examTypeNull}`);
   console.log(`  year null:            ${paperSummary.yearNull}`);
   console.log(`  slot filled:          ${paperSummary.slotFilled}`);
+  console.log(`  answer key flagged:   ${paperSummary.answerKeyFlagged}`);
   console.log(`  incomplete (review):  ${paperSummary.incomplete}`);
   console.log(`\n== Notes ==`);
   console.log(`  total:                ${noteSummary.total}`);
   console.log(`  updating:             ${noteSummary.toUpdate}`);
   console.log(`  skipped:              ${noteSummary.skipped}`);
   console.log(`  course resolved:      ${noteSummary.courseResolvedTag}`);
+  console.log(`  course (title):       ${noteSummary.courseResolvedTitleFallback}`);
   console.log(`  course unresolved:    ${noteSummary.courseUnresolved}`);
 }
 
@@ -520,5 +602,6 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
+    const prisma = await getPrisma();
     await prisma.$disconnect();
   });

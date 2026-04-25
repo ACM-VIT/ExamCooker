@@ -50,6 +50,7 @@ scripts/import-missing-courses.ts
 
 # local working plan
 PLAN.md
+docs/past-paper-prod-cutover.md
 
 .playwright-mcp
 creds.json

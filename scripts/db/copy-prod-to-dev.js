@@ -6,7 +6,7 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true });
 
-const { PrismaClient } = require('@/prisma/generated/client');
+const { PrismaClient } = require('../../src/generated/prisma');
 
 const PROD_URL = process.env.DATABASE_URL;
 const DEV_URL = process.env.DEV_DATABASE;
