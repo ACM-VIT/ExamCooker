@@ -25,7 +25,7 @@ jobs:
       name: production
       url: https://exam-cooker.acmvit.in
     env:
-      DATABASE_URL: postgresql://ci:ci@127.0.0.1:26257/examcooker?sslmode=disable
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       AUTH_SECRET: ci-auth-secret-for-build-only
       NEXTAUTH_SECRET: ci-auth-secret-for-build-only
       AUTH_GOOGLE_ID: ci-google-id.apps.googleusercontent.com
