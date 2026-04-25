@@ -24,6 +24,8 @@ jobs:
     environment:
       name: production
       url: https://exam-cooker.acmvit.in
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:26257/examcooker?sslmode=disable
 
     steps:
       - name: Checkout
