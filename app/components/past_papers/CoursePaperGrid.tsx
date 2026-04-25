@@ -12,12 +12,20 @@ type Props = {
     courseTitle: string;
 };
 
+const WIDE_STRETCH_CLASS_BY_REMAINDER: Partial<Record<number, string>> = {
+    2: "xl:grow xl:max-w-[calc((100%-0.75rem)/2)]",
+    3: "xl:grow xl:max-w-[calc((100%-1.5rem)/3)]",
+    4: "xl:grow xl:max-w-[calc((100%-2.25rem)/4)]",
+};
+
 export default function CoursePaperGrid({
     papers,
     courseCode,
     courseTitle,
 }: Props) {
     const [selected, setSelected] = useState<Set<string>>(new Set());
+    const wideRemainder = papers.length % 5;
+    const wideStretchClass = WIDE_STRETCH_CLASS_BY_REMAINDER[wideRemainder] ?? "";
 
     const toggle = useCallback((id: string) => {
         setSelected((prev) => {
@@ -47,18 +55,23 @@ export default function CoursePaperGrid({
 
     return (
         <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="flex flex-wrap gap-3">
                 {papers.map((paper, index) => (
-                    <ViewTransition key={paper.id}>
-                        <CoursePaperCard
-                            paper={paper}
-                            courseCode={courseCode}
-                            courseTitle={courseTitle}
-                            index={index}
-                            selected={selected.has(paper.id)}
-                            onToggleSelect={toggle}
-                        />
-                    </ViewTransition>
+                    <div
+                        key={paper.id}
+                        className={`min-w-0 basis-[calc((100%-0.75rem)/2)] sm:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-2.25rem)/4)] xl:basis-[calc((100%-3rem)/5)] ${wideStretchClass}`}
+                    >
+                        <ViewTransition>
+                            <CoursePaperCard
+                                paper={paper}
+                                courseCode={courseCode}
+                                courseTitle={courseTitle}
+                                index={index}
+                                selected={selected.has(paper.id)}
+                                onToggleSelect={toggle}
+                            />
+                        </ViewTransition>
+                    </div>
                 ))}
             </div>
 
