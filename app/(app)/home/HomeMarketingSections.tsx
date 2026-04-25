@@ -22,9 +22,8 @@ export default async function HomeMarketingSections() {
         <div className="space-y-24 bg-[#C2E6EC] pt-24 text-black transition-colors dark:bg-[#0C1222] dark:text-[#D5D5D5] md:space-y-40 lg:space-y-[18vh] lg:pt-40">
             <section className="min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-10 px-4 py-16 md:gap-12 md:py-24 lg:min-h-0 lg:h-screen lg:py-12 lg:sticky lg:top-[-50px]">
                 <WordBetweenLine>
-                    <div className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                         For Crammers By Crammers
-                    </div>
+
                 </WordBetweenLine>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-5 mx-auto w-full max-w-5xl">
                     <LandingPageCard
@@ -60,9 +59,7 @@ export default async function HomeMarketingSections() {
 
             <section className="relative z-10 min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-8 px-4 py-16 md:py-24 lg:min-h-0 lg:h-screen lg:py-12 lg:sticky lg:top-0">
                 <WordBetweenLine>
-                    <div className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                         Why Exam<GradientText>Cooker</GradientText>?
-                    </div>
                 </WordBetweenLine>
                 <h4 className="px-4 md:px-16 text-center text-base md:text-lg lg:text-xl leading-relaxed max-w-4xl mx-auto">
                     Remember the days of desperately searching the web for past papers,
@@ -97,9 +94,7 @@ export default async function HomeMarketingSections() {
             <section className="relative z-30 min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] flex flex-col justify-center gap-6 px-4 py-16 md:py-24 lg:min-h-0 lg:h-screen lg:py-12 lg:sticky lg:top-0">
                 <WordBetweenLine>
                     <div className="flex items-center justify-center">
-                        <span className="drop-shadow-[0px_2px_rgba(59,244,199,1)]">
                             Made With
-                        </span>
                         <Image
                             src={GradientHeart}
                             alt="Gradient Heart"
