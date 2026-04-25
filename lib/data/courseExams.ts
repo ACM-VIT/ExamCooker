@@ -5,10 +5,6 @@ import { examTypeLabel, examTypeToSlug, ALL_EXAM_TYPES } from "@/lib/examSlug";
 import type { ExamType } from "@/prisma/generated/client";
 
 export async function getCourseExamCombos() {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const combos = await prisma.pastPaper.findMany({
         where: {
             isClear: true,
