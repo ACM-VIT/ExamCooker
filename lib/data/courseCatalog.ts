@@ -3,11 +3,17 @@ import Fuse from "fuse.js";
 import prisma from "@/lib/prisma";
 import { normalizeCourseCode } from "@/lib/courseTags";
 
-const FALLBACK_CATALOG_STATS = {
+type CatalogStats = {
+    courseCount: number;
+    paperCount: number;
+    noteCount: number;
+};
+
+const FALLBACK_CATALOG_STATS: CatalogStats = {
     courseCount: 0,
     paperCount: 0,
     noteCount: 0,
-} satisfies CatalogStats;
+};
 
 const CATALOG_STATS_RETRY_LIMIT = 3;
 const CATALOG_STATS_RETRY_DELAY_MS = 250;
@@ -27,8 +33,8 @@ function isRetryableCatalogStatsError(error: unknown) {
     const message = error instanceof Error ? error.message.toLowerCase() : "";
     return (
         message.includes("server has closed the connection") ||
-        message.includes("connectionclosed") ||
         message.includes("connection closed") ||
+        message.includes("connectionclosed") ||
         message.includes("can't reach database server") ||
         message.includes("timed out")
     );
@@ -286,12 +292,6 @@ export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> 
         .filter((c) => c.paperCount > 0 || c.noteCount > 0 || c.syllabusId)
         .sort((a, b) => b.paperCount - a.paperCount);
 }
-
-export type CatalogStats = {
-    courseCount: number;
-    paperCount: number;
-    noteCount: number;
-};
 
 export async function getCatalogStats(): Promise<CatalogStats> {
     "use cache";

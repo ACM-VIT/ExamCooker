@@ -40,6 +40,10 @@ next-env.d.ts
 
 # generated reports
 scripts/reports/
+prisma/generated
+lib/generated
+import-answer-key-papers.ts
+import-missing-courses.ts
 
 
 # generated files 
