@@ -54,6 +54,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId], map: "accounts_user_id_idx")
   @@map("accounts")
 }
 
@@ -64,6 +65,8 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId], map: "sessions_user_id_idx")
+  @@index([expires], map: "sessions_expires_idx")
   @@map("sessions")
 }
 
@@ -128,6 +131,8 @@ model UpcomingExam {
 
   @@index([courseId])
   @@index([scheduledAt])
+  @@index([courseId, scheduledAt])
+  @@index([scheduledAt, createdAt])
 }
 
 model Note {
@@ -149,7 +154,10 @@ model Note {
 
   @@index([isClear, createdAt])
   @@index([createdAt])
+  @@index([authorId])
   @@index([courseId])
+  @@index([courseId, isClear, createdAt])
+  @@index([courseId, isClear, updatedAt])
 }
 
 model ViewHistory {
@@ -174,6 +182,12 @@ model ViewHistory {
   @@unique([userId, forumPostId])
   @@unique([userId, subjectId])
   @@unique([userId, syllabusId])
+  @@index([userId, viewedAt])
+  @@index([pastPaperId])
+  @@index([noteId])
+  @@index([forumPostId])
+  @@index([subjectId])
+  @@index([syllabusId])
 }
 
 model Forum {
@@ -204,6 +218,8 @@ model ForumPost {
   votes         Vote[]
 
   @@index([createdAt])
+  @@index([authorId])
+  @@index([forumId, createdAt])
 }
 
 model Vote {
@@ -217,6 +233,7 @@ model Vote {
   updatedAt   DateTime  @updatedAt
 
   @@unique([userId, forumPostId])
+  @@index([forumPostId])
 }
 
 enum VoteType {
@@ -233,6 +250,9 @@ model Comment {
   forumPostId String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([authorId])
+  @@index([forumPostId, createdAt])
 }
 
 model PastPaper {
@@ -263,9 +283,15 @@ model PastPaper {
 
   @@index([isClear, createdAt])
   @@index([createdAt])
+  @@index([authorId])
   @@index([courseId, examType])
   @@index([courseId, year])
   @@index([courseId, slot])
+  @@index([courseId, isClear, createdAt])
+  @@index([courseId, isClear, year, createdAt])
+  @@index([courseId, isClear, examType, year, createdAt])
+  @@index([courseId, isClear, examType, slot, year, semester, campus, hasAnswerKey, createdAt], map: "PastPaper_metadata_sibling_idx")
+  @@index([isClear, examType, courseId, year, createdAt])
 }
 
 model Tag {
@@ -297,6 +323,8 @@ model Module {
   subjectId     String
   webReferences String[]
   youtubeLinks  String[]
+
+  @@index([subjectId])
 }
 
 model syllabi {
@@ -305,6 +333,8 @@ model syllabi {
   fileUrl      String
   bookmarkedBy User[]        @relation("UserBookmarkedSyllabus")
   viewHistory  ViewHistory[]
+
+  @@index([name])
 }
 
 enum StudyScope {
