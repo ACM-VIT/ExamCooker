@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { usePathname } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { useSession } from "next-auth/react";
 import ThemeToggleSwitch from "@/app/components/common/ThemeToggle";
 import { SignOut } from "@/app/components/sign-out";
@@ -215,7 +216,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                 type="button"
                 title="Sign in"
                 aria-label="Sign in"
-                onClick={() => window.location.assign("/api/auth/init")}
+                onClick={() => signIn("google", { callbackUrl: pathname ?? "/" })}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-black/70 transition-colors duration-200 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
               >
                 <svg
