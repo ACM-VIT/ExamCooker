@@ -21,6 +21,8 @@ import {
 } from "@/lib/seo";
 import CourseHeader from "@/app/components/past_papers/CourseHeader";
 import FilterBar from "@/app/components/past_papers/FilterBar";
+import FilterSheet from "@/app/components/past_papers/FilterSheet";
+import AnswerKeyButton from "@/app/components/past_papers/AnswerKeyButton";
 import SortDropdown from "@/app/components/past_papers/SortDropdown";
 import AnswerKeyToggle from "@/app/components/past_papers/AnswerKeyToggle";
 import CoursePaperGrid from "@/app/components/past_papers/CoursePaperGrid";
@@ -284,28 +286,50 @@ export default async function CoursePastPapersPage({
                     />
 
                     <section className="flex flex-col gap-2">
-                        <FilterBar
-                            options={options}
-                            examCounts={options.examCounts}
-                            yearCounts={options.yearCounts}
-                            slotCounts={options.slotCounts}
-                            searchString={searchString}
-                        />
-
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-[#D5D5D5]/10">
-                            <div className="flex flex-wrap items-center gap-3">
-                                <AnswerKeyToggle
-                                    count={options.answerKeyCount}
+                        <div className="flex items-center justify-between gap-2 sm:hidden">
+                            <div className="flex items-center gap-2">
+                                <FilterSheet
+                                    options={options}
+                                    examCounts={options.examCounts}
+                                    yearCounts={options.yearCounts}
+                                    slotCounts={options.slotCounts}
                                     searchString={searchString}
+                                    totalCount={totalCount}
                                 />
-                                <SortDropdown
-                                    value={filters.sort}
+                                <AnswerKeyButton
+                                    count={options.answerKeyCount}
                                     searchString={searchString}
                                 />
                             </div>
                             <p className="text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
                                 {totalCount} result{totalCount === 1 ? "" : "s"}
                             </p>
+                        </div>
+
+                        <div className="hidden flex-col gap-2 sm:flex sm:gap-1.5">
+                            <FilterBar
+                                options={options}
+                                examCounts={options.examCounts}
+                                yearCounts={options.yearCounts}
+                                slotCounts={options.slotCounts}
+                                searchString={searchString}
+                            />
+
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-[#D5D5D5]/10">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <AnswerKeyToggle
+                                        count={options.answerKeyCount}
+                                        searchString={searchString}
+                                    />
+                                    <SortDropdown
+                                        value={filters.sort}
+                                        searchString={searchString}
+                                    />
+                                </div>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
+                                    {totalCount} result{totalCount === 1 ? "" : "s"}
+                                </p>
+                            </div>
                         </div>
                     </section>
 

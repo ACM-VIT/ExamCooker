@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import PDFViewerClient from "@/app/components/PDFViewerClient";
@@ -91,7 +92,7 @@ export default async function CourseSyllabusPage({
 
     return (
         <DirectionalTransition>
-            <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
+            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
                 <StructuredData
                     data={[
                         buildBreadcrumbList([
@@ -128,28 +129,42 @@ export default async function CourseSyllabusPage({
                     title={`${context.title} syllabus`}
                 />
 
-                <div className="lg:w-1/2 flex flex-col overflow-hidden">
-                    <div className="flex-grow overflow-y-auto p-2 sm:p-4 lg:p-8">
-                        <div className="max-w-2xl mx-auto">
-                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55 mb-4">
-                                <Link
-                                    href="/syllabus"
-                                    transitionTypes={["nav-back"]}
-                                    className="hover:text-black dark:hover:text-[#D5D5D5]"
-                                >
-                                    Syllabus
-                                </Link>
-                                <span aria-hidden="true">›</span>
-                                <span>{context.code}</span>
-                            </div>
-                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{context.title}</h1>
-                        </div>
-                    </div>
-                </div>
+                <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
+                    <Link
+                        href="/syllabus"
+                        transitionTypes={["nav-back"]}
+                        className="group inline-flex w-fit items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-black/55 hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
+                    >
+                        <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} />
+                        <span>Back to syllabus</span>
+                    </Link>
 
-                <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-2 sm:p-4">
-                    <div className="h-full overflow-auto">
-                        <PDFViewerClient fileUrl={context.syllabus.fileUrl} />
+                    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
+                                {context.title}
+                            </h1>
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                                <span className="inline-flex items-center gap-1.5 border border-black/15 bg-white px-2.5 py-1 text-xs font-semibold text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]">
+                                    <span className="text-[10px] uppercase tracking-wider text-black/45 dark:text-[#D5D5D5]/45">
+                                        Course
+                                    </span>
+                                    <span>{context.code}</span>
+                                </span>
+                                <span className="inline-flex items-center gap-1.5 border border-black/15 bg-white px-2.5 py-1 text-xs font-semibold text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]">
+                                    <span className="text-[10px] uppercase tracking-wider text-black/45 dark:text-[#D5D5D5]/45">
+                                        Type
+                                    </span>
+                                    <span>Syllabus</span>
+                                </span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
+                        <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
+                            <PDFViewerClient fileUrl={context.syllabus.fileUrl} />
+                        </div>
                     </div>
                 </div>
             </div>

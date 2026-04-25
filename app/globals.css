@@ -121,6 +121,32 @@
     view-transition-name: none !important;
 }
 
+.filter-sheet-content {
+    view-transition-name: filter-sheet-content;
+}
+
+.filter-sheet-overlay {
+    view-transition-name: filter-sheet-overlay;
+}
+
+::view-transition-group(filter-sheet-content),
+::view-transition-group(filter-sheet-overlay) {
+    animation: none !important;
+}
+
+::view-transition-old(filter-sheet-content),
+::view-transition-new(filter-sheet-content),
+::view-transition-old(filter-sheet-overlay),
+::view-transition-new(filter-sheet-overlay) {
+    animation: none !important;
+    mix-blend-mode: normal;
+}
+
+:active-view-transition-type(filter-sheet-update)::view-transition-old(root),
+:active-view-transition-type(filter-sheet-update)::view-transition-new(root) {
+    animation: none !important;
+}
+
 @keyframes fade {
     from { filter: blur(3px); opacity: 0; }
     to { filter: blur(0); opacity: 1; }

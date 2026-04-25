@@ -16,13 +16,19 @@ type RecentItem = {
     year: number | null;
 };
 
-export default function RecentPaperStrip({ items }: { items: RecentItem[] }) {
+export default function RecentPaperStrip({
+    items,
+    title = "Recently added",
+}: {
+    items: RecentItem[];
+    title?: string;
+}) {
     if (items.length === 0) return null;
     return (
         <section className="flex flex-col gap-4">
             <header className="flex items-end justify-between">
                 <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
-                    Recently added
+                    {title}
                 </h2>
             </header>
             <div className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
