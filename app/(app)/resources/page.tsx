@@ -94,14 +94,14 @@ export default async function ResourcesPage({
                                 />
                             </div>
                             <div className="group relative inline-flex h-12 shrink-0 items-stretch">
-                                <div className="absolute inset-0 dark:bg-[#3BF4C7]" />
+                                <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
                                 <div className="absolute inset-0 blur-[60px] bg-[#82BEE9] opacity-0 transition duration-200 group-hover:opacity-25 dark:hidden" />
                                 <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
                                 <a
                                     href={meta.source.coursesUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="relative inline-flex h-full items-center gap-1.5 border-2 border-black bg-[#82BEE9] px-4 text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-0.5 dark:group-hover:-translate-y-0.5"
+                                    className="relative inline-flex h-full items-center gap-1.5 border-2 border-black bg-[#82BEE9] px-4 text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]"
                                 >
                                     Source
                                     <ArrowUpRight className="h-4 w-4" />

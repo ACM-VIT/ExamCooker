@@ -118,15 +118,20 @@ const UpsellToast = () => {
                     <p className="mt-1 text-[13px] leading-snug text-black/60 dark:text-[#D5D5D5]/60 sm:mt-1.5 sm:text-sm sm:leading-normal">
                         {upsell.description}
                     </p>
-                    <a
-                        href={upsell.cta.href}
-                        target={upsell.cta.external ? "_blank" : undefined}
-                        rel={upsell.cta.external ? "noopener noreferrer" : undefined}
-                        onClick={handleCtaClick}
-                        className={`mt-3 inline-flex h-9 w-full items-center justify-center border-2 border-transparent text-sm font-semibold transition-colors duration-150 sm:mt-4 sm:h-10 ${styles.cta} ${styles.ctaDark}`}
-                    >
-                        {upsell.cta.label}
-                    </a>
+                    <div className="group relative mt-3 inline-flex w-full items-stretch sm:mt-4">
+                        <div className="absolute inset-0 dark:bg-[#3BF4C7]" />
+                        <div className="absolute inset-0 bg-[#3BF4C7] blur-[60px] opacity-0 transition duration-200 group-hover:opacity-20 dark:hidden" />
+                        <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
+                        <a
+                            href={upsell.cta.href}
+                            target={upsell.cta.external ? "_blank" : undefined}
+                            rel={upsell.cta.external ? "noopener noreferrer" : undefined}
+                            onClick={handleCtaClick}
+                            className="relative inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-0.5 dark:group-hover:-translate-y-0.5"
+                        >
+                            {upsell.cta.label}
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

@@ -5,9 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { GradientText } from "@/app/components/landing_page/landing";
 
-/* ─── storage ─── */
 const MODAL_STORAGE_KEY = "examcooker.upsellModal.v1";
-const MODAL_SHOW_DELAY_MS = 1400;
+const MODAL_SHOW_DELAY_MS = 2400;
 
 function hasSeenModal(): boolean {
     if (typeof window === "undefined") return true;
@@ -27,7 +26,6 @@ function markModalSeen() {
     }
 }
 
-/* ─── features list ─── */
 const FEATURES = [
     {
         title: "Resource Repository",
@@ -71,10 +69,6 @@ const UpsellModal = () => {
         window.setTimeout(() => setPhase("closed"), 320);
     }, []);
 
-    const handleCtaClick = useCallback(() => {
-        markModalSeen();
-    }, []);
-
     const isVisible = phase === "open";
     const isRendered = phase !== "idle" && phase !== "closed";
 
@@ -97,7 +91,7 @@ const UpsellModal = () => {
 
             {/* modal card */}
             <div
-                className="relative w-full max-w-[26rem] overflow-hidden border-2 border-[#5FC4E7] bg-white dark:border-[#3BF4C7]/25 dark:bg-[#0C1222] sm:max-w-[28rem]"
+                className="relative w-full max-w-[26rem] overflow-hidden bg-white dark:bg-[#0C1222] sm:max-w-[28rem]"
                 style={{
                     transitionProperty: "transform, opacity",
                     transitionDuration: "320ms",
@@ -153,34 +147,31 @@ const UpsellModal = () => {
                     </div>
 
                     {/* features */}
-                    <div className="mt-5 sm:mt-6">
+                    <div className="mt-5 space-y-2.5 sm:mt-6">
                         {FEATURES.map((f) => (
                             <div
                                 key={f.title}
-                                className="flex items-start gap-3 border-t border-black/[0.08] py-3 first:border-t-0 first:pt-0 last:pb-0 dark:border-[#D5D5D5]/[0.08]"
+                                className="px-3 py-3 text-center"
                             >
-                                <div className="mt-[5px] h-2 w-2 shrink-0 bg-[#3BF4C7]" />
-                                <div className="min-w-0">
-                                    <p className="text-[13px] font-semibold text-black dark:text-[#D5D5D5] sm:text-sm">
-                                        {f.title}
-                                    </p>
-                                    <p className="mt-0.5 text-[12px] leading-snug text-black/50 dark:text-[#D5D5D5]/45 sm:text-[13px]">
-                                        {f.desc}
-                                    </p>
-                                </div>
+                                <p className="text-[13px] font-semibold tracking-tight text-black dark:text-[#D5D5D5] sm:text-sm">
+                                    {f.title}
+                                </p>
+                                <p className="mx-auto mt-1 max-w-[30ch] text-[12px] leading-snug text-black/55 dark:text-[#D5D5D5]/50 sm:text-[13px]">
+                                    {f.desc}
+                                </p>
                             </div>
                         ))}
                     </div>
 
                     {/* CTA */}
                     <div className="group relative mt-5 inline-flex w-full items-stretch sm:mt-6">
-                        <div className="absolute inset-0 dark:bg-[#3BF4C7]" />
+                        <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
                         <div className="absolute inset-0 bg-[#3BF4C7] blur-[60px] opacity-0 transition duration-200 group-hover:opacity-20 dark:hidden" />
                         <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
                         <Link
                             href="/"
-                            onClick={handleCtaClick}
-                            className="relative inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-0.5 dark:group-hover:-translate-y-0.5"
+                            onClick={handleDismiss}
+                            className="relative inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]"
                         >
                             Explore what&apos;s new
                         </Link>

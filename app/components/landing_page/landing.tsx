@@ -155,10 +155,8 @@ function LandingPageContent() {
         <div className="hidden lg:block absolute bottom-0 left-0  w-[200px] h-[100px] rounded-full blur-[100px] bg-none transition duration-1000 bg-[#8DCAE9]"></div>
         <WordBetweenLine>
           <div id="sign-in" className="text-center">
-            <GradientText>
-              Start Cooking Your
-              <br /> Academic Success Today{" "}
-            </GradientText>
+            Start <GradientText>Cooking</GradientText> Your
+            <br /> Academic <GradientText>Success</GradientText> Today
           </div>
         </WordBetweenLine>
         <br />
