@@ -3,19 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import type { UpcomingExamItem } from "@/lib/data/upcomingExams";
 
-function formatWhen(date: Date | null): string {
-    if (!date) return "unscheduled";
-    const now = new Date();
-    const diffMs = date.getTime() - now.getTime();
-    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    if (days <= 0) return "today";
-    if (days === 1) return "tomorrow";
-    if (days <= 14) return `in ${days} days`;
-    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
 function MarqueeItem({ item }: { item: UpcomingExamItem }) {
-    const when = formatWhen(item.scheduledAt);
     return (
         <Link
             href={`/past_papers/${encodeURIComponent(item.courseCode)}`}
@@ -28,9 +16,6 @@ function MarqueeItem({ item }: { item: UpcomingExamItem }) {
             </span>
             <span className="font-semibold underline-offset-4 decoration-1 group-hover:underline">
                 {item.courseTitle}
-            </span>
-            <span className="text-xs tracking-wide text-black/45 dark:text-[#D5D5D5]/45 group-hover:text-current md:text-sm">
-                — {when}
             </span>
         </Link>
     );
