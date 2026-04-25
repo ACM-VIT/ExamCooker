@@ -32,7 +32,7 @@ export const UPSELLS: Upsell[] = [
         eyebrow: "Open source",
         title: "ExamCooker is built by students",
         description:
-            "Spot a bug or have an idea? Star the repo or open an issue — contributions welcome.",
+            "Spot a bug or have an idea? Star the repo or open an issue. Contributions welcome.",
         cta: {
             label: "Star on GitHub",
             href: "https://github.com/ACM-VIT/ExamCooker-2024",
@@ -40,6 +40,18 @@ export const UPSELLS: Upsell[] = [
         },
         accent: "blue",
     },
+    {
+        id: "resource-repo-launch-v1",
+        eyebrow: "New feature",
+        title: "Resource Repository is here",
+        description:
+            "Structured video lectures, key takeaways, and practice questions. All organized by module and topic.",
+        cta: {
+            label: "Explore resources",
+            href: "/resources",
+        },
+        accent: "mint",
+    }
 ];
 
 export const UPSELL_COOLDOWN_MS = 24 * 60 * 60 * 1000;

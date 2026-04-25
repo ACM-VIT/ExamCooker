@@ -6,38 +6,49 @@ import { useBookmarks } from "./BookmarksProvider";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import Image from "@/app/components/common/AppImage";
-import { parsePaperTitle, ParsedPaperTitle } from "@/lib/paperTitle";
+import { getPastPaperDetailPath } from "@/lib/seo";
 
 interface PastPaperCardProps {
   pastPaper: {
     id: string;
     title: string;
     thumbNailUrl?: string | null;
+    examType?: string | null;
+    slot?: string | null;
+    year?: number | null;
+    course?: { code: string; title?: string } | null;
   };
   index: number;
   openInNewTab?: boolean;
+  transitionTypes?: string[] | false;
 }
 
-function getDisplayTitle(title: string, parsed: ParsedPaperTitle) {
-  const courseName = parsed.courseName?.trim();
-  const baseTitle = courseName ?? parsed.cleanTitle;
-  return baseTitle || parsed.cleanTitle || title.replace(/\.pdf$/i, "");
+function buildMetadata(p: PastPaperCardProps["pastPaper"]) {
+  return [
+    p.examType?.replace(/_/g, "-"),
+    p.slot ? `Slot ${p.slot}` : undefined,
+    p.year?.toString(),
+    p.course?.code,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
-function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
+function PastPaperCard({
+  pastPaper,
+  index,
+  openInNewTab,
+  transitionTypes,
+}: PastPaperCardProps) {
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const isFav = isBookmarked(pastPaper.id, "pastpaper");
   const { toast } = useToast();
 
-  const parsedTitle = parsePaperTitle(pastPaper.title);
-  const displayTitle = getDisplayTitle(pastPaper.title, parsedTitle);
-  const metadataParts = [
-    parsedTitle.examType,
-    parsedTitle.slot ? `Slot ${parsedTitle.slot}` : undefined,
-    parsedTitle.academicYear ?? parsedTitle.year,
-    parsedTitle.courseCode,
-  ].filter(Boolean);
-  const metadata = metadataParts.join(" | ");
+  const displayTitle =
+    pastPaper.course?.title ??
+    pastPaper.title.replace(/\.pdf$/i, "");
+  const metadata = buildMetadata(pastPaper);
+  const href = getPastPaperDetailPath(pastPaper.id, pastPaper.course?.code);
 
   const handleToggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -56,10 +67,34 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
   return (
     <div className={`max-w-sm w-full h-full text-black dark:text-[#D5D5D5]`}>
       <Link
-        href={`/past_papers/${pastPaper.id}`}
+        href={href}
         prefetch={index < 3}
-        className="block hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 cursor-pointer"
+        transitionTypes={openInNewTab || transitionTypes === false ? undefined : transitionTypes ?? ["nav-forward"]}
+        target={openInNewTab ? "_blank" : undefined}
+        className="group block max-w-96 cursor-pointer border-2 border-[#5FC4E7] bg-[#5FC4E7] text-center transition duration-200 hover:scale-105 hover:shadow-xl hover:border-b-2 hover:border-b-[#ffffff] dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 lg:dark:bg-[#0C1222]"
       >
+        <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">
+          <div className="min-w-0 flex-1 text-left">
+            {metadata ? (
+              <div className="mb-1 text-xs font-bold text-black/60 dark:text-[#D5D5D5]/70">
+                {metadata}
+              </div>
+            ) : null}
+            <div className="w-full text-sm font-semibold leading-snug text-black dark:text-[#D5D5D5] line-clamp-2 select-text">
+              {displayTitle}
+            </div>
+          </div>
+          <button
+            onClick={handleToggleFav}
+            className="mt-0.5 shrink-0 transition-colors duration-200"
+          >
+            <FontAwesomeIcon
+              icon={faHeart}
+              color={isFav ? "red" : "lightgrey"}
+            />
+          </button>
+        </div>
+
         <div className="bg-[#d9d9d9] w-full h-44 relative overflow-hidden">
           <Image
             src={pastPaper.thumbNailUrl || "/assets/ExamCooker.png"}
@@ -70,66 +105,9 @@ function PastPaperCard({ pastPaper, index }: PastPaperCardProps) {
             priority={index < 3}
           />
         </div>
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1 text-left select-text">
-            <div className="mb-1 w-full whitespace-nowrap overflow-hidden text-ellipsis text-lg select-text">
-              {displayTitle}
-            </div>
-            {metadata ? (
-              <div className="text-xs text-black/70 dark:text-white/70 whitespace-nowrap overflow-hidden text-ellipsis select-text">
-                {metadata}
-              </div>
-            ) : null}
-          </div>
-          <button
-            onClick={handleToggleFav}
-            className="transition-colors duration-200"
-          >
-            <FontAwesomeIcon
-              icon={faHeart}
-              color={isFav ? "red" : "lightgrey"}
-            />
-          </button>
-        </div>
       </Link>
     </div>
   );
 }
 
 export default PastPaperCard;
-
-//     return (
-//         <div className="max-w-sm w-full h-full text-black dark:text-[#D5D5D5] ">
-//             <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2 dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96">
-//                 <div className="bg-[#d9d9d9] w-full h-44 overflow-hidden">
-//                     <img
-//                         src="https://topperworld.in/media/2022/11/c-sc.png"
-//                         alt={pastPaper.title}
-//                         className="w-full h-full object-cover"
-//                     />
-//                 </div>
-//                 <div className="mb-2 w-full whitespace-nowrap overflow-hidden text-ellipsis">
-//                     {removePdfExtension(pastPaper.title)}
-//                 </div>
-//                 <div className="flex justify-between items-center space-x-4">
-//                     <div></div>
-//                     <Link
-//                         href={`/past_papers/${pastPaper.id}`}
-//                         {...(openInNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-//                         className="py-1 px-2 text-sm flex items-center bg-white dark:bg-[#3D414E]"
-//                     >
-//                         <span className="mr-1 flex items-center justify-center">
-//                             <FontAwesomeIcon icon={faEye} />
-//                         </span>
-//                         View
-//                     </Link>
-//                     <button onClick={handleToggleFav} style={{ color: isFavorite(pastPaper.id, 'pastPaper') ? 'red' : 'lightgrey' }}>
-//                         <FontAwesomeIcon icon={faHeart} />
-//                     </button>
-//                 </div>
-//             </div>
-//         </div>
-//     );
-// }
-//
-// export default PastPaperCard;

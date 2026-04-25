@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { recordGuestRecentView } from "@/app/lib/guestStorage";
+import { recordGuestRecentView } from "@/lib/guestStorage";
 import { recordViewAction, type ViewableItemType } from "@/app/actions/recordView";
 
 type ViewTrackerProps = {

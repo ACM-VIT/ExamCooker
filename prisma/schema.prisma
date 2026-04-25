@@ -1,12 +1,11 @@
-datasource db {
-  provider = "cockroachdb"
-  url      = env("DATABASE_URL")
+generator client {
+  provider        = "prisma-client"
+  previewFeatures = ["relationJoins"]
+  output          = "./generated"
 }
 
-generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+datasource db {
+  provider = "cockroachdb"
 }
 
 model User {
@@ -31,6 +30,7 @@ model User {
   bookmarkedForumPosts ForumPost[]   @relation("UserBookmarkedForumPosts")
   bookmarkedSyllabus   syllabi[]     @relation("UserBookmarkedSyllabus")
   votes                Vote[]
+  studyChats           StudyChat[]
 }
 
 model Account {
@@ -72,6 +72,64 @@ enum Role {
   MODERATOR
 }
 
+enum ExamType {
+  CAT_1
+  CAT_2
+  FAT
+  MODEL_CAT_1
+  MODEL_CAT_2
+  MODEL_FAT
+  MID
+  QUIZ
+  CIA
+  OTHER
+}
+
+enum Semester {
+  FALL
+  WINTER
+  SUMMER
+  WEEKEND
+  UNKNOWN
+}
+
+enum Campus {
+  VELLORE
+  CHENNAI
+  AP
+  BHOPAL
+  BANGALORE
+  MAURITIUS
+}
+
+model Course {
+  id            String         @id @default(cuid())
+  code          String         @unique
+  title         String
+  aliases       String[]
+  papers        PastPaper[]
+  notes         Note[]
+  upcomingExams UpcomingExam[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([title])
+}
+
+model UpcomingExam {
+  id          String    @id @default(cuid())
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  slots       String[]
+  examType    ExamType?
+  scheduledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([courseId])
+  @@index([scheduledAt])
+}
+
 model Note {
   id           String        @id @default(cuid())
   title        String
@@ -81,13 +139,17 @@ model Note {
   thumbNailUrl String?
   isClear      Boolean       @default(false)
   tags         Tag[]
+  courseId     String?
+  course       Course?       @relation(fields: [courseId], references: [id])
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   bookmarkedBy User[]        @relation("UserBookmarkedNotes")
   ViewHistory  ViewHistory[]
+  studyChats   StudyChat[]
 
   @@index([isClear, createdAt])
   @@index([createdAt])
+  @@index([courseId])
 }
 
 model ViewHistory {
@@ -174,21 +236,36 @@ model Comment {
 }
 
 model PastPaper {
-  id           String        @id @default(cuid())
-  title        String
-  fileUrl      String
-  thumbNailUrl String?
-  tags         Tag[]
-  author       User          @relation(fields: [authorId], references: [id], name: "UserPastPapers")
-  authorId     String
-  isClear      Boolean       @default(false)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  bookmarkedBy User[]        @relation("UserBookmarkedPastPapers")
-  viewHistory  ViewHistory[]
+  id               String        @id @default(cuid())
+  title            String
+  fileUrl          String
+  thumbNailUrl     String?
+  tags             Tag[]
+  author           User          @relation(fields: [authorId], references: [id], name: "UserPastPapers")
+  authorId         String
+  isClear          Boolean       @default(false)
+  courseId         String?
+  course           Course?       @relation(fields: [courseId], references: [id])
+  examType         ExamType?
+  slot             String?
+  year             Int?
+  semester         Semester      @default(UNKNOWN)
+  campus           Campus        @default(VELLORE)
+  hasAnswerKey     Boolean       @default(false)
+  questionPaperId  String?       @unique
+  questionPaper    PastPaper?    @relation("PastPaperAnswerKeyLink", fields: [questionPaperId], references: [id], onDelete: SetNull)
+  answerKeyVariant PastPaper?    @relation("PastPaperAnswerKeyLink")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  bookmarkedBy     User[]        @relation("UserBookmarkedPastPapers")
+  viewHistory      ViewHistory[]
+  studyChats       StudyChat[]
 
   @@index([isClear, createdAt])
   @@index([createdAt])
+  @@index([courseId, examType])
+  @@index([courseId, year])
+  @@index([courseId, slot])
 }
 
 model Tag {
@@ -230,6 +307,44 @@ model syllabi {
   viewHistory  ViewHistory[]
 }
 
+enum StudyScope {
+  NOTE
+  PAST_PAPER
+  COURSE
+}
+
+model StudyChat {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope       StudyScope
+  noteId      String?
+  note        Note?          @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  pastPaperId String?
+  pastPaper   PastPaper?     @relation(fields: [pastPaperId], references: [id], onDelete: SetNull)
+  courseCode  String?
+  title       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  messages    StudyMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, noteId])
+  @@index([userId, pastPaperId])
+  @@index([userId, courseCode])
+}
+
+model StudyMessage {
+  id        String    @id @default(cuid())
+  chatId    String
+  chat      StudyChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role      String
+  parts     Json
+  createdAt DateTime  @default(now())
+
+  @@index([chatId, createdAt])
+}
+
 enum crdb_internal_region {
   aws_ap_south_1 @map("aws-ap-south-1")
-} 
+}

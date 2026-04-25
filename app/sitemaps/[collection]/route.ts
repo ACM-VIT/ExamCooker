@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getBaseUrl, safeEncodeURIComponent } from "@/lib/seo";
-import { getCourseCatalog } from "@/lib/data/courses";
-import { getCourseExamCombos } from "@/lib/data/courseExams";
+import {
+    getBaseUrl,
+    getCourseExamPath,
+    getCourseNotesPath,
+    getCourseResourcesPath,
+    getCourseSyllabusPath,
+    getExamHubPath,
+    getPastPaperDetailPath,
+    parseSubjectName,
+    parseSyllabusName,
+    safeEncodeURIComponent,
+} from "@/lib/seo";
+import { getCourseGrid, getSearchableCourses } from "@/lib/data/courseCatalog";
+import {
+    getCourseExamCombos,
+    getExamHubSummaries,
+} from "@/lib/data/courseExams";
 
 const PAGE_SIZE = 40000;
 
@@ -47,7 +61,6 @@ export async function GET(
             { loc: `${baseUrl}/` },
             { loc: `${baseUrl}/notes` },
             { loc: `${baseUrl}/past_papers` },
-            { loc: `${baseUrl}/courses` },
             { loc: `${baseUrl}/resources` },
             { loc: `${baseUrl}/syllabus` },
         ];
@@ -69,43 +82,76 @@ export async function GET(
             orderBy: { updatedAt: "desc" },
             skip,
             take: PAGE_SIZE,
-            select: { id: true, updatedAt: true },
+            select: {
+                id: true,
+                updatedAt: true,
+                title: true,
+                course: {
+                    select: {
+                        code: true,
+                    },
+                },
+            },
         });
         entries = papers.map((paper) => ({
-            loc: `${baseUrl}/past_papers/${paper.id}`,
+            loc: `${baseUrl}${getPastPaperDetailPath(paper.id, paper.course?.code ?? null)}`,
             lastmod: paper.updatedAt.toISOString(),
         }));
     } else if (collectionName === "courses") {
-        const courses = await getCourseCatalog(2);
+        const courses = await getCourseGrid();
         const pageItems = courses.slice(skip, skip + PAGE_SIZE);
         entries = pageItems.map((course) => ({
-            loc: `${baseUrl}/courses/${safeEncodeURIComponent(course.code)}`,
+            loc: `${baseUrl}/past_papers/${safeEncodeURIComponent(course.code)}`,
         }));
     } else if (collectionName === "course-exams") {
         const combos = await getCourseExamCombos();
         const pageItems = combos.slice(skip, skip + PAGE_SIZE);
         entries = pageItems.map((combo) => ({
-            loc: `${baseUrl}/courses/${safeEncodeURIComponent(combo.code)}/${combo.examSlug}`,
+            loc: `${baseUrl}${getCourseExamPath(combo.code, combo.examSlug)}`,
+        }));
+    } else if (collectionName === "course-notes") {
+        const courses = await getSearchableCourses();
+        const pageItems = courses
+            .filter((course) => course.noteCount > 0)
+            .slice(skip, skip + PAGE_SIZE);
+        entries = pageItems.map((course) => ({
+            loc: `${baseUrl}${getCourseNotesPath(course.code)}`,
         }));
     } else if (collectionName === "resources") {
         const subjects = await prisma.subject.findMany({
             orderBy: { name: "asc" },
             skip,
             take: PAGE_SIZE,
-            select: { id: true },
+            select: { id: true, name: true },
         });
         entries = subjects.map((subject) => ({
-            loc: `${baseUrl}/resources/${subject.id}`,
+            loc: `${baseUrl}${(() => {
+                const parsed = parseSubjectName(subject.name);
+                return parsed.courseCode
+                    ? getCourseResourcesPath(parsed.courseCode)
+                    : `/resources/${subject.id}`;
+            })()}`,
         }));
     } else if (collectionName === "syllabus") {
         const syllabi = await prisma.syllabi.findMany({
             orderBy: { name: "asc" },
             skip,
             take: PAGE_SIZE,
-            select: { id: true },
+            select: { id: true, name: true },
         });
         entries = syllabi.map((syllabus) => ({
-            loc: `${baseUrl}/syllabus/${syllabus.id}`,
+            loc: `${baseUrl}${(() => {
+                const parsed = parseSyllabusName(syllabus.name);
+                return parsed.courseCode
+                    ? getCourseSyllabusPath(parsed.courseCode)
+                    : `/syllabus/${syllabus.id}`;
+            })()}`,
+        }));
+    } else if (collectionName === "exam-hubs") {
+        const hubs = await getExamHubSummaries();
+        const pageItems = hubs.slice(skip, skip + PAGE_SIZE);
+        entries = pageItems.map((hub) => ({
+            loc: `${baseUrl}${getExamHubPath(hub.slug)}`,
         }));
     } else {
         return new NextResponse("Not found", { status: 404 });

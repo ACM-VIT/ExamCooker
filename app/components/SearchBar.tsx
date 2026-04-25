@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from "@/app/components/common/AppImage";
 import debounce from 'lodash/debounce';
 import Seacrh from "@/app/components/assets/seacrh.svg";
@@ -17,28 +17,31 @@ interface SearchProps {
         | 'courses';
     availableTags?: string[];
     initialQuery?: string;
+    searchString?: string;
 }
 
-export default function Search({ pageType, availableTags, initialQuery = '' }: SearchProps) {
+export default function Search({
+    pageType,
+    availableTags,
+    initialQuery = '',
+    searchString = '',
+}: SearchProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const urlQuery = searchParams.get('search') || '';
-    const [query, setQuery] = useState(initialQuery || urlQuery);
+    const [query, setQuery] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     useEffect(() => {
-        const tags = searchParams.getAll('tags');
+        const tags = new URLSearchParams(searchString).getAll('tags');
         setSelectedTags(tags);
-    }, [searchParams]);
+    }, [searchString]);
 
     useEffect(() => {
-        const nextQuery = initialQuery || urlQuery;
-        setQuery((currentQuery) => currentQuery === nextQuery ? currentQuery : nextQuery);
-    }, [initialQuery, urlQuery]);
+        setQuery((currentQuery) => currentQuery === initialQuery ? currentQuery : initialQuery);
+    }, [initialQuery]);
 
     const updateURL = useCallback((newQuery: string, newTags: string[]) => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(searchString);
         const normalizedQuery = newQuery.trim();
 
         if (normalizedQuery) {
@@ -54,7 +57,7 @@ export default function Search({ pageType, availableTags, initialQuery = '' }: S
         const nextPath = pathname || `/${pageType}`;
         const newURL = nextQueryString ? `${nextPath}?${nextQueryString}` : nextPath;
         router.replace(newURL, { scroll: false });
-    }, [pageType, pathname, router, searchParams]);
+    }, [pageType, pathname, router, searchString]);
 
     const debouncedSearch = useMemo(
         () => debounce((newQuery: string, newTags: string[]) => updateURL(newQuery, newTags), 300),
@@ -91,7 +94,7 @@ export default function Search({ pageType, availableTags, initialQuery = '' }: S
 
     return (
         <form onSubmit={handleSubmit} className="relative flex items-center w-full">
-            <div className="relative flex items-center bg-white dark:bg-[#3D414E] border border-black dark:border-[#D5D5D5] w-full px-2 py-0.5 shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
+            <div className="relative flex items-center bg-white dark:bg-[#3D414E] border border-black/25 dark:border-[#D5D5D5]/30 w-full px-2 py-0.5">
                 <Image src={Seacrh} alt="search" className="dark:invert-[.835]" />
                 <input
                     type="text"

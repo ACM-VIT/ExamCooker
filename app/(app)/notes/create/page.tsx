@@ -1,14 +1,17 @@
 import React from "react";
 import UploadFile from "@/app/components/UploadFile";
-import prisma from "@/lib/prisma";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import { getSearchableCourses } from "@/lib/data/courseCatalog";
 
-async function NewForumPage() {
-    const allTags = await prisma.tag.findMany();
+async function NewNotePage() {
+    const courses = await getSearchableCourses();
     return (
-        <div className="create-notes">
-            <UploadFile allTags={allTags.map((i: { name: string }) => i.name)} variant="Notes"/>
-        </div>
+        <DirectionalTransition>
+            <div className="create-notes">
+                <UploadFile variant="Notes" courses={courses} />
+            </div>
+        </DirectionalTransition>
     );
 }
 
-export default NewForumPage;
+export default NewNotePage;

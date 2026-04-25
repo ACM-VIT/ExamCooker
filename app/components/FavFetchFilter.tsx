@@ -2,13 +2,21 @@
 
 // todo sort the types out
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import NotesCard from './NotesCard';
 import PastPaperCard from './PastPaperCard';
 import ResourceCard from './ResourceCard';
 import ForumCard from './ForumCard';
 import { useRouter } from 'next/navigation';
-import { ForumPost, Tag, Comment, PastPaper, Note, Subject, User } from "@/src/generated/prisma";
+import type {
+  ForumPost,
+  Tag,
+  Comment,
+  PastPaper,
+  Note,
+  Subject,
+  User,
+} from "@/prisma/generated/client";
 
 interface ForumPostItem extends Omit<ForumPost, 'upvoteCount' | 'downvoteCount'> {
   type: 'forumpost';
@@ -86,13 +94,72 @@ interface FavFetchProps {
   activeTab: string;
 }
 
+function EmptyState() {
+  return (
+    <div className="flex justify-center items-center h-[calc(65vh-200px)]">
+      <p className="text-gray-500">It seems you have not liked anything as of now...</p>
+    </div>
+  );
+}
+
+function ForumResults({ items }: { items: Item[] }) {
+  return (
+    <div className="flex flex-col gap-4 pt-6">
+      {items.map((item) => {
+        if (item.type !== 'forumpost') {
+          return null;
+        }
+
+        return (
+          <ForumCard
+            key={item.id}
+            post={item}
+            title={item.title}
+            desc={item.description}
+            author={item.author?.name || null}
+            createdAt={item.createdAt}
+            tags={item.tags}
+            commentCount={item.comments.length}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function GridResults({ items }: { items: Item[] }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
+      {items.map((item, index) => {
+        switch (item.type) {
+          case 'pastpaper':
+            return (
+              <div key={item.id} className="flex justify-center">
+                <PastPaperCard index={index} pastPaper={item} />
+              </div>
+            );
+          case 'note':
+            return (
+              <div key={item.id} className="flex justify-center">
+                <NotesCard index={index} note={item} />
+              </div>
+            );
+          case 'subject':
+            return (
+              <div key={item.id} className="flex justify-center">
+                <ResourceCard subject={item} />
+              </div>
+            );
+          default:
+            return null;
+        }
+      })}
+    </div>
+  );
+}
+
 const FavFetch: React.FC<FavFetchProps> = ({ items, activeTab }) => {
   const router = useRouter();
-  const [currentTab, setCurrentTab] = useState(activeTab);
-  useEffect(() => {
-    setCurrentTab(activeTab);
-  }, [activeTab]);
-
   const tabs = ['Past Papers', 'Notes', 'Forum', 'Resources'];
 
   const handleTabChange = (tab: string) => {
@@ -102,84 +169,20 @@ const FavFetch: React.FC<FavFetchProps> = ({ items, activeTab }) => {
     router.push(url.toString());
   };
 
-  const renderContent = () => {
-    const filteredItems = items.filter(item => {
-      switch (currentTab) {
-        case 'Past Papers':
-          return item.type === 'pastpaper';
-        case 'Notes':
-          return item.type === 'note';
-        case 'Forum':
-          return item.type === 'forumpost';
-        case 'Resources':
-          return item.type === 'subject';
-        default:
-          return false;
-      }
-    });
-
-    if (filteredItems.length === 0) {
-      return (
-        <div className="flex justify-center items-center h-[calc(65vh-200px)]">
-          <p className="text-gray-500">It seems you have not liked anything as of now...</p>
-        </div>
-      );
+  const filteredItems = items.filter((item) => {
+    switch (activeTab) {
+      case 'Past Papers':
+        return item.type === 'pastpaper';
+      case 'Notes':
+        return item.type === 'note';
+      case 'Forum':
+        return item.type === 'forumpost';
+      case 'Resources':
+        return item.type === 'subject';
+      default:
+        return false;
     }
-
-    if (currentTab === 'Forum') {
-      return (
-        <div className="flex flex-col gap-4 pt-6">
-          {filteredItems.map((item) => {
-            if (item.type === 'forumpost') {
-              const forumPostItem = item as ForumPostItem;
-              return (
-                <ForumCard
-                  key={forumPostItem.id}
-                  post={forumPostItem}
-                  title={forumPostItem.title}
-                  desc={forumPostItem.description}
-                  author={forumPostItem.author?.name || null}
-                  createdAt={forumPostItem.createdAt}
-                  tags={forumPostItem.tags}
-                  commentCount={forumPostItem.comments.length}
-                />
-              );
-            }
-            return null;
-          })}
-        </div>
-      );
-    }
-
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-6">
-        {filteredItems.map((item, index) => {
-          switch (item.type) {
-            case 'pastpaper':
-              return (
-                <div key={item.id} className="flex justify-center">
-                  <PastPaperCard index={index} pastPaper={item} />
-                </div>
-              );
-            case 'note':
-              return (
-                <div key={item.id} className="flex justify-center">
-                  <NotesCard index={index} note={item} />
-                </div>
-              );
-            case 'subject':
-              return (
-                <div key={item.id} className="flex justify-center">
-                  <ResourceCard subject={item} />
-                </div>
-              );
-            default:
-              return null;
-          }
-        })}
-      </div>
-    );
-  };
+  });
 
   return (
     <div className="flex flex-col items-center">
@@ -188,7 +191,7 @@ const FavFetch: React.FC<FavFetchProps> = ({ items, activeTab }) => {
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
-            className={`px-1 py-1 sm:px-1 sm:py-1 text-sm sm:text-xs transition-colors duration-200 ${currentTab === tab ? 'bg-[#C2E6EC] dark:bg-[#0C1222] font-semibold' : 'hover:bg-[#ffffff]/10'
+            className={`px-1 py-1 sm:px-1 sm:py-1 text-sm sm:text-xs transition-colors duration-200 ${activeTab === tab ? 'bg-[#C2E6EC] dark:bg-[#0C1222] font-semibold' : 'hover:bg-[#ffffff]/10'
               }`}
           >
             {tab}
@@ -197,7 +200,13 @@ const FavFetch: React.FC<FavFetchProps> = ({ items, activeTab }) => {
       </div>
       <div className="flex justify-center w-svw">
         <div className="w-full md:w-3/4">
-          {renderContent()}
+          {filteredItems.length === 0 ? (
+            <EmptyState />
+          ) : activeTab === 'Forum' ? (
+            <ForumResults items={filteredItems} />
+          ) : (
+            <GridResults items={filteredItems} />
+          )}
         </div>
       </div>
     </div>

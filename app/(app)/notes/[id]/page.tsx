@@ -1,15 +1,18 @@
 import React from 'react';
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import PDFViewerClient from '@/app/components/PDFViewerClient';
-import {TimeHandler} from '@/app/components/forumpost/CommentContainer';
+import {TimeHandler} from '@/app/components/forumpost/CommentHelpers';
 import {notFound} from "next/navigation";
 import {Metadata} from "next";
+import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import StructuredData from "@/app/components/seo/StructuredData";
 
 import ShareLink from '@/app/components/ShareLink';
 import ViewTracker from "@/app/components/ViewTracker";
 import ItemActions from "@/app/components/ItemActions";
 import { getNoteDetail } from "@/lib/data/noteDetail";
-import TagContainer from "@/app/components/forumpost/TagContainer";
-import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
+import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getCourseNotesPath } from "@/lib/seo";
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
@@ -69,6 +72,18 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
 
     const title = removePdfExtension(note.title);
     const canonical = `/notes/${note.id}`;
+    const postedTime = TimeHandler(postTime);
+    const postedAtLine = `${postedTime.hours}:${postedTime.minutes}${postedTime.amOrPm} · ${postedTime.day}-${postedTime.month}-${postedTime.year}`;
+    const authorName = note.author?.name?.slice(0, -10) || "Unknown";
+    const backHref = note.course?.code ? getCourseNotesPath(note.course.code) : "/notes";
+    const backLabel = note.course?.code ?? "Notes";
+    const metaPills: Array<{ label: string; value: string }> = [];
+    if (slot) metaPills.push({ label: "Slot", value: slot });
+    if (year) metaPills.push({ label: "Year", value: year });
+    note.tags
+        .filter((tag) => tag.name !== slot && tag.name !== year)
+        .slice(0, 4)
+        .forEach((tag) => metaPills.push({ label: "Tag", value: tag.name }));
     const keywords = buildKeywords(
         DEFAULT_KEYWORDS,
         note.tags.map((tag) => tag.name)
@@ -87,54 +102,70 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-            />
-            <ViewTracker
-                id={note.id}
-                type="note"
-                title={title}
-            />
-            <div className="lg:w-1/2 flex flex-col overflow-hidden">
-                <div className="flex-grow overflow-y-auto p-2 sm:p-4 lg:p-8">
-                    <div className="max-w-2xl mx-auto">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{title}</h1>
+        <DirectionalTransition>
+            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <StructuredData data={jsonLd} />
+                <ViewTracker
+                    id={note.id}
+                    type="note"
+                    title={title}
+                />
 
-                        <div className="space-y-2 sm:space-y-3">
-                            <p className="text-base sm:text-lg"><span className="font-semibold">Slot:</span> {slot}</p>
-                            <p className="text-base sm:text-lg"><span className="font-semibold">Year:</span> {year}</p>
-                            <p className="text-base sm:text-lg"><span
-                                className="font-semibold">Posted by: </span> {note.author?.name?.slice(0, -10) || 'Unknown'}
-                            </p>
-                            {note.tags?.length ? (
-                                <div className="pt-2">
-                                    <TagContainer tags={note.tags} />
+                <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
+                    <Link
+                        href={backHref}
+                        transitionTypes={["nav-back"]}
+                        className="group inline-flex w-fit items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-black/55 hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
+                    >
+                        <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} />
+                        <span>Back to {backLabel}</span>
+                    </Link>
+
+                    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
+                                {title}
+                            </h1>
+                            {metaPills.length > 0 && (
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                    {metaPills.map(({ label, value }) => (
+                                        <span
+                                            key={`${label}-${value}`}
+                                            className="inline-flex items-center gap-1.5 border border-black/15 bg-white px-2.5 py-1 text-xs font-semibold text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]"
+                                        >
+                                            <span className="text-[10px] uppercase tracking-wider text-black/45 dark:text-[#D5D5D5]/45">
+                                                {label}
+                                            </span>
+                                            <span>{value}</span>
+                                        </span>
+                                    ))}
                                 </div>
-                            ) : null}
-                            <div className="flex gap-2 items-center justify-between">
-                                <p className='text-base sm:text-xs'><span
-                                    className="font-semibold">Posted at: {TimeHandler(postTime).hours}:{TimeHandler(postTime).minutes}{TimeHandler(postTime).amOrPm}, {TimeHandler(postTime).day}-{TimeHandler(postTime).month}-{TimeHandler(postTime).year}</span>
-                                </p>
-                                <ItemActions
-                                    itemId={note.id}
-                                    title={note.title}
-                                    authorId={note.author?.id}
-                                    activeTab="notes"
-                                />
-                                <ShareLink fileType='these Notes'/>
-                            </div>
+                            )}
+                            <p className="mt-3 text-xs text-black/55 dark:text-[#D5D5D5]/55">
+                                Posted by <span className="font-semibold text-black/75 dark:text-[#D5D5D5]/75">{authorName}</span>
+                                <span className="mx-1.5" aria-hidden>·</span>
+                                {postedAtLine}
+                            </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center gap-3 sm:pt-1">
+                            <ItemActions
+                                itemId={note.id}
+                                title={note.title}
+                                authorId={note.author?.id}
+                                activeTab="notes"
+                            />
+                            <ShareLink fileType="these Notes" />
+                        </div>
+                    </header>
+
+                    <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
+                        <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
+                            <PDFViewerClient fileUrl={note.fileUrl}/>
                         </div>
                     </div>
                 </div>
             </div>
-            <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-4">
-                <div className="h-full overflow-auto">
-                    <PDFViewerClient fileUrl={note.fileUrl}/>
-                </div>
-            </div>
-        </div>
+        </DirectionalTransition>
     );
 
 }

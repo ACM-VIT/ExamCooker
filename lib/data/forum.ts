@@ -1,6 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
-import { Prisma } from "@/src/generated/prisma";
+import type { Prisma } from "@/prisma/generated/client";
 
 function buildWhere(
     search: string,
@@ -9,33 +9,33 @@ function buildWhere(
     return {
         ...(tags.length > 0
             ? {
-                  tags: {
-                      some: {
-                          name: {
-                              in: tags,
-                          },
-                      },
-                  },
-              }
+                tags: {
+                    some: {
+                        name: {
+                            in: tags,
+                        },
+                    },
+                },
+            }
             : {}),
         ...(search
             ? {
-                  OR: [
-                      { title: { contains: search, mode: "insensitive" } },
-                      { description: { contains: search, mode: "insensitive" } },
-                      { author: { name: { contains: search, mode: "insensitive" } } },
-                      {
-                          tags: {
-                              some: {
-                                  name: {
-                                      contains: search,
-                                      mode: "insensitive",
-                                  },
-                              },
-                          },
-                      },
-                  ],
-              }
+                OR: [
+                    { title: { contains: search, mode: "insensitive" } },
+                    { description: { contains: search, mode: "insensitive" } },
+                    { author: { name: { contains: search, mode: "insensitive" } } },
+                    {
+                        tags: {
+                            some: {
+                                name: {
+                                    contains: search,
+                                    mode: "insensitive",
+                                },
+                            },
+                        },
+                    },
+                ],
+            }
             : {}),
     };
 }
@@ -79,9 +79,9 @@ export async function getForumPage(input: {
             tags: true,
             votes: input.currentUserId
                 ? {
-                      where: { userId: input.currentUserId },
-                      select: { type: true },
-                  }
+                    where: { userId: input.currentUserId },
+                    select: { type: true },
+                }
                 : { select: { type: true }, take: 0 },
             _count: { select: { comments: true } },
         },

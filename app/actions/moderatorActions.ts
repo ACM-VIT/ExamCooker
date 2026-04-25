@@ -5,16 +5,11 @@ import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/pastPaperTitle";
-import { parsePaperTitle } from "@/lib/paperTitle";
-import { normalizeCourseCode } from "@/lib/courseTags";
 
 export async function fetchUnclearedItems() {
     const session = await auth();
-
     // @ts-ignore
-    if (session?.user?.role !== "MODERATOR") {
-        throw new Error("Access denied");
-    }
+    if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
     const notes = await prisma.note.findMany({
         where: { isClear: false },
@@ -23,6 +18,7 @@ export async function fetchUnclearedItems() {
     const pastPapers = await prisma.pastPaper.findMany({
         where: { isClear: false },
         orderBy: { createdAt: "desc" },
+        include: { course: { select: { code: true, title: true } } },
     });
 
     const totalUsers = await prisma.user.count();
@@ -45,14 +41,11 @@ export async function fetchUnclearedItems() {
 export async function approveItem(
     id: string,
     type: "note" | "pastPaper",
-    options?: { allowDuplicate?: boolean }
+    options?: { allowDuplicate?: boolean },
 ) {
     const session = await auth();
-
     // @ts-ignore
-    if (session?.user?.role !== "MODERATOR") {
-        throw new Error("Access denied");
-    }
+    if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
     const allowDuplicate = options?.allowDuplicate ?? false;
 
@@ -61,22 +54,15 @@ export async function approveItem(
     } else {
         const paper = await prisma.pastPaper.findUnique({
             where: { id },
-            select: { title: true, fileUrl: true },
+            select: { title: true, fileUrl: true, courseId: true, examType: true, year: true },
         });
-
-        if (!paper) {
-            throw new Error("Past paper not found");
-        }
+        if (!paper) throw new Error("Past paper not found");
 
         if (!allowDuplicate) {
             const fileDuplicate = await prisma.pastPaper.findFirst({
-                where: {
-                    id: { not: id },
-                    fileUrl: paper.fileUrl,
-                },
+                where: { id: { not: id }, fileUrl: paper.fileUrl },
                 select: { id: true, title: true },
             });
-
             if (fileDuplicate) {
                 return {
                     status: "duplicate" as const,
@@ -85,63 +71,26 @@ export async function approveItem(
                 };
             }
 
-            const parsed = parsePaperTitle(paper.title);
-            const normalizedCode = parsed.courseCode
-                ? normalizeCourseCode(parsed.courseCode)
-                : null;
-            const normalizedTitle = paper.title.trim().toLowerCase();
-
-            if (normalizedCode) {
-                const candidates = await prisma.pastPaper.findMany({
+            if (paper.courseId && paper.examType && paper.year) {
+                const structuredDuplicate = await prisma.pastPaper.findFirst({
                     where: {
                         id: { not: id },
-                        OR: [
-                            { title: { contains: normalizedCode, mode: "insensitive" } },
-                            { tags: { some: { name: { contains: normalizedCode, mode: "insensitive" } } } },
-                        ],
+                        courseId: paper.courseId,
+                        examType: paper.examType,
+                        year: paper.year,
                     },
                     select: { id: true, title: true },
-                    take: 50,
                 });
-
-                for (const candidate of candidates) {
-                    const candidateParsed = parsePaperTitle(candidate.title);
-                    const candidateCode = candidateParsed.courseCode
-                        ? normalizeCourseCode(candidateParsed.courseCode)
-                        : null;
-                    if (!candidateCode || candidateCode !== normalizedCode) continue;
-
-                    if (
-                        !isMetadataCompatible(parsed.examType, candidateParsed.examType) ||
-                        !isMetadataCompatible(parsed.slot, candidateParsed.slot)
-                    ) {
-                        continue;
-                    }
-
-                    if (!isYearCompatible(parsed, candidateParsed)) {
-                        continue;
-                    }
-
-                    if (candidate.title.trim().toLowerCase() === normalizedTitle) {
-                        return {
-                            status: "duplicate" as const,
-                            duplicateId: candidate.id,
-                            duplicateTitle: candidate.title,
-                        };
-                    }
-
+                if (structuredDuplicate) {
                     return {
                         status: "duplicate" as const,
-                        duplicateId: candidate.id,
-                        duplicateTitle: candidate.title,
+                        duplicateId: structuredDuplicate.id,
+                        duplicateTitle: structuredDuplicate.title,
                     };
                 }
             } else {
                 const exactTitleDuplicate = await prisma.pastPaper.findFirst({
-                    where: {
-                        id: { not: id },
-                        title: { equals: paper.title, mode: "insensitive" },
-                    },
+                    where: { id: { not: id }, title: { equals: paper.title, mode: "insensitive" } },
                     select: { id: true, title: true },
                 });
                 if (exactTitleDuplicate) {
@@ -154,10 +103,7 @@ export async function approveItem(
             }
         }
 
-        await prisma.pastPaper.update({
-            where: { id },
-            data: { isClear: true },
-        });
+        await prisma.pastPaper.update({ where: { id }, data: { isClear: true } });
     }
 
     revalidatePath("/mod");
@@ -167,76 +113,13 @@ export async function approveItem(
     return { status: "approved" as const };
 }
 
-function getYearRange(parsed: ReturnType<typeof parsePaperTitle>) {
-    if (parsed.academicYear) {
-        const [start, end] = parsed.academicYear.split("-").map((value) => Number(value));
-        if (Number.isFinite(start) && Number.isFinite(end)) {
-            return { start, end };
-        }
-    }
-
-    if (parsed.year) {
-        const year = Number(parsed.year);
-        if (Number.isFinite(year)) {
-            return { start: year, end: year };
-        }
-    }
-
-    return null;
-}
-
-function isMetadataCompatible(a?: string, b?: string) {
-    if (!a || !b) return true;
-    return a.toUpperCase() === b.toUpperCase();
-}
-
-function isYearCompatible(
-    a: ReturnType<typeof parsePaperTitle>,
-    b: ReturnType<typeof parsePaperTitle>
-) {
-    const aRange = getYearRange(a);
-    const bRange = getYearRange(b);
-    const aYear = a.year ? Number(a.year) : null;
-    const bYear = b.year ? Number(b.year) : null;
-
-    if (aRange && bRange) {
-        return aRange.start === bRange.start && aRange.end === bRange.end;
-    }
-
-    if (aRange && bYear) {
-        return aRange.start === bYear;
-    }
-
-    if (bRange && aYear) {
-        return bRange.start === aYear;
-    }
-
-    if (aYear && bYear) {
-        return aYear === bYear;
-    }
-
-    return true;
-}
-
-export async function renameItem(
-    id: string,
-    type: "note" | "pastPaper",
-    title: string
-) {
+export async function renameItem(id: string, type: "note" | "pastPaper", title: string) {
     const session = await auth();
-
     // @ts-ignore
-    if (session?.user?.role !== "MODERATOR") {
-        throw new Error("Access denied");
-    }
+    if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    if (type === "note") {
-        await prisma.note.update({ where: { id }, data: { title } });
-    }
-
-    if (type === "pastPaper") {
-        await prisma.pastPaper.update({ where: { id }, data: { title } });
-    }
+    if (type === "note") await prisma.note.update({ where: { id }, data: { title } });
+    if (type === "pastPaper") await prisma.pastPaper.update({ where: { id }, data: { title } });
 
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
@@ -249,19 +132,12 @@ export async function renameItem(
 
 export async function deleteItem(id: string, type: "note" | "pastPaper") {
     const session = await auth();
-
     // @ts-ignore
-    if (session?.user?.role !== "MODERATOR") {
-        throw new Error("Access denied");
-    }
+    if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    if (type === "note") {
-        await prisma.note.delete({ where: { id } });
-    }
+    if (type === "note") await prisma.note.delete({ where: { id } });
+    if (type === "pastPaper") await prisma.pastPaper.delete({ where: { id } });
 
-    if (type === "pastPaper") {
-        await prisma.pastPaper.delete({ where: { id } });
-    }
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
     revalidateTag("past_papers", "minutes");
@@ -269,32 +145,20 @@ export async function deleteItem(id: string, type: "note" | "pastPaper") {
 
 export async function generatePastPaperTitle(id: string) {
     const session = await auth();
-
     // @ts-ignore
-    if (session?.user?.role !== "MODERATOR") {
-        throw new Error("Access denied");
-    }
+    if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
     const paper = await prisma.pastPaper.findUnique({
         where: { id },
         select: { title: true, fileUrl: true },
     });
-
-    if (!paper) {
-        throw new Error("Past paper not found");
-    }
+    if (!paper) throw new Error("Past paper not found");
 
     const fileUrl = normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl;
-    const aiTitle = await generatePastPaperTitleFromPdf({
-        fileUrl,
-        fallbackTitle: paper.title,
-    });
+    const aiTitle = await generatePastPaperTitleFromPdf({ fileUrl, fallbackTitle: paper.title });
 
     if (aiTitle && aiTitle !== paper.title) {
-        await prisma.pastPaper.update({
-            where: { id },
-            data: { title: aiTitle },
-        });
+        await prisma.pastPaper.update({ where: { id }, data: { title: aiTitle } });
     }
 
     revalidatePath("/mod");

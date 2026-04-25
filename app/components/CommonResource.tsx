@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
 import {useToast} from "@/components/ui/use-toast";
-import { parsePaperTitle, ParsedPaperTitle } from "@/lib/paperTitle";
+import { getCourseResourcesPath, parseSubjectName } from "@/lib/seo";
 
 type FavoriteType = "note" | "pastpaper" | "forumpost" | "subject";
 
@@ -24,12 +24,6 @@ function humanizeCategory(category: string) {
     if (normalized === "note") return "Note";
     if (normalized === "subject") return "Subject";
     return normalized.replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function getPastPaperDisplayTitle(title: string, parsed: ParsedPaperTitle) {
-    const courseName = parsed.courseName?.trim();
-    const baseTitle = courseName ?? parsed.cleanTitle;
-    return baseTitle || parsed.cleanTitle || title.replace(/\.pdf$/i, "");
 }
 
 function mapCategoryToType(category: string): FavoriteType {
@@ -53,20 +47,10 @@ export default function CommonFav({ category, title, thing, compact = false }: {
     const favoriteType = mapCategoryToType(category);
     const isFav = isBookmarked(thing.id, favoriteType);
     const router = useRouter();
-    const parsedTitle = favoriteType === "pastpaper" ? parsePaperTitle(title) : null;
-    const displayTitle = favoriteType === "pastpaper" && parsedTitle
-        ? getPastPaperDisplayTitle(title, parsedTitle)
-        : removePdfExtension(title);
-    const metadataParts = favoriteType === "pastpaper" && parsedTitle
-        ? [
-              parsedTitle.examType,
-              parsedTitle.slot ? `Slot ${parsedTitle.slot}` : undefined,
-              parsedTitle.academicYear ?? parsedTitle.year,
-              parsedTitle.courseCode,
-          ].filter(Boolean)
-        : [];
-    const metadata = metadataParts.join(" | ");
+    const displayTitle = removePdfExtension(title);
+    const metadata = "";
     const categoryLabel = humanizeCategory(category);
+    const link = getLink();
 
     const handleFavoriteClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -78,7 +62,7 @@ export default function CommonFav({ category, title, thing, compact = false }: {
         }, !isFav).catch(()=>toast({title: "Error! Could not add to favorites", variant: "destructive"}));
     };
 
-    const getLink = () => {
+    function getLink() {
         switch (favoriteType) {
             case 'note':
                 return `/notes/${thing.id}`;
@@ -86,10 +70,25 @@ export default function CommonFav({ category, title, thing, compact = false }: {
                 return `/past_papers/${thing.id}`;
             case 'forumpost':
                 return `/forum/${thing.id}`;
-            case 'subject':
-                return `/resources/${thing.id}`;
+            case 'subject': {
+                const parsedSubject = parseSubjectName(title);
+                return parsedSubject.courseCode
+                    ? getCourseResourcesPath(parsedSubject.courseCode)
+                    : `/resources/${thing.id}`;
+            }
             default:
                 return '';
+        }
+    }
+
+    const navigateToResource = () => {
+        router.push(link);
+    };
+
+    const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            navigateToResource();
         }
     };
 
@@ -97,7 +96,10 @@ export default function CommonFav({ category, title, thing, compact = false }: {
         return (
             <div 
                 className="w-full p-3 flex items-center justify-between gap-3 bg-[#5FC4E7]/50 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-[#5FC4E7]/70 dark:hover:bg-white/10 transition duration-200 cursor-pointer rounded"
-                onClick={() => router.push(getLink())}
+                onClick={navigateToResource}
+                onKeyDown={handleCardKeyDown}
+                role="link"
+                tabIndex={0}
             >
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -111,7 +113,9 @@ export default function CommonFav({ category, title, thing, compact = false }: {
                     ) : null}
                 </div>
                 <button 
+                    type="button"
                     onClick={handleFavoriteClick} 
+                    aria-label={isFav ? "Remove from favourites" : "Add to favourites"}
                     className="transition-colors duration-200 shrink-0 p-1 hover:scale-110"
                 >
                     <FontAwesomeIcon icon={faHeart} className={`text-sm ${isFav ? "text-red-500" : "text-gray-400"}`} />
@@ -122,7 +126,10 @@ export default function CommonFav({ category, title, thing, compact = false }: {
 
     return (
         <div className="w-full p-2 flex flex-col justify-between gap-2 bg-[#5FC4E7] dark:bg-white/10 lg:dark:bg-[#0C1222] border-2 border-[#5FC4E7] dark:border-white/20 dark:border-b-[#3BF4C7] lg:dark:border-white/20 hover:dark:bg-white/10 hover:scale-105 hover:border-b-white hover:dark:border-b-[#3BF4C7] transition duration-200 cursor-pointer"
-            onClick={() => router.push(getLink())}>
+            onClick={navigateToResource}
+            onKeyDown={handleCardKeyDown}
+            role="link"
+            tabIndex={0}>
             <h6 className="opacity-50 text-xs">{categoryLabel}</h6>
                 <h5 className='break-all'>
                     {displayTitle}
@@ -134,7 +141,12 @@ export default function CommonFav({ category, title, thing, compact = false }: {
                 ) : null}
                 <div className="flex justify-between">
                 <div></div>
-                <button onClick={handleFavoriteClick} className="transition-colors duration-200">
+                <button
+                    type="button"
+                    onClick={handleFavoriteClick}
+                    aria-label={isFav ? "Remove from favourites" : "Add to favourites"}
+                    className="transition-colors duration-200"
+                >
                     <FontAwesomeIcon icon={faHeart} className={isFav ? "text-red-500" : "text-gray-300"} />
                 </button>
             </div>
