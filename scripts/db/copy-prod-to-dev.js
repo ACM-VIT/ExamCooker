@@ -6,7 +6,7 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local'), override: true });
 
-const { PrismaClient } = require(path.resolve(process.cwd(), 'src/generated/prisma'));
+const { PrismaClient } = require('../../src/generated/prisma');
 
 const PROD_URL = process.env.DATABASE_URL;
 const DEV_URL = process.env.DEV_DATABASE;
@@ -54,7 +54,7 @@ async function copyInBatches(label, fetchBatch, handleBatch) {
   let cursor = null;
   let total = 0;
 
-  for (;;) {
+  for (; ;) {
     const batch = await fetchBatch(cursor);
     if (!batch.length) break;
 

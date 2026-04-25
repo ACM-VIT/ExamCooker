@@ -1,7 +1,7 @@
 'use server'
 
 import prisma from '@/lib/prisma'
-import type { Tag } from '@/src/generated/prisma'
+import type { Tag } from '@/prisma/generated/client'
 import { auth } from '../auth'
 import { revalidatePath, revalidateTag } from 'next/cache'
 
@@ -25,7 +25,7 @@ async function findOrCreateTag(name: string): Promise<Tag> {
 export async function createForumPost(inputData: CreateForumPostInput) {
   try {
     const session = await auth();
-    if(!session|| !session.user){
+    if (!session || !session.user) {
       return {
         success: false,
         error: "LOGIN KAR LODE",
@@ -41,7 +41,7 @@ export async function createForumPost(inputData: CreateForumPostInput) {
       data: {
         title: inputData.title,
         author: {
-          connect: { email: session.user.email!}
+          connect: { email: session.user.email! }
         },
         forum: {
           connect: { id: inputData.forumId }
@@ -58,9 +58,9 @@ export async function createForumPost(inputData: CreateForumPostInput) {
 
     revalidatePath(`/forum`)
     revalidateTag("forum", "minutes")
-    return {success: true, data: newForumPost}
+    return { success: true, data: newForumPost }
   } catch (error) {
     console.error('Failed to create forum post:', error)
     return { success: false, error: 'Failed to create forum post' }
-  }  
+  }
 }

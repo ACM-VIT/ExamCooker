@@ -2,11 +2,13 @@ import React from 'react';
 import TagContainer from "@/app/components/forumpost/TagContainer";
 import CommentField from "@/app/components/forumpost/CommentField";
 import CommentContainer from "@/app/components/forumpost/CommentContainer";
-import { NumberOfComments } from "@/app/components/forumpost/CommentContainer";
+import {TimeHandler, NumberOfComments} from '@/app/components/forumpost/CommentHelpers';
 import { VoteButtons } from "@/app/components/common/Buttons";
 
-import { Prisma } from "@/src/generated/prisma";
-import ForumPostGetPayload = Prisma.ForumPostGetPayload
+import type { Prisma } from "@/prisma/generated/client";
+
+type ForumPostGetPayload<T extends Prisma.ForumPostDefaultArgs> =
+  Prisma.ForumPostGetPayload<T>;
 
 function ForumPost({ post }: {
   post: ForumPostGetPayload<{

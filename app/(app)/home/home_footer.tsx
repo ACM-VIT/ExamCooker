@@ -7,9 +7,32 @@ import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import ExamCookerLogo from '@/app/components/common/ExamCookerLogo';
 
+const socialLinks = [
+    {
+        label: "Instagram",
+        href: "https://www.instagram.com/acmvit?igsh=cXEybjdxb3hja3Iw",
+        icon: faInstagram,
+    },
+    {
+        label: "LinkedIn",
+        href: "https://in.linkedin.com/company/acmvit",
+        icon: faLinkedinIn,
+    },
+    {
+        label: "YouTube",
+        href: "https://www.youtube.com/@acm_vit",
+        icon: faYoutube,
+    },
+    {
+        label: "GitHub",
+        href: "https://github.com/ACM-VIT",
+        icon: faGithub,
+    },
+];
+
 function HomeFooter() {
     return (
-        <footer className="text-black dark:text-[#D5D5D5] flex flex-col sm:flex-row justify-between items-center pt-6 pb-6 mx-20% bg-[#C2E6EC] dark:bg-[#0C1222] border-t border-t-[#82BEE9] dark:border-t-[#3BF4C7] px-4 sm:px-8">
+        <footer className="w-full text-black dark:text-[#D5D5D5] flex flex-col sm:flex-row justify-between items-center gap-5 pt-6 pb-6 bg-[#C2E6EC] dark:bg-[#0C1222] border-t border-black/10 dark:border-[#D5D5D5]/15 px-4 sm:px-8">
             <div className="flex justify-center mb-4 sm:mb-0">
                 <Image
                     src={'/assets/ACM logo.svg'}
@@ -20,20 +43,23 @@ function HomeFooter() {
                 />
             </div>
             <ExamCookerLogo />
-            <div className="flex items-center space-x-3 sm:space-x-4">
+            <div className="flex items-center gap-3 sm:gap-4">
                 <p className="text-lg sm:text-xl font-semibold text-black dark:text-[#D5D5D5]">Find us:</p>
-                <a href="https://www.instagram.com/acmvit?igsh=cXEybjdxb3hja3Iw" target="_blank" >
-                    <FontAwesomeIcon icon={faInstagram} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
-                </a>
-                <a href="https://in.linkedin.com/company/acmvit" target="_blank">
-                    <FontAwesomeIcon icon={faLinkedinIn} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
-                </a>
-                <a href="https://www.youtube.com/@acm_vit" target="_blank">
-                    <FontAwesomeIcon icon={faYoutube} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
-                </a>
-                <a href="https://github.com/ACM-VIT" target="_blank">
-                    <FontAwesomeIcon icon={faGithub} className="text-xl sm:text-2xl text-black dark:text-[#D5D5D5]" />
-                </a>
+                <div className="flex items-center gap-2 sm:gap-3">
+                    {socialLinks.map((link) => (
+                        <a
+                            key={link.label}
+                            href={link.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={link.label}
+                            title={link.label}
+                            className="grid h-9 w-9 place-items-center rounded-full border border-black/15 bg-white/35 text-black transition hover:-translate-y-0.5 hover:bg-white/60 dark:border-[#D5D5D5]/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:bg-white/10"
+                        >
+                            <FontAwesomeIcon icon={link.icon} className="h-5 w-5" />
+                        </a>
+                    ))}
+                </div>
             </div>
         </footer>
     );

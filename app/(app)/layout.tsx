@@ -1,7 +1,8 @@
 import React from "react";
-import {SessionProvider} from "next-auth/react";
 import ClientSide from "./clientSide";
 import PostHogIdentify from "@/app/components/PostHogIdentify";
+import AuthSessionProvider from "@/app/components/AuthSessionProvider";
+import HomeFooter from "@/app/(app)/home/home_footer";
 
 export default function Layout({
                                          children,
@@ -29,11 +30,16 @@ export default function Layout({
     }> = [];
 
     return (
-        <SessionProvider>
+        <AuthSessionProvider>
             <PostHogIdentify />
             <ClientSide initialBookmarks={initialBookmarks}>
-                {children}
+                <div className="flex min-h-screen min-w-0 flex-col">
+                    <div className="min-h-screen min-w-0">
+                        {children}
+                    </div>
+                    <HomeFooter />
+                </div>
             </ClientSide>
-        </SessionProvider>
+        </AuthSessionProvider>
     );
 }

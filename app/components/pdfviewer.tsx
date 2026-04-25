@@ -25,9 +25,9 @@ import "react-pdf/dist/Page/TextLayer.css";
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const buttonClass =
-  "p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed";
+  "inline-flex h-7 w-7 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-9";
 const inputClass =
-  "w-14 rounded border border-gray-300 bg-white px-2 py-1 text-center text-sm text-gray-700 outline-none transition focus:border-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200";
+  "w-10 rounded border border-gray-300 bg-white px-1 py-1 text-center text-sm text-gray-700 outline-none transition focus:border-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 sm:w-14 sm:px-2";
 const MIN_SCALE = 0.6;
 const MAX_SCALE = 2.4;
 const SCALE_STEP = 0.2;
@@ -187,7 +187,9 @@ function PDFViewerContent({
   const [isDownloading, setIsDownloading] = useState(false);
   const [loadProgress, setLoadProgress] = useState<number | null>(null);
   const [pagesInView, setPagesInView] = useState<Set<number>>(() => new Set([1]));
-  const pageWidth = containerWidth > 0 ? Math.max(containerWidth - 32, 240) : 0;
+  const horizontalPadding = containerWidth < 640 ? 16 : 32;
+  const pageWidth =
+    containerWidth > 0 ? Math.max(containerWidth - horizontalPadding, 240) : 0;
   const currentPage = numPages ? clampPage(pageNumber, numPages) : pageNumber;
   const canGoPrevious = currentPage > 1;
   const canGoNext = numPages ? currentPage < numPages : false;
@@ -496,8 +498,8 @@ function PDFViewerContent({
         isFullScreen ? "fixed inset-0 z-50 bg-white dark:bg-gray-900" : ""
       }`}
     >
-      <div className="flex items-center justify-between bg-white p-2 dark:bg-gray-800">
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-between gap-0.5 bg-white p-2 dark:bg-gray-800 sm:gap-2">
+        <div className="flex items-center gap-0.5 sm:gap-2">
           <button
             onClick={() => scrollToPage(currentPage - 1)}
             disabled={!canGoPrevious}
@@ -523,9 +525,8 @@ function PDFViewerContent({
             className={inputClass}
             aria-label="Current page"
           />
-          <span className="text-sm text-gray-600 dark:text-gray-300">/</span>
-          <span className="min-w-8 text-sm text-gray-600 dark:text-gray-300">
-            {numPages ?? "—"}
+          <span className="whitespace-nowrap text-sm tabular-nums text-gray-600 dark:text-gray-300">
+            / {numPages ?? "—"}
           </span>
           <button
             onClick={() => scrollToPage(currentPage + 1)}
@@ -537,7 +538,7 @@ function PDFViewerContent({
             <FontAwesomeIcon icon={faChevronRight} />
           </button>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-0.5 sm:gap-2">
           <button
             onClick={() => adjustScale(-SCALE_STEP)}
             disabled={scale <= MIN_SCALE}
@@ -547,7 +548,7 @@ function PDFViewerContent({
           >
             <FontAwesomeIcon icon={faMinus} />
           </button>
-          <span className="min-w-14 text-center text-sm text-gray-600 dark:text-gray-300">
+          <span className="min-w-10 text-center text-sm text-gray-600 dark:text-gray-300 sm:min-w-14">
             {Math.round(scale * 100)}%
           </span>
           <button
@@ -626,7 +627,7 @@ function PDFViewerContent({
               No PDF file specified.
             </div>
           }
-          className="flex min-h-full flex-col items-center gap-4 p-4"
+          className="flex min-h-full flex-col items-center gap-3 p-2 sm:gap-4 sm:p-4"
         >
           {renderedPages}
         </Document>

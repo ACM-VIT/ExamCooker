@@ -1,299 +1,92 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import {auth} from "../auth";
-import {redirect} from "next/navigation";
+import { auth } from "../auth";
+import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/pastPaperTitle";
-import {
-    canonicalizePastPaperExamTag,
-    getPastPaperExamTagAliases,
-    getPastPaperExamTagFromTitle,
-} from "@/lib/pastPaperTags";
-import type { PastPaperExamTag } from "@/lib/pastPaperTags";
-import type { PrismaClient } from "@/src/generated/prisma";
 
-function mergeAliases(existingAliases: string[], canonicalAliases: readonly string[]) {
-    const seen = new Set<string>();
-    const merged: string[] = [];
-
-    for (const alias of [...existingAliases, ...canonicalAliases]) {
-        const value = String(alias || "").trim();
-        const key = value.toLowerCase();
-        if (!value || seen.has(key)) continue;
-        seen.add(key);
-        merged.push(value);
-    }
-
-    return merged;
-}
-
-async function findOrCreateTagWithClient(
-    client: PrismaClient,
-    name: string,
-    aliases: readonly string[] = [],
-) {
-    const trimmedName = name.trim();
-    let tag = await client.tag.findUnique({
-        where: {name: trimmedName},
-        select: {id: true, name: true, aliases: true},
-    });
-
-    if (!tag) {
-        try {
-            return await client.tag.create({
-                data: {name: trimmedName, aliases: [...aliases]},
-                select: {id: true, name: true, aliases: true},
-            });
-        } catch (error) {
-            tag = await client.tag.findUnique({
-                where: {name: trimmedName},
-                select: {id: true, name: true, aliases: true},
-            });
-            if (!tag) throw error;
-        }
-    }
-
-    if (aliases.length > 0) {
-        const mergedAliases = mergeAliases(tag.aliases, aliases);
-        if (mergedAliases.length !== tag.aliases.length) {
-            tag = await client.tag.update({
-                where: {id: tag.id},
-                data: {aliases: mergedAliases},
-                select: {id: true, name: true, aliases: true},
-            });
-        }
-    }
-
-    return tag;
-}
-
-async function findOrCreateTag(name: string) {
-    return findOrCreateTagWithClient(prisma, name);
-}
-
-async function ensureExamTag(client: PrismaClient, tag: PastPaperExamTag) {
-    return findOrCreateTagWithClient(
-        client,
-        tag,
-        getPastPaperExamTagAliases(tag),
-    );
-}
-
-async function findOrCreateSelectedTag(name: string) {
-    const examTag = canonicalizePastPaperExamTag(name);
-    if (examTag) return ensureExamTag(prisma, examTag);
-    return findOrCreateTag(name);
-}
-
-function uniqueTags<T extends {id: string}>(tags: T[]) {
-    const seen = new Set<string>();
-    return tags.filter((tag) => {
-        if (seen.has(tag.id)) return false;
-        seen.add(tag.id);
-        return true;
-    });
-}
-
-async function buildPastPaperTagsForTitle(
-    title: string,
-    baseTags: Awaited<ReturnType<typeof findOrCreateSelectedTag>>[],
-) {
-    const examTag = getPastPaperExamTagFromTitle(title);
-    if (!examTag) return uniqueTags(baseTags);
-
-    const canonicalExamTag = await ensureExamTag(prisma, examTag);
-    return uniqueTags([
-        ...baseTags.filter((tag) => !canonicalizePastPaperExamTag(tag.name)),
-        canonicalExamTag,
-    ]);
-}
-
-async function syncPastPaperExamTagFromTitle(
-    client: PrismaClient,
-    paperId: string,
-    title: string,
-) {
-    const examTag = getPastPaperExamTagFromTitle(title);
-    if (!examTag) return;
-
-    const [canonicalExamTag, paper] = await Promise.all([
-        ensureExamTag(client, examTag),
-        client.pastPaper.findUnique({
-            where: {id: paperId},
-            select: {
-                tags: {select: {id: true, name: true}},
-            },
-        }),
-    ]);
-
-    if (!paper) return;
-
-    const nextTagIds = uniqueTags([
-        ...paper.tags.filter((tag) => !canonicalizePastPaperExamTag(tag.name)),
-        canonicalExamTag,
-    ]).map((tag) => tag.id);
-
-    await client.pastPaper.update({
-        where: {id: paperId},
-        data: {
-            tags: {
-                set: nextTagIds.map((id) => ({id})),
-            },
-        },
-    });
-}
-
-
-// async function preInsert({tags, year, slot, formDatas}: {
-//     tags: string[],
-//     year: string,
-//     slot: string,
-//     formDatas: FormData[],
-// }) {
-//     const session = await auth();
-//     if (!session || !session.user) {
-//         redirect("/landing");
-//     }
-//     const user = await prisma.user.findUnique({
-//         where: {email: session.user.email!},
-//     });
-//
-//     if (!user) {
-//         throw new Error(
-//             `User with ID ${session?.user?.email} does not exist`
-//         );
-//     }
-//
-//     const allTags = await Promise.all(tags.map(findOrCreateTag));
-//
-//     if (year) {
-//         const yearTag = await findOrCreateTag(year);
-//         allTags.push(yearTag);
-//     }
-//
-//     if (slot) {
-//         const slotTag = await findOrCreateTag(slot);
-//         allTags.push(slotTag);
-//     }
-//     const promises = formDatas.map(async (formData) => {
-//
-//         const response = await fetch(`${process.env.NEXT_PUBLIC_MICROSERVICE_URL}/process_pdf`, {
-//             method: "POST",
-//             body: formData,
-//         });
-//
-//         if (!response.ok) {
-//             console.log(response);
-//             throw new Error(`Failed to upload file ${formData.get("fileTitle")}`);
-//         }
-//
-//         return await response.json();
-//     });
-//
-//     const results = await Promise.all(promises) as {
-//         fileUrl: string,
-//         thumbnailUrl: string,
-//         filename: string,
-//         message: string
-//     }[];
-//
-//
-//     return {user, allTags, results};
-// }
-
-export default async function uploadFile({results, tags, year, slot, variant}: {
+export default async function uploadFile({
+    results,
+    year,
+    slot,
+    variant,
+    courseId,
+    examType,
+    semester,
+    campus,
+    hasAnswerKey,
+}: {
     results: {
-        fileUrl: string,
-        thumbnailUrl: string,
-        filename: string,
-        message: string
-    }[],
-    tags: string[],
-    year: string,
-    slot: string,
-    variant: "Notes" | "Past Papers"
+        fileUrl: string;
+        thumbnailUrl: string;
+        filename: string;
+        message: string;
+    }[];
+    year: string;
+    slot: string;
+    variant: "Notes" | "Past Papers";
+    courseId?: string | null;
+    examType?: string | null;
+    semester?: string | null;
+    campus?: string | null;
+    hasAnswerKey?: boolean;
 }) {
-
-    // const {allTags, user, results} = await preInsert({tags, year, slot, formDatas});
     const session = await auth();
     if (!session || !session.user) {
         redirect("/landing");
     }
     const user = await prisma.user.findUnique({
-        where: {email: session.user.email!},
+        where: { email: session.user.email! },
     });
 
     if (!user) {
-        throw new Error(
-            `User with ID ${session?.user?.email} does not exist`
-        );
+        throw new Error(`User with ID ${session?.user?.email} does not exist`);
     }
 
-    const allTags = await Promise.all(tags.map(findOrCreateSelectedTag));
-
-    if (year) {
-        const yearTag = await findOrCreateTag(year);
-        allTags.push(yearTag);
-    }
-
-    if (slot) {
-        const slotTag = await findOrCreateTag(slot);
-        allTags.push(slotTag);
-    }
-
-    const errors = results.filter(result => result.message !== "processed successfully");
-
+    const errors = results.filter((r) => r.message !== "processed successfully");
     if (errors.length > 0) {
-        return {
-            success: false,
-            error: errors.map(error => error.message).join(", ")
-        };
+        return { success: false, error: errors.map((e) => e.message).join(", ") };
     }
+
+    const yearInt = year ? parseInt(year, 10) : null;
+    const parsedExamType = examType as import("@/prisma/generated/client").ExamType | null | undefined;
+    const parsedSemester = semester as import("@/prisma/generated/client").Semester | null | undefined;
+    const parsedCampus = campus as import("@/prisma/generated/client").Campus | null | undefined;
 
     const promises =
         variant === "Notes"
             ? results.map((result) => {
                   const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
-                  const thumbNailUrl =
-                      normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
+                  const thumbNailUrl = normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
                   return prisma.note.create({
                       data: {
                           title: result.filename,
                           fileUrl,
                           thumbNailUrl,
                           authorId: user.id,
-                          tags: {
-                              connect: allTags.map((tag) => ({ id: tag.id })),
-                          },
-                      },
-                      include: {
-                          tags: true,
+                          ...(courseId ? { courseId } : {}),
                       },
                   });
               })
-            : results.map(async (result) => {
+            : results.map((result) => {
                   const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
-                  const thumbNailUrl =
-                      normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
-                  const paperTags = await buildPastPaperTagsForTitle(
-                      result.filename,
-                      allTags,
-                  );
+                  const thumbNailUrl = normalizeGcsUrl(result.thumbnailUrl) ?? result.thumbnailUrl;
                   return prisma.pastPaper.create({
                       data: {
                           title: result.filename,
                           fileUrl,
                           thumbNailUrl,
                           authorId: user.id,
-                          tags: {
-                              connect: paperTags.map((tag) => ({ id: tag.id })),
-                          },
-                      },
-                      include: {
-                          tags: true,
+                          ...(courseId ? { courseId } : {}),
+                          ...(parsedExamType ? { examType: parsedExamType } : {}),
+                          ...(slot ? { slot } : {}),
+                          ...(yearInt !== null && !Number.isNaN(yearInt) ? { year: yearInt } : {}),
+                          ...(parsedSemester ? { semester: parsedSemester } : {}),
+                          ...(parsedCampus ? { campus: parsedCampus } : {}),
+                          hasAnswerKey: hasAnswerKey ?? false,
                       },
                   });
               });
@@ -310,19 +103,13 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
                             fileUrl: paper.fileUrl,
                             fallbackTitle: paper.title,
                         });
-                        const nextTitle = aiTitle || paper.title;
                         if (aiTitle && aiTitle !== paper.title) {
                             await prisma.pastPaper.update({
                                 where: { id: paper.id },
                                 data: { title: aiTitle },
                             });
                         }
-                        await syncPastPaperExamTagFromTitle(
-                            prisma,
-                            paper.id,
-                            nextTitle,
-                        );
-                    })
+                    }),
                 );
                 revalidateTag("past_papers", "minutes");
             } catch (error) {
@@ -339,5 +126,5 @@ export default async function uploadFile({results, tags, year, slot, variant}: {
         revalidateTag("past_papers", "minutes");
     }
 
-    return {success: true, data};
+    return { success: true, data };
 }

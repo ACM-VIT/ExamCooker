@@ -13,6 +13,7 @@ export async function getNoteDetail(id: string) {
         include: {
             author: true,
             tags: true,
+            course: { select: { code: true, title: true } },
         },
     });
 

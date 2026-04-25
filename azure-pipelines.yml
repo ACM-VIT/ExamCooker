@@ -10,6 +10,7 @@ pr:
 
 variables:
   nodeVersion: "24.x"
+  pnpmVersion: "10.33.0"
   artifactName: "webapp"
   packageDir: "$(Build.ArtifactStagingDirectory)/package"
   packageZip: "$(Build.ArtifactStagingDirectory)/webapp.zip"
@@ -33,40 +34,35 @@ stages:
             inputs:
               version: $(nodeVersion)
 
-          - script: npm ci
+          - script: |
+              set -eux
+              corepack enable
+              corepack prepare "pnpm@$(pnpmVersion)" --activate
+              pnpm install --frozen-lockfile
             displayName: Install dependencies
 
-          - script: npm run build
+          - script: pnpm build
             displayName: Build app
-
-          - script: npm prune --omit=dev
-            displayName: Trim dev dependencies
 
           - script: |
               set -eux
               rm -rf "$(packageDir)"
               mkdir -p "$(packageDir)"
-              rsync -a .next/ "$(packageDir)/.next/"
-              rsync -a node_modules/ "$(packageDir)/node_modules/"
-              mkdir -p "$(packageDir)/src/generated"
-              rsync -a src/generated/ "$(packageDir)/src/generated/"
-              cp package.json "$(packageDir)/package.json"
-              cp next.config.ts "$(packageDir)/next.config.ts"
+
+              rsync -a .next/standalone/ "$(packageDir)/"
+
+              mkdir -p "$(packageDir)/.next"
+              rsync -a .next/static/ "$(packageDir)/.next/static/"
+
+              mkdir -p "$(packageDir)/prisma"
+              if [ -d prisma/generated ]; then
+                rsync -a prisma/generated/ "$(packageDir)/prisma/generated/"
+              fi
+              if [ -f prisma/schema.prisma ]; then
+                cp prisma/schema.prisma "$(packageDir)/prisma/schema.prisma"
+              fi
+
               cp startup.sh "$(packageDir)/startup.sh"
-
-              if [ -d public ]; then
-                rsync -a public/ "$(packageDir)/public/"
-              fi
-
-              if [ -f package-lock.json ]; then
-                cp package-lock.json "$(packageDir)/package-lock.json"
-              fi
-
-              if [ -d prisma ]; then
-                rsync -a prisma/ "$(packageDir)/prisma/"
-              fi
-
-              rm -rf "$(packageDir)/.next/cache"
             displayName: Package deployment payload
 
           - task: ArchiveFiles@2

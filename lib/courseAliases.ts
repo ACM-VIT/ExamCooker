@@ -1,7 +1,7 @@
 import { COURSE_ACRONYMS } from "@/lib/course-map";
 import { normalizeCourseCode } from "@/lib/courseTags";
 
-const COURSE_CODE_REGEX = /^[A-Z]{2,5}\s?\d{3,4}[A-Z]{0,3}$/i;
+const COURSE_CODE_REGEX = /^[A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3}$/i;
 
 const aliasToCodes = new Map<string, string[]>();
 

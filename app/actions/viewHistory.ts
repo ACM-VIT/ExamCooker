@@ -3,7 +3,7 @@
 // todo delete this file
 
 import prisma from '@/lib/prisma'
-import { Prisma } from '@/src/generated/prisma'
+import type { Prisma } from '@/prisma/generated/client'
 import { revalidatePath } from 'next/cache'
 
 type ViewableItemType = 'pastPaper' | 'note' | 'forumPost' | 'subject'
