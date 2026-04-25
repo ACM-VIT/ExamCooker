@@ -26,6 +26,11 @@ jobs:
       url: https://exam-cooker.acmvit.in
     env:
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:26257/examcooker?sslmode=disable
+      AUTH_SECRET: ci-auth-secret-for-build-only
+      NEXTAUTH_SECRET: ci-auth-secret-for-build-only
+      AUTH_GOOGLE_ID: ci-google-id.apps.googleusercontent.com
+      AUTH_GOOGLE_SECRET: ci-google-secret
+      NEXT_PUBLIC_BASE_URL: https://examcooker.acmvit.in
 
     steps:
       - name: Checkout
