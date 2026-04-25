@@ -11,7 +11,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  PNPM_VERSION: 10.33.0
+  BUILD_DIR: .appservice-build
 
 concurrency:
   group: deploy-appservice-production
@@ -36,32 +36,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          run_install: false
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Prepare build workspace
+        run: |
+          set -eux
+          rm -rf "${BUILD_DIR}"
+          mkdir -p "${BUILD_DIR}"
+          rsync -a \
+            --delete \
+            --exclude .git \
+            --exclude node_modules \
+            --exclude .next \
+            --exclude .turbo \
+            --exclude .appservice-build \
+            --exclude .DS_Store \
+            ./ "${BUILD_DIR}/"
 
       - name: Restore Next.js build cache
         uses: actions/cache@v4
         with:
-          path: .next/cache
-          key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts', 'tsconfig.json', 'tailwind.config.ts', 'postcss.config.mjs') }}
+          path: ${{ env.BUILD_DIR }}/.next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('package.json', 'next.config.ts', 'tsconfig.json', 'tailwind.config.ts', 'postcss.config.mjs', 'prisma/schema.prisma') }}
           restore-keys: |
-            ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
+            ${{ runner.os }}-next-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        working-directory: ${{ env.BUILD_DIR }}
+        run: npm install --no-fund --no-audit
 
       - name: Build application
-        run: pnpm build
+        working-directory: ${{ env.BUILD_DIR }}
+        run: npm run build
 
       - name: Package deployment payload
         run: |
@@ -69,23 +78,22 @@ jobs:
           rm -rf deploy
           mkdir -p deploy
 
-          rsync -a .next/standalone/ deploy/
+          rsync -a "${BUILD_DIR}/.next/standalone/" deploy/
           mkdir -p deploy/.next
-          rsync -a .next/static/ deploy/.next/static/
+          rsync -a "${BUILD_DIR}/.next/static/" deploy/.next/static/
 
-          mkdir -p deploy/prisma
-          if [ -d prisma/generated ]; then
-            rsync -a prisma/generated/ deploy/prisma/generated/
+          if [ -d "${BUILD_DIR}/prisma" ]; then
+            rsync -a "${BUILD_DIR}/prisma/" deploy/prisma/
           fi
 
-          if [ -f prisma/schema.prisma ]; then
-            cp prisma/schema.prisma deploy/prisma/schema.prisma
+          if [ -d "${BUILD_DIR}/lib/generated" ]; then
+            rsync -a "${BUILD_DIR}/lib/generated/" deploy/lib/generated/
           fi
 
-          cp startup.sh deploy/startup.sh
+          cp "${BUILD_DIR}/startup.sh" deploy/startup.sh
 
-          if [ -d public ]; then
-            rsync -a public/ deploy/public/
+          if [ -d "${BUILD_DIR}/public" ]; then
+            rsync -a "${BUILD_DIR}/public/" deploy/public/
           fi
 
           cd deploy
