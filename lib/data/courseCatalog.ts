@@ -3,6 +3,54 @@ import Fuse from "fuse.js";
 import prisma from "@/lib/prisma";
 import { normalizeCourseCode } from "@/lib/courseTags";
 
+const FALLBACK_CATALOG_STATS = {
+    courseCount: 0,
+    paperCount: 0,
+    noteCount: 0,
+} satisfies CatalogStats;
+
+const CATALOG_STATS_RETRY_LIMIT = 3;
+const CATALOG_STATS_RETRY_DELAY_MS = 250;
+
+function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableCatalogStatsError(error: unknown) {
+    if (!error || typeof error !== "object") return false;
+
+    const code = "code" in error ? error.code : undefined;
+    if (code === "P1001" || code === "P1008" || code === "P1017") {
+        return true;
+    }
+
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    return (
+        message.includes("server has closed the connection") ||
+        message.includes("connectionclosed") ||
+        message.includes("connection closed") ||
+        message.includes("can't reach database server") ||
+        message.includes("timed out")
+    );
+}
+
+async function loadCatalogStatsFromDb(): Promise<CatalogStats> {
+    const [courseCount, paperCount, noteCount] = await prisma.$transaction([
+        prisma.course.count({
+            where: {
+                OR: [
+                    { papers: { some: { isClear: true } } },
+                    { notes: { some: { isClear: true } } },
+                ],
+            },
+        }),
+        prisma.pastPaper.count({ where: { isClear: true } }),
+        prisma.note.count({ where: { isClear: true } }),
+    ]);
+
+    return { courseCount, paperCount, noteCount };
+}
+
 export type CourseGridItem = {
     id: string;
     code: string;
@@ -250,19 +298,31 @@ export async function getCatalogStats(): Promise<CatalogStats> {
     cacheTag("courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const [courseCount, paperCount, noteCount] = await Promise.all([
-        prisma.course.count({
-            where: {
-                OR: [
-                    { papers: { some: { isClear: true } } },
-                    { notes: { some: { isClear: true } } },
-                ],
-            },
-        }),
-        prisma.pastPaper.count({ where: { isClear: true } }),
-        prisma.note.count({ where: { isClear: true } }),
-    ]);
-    return { courseCount, paperCount, noteCount };
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= CATALOG_STATS_RETRY_LIMIT; attempt += 1) {
+        try {
+            return await loadCatalogStatsFromDb();
+        } catch (error) {
+            lastError = error;
+            if (!isRetryableCatalogStatsError(error) || attempt === CATALOG_STATS_RETRY_LIMIT) {
+                break;
+            }
+
+            console.warn(
+                `[courseCatalog] getCatalogStats retry ${attempt}/${CATALOG_STATS_RETRY_LIMIT} after transient DB error`,
+                error,
+            );
+            await prisma.$disconnect().catch(() => undefined);
+            await sleep(CATALOG_STATS_RETRY_DELAY_MS * attempt);
+        }
+    }
+
+    console.error(
+        "[courseCatalog] getCatalogStats falling back to zero counts after DB failure",
+        lastError,
+    );
+    return FALLBACK_CATALOG_STATS;
 }
 
 export type RecentPaper = {
