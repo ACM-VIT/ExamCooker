@@ -17,9 +17,10 @@ type Props = {
     note: NoteRowData;
     courses: CourseOption[];
     onResolved: (id: string) => void;
+    onCourseCreated: (course: CourseOption) => void;
 };
 
-export default function NoteReviewRow({ note, courses, onResolved }: Props) {
+export default function NoteReviewRow({ note, courses, onResolved, onCourseCreated }: Props) {
     const [courseId, setCourseId] = useState<string | null>(note.courseId);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -68,6 +69,8 @@ export default function NoteReviewRow({ note, courses, onResolved }: Props) {
                         courses={courses}
                         value={courseId}
                         onChange={setCourseId}
+                        allowCreateCourse
+                        onCourseCreated={onCourseCreated}
                     />
                 </div>
                 {error && (

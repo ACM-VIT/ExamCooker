@@ -8,7 +8,10 @@ import { revalidateTag } from "next/cache";
 export async function createCourse(input: {
     code: string;
     title: string;
-}): Promise<{ success: true; id: string; code: string } | { success: false; error: string }> {
+}): Promise<
+    | { success: true; id: string; code: string; title: string; aliases: string[] }
+    | { success: false; error: string }
+> {
     const session = await auth();
     const role = (session?.user as { role?: string } | undefined)?.role;
     if (!session?.user || role !== "MODERATOR") {
@@ -26,10 +29,16 @@ export async function createCourse(input: {
             where: { code },
             update: {},
             create: { code, title, aliases: [title] },
-            select: { id: true, code: true },
+            select: { id: true, code: true, title: true, aliases: true },
         });
         revalidateTag("courses", "minutes");
-        return { success: true, id: course.id, code: course.code };
+        return {
+            success: true,
+            id: course.id,
+            code: course.code,
+            title: course.title,
+            aliases: course.aliases,
+        };
     } catch {
         return { success: false, error: "Failed to create course" };
     }

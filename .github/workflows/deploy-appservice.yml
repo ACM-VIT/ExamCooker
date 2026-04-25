@@ -87,6 +87,7 @@ jobs:
           fi
 
           if [ -d "${BUILD_DIR}/lib/generated" ]; then
+            mkdir -p deploy/lib/generated
             rsync -a "${BUILD_DIR}/lib/generated/" deploy/lib/generated/
           fi
 

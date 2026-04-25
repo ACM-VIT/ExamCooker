@@ -114,57 +114,6 @@ function HeroStats({
     );
 }
 
-function HeroStatsSkeleton() {
-    return (
-        <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-x-5">
-            {["courses", "papers", "notes"].map((label) => (
-                <div key={label} className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-1.5">
-                    <div className="h-7 w-12 animate-pulse bg-black/10 dark:bg-white/10 sm:h-5" />
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/45 dark:text-[#D5D5D5]/45 sm:text-xs">
-                        {label}
-                    </span>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-async function HeroStatsSection() {
-    const stats = await getCatalogStats();
-    return <HeroStats stats={stats} />;
-}
-
-function CourseSearchSkeleton() {
-    return (
-        <div className="flex w-full items-stretch gap-2 sm:gap-3">
-            <div className="min-w-0 flex-1">
-                <div className="h-11 animate-pulse border-2 border-black/15 bg-white/40 dark:border-[#D5D5D5]/15 dark:bg-white/5" />
-            </div>
-            <div className="shrink-0">
-                <UploadButtonPaper />
-            </div>
-        </div>
-    );
-}
-
-async function CourseSearchSection({ search }: { search: string }) {
-    const searchable = await getSearchableCourses();
-
-    return (
-        <div className="flex w-full items-stretch gap-2 sm:gap-3">
-            <div className="min-w-0 flex-1">
-                <PastPapersCourseSearch
-                    courses={searchable}
-                    initialQuery={search}
-                />
-            </div>
-            <div className="shrink-0">
-                <UploadButtonPaper />
-            </div>
-        </div>
-    );
-}
-
 function CourseCardsSkeleton({ count }: { count: number }) {
     return (
         <div className={COURSE_GRID_CLASS}>
@@ -327,6 +276,10 @@ export default async function PastPapersPage({
 }) {
     const params = (await searchParams) ?? {};
     const search = params.search || "";
+    const [stats, searchable] = await Promise.all([
+        getCatalogStats(),
+        getSearchableCourses(),
+    ]);
     const faq = [
         {
             question: "Where can I find VIT past papers by exam type?",
@@ -361,13 +314,19 @@ export default async function PastPapersPage({
                             <GradientText>Every course.</GradientText>
                         </h1>
 
-                        <Suspense fallback={<HeroStatsSkeleton />}>
-                            <HeroStatsSection />
-                        </Suspense>
+                        <HeroStats stats={stats} />
 
-                        <Suspense fallback={<CourseSearchSkeleton />}>
-                            <CourseSearchSection search={search} />
-                        </Suspense>
+                        <div className="flex w-full items-stretch gap-2 sm:gap-3">
+                            <div className="min-w-0 flex-1">
+                                <PastPapersCourseSearch
+                                    courses={searchable}
+                                    initialQuery={search}
+                                />
+                            </div>
+                            <div className="shrink-0">
+                                <UploadButtonPaper />
+                            </div>
+                        </div>
                     </section>
 
                     {!search && (

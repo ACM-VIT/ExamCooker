@@ -24,6 +24,7 @@ type Props = {
     paper: PaperRowData;
     courses: CourseOption[];
     onResolved: (id: string) => void;
+    onCourseCreated: (course: CourseOption) => void;
 };
 
 const EXAM_OPTIONS: { value: ExamType; label: string }[] = [
@@ -56,7 +57,7 @@ const CAMPUS_OPTIONS: { value: Campus; label: string }[] = [
     { value: "MAURITIUS", label: "Mauritius" },
 ];
 
-export default function PaperReviewRow({ paper, courses, onResolved }: Props) {
+export default function PaperReviewRow({ paper, courses, onResolved, onCourseCreated }: Props) {
     const initialDraftRef = useRef(paper);
     const [draft, setDraft] = useState<PaperRowData>(initialDraftRef.current);
     const [saving, setSaving] = useState(false);
@@ -140,6 +141,8 @@ export default function PaperReviewRow({ paper, courses, onResolved }: Props) {
                         courses={courses}
                         value={draft.courseId}
                         onChange={(id) => setDraft({ ...draft, courseId: id })}
+                        allowCreateCourse
+                        onCourseCreated={onCourseCreated}
                     />
                 </FieldLabel>
 

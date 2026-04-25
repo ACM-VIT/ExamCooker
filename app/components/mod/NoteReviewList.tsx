@@ -11,10 +11,19 @@ type Props = {
 
 export default function NoteReviewList({ initialNotes, courses }: Props) {
     const initialNotesRef = useRef(initialNotes);
+    const initialCoursesRef = useRef(courses);
     const [notes, setNotes] = useState(initialNotesRef.current);
+    const [courseOptions, setCourseOptions] = useState(initialCoursesRef.current);
 
     const onResolved = (id: string) => {
         setNotes((prev) => prev.filter((n) => n.id !== id));
+    };
+
+    const onCourseCreated = (course: CourseOption) => {
+        setCourseOptions((prev) => {
+            if (prev.some((c) => c.id === course.id || c.code === course.code)) return prev;
+            return [...prev, course].sort((a, b) => a.code.localeCompare(b.code));
+        });
     };
 
     if (notes.length === 0) {
@@ -35,8 +44,9 @@ export default function NoteReviewList({ initialNotes, courses }: Props) {
                     <NoteReviewRow
                         key={note.id}
                         note={note}
-                        courses={courses}
+                        courses={courseOptions}
                         onResolved={onResolved}
+                        onCourseCreated={onCourseCreated}
                     />
                 ))}
             </div>
