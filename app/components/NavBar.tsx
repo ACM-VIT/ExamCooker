@@ -3,9 +3,10 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { usePathname } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import ThemeToggleSwitch from "@/app/components/common/ThemeToggle";
 import { SignOut } from "@/app/components/sign-out";
+import { startGoogleSignIn } from "@/lib/auth-origin";
 
 type MenuLink = {
   href: string;
@@ -215,7 +216,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                 type="button"
                 title="Sign in"
                 aria-label="Sign in"
-                onClick={() => signIn("google", { callbackUrl: pathname ?? "/" })}
+                onClick={() => startGoogleSignIn(pathname ?? "/")}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-black/70 transition-colors duration-200 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
               >
                 <svg
