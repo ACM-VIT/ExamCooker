@@ -77,9 +77,19 @@ function buildRemotePattern(baseUrl: string): RemotePattern | null {
 
 const configuredAzureBaseUrl = getAzureBaseUrlFromEnv();
 
-const configuredRemotePatterns = [buildRemotePattern(configuredAzureBaseUrl)].filter(
-    (pattern): pattern is RemotePattern => pattern !== null,
-);
+const fallbackAzureBaseUrls = [
+    "https://examcookerdevsi.blob.core.windows.net/exam-assets",
+    "https://examcookerprodsi.blob.core.windows.net/exam-assets",
+];
+
+const configuredRemotePatterns = Array.from(
+    new Map(
+        [configuredAzureBaseUrl, ...fallbackAzureBaseUrls]
+            .map((baseUrl) => baseUrl.trim())
+            .filter(Boolean)
+            .map((baseUrl) => [baseUrl, buildRemotePattern(baseUrl)]),
+    ).values(),
+).filter((pattern): pattern is RemotePattern => pattern !== null);
 
 const nextConfig: NextConfig = {
     output: "standalone",

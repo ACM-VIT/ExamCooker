@@ -21,7 +21,8 @@
     "prod:promote_papers": "tsx scripts/prod/promote-dev-papers.ts",
     "prod:migrate_paper_assets": "tsx scripts/prod/migrate-azure-past-papers.ts",
     "prod:paper_cutover": "tsx scripts/prod/run-paper-cutover.ts",
-    "prod:export_paper_snapshot": "tsx scripts/prod/export-paper-snapshot.ts"
+    "prod:export_paper_snapshot": "tsx scripts/prod/export-paper-snapshot.ts",
+    "prod:repair_blocked_papers": "tsx scripts/prod/repair-blocked-paper-groups.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
