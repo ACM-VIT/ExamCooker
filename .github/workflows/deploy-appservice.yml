@@ -11,6 +11,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PNPM_VERSION: 10.33.0
 
 concurrency:
   group: deploy-appservice-production
@@ -32,21 +33,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
       - name: Restore Next.js build cache
         uses: actions/cache@v4
         with:
           path: .next/cache
-          key: ${{ runner.os }}-next-${{ hashFiles('package-lock.json') }}-${{ hashFiles('next.config.ts', 'tsconfig.json', 'tailwind.config.ts', 'postcss.config.mjs') }}
+          key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts', 'tsconfig.json', 'tailwind.config.ts', 'postcss.config.mjs') }}
           restore-keys: |
-            ${{ runner.os }}-next-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: Install dependencies
-        run: npm ci --no-audit --prefer-offline
+        run: pnpm install --frozen-lockfile
 
       - name: Build application
-        run: npm run build
+        run: pnpm build
 
       - name: Package deployment payload
         run: |
@@ -57,19 +64,20 @@ jobs:
           rsync -a .next/standalone/ deploy/
           mkdir -p deploy/.next
           rsync -a .next/static/ deploy/.next/static/
+
+          mkdir -p deploy/prisma
+          if [ -d prisma/generated ]; then
+            rsync -a prisma/generated/ deploy/prisma/generated/
+          fi
+
+          if [ -f prisma/schema.prisma ]; then
+            cp prisma/schema.prisma deploy/prisma/schema.prisma
+          fi
+
           cp startup.sh deploy/startup.sh
 
           if [ -d public ]; then
             rsync -a public/ deploy/public/
-          fi
-
-          if [ -d src/generated ]; then
-            mkdir -p deploy/src/generated
-            rsync -a src/generated/ deploy/src/generated/
-          fi
-
-          if [ -d prisma ]; then
-            rsync -a prisma/ deploy/prisma/
           fi
 
           cd deploy
