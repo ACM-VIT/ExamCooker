@@ -101,23 +101,20 @@ export default function FilterBar({
         replaceList(key, Array.from(set));
     }, [replaceList, searchParams]);
 
-    const setSingle = useCallback((key: string, value: string | null) => {
-        const next = new URLSearchParams(searchParams.toString());
-        if (!value) next.delete(key);
-        else next.set(key, value);
-        pushParams(next);
-    }, [pushParams, searchParams]);
+    const clearExamFilters = useCallback(() => {
+        replaceList("exam", []);
+    }, [replaceList]);
 
-    const setExamSingle = useCallback((type: ExamType | null) => {
-        setSingle("exam", type ? examTypeToSlug(type) : null);
-    }, [setSingle]);
+    const toggleExamType = useCallback((type: ExamType) => {
+        toggleIn("exam", examTypeToSlug(type));
+    }, [toggleIn]);
 
     const examTabs = useMemo(
         () => options.examTypes.map((type) => ({
             type,
             label: examTypeLabel(type),
             count: examCounts[type] ?? 0,
-            active: selected.exams.length === 1 && selected.exams[0] === type,
+            active: selected.exams.includes(type),
         })),
         [examCounts, options.examTypes, selected.exams],
     );
@@ -188,7 +185,7 @@ export default function FilterBar({
                             label="All"
                             count={options.totalPapers}
                             active={allActive}
-                            onClick={() => setExamSingle(null)}
+                            onClick={clearExamFilters}
                         />
                         {examTabs.map((tab) => (
                             <FilterButton
@@ -196,7 +193,7 @@ export default function FilterBar({
                                 label={tab.label}
                                 count={tab.count}
                                 active={tab.active}
-                                onClick={() => setExamSingle(tab.active ? null : tab.type)}
+                                onClick={() => toggleExamType(tab.type)}
                             />
                         ))}
                     </div>

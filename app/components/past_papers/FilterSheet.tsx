@@ -137,12 +137,13 @@ export default function FilterSheet({
         [pushParams, searchParams],
     );
 
-    const setExamSingle = useCallback(
-        (type: ExamType | null) => {
-            setSingle("exam", type ? examTypeToSlug(type) : null);
-        },
-        [setSingle],
-    );
+    const clearExamFilters = useCallback(() => {
+        setSingle("exam", null);
+    }, [setSingle]);
+
+    const toggleExamType = useCallback((type: ExamType) => {
+        toggleIn("exam", examTypeToSlug(type));
+    }, [toggleIn]);
 
     const setSort = useCallback(
         (value: string) => {
@@ -243,21 +244,17 @@ export default function FilterSheet({
                                             label="All"
                                             count={options.totalPapers}
                                             active={selected.exams.length === 0}
-                                            onClick={() => setExamSingle(null)}
+                                            onClick={clearExamFilters}
                                         />
                                         {options.examTypes.map((type) => {
-                                            const active =
-                                                selected.exams.length === 1 &&
-                                                selected.exams[0] === type;
+                                            const active = selected.exams.includes(type);
                                             return (
                                                 <SheetChip
                                                     key={type}
                                                     label={examTypeLabel(type)}
                                                     count={examCounts[type] ?? 0}
                                                     active={active}
-                                                    onClick={() =>
-                                                        setExamSingle(active ? null : type)
-                                                    }
+                                                    onClick={() => toggleExamType(type)}
                                                 />
                                             );
                                         })}
