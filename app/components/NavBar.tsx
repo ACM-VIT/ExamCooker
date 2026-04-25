@@ -3,8 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { usePathname } from "next/navigation";
-import { signIn } from "next-auth/react";
-import { useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import ThemeToggleSwitch from "@/app/components/common/ThemeToggle";
 import { SignOut } from "@/app/components/sign-out";
 
