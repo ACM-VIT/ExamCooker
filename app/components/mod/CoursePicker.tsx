@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createCourse } from "@/app/actions/createCourse";
 
 export type CourseOption = {
     id: string;
@@ -13,6 +14,8 @@ type Props = {
     courses: CourseOption[];
     value: string | null;
     onChange: (courseId: string | null) => void;
+    allowCreateCourse?: boolean;
+    onCourseCreated?: (course: CourseOption) => void;
     placeholder?: string;
 };
 
@@ -31,10 +34,22 @@ function scoreCourse(course: CourseOption, q: string): number {
     return 0;
 }
 
-export default function CoursePicker({ courses, value, onChange, placeholder }: Props) {
+export default function CoursePicker({
+    courses,
+    value,
+    onChange,
+    allowCreateCourse = false,
+    onCourseCreated,
+    placeholder,
+}: Props) {
     const [query, setQuery] = useState("");
     const [open, setOpen] = useState(false);
     const [highlight, setHighlight] = useState(0);
+    const [showCreate, setShowCreate] = useState(false);
+    const [newCode, setNewCode] = useState("");
+    const [newTitle, setNewTitle] = useState("");
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState<string | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const currentCourse = useMemo(
@@ -76,6 +91,41 @@ export default function CoursePicker({ courses, value, onChange, placeholder }: 
     const clear = () => {
         onChange(null);
         setQuery("");
+    };
+
+    const startCreate = () => {
+        setCreateError(null);
+        setNewCode(query.trim().toUpperCase());
+        setNewTitle("");
+        setShowCreate(true);
+        setOpen(false);
+    };
+
+    const submitCreate = async () => {
+        setCreateError(null);
+        setCreating(true);
+        try {
+            const result = await createCourse({ code: newCode, title: newTitle });
+            if (!result.success) {
+                setCreateError(result.error);
+                return;
+            }
+
+            const course = {
+                id: result.id,
+                code: result.code,
+                title: result.title,
+                aliases: result.aliases,
+            };
+            onCourseCreated?.(course);
+            onChange(course.id);
+            setQuery("");
+            setNewCode("");
+            setNewTitle("");
+            setShowCreate(false);
+        } finally {
+            setCreating(false);
+        }
     };
 
     return (
@@ -147,7 +197,80 @@ export default function CoursePicker({ courses, value, onChange, placeholder }: 
                             <span className="text-black dark:text-[#D5D5D5]">{c.title}</span>
                         </li>
                     ))}
+                    {allowCreateCourse && (
+                        <li className="border-t border-black/10 dark:border-[#D5D5D5]/20 p-2">
+                            <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    startCreate();
+                                }}
+                                className="w-full border border-black/30 px-3 py-2 text-left text-xs font-semibold text-black hover:bg-black/5 dark:border-[#D5D5D5]/40 dark:text-[#D5D5D5] dark:hover:bg-white/5"
+                            >
+                                Add missing course
+                            </button>
+                        </li>
+                    )}
                 </ul>
+            )}
+
+            {allowCreateCourse && open && !currentCourse && results.length === 0 && (
+                <div className="absolute left-0 right-0 top-full z-20 mt-1 border border-black/30 bg-white p-2 shadow-lg dark:border-[#D5D5D5]/40 dark:bg-[#0C1222]">
+                    <p className="px-1 pb-2 text-xs text-black/60 dark:text-[#D5D5D5]/60">
+                        No matching course.
+                    </p>
+                    <button
+                        type="button"
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            startCreate();
+                        }}
+                        className="w-full border border-black/30 px-3 py-2 text-left text-xs font-semibold text-black hover:bg-black/5 dark:border-[#D5D5D5]/40 dark:text-[#D5D5D5] dark:hover:bg-white/5"
+                    >
+                        Add missing course
+                    </button>
+                </div>
+            )}
+
+            {allowCreateCourse && showCreate && !currentCourse && (
+                <div className="mt-2 border border-black/30 bg-white p-3 dark:border-[#D5D5D5]/40 dark:bg-[#0C1222]">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[120px_1fr]">
+                        <input
+                            type="text"
+                            value={newCode}
+                            onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                            placeholder="Code"
+                            className="w-full border border-black/30 bg-white px-3 py-2 font-mono text-sm text-black placeholder-black/40 focus:outline-none focus:ring-2 focus:ring-[#5FC4E7] dark:border-[#D5D5D5]/40 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:placeholder-[#D5D5D5]/30"
+                        />
+                        <input
+                            type="text"
+                            value={newTitle}
+                            onChange={(e) => setNewTitle(e.target.value)}
+                            placeholder="Course title"
+                            className="w-full border border-black/30 bg-white px-3 py-2 text-sm text-black placeholder-black/40 focus:outline-none focus:ring-2 focus:ring-[#5FC4E7] dark:border-[#D5D5D5]/40 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:placeholder-[#D5D5D5]/30"
+                        />
+                    </div>
+                    {createError && (
+                        <p className="mt-2 text-xs text-red-700 dark:text-red-400">{createError}</p>
+                    )}
+                    <div className="mt-2 flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowCreate(false)}
+                            className="border border-black/30 px-3 py-1.5 text-xs font-semibold text-black hover:bg-black/5 dark:border-[#D5D5D5]/40 dark:text-[#D5D5D5] dark:hover:bg-white/5"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={submitCreate}
+                            disabled={creating || !newCode.trim() || !newTitle.trim()}
+                            className="border-2 border-black bg-[#5FC4E7] px-3 py-1.5 text-xs font-semibold text-black disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {creating ? "Adding..." : "Add course"}
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

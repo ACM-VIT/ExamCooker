@@ -11,7 +11,9 @@ type Props = {
 
 export default function PaperReviewList({ initialPapers, courses }: Props) {
     const initialPapersRef = useRef(initialPapers);
+    const initialCoursesRef = useRef(courses);
     const [papers, setPapers] = useState(initialPapersRef.current);
+    const [courseOptions, setCourseOptions] = useState(initialCoursesRef.current);
     const [filter, setFilter] = useState<
         "all" | "no_course" | "no_exam" | "no_year"
     >("all");
@@ -31,6 +33,13 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
 
     const onResolved = (id: string) => {
         setPapers((prev) => prev.filter((p) => p.id !== id));
+    };
+
+    const onCourseCreated = (course: CourseOption) => {
+        setCourseOptions((prev) => {
+            if (prev.some((c) => c.id === course.id || c.code === course.code)) return prev;
+            return [...prev, course].sort((a, b) => a.code.localeCompare(b.code));
+        });
     };
 
     if (papers.length === 0) {
@@ -77,8 +86,9 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
                     <PaperReviewRow
                         key={paper.id}
                         paper={paper}
-                        courses={courses}
+                        courses={courseOptions}
                         onResolved={onResolved}
+                        onCourseCreated={onCourseCreated}
                     />
                 ))}
             </div>
