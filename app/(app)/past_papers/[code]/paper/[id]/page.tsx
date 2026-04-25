@@ -12,6 +12,7 @@ import ViewTracker from "@/app/components/ViewTracker";
 import {
     getAdjacentPapersInCourse,
     getPastPaperDetail,
+    getSiblingPastPaper,
     getRelatedPapersForCourse,
 } from "@/lib/data/pastPaperDetail";
 import ItemActions from "@/app/components/ItemActions";
@@ -145,7 +146,7 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
     const displayYear = paper.year?.toString() ?? undefined;
     const displayExam = paper.examType ? examTypeLabel(paper.examType) : undefined;
 
-    const [relatedPapers, adjacent] = paper.courseId
+    const [relatedPapers, adjacent, siblingPaper] = paper.courseId
         ? await Promise.all([
               getRelatedPapersForCourse({
                   paperId: paper.id,
@@ -157,8 +158,19 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
                   paperId: paper.id,
                   courseId: paper.courseId,
               }),
+              getSiblingPastPaper({
+                  paperId: paper.id,
+                  questionPaperId: paper.questionPaperId,
+                  courseId: paper.courseId,
+                  examType: paper.examType,
+                  slot: paper.slot,
+                  year: paper.year,
+                  semester: paper.semester,
+                  campus: paper.campus,
+                  hasAnswerKey: paper.hasAnswerKey,
+              }),
           ])
-        : [[], { prev: null, next: null }];
+        : [[], { prev: null, next: null }, null];
 
     const relatedItems = relatedPapers.map((item) => ({
         id: item.id,
@@ -228,6 +240,15 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
                             </p>
                         </div>
                         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:pt-1">
+                            {siblingPaper ? (
+                                <Link
+                                    href={getPastPaperDetailPath(siblingPaper.id, siblingPaper.course?.code ?? canonicalCode)}
+                                    transitionTypes={["nav-forward"]}
+                                    className="inline-flex items-center justify-center border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black transition hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5"
+                                >
+                                    {siblingPaper.hasAnswerKey ? "Answer key" : "Question paper"}
+                                </Link>
+                            ) : null}
                             <ItemActions
                                 itemId={paper.id}
                                 title={paper.title}

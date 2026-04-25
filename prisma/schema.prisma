@@ -236,27 +236,30 @@ model Comment {
 }
 
 model PastPaper {
-  id           String        @id @default(cuid())
-  title        String
-  fileUrl      String
-  thumbNailUrl String?
-  tags         Tag[]
-  author       User          @relation(fields: [authorId], references: [id], name: "UserPastPapers")
-  authorId     String
-  isClear      Boolean       @default(false)
-  courseId     String?
-  course       Course?       @relation(fields: [courseId], references: [id])
-  examType     ExamType?
-  slot         String?
-  year         Int?
-  semester     Semester      @default(UNKNOWN)
-  campus       Campus        @default(VELLORE)
-  hasAnswerKey Boolean       @default(false)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  bookmarkedBy User[]        @relation("UserBookmarkedPastPapers")
-  viewHistory  ViewHistory[]
-  studyChats   StudyChat[]
+  id               String        @id @default(cuid())
+  title            String
+  fileUrl          String
+  thumbNailUrl     String?
+  tags             Tag[]
+  author           User          @relation(fields: [authorId], references: [id], name: "UserPastPapers")
+  authorId         String
+  isClear          Boolean       @default(false)
+  courseId         String?
+  course           Course?       @relation(fields: [courseId], references: [id])
+  examType         ExamType?
+  slot             String?
+  year             Int?
+  semester         Semester      @default(UNKNOWN)
+  campus           Campus        @default(VELLORE)
+  hasAnswerKey     Boolean       @default(false)
+  questionPaperId  String?       @unique
+  questionPaper    PastPaper?    @relation("PastPaperAnswerKeyLink", fields: [questionPaperId], references: [id], onDelete: SetNull)
+  answerKeyVariant PastPaper?    @relation("PastPaperAnswerKeyLink")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  bookmarkedBy     User[]        @relation("UserBookmarkedPastPapers")
+  viewHistory      ViewHistory[]
+  studyChats       StudyChat[]
 
   @@index([isClear, createdAt])
   @@index([createdAt])
