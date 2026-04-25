@@ -25,7 +25,7 @@ jobs:
       name: production
       url: https://exam-cooker.acmvit.in
     env:
-      DATABASE_URL: postgresql://chef:24JKKM8IWaf4HV5H3sLIGQ@development-19222.j77.aws-ap-south-1.cockroachlabs.cloud:26257/ec-dev?sslmode=verify-full
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       AUTH_SECRET: ci-auth-secret-for-build-only
       NEXTAUTH_SECRET: ci-auth-secret-for-build-only
       AUTH_GOOGLE_ID: ci-google-id.apps.googleusercontent.com
