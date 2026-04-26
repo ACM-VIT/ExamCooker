@@ -385,6 +385,8 @@ async function loadReferences() {
     }
 }
 
+type DevBucketPrismaClient = Awaited<ReturnType<typeof loadReferences>>["prisma"];
+
 function summarizeReferences(references: UrlReference[]) {
     const bucketCounts = new Map<string, number>();
     const directories = new Map<string, Set<string>>();
@@ -502,7 +504,7 @@ async function copyReferencedObjects(
 }
 
 async function rewriteDatabaseUrls(
-    prisma: InstanceType<typeof PrismaClient>,
+    prisma: DevBucketPrismaClient,
     sourceBucket: string,
     targetBucket: string,
     options: Options,

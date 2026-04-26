@@ -703,8 +703,10 @@ function buildPrismaClient(databaseUrl: string) {
     });
 }
 
+type StoragePrismaClient = ReturnType<typeof buildPrismaClient>;
+
 async function loadReferences(
-    prisma: InstanceType<typeof PrismaClient>,
+    prisma: StoragePrismaClient,
     destinationBaseUrl: string,
     pathPrefixMode: Exclude<PathPrefixMode, "auto">,
 ) {
@@ -1231,7 +1233,7 @@ async function executeBulkUrlUpdate(
 }
 
 async function rewriteDatabaseUrls(
-    prisma: InstanceType<typeof PrismaClient>,
+    prisma: StoragePrismaClient,
     groups: BulkUpdateGroup[],
     batchSize: number,
 ) {
@@ -1249,7 +1251,7 @@ async function rewriteDatabaseUrls(
 }
 
 async function countRemainingExternalReferences(
-    prisma: InstanceType<typeof PrismaClient>,
+    prisma: StoragePrismaClient,
     destinationBaseUrl: string,
 ) {
     const [notes, papers, syllabiRows] = await Promise.all([
@@ -1327,7 +1329,7 @@ async function countRemainingExternalReferences(
     return counts;
 }
 
-async function countSkippedSourceReferences(prisma: InstanceType<typeof PrismaClient>) {
+async function countSkippedSourceReferences(prisma: StoragePrismaClient) {
     const [notes, papers, syllabiRows] = await Promise.all([
         prisma.note.findMany({
             select: {
