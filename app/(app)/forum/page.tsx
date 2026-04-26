@@ -8,6 +8,8 @@ import NewForumButton from "../../components/NewForumButton";
 import { auth } from '@/app/auth';
 import { getForumCount, getForumPage } from "@/lib/data/forum";
 
+type ForumSearchParams = { page?: string; search?: string; tags?: string | string[] };
+
 function validatePage(page: number, totalPages: number): number {
   if (isNaN(page) || page < 1) {
     return 1;
@@ -18,24 +20,98 @@ function validatePage(page: number, totalPages: number): number {
   return page;
 }
 
-function ForumSkeleton() {
+function ForumToolbarShell() {
   return (
-    <div className="w-full mx-auto space-y-4">
+    <>
+      <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
+        <div className="relative hidden w-full min-w-0 text-left md:block md:w-auto md:min-w-fit">
+          <button
+            type="button"
+            className="inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-3 py-2 text-base font-semibold text-black dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] md:h-auto md:w-auto md:px-4 md:text-lg md:font-bold"
+          >
+            Filter
+            <span className="ml-2">▾</span>
+          </button>
+        </div>
+        <div
+          aria-hidden="true"
+          className="relative flex items-center w-full"
+        >
+          <div className="relative flex items-center bg-white dark:bg-[#3D414E] border border-black/25 dark:border-[#D5D5D5]/30 w-full px-2 py-0.5">
+            <span className="h-4 w-4 rounded-full border-2 border-black/55 dark:border-[#D5D5D5]" />
+            <span className="px-4 py-2 w-full text-black/50 dark:text-[#D5D5D5]/60">
+              Search
+            </span>
+          </div>
+        </div>
+        <NewForumButton />
+      </div>
+
+      <div className='flex-col w-5/6 md:hidden space-y-4'>
+        <div
+          aria-hidden="true"
+          className="relative flex items-center bg-white dark:bg-[#3D414E] border border-black/25 dark:border-[#D5D5D5]/30 w-full px-2 py-0.5"
+        >
+          <span className="h-4 w-4 rounded-full border-2 border-black/55 dark:border-[#D5D5D5]" />
+          <span className="px-4 py-2 w-full text-black/50 dark:text-[#D5D5D5]/60">
+            Search
+          </span>
+        </div>
+        <div className='flex justify-between'>
+          <button
+            type="button"
+            className="inline-flex h-12 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-4 text-lg font-bold leading-none text-black dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5]"
+          >
+            Filter
+            <span className="ml-2">▾</span>
+          </button>
+          <NewForumButton />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ForumResultsShell() {
+  return (
+    <div className="w-full mx-auto space-y-4" aria-hidden="true">
       {Array.from({ length: 5 }).map((_, index) => (
         <div key={index} className="w-full flex pl-11 pr-7 pt-7 justify-center">
-          <div className="bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 dark:lg:bg-[#0C1222] border-2 border-transparent p-5 md:p-10 size-full md:size-5/6 transition duration-200">
-            <div className="flex justify-between items-center">
-              <div className="h-6 w-1/2 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+          <div className="bg-[#5FC4E7] dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] border-2 border-[#5FC4E7] dark:border-[#ffffff]/20 dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 p-5 md:p-10 size-full md:size-5/6 transition duration-200">
+            <div className="flex justify-between items-center gap-4">
+              <h2 className="font-extrabold lg:text-3xl md:text-xl text-base">
+                <span className="block h-[1em] w-48 bg-black/10 dark:bg-white/10" />
+              </h2>
               <div className="flex items-center space-x-4">
-                <div className="h-6 w-20 bg-black/10 dark:bg-white/10 rounded animate-pulse hidden md:block" />
-                <div className="h-6 w-16 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+                <div className="bg-white dark:bg-[#3F4451] p-1 hidden md:block">
+                  <span className="block h-4 w-20 bg-black/10 dark:bg-white/10" />
+                </div>
+                <div className="flex space-x-2 p-0.5 bg-white dark:bg-[#3F4451]">
+                  <span className="block h-5 w-8 bg-black/10 dark:bg-white/10" />
+                  <span className="block h-5 w-8 bg-black/10 dark:bg-white/10" />
+                </div>
               </div>
             </div>
-            <div className="h-3 mt-6 w-full bg-black/10 dark:bg-white/10 rounded animate-pulse" />
-            <div className="h-3 mt-2 w-3/4 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
-            <div className="flex justify-between items-center mt-6">
-              <div className="h-4 w-2/3 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
-              <div className="h-4 w-4 bg-black/10 dark:bg-white/10 rounded-full animate-pulse" />
+            <br />
+            <p className="text-xs">
+              <span className="block h-[1em] w-full bg-black/10 dark:bg-white/10" />
+              <span className="mt-1 block h-[1em] w-3/4 bg-black/10 dark:bg-white/10" />
+            </p>
+            <br />
+
+            <div className="flex justify-between items-center sm:w-2/3 md:w-full">
+              <div className="sm:w-2/3 md:flex md:w-full md:justify-between">
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded bg-white/60 px-2 py-1 text-xs dark:bg-[#3F4451]">
+                    <span className="block h-[1em] w-8 bg-black/10 dark:bg-white/10" />
+                  </span>
+                </div>
+              </div>
+              <span className="block h-4 w-4 rounded-full bg-black/10 dark:bg-white/10" />
+            </div>
+
+            <div className="text-xs text-right">
+              <p className="ml-auto mt-2 h-[1em] w-32 bg-black/10 dark:bg-white/10" />
             </div>
           </div>
         </div>
@@ -44,11 +120,16 @@ function ForumSkeleton() {
   );
 }
 
-function buildForumSearchString(params: {
-  page?: string;
-  search?: string;
-  tags?: string | string[];
-}) {
+function ForumRuntimeShell() {
+  return (
+    <>
+      <ForumToolbarShell />
+      <ForumResultsShell />
+    </>
+  );
+}
+
+function buildForumSearchString(params: ForumSearchParams) {
   const searchParams = new URLSearchParams();
 
   if (params.page) {
@@ -68,7 +149,7 @@ function buildForumSearchString(params: {
   return searchParams.toString();
 }
 
-async function ForumResults({ params }: { params: { page?: string; search?: string; tags?: string | string[] } }) {
+async function ForumResults({ params }: { params: ForumSearchParams }) {
   const session = await auth();
   const currentUserId = session?.user?.id;
   const pageSize = 5;
@@ -143,18 +224,16 @@ async function ForumResults({ params }: { params: { page?: string; search?: stri
   );
 }
 
-export default async function ForumPage({
+async function ForumRuntime({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+  searchParams?: Promise<ForumSearchParams>;
 }) {
   const params = (await searchParams) ?? {};
   const search = params.search || '';
   const toolbarSearchString = buildForumSearchString(params);
   return (
-    <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-8">
-      <h1 className="text-center mb-4">Forum</h1>
-
+    <>
       <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
         <Dropdown pageType='forum' searchString={toolbarSearchString} />
         <SearchBar pageType="forum" initialQuery={search} searchString={toolbarSearchString} />
@@ -169,8 +248,23 @@ export default async function ForumPage({
         </div>
       </div>
 
-      <Suspense fallback={<ForumSkeleton />}>
+      <Suspense fallback={<ForumResultsShell />}>
         <ForumResults params={params} />
+      </Suspense>
+    </>
+  );
+}
+
+export default function ForumPage({
+  searchParams,
+}: {
+  searchParams?: Promise<ForumSearchParams>;
+}) {
+  return (
+    <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-8">
+      <h1 className="text-center mb-4">Forum</h1>
+      <Suspense fallback={<ForumRuntimeShell />}>
+        <ForumRuntime searchParams={searchParams} />
       </Suspense>
     </div>
   );

@@ -32,8 +32,9 @@ import {
 const PAGE_SIZE = 24;
 const POPULAR_LIMIT = 6;
 const COURSE_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
+type PastPapersSearchParams = { search?: string; page?: string };
 
-function buildSearchString(params: { search?: string; page?: string }) {
+function buildSearchString(params: PastPapersSearchParams) {
     const searchParams = new URLSearchParams();
     if (params.search) {
         searchParams.set("search", params.search);
@@ -114,36 +115,73 @@ function HeroStats({
     );
 }
 
-function CourseCardsSkeleton({ count }: { count: number }) {
+function CourseCardsShell({ count }: { count: number }) {
     return (
-        <div className={COURSE_GRID_CLASS}>
-            {Array.from({ length: count }).map((_, i) => (
-                <div
-                    key={i}
-                    className="h-32 animate-pulse border-2 border-[#5FC4E7]/50 bg-[#5FC4E7]/25 dark:border-[#ffffff]/10 dark:bg-[#ffffff]/5"
-                />
+        <div className={COURSE_GRID_CLASS} aria-hidden="true">
+            {Array.from({ length: count }).map((_, index) => (
+                <div className="group relative h-full" key={index}>
+                    <div className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]">
+                        <span className="font-mono text-xs font-bold uppercase tracking-wide text-black/75 dark:text-[#D5D5D5]/70">
+                            <span className="block h-[1em] w-20 bg-black/10 dark:bg-white/10" />
+                        </span>
+                        <h3 className="line-clamp-3 text-base font-bold leading-snug text-black dark:text-[#D5D5D5]">
+                            <span className="block h-[1em] w-full bg-black/10 dark:bg-white/10" />
+                            <span className="mt-1.5 block h-[1em] w-4/5 bg-black/10 dark:bg-white/10" />
+                        </h3>
+                        <div className="mt-auto flex items-end justify-between pt-1">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-3xl font-bold leading-none text-black dark:text-[#D5D5D5]">
+                                    <span className="block h-[1em] w-10 bg-black/10 dark:bg-white/10" />
+                                </span>
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
+                                    <span className="block h-[1em] w-12 bg-black/10 dark:bg-white/10" />
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             ))}
         </div>
     );
 }
 
-function PopularCoursesSkeleton() {
+function SearchControlsShell() {
+    return (
+        <div className="flex w-full items-stretch gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
+                <div
+                    aria-hidden="true"
+                    className="relative flex h-12 w-full items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]"
+                >
+                    <span className="dark:invert-[.835]">
+                        <span className="block h-4 w-4 rounded-full border-2 border-black/55 dark:border-[#D5D5D5]" />
+                    </span>
+                    <span className="px-4 py-0 text-sm text-black/50 sm:text-base dark:text-[#D5D5D5]/60">
+                        Search course or code...
+                    </span>
+                </div>
+            </div>
+            <div className="shrink-0">
+                <UploadButtonPaper />
+            </div>
+        </div>
+    );
+}
+
+function PopularCoursesShell() {
     return (
         <section className="flex flex-col gap-4">
             <header className="flex items-end justify-between">
                 <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
                     Popular courses
                 </h2>
-                <span className="text-sm text-black/50 dark:text-[#D5D5D5]/50">
-                    Loading
-                </span>
             </header>
-            <CourseCardsSkeleton count={POPULAR_LIMIT} />
+            <CourseCardsShell count={POPULAR_LIMIT} />
         </section>
     );
 }
 
-function CourseGridSectionSkeleton({ search }: { search: string }) {
+function CourseGridSectionShell({ search }: { search: string }) {
     return (
         <section className="flex flex-col gap-4">
             <header className="flex items-end justify-between gap-3">
@@ -151,16 +189,77 @@ function CourseGridSectionSkeleton({ search }: { search: string }) {
                     {search ? "Matches" : "All courses"}
                 </h2>
                 {!search && (
-                    <span className="text-sm text-black/50 dark:text-[#D5D5D5]/50">
-                        Loading
+                    <span className="text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                        &nbsp;
                     </span>
                 )}
             </header>
-            <CourseCardsSkeleton count={PAGE_SIZE} />
-            <div className="mt-4 flex justify-center">
-                <div className="h-9 w-64 animate-pulse border border-black/20 bg-[#5FC4E7]/20 dark:border-[#D5D5D5]/20 dark:bg-white/5" />
+            <CourseCardsShell count={PAGE_SIZE} />
+            <div className="mt-4 flex justify-center" aria-hidden="true">
+                <nav className="flex flex-wrap items-center justify-center gap-1">
+                    {["‹", "1", "2", "3", "4", "5", "›"].map((label, index) => (
+                        <span
+                            key={`${label}-${index}`}
+                            className={`inline-flex h-9 min-w-[2.25rem] items-center justify-center border px-3 text-sm font-semibold transition ${
+                                index === 1
+                                    ? "border-black bg-[#5FC4E7] text-black dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/20 dark:text-[#3BF4C7]"
+                                    : "border-black/30 text-black dark:border-[#D5D5D5]/40 dark:text-[#D5D5D5]"
+                            }`}
+                        >
+                            {label}
+                        </span>
+                    ))}
+                </nav>
             </div>
         </section>
+    );
+}
+
+function RecentSectionShell() {
+    return (
+        <section className="flex flex-col gap-4">
+            <header className="flex items-end justify-between">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                    Recently added
+                </h2>
+            </header>
+            <div
+                aria-hidden="true"
+                className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-hidden px-3 pb-2 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10"
+            >
+                {Array.from({ length: 6 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="flex w-40 shrink-0 flex-col overflow-hidden rounded-md border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222] sm:w-44"
+                    >
+                        <div className="aspect-[4/5] w-full bg-black/5 dark:bg-white/5" />
+                        <div className="flex flex-col gap-2 p-2.5">
+                            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-black/70 dark:text-[#3BF4C7]/80">
+                                <span className="block h-[1em] w-14 bg-black/10 dark:bg-white/10" />
+                            </span>
+                            <p className="line-clamp-2 text-xs font-semibold">
+                                <span className="block h-[1em] w-full bg-black/10 dark:bg-white/10" />
+                                <span className="mt-1 block h-[1em] w-2/3 bg-black/10 dark:bg-white/10" />
+                            </p>
+                            <div className="flex items-center gap-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-black/60 dark:text-[#D5D5D5]/60">
+                                <span className="block h-[1em] w-8 bg-black/10 dark:bg-white/10" />
+                                <span className="block h-[1em] w-8 bg-black/10 dark:bg-white/10" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function PaperSectionsShell() {
+    return (
+        <>
+            <PopularCoursesShell />
+            <CourseGridSectionShell search="" />
+            <RecentSectionShell />
+        </>
     );
 }
 
@@ -269,13 +368,65 @@ async function UpcomingSection() {
     return <UpcomingExamsStrip items={upcomingExams} emptyPrompt={null} />;
 }
 
-export default async function PastPapersPage({
+async function SearchControls({
     searchParams,
+    searchable,
 }: {
-    searchParams?: Promise<{ search?: string; page?: string }>;
+    searchParams?: Promise<PastPapersSearchParams>;
+    searchable: Awaited<ReturnType<typeof getSearchableCourses>>;
 }) {
     const params = (await searchParams) ?? {};
     const search = params.search || "";
+
+    return (
+        <div className="flex w-full items-stretch gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
+                <PastPapersCourseSearch
+                    courses={searchable}
+                    initialQuery={search}
+                />
+            </div>
+            <div className="shrink-0">
+                <UploadButtonPaper />
+            </div>
+        </div>
+    );
+}
+
+async function RuntimePaperSections({
+    searchParams,
+}: {
+    searchParams?: Promise<PastPapersSearchParams>;
+}) {
+    const params = (await searchParams) ?? {};
+    const search = params.search || "";
+
+    return (
+        <>
+            {!search && (
+                <Suspense fallback={<PopularCoursesShell />}>
+                    <PopularCoursesSection />
+                </Suspense>
+            )}
+
+            <Suspense fallback={<CourseGridSectionShell search={search} />}>
+                <CourseGridSection params={params} />
+            </Suspense>
+
+            {!search && (
+                <Suspense fallback={<RecentSectionShell />}>
+                    <RecentSection />
+                </Suspense>
+            )}
+        </>
+    );
+}
+
+export default async function PastPapersPage({
+    searchParams,
+}: {
+    searchParams?: Promise<PastPapersSearchParams>;
+}) {
     const [stats, searchable] = await Promise.all([
         getCatalogStats(),
         getSearchableCourses(),
@@ -316,50 +467,31 @@ export default async function PastPapersPage({
 
                         <HeroStats stats={stats} />
 
-                        <div className="flex w-full items-stretch gap-2 sm:gap-3">
-                            <div className="min-w-0 flex-1">
-                                <PastPapersCourseSearch
-                                    courses={searchable}
-                                    initialQuery={search}
-                                />
-                            </div>
-                            <div className="shrink-0">
-                                <UploadButtonPaper />
-                            </div>
-                        </div>
+                        <Suspense fallback={<SearchControlsShell />}>
+                            <SearchControls
+                                searchParams={searchParams}
+                                searchable={searchable}
+                            />
+                        </Suspense>
                     </section>
 
-                    {!search && (
-                        <Suspense fallback={<PopularCoursesSkeleton />}>
-                            <PopularCoursesSection />
-                        </Suspense>
-                    )}
-
-                    <Suspense fallback={<CourseGridSectionSkeleton search={search} />}>
-                        <CourseGridSection params={params} />
+                    <Suspense fallback={<PaperSectionsShell />}>
+                        <RuntimePaperSections searchParams={searchParams} />
                     </Suspense>
 
-                    {!search && (
-                        <Suspense fallback={null}>
-                            <RecentSection />
-                        </Suspense>
-                    )}
-
-                    {!search && (
-                        <section className="sr-only">
-                            {faq.map((item) => (
-                                <article
-                                    key={item.question}
-                                    className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
-                                >
-                                    <h2 className="text-base font-bold">{item.question}</h2>
-                                    <p className="mt-2 text-sm text-black/70 dark:text-[#D5D5D5]/70">
-                                        {item.answer}
-                                    </p>
-                                </article>
-                            ))}
-                        </section>
-                    )}
+                    <section className="sr-only">
+                        {faq.map((item) => (
+                            <article
+                                key={item.question}
+                                className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                            >
+                                <h2 className="text-base font-bold">{item.question}</h2>
+                                <p className="mt-2 text-sm text-black/70 dark:text-[#D5D5D5]/70">
+                                    {item.answer}
+                                </p>
+                            </article>
+                        ))}
+                    </section>
                 </div>
             </div>
         </DirectionalTransition>

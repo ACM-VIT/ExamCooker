@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { Toaster } from "@/components/ui/toaster";
@@ -60,16 +60,21 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
+        <html
+            lang="en"
+            className="dark"
+            suppressHydrationWarning
+            data-scroll-behavior="smooth"
+        >
             <head>
                 <StructuredData
                     data={[
-                        buildOrganizationStructuredData(),
+                           buildOrganizationStructuredData(),
                         buildWebSiteStructuredData(),
                     ]}
                 />
                 <Script id="theme-init" strategy="beforeInteractive">
-                    {"(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();"}
+                    {"(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.remove('dark');else document.documentElement.classList.add('dark');}catch(e){document.documentElement.classList.add('dark');}})();"}
                 </Script>
             </head>
             <body
@@ -77,7 +82,7 @@ export default function RootLayout({
                 style={{ margin: "0" }}
             >
                 <PostHogProvider>
-                    <Suspense fallback={null}>{children}</Suspense>
+                    {children}
                     <Toaster />
                     <UpsellToast />
                     <UpsellModal />

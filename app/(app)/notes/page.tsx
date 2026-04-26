@@ -21,6 +21,7 @@ const PAGE_SIZE = 24;
 const POPULAR_LIMIT = 6;
 const COURSE_GRID_CLASS =
     "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
+type NotesSearchParams = { page?: string; search?: string };
 
 function formatNumber(n: number) {
     return n.toLocaleString("en-US");
@@ -62,15 +63,66 @@ function HeroStats({
     );
 }
 
-function CourseGridSkeleton() {
+function CourseGridShell() {
     return (
-        <div className={COURSE_GRID_CLASS}>
-            {Array.from({ length: 18 }).map((_, i) => (
+        <section className="flex flex-col gap-4">
+            <header className="flex items-end justify-between gap-3">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                    All courses
+                </h2>
+                <span className="text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                    &nbsp;
+                </span>
+            </header>
+            <div className={COURSE_GRID_CLASS} aria-hidden="true">
+                {Array.from({ length: PAGE_SIZE }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]"
+                    >
+                        <span className="font-mono text-xs font-bold uppercase tracking-wide text-black/75 dark:text-[#D5D5D5]/70">
+                            <span className="block h-[1em] w-20 bg-black/10 dark:bg-white/10" />
+                        </span>
+                        <h3 className="line-clamp-3 text-base font-bold leading-snug text-black dark:text-[#D5D5D5]">
+                            <span className="block h-[1em] w-full bg-black/10 dark:bg-white/10" />
+                            <span className="mt-1.5 block h-[1em] w-4/5 bg-black/10 dark:bg-white/10" />
+                        </h3>
+                        <div className="mt-auto flex items-end pt-1">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-3xl font-bold leading-none text-black dark:text-[#D5D5D5]">
+                                    <span className="block h-[1em] w-10 bg-black/10 dark:bg-white/10" />
+                                </span>
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
+                                    <span className="block h-[1em] w-10 bg-black/10 dark:bg-white/10" />
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function SearchControlsShell() {
+    return (
+        <div className="flex w-full items-stretch gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
                 <div
-                    key={i}
-                    className="h-32 animate-pulse border-2 border-[#5FC4E7]/50 bg-[#5FC4E7]/25 dark:border-[#ffffff]/10 dark:bg-[#ffffff]/5"
-                />
-            ))}
+                    aria-hidden="true"
+                    className="relative flex h-12 w-full items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]"
+                >
+                    <span className="dark:invert-[.835]">
+                        <span className="block h-4 w-4 rounded-full border-2 border-black/55 dark:border-[#D5D5D5]" />
+                    </span>
+                    <span className="px-4 py-0 text-sm text-black/50 sm:text-base dark:text-[#D5D5D5]/60">
+                        Search course or code...
+                    </span>
+                </div>
+            </div>
+            <div className="shrink-0">
+                <UploadButtonNotes />
+            </div>
         </div>
     );
 }
@@ -84,7 +136,7 @@ function validatePage(page: number, totalPages: number): number {
 async function CourseGridSection({
     params,
 }: {
-    params: { search?: string; page?: string };
+    params: NotesSearchParams;
 }) {
     const search = params.search?.trim() || "";
     const rawPage = Number.parseInt(params.page || "1", 10) || 1;
@@ -197,14 +249,46 @@ async function CourseGridSection({
     );
 }
 
-export default async function NotesPage({
+async function SearchControls({
     searchParams,
+    searchable,
 }: {
-    searchParams?: Promise<{ page?: string; search?: string }>;
+    searchParams?: Promise<NotesSearchParams>;
+    searchable: Awaited<ReturnType<typeof getSearchableNoteCourses>>;
 }) {
     const params = (await searchParams) ?? {};
     const search = params.search || "";
 
+    return (
+        <div className="flex w-full items-stretch gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
+                <NotesCourseSearch
+                    courses={searchable}
+                    initialQuery={search}
+                />
+            </div>
+            <div className="shrink-0">
+                <UploadButtonNotes />
+            </div>
+        </div>
+    );
+}
+
+async function RuntimeNotesSections({
+    searchParams,
+}: {
+    searchParams?: Promise<NotesSearchParams>;
+}) {
+    const params = (await searchParams) ?? {};
+
+    return <CourseGridSection params={params} />;
+}
+
+export default async function NotesPage({
+    searchParams,
+}: {
+    searchParams?: Promise<NotesSearchParams>;
+}) {
     const [stats, searchable] = await Promise.all([
         getNotesStats(),
         getSearchableNoteCourses(),
@@ -222,21 +306,16 @@ export default async function NotesPage({
 
                         <HeroStats stats={stats} />
 
-                        <div className="flex w-full items-stretch gap-2 sm:gap-3">
-                            <div className="min-w-0 flex-1">
-                                <NotesCourseSearch
-                                    courses={searchable}
-                                    initialQuery={search}
-                                />
-                            </div>
-                            <div className="shrink-0">
-                                <UploadButtonNotes />
-                            </div>
-                        </div>
+                        <Suspense fallback={<SearchControlsShell />}>
+                            <SearchControls
+                                searchParams={searchParams}
+                                searchable={searchable}
+                            />
+                        </Suspense>
                     </section>
 
-                    <Suspense fallback={<CourseGridSkeleton />}>
-                        <CourseGridSection params={params} />
+                    <Suspense fallback={<CourseGridShell />}>
+                        <RuntimeNotesSections searchParams={searchParams} />
                     </Suspense>
                 </div>
             </div>
