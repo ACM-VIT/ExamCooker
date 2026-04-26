@@ -106,7 +106,7 @@ export default function CoursePicker({
         setCreating(true);
         try {
             const result = await createCourse({ code: newCode, title: newTitle });
-            if (!result.success) {
+            if (result.success === false) {
                 setCreateError(result.error);
                 return;
             }
