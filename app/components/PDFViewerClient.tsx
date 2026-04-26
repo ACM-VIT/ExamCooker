@@ -2,7 +2,15 @@
 
 import { preconnect, preload } from "react-dom";
 
+import {
+  PDFIUM_WASM_URL,
+  preloadPdfiumEngine,
+} from "@/lib/pdf/pdfiumEngineCache";
 import PDFViewer from "./pdfviewer";
+
+if (typeof window !== "undefined") {
+  void preloadPdfiumEngine().catch(() => undefined);
+}
 
 function getRemoteOrigin(url: string) {
   try {
@@ -22,6 +30,8 @@ export default function PDFViewerClient({
   fileUrl: string;
   fileName?: string;
 }) {
+  preload(PDFIUM_WASM_URL, { as: "fetch" });
+
   const remoteOrigin = getRemoteOrigin(fileUrl);
   if (remoteOrigin) {
     preconnect(remoteOrigin, { crossOrigin: "anonymous" });
