@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const VIDEOS = ["/night.mp4", "/rainy.mp4"] as const;
+const VIDEOS = ["/night.webm", "/rainy.webm"] as const;
 
 export default function HeroBackdropVideo() {
     const [src, setSrc] = useState<string | null>(null);
@@ -26,7 +26,7 @@ export default function HeroBackdropVideo() {
             disableRemotePlayback
             className="absolute inset-0 h-full w-full object-cover"
         >
-            <source src={src} type="video/mp4" />
+            <source src={src} type="video/webm" />
         </video>
     );
 }

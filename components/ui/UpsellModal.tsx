@@ -99,7 +99,7 @@ const UpsellModal = () => {
             >
                 <div className="relative h-44 overflow-hidden sm:h-52">
                     <Image
-                        src="/upsell1.png"
+                        src="/upsell1.webp"
                         alt=""
                         fill
                         sizes="(min-width: 640px) 28rem, 26rem"

@@ -11,7 +11,6 @@ import React, {
 } from "react";
 import Link from "next/link";
 import { useDropzone } from "react-dropzone";
-import uploadFile from "../actions/uploadFile";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import Loading from "../loading";
@@ -26,6 +25,18 @@ type UploadVariant = "Notes" | "Past Papers";
 type UploadFileProps = {
     variant: UploadVariant;
     courses?: CourseOption[];
+};
+
+type ProcessedUploadResult = {
+    fileUrl: string;
+    thumbnailUrl: string | null;
+    filename: string;
+    message: string;
+};
+
+type UploadSaveResponse = {
+    success: boolean;
+    error?: string;
 };
 
 type UploadFormState = {
@@ -140,6 +151,60 @@ const isPdfFile = (file: File) =>
     file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 const isImageFile = (file: File) => file.type.startsWith("image/");
 const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, "");
+const PROCESSOR_SUCCESS_MESSAGE = "processed successfully";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+}
+
+function getStringField(
+    source: Record<string, unknown>,
+    ...keys: string[]
+): string | null {
+    for (const key of keys) {
+        const value = source[key];
+        if (typeof value === "string" && value.trim()) {
+            return value.trim();
+        }
+    }
+
+    return null;
+}
+
+function normalizeProcessedUploadResult(
+    payload: unknown,
+    fallbackFilename: string,
+): ProcessedUploadResult {
+    if (!isRecord(payload)) {
+        return {
+            fileUrl: "",
+            thumbnailUrl: null,
+            filename: fallbackFilename,
+            message: "Upload processor returned an invalid response.",
+        };
+    }
+
+    const fileUrl = getStringField(payload, "fileUrl", "file_url", "url") ?? "";
+    const filename =
+        getStringField(payload, "filename", "fileName", "name") ?? fallbackFilename;
+    const message =
+        getStringField(payload, "message") ??
+        (fileUrl
+            ? PROCESSOR_SUCCESS_MESSAGE
+            : "Upload processor did not return a file URL.");
+
+    return {
+        fileUrl,
+        filename,
+        message,
+        thumbnailUrl: getStringField(
+            payload,
+            "thumbnailUrl",
+            "thumbnail_url",
+            "thumbNailUrl",
+        ),
+    };
+}
 
 function uploadFormReducer(
     state: UploadFormState,
@@ -1010,6 +1075,12 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
 
             startTransition(async () => {
                 try {
+                    const processorBaseUrl =
+                        process.env.NEXT_PUBLIC_MICROSERVICE_URL?.replace(/\/$/, "");
+                    if (!processorBaseUrl) {
+                        throw new Error("Upload processor URL is not configured.");
+                    }
+
                     const formDatas = files.map((file, index) => {
                         const formData = new FormData();
                         formData.append("file", file);
@@ -1019,7 +1090,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
 
                     const promises = formDatas.map(async (formData) => {
                         const response = await fetch(
-                            `${process.env.NEXT_PUBLIC_MICROSERVICE_URL}/process_pdf`,
+                            `${processorBaseUrl}/process_pdf`,
                             {
                                 method: "POST",
                                 body: formData,
@@ -1027,46 +1098,59 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                         );
 
                         if (!response.ok) {
-                            console.log(response);
+                            const errorText = await response.text().catch(() => "");
+                            const details = errorText
+                                ? `: ${errorText.slice(0, 240)}`
+                                : "";
                             throw new Error(
-                                `Failed to upload file ${formData.get("filetitle")}`,
+                                `Failed to upload file ${formData.get("filetitle")}${details}`,
                             );
                         }
 
-                        return response.json();
+                        const payload = await response.json();
+                        return normalizeProcessedUploadResult(
+                            payload,
+                            String(formData.get("filetitle") ?? "Untitled"),
+                        );
                     });
 
-                    const results = (await Promise.all(promises)) as Array<{
-                        fileUrl: string;
-                        thumbnailUrl: string;
-                        filename: string;
-                        message: string;
-                    }>;
+                    const results = await Promise.all(promises);
+                    const failedResult = results.find(
+                        (result) => result.message !== PROCESSOR_SUCCESS_MESSAGE,
+                    );
+                    if (failedResult) {
+                        throw new Error(failedResult.message);
+                    }
 
-                    const response = await uploadFile({
-                        results,
-                        year,
-                        slot,
-                        variant,
-                        courseId,
-                        examType: examType || null,
-                        semester: semesterVal || null,
-                        campus: campusVal || null,
-                        hasAnswerKey,
+                    const saveResponse = await fetch("/api/uploads", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            results,
+                            year,
+                            slot,
+                            variant,
+                            courseId,
+                            examType: examType || null,
+                            semester: semesterVal || null,
+                            campus: campusVal || null,
+                            hasAnswerKey,
+                        }),
                     });
+                    const savePayload = (await saveResponse
+                        .json()
+                        .catch(() => null)) as UploadSaveResponse | null;
 
-                    if (!response.success) {
-                        dispatch({
-                            type: "patch",
-                            payload: {
-                                error: `Error uploading files: ${response.error}`,
-                            },
-                        });
-                        return;
+                    if (!saveResponse.ok || !savePayload?.success) {
+                        throw new Error(
+                            savePayload?.error ?? "Failed to save upload metadata.",
+                        );
                     }
 
                     toast({ title: "Selected files uploaded successfully." });
-                    router.push("/past_papers");
+                    router.push(variant === "Past Papers" ? "/past_papers" : "/notes");
                 } catch (uploadError) {
                     console.error("Error uploading files:", uploadError);
                     dispatch({
