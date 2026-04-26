@@ -13,6 +13,7 @@ import ViewTracker from "@/app/components/ViewTracker";
 import ItemActions from "@/app/components/ItemActions";
 import { getNoteDetail } from "@/lib/data/noteDetail";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getCourseNotesPath } from "@/lib/seo";
+import { buildNotePdfFileName } from "@/lib/downloads/resourceNames";
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
@@ -77,6 +78,11 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
     const authorName = note.author?.name?.slice(0, -10) || "Unknown";
     const backHref = note.course?.code ? getCourseNotesPath(note.course.code) : "/notes";
     const backLabel = note.course?.code ?? "Notes";
+    const downloadFileName = buildNotePdfFileName({
+        courseCode: note.course?.code,
+        courseTitle: note.course?.title,
+        title: note.title,
+    });
     const metaPills: Array<{ label: string; value: string }> = [];
     if (slot) metaPills.push({ label: "Slot", value: slot });
     if (year) metaPills.push({ label: "Year", value: year });
@@ -160,7 +166,10 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
 
                     <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
                         <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
-                            <PDFViewerClient fileUrl={note.fileUrl}/>
+                            <PDFViewerClient
+                                fileUrl={note.fileUrl}
+                                fileName={downloadFileName}
+                            />
                         </div>
                     </div>
                 </div>

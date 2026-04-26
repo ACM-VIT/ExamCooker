@@ -87,6 +87,7 @@ function buildCourseWhere(input: {
 export type CourseNoteListItem = {
     id: string;
     title: string;
+    fileUrl: string;
     thumbNailUrl: string | null;
     updatedAt: Date;
     course: { code: string; title: string } | null;
@@ -123,6 +124,7 @@ export async function getCourseNotesPage(input: {
         select: {
             id: true,
             title: true,
+            fileUrl: true,
             thumbNailUrl: true,
             updatedAt: true,
             course: { select: { code: true, title: true } },
@@ -131,6 +133,7 @@ export async function getCourseNotesPage(input: {
 
     return items.map((item) => ({
         ...item,
+        fileUrl: normalizeGcsUrl(item.fileUrl) ?? item.fileUrl,
         thumbNailUrl: normalizeGcsUrl(item.thumbNailUrl) ?? item.thumbNailUrl,
     }));
 }

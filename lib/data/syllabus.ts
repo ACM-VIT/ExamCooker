@@ -40,10 +40,15 @@ export async function getAllSyllabi() {
     cacheTag("syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    return prisma.syllabi.findMany({
+    const syllabi = await prisma.syllabi.findMany({
         orderBy: { name: "asc" },
-        select: { id: true, name: true },
+        select: { id: true, name: true, fileUrl: true },
     });
+
+    return syllabi.map((syllabus) => ({
+        ...syllabus,
+        fileUrl: normalizeGcsUrl(syllabus.fileUrl) ?? syllabus.fileUrl,
+    }));
 }
 
 export async function getSyllabusCount(input: { search: string }) {

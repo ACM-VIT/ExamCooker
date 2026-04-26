@@ -20,6 +20,7 @@ import ItemActions from "@/app/components/ItemActions";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } from "@/lib/seo";
 import { normalizeCourseCode } from "@/lib/courseTags";
 import { examTypeLabel } from "@/lib/examSlug";
+import { buildPastPaperPdfFileName } from "@/lib/downloads/resourceNames";
 import type { ExamType } from "@/prisma/generated/client";
 import prisma from "@/lib/prisma";
 import { auth } from "@/app/auth";
@@ -145,6 +146,15 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
     const displaySlot = paper.slot ?? undefined;
     const displayYear = paper.year?.toString() ?? undefined;
     const displayExam = paper.examType ? examTypeLabel(paper.examType) : undefined;
+    const downloadFileName = buildPastPaperPdfFileName({
+        courseCode: paper.course?.code ?? canonicalCode,
+        courseTitle: paper.course?.title,
+        title: paper.title,
+        examLabel: displayExam,
+        slot: paper.slot,
+        year: paper.year,
+        hasAnswerKey: paper.hasAnswerKey,
+    });
 
     const [relatedPapers, adjacent, siblingPaper] = paper.courseId
         ? await Promise.all([
@@ -280,7 +290,10 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
                         )}
                         <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
                             <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
-                                <PDFViewerClient fileUrl={paper.fileUrl} />
+                                <PDFViewerClient
+                                    fileUrl={paper.fileUrl}
+                                    fileName={downloadFileName}
+                                />
                             </div>
                         </div>
                     </div>

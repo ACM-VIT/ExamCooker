@@ -1,60 +1,32 @@
 "use client";
 
-import React, {
-    startTransition,
-    useEffect,
-    useState,
-} from "react";
+import { preconnect, preload } from "react-dom";
 
-const loadingState = (
-    <div className="h-full w-full flex items-center justify-center text-sm text-gray-500 dark:text-gray-300">
-        Loading PDF viewer...
-    </div>
-);
+import PDFViewer from "./pdfviewer";
 
-type PdfViewerComponent = React.ComponentType<{ fileUrl: string }>;
+function getRemoteOrigin(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:"
+      ? parsedUrl.origin
+      : null;
+  } catch {
+    return null;
+  }
+}
 
-export default function PDFViewerClient({ fileUrl }: { fileUrl: string }) {
-    const [ViewerComponent, setViewerComponent] =
-        useState<PdfViewerComponent | null>(null);
-    const [hasImportFailed, setHasImportFailed] = useState(false);
+export default function PDFViewerClient({
+  fileUrl,
+  fileName,
+}: {
+  fileUrl: string;
+  fileName?: string;
+}) {
+  const remoteOrigin = getRemoteOrigin(fileUrl);
+  if (remoteOrigin) {
+    preconnect(remoteOrigin, { crossOrigin: "anonymous" });
+    preload(fileUrl, { as: "fetch", crossOrigin: "anonymous" });
+  }
 
-    useEffect(() => {
-        let isActive = true;
-
-        import("./pdfviewer")
-            .then((module) => {
-                if (!isActive) return;
-
-                startTransition(() => {
-                    setViewerComponent(() => module.default);
-                    setHasImportFailed(false);
-                });
-            })
-            .catch(() => {
-                if (!isActive) return;
-                setHasImportFailed(true);
-            });
-
-        return () => {
-            isActive = false;
-        };
-    }, []);
-
-    if (ViewerComponent) {
-        return <ViewerComponent key={fileUrl} fileUrl={fileUrl} />;
-    }
-
-    if (hasImportFailed) {
-        return (
-            <iframe
-                key={fileUrl}
-                src={fileUrl}
-                title="PDF preview"
-                className="h-full w-full border-0 bg-white dark:bg-gray-900"
-            />
-        );
-    }
-
-    return loadingState;
+  return <PDFViewer key={fileUrl} fileUrl={fileUrl} fileName={fileName} />;
 }

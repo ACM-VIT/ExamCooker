@@ -14,6 +14,7 @@ import {
     getCourseSyllabusPath,
     parseSyllabusName,
 } from "@/lib/seo";
+import { buildSyllabusPdfFileName } from "@/lib/downloads/resourceNames";
 
 export async function generateMetadata({
     params,
@@ -74,6 +75,10 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
     const title = formatSyllabusDisplayName(syllabus.name);
     const backHref = parsed.courseCode ? getCourseSyllabusPath(parsed.courseCode) : "/syllabus";
     const backLabel = parsed.courseCode ?? "Syllabus";
+    const downloadFileName = buildSyllabusPdfFileName({
+        courseCode: parsed.courseCode,
+        courseTitle: parsed.courseName ?? title,
+    });
 
     if (parsed.courseCode) {
         permanentRedirect(getCourseSyllabusPath(parsed.courseCode));
@@ -130,7 +135,10 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
 
                     <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
                         <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
-                            <PDFViewerClient fileUrl={syllabus.fileUrl} />
+                            <PDFViewerClient
+                                fileUrl={syllabus.fileUrl}
+                                fileName={downloadFileName}
+                            />
                         </div>
                     </div>
                 </div>
