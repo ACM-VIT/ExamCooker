@@ -8,6 +8,8 @@ import NewForumButton from "../../components/NewForumButton";
 import { auth } from '@/app/auth';
 import { getForumCount, getForumPage } from "@/lib/data/forum";
 
+type ForumSearchParams = { page?: string; search?: string; tags?: string | string[] };
+
 function validatePage(page: number, totalPages: number): number {
   if (isNaN(page) || page < 1) {
     return 1;
@@ -18,24 +20,46 @@ function validatePage(page: number, totalPages: number): number {
   return page;
 }
 
-function ForumSkeleton() {
+function ForumResultsShell() {
   return (
-    <div className="w-full mx-auto space-y-4">
+    <div className="w-full mx-auto space-y-4" aria-hidden="true">
       {Array.from({ length: 5 }).map((_, index) => (
         <div key={index} className="w-full flex pl-11 pr-7 pt-7 justify-center">
-          <div className="bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 dark:lg:bg-[#0C1222] border-2 border-transparent p-5 md:p-10 size-full md:size-5/6 transition duration-200">
-            <div className="flex justify-between items-center">
-              <div className="h-6 w-1/2 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+          <div className="bg-[#5FC4E7] dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] border-2 border-[#5FC4E7] dark:border-[#ffffff]/20 dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 p-5 md:p-10 size-full md:size-5/6 transition duration-200">
+            <div className="flex justify-between items-center gap-4">
+              <h2 className="font-extrabold lg:text-3xl md:text-xl text-base">
+                <span className="block h-[1em] w-48 bg-black/10 dark:bg-white/10" />
+              </h2>
               <div className="flex items-center space-x-4">
-                <div className="h-6 w-20 bg-black/10 dark:bg-white/10 rounded animate-pulse hidden md:block" />
-                <div className="h-6 w-16 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
+                <div className="bg-white dark:bg-[#3F4451] p-1 hidden md:block">
+                  <span className="block h-4 w-20 bg-black/10 dark:bg-white/10" />
+                </div>
+                <div className="flex space-x-2 p-0.5 bg-white dark:bg-[#3F4451]">
+                  <span className="block h-5 w-8 bg-black/10 dark:bg-white/10" />
+                  <span className="block h-5 w-8 bg-black/10 dark:bg-white/10" />
+                </div>
               </div>
             </div>
-            <div className="h-3 mt-6 w-full bg-black/10 dark:bg-white/10 rounded animate-pulse" />
-            <div className="h-3 mt-2 w-3/4 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
-            <div className="flex justify-between items-center mt-6">
-              <div className="h-4 w-2/3 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
-              <div className="h-4 w-4 bg-black/10 dark:bg-white/10 rounded-full animate-pulse" />
+            <br />
+            <p className="text-xs">
+              <span className="block h-[1em] w-full bg-black/10 dark:bg-white/10" />
+              <span className="mt-1 block h-[1em] w-3/4 bg-black/10 dark:bg-white/10" />
+            </p>
+            <br />
+
+            <div className="flex justify-between items-center sm:w-2/3 md:w-full">
+              <div className="sm:w-2/3 md:flex md:w-full md:justify-between">
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded bg-white/60 px-2 py-1 text-xs dark:bg-[#3F4451]">
+                    <span className="block h-[1em] w-8 bg-black/10 dark:bg-white/10" />
+                  </span>
+                </div>
+              </div>
+              <span className="block h-4 w-4 rounded-full bg-black/10 dark:bg-white/10" />
+            </div>
+
+            <div className="text-xs text-right">
+              <p className="ml-auto mt-2 h-[1em] w-32 bg-black/10 dark:bg-white/10" />
             </div>
           </div>
         </div>
@@ -44,11 +68,7 @@ function ForumSkeleton() {
   );
 }
 
-function buildForumSearchString(params: {
-  page?: string;
-  search?: string;
-  tags?: string | string[];
-}) {
+function buildForumSearchString(params: ForumSearchParams) {
   const searchParams = new URLSearchParams();
 
   if (params.page) {
@@ -68,7 +88,7 @@ function buildForumSearchString(params: {
   return searchParams.toString();
 }
 
-async function ForumResults({ params }: { params: { page?: string; search?: string; tags?: string | string[] } }) {
+async function ForumResults({ params }: { params: ForumSearchParams }) {
   const session = await auth();
   const currentUserId = session?.user?.id;
   const pageSize = 5;
@@ -146,11 +166,12 @@ async function ForumResults({ params }: { params: { page?: string; search?: stri
 export default async function ForumPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+  searchParams?: Promise<ForumSearchParams>;
 }) {
   const params = (await searchParams) ?? {};
   const search = params.search || '';
   const toolbarSearchString = buildForumSearchString(params);
+
   return (
     <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-8">
       <h1 className="text-center mb-4">Forum</h1>
@@ -169,7 +190,7 @@ export default async function ForumPage({
         </div>
       </div>
 
-      <Suspense fallback={<ForumSkeleton />}>
+      <Suspense fallback={<ForumResultsShell />}>
         <ForumResults params={params} />
       </Suspense>
     </div>

@@ -18,6 +18,7 @@ import {
     getCoursePath,
     getCourseSyllabusPath,
 } from "@/lib/seo";
+import { buildSyllabusPdfFileName } from "@/lib/downloads/resourceNames";
 import {
     buildBreadcrumbList,
     buildCourseStructuredData,
@@ -89,6 +90,10 @@ export default async function CourseSyllabusPage({
     if (!context) return notFound();
 
     const description = `View the ${context.code} syllabus PDF for ${context.title} on ExamCooker.`;
+    const downloadFileName = buildSyllabusPdfFileName({
+        courseCode: context.code,
+        courseTitle: context.title,
+    });
 
     return (
         <DirectionalTransition>
@@ -163,7 +168,10 @@ export default async function CourseSyllabusPage({
 
                     <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
                         <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
-                            <PDFViewerClient fileUrl={context.syllabus.fileUrl} />
+                            <PDFViewerClient
+                                fileUrl={context.syllabus.fileUrl}
+                                fileName={downloadFileName}
+                            />
                         </div>
                     </div>
                 </div>

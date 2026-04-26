@@ -5,6 +5,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
 import CoursePaperCard from "./CoursePaperCard";
 import type { CoursePaperListItem } from "@/lib/data/coursePapers";
+import { downloadPdfZip } from "@/lib/downloads/browserDownloads";
+import {
+    buildPastPaperPdfFileName,
+    buildPastPaperZipFileName,
+} from "@/lib/downloads/resourceNames";
+import { examTypeLabel } from "@/lib/examSlug";
 
 type Props = {
     papers: CoursePaperListItem[];
@@ -24,6 +30,7 @@ export default function CoursePaperGrid({
     courseTitle,
 }: Props) {
     const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [isDownloading, setIsDownloading] = useState(false);
     const wideRemainder = papers.length % 5;
     const wideStretchClass = WIDE_STRETCH_CLASS_BY_REMAINDER[wideRemainder] ?? "";
 
@@ -43,13 +50,38 @@ export default function CoursePaperGrid({
         [papers],
     );
 
-    const downloadSelected = useCallback(() => {
-        for (const id of selected) {
-            const paper = paperById.get(id);
-            if (!paper) continue;
-            window.open(paper.fileUrl, "_blank", "noopener,noreferrer");
+    const downloadSelected = useCallback(async () => {
+        if (isDownloading) return;
+
+        const selectedPapers = Array.from(selected)
+            .map((id) => paperById.get(id))
+            .filter((paper): paper is CoursePaperListItem => Boolean(paper));
+
+        if (!selectedPapers.length) return;
+
+        setIsDownloading(true);
+        try {
+            await downloadPdfZip({
+                zipFileName: buildPastPaperZipFileName({ courseCode, courseTitle }),
+                files: selectedPapers.map((paper) => ({
+                    fileUrl: paper.fileUrl,
+                    fileName: buildPastPaperPdfFileName({
+                        courseCode,
+                        courseTitle,
+                        title: paper.title,
+                        examLabel: paper.examType ? examTypeLabel(paper.examType) : null,
+                        slot: paper.slot,
+                        year: paper.year,
+                        hasAnswerKey: paper.hasAnswerKey,
+                    }),
+                })),
+            });
+        } catch {
+            window.alert("Could not create the zip file. Please try again.");
+        } finally {
+            setIsDownloading(false);
         }
-    }, [paperById, selected]);
+    }, [courseCode, courseTitle, isDownloading, paperById, selected]);
 
     const count = selected.size;
 
@@ -88,10 +120,11 @@ export default function CoursePaperGrid({
                         <button
                             type="button"
                             onClick={downloadSelected}
+                            disabled={isDownloading}
                             className="inline-flex h-8 items-center gap-1.5 rounded border border-black/20 bg-[#5FC4E7]/90 px-3 text-xs font-semibold text-black transition hover:bg-[#5FC4E7] dark:border-[#3BF4C7]/40 dark:bg-[#3BF4C7]/20 dark:text-[#3BF4C7] dark:hover:bg-[#3BF4C7]/30 sm:text-sm"
                         >
                             <FontAwesomeIcon icon={faDownload} className="h-3 w-3" />
-                            Download
+                            {isDownloading ? "Zipping..." : "Download"}
                         </button>
                         <button
                             type="button"

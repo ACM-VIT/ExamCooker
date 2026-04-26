@@ -31,6 +31,7 @@ jobs:
       AUTH_GOOGLE_ID: ci-google-id.apps.googleusercontent.com
       AUTH_GOOGLE_SECRET: ci-google-secret
       NEXT_PUBLIC_BASE_URL: https://examcooker.acmvit.in
+      NEXT_PUBLIC_MICROSERVICE_URL: https://upload.examcooker.acmvit.in
 
     steps:
       - name: Checkout

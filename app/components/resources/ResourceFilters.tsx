@@ -20,7 +20,7 @@ function ResourceFilters({
 }: ResourceFiltersProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const [query, setQuery] = useState("");
+    const [query, setQuery] = useState(initialSearch);
 
     useEffect(() => {
         setQuery((currentQuery) => currentQuery === initialSearch ? currentQuery : initialSearch);

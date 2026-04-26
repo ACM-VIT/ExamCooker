@@ -1,9 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { ViewTransition } from "react";
 import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import NotesCard from "@/app/components/NotesCard";
+import CourseNotesGrid from "@/app/components/notes/CourseNotesGrid";
 import Pagination from "@/app/components/Pagination";
 import StructuredData from "@/app/components/seo/StructuredData";
 import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
@@ -245,13 +244,11 @@ export default async function CourseNotesPage({
                     </div>
                 </header>
 
-                <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {notes.map((note, index) => (
-                        <ViewTransition key={note.id}>
-                            <NotesCard note={note} index={index} />
-                        </ViewTransition>
-                    ))}
-                </section>
+                <CourseNotesGrid
+                    notes={notes}
+                    courseCode={course.code}
+                    courseTitle={course.title}
+                />
 
                 {totalPages > 1 && (
                     <Pagination

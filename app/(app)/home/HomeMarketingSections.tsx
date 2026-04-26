@@ -20,12 +20,14 @@ export default async function HomeMarketingSections() {
 
     return (
         <div className="space-y-24 bg-[#C2E6EC] pt-24 text-black transition-colors dark:bg-[#0C1222] dark:text-[#D5D5D5] md:space-y-40 lg:space-y-[18vh] lg:pt-40">
-            <section className="min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-10 px-4 py-16 md:gap-12 md:py-24 lg:min-h-0 lg:h-screen lg:py-12 lg:sticky lg:top-[-50px]">
-                <WordBetweenLine>
-                        For Crammers By Crammers
+            <section className="min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-10 px-4 py-16 md:gap-12 md:py-24 lg:min-h-screen lg:py-12 lg:sticky lg:top-[-50px]">
+                <div className="mx-auto w-full max-w-6xl xl:max-w-7xl">
+                    <WordBetweenLine>
+                            For Crammers By Crammers
 
-                </WordBetweenLine>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-5 mx-auto w-full max-w-5xl">
+                    </WordBetweenLine>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-5 mx-auto w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl">
                     <LandingPageCard
                         title="Past Papers"
                         content="Conquer Your Exam Anxieties using our plethora of past papers"
@@ -57,10 +59,12 @@ export default async function HomeMarketingSections() {
                 </div>
             </section>
 
-            <section className="relative z-10 min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-8 px-4 py-16 md:py-24 lg:min-h-0 lg:h-screen lg:py-12 lg:sticky lg:top-0">
-                <WordBetweenLine>
-                        Why Exam<GradientText>Cooker</GradientText>?
-                </WordBetweenLine>
+            <section className="relative z-10 min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-8 px-4 py-16 md:py-24 lg:min-h-screen lg:py-12 lg:sticky lg:top-0">
+                <div className="mx-auto w-full max-w-6xl xl:max-w-7xl">
+                    <WordBetweenLine>
+                            Why Exam<GradientText>Cooker</GradientText>?
+                    </WordBetweenLine>
+                </div>
                 <h4 className="px-4 md:px-16 text-center text-base md:text-lg lg:text-xl leading-relaxed max-w-4xl mx-auto">
                     Remember the days of desperately searching the web for past papers,
                     only to get lost in a maze of irrelevant links?
@@ -75,38 +79,42 @@ export default async function HomeMarketingSections() {
             </section>
 
             {!isAuthed && (
-                <section className="relative z-20 min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] overflow-hidden flex flex-col justify-center gap-8 px-4 py-16 md:py-24 lg:min-h-0 lg:h-screen lg:py-12 lg:sticky lg:top-0">
+                <section className="relative z-20 min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] overflow-hidden flex flex-col justify-center gap-8 px-4 py-16 md:py-24 lg:min-h-screen lg:py-12 lg:sticky lg:top-0">
                     <div className="pointer-events-none absolute -top-32 -right-32 h-[22rem] w-[22rem] rounded-full bg-[#3BF4C7]/25 blur-[140px] dark:bg-[#3BF4C7]/20" />
                     <div className="pointer-events-none absolute -bottom-32 -left-32 h-[22rem] w-[22rem] rounded-full bg-[#253EE0]/20 blur-[140px] dark:bg-[#27BAEC]/25" />
 
-                    <WordBetweenLine>
-                        <div className="text-center">
-                            Start <GradientText>Cooking</GradientText> Your
-                            <br /> Academic <GradientText>Success</GradientText> Today
-                        </div>
-                    </WordBetweenLine>
+                    <div className="mx-auto w-full max-w-6xl xl:max-w-7xl">
+                        <WordBetweenLine>
+                            <div className="text-center">
+                                Start <GradientText>Cooking</GradientText> Your
+                                <br /> Academic <GradientText>Success</GradientText> Today
+                            </div>
+                        </WordBetweenLine>
+                    </div>
                     <div className="relative grid gap-8 justify-center">
                         <SignIn displayText="Sign In" />
                     </div>
                 </section>
             )}
 
-            <section className="relative z-30 min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] flex flex-col justify-center gap-6 px-4 py-16 md:py-24 lg:min-h-0 lg:h-screen lg:py-12 lg:sticky lg:top-0">
-                <WordBetweenLine>
-                    <div className="flex items-center justify-center">
-                            Made With
-                        <Image
-                            src={GradientHeart}
-                            alt="Gradient Heart"
-                            className="inline w-[45px] h-[45px] md:w-[120px] md:h-[120px] shrink-0"
-                        />
-                    </div>
-                </WordBetweenLine>
+            <section className="relative z-30 min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] flex flex-col justify-center gap-6 px-4 py-16 md:py-24 lg:min-h-screen lg:py-12 lg:sticky lg:top-0">
+                <div className="mx-auto w-full max-w-6xl xl:max-w-7xl">
+                    <WordBetweenLine>
+                        <div className="flex items-center justify-center gap-2 md:gap-4">
+                                Made With
+                            <Image
+                                src={GradientHeart}
+                                alt="Gradient Heart"
+                                className="inline w-[40px] h-[40px] md:w-[72px] md:h-[72px] lg:w-[88px] lg:h-[88px] [@media(max-height:720px)]:lg:w-[56px] [@media(max-height:720px)]:lg:h-[56px] shrink-0"
+                            />
+                        </div>
+                    </WordBetweenLine>
+                </div>
                 <div className="flex justify-center">
                     <Image
                         src={GradientACMLogo}
                         alt="ACM logo"
-                        className="w-[220px] md:w-[500px] lg:w-[640px] h-auto max-w-full"
+                        className="w-[200px] md:w-[380px] lg:w-[460px] xl:w-[560px] [@media(max-height:720px)]:lg:w-[320px] h-auto max-w-full"
                     />
                 </div>
             </section>

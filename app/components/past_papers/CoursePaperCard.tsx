@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -10,6 +10,9 @@ import {
     faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { examTypeLabel } from "@/lib/examSlug";
+import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
+import { buildPastPaperPdfFileName } from "@/lib/downloads/resourceNames";
+import { preloadPdfBuffer } from "@/lib/pdf/pdfBufferCache";
 import type { ExamType } from "@/prisma/generated/client";
 
 type Paper = {
@@ -42,6 +45,16 @@ function CoursePaperCard({
 }: Props) {
     const href = `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`;
 
+    useEffect(() => {
+        if (index < 3) {
+            preloadPdfBuffer(paper.fileUrl);
+        }
+    }, [index, paper.fileUrl]);
+
+    const handleWarmPdf = useCallback(() => {
+        preloadPdfBuffer(paper.fileUrl);
+    }, [paper.fileUrl]);
+
     const handleToggleSelect = useCallback((e: React.MouseEvent | React.ChangeEvent) => {
         e.stopPropagation();
         e.preventDefault();
@@ -51,14 +64,29 @@ function CoursePaperCard({
     const handleDownload = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
-        window.open(paper.fileUrl, "_blank", "noopener,noreferrer");
-    }, [paper.fileUrl]);
+        void downloadPdfFile({
+            fileUrl: paper.fileUrl,
+            fileName: buildPastPaperPdfFileName({
+                courseCode,
+                courseTitle,
+                title: paper.title,
+                examLabel: paper.examType ? examTypeLabel(paper.examType) : null,
+                slot: paper.slot,
+                year: paper.year,
+                hasAnswerKey: paper.hasAnswerKey,
+            }),
+        });
+    }, [courseCode, courseTitle, paper]);
 
     return (
         <Link
             href={href}
             prefetch={index < 3}
             transitionTypes={["nav-forward"]}
+            onFocus={handleWarmPdf}
+            onMouseDown={handleWarmPdf}
+            onPointerEnter={handleWarmPdf}
+            onTouchStart={handleWarmPdf}
             className={`group relative flex h-full flex-col border-2 p-3 text-black transition duration-200 hover:scale-[1.02] hover:shadow-xl dark:text-[#D5D5D5] ${selected
                     ? "border-black bg-[#5FC4E7] shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:border-[#3BF4C7] dark:bg-[#0C1222] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)]"
                     : "border-[#5FC4E7] bg-[#5FC4E7] hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
