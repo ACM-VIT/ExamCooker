@@ -30,8 +30,10 @@ import {
   Download,
   Maximize2,
   Minimize2,
+  Moon,
   Minus,
   Plus,
+  Sun,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
@@ -46,6 +48,8 @@ const PAGE_INPUT_CLASS =
   "h-8 w-12 rounded border border-gray-300 bg-white px-1 text-center text-sm tabular-nums text-gray-700 outline-none transition focus:border-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 sm:w-14";
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
+const PDF_DARK_MODE_FILTER =
+  "invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95)";
 
 type PdfBufferState =
   | { status: "loading"; progress: number | null }
@@ -78,9 +82,11 @@ function ErrorState({ fileUrl }: { fileUrl: string }) {
 
 function PageRenderLayer({
   documentId,
+  isPdfDarkMode,
   pageIndex,
 }: {
   documentId: string;
+  isPdfDarkMode: boolean;
   pageIndex: number;
 }) {
   const { provides: renderProvides } = useRenderCapability();
@@ -155,6 +161,7 @@ function PageRenderLayer({
       alt=""
       className="absolute inset-0 h-full w-full select-none object-fill"
       draggable={false}
+      style={isPdfDarkMode ? { filter: PDF_DARK_MODE_FILTER } : undefined}
     />
   );
 }
@@ -164,12 +171,16 @@ function ViewerToolbar({
   fileUrl,
   fileName,
   isFullScreen,
+  isPdfDarkMode,
+  onTogglePdfDarkMode,
   onToggleFullScreen,
 }: {
   documentId: string;
   fileUrl: string;
   fileName: string;
   isFullScreen: boolean;
+  isPdfDarkMode: boolean;
+  onTogglePdfDarkMode: () => void;
   onToggleFullScreen: () => void;
 }) {
   const [pageInput, setPageInput] = useState("1");
@@ -305,6 +316,28 @@ function ViewerToolbar({
         </button>
         <button
           type="button"
+          onClick={onTogglePdfDarkMode}
+          className={TOOLBAR_BUTTON_CLASS}
+          aria-label={
+            isPdfDarkMode
+              ? "Render PDF in light mode"
+              : "Render PDF in dark mode"
+          }
+          aria-pressed={isPdfDarkMode}
+          title={
+            isPdfDarkMode
+              ? "Render PDF in light mode"
+              : "Render PDF in dark mode"
+          }
+        >
+          {isPdfDarkMode ? (
+            <Sun className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Moon className="h-4 w-4" aria-hidden="true" />
+          )}
+        </button>
+        <button
+          type="button"
           onClick={onToggleFullScreen}
           className={TOOLBAR_BUTTON_CLASS}
           aria-label={isFullScreen ? "Exit fullscreen" : "Enter fullscreen"}
@@ -326,12 +359,16 @@ function DocumentViewport({
   fileUrl,
   fileName,
   isFullScreen,
+  isPdfDarkMode,
+  onTogglePdfDarkMode,
   onToggleFullScreen,
 }: {
   documentId: string;
   fileUrl: string;
   fileName: string;
   isFullScreen: boolean;
+  isPdfDarkMode: boolean;
+  onTogglePdfDarkMode: () => void;
   onToggleFullScreen: () => void;
 }) {
   return (
@@ -357,6 +394,8 @@ function DocumentViewport({
               fileUrl={fileUrl}
               fileName={fileName}
               isFullScreen={isFullScreen}
+              isPdfDarkMode={isPdfDarkMode}
+              onTogglePdfDarkMode={onTogglePdfDarkMode}
               onToggleFullScreen={onToggleFullScreen}
             />
             <Viewport
@@ -370,7 +409,9 @@ function DocumentViewport({
                   className="py-3 sm:py-4"
                   renderPage={({ pageIndex, rotatedHeight, rotatedWidth }) => (
                     <div
-                      className="relative overflow-hidden bg-white shadow-[0_3px_18px_-10px_rgba(0,0,0,0.45)]"
+                      className={`relative overflow-hidden shadow-[0_3px_18px_-10px_rgba(0,0,0,0.45)] ${
+                        isPdfDarkMode ? "bg-black" : "bg-white"
+                      }`}
                       style={{
                         width: rotatedWidth,
                         height: rotatedHeight,
@@ -378,6 +419,7 @@ function DocumentViewport({
                     >
                       <PageRenderLayer
                         documentId={documentId}
+                        isPdfDarkMode={isPdfDarkMode}
                         pageIndex={pageIndex}
                       />
                     </div>
@@ -404,6 +446,7 @@ export default function PDFViewer({
     [fileName, fileUrl]
   );
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isPdfDarkMode, setIsPdfDarkMode] = useState(false);
   const [bufferState, setBufferState] = useState<PdfBufferState>({
     status: "loading",
     progress: null,
@@ -485,6 +528,10 @@ export default function PDFViewer({
     setIsFullScreen((currentValue) => !currentValue);
   }, []);
 
+  const togglePdfDarkMode = useCallback(() => {
+    setIsPdfDarkMode((currentValue) => !currentValue);
+  }, []);
+
   if (error) {
     return <ErrorState fileUrl={fileUrl} />;
   }
@@ -525,6 +572,8 @@ export default function PDFViewer({
               fileUrl={fileUrl}
               fileName={downloadFileName}
               isFullScreen={isFullScreen}
+              isPdfDarkMode={isPdfDarkMode}
+              onTogglePdfDarkMode={togglePdfDarkMode}
               onToggleFullScreen={toggleFullScreen}
             />
           ) : (
