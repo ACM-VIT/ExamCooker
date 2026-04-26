@@ -16,6 +16,7 @@ variables:
   packageZip: "$(Build.ArtifactStagingDirectory)/webapp.zip"
   azureServiceConnection: "azure-rm-examcooker-prod"
   appServiceName: "examcooker-2024"
+  nextPublicMicroserviceUrl: "https://upload.examcooker.acmvit.in"
 
 stages:
   - stage: Build
@@ -53,6 +54,8 @@ stages:
               cd "$(buildDir)"
               npm install --no-fund --no-audit
             displayName: Install dependencies
+            env:
+              NEXT_PUBLIC_MICROSERVICE_URL: $(nextPublicMicroserviceUrl)
 
           - script: |
               set -eu
@@ -74,6 +77,7 @@ stages:
             displayName: Build app
             condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
             env:
+              NEXT_PUBLIC_MICROSERVICE_URL: $(nextPublicMicroserviceUrl)
               NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: $(NEXT_SERVER_ACTIONS_ENCRYPTION_KEY)
 
           - script: |
@@ -82,6 +86,8 @@ stages:
               npm run build
             displayName: Build app (non-production)
             condition: ne(variables['Build.SourceBranch'], 'refs/heads/main')
+            env:
+              NEXT_PUBLIC_MICROSERVICE_URL: $(nextPublicMicroserviceUrl)
 
           - script: |
               set -eux
