@@ -55,10 +55,33 @@ stages:
             displayName: Install dependencies
 
           - script: |
+              set -eu
+              cd "$(buildDir)"
+              if [ -z "${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}" ] || [ "${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}" = '$''(NEXT_SERVER_ACTIONS_ENCRYPTION_KEY)' ]; then
+                echo "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY must be set as an Azure Pipelines secret variable for production builds." >&2
+                exit 1
+              fi
+              node - <<'NODE'
+              const key = process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY || "";
+              const bytes = Buffer.from(key, "base64");
+              const normalized = bytes.toString("base64").replace(/=+$/, "");
+              if (![16, 24, 32].includes(bytes.length) || normalized !== key.replace(/=+$/, "")) {
+                console.error("NEXT_SERVER_ACTIONS_ENCRYPTION_KEY must be base64 for a 16, 24, or 32 byte AES key.");
+                process.exit(1);
+              }
+              NODE
+              npm run build
+            displayName: Build app
+            condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+            env:
+              NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: $(NEXT_SERVER_ACTIONS_ENCRYPTION_KEY)
+
+          - script: |
               set -eux
               cd "$(buildDir)"
               npm run build
-            displayName: Build app
+            displayName: Build app (non-production)
+            condition: ne(variables['Build.SourceBranch'], 'refs/heads/main')
 
           - script: |
               set -eux

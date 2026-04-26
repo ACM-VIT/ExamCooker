@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import { connection } from "next/server";
 import type { UpcomingExamItem } from "@/lib/data/upcomingExams";
 
 function MarqueeItem({ item }: { item: UpcomingExamItem }) {
@@ -55,8 +54,6 @@ function MarqueeRow({
 }
 
 export default async function ExamsMarquee({ items }: { items: UpcomingExamItem[] }) {
-    await connection();
-
     if (items.length === 0) return null;
 
     const mid = Math.ceil(items.length / 2);

@@ -41,7 +41,7 @@ function isRetryableCatalogStatsError(error: unknown) {
 }
 
 async function loadCatalogStatsFromDb(): Promise<CatalogStats> {
-    const [courseCount, paperCount, noteCount] = await prisma.$transaction([
+    const [courseCount, paperCount, noteCount] = await Promise.all([
         prisma.course.count({
             where: {
                 OR: [
@@ -313,7 +313,6 @@ export async function getCatalogStats(): Promise<CatalogStats> {
                 `[courseCatalog] getCatalogStats retry ${attempt}/${CATALOG_STATS_RETRY_LIMIT} after transient DB error`,
                 error,
             );
-            await prisma.$disconnect().catch(() => undefined);
             await sleep(CATALOG_STATS_RETRY_DELAY_MS * attempt);
         }
     }

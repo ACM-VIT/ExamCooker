@@ -12,12 +12,24 @@ export type UpcomingExamItem = {
     scheduledAt: Date | null;
 };
 
+function getUpcomingExamCutoffIso() {
+    const bucketMs = 5 * 60 * 1000;
+    return new Date(Math.floor(Date.now() / bucketMs) * bucketMs).toISOString();
+}
+
 export async function getUpcomingExams(limit?: number): Promise<UpcomingExamItem[]> {
+    return getUpcomingExamsCached(limit ?? null, getUpcomingExamCutoffIso());
+}
+
+async function getUpcomingExamsCached(
+    limit: number | null,
+    cutoffIso: string,
+): Promise<UpcomingExamItem[]> {
     "use cache";
     cacheTag("upcoming_exams");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const now = new Date();
+    const now = new Date(cutoffIso);
     const rows = await prisma.upcomingExam.findMany({
         where: {
             OR: [
@@ -29,7 +41,7 @@ export async function getUpcomingExams(limit?: number): Promise<UpcomingExamItem
             { scheduledAt: { sort: "asc", nulls: "last" } },
             { createdAt: "desc" },
         ],
-        take: limit,
+        take: limit ?? undefined,
         select: {
             id: true,
             courseId: true,
@@ -59,13 +71,22 @@ export async function getUpcomingExams(limit?: number): Promise<UpcomingExamItem
 export async function getUpcomingExamsForCourses(
     courseIds: string[],
 ): Promise<Map<string, UpcomingExamItem[]>> {
+    if (courseIds.length === 0) return new Map();
+    return getUpcomingExamsForCoursesCached(
+        Array.from(new Set(courseIds)).sort(),
+        getUpcomingExamCutoffIso(),
+    );
+}
+
+async function getUpcomingExamsForCoursesCached(
+    courseIds: string[],
+    cutoffIso: string,
+): Promise<Map<string, UpcomingExamItem[]>> {
     "use cache";
     cacheTag("upcoming_exams");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    if (courseIds.length === 0) return new Map();
-
-    const now = new Date();
+    const now = new Date(cutoffIso);
     const rows = await prisma.upcomingExam.findMany({
         where: {
             courseId: { in: courseIds },
