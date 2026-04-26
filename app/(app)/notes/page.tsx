@@ -104,29 +104,6 @@ function CourseGridShell() {
     );
 }
 
-function SearchControlsShell() {
-    return (
-        <div className="flex w-full items-stretch gap-2 sm:gap-3">
-            <div className="min-w-0 flex-1">
-                <div
-                    aria-hidden="true"
-                    className="relative flex h-12 w-full items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]"
-                >
-                    <span className="dark:invert-[.835]">
-                        <span className="block h-4 w-4 rounded-full border-2 border-black/55 dark:border-[#D5D5D5]" />
-                    </span>
-                    <span className="px-4 py-0 text-sm text-black/50 sm:text-base dark:text-[#D5D5D5]/60">
-                        Search course or code...
-                    </span>
-                </div>
-            </div>
-            <div className="shrink-0">
-                <UploadButtonNotes />
-            </div>
-        </div>
-    );
-}
-
 function validatePage(page: number, totalPages: number): number {
     if (Number.isNaN(page) || page < 1) return 1;
     if (totalPages > 0 && page > totalPages) return totalPages;
@@ -249,16 +226,13 @@ async function CourseGridSection({
     );
 }
 
-async function SearchControls({
-    searchParams,
+function SearchControls({
+    search,
     searchable,
 }: {
-    searchParams?: Promise<NotesSearchParams>;
+    search: string;
     searchable: Awaited<ReturnType<typeof getSearchableNoteCourses>>;
 }) {
-    const params = (await searchParams) ?? {};
-    const search = params.search || "";
-
     return (
         <div className="flex w-full items-stretch gap-2 sm:gap-3">
             <div className="min-w-0 flex-1">
@@ -274,21 +248,13 @@ async function SearchControls({
     );
 }
 
-async function RuntimeNotesSections({
-    searchParams,
-}: {
-    searchParams?: Promise<NotesSearchParams>;
-}) {
-    const params = (await searchParams) ?? {};
-
-    return <CourseGridSection params={params} />;
-}
-
 export default async function NotesPage({
     searchParams,
 }: {
     searchParams?: Promise<NotesSearchParams>;
 }) {
+    const params = (await searchParams) ?? {};
+    const search = params.search || "";
     const [stats, searchable] = await Promise.all([
         getNotesStats(),
         getSearchableNoteCourses(),
@@ -306,16 +272,14 @@ export default async function NotesPage({
 
                         <HeroStats stats={stats} />
 
-                        <Suspense fallback={<SearchControlsShell />}>
-                            <SearchControls
-                                searchParams={searchParams}
-                                searchable={searchable}
-                            />
-                        </Suspense>
+                        <SearchControls
+                            search={search}
+                            searchable={searchable}
+                        />
                     </section>
 
                     <Suspense fallback={<CourseGridShell />}>
-                        <RuntimeNotesSections searchParams={searchParams} />
+                        <CourseGridSection params={params} />
                     </Suspense>
                 </div>
             </div>

@@ -20,58 +20,6 @@ function validatePage(page: number, totalPages: number): number {
   return page;
 }
 
-function ForumToolbarShell() {
-  return (
-    <>
-      <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-        <div className="relative hidden w-full min-w-0 text-left md:block md:w-auto md:min-w-fit">
-          <button
-            type="button"
-            className="inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-3 py-2 text-base font-semibold text-black dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] md:h-auto md:w-auto md:px-4 md:text-lg md:font-bold"
-          >
-            Filter
-            <span className="ml-2">▾</span>
-          </button>
-        </div>
-        <div
-          aria-hidden="true"
-          className="relative flex items-center w-full"
-        >
-          <div className="relative flex items-center bg-white dark:bg-[#3D414E] border border-black/25 dark:border-[#D5D5D5]/30 w-full px-2 py-0.5">
-            <span className="h-4 w-4 rounded-full border-2 border-black/55 dark:border-[#D5D5D5]" />
-            <span className="px-4 py-2 w-full text-black/50 dark:text-[#D5D5D5]/60">
-              Search
-            </span>
-          </div>
-        </div>
-        <NewForumButton />
-      </div>
-
-      <div className='flex-col w-5/6 md:hidden space-y-4'>
-        <div
-          aria-hidden="true"
-          className="relative flex items-center bg-white dark:bg-[#3D414E] border border-black/25 dark:border-[#D5D5D5]/30 w-full px-2 py-0.5"
-        >
-          <span className="h-4 w-4 rounded-full border-2 border-black/55 dark:border-[#D5D5D5]" />
-          <span className="px-4 py-2 w-full text-black/50 dark:text-[#D5D5D5]/60">
-            Search
-          </span>
-        </div>
-        <div className='flex justify-between'>
-          <button
-            type="button"
-            className="inline-flex h-12 w-full items-center justify-center border-2 border-black bg-[#5FC4E7] px-4 text-lg font-bold leading-none text-black dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5]"
-          >
-            Filter
-            <span className="ml-2">▾</span>
-          </button>
-          <NewForumButton />
-        </div>
-      </div>
-    </>
-  );
-}
-
 function ForumResultsShell() {
   return (
     <div className="w-full mx-auto space-y-4" aria-hidden="true">
@@ -117,15 +65,6 @@ function ForumResultsShell() {
         </div>
       ))}
     </div>
-  );
-}
-
-function ForumRuntimeShell() {
-  return (
-    <>
-      <ForumToolbarShell />
-      <ForumResultsShell />
-    </>
   );
 }
 
@@ -224,7 +163,7 @@ async function ForumResults({ params }: { params: ForumSearchParams }) {
   );
 }
 
-async function ForumRuntime({
+export default async function ForumPage({
   searchParams,
 }: {
   searchParams?: Promise<ForumSearchParams>;
@@ -232,8 +171,11 @@ async function ForumRuntime({
   const params = (await searchParams) ?? {};
   const search = params.search || '';
   const toolbarSearchString = buildForumSearchString(params);
+
   return (
-    <>
+    <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-8">
+      <h1 className="text-center mb-4">Forum</h1>
+
       <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
         <Dropdown pageType='forum' searchString={toolbarSearchString} />
         <SearchBar pageType="forum" initialQuery={search} searchString={toolbarSearchString} />
@@ -250,21 +192,6 @@ async function ForumRuntime({
 
       <Suspense fallback={<ForumResultsShell />}>
         <ForumResults params={params} />
-      </Suspense>
-    </>
-  );
-}
-
-export default function ForumPage({
-  searchParams,
-}: {
-  searchParams?: Promise<ForumSearchParams>;
-}) {
-  return (
-    <div className="transition-colors flex flex-col items-center min-h-screen text-black dark:text-[#D5D5D5] px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-8">
-      <h1 className="text-center mb-4">Forum</h1>
-      <Suspense fallback={<ForumRuntimeShell />}>
-        <ForumRuntime searchParams={searchParams} />
       </Suspense>
     </div>
   );
