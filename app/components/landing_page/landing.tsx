@@ -23,7 +23,7 @@ export function WordBetweenLine({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex items-center justify-between">
       <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-      <span className="text-center text-3xl md:text-6xl lg:text-8xl font-extrabold flex-shrink text-black dark:text-[#D5D5D5]">
+      <span className="text-center text-3xl md:text-6xl lg:text-8xl [@media(max-height:720px)]:lg:text-5xl [@media(max-height:560px)]:lg:text-4xl font-extrabold flex-shrink text-black dark:text-[#D5D5D5]">
         {children}
       </span>
       <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
@@ -51,17 +51,17 @@ export function LandingPageCard({
       <div className="hidden lg:block absolute right-0 bottom-0 w-[150px] h-[150px] rounded-full transition duration-1000 group-hover:duration-200 md:bg-none md:group-hover:bg-[#82BEE9]"></div>
       <div className="block lg:hidden absolute right-0 bottom-0 w-[100px] h-[100px] rounded-full bg-[#82BEE9]"></div>
 
-      <div className="relative flex flex-col justify-between w-full h-full bg-[#5FC4E7]/20 dark:bg-[#7D7467]/20 backdrop-blur-[100px] border-[#5FC4E7]/20 dark:border-[#7D7467]/20 border p-1 md:p-4">
-        <div className="flex items-center w-full h-[150px] md:h-5/6 justify-between">
+      <div className="relative flex flex-col justify-between w-full h-full bg-[#5FC4E7]/20 dark:bg-[#7D7467]/20 backdrop-blur-[100px] border-[#5FC4E7]/20 dark:border-[#7D7467]/20 border p-2 md:p-4">
+        <div className="flex items-center w-full h-[110px] md:h-[140px] lg:h-[160px] [@media(max-height:720px)]:lg:h-[120px] justify-between gap-3">
           <Image
             src={imagePath}
             alt={altOfImage}
-            className="h-[75%] lg:h-[90%] dark:invert-[.835] dark:hue-rotate-180"
+            className="h-[80%] shrink-0 dark:invert-[.835] dark:hue-rotate-180"
           />
-          <div className="flex-col gap-5">
-            <span className="text-xl md:text-4xl font-extrabold">{title}</span>
+          <div className="flex-col gap-3 min-w-0">
+            <span className="text-lg md:text-2xl lg:text-3xl font-extrabold">{title}</span>
             <br />
-            <span className="text-sm md:text-lg">{content}</span>
+            <span className="text-xs md:text-sm lg:text-base">{content}</span>
           </div>
         </div>
         <div className="flex justify-between">
@@ -69,7 +69,7 @@ export function LandingPageCard({
           <Image
             src={ArrowRight}
             alt="ArrowRight"
-            className="md:h-[35px] h-[20px] dark:invert-[0.835]"
+            className="h-[18px] md:h-[24px] lg:h-[28px] dark:invert-[0.835]"
           />
         </div>
       </div>
