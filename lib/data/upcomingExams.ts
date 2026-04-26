@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { connection } from "next/server";
 import prisma from "@/lib/prisma";
 import type { ExamType } from "@/prisma/generated/client";
 
@@ -18,6 +19,7 @@ function getUpcomingExamCutoffIso() {
 }
 
 export async function getUpcomingExams(limit?: number): Promise<UpcomingExamItem[]> {
+    await connection();
     return getUpcomingExamsCached(limit ?? null, getUpcomingExamCutoffIso());
 }
 
@@ -72,6 +74,7 @@ export async function getUpcomingExamsForCourses(
     courseIds: string[],
 ): Promise<Map<string, UpcomingExamItem[]>> {
     if (courseIds.length === 0) return new Map();
+    await connection();
     return getUpcomingExamsForCoursesCached(
         Array.from(new Set(courseIds)).sort(),
         getUpcomingExamCutoffIso(),
