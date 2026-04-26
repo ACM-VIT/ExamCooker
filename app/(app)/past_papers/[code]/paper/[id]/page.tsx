@@ -233,11 +233,11 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
                                     ))}
                                 </div>
                             )}
-                            <p className="mt-3 text-xs text-black/55 dark:text-[#D5D5D5]/55">
+                            {/* <p className="mt-3 text-xs text-black/55 dark:text-[#D5D5D5]/55">
                                 Posted by <span className="font-semibold text-black/75 dark:text-[#D5D5D5]/75">{authorName}</span>
                                 <span className="mx-1.5" aria-hidden>·</span>
                                 {postedAtLine}
-                            </p>
+                            </p> */}
                         </div>
                         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:pt-1">
                             {siblingPaper ? (
