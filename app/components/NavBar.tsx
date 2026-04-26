@@ -35,11 +35,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const { data: session } = useSession();
   const isAuthed = Boolean(session?.user);
   const [showProfile, setShowProfile] = useState(false);
-  const [hoveredTooltip, setHoveredTooltip] = useState<{
-    content: string;
-    top: number;
-    left: number;
-  } | null>(null);
+
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,33 +51,6 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const clearTooltip = () => setHoveredTooltip(null);
-    window.addEventListener("resize", clearTooltip);
-    window.addEventListener("scroll", clearTooltip, true);
-    return () => {
-      window.removeEventListener("resize", clearTooltip);
-      window.removeEventListener("scroll", clearTooltip, true);
-    };
-  }, []);
-
-  const showTooltip = (
-    event: React.MouseEvent<HTMLDivElement> | React.FocusEvent<HTMLDivElement>,
-    content: string,
-  ) => {
-    if (typeof window !== "undefined") {
-      const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-      const isFocusEvent = event.type === "focus";
-      if (!canHover && !isFocusEvent) return;
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    setHoveredTooltip({
-      content,
-      top: rect.top + rect.height / 2,
-      left: rect.right + 10,
-    });
-  };
 
   return (
     <>
@@ -119,10 +88,10 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
 
       <nav
         style={{ viewTransitionName: "persistent-nav" }}
-        className={`fixed top-0 left-0 z-50 h-dvh max-h-dvh w-fit overflow-visible border-r border-black/15 bg-[#C2E6EC] transition-transform duration-200 ease-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        className={`group/nav fixed top-0 left-0 z-50 h-dvh max-h-dvh w-fit overflow-visible border-r border-black/15 bg-[#C2E6EC] transition-all duration-300 ease-in-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
       >
-        <div className="flex h-full max-h-dvh w-fit flex-col items-center justify-between overflow-y-auto overscroll-contain p-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
+        <div className="flex h-full max-h-dvh flex-col items-stretch justify-between overflow-y-auto overscroll-contain p-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
           <div className="flex w-full min-h-[2.5rem] items-center justify-start px-1">
             <button
               type="button"
@@ -146,7 +115,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
             </button>
           </div>
 
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-stretch">
             {LINKS.map((link) => {
               const isActive = link.matches
                 ? link.matches(pathname)
@@ -158,33 +127,37 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                   transitionTypes={isActive ? undefined : ["nav-lateral"]}
                   className={isActive ? "bg-[#ffffff]/20" : ""}
                 >
-                  <div
-                    className="group flex m-2"
-                    onMouseEnter={(event) => showTooltip(event, link.alt)}
-                    onMouseLeave={() => setHoveredTooltip(null)}
-                    onFocus={(event) => showTooltip(event, link.alt)}
-                    onBlur={() => setHoveredTooltip(null)}
-                  >
-                    <Image
-                      src={link.svgSource}
-                      alt={link.alt}
-                      width={24}
-                      height={25}
-                      className={`dark:invert-[.835] transition-all transform-gpu can-hover:group-hover:scale-110 ${!isActive
-                        ? "can-hover:group-hover:-translate-y-1 can-hover:group-hover:rotate-[-5deg]"
-                        : ""
-                        }`}
-                    />
+                  <div className="group flex items-center m-2 cursor-pointer">
+                    <div className="flex-shrink-0 flex items-center justify-center">
+                      <Image
+                        src={link.svgSource}
+                        alt={link.alt}
+                        width={24}
+                        height={25}
+                        className={`dark:invert-[.835] transition-all transform-gpu can-hover:group-hover:scale-110 group-hover:[filter:invert(67%)_sepia(97%)_saturate(402%)_hue-rotate(164deg)_brightness(97%)_contrast(86%)] dark:group-hover:[filter:invert(78%)_sepia(38%)_saturate(690%)_hue-rotate(107deg)_brightness(96%)_contrast(100%)] ${!isActive
+                          ? "can-hover:group-hover:-translate-y-1 can-hover:group-hover:rotate-[-5deg]"
+                          : ""
+                          }`}
+                      />
+                    </div>
+                    <span className="overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300 max-w-0 opacity-0 group-hover/nav:max-w-[150px] group-hover/nav:opacity-100 group-hover/nav:ml-3 text-black group-hover:text-[#5fc4e7] dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7]">
+                      {link.alt}
+                    </span>
                   </div>
                 </Link>
               );
             })}
           </div>
 
-          <div className="mb-2 flex flex-col items-center gap-2">
-            <ThemeToggleSwitch />
+          <div className="mb-2 flex flex-col items-start gap-2 pl-2">
+            <div className="flex items-center mb-1 group/item">
+              <ThemeToggleSwitch />
+              <span className="overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300 max-w-0 opacity-0 group-hover/nav:max-w-[150px] group-hover/nav:opacity-100 group-hover/nav:ml-3 text-black group-hover/item:text-[#5fc4e7] dark:text-[#D5D5D5] dark:group-hover/item:text-[#3BF4C7]">
+                Theme
+              </span>
+            </div>
             {isAuthed ? (
-              <div className="relative" ref={profileRef}>
+              <div className="relative flex items-center group/item" ref={profileRef}>
                 <button
                   type="button"
                   title="Profile"
@@ -209,14 +182,18 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                     </SignOut>
                   </div>
                 )}
+                <span className="overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300 max-w-0 opacity-0 group-hover/nav:max-w-[150px] group-hover/nav:opacity-100 group-hover/nav:ml-3 text-black group-hover/item:text-[#5fc4e7] dark:text-[#D5D5D5] dark:group-hover/item:text-[#3BF4C7]">
+                  Profile
+                </span>
               </div>
             ) : (
-              <button
-                type="button"
-                title="Sign in"
+              <div className="flex items-center mt-1 group/item">
+                <button
+                  type="button"
+                  title="Sign in"
                 aria-label="Sign in"
                 onClick={() => signIn("google", { callbackUrl: pathname ?? "/" })}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-black/70 transition-colors duration-200 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
+                className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-black/70 transition-colors duration-200 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -233,19 +210,14 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                   <line x1="15" y1="12" x2="3" y2="12" />
                 </svg>
               </button>
+              <span className="overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300 max-w-0 opacity-0 group-hover/nav:max-w-[150px] group-hover/nav:opacity-100 group-hover/nav:ml-3 text-black group-hover/item:text-[#5fc4e7] dark:text-[#D5D5D5] dark:group-hover/item:text-[#3BF4C7]">
+                Sign In
+              </span>
+            </div>
             )}
           </div>
         </div>
       </nav>
-      {hoveredTooltip && (
-        <div
-          className="pointer-events-none fixed z-[80] max-w-xs -translate-y-1/2 whitespace-nowrap rounded-md bg-gradient-to-r from-[#5fc4e7] to-[#4db3d6] px-3 py-2 text-sm text-white shadow-lg backdrop-blur-sm dark:from-[#3BF4C7] dark:to-[#2ad3a7] dark:text-[#232530]"
-          style={{ top: hoveredTooltip.top, left: hoveredTooltip.left }}
-        >
-          <span className="font-medium">{hoveredTooltip.content}</span>
-          <div className="absolute -left-[6px] top-1/2 h-0 w-0 -translate-y-1/2 border-b-[6px] border-r-[6px] border-t-[6px] border-b-transparent border-r-[#5fc4e7] border-t-transparent dark:border-r-[#3BF4C7]" />
-        </div>
-      )}
     </>
   );
 };
