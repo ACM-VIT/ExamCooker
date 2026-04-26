@@ -23,7 +23,7 @@ export function WordBetweenLine({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex items-center justify-between">
       <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-      <span className="text-center text-3xl md:text-6xl lg:text-8xl [@media(max-height:720px)]:lg:text-5xl [@media(max-height:560px)]:lg:text-4xl font-extrabold flex-shrink text-black dark:text-[#D5D5D5]">
+      <span className="text-center text-3xl md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl [@media(max-height:720px)]:lg:text-4xl [@media(max-height:560px)]:lg:text-3xl font-extrabold flex-shrink text-black dark:text-[#D5D5D5]">
         {children}
       </span>
       <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
@@ -52,16 +52,16 @@ export function LandingPageCard({
       <div className="block lg:hidden absolute right-0 bottom-0 w-[100px] h-[100px] rounded-full bg-[#82BEE9]"></div>
 
       <div className="relative flex flex-col justify-between w-full h-full bg-[#5FC4E7]/20 dark:bg-[#7D7467]/20 backdrop-blur-[100px] border-[#5FC4E7]/20 dark:border-[#7D7467]/20 border p-2 md:p-4">
-        <div className="flex items-center w-full h-[110px] md:h-[140px] lg:h-[160px] [@media(max-height:720px)]:lg:h-[120px] justify-between gap-3">
+        <div className="flex items-center w-full h-[110px] md:h-[160px] lg:h-[200px] xl:h-[220px] [@media(max-height:720px)]:lg:h-[140px] [@media(max-height:560px)]:lg:h-[110px] justify-between gap-4">
           <Image
             src={imagePath}
             alt={altOfImage}
-            className="h-[80%] shrink-0 dark:invert-[.835] dark:hue-rotate-180"
+            className="h-[78%] shrink-0 dark:invert-[.835] dark:hue-rotate-180"
           />
           <div className="flex-col gap-3 min-w-0">
-            <span className="text-lg md:text-2xl lg:text-3xl font-extrabold">{title}</span>
+            <span className="text-lg md:text-2xl lg:text-2xl xl:text-3xl font-extrabold">{title}</span>
             <br />
-            <span className="text-xs md:text-sm lg:text-base">{content}</span>
+            <span className="text-xs md:text-sm lg:text-sm xl:text-base">{content}</span>
           </div>
         </div>
         <div className="flex justify-between">

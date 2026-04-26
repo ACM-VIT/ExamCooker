@@ -9,7 +9,7 @@ import { getUpcomingExams } from "@/lib/data/upcomingExams";
 import CourseSearch from "./CourseSearch";
 import HomeMarketingSections from "./HomeMarketingSections";
 import WelcomeBackSubtitle from "./WelcomeBackSubtitle";
-import HeroBackdropVideo from "./HeroBackdropVideo";
+import HeroFrame from "./HeroFrame";
 
 const HOME_SUBTITLE = "Your one-stop solution to cram before exams.";
 
@@ -46,19 +46,7 @@ async function HomeSubtitle() {
 const Home = () => {
     return (
         <div className="overflow-x-clip bg-[#C2E6EC] dark:bg-[hsl(224,48%,9%)] text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
-            <div className="relative md:text-white dark:md:text-white">
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 z-0 hidden overflow-hidden md:block"
-                >
-                    <HeroBackdropVideo />
-                    <div className="absolute inset-0 bg-[#C2E6EC]/10 dark:bg-[hsl(224,48%,9%)]/45" />
-                    <div className="absolute inset-x-0 top-0 hidden h-32 bg-gradient-to-b to-transparent dark:block dark:from-[hsl(224,48%,9%)]" />
-                    <div className="absolute inset-x-0 bottom-0 hidden h-32 bg-gradient-to-t to-transparent dark:block dark:from-[hsl(224,48%,9%)]" />
-                    <div className="absolute inset-y-0 left-0 hidden w-32 bg-gradient-to-r to-transparent dark:block dark:from-[hsl(224,48%,9%)]" />
-                    <div className="absolute inset-y-0 right-0 hidden w-32 bg-gradient-to-l to-transparent dark:block dark:from-[hsl(224,48%,9%)]" />
-                </div>
-
+            <HeroFrame>
                 <section className="relative z-10 container mx-auto px-4 max-w-7xl min-h-screen flex flex-col">
                     <div className="flex flex-1 flex-col justify-center text-center py-10 md:py-14">
                         <div className="mb-10 md:mb-12 flex flex-col items-center">
@@ -84,7 +72,7 @@ const Home = () => {
                         </Suspense>
                     </div>
                 </section>
-            </div>
+            </HeroFrame>
 
             <Suspense fallback={null}>
                 <HomeMarketingSections />

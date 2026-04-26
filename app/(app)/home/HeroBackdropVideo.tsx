@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 
 const VIDEOS = ["/night.webm", "/rainy.webm"] as const;
 
-export default function HeroBackdropVideo() {
+interface Props {
+    onReady?: () => void;
+}
+
+export default function HeroBackdropVideo({ onReady }: Props) {
     const [src, setSrc] = useState<string | null>(null);
 
     useEffect(() => {
@@ -24,6 +28,7 @@ export default function HeroBackdropVideo() {
             preload="auto"
             disablePictureInPicture
             disableRemotePlayback
+            onCanPlay={onReady}
             className="absolute inset-0 h-full w-full object-cover"
         >
             <source src={src} type="video/webm" />
