@@ -13,6 +13,7 @@ import { examTypeLabel } from "@/lib/examSlug";
 import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
 import { buildPastPaperPdfFileName } from "@/lib/downloads/resourceNames";
 import { preloadPdfBuffer } from "@/lib/pdf/pdfBufferCache";
+import { preloadPdfiumEngine } from "@/lib/pdf/pdfiumEngineCache";
 import type { ExamType } from "@/prisma/generated/client";
 
 type Paper = {
@@ -47,11 +48,13 @@ function CoursePaperCard({
 
     useEffect(() => {
         if (index < 3) {
+            void preloadPdfiumEngine().catch(() => undefined);
             preloadPdfBuffer(paper.fileUrl);
         }
     }, [index, paper.fileUrl]);
 
     const handleWarmPdf = useCallback(() => {
+        void preloadPdfiumEngine().catch(() => undefined);
         preloadPdfBuffer(paper.fileUrl);
     }, [paper.fileUrl]);
 

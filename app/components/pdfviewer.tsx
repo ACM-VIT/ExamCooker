@@ -2,7 +2,6 @@
 
 import { createPluginRegistration } from "@embedpdf/core";
 import { EmbedPDF, useDocumentState } from "@embedpdf/core/react";
-import { usePdfiumEngine } from "@embedpdf/engines/react";
 import {
   DocumentContent,
   DocumentManagerPluginPackage,
@@ -39,8 +38,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resourceNames";
 import { loadPdfBuffer } from "@/lib/pdf/pdfBufferCache";
-
-const PDFIUM_WASM_URL = "/vendor/embedpdf/pdfium.wasm";
+import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfiumEngineCache";
 
 const TOOLBAR_BUTTON_CLASS =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500";
@@ -451,10 +449,7 @@ export default function PDFViewer({
     status: "loading",
     progress: null,
   });
-  const { engine, error, isLoading } = usePdfiumEngine({
-    wasmUrl: PDFIUM_WASM_URL,
-    worker: false,
-  });
+  const engineState = usePreloadedPdfiumEngine();
 
   useEffect(() => {
     let isActive = true;
@@ -532,11 +527,11 @@ export default function PDFViewer({
     setIsPdfDarkMode((currentValue) => !currentValue);
   }, []);
 
-  if (error) {
+  if (engineState.status === "error") {
     return <ErrorState fileUrl={fileUrl} />;
   }
 
-  if (isLoading || !engine) {
+  if (engineState.status === "loading") {
     return <LoadingState label="Loading PDF engine" />;
   }
 
@@ -561,7 +556,7 @@ export default function PDFViewer({
     >
       <EmbedPDF
         key={fileUrl}
-        engine={engine}
+        engine={engineState.engine}
         plugins={plugins}
         autoMountDomElements={false}
       >
