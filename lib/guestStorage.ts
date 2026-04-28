@@ -1,7 +1,8 @@
-import type { Bookmark } from "@/app/actions/Favourites";
-
 export type GuestRecentItemType =
-    | Bookmark["type"]
+    | "note"
+    | "pastpaper"
+    | "forumpost"
+    | "subject"
     | "syllabus";
 
 export type GuestRecentItem = {
@@ -11,11 +12,9 @@ export type GuestRecentItem = {
     viewedAt: number;
 };
 
-const BOOKMARKS_KEY = "guestBookmarks";
 const RECENTS_KEY = "guestRecentViews";
 const MAX_RECENTS = 12;
 
-export const GUEST_BOOKMARKS_EVENT = "guest-bookmarks-changed";
 export const GUEST_RECENTS_EVENT = "guest-recents-changed";
 
 function isBrowser() {
@@ -29,19 +28,6 @@ function safeParse<T>(value: string | null, fallback: T): T {
     } catch {
         return fallback;
     }
-}
-
-export function loadGuestBookmarks(): Bookmark[] {
-    if (!isBrowser()) return [];
-    const data = safeParse<Bookmark[]>(localStorage.getItem(BOOKMARKS_KEY), []);
-    if (!Array.isArray(data)) return [];
-    return data.filter((item) => item && typeof item.id === "string" && typeof item.title === "string");
-}
-
-export function saveGuestBookmarks(bookmarks: Bookmark[]) {
-    if (!isBrowser()) return;
-    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
-    window.dispatchEvent(new Event(GUEST_BOOKMARKS_EVENT));
 }
 
 export function loadGuestRecentViews(): GuestRecentItem[] {

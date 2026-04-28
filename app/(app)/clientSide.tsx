@@ -2,9 +2,7 @@
 import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import NavBar from "@/app/components/NavBar";
-import BookmarksProvider from "@/app/components/BookmarksProvider";
 import GuestPromptProvider from "@/app/components/GuestPromptProvider";
-import type { Bookmark } from "@/app/actions/Favourites";
 import { usePathname, useSearchParams } from "next/navigation";
 import AppImage from "@/app/components/common/AppImage";
 import ExamCookerLogoIcon from "@/public/assets/LogoIcon.svg";
@@ -191,26 +189,10 @@ function ClientShell({
     );
 }
 
-function ClientProviders({
-    children,
-    initialBookmarks,
-}: {
-    children: React.ReactNode;
-    initialBookmarks: Bookmark[];
-}) {
-    return (
-        <BookmarksProvider initialBookmarks={initialBookmarks}>
-            {children}
-        </BookmarksProvider>
-    );
-}
-
 export default function ClientSide({
     children,
-    initialBookmarks,
 }: {
     children: React.ReactNode;
-    initialBookmarks: Bookmark[];
 }) {
     const [isNavOn, setIsNavOn] = useState(false);
 
@@ -235,15 +217,13 @@ export default function ClientSide({
     return (
         <GuestPromptProvider>
             <ClientShell isNavOn={isNavOn} toggleNavbar={toggleNavbar}>
-                <ClientProviders initialBookmarks={initialBookmarks}>
-                    <Suspense fallback={null}>
-                        <RouteEffects onPathChange={handlePathChange} />
-                    </Suspense>
-                    {children}
-                    <Suspense fallback={null}>
-                        <RenderedRouteBeacon />
-                    </Suspense>
-                </ClientProviders>
+                <Suspense fallback={null}>
+                    <RouteEffects onPathChange={handlePathChange} />
+                </Suspense>
+                {children}
+                <Suspense fallback={null}>
+                    <RenderedRouteBeacon />
+                </Suspense>
             </ClientShell>
         </GuestPromptProvider>
     );

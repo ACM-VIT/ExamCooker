@@ -1,10 +1,6 @@
 "use client";
 import React from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHeart } from "@fortawesome/free-solid-svg-icons";
-import { useBookmarks } from "./BookmarksProvider";
 import Link from "next/link";
-import { useToast } from "@/components/ui/use-toast";
 import Image from "@/app/components/common/AppImage";
 import { getPastPaperDetailPath } from "@/lib/seo";
 
@@ -40,29 +36,11 @@ function PastPaperCard({
   openInNewTab,
   transitionTypes,
 }: PastPaperCardProps) {
-  const { isBookmarked, toggleBookmark } = useBookmarks();
-  const isFav = isBookmarked(pastPaper.id, "pastpaper");
-  const { toast } = useToast();
-
   const displayTitle =
     pastPaper.course?.title ??
     pastPaper.title.replace(/\.pdf$/i, "");
   const metadata = buildMetadata(pastPaper);
   const href = getPastPaperDetailPath(pastPaper.id, pastPaper.course?.code);
-
-  const handleToggleFav = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    toggleBookmark(
-      { id: pastPaper.id, type: "pastpaper", title: displayTitle },
-      !isFav
-    ).catch(() =>
-      toast({
-        title: "Error! Could not add to favorites",
-        variant: "destructive",
-      })
-    );
-  };
 
   return (
     <div className={`max-w-sm w-full h-full text-black dark:text-[#D5D5D5]`}>
@@ -84,15 +62,6 @@ function PastPaperCard({
               {displayTitle}
             </div>
           </div>
-          <button
-            onClick={handleToggleFav}
-            className="mt-0.5 shrink-0 transition-colors duration-200"
-          >
-            <FontAwesomeIcon
-              icon={faHeart}
-              color={isFav ? "red" : "lightgrey"}
-            />
-          </button>
         </div>
 
         <div className="bg-[#d9d9d9] w-full h-44 relative overflow-hidden">
