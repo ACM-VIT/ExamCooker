@@ -1,11 +1,12 @@
 "use client";
 
 import React, { addTransitionType, memo, useCallback, useMemo, useTransition } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/examSlug";
 import type { Campus, ExamType, Semester } from "@/db";
 
 type Props = {
+    basePath: string;
     options: {
         examTypes: ExamType[];
         slots: string[];
@@ -44,6 +45,7 @@ function readList(raw: string | null): string[] {
 }
 
 export default function FilterBar({
+    basePath,
     options,
     examCounts,
     yearCounts,
@@ -51,7 +53,6 @@ export default function FilterBar({
     searchString,
 }: Props) {
     const router = useRouter();
-    const pathname = usePathname();
     const [pending, startTransition] = useTransition();
     const searchParams = useMemo(
         () => new URLSearchParams(searchString),
@@ -82,9 +83,9 @@ export default function FilterBar({
         const qs = next.toString();
         startTransition(() => {
             addTransitionType("filter-results");
-            router.replace(qs ? `${pathname}?${qs}` : pathname);
+            router.replace(qs ? `${basePath}?${qs}` : basePath);
         });
-    }, [pathname, router, startTransition]);
+    }, [basePath, router, startTransition]);
 
     const replaceList = useCallback((key: string, values: string[]) => {
         const next = new URLSearchParams(searchParams.toString());

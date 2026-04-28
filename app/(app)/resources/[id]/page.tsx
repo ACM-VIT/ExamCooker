@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { asc, eq } from "drizzle-orm";
 import ModuleDropdown from "@/app/components/ModuleDropdown";
@@ -43,25 +44,42 @@ function renderLegacySubject(subject: Subject & { modules: Module[] }) {
     }
 
     return (
-        <DirectionalTransition>
-            <div className="transition-colors container mx-auto p-2 text-black dark:text-[#D5D5D5] sm:p-4">
-                <ViewTracker id={subject.id} type="subject" title={subject.name} />
-                <h2>{courseName}</h2>
-                <br />
-                {courseCode ? (
-                    <>
-                        <h3>Course Code: {courseCode}</h3>
-                        <br />
-                    </>
-                ) : null}
-                <br />
-                <div className="space-y-6">
-                    {subject.modules.map((module) => (
-                        <ModuleDropdown key={module.id} module={module} />
-                    ))}
-                </div>
+        <div className="transition-colors container mx-auto p-2 text-black dark:text-[#D5D5D5] sm:p-4">
+            <ViewTracker id={subject.id} type="subject" title={subject.name} />
+            <h2>{courseName}</h2>
+            <br />
+            {courseCode ? (
+                <>
+                    <h3>Course Code: {courseCode}</h3>
+                    <br />
+                </>
+            ) : null}
+            <br />
+            <div className="space-y-6">
+                {subject.modules.map((module) => (
+                    <ModuleDropdown key={module.id} module={module} />
+                ))}
             </div>
-        </DirectionalTransition>
+        </div>
+    );
+}
+
+function SubjectDetailShell() {
+    return (
+        <div
+            className="container mx-auto p-2 sm:p-4"
+            aria-hidden="true"
+        >
+            <span className="block h-8 w-1/2 bg-black/10 dark:bg-white/10" />
+            <div className="mt-6 space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="h-14 rounded-md border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                    />
+                ))}
+            </div>
+        </div>
     );
 }
 
@@ -122,12 +140,12 @@ export async function generateMetadata({
     };
 }
 
-export default async function SubjectDetailPage({
-    params,
+async function SubjectDetailContent({
+    paramsPromise,
 }: {
-    params: Promise<{ id: string }>;
+    paramsPromise: Promise<{ id: string }>;
 }) {
-    const { id } = await params;
+    const { id } = await paramsPromise;
     const remoteCourse = getVinCourseById(id);
 
     if (remoteCourse) {
@@ -136,15 +154,13 @@ export default async function SubjectDetailPage({
         }
 
         return (
-            <DirectionalTransition>
-                <VinCoursePage
-                    course={remoteCourse}
-                    breadcrumbs={[
-                        { label: "Resources", href: "/resources" },
-                        { label: remoteCourse.displayName },
-                    ]}
-                />
-            </DirectionalTransition>
+            <VinCoursePage
+                course={remoteCourse}
+                breadcrumbs={[
+                    { label: "Resources", href: "/resources" },
+                    { label: remoteCourse.displayName },
+                ]}
+            />
         );
     }
 
@@ -155,4 +171,18 @@ export default async function SubjectDetailPage({
     }
 
     return renderLegacySubject(subject);
+}
+
+export default function SubjectDetailPage({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}) {
+    return (
+        <DirectionalTransition>
+            <Suspense fallback={<SubjectDetailShell />}>
+                <SubjectDetailContent paramsPromise={params} />
+            </Suspense>
+        </DirectionalTransition>
+    );
 }

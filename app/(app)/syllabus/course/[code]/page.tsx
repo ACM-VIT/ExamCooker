@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import type { Metadata } from "next";
@@ -80,12 +81,25 @@ export async function generateMetadata({
     };
 }
 
-export default async function CourseSyllabusPage({
-    params,
+function CourseSyllabusShell() {
+    return (
+        <div
+            className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10"
+            aria-hidden="true"
+        >
+            <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
+            <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+            <div className="h-[70dvh] border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]" />
+        </div>
+    );
+}
+
+async function CourseSyllabusContent({
+    paramsPromise,
 }: {
-    params: Promise<{ code: string }>;
+    paramsPromise: Promise<{ code: string }>;
 }) {
-    const { code } = await params;
+    const { code } = await paramsPromise;
     const context = await loadCourseSyllabusContext(code);
     if (!context) return notFound();
 
@@ -96,9 +110,8 @@ export default async function CourseSyllabusPage({
     });
 
     return (
-        <DirectionalTransition>
-            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-                <StructuredData
+        <>
+            <StructuredData
                     data={[
                         buildBreadcrumbList([
                             { name: "Syllabus", path: "/syllabus" },
@@ -175,6 +188,21 @@ export default async function CourseSyllabusPage({
                         </div>
                     </div>
                 </div>
+        </>
+    );
+}
+
+export default function CourseSyllabusPage({
+    params,
+}: {
+    params: Promise<{ code: string }>;
+}) {
+    return (
+        <DirectionalTransition>
+            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <Suspense fallback={<CourseSyllabusShell />}>
+                    <CourseSyllabusContent paramsPromise={params} />
+                </Suspense>
             </div>
         </DirectionalTransition>
     );

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -144,12 +145,45 @@ export async function generateMetadata({
     };
 }
 
-export default async function CourseResourcesPage({
-    params,
+function CourseResourcesShell() {
+    return (
+        <div
+            className="container mx-auto px-3 py-6 sm:px-5 lg:px-8 lg:py-10"
+            aria-hidden="true"
+        >
+            <div className="mx-auto flex max-w-6xl flex-col gap-4">
+                <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+            </div>
+            <div className="mx-auto mt-6 grid max-w-6xl grid-cols-2 gap-3 md:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="rounded-md border border-black/10 bg-white px-4 py-3 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                    >
+                        <span className="block h-3 w-16 bg-black/10 dark:bg-white/10" />
+                        <span className="mt-2 block h-6 w-12 bg-black/10 dark:bg-white/10" />
+                    </div>
+                ))}
+            </div>
+            <div className="mx-auto mt-8 max-w-6xl space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="h-14 rounded-md border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+async function CourseResourcesContent({
+    paramsPromise,
 }: {
-    params: Promise<{ code: string }>;
+    paramsPromise: Promise<{ code: string }>;
 }) {
-    const { code } = await params;
+    const { code } = await paramsPromise;
     const context = await loadCourseResourceContext(code);
     if (!context) return notFound();
 
@@ -169,7 +203,7 @@ export default async function CourseResourcesPage({
     ];
 
     return (
-        <DirectionalTransition>
+        <>
             <StructuredData
                 data={[
                     buildBreadcrumbList([
@@ -308,6 +342,20 @@ export default async function CourseResourcesPage({
                     </div>
                 </div>
             ) : null}
+        </>
+    );
+}
+
+export default function CourseResourcesPage({
+    params,
+}: {
+    params: Promise<{ code: string }>;
+}) {
+    return (
+        <DirectionalTransition>
+            <Suspense fallback={<CourseResourcesShell />}>
+                <CourseResourcesContent paramsPromise={params} />
+            </Suspense>
         </DirectionalTransition>
     );
 }

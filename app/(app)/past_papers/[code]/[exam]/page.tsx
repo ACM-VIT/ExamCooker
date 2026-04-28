@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -65,12 +65,50 @@ export async function generateMetadata({
     };
 }
 
-export default async function CourseExamPage({
-    params,
+function CourseExamShell() {
+    return (
+        <div
+            className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 py-6 sm:px-6 lg:px-10 lg:py-10"
+            aria-hidden="true"
+        >
+            <div className="flex flex-col gap-3">
+                <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="h-8 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10" />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="h-6 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="h-9 w-28 border border-black/20 bg-white dark:border-[#D5D5D5]/20 dark:bg-[#0C1222]" />
+            </div>
+            <div className="flex flex-wrap gap-3">
+                {Array.from({ length: 8 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="min-w-0 basis-[calc((100%-0.75rem)/2)] sm:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-2.25rem)/4)] xl:basis-[calc((100%-3rem)/5)]"
+                    >
+                        <div className="flex h-full flex-col border-2 border-[#5FC4E7] bg-[#5FC4E7] p-3 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222]">
+                            <div className="flex flex-col gap-1.5 pb-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="h-[18px] w-12 bg-black/10 dark:bg-[#D5D5D5]/15" />
+                                    <span className="h-[13px] w-8 bg-black/10 dark:bg-[#D5D5D5]/10" />
+                                </div>
+                                <span className="h-[14px] w-full bg-black/10 dark:bg-[#D5D5D5]/15" />
+                                <span className="h-[14px] w-3/5 bg-black/10 dark:bg-[#D5D5D5]/15" />
+                            </div>
+                            <div className="aspect-[4/5] w-full bg-[#d9d9d9] dark:bg-white/5" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+async function CourseExamContent({
+    paramsPromise,
 }: {
-    params: Promise<{ code: string; exam: string }>;
+    paramsPromise: Promise<{ code: string; exam: string }>;
 }) {
-    const { code, exam } = await params;
+    const { code, exam } = await paramsPromise;
     const examType = examSlugToType(exam);
     if (!examType) notFound();
 
@@ -104,18 +142,17 @@ export default async function CourseExamPage({
     ];
 
     return (
-        <DirectionalTransition>
-            <div className="min-h-screen text-black dark:text-[#D5D5D5]">
-                <StructuredData
-                    data={[
-                        buildBreadcrumbList([
-                            { name: "Past papers", path: "/past_papers" },
-                            { name: course.title, path: getCoursePastPapersPath(course.code) },
-                            {
-                                name: `${course.code} ${label}`,
-                                path: getCourseExamPath(course.code, examTypeToSlug(examType)),
-                            },
-                        ]),
+        <>
+            <StructuredData
+                data={[
+                    buildBreadcrumbList([
+                        { name: "Past papers", path: "/past_papers" },
+                        { name: course.title, path: getCoursePastPapersPath(course.code) },
+                        {
+                            name: `${course.code} ${label}`,
+                            path: getCourseExamPath(course.code, examTypeToSlug(examType)),
+                        },
+                    ]),
                         buildCollectionPage({
                             name: `${course.code} ${label} past papers`,
                             description,
@@ -228,7 +265,22 @@ export default async function CourseExamPage({
                         </article>
                     ))}
                 </section>
-                </div>
+            </div>
+        </>
+    );
+}
+
+export default function CourseExamPage({
+    params,
+}: {
+    params: Promise<{ code: string; exam: string }>;
+}) {
+    return (
+        <DirectionalTransition>
+            <div className="min-h-screen text-black dark:text-[#D5D5D5]">
+                <Suspense fallback={<CourseExamShell />}>
+                    <CourseExamContent paramsPromise={params} />
+                </Suspense>
             </div>
         </DirectionalTransition>
     );

@@ -253,10 +253,11 @@ async function PopularCoursesSection() {
 }
 
 async function CourseGridSection({
-    params,
+    searchParamsPromise,
 }: {
-    params: { search?: string; page?: string };
+    searchParamsPromise: Promise<PastPapersSearchParams> | undefined;
 }) {
+    const params = (await searchParamsPromise) ?? {};
     const search = params.search?.trim() || "";
     const rawPage = Number.parseInt(params.page || "1", 10) || 1;
 
@@ -313,6 +314,7 @@ async function CourseGridSection({
                 {totalPages > 1 && (
                     <div className="mt-4">
                         <CoursePagination
+                            basePath="/past_papers"
                             currentPage={page}
                             totalPages={totalPages}
                             searchString={paginationSearchString}
@@ -357,13 +359,67 @@ function SearchControls({
     );
 }
 
+function SearchControlsShell() {
+    return (
+        <div
+            className="flex w-full items-stretch gap-2 sm:gap-3"
+            aria-hidden="true"
+        >
+            <div className="h-12 min-w-0 flex-1 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11" />
+            <div className="h-12 w-12 shrink-0 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11 sm:w-11" />
+        </div>
+    );
+}
+
+function DynamicHomeSectionsShell() {
+    return (
+        <>
+            <SearchControlsShell />
+            <PopularCoursesShell />
+            <CourseGridSectionShell search="" />
+            <RecentSectionShell />
+        </>
+    );
+}
+
+async function DynamicHomeSections({
+    searchParamsPromise,
+    searchable,
+}: {
+    searchParamsPromise: Promise<PastPapersSearchParams> | undefined;
+    searchable: Awaited<ReturnType<typeof getSearchableCourses>>;
+}) {
+    const params = (await searchParamsPromise) ?? {};
+    const search = params.search?.trim() || "";
+
+    return (
+        <>
+            <SearchControls search={search} searchable={searchable} />
+
+            {!search && (
+                <Suspense fallback={<PopularCoursesShell />}>
+                    <PopularCoursesSection />
+                </Suspense>
+            )}
+
+            <Suspense fallback={<CourseGridSectionShell search={search} />}>
+                <CourseGridSection searchParamsPromise={searchParamsPromise} />
+            </Suspense>
+
+            {!search && (
+                <Suspense fallback={<RecentSectionShell />}>
+                    <RecentSection />
+                </Suspense>
+            )}
+        </>
+    );
+}
+
 export default async function PastPapersPage({
     searchParams,
 }: {
     searchParams?: Promise<PastPapersSearchParams>;
 }) {
-    const params = (await searchParams) ?? {};
-    const search = params.search || "";
     const [stats, searchable] = await Promise.all([
         getCatalogStats(),
         getSearchableCourses(),
@@ -403,28 +459,14 @@ export default async function PastPapersPage({
                         </h1>
 
                         <HeroStats stats={stats} />
-
-                        <SearchControls
-                            search={search}
-                            searchable={searchable}
-                        />
                     </section>
 
-                    {!search && (
-                        <Suspense fallback={<PopularCoursesShell />}>
-                            <PopularCoursesSection />
-                        </Suspense>
-                    )}
-
-                    <Suspense fallback={<CourseGridSectionShell search={search} />}>
-                        <CourseGridSection params={params} />
+                    <Suspense fallback={<DynamicHomeSectionsShell />}>
+                        <DynamicHomeSections
+                            searchParamsPromise={searchParams}
+                            searchable={searchable}
+                        />
                     </Suspense>
-
-                    {!search && (
-                        <Suspense fallback={<RecentSectionShell />}>
-                            <RecentSection />
-                        </Suspense>
-                    )}
 
                     <section className="sr-only">
                         {faq.map((item) => (

@@ -1,19 +1,19 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faKey } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 
 type Props = {
+    basePath: string;
     count: number;
     searchString: string;
 };
 
-export default function AnswerKeyButton({ count, searchString }: Props) {
+export default function AnswerKeyButton({ basePath, count, searchString }: Props) {
     const router = useRouter();
-    const pathname = usePathname();
     const params = new URLSearchParams(searchString);
     const checked = params.get("answer_key") === "1";
 
@@ -23,10 +23,10 @@ export default function AnswerKeyButton({ count, searchString }: Props) {
         else next.set("answer_key", "1");
         next.delete("page");
         const qs = next.toString();
-        router.replace(qs ? `${pathname}?${qs}` : pathname, {
+        router.replace(qs ? `${basePath}?${qs}` : basePath, {
             transitionTypes: ["filter-sheet-update"],
         });
-    }, [checked, pathname, router, searchString]);
+    }, [basePath, checked, router, searchString]);
 
     if (count <= 0) return null;
 

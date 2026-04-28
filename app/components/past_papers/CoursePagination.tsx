@@ -2,11 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAngleLeft, faAngleRight } from "@fortawesome/free-solid-svg-icons";
 
 type Props = {
+    basePath: string;
     currentPage: number;
     totalPages: number;
     searchString: string;
@@ -14,9 +14,7 @@ type Props = {
 
 const MAX_VISIBLE = 5;
 
-export default function CoursePagination({ currentPage, totalPages, searchString }: Props) {
-    const pathname = usePathname();
-
+export default function CoursePagination({ basePath, currentPage, totalPages, searchString }: Props) {
     if (totalPages <= 1) return null;
 
     const buildHref = (page: number) => {
@@ -24,7 +22,7 @@ export default function CoursePagination({ currentPage, totalPages, searchString
         if (page <= 1) next.delete("page");
         else next.set("page", String(page));
         const qs = next.toString();
-        return qs ? `${pathname}?${qs}` : pathname;
+        return qs ? `${basePath}?${qs}` : basePath;
     };
 
     const transitionForPage = (page: number) => {

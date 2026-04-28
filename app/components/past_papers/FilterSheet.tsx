@@ -5,7 +5,7 @@ import React, {
     useMemo,
     useState,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Drawer } from "vaul";
 import { SlidersHorizontal, X } from "lucide-react";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/examSlug";
@@ -13,6 +13,7 @@ import type { Campus, ExamType, Semester } from "@/db";
 import { cn } from "@/lib/utils";
 
 type Props = {
+    basePath: string;
     options: {
         examTypes: ExamType[];
         slots: string[];
@@ -58,6 +59,7 @@ function readList(raw: string | null): string[] {
 }
 
 export default function FilterSheet({
+    basePath,
     options,
     examCounts,
     yearCounts,
@@ -66,7 +68,6 @@ export default function FilterSheet({
     totalCount,
 }: Props) {
     const router = useRouter();
-    const pathname = usePathname();
     const [open, setOpen] = useState(false);
 
     const searchParams = useMemo(
@@ -105,11 +106,11 @@ export default function FilterSheet({
         (next: URLSearchParams) => {
             next.delete("page");
             const qs = next.toString();
-            router.replace(qs ? `${pathname}?${qs}` : pathname, {
+            router.replace(qs ? `${basePath}?${qs}` : basePath, {
                 transitionTypes: ["filter-sheet-update"],
             });
         },
-        [pathname, router],
+        [basePath, router],
     );
 
     const toggleIn = useCallback(
