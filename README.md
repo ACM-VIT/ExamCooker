@@ -204,6 +204,78 @@ ExamCooker uses scalable tech stacks to ensure optimal performance and ease of m
       </a>
     </td>
   </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/theg1239">
+        <img src="https://github.com/theg1239.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+        <br>
+        <sub><b>theg1239</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/adityasingh789m">
+        <img src="https://github.com/adityasingh789m.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+        <br>
+        <sub><b>Aditya Singh</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/tanushgolwala">
+        <img src="https://github.com/tanushgolwala.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+        <br>
+        <sub><b>Tanush Golwala</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/JuxtaRYCT">
+        <img src="https://github.com/JuxtaRYCT.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+        <br>
+        <sub><b>Yash Raj Singh</b></sub>
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Manan1511">
+        <img src="https://github.com/Manan1511.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+        <br>
+        <sub><b>Manan Shah</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/jjoshiprakhar">
+        <img src="https://github.com/jjoshiprakhar.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+        <br>
+        <sub><b>Prakhar Joshi</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/ant1v3n0m">
+        <img src="https://github.com/ant1v3n0m.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+        <br>
+        <sub><b>Harshit Narang</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/passiveuser369">
+        <img src="https://github.com/passiveuser369.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+        <br>
+        <sub><b>Sree Raj Muthaiya A L</b></sub>
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/thinkter">
+        <img src="https://github.com/thinkter.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+        <br>
+        <sub><b>thinkter</b></sub>
+      </a>
+    </td>
+    <td align="center"></td>
+    <td align="center"></td>
+    <td align="center"></td>
+  </tr>
 </table>
 
 **Special Mentions:**
