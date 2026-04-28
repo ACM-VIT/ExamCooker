@@ -1,13 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import posthog from "posthog-js";
 
-export default function PostHogProvider({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function PostHogProvider() {
     const didInit = useRef(false);
 
     useEffect(() => {
@@ -26,5 +22,5 @@ export default function PostHogProvider({
         didInit.current = true;
     }, []);
 
-    return <>{children}</>;
+    return null;
 }
