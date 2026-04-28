@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { db, ExamType, upcomingExam } from "@/src/db";
+import { db, ExamType, upcomingExam } from "@/db";
 
 const slotsSchema = z
     .array(z.string().min(1).max(20))

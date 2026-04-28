@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import { normalizeCourseCode } from "@/lib/courseTags";
 import { revalidateTag } from "next/cache";
-import { course, db } from "@/src/db";
+import { course, db } from "@/db";
 
 export async function createCourse(input: {
     code: string;

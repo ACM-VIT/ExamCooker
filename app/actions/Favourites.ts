@@ -10,8 +10,8 @@ import {
     userBookmarkedNotes,
     userBookmarkedPastPapers,
     userBookmarkedResources,
-} from "@/src/db";
-import { requireUserByEmail } from "@/src/db/helpers";
+} from "@/db";
+import { requireUserByEmail } from "@/db/helpers";
 
 export type Bookmark = {
     id: string;

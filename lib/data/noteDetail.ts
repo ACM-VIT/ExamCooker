@@ -2,7 +2,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { asc, eq } from "drizzle-orm";
 import { cache } from "react";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
-import { course, db, note, noteToTag, tag, user } from "@/src/db";
+import { course, db, note, noteToTag, tag, user } from "@/db";
 
 const loadNoteDetail = cache(async (id: string) => {
     const rows = await db

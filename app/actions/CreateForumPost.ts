@@ -2,8 +2,8 @@
 
 import { auth } from '../auth'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { db, forumPost, forumPostToTag } from '@/src/db'
-import { findOrCreateTag, requireUserByEmail } from '@/src/db/helpers'
+import { db, forumPost, forumPostToTag } from '@/db'
+import { findOrCreateTag, requireUserByEmail } from '@/db/helpers'
 
 type CreateForumPostInput = {
   title: string

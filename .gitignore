@@ -20,7 +20,6 @@
 .DS_Store
 *.pem
 
-src
 
 # debug
 npm-debug.log*

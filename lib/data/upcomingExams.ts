@@ -6,7 +6,7 @@ import {
     db,
     type ExamType,
     upcomingExam,
-} from "@/src/db";
+} from "@/db";
 
 export type UpcomingExamItem = {
     id: string;

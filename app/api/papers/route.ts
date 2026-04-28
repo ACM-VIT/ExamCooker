@@ -4,7 +4,7 @@ import { and, count, desc, eq, exists, ilike, inArray, or } from 'drizzle-orm'
 import { normalizeGcsUrl } from '@/lib/normalizeGcsUrl'
 import { getPastPaperDetailPath } from '@/lib/seo'
 import { examTypeLabel } from '@/lib/examSlug'
-import { course, db, pastPaper, pastPaperToTag, tag } from '@/src/db'
+import { course, db, pastPaper, pastPaperToTag, tag } from '@/db'
 
 const DEFAULT_LIMIT = 40
 const MAX_LIMIT = 200

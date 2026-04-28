@@ -20,7 +20,7 @@ import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } 
 import { normalizeCourseCode } from "@/lib/courseTags";
 import { examTypeLabel } from "@/lib/examSlug";
 import { buildPastPaperPdfFileName } from "@/lib/downloads/resourceNames";
-import type { ExamType } from "@/src/db";
+import type { ExamType } from "@/db";
 
 //todo refactor to utility function and move to lib
 const ACRONYM_SKIP_WORDS = new Set([

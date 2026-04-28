@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
-import { db, syllabi } from "@/src/db";
+import { db, syllabi } from "@/db";
 
 export async function getSyllabusDetail(id: string) {
     "use cache";

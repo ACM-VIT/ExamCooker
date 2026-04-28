@@ -12,13 +12,13 @@ import type {
     ExamType,
     Semester,
     Campus,
-} from "@/src/db";
+} from "@/db";
 import {
     campusValues,
     db,
     pastPaper,
     semesterValues,
-} from "@/src/db";
+} from "@/db";
 
 export type CoursePaperFilters = {
     examTypes?: ExamType[];

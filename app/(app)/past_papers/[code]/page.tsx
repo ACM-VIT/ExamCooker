@@ -37,7 +37,7 @@ import {
     type Campus,
     type ExamType,
     type Semester,
-} from "@/src/db";
+} from "@/db";
 import {
     buildBreadcrumbList,
     buildCollectionPage,

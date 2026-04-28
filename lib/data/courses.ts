@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { and, count, eq, or, sql } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/courseTags";
-import { course, db, note, pastPaper } from "@/src/db";
+import { course, db, note, pastPaper } from "@/db";
 
 export type CourseSummary = {
     code: string;

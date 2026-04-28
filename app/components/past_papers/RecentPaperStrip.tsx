@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { examTypeLabel } from "@/lib/examSlug";
-import type { ExamType } from "@/src/db";
+import type { ExamType } from "@/db";
 import { getPastPaperDetailPath } from "@/lib/seo";
 
 type RecentItem = {

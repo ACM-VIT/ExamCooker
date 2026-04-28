@@ -1,4 +1,4 @@
-import type { ExamType } from "@/src/db";
+import type { ExamType } from "@/db";
 
 const TYPE_TO_SLUG: Record<ExamType, string> = {
     CAT_1: "cat-1",

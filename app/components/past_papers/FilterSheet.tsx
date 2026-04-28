@@ -9,7 +9,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Drawer } from "vaul";
 import { SlidersHorizontal, X } from "lucide-react";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/examSlug";
-import type { Campus, ExamType, Semester } from "@/src/db";
+import type { Campus, ExamType, Semester } from "@/db";
 import { cn } from "@/lib/utils";
 
 type Props = {

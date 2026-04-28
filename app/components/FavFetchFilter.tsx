@@ -16,7 +16,7 @@ import type {
   Subject,
   PastPaper,
   User,
-} from "@/src/db";
+} from "@/db";
 
 interface ForumPostItem extends Omit<ForumPost, 'upvoteCount' | 'downvoteCount'> {
   type: 'forumpost';

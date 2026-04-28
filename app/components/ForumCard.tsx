@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
-import type { ForumPost, User, Vote } from "@/src/db";
+import type { ForumPost, User, Vote } from "@/db";
 import { useToast } from "@/components/ui/use-toast";
 
 type ForumCardTag = {

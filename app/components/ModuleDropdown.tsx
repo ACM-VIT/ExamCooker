@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import type { Module } from '@/src/db';
+import type { Module } from '@/db';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faAngleRight, faAngleDown } from '@fortawesome/free-solid-svg-icons';
 

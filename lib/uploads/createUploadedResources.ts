@@ -7,8 +7,8 @@ import type {
     Campus,
     ExamType,
     Semester,
-} from "@/src/db";
-import { db, note, pastPaper, user } from "@/src/db";
+} from "@/db";
+import { db, note, pastPaper, user } from "@/db";
 
 export const UPLOAD_SUCCESS_MESSAGE = "processed successfully";
 

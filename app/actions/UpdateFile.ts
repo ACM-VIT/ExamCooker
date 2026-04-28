@@ -2,7 +2,7 @@
 
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { db, note, pastPaper } from '@/src/db'
+import { db, note, pastPaper } from '@/db'
 
 export async function updateFile(itemID: string, newTitle: string, activeTab: string) {
 

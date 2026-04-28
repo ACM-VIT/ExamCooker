@@ -11,7 +11,7 @@ import {
     sql,
 } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/courseTags";
-import { course, db, note, pastPaper, syllabi, viewHistory } from "@/src/db";
+import { course, db, note, pastPaper, syllabi, viewHistory } from "@/db";
 
 type CatalogStats = {
     courseCount: number;

@@ -3,7 +3,7 @@
 import React, { addTransitionType, memo, useCallback, useMemo, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/examSlug";
-import type { Campus, ExamType, Semester } from "@/src/db";
+import type { Campus, ExamType, Semester } from "@/db";
 
 type Props = {
     options: {

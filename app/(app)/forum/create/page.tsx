@@ -1,6 +1,6 @@
 import React from "react";
 import CreateForum from "@/app/components/create-forum";
-import { db, tag } from "@/src/db";
+import { db, tag } from "@/db";
 
 async function NewForumPage () {
     const allTags = await db.select({ name: tag.name }).from(tag).orderBy(tag.name);

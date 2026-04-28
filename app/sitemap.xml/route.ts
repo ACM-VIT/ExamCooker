@@ -4,7 +4,7 @@ import { getBaseUrl } from "@/lib/seo";
 import { getCourseGrid, getSearchableCourses } from "@/lib/data/courseCatalog";
 import { getCourseExamCombos } from "@/lib/data/courseExams";
 import { getExamHubSummaries } from "@/lib/data/courseExams";
-import { db, note, pastPaper, subject, syllabi } from "@/src/db";
+import { db, note, pastPaper, subject, syllabi } from "@/db";
 
 const PAGE_SIZE = 40000;
 

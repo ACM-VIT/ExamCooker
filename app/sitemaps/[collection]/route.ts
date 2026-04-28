@@ -17,7 +17,7 @@ import {
     getCourseExamCombos,
     getExamHubSummaries,
 } from "@/lib/data/courseExams";
-import { course, db, note, pastPaper, subject, syllabi } from "@/src/db";
+import { course, db, note, pastPaper, subject, syllabi } from "@/db";
 
 const PAGE_SIZE = 40000;
 

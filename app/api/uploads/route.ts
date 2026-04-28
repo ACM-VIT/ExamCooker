@@ -6,7 +6,7 @@ import {
     type ProcessedUploadResult,
     type UploadVariant,
 } from "@/lib/uploads/createUploadedResources";
-import { campusValues, examTypeValues, semesterValues } from "@/src/db";
+import { campusValues, examTypeValues, semesterValues } from "@/db";
 
 const uploadVariants = new Set<UploadVariant>(["Notes", "Past Papers"]);
 const examTypes = new Set<string>(examTypeValues);

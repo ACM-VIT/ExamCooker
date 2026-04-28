@@ -7,7 +7,7 @@ import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import NoteReviewList from "@/app/components/mod/NoteReviewList";
 import type { CourseOption } from "@/app/components/mod/CoursePicker";
 import type { NoteRowData } from "@/app/components/mod/NoteReviewRow";
-import { course, db, note } from "@/src/db";
+import { course, db, note } from "@/db";
 
 export const metadata = {
     title: "Note metadata review · Mod",

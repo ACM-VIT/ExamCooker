@@ -3,7 +3,7 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { auth } from "@/app/auth";
 import { revalidateTag } from "next/cache";
-import { db, forumPost, type VoteType, vote } from '@/src/db'
+import { db, forumPost, type VoteType, vote } from '@/db'
 
 async function toggleVote(postId: string, nextType: VoteType) {
     const session = await auth();

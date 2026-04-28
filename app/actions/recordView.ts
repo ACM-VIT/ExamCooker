@@ -3,7 +3,7 @@
 import { auth } from "@/app/auth";
 import { eq, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
-import { db, viewHistory } from "@/src/db";
+import { db, viewHistory } from "@/db";
 
 export type ViewableItemType = "pastpaper" | "note" | "forumpost" | "subject" | "syllabus";
 

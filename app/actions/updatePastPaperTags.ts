@@ -3,8 +3,8 @@
 import { eq } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { db, pastPaperToTag } from "@/src/db";
-import { findOrCreateTag } from "@/src/db/helpers";
+import { db, pastPaperToTag } from "@/db";
+import { findOrCreateTag } from "@/db/helpers";
 
 function normalizeTags(tags: string[]) {
     const map = new Map<string, string>();

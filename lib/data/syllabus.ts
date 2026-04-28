@@ -2,7 +2,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { asc, count, ilike, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/courseTags";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
-import { db, syllabi } from "@/src/db";
+import { db, syllabi } from "@/db";
 
 function buildSearchTerms(search: string) {
     const rawSearch = search.trim().replace(/\s+/g, " ");

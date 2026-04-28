@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { eq } = require("drizzle-orm");
-const { course, note, pastPaper } = require("../src/db/schema.ts");
+const { course, note, pastPaper } = require("../db/schema.ts");
 const { createScriptDb, queryRows } = require("./lib/db.ts");
 const { loadScriptEnv } = require("./lib/env.ts");
 const REPORT_DIR = path.resolve(__dirname, "reports");
