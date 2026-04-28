@@ -2,6 +2,7 @@
 
 import { Loader2, Mic, MicOff, RefreshCcw, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import type {
   UseVoiceControlReturn,
@@ -213,6 +214,7 @@ export default function VoiceAgentDock({
   }, [visible]);
 
   if (!mounted) return null;
+  if (typeof document === "undefined") return null;
 
   const currentTranscript = runtime.transcript.trim();
   const fallback = getStatusFallback(runtime, lastError);
@@ -226,7 +228,7 @@ export default function VoiceAgentDock({
 
   const showSpinner = !runtime.connected && !lastError;
 
-  return (
+  return createPortal(
     <div
       data-voice-agent-ignore="true"
       className="pointer-events-none fixed inset-x-0 bottom-0 z-[75]"
@@ -324,6 +326,7 @@ export default function VoiceAgentDock({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
