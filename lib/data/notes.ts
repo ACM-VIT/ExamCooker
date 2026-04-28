@@ -44,23 +44,25 @@ function buildWhere(search: string, tags: string[]) {
 
     if (search) {
         const pattern = `%${search}%`;
-        filters.push(
-            or(
-                ilike(note.title, pattern),
-                exists(
-                    db
-                        .select({ id: noteToTag.a })
-                        .from(noteToTag)
-                        .innerJoin(tag, eq(noteToTag.b, tag.id))
-                        .where(
-                            and(
-                                eq(noteToTag.a, note.id),
-                                ilike(tag.name, pattern),
-                            ),
+        const searchFilter = or(
+            ilike(note.title, pattern),
+            exists(
+                db
+                    .select({ id: noteToTag.a })
+                    .from(noteToTag)
+                    .innerJoin(tag, eq(noteToTag.b, tag.id))
+                    .where(
+                        and(
+                            eq(noteToTag.a, note.id),
+                            ilike(tag.name, pattern),
                         ),
-                ),
+                    ),
             ),
         );
+
+        if (searchFilter) {
+            filters.push(searchFilter);
+        }
     }
 
     return and(...filters);

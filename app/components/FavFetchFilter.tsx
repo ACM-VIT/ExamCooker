@@ -1,92 +1,99 @@
 "use client";
 
-// todo sort the types out
-
 import React from 'react';
 import NotesCard from './NotesCard';
 import PastPaperCard from './PastPaperCard';
 import ResourceCard from './ResourceCard';
 import ForumCard from './ForumCard';
 import { useRouter } from 'next/navigation';
-import type {
-  Comment,
-  ForumPost,
-  Note,
-  Tag,
-  Subject,
-  PastPaper,
-  User,
-} from "@/db";
+import type { BookmarkWithMeta } from "@/app/actions/getBookmarks";
+import type { VoteType } from "@/db";
 
-interface ForumPostItem extends Omit<ForumPost, 'upvoteCount' | 'downvoteCount'> {
+type ForumPostItem = {
+  id: string;
   type: 'forumpost';
+  title: string;
+  description: string;
+  createdAt: Date;
   author?: { name: string | null };
-  tags: Tag[];
-  comments: (Comment & { author: User })[];
+  tags: Array<{ id: string; name: string }>;
+  comments: Array<{
+    id: string;
+    content: string;
+    createdAt: Date;
+    updatedAt: Date;
+    author?: { name: string | null };
+  }>;
   upvoteCount: number;
   downvoteCount: number;
-  votes: { type: 'UPVOTE' | 'DOWNVOTE' }[];
-  userVote?: 'UPVOTE' | 'DOWNVOTE' | null;
-}
+  votes: Array<{ type: VoteType }>;
+};
 
-
-interface PastPaperItem extends Omit<PastPaper, 'type'> {
+type PastPaperItem = {
+  id: string;
   type: 'pastpaper';
-}
+  title: string;
+  thumbNailUrl?: string | null;
+};
 
-interface NoteItem extends Omit<Note, 'type'> {
+type NoteItem = {
+  id: string;
   type: 'note';
-}
+  title: string;
+  thumbNailUrl?: string | null;
+};
 
-interface SubjectItem extends Omit<Subject, 'type'> {
+type SubjectItem = {
+  id: string;
   type: 'subject';
-}
+  name: string;
+};
 
-export function mapBookmarkToItem(bookmark: any): Item {
+type Item = PastPaperItem | NoteItem | SubjectItem | ForumPostItem;
+
+export function mapBookmarkToItem(bookmark: BookmarkWithMeta): Item {
   switch (bookmark.type) {
-    case 'forumpost':
-      if (
-        !bookmark.tags ||
-        !bookmark.comments ||
-        !bookmark.createdAt ||
-        !bookmark.updatedAt
-      ) {
-        const now = new Date();
-        return {
-          id: bookmark.id,
-          type: 'forumpost',
-          title: bookmark.title,
-          description: bookmark.description ?? '',
-          authorId: bookmark.authorId ?? '',
-          forumId: bookmark.forumId ?? '',
-          createdAt: bookmark.createdAt ? new Date(bookmark.createdAt) : now,
-          updatedAt: bookmark.updatedAt ? new Date(bookmark.updatedAt) : now,
-          upvoteCount: bookmark.upvoteCount ?? 0,
-          downvoteCount: bookmark.downvoteCount ?? 0,
-          votes: bookmark.votes ?? [],
-          tags: bookmark.tags ?? [],
-          comments: bookmark.comments ?? [],
-          author: bookmark.author ?? { name: 'Unknown' },
-        } as ForumPostItem;
-      }
-      return bookmark as ForumPostItem
+    case 'forumpost': {
+      const createdAt = bookmark.createdAt ?? new Date();
+      return {
+        id: bookmark.id,
+        type: 'forumpost',
+        title: bookmark.title,
+        description: '',
+        createdAt,
+        upvoteCount: bookmark.upvoteCount ?? 0,
+        downvoteCount: bookmark.downvoteCount ?? 0,
+        votes: bookmark.votes ?? [],
+        tags: bookmark.tags ?? [],
+        comments: bookmark.comments ?? [],
+        author: bookmark.author ?? { name: 'Unknown' },
+      };
+    }
     case 'note':
-      return bookmark as NoteItem;
+      return {
+        id: bookmark.id,
+        type: 'note',
+        title: bookmark.title,
+        thumbNailUrl: bookmark.thumbNailUrl,
+      };
     case 'pastpaper':
-      return bookmark as PastPaperItem;
+      return {
+        id: bookmark.id,
+        type: 'pastpaper',
+        title: bookmark.title,
+        thumbNailUrl: bookmark.thumbNailUrl,
+      };
     case 'subject':
       return {
         id: bookmark.id,
-        name: bookmark.title,
         type: 'subject',
-      } as SubjectItem;
-    default:
-      throw new Error(`Unknown bookmark type: ${(bookmark as any).type}`);
+        name: bookmark.title,
+      };
   }
+
+  const unexpectedType: never = bookmark.type;
+  throw new Error(`Unknown bookmark type: ${unexpectedType}`);
 }
-
-
-type Item = PastPaperItem | NoteItem | SubjectItem | ForumPostItem;
 
 
 interface FavFetchProps {

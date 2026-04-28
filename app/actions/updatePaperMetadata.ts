@@ -33,7 +33,6 @@ export type UpdatePaperMetadataInput = z.input<typeof schema>;
 
 export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
     const session = await auth();
-    // @ts-ignore
     if (session?.user?.role !== "MODERATOR") {
         throw new Error("Access denied");
     }

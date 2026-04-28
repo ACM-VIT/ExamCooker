@@ -9,7 +9,6 @@ import { course, db, note, pastPaper, user } from "@/db";
 
 export async function fetchUnclearedItems() {
     const session = await auth();
-    // @ts-ignore
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
     const noteColumns = getTableColumns(note);
@@ -64,7 +63,6 @@ export async function approveItem(
     options?: { allowDuplicate?: boolean },
 ) {
     const session = await auth();
-    // @ts-ignore
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
     const allowDuplicate = options?.allowDuplicate ?? false;
@@ -169,7 +167,6 @@ export async function approveItem(
 
 export async function renameItem(id: string, type: "note" | "pastPaper", title: string) {
     const session = await auth();
-    // @ts-ignore
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
     if (type === "note") {
@@ -190,7 +187,6 @@ export async function renameItem(id: string, type: "note" | "pastPaper", title: 
 
 export async function deleteItem(id: string, type: "note" | "pastPaper") {
     const session = await auth();
-    // @ts-ignore
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
     if (type === "note") await db.delete(note).where(eq(note.id, id));
@@ -203,7 +199,6 @@ export async function deleteItem(id: string, type: "note" | "pastPaper") {
 
 export async function generatePastPaperTitle(id: string) {
     const session = await auth();
-    // @ts-ignore
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
     const rows = await db

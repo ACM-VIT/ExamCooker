@@ -15,11 +15,8 @@ import { getVinCourseById } from "@/lib/data/vinTogether";
 import { db, module as moduleTable, type Module, subject, type Subject } from "@/db";
 
 async function fetchLegacySubject(id: string) {
-    const foundSubject = await db
-        .select()
-        .from(subject)
-        .where(eq(subject.id, id))
-        .then((rows) => rows[0] ?? null);
+    const foundSubjects = await db.select().from(subject).where(eq(subject.id, id));
+    const foundSubject = foundSubjects[0] ?? null;
 
     if (!foundSubject) {
         return null;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faDownload } from "@fortawesome/free-solid-svg-icons";
+import { stripPdfExtension } from "@/lib/pdf";
 
 interface NotesCardProps {
     note: {
@@ -19,13 +20,6 @@ interface NotesCardProps {
     onDownload?: (id: string) => void;
 }
 
-export function removePdfExtension(filename: string): string {
-    if (filename.toLowerCase().endsWith(".pdf")) {
-        return filename.slice(0, -4);
-    }
-    return filename;
-}
-
 function NotesCard({
     note,
     index,
@@ -34,7 +28,7 @@ function NotesCard({
     onToggleSelect,
     onDownload,
 }: NotesCardProps) {
-    const displayTitle = removePdfExtension(note.title);
+    const displayTitle = stripPdfExtension(note.title);
 
     const handleToggleSelect = (e: React.MouseEvent) => {
         e.stopPropagation();

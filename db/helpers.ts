@@ -1,12 +1,13 @@
 import { eq, sql } from "drizzle-orm";
 import { db, tag, user } from "@/db";
 
+function first<T>(rows: T[]) {
+  return rows[0] ?? null;
+}
+
 export async function getUserByEmail(email: string) {
-  return db
-    .select()
-    .from(user)
-    .where(eq(user.email, email))
-    .then((rows) => rows[0] ?? null);
+  const rows = await db.select().from(user).where(eq(user.email, email));
+  return first(rows);
 }
 
 export async function requireUserByEmail(email: string) {
@@ -34,11 +35,11 @@ export async function findOrCreateTag(
       options?.caseInsensitive
         ? sql`lower(${tag.name}) = lower(${name})`
         : eq(tag.name, name),
-    )
-    .then((rows) => rows[0] ?? null);
+    );
+  const existingTagRow = first(existingTag);
 
-  if (existingTag) {
-    return existingTag;
+  if (existingTagRow) {
+    return existingTagRow;
   }
 
   const [createdTag] = await db
@@ -54,11 +55,11 @@ export async function findOrCreateTag(
   const conflictedTag = await db
     .select()
     .from(tag)
-    .where(eq(tag.name, name))
-    .then((rows) => rows[0] ?? null);
+    .where(eq(tag.name, name));
+  const conflictedTagRow = first(conflictedTag);
 
-  if (conflictedTag) {
-    return conflictedTag;
+  if (conflictedTagRow) {
+    return conflictedTagRow;
   }
 
   if (!createdTag) {

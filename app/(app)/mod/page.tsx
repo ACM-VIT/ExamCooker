@@ -15,8 +15,7 @@ async function ModeratorDashboard({
         redirect("/");
     }
 
-    const role = (session.user as { role?: string }).role;
-    if (role !== "MODERATOR") {
+    if (session.user.role !== "MODERATOR") {
         notFound();
     }
 

@@ -1,6 +1,5 @@
 import React, { Suspense } from "react";
 import { auth } from "@/app/auth";
-import UserName from "./display_username";
 import { GradientText } from "@/app/components/landing_page/landing";
 import ExamCookerLogo from "@/app/components/common/ExamCookerLogo";
 import ExamsMarquee from "./ExamsMarquee";
@@ -10,6 +9,7 @@ import CourseSearch from "./CourseSearch";
 import HomeMarketingSections from "./HomeMarketingSections";
 import WelcomeBackSubtitle from "./WelcomeBackSubtitle";
 import HeroFrame from "./HeroFrame";
+import { getDisplayUserName } from "./displayName";
 
 const HOME_SUBTITLE = "Your one-stop solution to cram before exams.";
 
@@ -31,16 +31,29 @@ async function HomeMarqueeSection() {
 const subtitleClass =
     "text-base md:text-xl text-black/70 dark:text-[#D5D5D5]/70 md:text-white/85 dark:md:text-white/85 mb-10 max-w-2xl mx-auto";
 
-async function HomeSubtitle() {
-    const session = await auth();
-    if (!session?.user) {
+function HomeSubtitle({ userName }: { userName: string | null }) {
+    if (!userName) {
         return <p className={subtitleClass}>{HOME_SUBTITLE}</p>;
     }
     return (
         <WelcomeBackSubtitle className={subtitleClass}>
-            Welcome back, <UserName />
+            Welcome back, {userName}
         </WelcomeBackSubtitle>
     );
+}
+
+async function PersonalizedHomeSubtitle() {
+    const session = await auth();
+    const userName = session?.user?.name
+        ? getDisplayUserName(session.user.name)
+        : null;
+
+    return <HomeSubtitle userName={userName} />;
+}
+
+async function PersonalizedMarketingSections() {
+    const session = await auth();
+    return <HomeMarketingSections isAuthed={Boolean(session?.user)} />;
 }
 
 const Home = () => {
@@ -59,8 +72,8 @@ const Home = () => {
                         <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold leading-[1.02] mb-6">
                             Made Easy.
                         </h1>
-                        <Suspense fallback={<p className={subtitleClass}>{HOME_SUBTITLE}</p>}>
-                            <HomeSubtitle />
+                        <Suspense fallback={<HomeSubtitle userName={null} />}>
+                            <PersonalizedHomeSubtitle />
                         </Suspense>
 
                         <HomeSearchSection />
@@ -74,8 +87,8 @@ const Home = () => {
                 </section>
             </HeroFrame>
 
-            <Suspense fallback={null}>
-                <HomeMarketingSections />
+            <Suspense fallback={<HomeMarketingSections isAuthed />}>
+                <PersonalizedMarketingSections />
             </Suspense>
         </div>
     );

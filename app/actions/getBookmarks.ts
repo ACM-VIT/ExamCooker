@@ -4,6 +4,7 @@ import { and, count, eq, inArray } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import type { Bookmark } from "@/app/actions/Favourites";
+import type { VoteType } from "@/db";
 import {
     comment,
     db,
@@ -22,12 +23,12 @@ import {
 } from "@/db";
 import { requireUserByEmail } from "@/db/helpers";
 
-type BookmarkWithMeta = Bookmark & {
+export type BookmarkWithMeta = Bookmark & {
     thumbNailUrl?: string | null;
     upvoteCount?: number;
     createdAt?: Date;
     downvoteCount?: number;
-    votes?: Array<{ type: string }>;
+    votes?: Array<{ type: VoteType }>;
     author?: { name: string | null };
     tags?: Array<{ id: string; name: string }>;
     comments?: Array<{

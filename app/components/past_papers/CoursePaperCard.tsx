@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useCallback, useEffect } from "react";
+import React, { memo, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -45,15 +45,13 @@ function CoursePaperCard({
     onToggleSelect,
 }: Props) {
     const href = `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`;
-
-    useEffect(() => {
-        if (index < 3) {
-            void preloadPdfiumEngine().catch(() => undefined);
-            preloadPdfBuffer(paper.fileUrl);
-        }
-    }, [index, paper.fileUrl]);
+    const hasWarmedPdf = useRef(false);
 
     const handleWarmPdf = useCallback(() => {
+        if (hasWarmedPdf.current) {
+            return;
+        }
+        hasWarmedPdf.current = true;
         void preloadPdfiumEngine().catch(() => undefined);
         preloadPdfBuffer(paper.fileUrl);
     }, [paper.fileUrl]);

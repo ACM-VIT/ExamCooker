@@ -1,6 +1,6 @@
 "use client";
 
-import React, { addTransitionType, startTransition, useEffect, useMemo, useRef, useState } from "react";
+import React, { addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Image from "@/app/components/common/AppImage";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
@@ -41,26 +41,37 @@ export default function PastPapersCourseSearch({
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const deferredQuery = useDeferredValue(query);
+
+    const searchableCourses = useMemo(
+        () =>
+            courses.map((course) => ({
+                course,
+                code: course.code,
+                normalizedHaystack: normalizeSearchInput(
+                    `${course.code} ${course.title} ${(course.aliases ?? []).join(" ")}`,
+                ),
+            })),
+        [courses],
+    );
 
     const filtered = useMemo(() => {
-        const trimmed = query.trim();
+        const trimmed = deferredQuery.trim();
         if (!trimmed) return [];
 
         const codeQuery = normalizeCourseCode(trimmed);
         const normalized = normalizeSearchInput(trimmed);
         const terms = normalized.split(" ").filter(Boolean);
 
-        return courses
-            .filter((course) => {
+        return searchableCourses
+            .filter(({ course, code, normalizedHaystack }) => {
                 if (course.code === codeQuery) return true;
-                if (course.code.startsWith(codeQuery) && codeQuery.length >= 2) return true;
-                const haystack = normalizeSearchInput(
-                    `${course.code} ${course.title} ${(course.aliases ?? []).join(" ")}`,
-                );
-                return terms.every((term) => haystack.includes(term));
+                if (code.startsWith(codeQuery) && codeQuery.length >= 2) return true;
+                return terms.every((term) => normalizedHaystack.includes(term));
             })
+            .map(({ course }) => course)
             .slice(0, MAX_RESULTS);
-    }, [query, courses]);
+    }, [deferredQuery, searchableCourses]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {

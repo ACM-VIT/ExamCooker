@@ -22,7 +22,6 @@ function normalizeTags(tags: string[]) {
 export async function updatePastPaperTags(paperId: string, tags: string[]) {
     const session = await auth();
 
-    // @ts-ignore
     if (session?.user?.role !== "MODERATOR") {
         throw new Error("Access denied");
     }

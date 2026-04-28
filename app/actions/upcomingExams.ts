@@ -25,7 +25,6 @@ const upsertSchema = z.object({
 
 async function requireModerator() {
     const session = await auth();
-    // @ts-ignore — role is on user session
     if (session?.user?.role !== "MODERATOR") {
         throw new Error("Access denied");
     }

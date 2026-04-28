@@ -27,6 +27,13 @@ const EXAM_TYPES: { value: ExamType; label: string }[] = [
     { value: "OTHER", label: "Other" },
 ];
 
+function formatScheduledAt(value: string | Date) {
+    return new Intl.DateTimeFormat("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+    }).format(value instanceof Date ? value : new Date(value));
+}
+
 function parseSlots(raw: string): string[] {
     return raw
         .split(/[,\s]+/)
@@ -313,9 +320,7 @@ function Row({
                 {item.examType ? item.examType.replace("_", "-") : "—"}
             </td>
             <td className="p-2 text-xs text-black/70 dark:text-[#D5D5D5]/70">
-                {item.scheduledAt
-                    ? new Date(item.scheduledAt).toLocaleString()
-                    : "—"}
+                {item.scheduledAt ? formatScheduledAt(item.scheduledAt) : "—"}
             </td>
             <td className="p-2">
                 <div className="flex gap-2">

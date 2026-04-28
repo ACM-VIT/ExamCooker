@@ -33,7 +33,7 @@ function ModuleDropdown({ module }: ModuleDropdownProps) {
                     <div>
                         <h4 className="font-bold mb-2">Web References:</h4>
                         <ul className="list-disc pl-5 mb-2">
-                            {module.webReferences.map((link) => (
+                            {(module.webReferences ?? []).map((link) => (
                                 <li key={link} className="mb-1">
                                     <a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                                         {link}
@@ -45,7 +45,7 @@ function ModuleDropdown({ module }: ModuleDropdownProps) {
                     <div>
                         <h4 className="font-bold mb-2">YouTube Links:</h4>
                         <ul className="list-disc pl-5">
-                            {module.youtubeLinks.map((link) => (
+                            {(module.youtubeLinks ?? []).map((link) => (
                                 <li key={link} className="mb-1">
                                     <a href={link} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">
                                         {link}

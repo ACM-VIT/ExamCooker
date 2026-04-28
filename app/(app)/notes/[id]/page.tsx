@@ -2,7 +2,6 @@ import React from 'react';
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import PDFViewerClient from '@/app/components/PDFViewerClient';
-import {TimeHandler} from '@/app/components/forumpost/CommentHelpers';
 import {notFound} from "next/navigation";
 import {Metadata} from "next";
 import DirectionalTransition from "@/app/components/common/DirectionalTransition";
@@ -14,13 +13,9 @@ import ItemActions from "@/app/components/ItemActions";
 import { getNoteDetail } from "@/lib/data/noteDetail";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getCourseNotesPath } from "@/lib/seo";
 import { buildNotePdfFileName } from "@/lib/downloads/resourceNames";
+import { stripPdfExtension } from "@/lib/pdf";
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
-
-
-function removePdfExtension(filename: string): string {
-    return filename.endsWith('.pdf') ? filename.slice(0, -4) : filename;
-}
 
 function isValidSlot(str: string): boolean {
     const regex = /^[A-G]\d$/;
@@ -30,6 +25,18 @@ function isValidSlot(str: string): boolean {
 function isValidYear(year: string): boolean {
     const regex = /^20\d{2}$/;
     return regex.test(year);
+}
+
+function formatPostedAt(date: Date) {
+    return new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+    }).format(date);
 }
 
 async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
@@ -68,13 +75,9 @@ async function PdfViewerPage({params}: { params: Promise<{ id: string }> }) {
     if (!note) {
         return notFound();
     }
-
-    const postTime: string = note.createdAt.toLocaleString("en-US", {timeZone: "Asia/Kolkata"});
-
-    const title = removePdfExtension(note.title);
+    const title = stripPdfExtension(note.title);
     const canonical = `/notes/${note.id}`;
-    const postedTime = TimeHandler(postTime);
-    const postedAtLine = `${postedTime.hours}:${postedTime.minutes}${postedTime.amOrPm} · ${postedTime.day}-${postedTime.month}-${postedTime.year}`;
+    const postedAtLine = formatPostedAt(note.createdAt);
     const authorName = note.author?.name?.slice(0, -10) || "Unknown";
     const backHref = note.course?.code ? getCourseNotesPath(note.course.code) : "/notes";
     const backLabel = note.course?.code ?? "Notes";
@@ -187,7 +190,7 @@ export async function generateMetadata({params}: { params: Promise<{ id: string 
     const { id } = await params;
     const note = await getNoteDetail(id);
     if (!note) return {}
-    const title = removePdfExtension(note.title);
+    const title = stripPdfExtension(note.title);
     const canonical = `/notes/${note.id}`;
     const description = `View ${title} notes on ExamCooker.`;
     const keywords = buildKeywords(

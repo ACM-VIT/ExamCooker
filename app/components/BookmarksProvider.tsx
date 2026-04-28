@@ -14,6 +14,18 @@ type BookmarksContextType = {
 
 const BookmarksContext = createContext<BookmarksContextType | undefined>(undefined);
 
+function toggleBookmarkInList(bookmarks: Bookmark[], bookmark: Bookmark) {
+    const index = bookmarks.findIndex(
+        (item) => item.id === bookmark.id && item.type === bookmark.type,
+    );
+
+    if (index > -1) {
+        return bookmarks.filter((_, itemIndex) => itemIndex !== index);
+    }
+
+    return [...bookmarks, bookmark];
+}
+
 export function useBookmarks() {
     const context = useContext(BookmarksContext);
     if (context === undefined) {
@@ -25,7 +37,7 @@ export function useBookmarks() {
 export default function BookmarksProvider({ children, initialBookmarks }: { children: React.ReactNode, initialBookmarks: Bookmark[] }) {
     const initialBookmarksRef = useRef(initialBookmarks);
     const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarksRef.current);
-    const [pending, startTransition] = useTransition();
+    const [, startTransition] = useTransition();
     const { requireAuth, isAuthed, status } = useGuestPrompt();
 
     useEffect(() => {
@@ -43,10 +55,10 @@ export default function BookmarksProvider({ children, initialBookmarks }: { chil
                 return;
             }
 
-            let nextBookmarks = initialBookmarksRef.current;
-            if (nextBookmarks.length === 0) {
-                nextBookmarks = await getBookmarksAction().catch(() => []);
-            }
+            const nextBookmarks =
+                initialBookmarksRef.current.length > 0
+                    ? initialBookmarksRef.current
+                    : await getBookmarksAction().catch(() => []);
 
             if (!cancelled) {
                 setBookmarks(nextBookmarks);
@@ -63,10 +75,7 @@ export default function BookmarksProvider({ children, initialBookmarks }: { chil
     const toggleBookmark = useCallback(async (bookmark: Bookmark, favourite: boolean) => {
         if (!isAuthed) {
             setBookmarks(prevBookmarks => {
-                const index = prevBookmarks.findIndex(b => b.id === bookmark.id && b.type === bookmark.type);
-                const next = index > -1
-                    ? prevBookmarks.filter((_, i) => i !== index)
-                    : [...prevBookmarks, bookmark];
+                const next = toggleBookmarkInList(prevBookmarks, bookmark);
                 saveGuestBookmarks(next);
                 return next;
             });
@@ -77,42 +86,22 @@ export default function BookmarksProvider({ children, initialBookmarks }: { chil
             return;
         }
 
-        setBookmarks(prevBookmarks => {
-            const index = prevBookmarks.findIndex(b => b.id === bookmark.id && b.type === bookmark.type);
-            if (index > -1) {
-                return prevBookmarks.filter((_, i) => i !== index);
-            } else {
-                return [...prevBookmarks, bookmark];
-            }
-        });
+        setBookmarks((prevBookmarks) => toggleBookmarkInList(prevBookmarks, bookmark));
 
         startTransition(async () => {
             try {
-
                 const result = await toggleBookmarkAction(bookmark, favourite);
 
                 if (!result.success) {
-                    setBookmarks(prevBookmarks => {
-                        const index = prevBookmarks.findIndex(b => b.id === bookmark.id && b.type === bookmark.type);
-                        if (index > -1 && result.isBookmarked) {
-                            return [...prevBookmarks.slice(0, index), bookmark, ...prevBookmarks.slice(index + 1)];
-                        } else if (index === -1 && !result.isBookmarked) {
-                            return prevBookmarks.filter(b => b.id !== bookmark.id || b.type !== bookmark.type);
-                        }
-                        return prevBookmarks;
-                    });
+                    setBookmarks((prevBookmarks) =>
+                        toggleBookmarkInList(prevBookmarks, bookmark),
+                    );
                     console.error('Failed to toggle bookmark:', result.error);
                 }
-
             } catch (error) {
-                setBookmarks(prevBookmarks => {
-                    const index = prevBookmarks.findIndex(b => b.id === bookmark.id && b.type === bookmark.type);
-                    if (index > -1) {
-                        return prevBookmarks.filter((_, i) => i !== index);
-                    } else {
-                        return [...prevBookmarks, bookmark];
-                    }
-                });
+                setBookmarks((prevBookmarks) =>
+                    toggleBookmarkInList(prevBookmarks, bookmark),
+                );
                 console.error('Error toggling bookmark:', error);
             }
         })

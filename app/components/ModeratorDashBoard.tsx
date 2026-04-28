@@ -3,6 +3,7 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import type { Note, PastPaper } from "@/db";
+import { useToast } from "@/components/ui/use-toast";
 import Pagination from "./Pagination";
 import NotesCard from "./NotesCard";
 import PastPaperCard from "./PastPaperCard";
@@ -20,6 +21,18 @@ type ModeratorDashboardClientProps = {
     totalUsers: number;
 };
 
+function removeById<T extends { id: string }>(items: T[], id: string) {
+    return items.filter((item) => item.id !== id);
+}
+
+function replaceTitleById<T extends { id: string; title: string }>(
+    items: T[],
+    id: string,
+    title: string,
+) {
+    return items.map((item) => (item.id === id ? { ...item, title } : item));
+}
+
 function validatePage(page: number, totalPages: number): number {
     if (isNaN(page) || page < 1) {
         return 1;
@@ -36,6 +49,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     searchParams,
     totalUsers,
 }) => {
+    const { toast } = useToast();
     const initialNotesRef = useRef(initialNotes);
     const initialPastPapersRef = useRef(initialPastPapers);
     const [notes, setNotes] = useState<NoteWithoutTags[]>(initialNotesRef.current);
@@ -76,11 +90,11 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
 
     const applyApproved = (id: string, type: "note" | "pastPaper") => {
         if (type === "note") {
-            setNotes(notes.filter((note) => note.id !== id));
+            setNotes((prev) => removeById(prev, id));
         } else {
-            setPastPapers(pastPapers.filter((paper) => paper.id !== id));
+            setPastPapers((prev) => removeById(prev, id));
         }
-        setSelectedItems(selectedItems.filter((item) => item !== id));
+        setSelectedItems((prev) => prev.filter((item) => item !== id));
     };
 
     const handleApprove = async (id: string, type: "note" | "pastPaper") => {
@@ -100,6 +114,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
             return true;
         } catch (error) {
             console.error("Error approving item:", error);
+            toast({ title: "Could not approve item.", variant: "destructive" });
             return false;
         }
     };
@@ -108,12 +123,13 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
         try {
             await renameItem(id, type, newName);
             if (type === "note") {
-                setNotes(notes.map((note) => note.id === id ? { ...note, title: newName } : note));
+                setNotes((prev) => replaceTitleById(prev, id, newName));
             } else {
-                setPastPapers(pastPapers.map((paper) => paper.id === id ? { ...paper, title: newName } : paper));
+                setPastPapers((prev) => replaceTitleById(prev, id, newName));
             }
         } catch (error) {
             console.error("Error renaming item:", error);
+            toast({ title: "Could not rename item.", variant: "destructive" });
         }
     };
 
@@ -121,12 +137,13 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
         try {
             await deleteItem(id, type);
             type === "note"
-                ? setNotes(notes.filter((note) => note.id !== id))
-                : setPastPapers(pastPapers.filter((paper) => paper.id !== id));
+                ? setNotes((prev) => removeById(prev, id))
+                : setPastPapers((prev) => removeById(prev, id));
 
-            setSelectedItems(selectedItems.filter((item) => item !== id));
+            setSelectedItems((prev) => prev.filter((item) => item !== id));
         } catch (error) {
-            console.error("Error deletign item:", error);
+            console.error("Error deleting item:", error);
+            toast({ title: "Could not delete item.", variant: "destructive" });
         }
     };
 
@@ -146,6 +163,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
             }
         } catch (error) {
             console.error("Error generating AI title:", error);
+            toast({ title: "Could not generate AI title.", variant: "destructive" });
         } finally {
             setAiProcessingIds((prev) => prev.filter((itemId) => itemId !== id));
         }
@@ -232,6 +250,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
             }
         } catch (error) {
             console.error("Error approving with override:", error);
+            toast({ title: "Could not approve duplicate override.", variant: "destructive" });
         } finally {
             closeDuplicateDialog();
         }

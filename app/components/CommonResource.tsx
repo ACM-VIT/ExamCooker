@@ -5,13 +5,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
 import {useToast} from "@/components/ui/use-toast";
+import { stripPdfExtension } from "@/lib/pdf";
 import { getCourseResourcesPath, parseSubjectName } from "@/lib/seo";
 
 type FavoriteType = "note" | "pastpaper" | "forumpost" | "subject";
-
-function removePdfExtension(title: string) {
-    return title.replace(/\.pdf$/, '');
-}
 
 function humanizeCategory(category: string) {
     const normalized = category
@@ -41,13 +38,17 @@ function mapCategoryToType(category: string): FavoriteType {
     }
 }
 
-export default function CommonFav({ category, title, thing, compact = false }: { category: string, title: string, thing: any, compact?: boolean }) {
+type FavoriteThing = {
+    id: string;
+};
+
+export default function CommonFav({ category, title, thing, compact = false }: { category: string, title: string, thing: FavoriteThing, compact?: boolean }) {
     const { toggleBookmark, isBookmarked } = useBookmarks();
     const { toast } = useToast()
     const favoriteType = mapCategoryToType(category);
     const isFav = isBookmarked(thing.id, favoriteType);
     const router = useRouter();
-    const displayTitle = removePdfExtension(title);
+    const displayTitle = stripPdfExtension(title);
     const metadata = "";
     const categoryLabel = humanizeCategory(category);
     const link = getLink();

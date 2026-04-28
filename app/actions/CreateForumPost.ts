@@ -30,12 +30,22 @@ export async function createForumPost(inputData: CreateForumPostInput) {
   try {
     const session = await auth();
     const email = session?.user?.email;
+    const title = inputData.title.trim();
+    const description = inputData.description.trim();
 
     if (!email) {
       return {
         success: false,
-        error: "LOGIN KAR LODE",
+        error: "You must be signed in to create a forum post.",
       };
+    }
+
+    if (!title) {
+      return { success: false, error: "Title is required." };
+    }
+
+    if (!description) {
+      return { success: false, error: "Description is required." };
     }
 
     const author = await requireUserByEmail(email);
@@ -46,10 +56,10 @@ export async function createForumPost(inputData: CreateForumPostInput) {
     const [newForumPost] = await db
       .insert(forumPost)
       .values({
-        title: inputData.title.trim(),
+        title,
         authorId: author.id,
         forumId: inputData.forumId,
-        description: inputData.description.trim(),
+        description,
       })
       .returning();
 

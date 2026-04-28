@@ -3,8 +3,8 @@
 import Image from "@/app/components/common/AppImage";
 import React, { useState, useTransition } from "react";
 import { createComment } from "@/app/actions/CreateComment";
-import Loading from "@/app/(app)/loading";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
+import { useToast } from "@/components/ui/use-toast";
 
 interface AddCommentFormProps {
     forumPostId: string;
@@ -18,6 +18,7 @@ const CommentField: React.FC<AddCommentFormProps> = ({
     const [content, setContent] = useState("");
     const [pending, startTransition] = useTransition();
     const { requireAuth } = useGuestPrompt();
+    const { toast } = useToast();
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -25,26 +26,28 @@ const CommentField: React.FC<AddCommentFormProps> = ({
             return;
         }
         startTransition(async () => {
-            if (!content.trim()) {
-                alert("Comment cannot be empty");
+            const trimmedContent = content.trim();
+            if (!trimmedContent) {
+                toast({ title: "Comment cannot be empty.", variant: "destructive" });
                 return;
             }
 
-            console.log("Sending comment data:", { content, forumPostId });
             const result = await createComment({
-                content,
+                content: trimmedContent,
                 forumPostId,
             });
 
             if (result.success) {
-                console.log("New comment created:", result.data);
                 setContent("");
                 if (onCommentAdded) {
                     onCommentAdded();
                 }
             } else {
                 console.error("Error creating comment:", result.error);
-                alert(`Failed to add comment: ${result.error}`);
+                toast({
+                    title: result.error ?? "Failed to add comment.",
+                    variant: "destructive",
+                });
             }
         });
     };
@@ -55,19 +58,19 @@ const CommentField: React.FC<AddCommentFormProps> = ({
 
     return (
         <div>
-            {pending && <Loading />}
             <form
                 className="relative drop-shadow-md flex align-top mb-5"
                 onSubmit={handleSubmit}
             >
                 <input
                     type="text"
-                    placeholder="Add a comment.."
+                    placeholder={pending ? "Posting comment..." : "Add a comment.."}
                     value={content}
                     className="w-full px-4 py-3 text-base placeholder-[#838383]  dark:bg-[#4F5159] focus:outline-none focus:ring-2 focus:ring-[#3BF3C7]"
                     onChange={handleInputChange}
+                    disabled={pending}
                 />
-                <SubmitCommentButton />
+                <SubmitCommentButton pending={pending} />
             </form>
         </div>
     );
@@ -75,10 +78,11 @@ const CommentField: React.FC<AddCommentFormProps> = ({
 
 export default CommentField;
 
-const SubmitCommentButton: React.FC = () => {
+const SubmitCommentButton: React.FC<{ pending: boolean }> = ({ pending }) => {
     return (
         <button
             type="submit"
+            disabled={pending}
             className="bg-white py-3 px-4 hover:bg-gray-300 dark:bg-[#4F5159] focus:outline-none focus:ring-2 focus:ring-[#3BF3C7]"
         >
             <Image

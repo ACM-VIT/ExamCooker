@@ -3,7 +3,9 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
+import { cache } from "react";
 import NextAuth from "next-auth";
+import type { Session } from "next-auth";
 import { getServerSession } from "next-auth/next";
 import Google from "next-auth/providers/google";
 import { eq } from "drizzle-orm";
@@ -29,16 +31,7 @@ type JwtCallbackParams = {
   user?: AuthUser | null;
 };
 type SessionCallbackParams = {
-  session: {
-    expires: string;
-    user?: {
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      id?: string;
-      role?: AppRole;
-    };
-  };
+  session: Session;
   token: AuthToken;
 };
 
@@ -99,11 +92,11 @@ export const authConfig = {
         (!lastSyncedAt || now - lastSyncedAt > ROLE_REFRESH_INTERVAL_SECONDS)
       ) {
         try {
-          const dbUser = await db
+          const dbUsers = await db
             .select({ role: userTable.role })
             .from(userTable)
-            .where(eq(userTable.id, userId))
-            .then((rows) => rows[0] ?? null);
+            .where(eq(userTable.id, userId));
+          const dbUser = dbUsers[0] ?? null;
 
           if (dbUser?.role) token.role = dbUser.role;
           token.roleSyncedAt = now;
@@ -141,12 +134,18 @@ export const authConfig = {
 
 export const authHandler = NextAuth(authConfig);
 
+const getCachedServerSession = cache(() => getServerSession(authConfig));
+
 export function auth(
   ...args:
     | [GetServerSidePropsContext["req"], GetServerSidePropsContext["res"]]
     | [NextApiRequest, NextApiResponse]
     | []
 ) {
+  if (args.length === 0) {
+    return getCachedServerSession();
+  }
+
   return getServerSession(...args, authConfig);
 }
 

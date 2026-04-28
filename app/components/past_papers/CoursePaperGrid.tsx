@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useCallback, useMemo, useState, ViewTransition } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { useToast } from "@/components/ui/use-toast";
 import CoursePaperCard from "./CoursePaperCard";
 import type { CoursePaperListItem } from "@/lib/data/coursePapers";
 import { downloadPdfZip } from "@/lib/downloads/browserDownloads";
@@ -31,6 +32,7 @@ export default function CoursePaperGrid({
 }: Props) {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [isDownloading, setIsDownloading] = useState(false);
+    const { toast } = useToast();
     const wideRemainder = papers.length % 5;
     const wideStretchClass = WIDE_STRETCH_CLASS_BY_REMAINDER[wideRemainder] ?? "";
 
@@ -77,11 +79,14 @@ export default function CoursePaperGrid({
                 })),
             });
         } catch {
-            window.alert("Could not create the zip file. Please try again.");
+            toast({
+                title: "Could not create the zip file.",
+                variant: "destructive",
+            });
         } finally {
             setIsDownloading(false);
         }
-    }, [courseCode, courseTitle, isDownloading, paperById, selected]);
+    }, [courseCode, courseTitle, isDownloading, paperById, selected, toast]);
 
     const count = selected.size;
 
@@ -93,16 +98,14 @@ export default function CoursePaperGrid({
                         key={paper.id}
                         className={`min-w-0 basis-[calc((100%-0.75rem)/2)] sm:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-2.25rem)/4)] xl:basis-[calc((100%-3rem)/5)] ${wideStretchClass}`}
                     >
-                        <ViewTransition>
-                            <CoursePaperCard
-                                paper={paper}
-                                courseCode={courseCode}
-                                courseTitle={courseTitle}
-                                index={index}
-                                selected={selected.has(paper.id)}
-                                onToggleSelect={toggle}
-                            />
-                        </ViewTransition>
+                        <CoursePaperCard
+                            paper={paper}
+                            courseCode={courseCode}
+                            courseTitle={courseTitle}
+                            index={index}
+                            selected={selected.has(paper.id)}
+                            onToggleSelect={toggle}
+                        />
                     </div>
                 ))}
             </div>

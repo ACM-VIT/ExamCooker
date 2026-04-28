@@ -52,6 +52,30 @@ type CourseCatalogRow = {
     noteCount: number;
 };
 
+type CourseSearchRecord = CourseGridItem & {
+    aliases: string[];
+};
+
+const getSyllabusIdByCourseCode = cache(async () => {
+    const syllabusRows = await db
+        .select({
+            id: syllabi.id,
+            name: syllabi.name,
+        })
+        .from(syllabi)
+        .orderBy(syllabi.name);
+
+    const syllabusIdByCode = new Map<string, string>();
+    for (const syllabus of syllabusRows) {
+        const code = normalizeCourseCode(syllabus.name.split("_")[0] ?? "");
+        if (code && !syllabusIdByCode.has(code)) {
+            syllabusIdByCode.set(code, syllabus.id);
+        }
+    }
+
+    return syllabusIdByCode;
+});
+
 const getCourseCatalogRows = cache(async (): Promise<CourseCatalogRow[]> => {
     const [courses, noteCounts, paperCounts] = await Promise.all([
         db
@@ -101,6 +125,37 @@ const getCourseCatalogRows = cache(async (): Promise<CourseCatalogRow[]> => {
     }));
 });
 
+const getCourseSearchRecords = cache(async (): Promise<CourseSearchRecord[]> => {
+    const courses = await getCourseCatalogRows();
+
+    return courses
+        .filter((courseRow) => courseRow.paperCount > 0 || courseRow.noteCount > 0)
+        .map((courseRow) => ({
+            id: courseRow.id,
+            code: courseRow.code,
+            title: courseRow.title,
+            paperCount: courseRow.paperCount,
+            noteCount: courseRow.noteCount,
+            viewCount: 0,
+            aliases: courseRow.aliases,
+        }));
+});
+
+const getCourseSearchIndex = cache(async () => {
+    const records = await getCourseSearchRecords();
+
+    return new Fuse(records, {
+        keys: [
+            { name: "title", weight: 0.6 },
+            { name: "code", weight: 0.3 },
+            { name: "aliases", weight: 0.1 },
+        ],
+        threshold: 0.3,
+        ignoreLocation: true,
+        minMatchCharLength: 3,
+    });
+});
+
 export async function getCourseGrid(): Promise<CourseGridItem[]> {
     "use cache";
     cacheTag("courses", "past_papers");
@@ -116,18 +171,9 @@ export async function getCourseGrid(): Promise<CourseGridItem[]> {
 }
 
 async function getCourseGridBase(): Promise<CourseGridItem[]> {
-    const courses = await getCourseCatalogRows();
+    const courses = await getCourseSearchRecords();
 
-    return courses
-        .map((c) => ({
-            id: c.id,
-            code: c.code,
-            title: c.title,
-            paperCount: c.paperCount,
-            noteCount: c.noteCount,
-            viewCount: 0,
-        }))
-        .filter((c) => c.paperCount > 0 || c.noteCount > 0);
+    return courses.map(({ aliases: _aliases, ...courseRow }) => courseRow);
 }
 
 const loadCourseDetailByCode = cache(async (normalized: string) => {
@@ -211,18 +257,10 @@ export async function getPopularCourseGrid(limit = 6): Promise<CourseGridItem[]>
 }
 
 export async function searchCourseGrid(query: string): Promise<CourseGridItem[]> {
-    const records = (await getCourseCatalogRows())
-        .filter((courseRow) => courseRow.paperCount > 0 || courseRow.noteCount > 0)
-        .map((courseRow) => ({
-            id: courseRow.id,
-            code: courseRow.code,
-            title: courseRow.title,
-            paperCount: courseRow.paperCount,
-            noteCount: courseRow.noteCount,
-            viewCount: 0,
-            aliases: courseRow.aliases,
-        }));
-
+    const [records, fuse] = await Promise.all([
+        getCourseSearchRecords(),
+        getCourseSearchIndex(),
+    ]);
     const grid = records.map(({ aliases: _aliases, ...courseRow }) => courseRow);
     const trimmed = query.trim();
     if (!trimmed) return grid;
@@ -249,17 +287,6 @@ export async function searchCourseGrid(query: string): Promise<CourseGridItem[]>
         return substring.map(({ aliases: _aliases, ...rest }) => rest);
     }
 
-    const fuse = new Fuse(records, {
-        keys: [
-            { name: "title", weight: 0.6 },
-            { name: "code", weight: 0.3 },
-            { name: "aliases", weight: 0.1 },
-        ],
-        threshold: 0.3,
-        ignoreLocation: true,
-        minMatchCharLength: 3,
-    });
-
     return fuse.search(trimmed).map(({ item }) => {
         const { aliases: _aliases, ...rest } = item;
         return rest;
@@ -281,24 +308,10 @@ export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> 
     cacheTag("courses", "past_papers", "syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const [courses, syllabusRows] = await Promise.all([
-        getCourseCatalogRows(),
-        db
-            .select({
-                id: syllabi.id,
-                name: syllabi.name,
-            })
-            .from(syllabi)
-            .orderBy(syllabi.name),
+    const [courses, syllabusIdByCode] = await Promise.all([
+        getCourseSearchRecords(),
+        getSyllabusIdByCourseCode(),
     ]);
-
-    const syllabusIdByCode = new Map<string, string>();
-    for (const syllabus of syllabusRows) {
-        const code = normalizeCourseCode(syllabus.name.split("_")[0] ?? "");
-        if (code && !syllabusIdByCode.has(code)) {
-            syllabusIdByCode.set(code, syllabus.id);
-        }
-    }
 
     return courses
         .map((c) => ({
