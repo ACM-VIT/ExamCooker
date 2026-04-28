@@ -8,6 +8,7 @@ import {
     faDownload,
     faKey,
     faCheck,
+    faArrowUpRightFromSquare,
 } from "@fortawesome/free-solid-svg-icons";
 import { examTypeLabel } from "@/lib/examSlug";
 import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
@@ -46,6 +47,18 @@ function CoursePaperCard({
 }: Props) {
     const href = `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`;
     const hasWarmedPdf = useRef(false);
+    const linkAriaLabel = [
+        "Open",
+        paper.examType ? examTypeLabel(paper.examType) : null,
+        paper.slot,
+        paper.year !== null ? String(paper.year) : null,
+        courseCode,
+        courseTitle,
+        "past paper",
+        paper.hasAnswerKey ? "with answer key" : null,
+    ]
+        .filter(Boolean)
+        .join(" ");
 
     const handleWarmPdf = useCallback(() => {
         if (hasWarmedPdf.current) {
@@ -79,11 +92,18 @@ function CoursePaperCard({
         });
     }, [courseCode, courseTitle, paper]);
 
+    const handleOpenInNewTab = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        window.open(paper.fileUrl, "_blank", "noopener,noreferrer");
+    }, [paper.fileUrl]);
+
     return (
         <Link
             href={href}
             prefetch={index < 3}
             transitionTypes={["nav-forward"]}
+            aria-label={linkAriaLabel}
             onFocus={handleWarmPdf}
             onMouseDown={handleWarmPdf}
             onPointerEnter={handleWarmPdf}
@@ -94,7 +114,7 @@ function CoursePaperCard({
                 }`}
         >
             {/* Metadata + title at top */}
-            <div className="flex flex-col gap-1.5 pb-2 text-black dark:text-[#D5D5D5]">
+            <div className="flex flex-col gap-1.5 pb-2 pr-6 text-black dark:text-[#D5D5D5]">
                 <div className="flex flex-wrap items-center gap-1.5">
                     {paper.examType && (
                         <span className="inline-flex items-center bg-black/10 px-2 py-0.5 text-[11px] font-bold text-black/80 dark:bg-[#D5D5D5]/15 dark:text-[#D5D5D5]/90">
@@ -116,6 +136,15 @@ function CoursePaperCard({
                     {courseTitle}
                 </div>
             </div>
+            <button
+                type="button"
+                onClick={handleOpenInNewTab}
+                aria-label="Open paper in new tab"
+                title="Open paper in new tab"
+                className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded text-black/60 transition hover:bg-black/10 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/10 dark:hover:text-[#D5D5D5]"
+            >
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="h-3 w-3" />
+            </button>
 
             {/* Thumbnail below */}
             <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#d9d9d9] dark:bg-white/5">

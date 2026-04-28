@@ -1,6 +1,7 @@
 "use client";
 
 import React, {
+  addTransitionType,
   createContext,
   startTransition,
   useCallback,
@@ -39,9 +40,38 @@ import {
   currentRenderedRoutePath,
 } from "./voiceNavigation";
 import VoiceAgentDock from "./VoiceAgentDock";
+import {
+  examSlugToType,
+  examTypeLabel,
+  examTypeToSlug,
+} from "@/lib/examSlug";
 
-const MAX_VISIBLE_CONTROLS = 20;
+const MAX_VISIBLE_CONTROLS = 48;
 const ROUTE_RENDER_TIMEOUT_MS = 5000;
+const COURSE_EXAM_REQUEST_ALIASES: Record<
+  string,
+  Parameters<typeof examTypeToSlug>[0]
+> = {
+  cat1: "CAT_1",
+  "cat 1": "CAT_1",
+  "cat-1": "CAT_1",
+  cat2: "CAT_2",
+  "cat 2": "CAT_2",
+  "cat-2": "CAT_2",
+  fat: "FAT",
+  quiz: "QUIZ",
+  mid: "MID",
+  cia: "CIA",
+  other: "OTHER",
+  "model cat1": "MODEL_CAT_1",
+  "model cat 1": "MODEL_CAT_1",
+  "model-cat-1": "MODEL_CAT_1",
+  "model cat2": "MODEL_CAT_2",
+  "model cat 2": "MODEL_CAT_2",
+  "model-cat-2": "MODEL_CAT_2",
+  "model fat": "MODEL_FAT",
+  "model-fat": "MODEL_FAT",
+};
 
 type NavigationEventAction = "push" | "replace" | "pop" | "hash";
 type NavigationEventDetail = {
@@ -63,6 +93,7 @@ Primary sections:
 
 Rules:
 - Use navigate_to_path for direct route changes.
+- On a course past papers page like "/past_papers/CSE1001", use filter_course_papers_by_exam for requests such as "open CAT-1 papers" or "open FAT papers".
 - Use inspect_current_view before a multi-step interaction or when the page may have changed.
 - Use activate_control and fill_input only with control IDs returned by inspect_current_view.
 - If an ExamCooker PDF is open and the user asks about its contents, use answer_question_about_open_pdf with the user's question.
@@ -71,6 +102,9 @@ Rules:
 - Do not guess what a PDF says without using the PDF tools.
 - Prefer tools over narration when the user asks you to move around the site or interact with it.
 - Keep spoken replies brief and action-oriented.
+- For navigation, filtering, clicking, scrolling, or opening papers, reply with one short sentence only.
+- Do not read out full past paper titles, paths, or long metadata unless the user explicitly asks for those details or they are required to disambiguate between two visible options.
+- Only give a longer explanation when answering a real course-content question from an open past paper or other open PDF.
 - If something is ambiguous or missing, ask one short clarifying question.`;
 
 const DEFAULT_VOICE = "sage" as const;
@@ -267,6 +301,78 @@ function resolveInternalPath(rawPath: string) {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+function getCoursePastPapersContext(path = currentBrowserRoutePath()) {
+  try {
+    const url = new URL(path, window.location.origin);
+    const segments = url.pathname.split("/").filter(Boolean);
+    if (segments[0] !== "past_papers") {
+      return null;
+    }
+
+    const rawCode = segments[1];
+    if (!rawCode || rawCode.toLowerCase() === "exam") {
+      return null;
+    }
+
+    const code = decodeURIComponent(rawCode);
+    return {
+      code,
+      basePath: `/past_papers/${encodeURIComponent(code)}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function normalizeCourseExamRequest(rawExam: string) {
+  return rawExam
+    .trim()
+    .toLowerCase()
+    .replace(/\b(past\s+papers?|papers?|question\s+papers?)\b/g, " ")
+    .replace(/[_/]+/g, " ")
+    .replace(/[^\w-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function resolveCourseExam(rawExam: string) {
+  const normalizedExam = normalizeCourseExamRequest(rawExam);
+  const aliasMatch = COURSE_EXAM_REQUEST_ALIASES[normalizedExam];
+  if (aliasMatch) {
+    return {
+      label: examTypeLabel(aliasMatch),
+      slug: examTypeToSlug(aliasMatch),
+    };
+  }
+
+  const slugCandidate = normalizedExam.replace(/\s+/g, "-");
+  const directSlugMatch = examSlugToType(slugCandidate);
+  if (directSlugMatch) {
+    return {
+      label: examTypeLabel(directSlugMatch),
+      slug: examTypeToSlug(directSlugMatch),
+    };
+  }
+
+  throw new Error(
+    'I could not match that exam type. Try CAT-1, CAT-2, FAT, Model CAT-1, Model CAT-2, Model FAT, Mid, Quiz, CIA, or Other.',
+  );
+}
+
+function buildCourseExamFilterPath(basePath: string, examSlug: string) {
+  const currentUrl = new URL(window.location.href);
+  const searchParams =
+    currentUrl.pathname === basePath
+      ? new URLSearchParams(currentUrl.search)
+      : new URLSearchParams();
+
+  searchParams.set("exam", examSlug);
+  searchParams.delete("page");
+
+  const queryString = searchParams.toString();
+  return queryString ? `${basePath}?${queryString}` : basePath;
+}
+
 function getOpenPdfView(): VoiceOpenPdfView | null {
   const activePdf = getActivePdfSnapshot();
   if (!activePdf) {
@@ -296,6 +402,13 @@ function buildPageContextMessage(snapshot: VoiceGuideSnapshot) {
     );
     parts.push(
       "Use inspect_open_pdf or answer_question_about_open_pdf for document questions.",
+    );
+  }
+
+  const coursePastPapersContext = getCoursePastPapersContext(snapshot.path);
+  if (coursePastPapersContext) {
+    parts.push(
+      `Course past papers page for ${coursePastPapersContext.code}. Use filter_course_papers_by_exam for requests like CAT-1 or FAT collections.`,
     );
   }
 
@@ -599,6 +712,60 @@ export default function VoiceAgentProvider({
               error instanceof Error
                 ? error.message
                 : "Unable to answer that question from the open PDF.",
+            );
+          }
+        },
+      }),
+      defineVoiceTool({
+        name: "filter_course_papers_by_exam",
+        description:
+          "Apply a course-specific exam filter on the current past papers page, like pressing the CAT-1 or FAT filter chip without leaving the page.",
+        parameters: z.object({
+          exam: z.string().min(1).max(80),
+        }),
+        execute: async ({ exam }) => {
+          try {
+            const courseContext = getCoursePastPapersContext();
+            if (!courseContext) {
+              return buildToolFailure(
+                'Open a course-specific past papers page first, such as "/past_papers/CSE1001".',
+              );
+            }
+
+            const resolvedExam = resolveCourseExam(exam);
+            const nextPath = buildCourseExamFilterPath(
+              courseContext.basePath,
+              resolvedExam.slug,
+            );
+
+            if (currentBrowserPath() === nextPath) {
+              return {
+                ok: true as const,
+                changed: false,
+                exam: resolvedExam.label,
+                path: nextPath,
+                currentView: getFreshSnapshot(),
+              };
+            }
+
+            startTransition(() => {
+              addTransitionType("filter-results");
+              router.replace(nextPath);
+            });
+            await settleUi({ targetPath: nextPath });
+
+            return {
+              ok: true as const,
+              changed: currentBrowserPath() === nextPath,
+              exam: resolvedExam.label,
+              path: nextPath,
+              currentView: getFreshSnapshot(),
+            };
+          } catch (error) {
+            return buildToolFailure(
+              error instanceof Error
+                ? error.message
+                : "Unable to apply that course paper filter.",
             );
           }
         },

@@ -130,14 +130,14 @@ function getAccessibleLabel(element: HTMLElement) {
     }
   }
 
-  const imageAlt = clampText(normalizeText(element.querySelector("img")?.getAttribute("alt")));
-  if (imageAlt) {
-    return imageAlt;
-  }
-
   const text = getElementText(element);
   if (text) {
     return text;
+  }
+
+  const imageAlt = clampText(normalizeText(element.querySelector("img")?.getAttribute("alt")));
+  if (imageAlt) {
+    return imageAlt;
   }
 
   const name = clampText(normalizeText(element.getAttribute("name")));
