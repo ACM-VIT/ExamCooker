@@ -55,6 +55,10 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const pathname = usePathname();
   const { isAuthed, requireAuth, session } = useGuestPrompt();
   const [showProfile, setShowProfile] = useState(false);
+  const [profileMenuPosition, setProfileMenuPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const [voiceRuntimeRequested, setVoiceRuntimeRequested] = useState(false);
   const [voiceStartToken, setVoiceStartToken] = useState(0);
   const [hoveredTooltip, setHoveredTooltip] = useState<{
@@ -63,6 +67,8 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     left: number;
   } | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,6 +92,51 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
       window.removeEventListener("scroll", clearTooltip, true);
     };
   }, []);
+
+  const updateProfileMenuPosition = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const button = profileButtonRef.current;
+    if (!button) return;
+
+    const buttonRect = button.getBoundingClientRect();
+    const menuRect = profileMenuRef.current?.getBoundingClientRect();
+    const menuWidth = menuRect?.width ?? 224;
+    const menuHeight = menuRect?.height ?? 120;
+    const margin = 12;
+    const gap = 12;
+
+    const top = Math.min(
+      Math.max(buttonRect.top, margin),
+      window.innerHeight - menuHeight - margin,
+    );
+    const left = Math.min(
+      buttonRect.right + gap,
+      window.innerWidth - menuWidth - margin,
+    );
+
+    setProfileMenuPosition({
+      top,
+      left: Math.max(left, margin),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!showProfile) {
+      setProfileMenuPosition(null);
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(updateProfileMenuPosition);
+    window.addEventListener("resize", updateProfileMenuPosition);
+    window.addEventListener("scroll", updateProfileMenuPosition, true);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateProfileMenuPosition);
+      window.removeEventListener("scroll", updateProfileMenuPosition, true);
+    };
+  }, [showProfile, updateProfileMenuPosition]);
 
   const showTooltip = (
     event: React.MouseEvent<HTMLDivElement> | React.FocusEvent<HTMLDivElement>,
@@ -239,6 +290,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
             {isAuthed ? (
               <div className="relative z-10" ref={profileRef}>
                 <button
+                  ref={profileButtonRef}
                   type="button"
                   title="Profile"
                   aria-label="Profile"
@@ -248,7 +300,23 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                   {(session?.user?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
                 </button>
                 {showProfile && (
-                  <div className="absolute bottom-0 left-full z-20 ml-3 w-56 rounded-md border border-black/10 bg-white p-3 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#121B31]">
+                  <div
+                    ref={profileMenuRef}
+                    className="fixed z-[90] w-56 rounded-md border border-black/10 bg-white p-3 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#121B31]"
+                    style={
+                      profileMenuPosition
+                        ? {
+                          top: profileMenuPosition.top,
+                          left: profileMenuPosition.left,
+                          maxHeight: "calc(100dvh - 1.5rem)",
+                        }
+                        : {
+                          top: 12,
+                          left: 12,
+                          visibility: "hidden",
+                        }
+                    }
+                  >
                     <p className="mb-1 text-sm font-semibold text-black dark:text-[#D5D5D5]">
                       {session?.user?.name}
                     </p>
