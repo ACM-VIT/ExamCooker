@@ -18,16 +18,19 @@ type PromptState = {
     redirect?: string;
 };
 
-const GuestPromptContext = createContext<GuestPromptContextType | undefined>(undefined);
+const GuestPromptContext = createContext<GuestPromptContextType>({
+    isAuthed: false,
+    session: null,
+    status: "loading",
+    requireAuth: () => false,
+    openPrompt: () => undefined,
+    closePrompt: () => undefined,
+});
 
 const PROMPT_ANIMATION_MS = 180;
 
 export function useGuestPrompt() {
-    const context = useContext(GuestPromptContext);
-    if (!context) {
-        throw new Error("useGuestPrompt must be used within GuestPromptProvider");
-    }
-    return context;
+    return useContext(GuestPromptContext);
 }
 
 export default function GuestPromptProvider({
