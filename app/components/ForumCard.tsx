@@ -8,20 +8,24 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
-import type { ForumPost, Tag, User, Vote } from "@/prisma/generated/client";
+import type { ForumPost, User, Vote } from "@/src/db";
 import { useToast } from "@/components/ui/use-toast";
 
+type ForumCardTag = {
+    id: string;
+    name: string;
+};
 
 interface ForumCardProps {
     post: ForumPost & {
         author: User;
-        tags: Tag[];
+        tags: ForumCardTag[];
         votes: Vote[];
     } | any;
     title: string;
     desc: string;
     author: string | null;
-    tags: Tag[];
+    tags: ForumCardTag[];
     createdAt: Date;
     commentCount: number;
 }

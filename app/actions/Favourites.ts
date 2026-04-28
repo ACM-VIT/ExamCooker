@@ -1,9 +1,17 @@
 'use server'
 
-import prisma from '@/lib/prisma'
+import { and, eq } from "drizzle-orm";
 import { auth } from '../auth'
 import { revalidateFavorites } from './revalidateFavourites'
 import { revalidateTag } from "next/cache";
+import {
+    db,
+    userBookmarkedForumPosts,
+    userBookmarkedNotes,
+    userBookmarkedPastPapers,
+    userBookmarkedResources,
+} from "@/src/db";
+import { requireUserByEmail } from "@/src/db/helpers";
 
 export type Bookmark = {
     id: string;
@@ -13,55 +21,66 @@ export type Bookmark = {
 
 export async function toggleBookmarkAction(bookmark: Bookmark, favourite: boolean) {
     const session = await auth();
-    if (!session?.user?.email) {
+    const email = session?.user?.email;
+    if (!email) {
         throw new Error('User not authenticated');
     }
 
     try {
-        const user = await prisma.user.findUnique({
-            where: { email: session.user.email },
-            include: {
-                bookmarkedNotes: true,
-                bookmarkedPastPapers: true,
-                bookmarkedForumPosts: true,
-                bookmarkedResources: true,
-            },
-        });
+        const user = await requireUserByEmail(email);
 
-        if (!user) throw new Error('User not found');
+        const joinRow = (() => {
+            switch (bookmark.type) {
+                case 'note':
+                    return {
+                        table: userBookmarkedNotes,
+                        row: { a: bookmark.id, b: user.id },
+                        where: and(
+                            eq(userBookmarkedNotes.a, bookmark.id),
+                            eq(userBookmarkedNotes.b, user.id),
+                        ),
+                    };
+                case 'pastpaper':
+                    return {
+                        table: userBookmarkedPastPapers,
+                        row: { a: bookmark.id, b: user.id },
+                        where: and(
+                            eq(userBookmarkedPastPapers.a, bookmark.id),
+                            eq(userBookmarkedPastPapers.b, user.id),
+                        ),
+                    };
+                case 'forumpost':
+                    return {
+                        table: userBookmarkedForumPosts,
+                        row: { a: bookmark.id, b: user.id },
+                        where: and(
+                            eq(userBookmarkedForumPosts.a, bookmark.id),
+                            eq(userBookmarkedForumPosts.b, user.id),
+                        ),
+                    };
+                case 'subject':
+                    return {
+                        table: userBookmarkedResources,
+                        row: { a: bookmark.id, b: user.id },
+                        where: and(
+                            eq(userBookmarkedResources.a, bookmark.id),
+                            eq(userBookmarkedResources.b, user.id),
+                        ),
+                    };
+                default:
+                    throw new Error(`Invalid bookmark type: ${bookmark.type}`);
+            }
+        })();
 
-        let bookmarkField: string;
-        switch (bookmark.type) {
-            case 'note':
-                bookmarkField = 'bookmarkedNotes';
-                break;
-            case 'pastpaper':
-                bookmarkField = 'bookmarkedPastPapers';
-                break;
-            case 'forumpost':
-                bookmarkField = 'bookmarkedForumPosts';
-                break;
-            case 'subject':
-                bookmarkField = 'bookmarkedResources';
-                break;
-            default:
-                throw new Error(`Invalid bookmark type: ${bookmark.type}`);
+        if (favourite) {
+            await db.insert(joinRow.table).values(joinRow.row).onConflictDoNothing();
+        } else {
+            await db.delete(joinRow.table).where(joinRow.where);
         }
-
-        await prisma.user.update({
-            where: { email: session.user.email },
-            data: {
-                [bookmarkField]: {
-                    [favourite ? 'connect' : 'disconnect']: { id: bookmark.id },
-                },
-            },
-        });
 
         await revalidateFavorites(bookmark.type);
-        if (user?.id) {
-            revalidateTag("home", "minutes");
-            revalidateTag(`home:${user.id}`, "minutes");
-        }
+        revalidateTag("home", "minutes");
+        revalidateTag(`home:${user.id}`, "minutes");
 
         return { success: true, isBookmarked: favourite };
     } catch (error) {

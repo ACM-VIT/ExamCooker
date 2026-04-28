@@ -1,23 +1,10 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+import { eq } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-
-async function findOrCreateTag(name: string) {
-    const trimmed = name.trim();
-    if (!trimmed) {
-        throw new Error("Invalid tag name");
-    }
-
-    const existing = await prisma.tag.findFirst({
-        where: { name: { equals: trimmed, mode: "insensitive" } },
-    });
-
-    if (existing) return existing;
-
-    return prisma.tag.create({ data: { name: trimmed } });
-}
+import { db, pastPaperToTag } from "@/src/db";
+import { findOrCreateTag } from "@/src/db/helpers";
 
 function normalizeTags(tags: string[]) {
     const map = new Map<string, string>();
@@ -42,17 +29,18 @@ export async function updatePastPaperTags(paperId: string, tags: string[]) {
 
     const cleanedTags = normalizeTags(tags);
     const tagRecords = await Promise.all(
-        cleanedTags.map((tag) => findOrCreateTag(tag))
+        cleanedTags.map((tag) => findOrCreateTag(tag, { caseInsensitive: true })),
     );
 
-    await prisma.pastPaper.update({
-        where: { id: paperId },
-        data: {
-            tags: {
-                set: tagRecords.map((tag) => ({ id: tag.id })),
-            },
-        },
-    });
+    await db.delete(pastPaperToTag).where(eq(pastPaperToTag.a, paperId));
+    if (tagRecords.length > 0) {
+        await db.insert(pastPaperToTag).values(
+            tagRecords.map((tag) => ({
+                a: paperId,
+                b: tag.id,
+            })),
+        );
+    }
 
     revalidateTag("past_papers", "minutes");
     revalidateTag(`past_paper:${paperId}`, "minutes");

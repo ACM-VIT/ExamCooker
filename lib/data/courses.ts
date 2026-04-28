@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
-import prisma from "@/lib/prisma";
+import { and, count, eq, or, sql } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/courseTags";
+import { course, db, note, pastPaper } from "@/src/db";
 
 export type CourseSummary = {
     code: string;
@@ -15,31 +16,40 @@ export async function getCourseByCodeAny(code: string): Promise<CourseSummary | 
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     const normalized = normalizeCourseCode(code.trim());
-    const course = await prisma.course.findFirst({
-        where: {
-            OR: [
-                { code: normalized },
-                { aliases: { has: normalized } },
-            ],
-        },
-        select: {
-            code: true,
-            title: true,
-            _count: {
-                select: {
-                    notes: { where: { isClear: true } },
-                    papers: { where: { isClear: true } },
-                },
-            },
-        },
-    });
+    const rows = await db
+        .select({
+            id: course.id,
+            code: course.code,
+            title: course.title,
+        })
+        .from(course)
+        .where(
+            or(
+                eq(course.code, normalized),
+                sql`${normalized} = any(${course.aliases})`,
+            ),
+        )
+        .limit(1);
 
-    if (!course) return null;
+    const courseRow = rows[0];
+
+    if (!courseRow) return null;
+
+    const [noteRows, paperRows] = await Promise.all([
+        db
+            .select({ total: count() })
+            .from(note)
+            .where(and(eq(note.courseId, courseRow.id), eq(note.isClear, true))),
+        db
+            .select({ total: count() })
+            .from(pastPaper)
+            .where(and(eq(pastPaper.courseId, courseRow.id), eq(pastPaper.isClear, true))),
+    ]);
 
     return {
-        code: course.code,
-        title: course.title,
-        noteCount: course._count.notes,
-        paperCount: course._count.papers,
+        code: courseRow.code,
+        title: courseRow.title,
+        noteCount: noteRows[0]?.total ?? 0,
+        paperCount: paperRows[0]?.total ?? 0,
     };
 }

@@ -1,0 +1,4465 @@
+{
+  "dialect": "cockroach",
+  "id": "4bc42eb5-77d1-4d1a-93c4-559d49ec9ba7",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "version": "1",
+  "ddl": [
+    {
+      "values": [
+        "USER",
+        "MODERATOR"
+      ],
+      "name": "Role",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "UPVOTE",
+        "DOWNVOTE"
+      ],
+      "name": "VoteType",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "CAT_1",
+        "CAT_2",
+        "FAT",
+        "MODEL_CAT_1",
+        "MODEL_CAT_2",
+        "MODEL_FAT",
+        "MID",
+        "QUIZ",
+        "CIA",
+        "OTHER"
+      ],
+      "name": "ExamType",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "FALL",
+        "WINTER",
+        "SUMMER",
+        "WEEKEND",
+        "UNKNOWN"
+      ],
+      "name": "Semester",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "VELLORE",
+        "CHENNAI",
+        "AP",
+        "BHOPAL",
+        "BANGALORE",
+        "MAURITIUS"
+      ],
+      "name": "Campus",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "_ForumPostToTag",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "_ForumToTag",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "_NoteToTag",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "_PastPaperToTag",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "_prisma_migrations",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "_UserBookmarkedForumPosts",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "_UserBookmarkedNotes",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "_UserBookmarkedPastPapers",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "_UserBookmarkedResources",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "_UserBookmarkedSyllabus",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "accounts",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "Comment",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "Course",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "Forum",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "ForumPost",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "Module",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "Note",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "PastPaper",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "sessions",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "Subject",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "syllabi",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "Tag",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "UpcomingExam",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "User",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "ViewHistory",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "Vote",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Course"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "syllabi"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "A",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_UserBookmarkedSyllabus"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "type": "varchar(36)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_prisma_migrations"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "A",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_UserBookmarkedResources"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "A",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_UserBookmarkedForumPosts"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sessions"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "A",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_UserBookmarkedPastPapers"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "A",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_PastPaperToTag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "A",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_ForumPostToTag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "A",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_ForumToTag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "A",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_UserBookmarkedNotes"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "A",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_NoteToTag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Module"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Subject"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Tag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Forum"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "B",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_UserBookmarkedResources"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "content",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "B",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_UserBookmarkedNotes"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "courseName",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Forum"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "title",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "B",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_NoteToTag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "courseId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "type": "varchar(64)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "checksum",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_prisma_migrations"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "title",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Course"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "B",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_ForumToTag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "title",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Module"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "syllabi"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "B",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_UserBookmarkedForumPosts"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "B",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_ForumPostToTag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Subject"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "B",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_UserBookmarkedSyllabus"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "B",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_PastPaperToTag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "userId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "title",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Tag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "B",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_UserBookmarkedPastPapers"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "userId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "session_token",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sessions"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "email",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "type": "Role",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'USER'::public.\"Role\"",
+      "generated": null,
+      "identity": null,
+      "name": "role",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sessions"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "type",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "pastPaperId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "current_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Forum"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fileUrl",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "current_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Tag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "forumPostId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "authorId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fileUrl",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "syllabi"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "subjectId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Module"
+    },
+    {
+      "type": "timestamptz",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "finished_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_prisma_migrations"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "title",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Course"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "authorId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "authorId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 1,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "slots",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "noteId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Forum"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "expires",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sessions"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 1,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "webReferences",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Module"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "authorId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "VoteType",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "type",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "type": "ExamType",
+      "typeSchema": "public",
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "examType",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "provider",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "forumId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Tag"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fileUrl",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 1,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "aliases",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Course"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "migration_name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_prisma_migrations"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "current_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "forumPostId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "current_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "provider_account_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "current_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Course"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "logs",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_prisma_migrations"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "current_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "type": "bool",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "isClear",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "scheduledAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "type": "bool",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "isClear",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 1,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "youtubeLinks",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Module"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "refresh_token",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "current_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "current_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "current_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "current_timestamp()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Course"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "email_verified",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "type": "timestamptz",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "rolled_back_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_prisma_migrations"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "subjectId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "type": "timestamptz",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "started_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_prisma_migrations"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "access_token",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "type": "timestamp(3)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "viewedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "type": "int4",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "expires_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "forumPostId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "thumbNailUrl",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "thumbNailUrl",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 1,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "aliases",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Tag"
+    },
+    {
+      "type": "int8",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "applied_steps_count",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "_prisma_migrations"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "image",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "description",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "courseId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "token_type",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "int4",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "count",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "type": "int4",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "downvoteCount",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "courseId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "syllabusId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "type": "ExamType",
+      "typeSchema": "public",
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "examType",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "scope",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "int4",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "upvoteCount",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id_token",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "slot",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "session_state",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "int4",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "year",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "Semester",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'UNKNOWN'::public.\"Semester\"",
+      "generated": null,
+      "identity": null,
+      "name": "semester",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "passwordHash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "passwordSalt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "type": "Campus",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'VELLORE'::public.\"Campus\"",
+      "generated": null,
+      "identity": null,
+      "name": "campus",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "bool",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "hasAnswerKey",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "type": "string",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "questionPaperId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "A"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "_ForumPostToTag_AB_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_ForumPostToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "_ForumPostToTag_B_index",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_ForumPostToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "A"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "_ForumToTag_AB_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_ForumToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "_ForumToTag_B_index",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_ForumToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "A"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "_NoteToTag_AB_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_NoteToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "_NoteToTag_B_index",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_NoteToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "A"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "_PastPaperToTag_AB_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_PastPaperToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "_PastPaperToTag_B_index",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_PastPaperToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "A"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "_UserBookmarkedForumPosts_AB_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_UserBookmarkedForumPosts"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "_UserBookmarkedForumPosts_B_index",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_UserBookmarkedForumPosts"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "A"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "_UserBookmarkedNotes_AB_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_UserBookmarkedNotes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "_UserBookmarkedNotes_B_index",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_UserBookmarkedNotes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "A"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "_UserBookmarkedPastPapers_AB_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_UserBookmarkedPastPapers"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "_UserBookmarkedPastPapers_B_index",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_UserBookmarkedPastPapers"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "A"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "_UserBookmarkedResources_AB_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_UserBookmarkedResources"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "_UserBookmarkedResources_B_index",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_UserBookmarkedResources"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "A"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "_UserBookmarkedSyllabus_AB_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_UserBookmarkedSyllabus"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "B"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "_UserBookmarkedSyllabus_B_index",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "_UserBookmarkedSyllabus"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "provider"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "provider_account_id"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "accounts_provider_provider_account_id_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "user_id"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "accounts_user_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "authorId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Comment_authorId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "forumPostId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Comment_forumPostId_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "aliases"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "gin",
+      "name": "Course_aliases_inverted_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Course"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "code"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "Course_code_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Course"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "title"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Course_title_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Course"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "authorId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "ForumPost_authorId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "ForumPost_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "description"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "gin",
+      "name": "ForumPost_description_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "forumId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "ForumPost_forumId_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "title"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "gin",
+      "name": "ForumPost_title_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "subjectId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Module_subjectId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Module"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "authorId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Note_authorId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Note_courseId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "isClear"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Note_courseId_isClear_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "isClear"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "updatedAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Note_courseId_isClear_updatedAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Note_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "isClear"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Note_isClear_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "title"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "gin",
+      "name": "Note_title_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "authorId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_authorId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "examType"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_courseId_examType_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "isClear"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_courseId_isClear_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "isClear"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "examType"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "year"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_courseId_isClear_examType_year_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "isClear"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "year"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_courseId_isClear_year_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "slot"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_courseId_slot_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "year"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_courseId_year_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "isClear"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_isClear_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "isClear"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "examType"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "year"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_isClear_examType_courseId_year_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "isClear"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "examType"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "slot"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "year"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "semester"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "campus"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "hasAnswerKey"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_metadata_sibling_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "questionPaperId"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "PastPaper_questionPaperId_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "title"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "gin",
+      "name": "PastPaper_title_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "expires"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "sessions_expires_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "sessions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "session_token"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "sessions_session_token_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "sessions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "user_id"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "sessions_user_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "sessions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "name"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "Subject_name_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Subject"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "name"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "gin",
+      "name": "Subject_name_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Subject"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "name"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "syllabi_name_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "syllabi"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "name"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "gin",
+      "name": "syllabi_name_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "syllabi"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "name"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "Tag_name_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Tag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "name"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "gin",
+      "name": "Tag_name_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Tag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "UpcomingExam_courseId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "courseId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "scheduledAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "UpcomingExam_courseId_scheduledAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "scheduledAt"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "createdAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "UpcomingExam_scheduledAt_createdAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "scheduledAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "UpcomingExam_scheduledAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "email"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "User_email_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "name"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "gin",
+      "name": "User_name_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "forumPostId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_forumPostId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "noteId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_noteId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "pastPaperId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_pastPaperId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "subjectId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_subjectId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "syllabusId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_syllabusId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "userId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "forumPostId"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_userId_forumPostId_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "userId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "noteId"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_userId_noteId_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "userId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "pastPaperId"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_userId_pastPaperId_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "userId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "subjectId"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_userId_subjectId_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "userId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "syllabusId"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_userId_syllabusId_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "userId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "viewedAt"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "ViewHistory_userId_viewedAt_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "forumPostId"
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "method": "btree",
+      "name": "Vote_forumPostId_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "userId"
+        },
+        {
+          "asc": true,
+          "isExpression": false,
+          "value": "forumPostId"
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "method": "btree",
+      "name": "Vote_userId_forumPostId_key",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "authorId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "RESTRICT",
+      "name": "Note_authorId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "courseId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Course",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "SET NULL",
+      "name": "Note_courseId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "authorId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "RESTRICT",
+      "name": "ForumPost_authorId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "forumId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Forum",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "RESTRICT",
+      "name": "ForumPost_forumId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "authorId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "RESTRICT",
+      "name": "Comment_authorId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "forumPostId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "ForumPost",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "RESTRICT",
+      "name": "Comment_forumPostId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "authorId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "RESTRICT",
+      "name": "PastPaper_authorId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "courseId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Course",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "SET NULL",
+      "name": "PastPaper_courseId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "questionPaperId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "PastPaper",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "SET NULL",
+      "name": "PastPaper_questionPaperId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "subjectId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Subject",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "RESTRICT",
+      "name": "Module_subjectId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "Module"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "A"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Note",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_NoteToTag_A_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_NoteToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "B"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Tag",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_NoteToTag_B_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_NoteToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "A"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Note",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_UserBookmarkedNotes_A_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_UserBookmarkedNotes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "B"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_UserBookmarkedNotes_B_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_UserBookmarkedNotes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "A"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Forum",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_ForumToTag_A_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_ForumToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "B"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Tag",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_ForumToTag_B_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_ForumToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "A"
+      ],
+      "schemaTo": "public",
+      "tableTo": "ForumPost",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_ForumPostToTag_A_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_ForumPostToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "B"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Tag",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_ForumPostToTag_B_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_ForumPostToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "A"
+      ],
+      "schemaTo": "public",
+      "tableTo": "PastPaper",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_PastPaperToTag_A_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_PastPaperToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "B"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Tag",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_PastPaperToTag_B_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_PastPaperToTag"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "A"
+      ],
+      "schemaTo": "public",
+      "tableTo": "PastPaper",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_UserBookmarkedPastPapers_A_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_UserBookmarkedPastPapers"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "B"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_UserBookmarkedPastPapers_B_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_UserBookmarkedPastPapers"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "user_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "accounts_user_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "user_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "sessions_user_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "sessions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "A"
+      ],
+      "schemaTo": "public",
+      "tableTo": "ForumPost",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_UserBookmarkedForumPosts_A_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_UserBookmarkedForumPosts"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "B"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_UserBookmarkedForumPosts_B_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_UserBookmarkedForumPosts"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "A"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Subject",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_UserBookmarkedResources_A_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_UserBookmarkedResources"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "B"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_UserBookmarkedResources_B_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_UserBookmarkedResources"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "forumPostId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "ForumPost",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "SET NULL",
+      "name": "ViewHistory_forumPostId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "noteId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Note",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "SET NULL",
+      "name": "ViewHistory_noteId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "pastPaperId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "PastPaper",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "SET NULL",
+      "name": "ViewHistory_pastPaperId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "subjectId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Subject",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "SET NULL",
+      "name": "ViewHistory_subjectId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "syllabusId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "syllabi",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "SET NULL",
+      "name": "ViewHistory_syllabusId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "userId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "RESTRICT",
+      "name": "ViewHistory_userId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "forumPostId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "ForumPost",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "RESTRICT",
+      "name": "Vote_forumPostId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "userId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "RESTRICT",
+      "name": "Vote_userId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "A"
+      ],
+      "schemaTo": "public",
+      "tableTo": "User",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_UserBookmarkedSyllabus_A_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_UserBookmarkedSyllabus"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "B"
+      ],
+      "schemaTo": "public",
+      "tableTo": "syllabi",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "_UserBookmarkedSyllabus_B_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "_UserBookmarkedSyllabus"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "courseId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "Course",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "name": "UpcomingExam_courseId_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "UpcomingExam"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "_prisma_migrations_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "_prisma_migrations"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "User_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "User"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "Note_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "Note"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "Forum_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "Forum"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "ForumPost_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "ForumPost"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "Comment_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "Comment"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "PastPaper_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "PastPaper"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "Tag_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "Tag"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "Subject_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "Subject"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "Module_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "Module"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "accounts_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "accounts"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "sessions_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "sessions"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "ViewHistory_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "ViewHistory"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "Vote_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "Vote"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "syllabi_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "syllabi"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "Course_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "Course"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "UpcomingExam_pkey",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "UpcomingExam"
+    }
+  ],
+  "renames": []
+}

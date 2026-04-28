@@ -1,12 +1,13 @@
 import React from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
+import { desc, isNull, or } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import PaperReviewList from "@/app/components/mod/PaperReviewList";
 import type { CourseOption } from "@/app/components/mod/CoursePicker";
 import type { PaperRowData } from "@/app/components/mod/PaperReviewRow";
+import { course, db, pastPaper } from "@/src/db";
 
 export const metadata = {
     title: "Paper metadata review · Mod",
@@ -20,37 +21,49 @@ export default async function PaperReviewPage() {
     if (session.user.role !== "MODERATOR") notFound();
 
     const [papers, courses] = await Promise.all([
-        prisma.pastPaper.findMany({
-            where: {
-                OR: [{ courseId: null }, { examType: null }, { year: null }],
-            },
-            orderBy: { createdAt: "desc" },
-            take: 100,
-            select: {
-                id: true,
-                title: true,
-                thumbNailUrl: true,
-                courseId: true,
-                examType: true,
-                slot: true,
-                year: true,
-                semester: true,
-                campus: true,
-                hasAnswerKey: true,
-            },
-        }),
-        prisma.course.findMany({
-            select: { id: true, code: true, title: true, aliases: true },
-            orderBy: { code: "asc" },
-            take: 500,
-        }),
+        db
+            .select({
+                id: pastPaper.id,
+                title: pastPaper.title,
+                thumbNailUrl: pastPaper.thumbNailUrl,
+                courseId: pastPaper.courseId,
+                examType: pastPaper.examType,
+                slot: pastPaper.slot,
+                year: pastPaper.year,
+                semester: pastPaper.semester,
+                campus: pastPaper.campus,
+                hasAnswerKey: pastPaper.hasAnswerKey,
+            })
+            .from(pastPaper)
+            .where(
+                or(
+                    isNull(pastPaper.courseId),
+                    isNull(pastPaper.examType),
+                    isNull(pastPaper.year),
+                ),
+            )
+            .orderBy(desc(pastPaper.createdAt))
+            .limit(100),
+        db
+            .select({
+                id: course.id,
+                code: course.code,
+                title: course.title,
+                aliases: course.aliases,
+            })
+            .from(course)
+            .orderBy(course.code)
+            .limit(500),
     ]);
 
     const rows: PaperRowData[] = papers.map((p) => ({
         ...p,
         thumbNailUrl: normalizeGcsUrl(p.thumbNailUrl) ?? p.thumbNailUrl,
     }));
-    const courseOptions: CourseOption[] = courses;
+    const courseOptions: CourseOption[] = courses.map((row) => ({
+        ...row,
+        aliases: row.aliases ?? [],
+    }));
 
     return (
         <div className="min-h-screen bg-[#F5FAFD] px-3 py-6 text-black dark:bg-transparent dark:text-[#D5D5D5] sm:px-6 lg:px-10">

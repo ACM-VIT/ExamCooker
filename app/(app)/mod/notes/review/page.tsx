@@ -1,12 +1,13 @@
 import React from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
+import { desc, eq, isNull } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import NoteReviewList from "@/app/components/mod/NoteReviewList";
 import type { CourseOption } from "@/app/components/mod/CoursePicker";
 import type { NoteRowData } from "@/app/components/mod/NoteReviewRow";
+import { course, db, note } from "@/src/db";
 
 export const metadata = {
     title: "Note metadata review · Mod",
@@ -20,29 +21,37 @@ export default async function NoteReviewPage() {
     if (session.user.role !== "MODERATOR") notFound();
 
     const [notes, courses] = await Promise.all([
-        prisma.note.findMany({
-            where: { courseId: null },
-            orderBy: { createdAt: "desc" },
-            take: 100,
-            select: {
-                id: true,
-                title: true,
-                thumbNailUrl: true,
-                courseId: true,
-            },
-        }),
-        prisma.course.findMany({
-            select: { id: true, code: true, title: true, aliases: true },
-            orderBy: { code: "asc" },
-            take: 500,
-        }),
+        db
+            .select({
+                id: note.id,
+                title: note.title,
+                thumbNailUrl: note.thumbNailUrl,
+                courseId: note.courseId,
+            })
+            .from(note)
+            .where(isNull(note.courseId))
+            .orderBy(desc(note.createdAt))
+            .limit(100),
+        db
+            .select({
+                id: course.id,
+                code: course.code,
+                title: course.title,
+                aliases: course.aliases,
+            })
+            .from(course)
+            .orderBy(course.code)
+            .limit(500),
     ]);
 
     const rows: NoteRowData[] = notes.map((n) => ({
         ...n,
         thumbNailUrl: normalizeGcsUrl(n.thumbNailUrl) ?? n.thumbNailUrl,
     }));
-    const courseOptions: CourseOption[] = courses;
+    const courseOptions: CourseOption[] = courses.map((row) => ({
+        ...row,
+        aliases: row.aliases ?? [],
+    }));
 
     return (
         <div className="min-h-screen bg-[#F5FAFD] px-3 py-6 text-black dark:bg-transparent dark:text-[#D5D5D5] sm:px-6 lg:px-10">

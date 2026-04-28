@@ -1,5 +1,17 @@
 import { cacheLife, cacheTag } from "next/cache";
-import prisma from "@/lib/prisma";
+import { desc, eq, inArray } from "drizzle-orm";
+import {
+    db,
+    forumPost,
+    note,
+    pastPaper,
+    subject,
+    userBookmarkedForumPosts,
+    userBookmarkedNotes,
+    userBookmarkedPastPapers,
+    userBookmarkedResources,
+    viewHistory,
+} from "@/src/db";
 
 export type HomeItem =
     | { type: "note"; item: { id: string; title: string } }
@@ -13,24 +25,81 @@ export async function getHomeRecentViews(userId: string): Promise<HomeItem[]> {
     cacheTag(`home:${userId}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const recentViews = await prisma.viewHistory.findMany({
-        where: { userId },
-        orderBy: { viewedAt: "desc" },
-        take: 3,
-        include: {
-            note: { select: { id: true, title: true } },
-            pastPaper: { select: { id: true, title: true } },
-            forumPost: { select: { id: true, title: true } },
-            subject: { select: { id: true, name: true } },
-        },
-    });
+    const recentViews = await db
+        .select({
+            noteId: viewHistory.noteId,
+            pastPaperId: viewHistory.pastPaperId,
+            forumPostId: viewHistory.forumPostId,
+            subjectId: viewHistory.subjectId,
+        })
+        .from(viewHistory)
+        .where(eq(viewHistory.userId, userId))
+        .orderBy(desc(viewHistory.viewedAt))
+        .limit(3);
+
+    const noteIds = recentViews
+        .map((view) => view.noteId)
+        .filter((id): id is string => Boolean(id));
+    const pastPaperIds = recentViews
+        .map((view) => view.pastPaperId)
+        .filter((id): id is string => Boolean(id));
+    const forumPostIds = recentViews
+        .map((view) => view.forumPostId)
+        .filter((id): id is string => Boolean(id));
+    const subjectIds = recentViews
+        .map((view) => view.subjectId)
+        .filter((id): id is string => Boolean(id));
+
+    const [notes, papers, posts, subjects] = await Promise.all([
+        noteIds.length > 0
+            ? db
+                .select({ id: note.id, title: note.title })
+                .from(note)
+                .where(inArray(note.id, noteIds))
+            : Promise.resolve([]),
+        pastPaperIds.length > 0
+            ? db
+                .select({ id: pastPaper.id, title: pastPaper.title })
+                .from(pastPaper)
+                .where(inArray(pastPaper.id, pastPaperIds))
+            : Promise.resolve([]),
+        forumPostIds.length > 0
+            ? db
+                .select({ id: forumPost.id, title: forumPost.title })
+                .from(forumPost)
+                .where(inArray(forumPost.id, forumPostIds))
+            : Promise.resolve([]),
+        subjectIds.length > 0
+            ? db
+                .select({ id: subject.id, name: subject.name })
+                .from(subject)
+                .where(inArray(subject.id, subjectIds))
+            : Promise.resolve([]),
+    ]);
+
+    const noteById = new Map(notes.map((item) => [item.id, item]));
+    const paperById = new Map(papers.map((item) => [item.id, item]));
+    const postById = new Map(posts.map((item) => [item.id, item]));
+    const subjectById = new Map(subjects.map((item) => [item.id, item]));
 
     return recentViews
         .map((view) => {
-            if (view.note) return { type: "note" as const, item: view.note };
-            if (view.pastPaper) return { type: "pastPaper" as const, item: view.pastPaper };
-            if (view.forumPost) return { type: "forumPost" as const, item: view.forumPost };
-            if (view.subject) return { type: "subject" as const, item: view.subject };
+            if (view.noteId) {
+                const item = noteById.get(view.noteId);
+                return item ? { type: "note" as const, item } : null;
+            }
+            if (view.pastPaperId) {
+                const item = paperById.get(view.pastPaperId);
+                return item ? { type: "pastPaper" as const, item } : null;
+            }
+            if (view.forumPostId) {
+                const item = postById.get(view.forumPostId);
+                return item ? { type: "forumPost" as const, item } : null;
+            }
+            if (view.subjectId) {
+                const item = subjectById.get(view.subjectId);
+                return item ? { type: "subject" as const, item } : null;
+            }
             return null;
         })
         .filter((item): item is HomeItem => item !== null);
@@ -42,46 +111,49 @@ export async function getHomeFavorites(userId: string): Promise<HomeItem[]> {
     cacheTag(`home:${userId}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-            bookmarkedNotes: {
-                take: 2,
-                select: { id: true, title: true },
-            },
-            bookmarkedPastPapers: {
-                take: 2,
-                select: { id: true, title: true },
-            },
-            bookmarkedForumPosts: {
-                take: 2,
-                select: { id: true, title: true },
-            },
-            bookmarkedResources: {
-                take: 2,
-                select: { id: true, name: true },
-            },
-        },
-    });
+    const [notes, pastPapers, forumPosts, subjects] = await Promise.all([
+        db
+            .select({ id: note.id, title: note.title })
+            .from(userBookmarkedNotes)
+            .innerJoin(note, eq(userBookmarkedNotes.a, note.id))
+            .where(eq(userBookmarkedNotes.b, userId))
+            .limit(2),
+        db
+            .select({ id: pastPaper.id, title: pastPaper.title })
+            .from(userBookmarkedPastPapers)
+            .innerJoin(pastPaper, eq(userBookmarkedPastPapers.a, pastPaper.id))
+            .where(eq(userBookmarkedPastPapers.b, userId))
+            .limit(2),
+        db
+            .select({ id: forumPost.id, title: forumPost.title })
+            .from(userBookmarkedForumPosts)
+            .innerJoin(forumPost, eq(userBookmarkedForumPosts.a, forumPost.id))
+            .where(eq(userBookmarkedForumPosts.b, userId))
+            .limit(2),
+        db
+            .select({ id: subject.id, name: subject.name })
+            .from(userBookmarkedResources)
+            .innerJoin(subject, eq(userBookmarkedResources.a, subject.id))
+            .where(eq(userBookmarkedResources.b, userId))
+            .limit(2),
+    ]);
 
-    if (!user) return [];
-
-    const notes = user.bookmarkedNotes.map((note) => ({
+    const noteItems = notes.map((note) => ({
         type: "note" as const,
         item: note,
     }));
-    const pastPapers = user.bookmarkedPastPapers.map((paper) => ({
+    const pastPaperItems = pastPapers.map((paper) => ({
         type: "pastPaper" as const,
         item: paper,
     }));
-    const forumPosts = user.bookmarkedForumPosts.map((post) => ({
+    const forumPostItems = forumPosts.map((post) => ({
         type: "forumPost" as const,
         item: post,
     }));
-    const subjects = user.bookmarkedResources.map((subject) => ({
+    const subjectItems = subjects.map((subject) => ({
         type: "subject" as const,
         item: subject,
     }));
 
-    return [...notes, ...pastPapers, ...forumPosts, ...subjects];
+    return [...noteItems, ...pastPaperItems, ...forumPostItems, ...subjectItems];
 }

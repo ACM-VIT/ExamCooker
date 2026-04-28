@@ -1,11 +1,10 @@
 import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 
-import dotenv from "dotenv";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { createScriptDb, queryRows } from "../lib/db";
+import { loadScriptEnv } from "../lib/env";
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true, quiet: true });
+loadScriptEnv();
 
 type Options = {
   databaseUrl: string;
@@ -86,28 +85,13 @@ function timestamp() {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
-function rowsToObjects(columnNames: string[], rows: unknown[][]) {
-  return rows.map((row) =>
-    Object.fromEntries(columnNames.map((columnName, index) => [columnName, row[index] ?? null])),
-  );
-}
-
-async function queryObjects(
-  connection: Awaited<ReturnType<PrismaPg["connect"]>>,
-  sql: string,
-) {
-  const result = await connection.queryRaw({ sql, args: [], argTypes: [] });
-  return rowsToObjects(result.columnNames, result.rows);
-}
-
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   await mkdir(REPORT_DIR, { recursive: true });
   const outputFile =
     options.outputFile ?? path.join(REPORT_DIR, `prod-paper-snapshot-${timestamp()}.json`);
 
-  const adapter = new PrismaPg(options.databaseUrl);
-  const connection = await adapter.connect();
+  const { pool, close } = createScriptDb(options.databaseUrl);
 
   try {
     const [
@@ -119,16 +103,16 @@ async function main() {
       forumCount,
       userCount,
     ] = await Promise.all([
-      queryObjects(
-        connection,
+      queryRows(
+        pool,
         'SELECT migration_name, started_at, finished_at, rolled_back_at FROM "_prisma_migrations" ORDER BY finished_at NULLS LAST, migration_name',
       ),
-      queryObjects(connection, 'SELECT * FROM "Tag" ORDER BY id'),
-      queryObjects(connection, 'SELECT * FROM "PastPaper" ORDER BY id'),
-      queryObjects(connection, 'SELECT * FROM "_PastPaperToTag" ORDER BY "A", "B"'),
-      queryObjects(connection, 'SELECT COUNT(*)::INT AS count FROM "Note"'),
-      queryObjects(connection, 'SELECT COUNT(*)::INT AS count FROM "ForumPost"'),
-      queryObjects(connection, 'SELECT COUNT(*)::INT AS count FROM "User"'),
+      queryRows(pool, 'SELECT * FROM "Tag" ORDER BY id'),
+      queryRows(pool, 'SELECT * FROM "PastPaper" ORDER BY id'),
+      queryRows(pool, 'SELECT * FROM "_PastPaperToTag" ORDER BY "A", "B"'),
+      queryRows<{ count: number }>(pool, 'SELECT COUNT(*)::INT AS count FROM "Note"'),
+      queryRows<{ count: number }>(pool, 'SELECT COUNT(*)::INT AS count FROM "ForumPost"'),
+      queryRows<{ count: number }>(pool, 'SELECT COUNT(*)::INT AS count FROM "User"'),
     ]);
 
     const snapshot = {
@@ -160,7 +144,7 @@ async function main() {
       ),
     );
   } finally {
-    await connection.dispose();
+    await close();
   }
 }
 

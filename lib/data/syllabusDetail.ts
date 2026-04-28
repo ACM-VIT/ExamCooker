@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
-import prisma from "@/lib/prisma";
+import { eq } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
+import { db, syllabi } from "@/src/db";
 
 export async function getSyllabusDetail(id: string) {
     "use cache";
@@ -8,14 +9,17 @@ export async function getSyllabusDetail(id: string) {
     cacheTag(`syllabus:${id}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const syllabus = await prisma.syllabi.findUnique({
-        where: { id },
-        select: {
-            id: true,
-            name: true,
-            fileUrl: true,
-        },
-    });
+    const rows = await db
+        .select({
+            id: syllabi.id,
+            name: syllabi.name,
+            fileUrl: syllabi.fileUrl,
+        })
+        .from(syllabi)
+        .where(eq(syllabi.id, id))
+        .limit(1);
+
+    const syllabus = rows[0];
 
     if (!syllabus) return null;
 

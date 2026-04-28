@@ -22,21 +22,23 @@ elif command -v psql >/dev/null 2>&1; then
   psql "$DATABASE_URL" -f "$SQL_FILE"
 else
   node - <<'NODE'
-const path = require('node:path');
-const { PrismaClient } = require('@/prisma/generated/client');
+const { Client } = require('pg');
 
-const prisma = new PrismaClient();
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+});
 
 async function main() {
-  await prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "Tag_name_trgm_idx"');
-  await prisma.$executeRawUnsafe('CREATE INDEX "Tag_name_trgm_idx" ON "Tag" USING GIN ("name" gin_trgm_ops)');
+  await client.connect();
+  await client.query('DROP INDEX IF EXISTS "Tag_name_trgm_idx"');
+  await client.query('CREATE INDEX "Tag_name_trgm_idx" ON "Tag" USING GIN ("name" gin_trgm_ops)');
 }
 
 main()
-  .then(() => prisma.$disconnect())
+  .then(() => client.end())
   .catch(async (error) => {
     console.error(error);
-    await prisma.$disconnect();
+    await client.end();
     process.exit(1);
   });
 NODE

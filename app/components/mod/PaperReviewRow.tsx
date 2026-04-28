@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import CoursePicker, { type CourseOption } from "./CoursePicker";
 import { updatePaperMetadata } from "@/app/actions/updatePaperMetadata";
-import type { ExamType, Semester, Campus } from "@/prisma/generated/client";
+import type { Campus, ExamType, Semester } from "@/src/db";
 
 export type PaperRowData = {
     id: string;

@@ -1,10 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import prisma from "@/lib/prisma";
+import { eq } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { ExamType, Semester, Campus } from "@/prisma/generated/client";
+import { Campus, db, ExamType, pastPaper, Semester } from "@/src/db";
 
 const schema = z.object({
     id: z.string().min(1),
@@ -39,9 +39,9 @@ export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
 
     const parsed = schema.parse(input);
 
-    await prisma.pastPaper.update({
-        where: { id: parsed.id },
-        data: {
+    await db
+        .update(pastPaper)
+        .set({
             courseId: parsed.courseId,
             examType: parsed.examType,
             slot: parsed.slot,
@@ -49,8 +49,8 @@ export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
             semester: parsed.semester,
             campus: parsed.campus,
             hasAnswerKey: parsed.hasAnswerKey,
-        },
-    });
+        })
+        .where(eq(pastPaper.id, parsed.id));
 
     revalidatePath("/mod/papers/review");
     revalidateTag("past_papers", "minutes");

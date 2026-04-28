@@ -1,12 +1,24 @@
 import { cacheLife, cacheTag } from "next/cache";
-import prisma from "@/lib/prisma";
+import {
+    and,
+    count,
+    desc,
+    eq,
+    inArray,
+    sql,
+} from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import type {
-    Prisma,
     ExamType,
     Semester,
     Campus,
-} from "@/prisma/generated/client";
+} from "@/src/db";
+import {
+    campusValues,
+    db,
+    pastPaper,
+    semesterValues,
+} from "@/src/db";
 
 export type CoursePaperFilters = {
     examTypes?: ExamType[];
@@ -43,32 +55,40 @@ export type CoursePaperFilterOptions = {
     slotCounts: Partial<Record<string, number>>;
 };
 
-function buildWhere(
-    courseId: string,
-    filters: CoursePaperFilters,
-): Prisma.PastPaperWhereInput {
-    const where: Prisma.PastPaperWhereInput = {
-        courseId,
-        isClear: true,
-    };
-    if (filters.examTypes?.length) where.examType = { in: filters.examTypes };
-    if (filters.slots?.length) where.slot = { in: filters.slots };
-    if (filters.years?.length) where.year = { in: filters.years };
-    if (filters.semesters?.length) where.semester = { in: filters.semesters };
-    if (filters.campuses?.length) where.campus = { in: filters.campuses };
-    if (filters.hasAnswerKey) where.hasAnswerKey = true;
-    return where;
+function buildWhere(courseId: string, filters: CoursePaperFilters) {
+    const clauses = [eq(pastPaper.courseId, courseId), eq(pastPaper.isClear, true)];
+
+    if (filters.examTypes?.length) {
+        clauses.push(inArray(pastPaper.examType, filters.examTypes));
+    }
+    if (filters.slots?.length) {
+        clauses.push(inArray(pastPaper.slot, filters.slots));
+    }
+    if (filters.years?.length) {
+        clauses.push(inArray(pastPaper.year, filters.years));
+    }
+    if (filters.semesters?.length) {
+        clauses.push(inArray(pastPaper.semester, filters.semesters));
+    }
+    if (filters.campuses?.length) {
+        clauses.push(inArray(pastPaper.campus, filters.campuses));
+    }
+    if (filters.hasAnswerKey) {
+        clauses.push(eq(pastPaper.hasAnswerKey, true));
+    }
+
+    return and(...clauses);
 }
 
-function sortOrder(sort: CoursePaperSort): Prisma.PastPaperOrderByWithRelationInput[] {
+function sortOrder(sort: CoursePaperSort) {
     switch (sort) {
         case "year_asc":
-            return [{ year: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }];
+            return [sql`${pastPaper.year} asc nulls last`, desc(pastPaper.createdAt)] as const;
         case "recent":
-            return [{ createdAt: "desc" }];
+            return [desc(pastPaper.createdAt)] as const;
         case "year_desc":
         default:
-            return [{ year: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }];
+            return [sql`${pastPaper.year} desc nulls last`, desc(pastPaper.createdAt)] as const;
     }
 }
 
@@ -86,28 +106,31 @@ export async function getCoursePapers(input: {
     const where = buildWhere(input.courseId, input.filters);
     const skip = Math.max(0, (input.page - 1) * input.pageSize);
 
-    const [totalCount, papers] = await Promise.all([
-        prisma.pastPaper.count({ where }),
-        prisma.pastPaper.findMany({
-            where,
-            orderBy: sortOrder(input.sort),
-            skip,
-            take: input.pageSize,
-            select: {
-                id: true,
-                title: true,
-                fileUrl: true,
-                thumbNailUrl: true,
-                examType: true,
-                slot: true,
-                year: true,
-                hasAnswerKey: true,
-            },
-        }),
+    const [totalRows, papers] = await Promise.all([
+        db
+            .select({ total: count() })
+            .from(pastPaper)
+            .where(where),
+        db
+            .select({
+                id: pastPaper.id,
+                title: pastPaper.title,
+                fileUrl: pastPaper.fileUrl,
+                thumbNailUrl: pastPaper.thumbNailUrl,
+                examType: pastPaper.examType,
+                slot: pastPaper.slot,
+                year: pastPaper.year,
+                hasAnswerKey: pastPaper.hasAnswerKey,
+            })
+            .from(pastPaper)
+            .where(where)
+            .orderBy(...sortOrder(input.sort))
+            .offset(skip)
+            .limit(input.pageSize),
     ]);
 
     return {
-        totalCount,
+        totalCount: totalRows[0]?.total ?? 0,
         papers: papers.map((p) => ({
             ...p,
             fileUrl: normalizeGcsUrl(p.fileUrl) ?? p.fileUrl,
@@ -123,17 +146,17 @@ export async function getCoursePaperFilterOptions(
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const rows = await prisma.pastPaper.findMany({
-        where: { courseId, isClear: true },
-        select: {
-            examType: true,
-            slot: true,
-            year: true,
-            semester: true,
-            campus: true,
-            hasAnswerKey: true,
-        },
-    });
+    const rows = await db
+        .select({
+            examType: pastPaper.examType,
+            slot: pastPaper.slot,
+            year: pastPaper.year,
+            semester: pastPaper.semester,
+            campus: pastPaper.campus,
+            hasAnswerKey: pastPaper.hasAnswerKey,
+        })
+        .from(pastPaper)
+        .where(and(eq(pastPaper.courseId, courseId), eq(pastPaper.isClear, true)));
 
     const examCounts: Partial<Record<ExamType, number>> = {};
     const yearCounts: Partial<Record<number, number>> = {};
@@ -163,13 +186,19 @@ export async function getCoursePaperFilterOptions(
     const examTypes = (Object.keys(examCounts) as ExamType[]).sort(
         (a, b) => (examCounts[b] ?? 0) - (examCounts[a] ?? 0),
     );
+    const semesterOrder = new Map(semesterValues.map((value, index) => [value, index]));
+    const campusOrder = new Map(campusValues.map((value, index) => [value, index]));
 
     return {
         examTypes,
         slots: Array.from(slots).sort(),
         years: Array.from(years).sort((a, b) => b - a),
-        semesters: Array.from(semesters),
-        campuses: Array.from(campuses),
+        semesters: Array.from(semesters).sort(
+            (a, b) => (semesterOrder.get(a) ?? 0) - (semesterOrder.get(b) ?? 0),
+        ),
+        campuses: Array.from(campuses).sort(
+            (a, b) => (campusOrder.get(a) ?? 0) - (campusOrder.get(b) ?? 0),
+        ),
         answerKeyCount,
         totalPapers: rows.length,
         examCounts,

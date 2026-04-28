@@ -1,18 +1,20 @@
 'use server'
 
-import prisma from '@/lib/prisma'
+import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { db, note, pastPaper } from '@/src/db'
 
 export async function updateFile(itemID: string, newTitle: string, activeTab: string) {
 
     if(activeTab === "notes") {
         try {
-            const updatedNote = await prisma.note.update({
-            where: { id: itemID },
-            data: { 
-                title: newTitle
-            },
-            })
+            const rows = await db
+                .update(note)
+                .set({ title: newTitle })
+                .where(eq(note.id, itemID))
+                .returning()
+
+            const updatedNote = rows[0]
 
             revalidatePath('/notes') // Adjust this path as needed
 
@@ -24,12 +26,13 @@ export async function updateFile(itemID: string, newTitle: string, activeTab: st
 
     } else if (activeTab === "pastPaper") {
         try {
-            const updatedPaper = await prisma.pastPaper.update({
-            where: { id: itemID },
-            data: { 
-                title: newTitle
-            },
-            })
+            const rows = await db
+                .update(pastPaper)
+                .set({ title: newTitle })
+                .where(eq(pastPaper.id, itemID))
+                .returning()
+
+            const updatedPaper = rows[0]
 
             revalidatePath('/past_papers') // Adjust this path as needed
 

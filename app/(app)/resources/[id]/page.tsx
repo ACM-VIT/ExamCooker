@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import prisma from "@/lib/prisma";
+import { asc, eq } from "drizzle-orm";
 import ModuleDropdown from "@/app/components/ModuleDropdown";
 import VinCoursePage from "@/app/components/resources/VinCoursePage";
 import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import { notFound, permanentRedirect } from "next/navigation";
 import ViewTracker from "@/app/components/ViewTracker";
-import type { Module, Subject } from "@/prisma/generated/client";
 import {
     buildKeywords,
     DEFAULT_KEYWORDS,
@@ -13,12 +12,26 @@ import {
     parseSubjectName,
 } from "@/lib/seo";
 import { getVinCourseById } from "@/lib/data/vinTogether";
+import { db, module as moduleTable, type Module, subject, type Subject } from "@/src/db";
 
 async function fetchLegacySubject(id: string) {
-    return prisma.subject.findUnique({
-        where: { id },
-        include: { modules: true },
-    });
+    const foundSubject = await db
+        .select()
+        .from(subject)
+        .where(eq(subject.id, id))
+        .then((rows) => rows[0] ?? null);
+
+    if (!foundSubject) {
+        return null;
+    }
+
+    const modules = await db
+        .select()
+        .from(moduleTable)
+        .where(eq(moduleTable.subjectId, id))
+        .orderBy(asc(moduleTable.title));
+
+    return { ...foundSubject, modules };
 }
 
 function buildRemoteDescription(topicCount: number, displayName: string) {
