@@ -1,10 +1,12 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
+import type { Session } from "next-auth";
+import { getSession } from "next-auth/react";
 
 type GuestPromptContextType = {
     isAuthed: boolean;
+    session: Session | null;
     status: "authenticated" | "unauthenticated" | "loading";
     requireAuth: (action?: string) => boolean;
     openPrompt: (action?: string) => void;
@@ -28,8 +30,17 @@ export function useGuestPrompt() {
     return context;
 }
 
-export default function GuestPromptProvider({ children }: { children: React.ReactNode }) {
-    const { data: session, status } = useSession();
+export default function GuestPromptProvider({
+    children,
+    initialSession = null,
+}: {
+    children: React.ReactNode;
+    initialSession?: Session | null;
+}) {
+    const [session, setSession] = useState<Session | null>(initialSession);
+    const [status, setStatus] = useState<"authenticated" | "unauthenticated" | "loading">(
+        initialSession?.user ? "authenticated" : "loading",
+    );
     const isAuthed = Boolean(session?.user);
     const [prompt, setPrompt] = useState<PromptState>({});
     const [phase, setPhase] = useState<"closed" | "entering" | "open" | "leaving">("closed");
@@ -100,7 +111,25 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
     }, [phase, closePrompt]);
 
     useEffect(() => {
+        let cancelled = false;
+
+        async function syncSession() {
+            try {
+                const nextSession = await getSession();
+                if (cancelled) return;
+                setSession(nextSession);
+                setStatus(nextSession?.user ? "authenticated" : "unauthenticated");
+            } catch {
+                if (cancelled) return;
+                setSession(null);
+                setStatus("unauthenticated");
+            }
+        }
+
+        void syncSession();
+
         return () => {
+            cancelled = true;
             clearPhaseTimers();
             document.body.style.overflow = "";
         };
@@ -117,7 +146,9 @@ export default function GuestPromptProvider({ children }: { children: React.Reac
     }, [signInHref]);
 
     return (
-        <GuestPromptContext.Provider value={{ isAuthed, status, requireAuth, openPrompt, closePrompt }}>
+        <GuestPromptContext.Provider
+            value={{ isAuthed, session, status, requireAuth, openPrompt, closePrompt }}
+        >
             {children}
             {mounted && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">

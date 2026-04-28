@@ -3,10 +3,10 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import ThemeToggleSwitch from "@/app/components/common/ThemeToggle";
 import { SignOut } from "@/app/components/sign-out";
 import { startGoogleSignIn } from "@/lib/auth-origin";
+import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 type MenuLink = {
   href: string;
@@ -33,8 +33,7 @@ type Props = {
 
 const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const isAuthed = Boolean(session?.user);
+  const { isAuthed, session } = useGuestPrompt();
   const [showProfile, setShowProfile] = useState(false);
   const [hoveredTooltip, setHoveredTooltip] = useState<{
     content: string;
