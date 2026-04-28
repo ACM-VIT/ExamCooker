@@ -13,7 +13,6 @@ interface SearchProps {
         | 'past_papers'
         | 'resources'
         | 'forum'
-        | 'favourites'
         | 'courses';
     availableTags?: string[];
     initialQuery?: string;

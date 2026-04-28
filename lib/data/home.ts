@@ -6,10 +6,6 @@ import {
     note,
     pastPaper,
     subject,
-    userBookmarkedForumPosts,
-    userBookmarkedNotes,
-    userBookmarkedPastPapers,
-    userBookmarkedResources,
     viewHistory,
 } from "@/db";
 
@@ -103,57 +99,4 @@ export async function getHomeRecentViews(userId: string): Promise<HomeItem[]> {
             return null;
         })
         .filter((item): item is HomeItem => item !== null);
-}
-
-export async function getHomeFavorites(userId: string): Promise<HomeItem[]> {
-    "use cache";
-    cacheTag("home");
-    cacheTag(`home:${userId}`);
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
-    const [notes, pastPapers, forumPosts, subjects] = await Promise.all([
-        db
-            .select({ id: note.id, title: note.title })
-            .from(userBookmarkedNotes)
-            .innerJoin(note, eq(userBookmarkedNotes.a, note.id))
-            .where(eq(userBookmarkedNotes.b, userId))
-            .limit(2),
-        db
-            .select({ id: pastPaper.id, title: pastPaper.title })
-            .from(userBookmarkedPastPapers)
-            .innerJoin(pastPaper, eq(userBookmarkedPastPapers.a, pastPaper.id))
-            .where(eq(userBookmarkedPastPapers.b, userId))
-            .limit(2),
-        db
-            .select({ id: forumPost.id, title: forumPost.title })
-            .from(userBookmarkedForumPosts)
-            .innerJoin(forumPost, eq(userBookmarkedForumPosts.a, forumPost.id))
-            .where(eq(userBookmarkedForumPosts.b, userId))
-            .limit(2),
-        db
-            .select({ id: subject.id, name: subject.name })
-            .from(userBookmarkedResources)
-            .innerJoin(subject, eq(userBookmarkedResources.a, subject.id))
-            .where(eq(userBookmarkedResources.b, userId))
-            .limit(2),
-    ]);
-
-    const noteItems = notes.map((note) => ({
-        type: "note" as const,
-        item: note,
-    }));
-    const pastPaperItems = pastPapers.map((paper) => ({
-        type: "pastPaper" as const,
-        item: paper,
-    }));
-    const forumPostItems = forumPosts.map((post) => ({
-        type: "forumPost" as const,
-        item: post,
-    }));
-    const subjectItems = subjects.map((subject) => ({
-        type: "subject" as const,
-        item: subject,
-    }));
-
-    return [...noteItems, ...pastPaperItems, ...forumPostItems, ...subjectItems];
 }

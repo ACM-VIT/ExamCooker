@@ -25,7 +25,7 @@ interface CheckboxOptions {
 }
 
 interface DropdownProps {
-  pageType: "notes" | "past_papers" | "resources" | "forum" | "favourites";
+  pageType: "notes" | "past_papers" | "resources" | "forum";
   searchString?: string;
 }
 
@@ -34,7 +34,6 @@ const FILTER_SHEET_TITLES: Record<DropdownProps["pageType"], string> = {
   past_papers: "Filter past papers",
   resources: "Filter resources",
   forum: "Filter forum",
-  favourites: "Filter favourites",
 };
 
 const SLOT_OPTIONS: Option[] = PAST_PAPER_SLOT_TAGS.map((tag) => ({

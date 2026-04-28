@@ -24,7 +24,6 @@ const LINKS: MenuLink[] = [
   { href: "/syllabus", svgSource: "/assets/SyllabusLogo.svg", alt: "Syllabus" },
   // { href: "/forum", svgSource: "/assets/ForumIcon.svg", alt: "Forum" },
   { href: "/resources", svgSource: "/assets/BookIcon.svg", alt: "Resources" },
-  // { href: "/favourites", svgSource: "/assets/NavFavouriteIcon.svg", alt: "Favourites" },
   { href: "/quiz", svgSource: "/assets/QuizIcon.svg", alt: "Quiz" },
 ];
 
