@@ -4,6 +4,7 @@ import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'r
 import Image from "@/app/components/common/AppImage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Mic } from "lucide-react";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { getAliasCourseCodes } from "@/lib/courseAliases";
 import { normalizeCourseCode } from "@/lib/courseTags";
@@ -65,7 +66,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
         const queryTerms = normalizedQuery.split(" ").filter(Boolean);
 
         return searchableCourses
-            .filter(({ course, codeUpper, normalizedSearchable }) => {
+            .filter(({ codeUpper, normalizedSearchable }) => {
                 if (aliasSet.has(codeUpper) || codeUpper === normalizedCodeQuery) return true;
                 return queryTerms.every((term) => normalizedSearchable.includes(term));
             })
@@ -141,6 +142,11 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
         inputRef.current?.focus();
     };
 
+    const handleVoiceClick = () => {
+        if (typeof window === "undefined") return;
+        window.dispatchEvent(new CustomEvent("examcooker:voice-agent-start"));
+    };
+
     return (
         <div className="mx-auto w-full min-w-0 text-left">
             <div className="relative">
@@ -158,7 +164,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                     />
                     <button
                         onClick={clearSelection}
-                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] ${query ? "visible" : "invisible pointer-events-none"
+                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] ${query ? "visible" : "invisible pointer-events-none w-0 overflow-hidden"
                             }`}
                         type="button"
                         aria-label="Clear search"
@@ -175,6 +181,15 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                         >
                             <path d="M1 1L13 13M13 1L1 13" />
                         </svg>
+                    </button>
+                    <button
+                        onClick={handleVoiceClick}
+                        type="button"
+                        aria-label="Talk to ExamCooker"
+                        title="Talk to ExamCooker"
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
+                    >
+                        <Mic className="h-4 w-4" aria-hidden="true" />
                     </button>
                 </div>
 

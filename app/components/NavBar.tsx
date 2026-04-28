@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
@@ -105,7 +105,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     });
   };
 
-  const handleVoiceClick = () => {
+  const handleVoiceClick = useCallback(() => {
     if (!isAuthed) {
       requireAuth("use the voice guide");
       return;
@@ -113,7 +113,13 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
 
     setVoiceRuntimeRequested(true);
     setVoiceStartToken((current) => current + 1);
-  };
+  }, [isAuthed, requireAuth]);
+
+  useEffect(() => {
+    const handler = () => handleVoiceClick();
+    window.addEventListener("examcooker:voice-agent-start", handler);
+    return () => window.removeEventListener("examcooker:voice-agent-start", handler);
+  }, [handleVoiceClick]);
 
   return (
     <>

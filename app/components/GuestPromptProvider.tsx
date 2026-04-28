@@ -199,13 +199,18 @@ export default function GuestPromptProvider({
                             <p className="mt-2 text-sm text-black/60 dark:text-[#D5D5D5]/60">
                                 A quick sign-in is all it takes.
                             </p>
-                            <button
-                                type="button"
-                                onClick={handleSignIn}
-                                className="mt-5 inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-base font-bold text-black transition duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:text-[#3BF4C7]"
-                            >
-                                Sign in with Google
-                            </button>
+                            <div className="group relative mt-5 inline-flex w-full items-stretch">
+                                <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
+                                <div className="absolute inset-0 bg-[#3BF4C7] blur-[60px] opacity-0 transition duration-200 group-hover:opacity-20 dark:hidden" />
+                                <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
+                                <button
+                                    type="button"
+                                    onClick={handleSignIn}
+                                    className="relative inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-base font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]"
+                                >
+                                    Sign in with Google
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
