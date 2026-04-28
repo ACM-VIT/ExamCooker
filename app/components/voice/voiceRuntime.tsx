@@ -516,6 +516,110 @@ async function fetchClientSecret(
   return clientSecret;
 }
 
+function readStringField(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function extractObjectMessage(error: Record<string, unknown>): string | null {
+  const directMessage =
+    readStringField(error, "message") ??
+    readStringField(error, "error") ??
+    readStringField(error, "reason") ??
+    readStringField(error, "statusText");
+
+  if (directMessage) {
+    return directMessage;
+  }
+
+  const nestedError = error.error;
+  if (nestedError && typeof nestedError === "object") {
+    const nestedMessage: string | null = extractObjectMessage(
+      nestedError as Record<string, unknown>,
+    );
+    if (nestedMessage) {
+      return nestedMessage;
+    }
+  }
+
+  return null;
+}
+
+function describeBrowserEvent(error: Event) {
+  const target = error.target;
+
+  if (target instanceof RTCDataChannel) {
+    return "Realtime voice connection failed while opening the WebRTC data channel.";
+  }
+
+  if (target instanceof RTCPeerConnection) {
+    return `Realtime voice connection failed during WebRTC negotiation (${target.connectionState}).`;
+  }
+
+  if (target instanceof MediaStreamTrack) {
+    return `Realtime voice connection failed while accessing the microphone (${target.readyState}).`;
+  }
+
+  if (error.type) {
+    return `Realtime voice connection failed with browser event: ${error.type}.`;
+  }
+
+  return null;
+}
+
+async function readRealtimeCallError(response: Response) {
+  const rawBody = await response.text();
+  if (!rawBody) {
+    return `OpenAI Realtime call failed (${response.status}).`;
+  }
+
+  try {
+    const parsed = JSON.parse(rawBody) as Record<string, unknown>;
+    return (
+      extractObjectMessage(parsed) ??
+      `OpenAI Realtime call failed (${response.status}).`
+    );
+  } catch {
+    return rawBody;
+  }
+}
+
+async function connectRealtimeSession(
+  session: RealtimeSession<unknown>,
+  options: {
+    apiKey: string;
+    model: string;
+  },
+) {
+  const originalFetch = globalThis.fetch;
+  const wrappedFetch: typeof fetch = async (input, init) => {
+    const response = await originalFetch(input, init);
+    const requestUrl =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+
+    if (
+      requestUrl.startsWith("https://api.openai.com/v1/realtime/calls") &&
+      !response.ok
+    ) {
+      throw new Error(await readRealtimeCallError(response.clone()));
+    }
+
+    return response;
+  };
+
+  globalThis.fetch = wrappedFetch;
+
+  try {
+    await session.connect(options);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 function normalizeError(error: unknown): VoiceControlError {
   if (error instanceof Error) {
     const errorWithCode = error as Error & { code?: VoiceControlErrorCode };
@@ -550,11 +654,39 @@ function normalizeError(error: unknown): VoiceControlError {
     };
   }
 
+  if (typeof ErrorEvent !== "undefined" && error instanceof ErrorEvent) {
+    const message = error.message || (error.error instanceof Error ? error.error.message : "");
+    return {
+      code: "unknown",
+      message: message || "Realtime voice connection failed.",
+      cause: error,
+    };
+  }
+
+  if (typeof Event !== "undefined" && error instanceof Event) {
+    return {
+      code: "network_error",
+      message: describeBrowserEvent(error) ?? "Realtime voice connection failed.",
+      cause: error,
+    };
+  }
+
   if (typeof error === "string") {
     return {
       code: "unknown",
       message: error,
     };
+  }
+
+  if (error && typeof error === "object") {
+    const message = extractObjectMessage(error as Record<string, unknown>);
+    if (message) {
+      return {
+        code: "unknown",
+        message,
+        cause: error,
+      };
+    }
   }
 
   return {
@@ -811,7 +943,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
       );
 
       throwIfAborted(connectSignal);
-      await session.connect({
+      await connectRealtimeSession(session, {
         apiKey: clientSecret,
         model: this.sessionConfig.model,
       });
