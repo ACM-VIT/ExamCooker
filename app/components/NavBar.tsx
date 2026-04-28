@@ -215,13 +215,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
           </div>
 
           <div className="mb-2 flex flex-col items-center gap-2">
-            <div
-              className="group flex"
-              onMouseEnter={(event) => showTooltip(event, "Voice guide")}
-              onMouseLeave={() => setHoveredTooltip(null)}
-              onFocus={(event) => showTooltip(event, "Voice guide")}
-              onBlur={() => setHoveredTooltip(null)}
-            >
+            <div className="group flex">
               {voiceRuntimeRequested ? (
                 <VoiceAgentEntry startToken={voiceStartToken} />
               ) : (
