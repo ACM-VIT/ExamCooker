@@ -1,7 +1,17 @@
 import { cacheLife, cacheTag } from "next/cache";
 import Fuse from "fuse.js";
-import prisma from "@/lib/prisma";
+import { cache } from "react";
+import {
+    and,
+    count,
+    desc,
+    eq,
+    inArray,
+    isNotNull,
+    sql,
+} from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/courseTags";
+import { course, db, note, pastPaper, syllabi, viewHistory } from "@/src/db";
 
 type CatalogStats = {
     courseCount: number;
@@ -33,6 +43,64 @@ export type CourseDetail = {
     noteCount: number;
 };
 
+type CourseCatalogRow = {
+    id: string;
+    code: string;
+    title: string;
+    aliases: string[];
+    paperCount: number;
+    noteCount: number;
+};
+
+const getCourseCatalogRows = cache(async (): Promise<CourseCatalogRow[]> => {
+    const [courses, noteCounts, paperCounts] = await Promise.all([
+        db
+            .select({
+                id: course.id,
+                code: course.code,
+                title: course.title,
+                aliases: course.aliases,
+            })
+            .from(course),
+        db
+            .select({
+                courseId: note.courseId,
+                noteCount: count(),
+            })
+            .from(note)
+            .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
+            .groupBy(note.courseId),
+        db
+            .select({
+                courseId: pastPaper.courseId,
+                paperCount: count(),
+            })
+            .from(pastPaper)
+            .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
+            .groupBy(pastPaper.courseId),
+    ]);
+
+    const noteCountByCourseId = new Map(
+        noteCounts
+            .filter((row) => row.courseId !== null)
+            .map((row) => [row.courseId, row.noteCount]),
+    );
+    const paperCountByCourseId = new Map(
+        paperCounts
+            .filter((row) => row.courseId !== null)
+            .map((row) => [row.courseId, row.paperCount]),
+    );
+
+    return courses.map((courseRow) => ({
+        id: courseRow.id,
+        code: courseRow.code,
+        title: courseRow.title,
+        aliases: courseRow.aliases ?? [],
+        paperCount: paperCountByCourseId.get(courseRow.id) ?? 0,
+        noteCount: noteCountByCourseId.get(courseRow.id) ?? 0,
+    }));
+});
+
 export async function getCourseGrid(): Promise<CourseGridItem[]> {
     "use cache";
     cacheTag("courses", "past_papers");
@@ -48,97 +116,114 @@ export async function getCourseGrid(): Promise<CourseGridItem[]> {
 }
 
 async function getCourseGridBase(): Promise<CourseGridItem[]> {
-    const courses = await prisma.course.findMany({
-        select: {
-            id: true,
-            code: true,
-            title: true,
-            _count: {
-                select: {
-                    papers: { where: { isClear: true } },
-                    notes: { where: { isClear: true } },
-                },
-            },
-        },
-    });
+    const courses = await getCourseCatalogRows();
 
     return courses
         .map((c) => ({
             id: c.id,
             code: c.code,
             title: c.title,
-            paperCount: c._count.papers,
-            noteCount: c._count.notes,
+            paperCount: c.paperCount,
+            noteCount: c.noteCount,
             viewCount: 0,
         }))
         .filter((c) => c.paperCount > 0 || c.noteCount > 0);
 }
+
+const loadCourseDetailByCode = cache(async (normalized: string) => {
+    const rows = await db
+        .select({
+            id: course.id,
+            code: course.code,
+            title: course.title,
+            aliases: course.aliases,
+        })
+        .from(course)
+        .where(eq(course.code, normalized))
+        .limit(1);
+
+    const courseRow = rows[0];
+    if (!courseRow) return null;
+
+    const [paperRows, noteRows] = await Promise.all([
+        db
+            .select({ total: count() })
+            .from(pastPaper)
+            .where(and(eq(pastPaper.courseId, courseRow.id), eq(pastPaper.isClear, true))),
+        db
+            .select({ total: count() })
+            .from(note)
+            .where(and(eq(note.courseId, courseRow.id), eq(note.isClear, true))),
+    ]);
+
+    return {
+        id: courseRow.id,
+        code: courseRow.code,
+        title: courseRow.title,
+        aliases: courseRow.aliases ?? [],
+        paperCount: paperRows[0]?.total ?? 0,
+        noteCount: noteRows[0]?.total ?? 0,
+    } satisfies CourseDetail;
+});
 
 export async function getPopularCourseGrid(limit = 6): Promise<CourseGridItem[]> {
     "use cache";
     cacheTag("courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const rows = await prisma.$queryRaw<
-        Array<{
-            id: string;
-            code: string;
-            title: string;
-            paperCount: bigint;
-            noteCount: bigint;
-            viewCount: bigint;
-        }>
-    >`
-        SELECT
-            c.id,
-            c.code,
-            c.title,
-            COALESCE(papers.count, 0) AS "paperCount",
-            COALESCE(notes.count, 0) AS "noteCount",
-            COALESCE(views.count, 0) AS "viewCount"
-        FROM "Course" c
-        LEFT JOIN (
-            SELECT "courseId", COUNT(*) AS count
-            FROM "PastPaper"
-            WHERE "isClear" = true AND "courseId" IS NOT NULL
-            GROUP BY "courseId"
-        ) papers ON papers."courseId" = c.id
-        LEFT JOIN (
-            SELECT "courseId", COUNT(*) AS count
-            FROM "Note"
-            WHERE "isClear" = true AND "courseId" IS NOT NULL
-            GROUP BY "courseId"
-        ) notes ON notes."courseId" = c.id
-        LEFT JOIN (
-            SELECT pp."courseId", SUM(vh.count) AS count
-            FROM "ViewHistory" vh
-            INNER JOIN "PastPaper" pp ON pp.id = vh."pastPaperId"
-            WHERE pp."isClear" = true AND pp."courseId" IS NOT NULL
-            GROUP BY pp."courseId"
-        ) views ON views."courseId" = c.id
-        WHERE COALESCE(papers.count, 0) > 0 OR COALESCE(notes.count, 0) > 0
-        ORDER BY
-            COALESCE(views.count, 0) DESC,
-            COALESCE(papers.count, 0) DESC,
-            COALESCE(notes.count, 0) DESC,
-            c.title ASC
-        LIMIT ${limit}
-    `;
+    const [courses, viewCounts] = await Promise.all([
+        getCourseCatalogRows(),
+        db
+            .select({
+                courseId: pastPaper.courseId,
+                viewCount: sql<number>`coalesce(sum(${viewHistory.count}), 0)`,
+            })
+            .from(viewHistory)
+            .innerJoin(pastPaper, eq(viewHistory.pastPaperId, pastPaper.id))
+            .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
+            .groupBy(pastPaper.courseId),
+    ]);
 
-    return rows
-        .map((row) => ({
-            id: row.id,
-            code: row.code,
-            title: row.title,
-            paperCount: Number(row.paperCount),
-            noteCount: Number(row.noteCount),
-            viewCount: Number(row.viewCount),
+    const viewCountByCourseId = new Map(
+        viewCounts
+            .filter((row) => row.courseId !== null)
+            .map((row) => [row.courseId, Number(row.viewCount)]),
+    );
+
+    return courses
+        .map((courseRow) => ({
+            id: courseRow.id,
+            code: courseRow.code,
+            title: courseRow.title,
+            paperCount: courseRow.paperCount,
+            noteCount: courseRow.noteCount,
+            viewCount: viewCountByCourseId.get(courseRow.id) ?? 0,
         }))
-        .filter((course) => course.viewCount > 0);
+        .filter((courseRow) => courseRow.viewCount > 0)
+        .sort(
+            (a, b) =>
+                b.viewCount - a.viewCount ||
+                b.paperCount - a.paperCount ||
+                b.noteCount - a.noteCount ||
+                a.title.localeCompare(b.title, "en", { sensitivity: "base" }),
+        )
+        .slice(0, limit);
 }
 
 export async function searchCourseGrid(query: string): Promise<CourseGridItem[]> {
-    const grid = await getCourseGridBase();
+    const records = (await getCourseCatalogRows())
+        .filter((courseRow) => courseRow.paperCount > 0 || courseRow.noteCount > 0)
+        .map((courseRow) => ({
+            id: courseRow.id,
+            code: courseRow.code,
+            title: courseRow.title,
+            paperCount: courseRow.paperCount,
+            noteCount: courseRow.noteCount,
+            viewCount: 0,
+            aliases: courseRow.aliases,
+        }));
+
+    const grid = records.map(({ aliases: _aliases, ...courseRow }) => courseRow);
     const trimmed = query.trim();
     if (!trimmed) return grid;
 
@@ -152,18 +237,6 @@ export async function searchCourseGrid(query: string): Promise<CourseGridItem[]>
         // Prefix is specific enough; return it.
         return prefix;
     }
-
-    // Alias + title match via a fuzzy search. Pull aliases per course for the fuse index.
-    const full = await prisma.course.findMany({
-        where: { code: { in: grid.map((g) => g.code) } },
-        select: { code: true, aliases: true },
-    });
-    const aliasByCode = new Map(full.map((c) => [c.code, c.aliases]));
-
-    const records = grid.map((c) => ({
-        ...c,
-        aliases: aliasByCode.get(c.code) || [],
-    }));
 
     const lower = trimmed.toLowerCase();
     const substring = records.filter((c) => {
@@ -208,29 +281,19 @@ export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> 
     cacheTag("courses", "past_papers", "syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const [courses, syllabi] = await Promise.all([
-        prisma.course.findMany({
-            select: {
-                id: true,
-                code: true,
-                title: true,
-                aliases: true,
-                _count: {
-                    select: {
-                        papers: { where: { isClear: true } },
-                        notes: { where: { isClear: true } },
-                    },
-                },
-            },
-        }),
-        prisma.syllabi.findMany({
-            orderBy: { name: "asc" },
-            select: { id: true, name: true },
-        }),
+    const [courses, syllabusRows] = await Promise.all([
+        getCourseCatalogRows(),
+        db
+            .select({
+                id: syllabi.id,
+                name: syllabi.name,
+            })
+            .from(syllabi)
+            .orderBy(syllabi.name),
     ]);
 
     const syllabusIdByCode = new Map<string, string>();
-    for (const syllabus of syllabi) {
+    for (const syllabus of syllabusRows) {
         const code = normalizeCourseCode(syllabus.name.split("_")[0] ?? "");
         if (code && !syllabusIdByCode.has(code)) {
             syllabusIdByCode.set(code, syllabus.id);
@@ -243,8 +306,8 @@ export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> 
             code: c.code,
             title: c.title,
             aliases: c.aliases,
-            paperCount: c._count.papers,
-            noteCount: c._count.notes,
+            paperCount: c.paperCount,
+            noteCount: c.noteCount,
             syllabusId: syllabusIdByCode.get(c.code) ?? null,
         }))
         .filter((c) => c.paperCount > 0 || c.noteCount > 0 || c.syllabusId)
@@ -274,25 +337,28 @@ export async function getRecentPapers(limit = 10): Promise<RecentPaper[]> {
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const papers = await prisma.pastPaper.findMany({
-        where: { isClear: true, courseId: { not: null } },
-        orderBy: { createdAt: "desc" },
-        take: limit,
-        select: {
-            id: true,
-            title: true,
-            thumbNailUrl: true,
-            examType: true,
-            year: true,
-            course: { select: { code: true, title: true } },
-        },
-    });
+    const papers = await db
+        .select({
+            id: pastPaper.id,
+            title: pastPaper.title,
+            thumbNailUrl: pastPaper.thumbNailUrl,
+            examType: pastPaper.examType,
+            year: pastPaper.year,
+            courseCode: course.code,
+            courseTitle: course.title,
+        })
+        .from(pastPaper)
+        .innerJoin(course, eq(pastPaper.courseId, course.id))
+        .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
+        .orderBy(desc(pastPaper.createdAt))
+        .limit(limit);
+
     return papers.map((p) => ({
         id: p.id,
         title: p.title,
         thumbNailUrl: p.thumbNailUrl,
-        courseCode: p.course?.code ?? null,
-        courseTitle: p.course?.title ?? null,
+        courseCode: p.courseCode ?? null,
+        courseTitle: p.courseTitle ?? null,
         examType: p.examType,
         year: p.year,
     }));
@@ -304,28 +370,5 @@ export async function getCourseDetailByCode(code: string): Promise<CourseDetail 
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     const normalized = normalizeCourseCode(code);
-    const course = await prisma.course.findUnique({
-        where: { code: normalized },
-        select: {
-            id: true,
-            code: true,
-            title: true,
-            aliases: true,
-            _count: {
-                select: {
-                    papers: { where: { isClear: true } },
-                    notes: { where: { isClear: true } },
-                },
-            },
-        },
-    });
-    if (!course) return null;
-    return {
-        id: course.id,
-        code: course.code,
-        title: course.title,
-        aliases: course.aliases,
-        paperCount: course._count.papers,
-        noteCount: course._count.notes,
-    };
+    return loadCourseDetailByCode(normalized);
 }

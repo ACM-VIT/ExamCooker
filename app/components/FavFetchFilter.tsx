@@ -9,14 +9,14 @@ import ResourceCard from './ResourceCard';
 import ForumCard from './ForumCard';
 import { useRouter } from 'next/navigation';
 import type {
-  ForumPost,
-  Tag,
   Comment,
-  PastPaper,
+  ForumPost,
   Note,
+  Tag,
   Subject,
+  PastPaper,
   User,
-} from "@/prisma/generated/client";
+} from "@/src/db";
 
 interface ForumPostItem extends Omit<ForumPost, 'upvoteCount' | 'downvoteCount'> {
   type: 'forumpost';

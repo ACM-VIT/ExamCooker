@@ -1,6 +1,9 @@
 const fs = require("fs");
 const path = require("path");
-const dotenv = require("dotenv");
+const { eq } = require("drizzle-orm");
+const { course, note, pastPaper } = require("../src/db/schema.ts");
+const { createScriptDb, queryRows } = require("./lib/db.ts");
+const { loadScriptEnv } = require("./lib/env.ts");
 const REPORT_DIR = path.resolve(__dirname, "reports");
 const BATCH_SIZE = Number.parseInt(process.env.BACKFILL_BATCH_SIZE || "100", 10);
 const TRANSACTION_TIMEOUT_MS = Number.parseInt(
@@ -10,26 +13,7 @@ const TRANSACTION_TIMEOUT_MS = Number.parseInt(
 const ANSWER_KEY_REGEX =
   /\b(answer\s*key|with\s*answer\s*key|answers\b|solution\s*key|solutions\b)\b/i;
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true, quiet: true });
-
-let prismaPromise;
-function getPrisma() {
-  prismaPromise ??= (async () => {
-    const [{ default: prismaClient }, { PrismaPg }] = await Promise.all([
-      import("../prisma/generated/client.ts"),
-      import("@prisma/adapter-pg"),
-    ]);
-    const { PrismaClient } = prismaClient;
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL is not set.");
-    }
-    return new PrismaClient({
-      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
-    });
-  })();
-  return prismaPromise;
-}
+loadScriptEnv();
 
 // ---------------------------------------------------------------------------
 // Parsing helpers (inlined from lib/courseTags.ts + lib/paperTitle.ts).
@@ -238,18 +222,23 @@ async function main() {
   }
   const runPapers = !notesOnly;
   const runNotes = !papersOnly;
-  const prisma = await getPrisma();
-  console.log(
-    `Running backfill (${dryRun ? "dry-run" : "apply"} mode, ${runPapers ? "papers" : ""}${
-      runPapers && runNotes ? "+" : ""
-    }${runNotes ? "notes" : ""})...`,
-  );
+  const { db, pool, close } = createScriptDb();
+  try {
+    console.log(
+      `Running backfill (${dryRun ? "dry-run" : "apply"} mode, ${runPapers ? "papers" : ""}${
+        runPapers && runNotes ? "+" : ""
+      }${runNotes ? "notes" : ""})...`,
+    );
 
   // Build alias → courseId lookup. Aliases include all "Title [CODE]" tag names
   // and any entries from COURSE_ACRONYMS seeded into Course.aliases.
-  const courses = await prisma.course.findMany({
-    select: { id: true, code: true, aliases: true },
-  });
+  const courses = await db
+    .select({
+      id: course.id,
+      code: course.code,
+      aliases: course.aliases,
+    })
+    .from(course);
   /** Map<normalizedKey, courseId> */
   const courseLookup = new Map();
   for (const c of courses) {
@@ -296,18 +285,44 @@ async function main() {
   };
 
   if (runPapers) {
-    const papers = await prisma.pastPaper.findMany({
-      select: {
-        id: true,
-        title: true,
-        courseId: true,
-        examType: true,
-        slot: true,
-        year: true,
-        hasAnswerKey: true,
-        tags: { select: { id: true, name: true } },
-      },
-    });
+    const paperRows = await queryRows(
+      pool,
+      `
+        SELECT
+          p.id,
+          p.title,
+          p."courseId",
+          p."examType",
+          p.slot,
+          p.year,
+          p."hasAnswerKey",
+          t.id AS "tagId",
+          t.name AS "tagName"
+        FROM "PastPaper" p
+        LEFT JOIN "_PastPaperToTag" ppt ON ppt."A" = p.id
+        LEFT JOIN "Tag" t ON t.id = ppt."B"
+      `,
+    );
+    const papersById = new Map();
+    for (const row of paperRows) {
+      const existing =
+        papersById.get(row.id) ??
+        {
+          id: row.id,
+          title: row.title,
+          courseId: row.courseId,
+          examType: row.examType,
+          slot: row.slot,
+          year: row.year,
+          hasAnswerKey: row.hasAnswerKey,
+          tags: [],
+        };
+      if (row.tagId && row.tagName) {
+        existing.tags.push({ id: row.tagId, name: row.tagName });
+      }
+      papersById.set(row.id, existing);
+    }
+    const papers = [...papersById.values()];
     paperSummary.total = papers.length;
     console.log(`Loaded ${papers.length} papers.`);
 
@@ -470,14 +485,36 @@ async function main() {
   const noteUpdates = [];
 
   if (runNotes) {
-    const notes = await prisma.note.findMany({
-      select: {
-        id: true,
-        title: true,
-        courseId: true,
-        tags: { select: { id: true, name: true } },
-      },
-    });
+    const noteRows = await queryRows(
+      pool,
+      `
+        SELECT
+          n.id,
+          n.title,
+          n."courseId",
+          t.id AS "tagId",
+          t.name AS "tagName"
+        FROM "Note" n
+        LEFT JOIN "_NoteToTag" ntt ON ntt."A" = n.id
+        LEFT JOIN "Tag" t ON t.id = ntt."B"
+      `,
+    );
+    const notesById = new Map();
+    for (const row of noteRows) {
+      const existing =
+        notesById.get(row.id) ??
+        {
+          id: row.id,
+          title: row.title,
+          courseId: row.courseId,
+          tags: [],
+        };
+      if (row.tagId && row.tagName) {
+        existing.tags.push({ id: row.tagId, name: row.tagName });
+      }
+      notesById.set(row.id, existing);
+    }
+    const notes = [...notesById.values()];
     noteSummary.total = notes.length;
     console.log(`Loaded ${notes.length} notes.`);
 
@@ -544,12 +581,14 @@ async function main() {
       let done = 0;
       for (let i = 0; i < paperUpdates.length; i += BATCH_SIZE) {
         const batch = paperUpdates.slice(i, i + BATCH_SIZE);
-        await prisma.$transaction(
-          batch.map((u) =>
-            prisma.pastPaper.update({ where: { id: u.id }, data: u.data }),
-          ),
-          { timeout: TRANSACTION_TIMEOUT_MS, maxWait: TRANSACTION_TIMEOUT_MS },
-        );
+        await db.transaction(async (tx) => {
+          for (const update of batch) {
+            await tx
+              .update(pastPaper)
+              .set(update.data)
+              .where(eq(pastPaper.id, update.id));
+          }
+        });
         done += batch.length;
         console.log(`  ${done}/${paperUpdates.length}`);
       }
@@ -560,12 +599,14 @@ async function main() {
       let done = 0;
       for (let i = 0; i < noteUpdates.length; i += BATCH_SIZE) {
         const batch = noteUpdates.slice(i, i + BATCH_SIZE);
-        await prisma.$transaction(
-          batch.map((u) =>
-            prisma.note.update({ where: { id: u.id }, data: u.data }),
-          ),
-          { timeout: TRANSACTION_TIMEOUT_MS, maxWait: TRANSACTION_TIMEOUT_MS },
-        );
+        await db.transaction(async (tx) => {
+          for (const update of batch) {
+            await tx
+              .update(note)
+              .set(update.data)
+              .where(eq(note.id, update.id));
+          }
+        });
         done += batch.length;
         console.log(`  ${done}/${noteUpdates.length}`);
       }
@@ -594,14 +635,13 @@ async function main() {
   console.log(`  course resolved:      ${noteSummary.courseResolvedTag}`);
   console.log(`  course (title):       ${noteSummary.courseResolvedTitleFallback}`);
   console.log(`  course unresolved:    ${noteSummary.courseUnresolved}`);
+
+  } finally {
+    await close();
+  }
 }
 
-main()
-  .catch((err) => {
-    console.error("Backfill failed:", err);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    const prisma = await getPrisma();
-    await prisma.$disconnect();
-  });
+main().catch((err) => {
+  console.error("Backfill failed:", err);
+  process.exitCode = 1;
+});

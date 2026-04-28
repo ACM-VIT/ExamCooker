@@ -2,7 +2,6 @@ import React from 'react';
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import PDFViewerClient from '@/app/components/PDFViewerClient';
-import { TimeHandler } from '@/app/components/forumpost/CommentHelpers';
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import DirectionalTransition from "@/app/components/common/DirectionalTransition";
@@ -21,9 +20,7 @@ import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } 
 import { normalizeCourseCode } from "@/lib/courseTags";
 import { examTypeLabel } from "@/lib/examSlug";
 import { buildPastPaperPdfFileName } from "@/lib/downloads/resourceNames";
-import type { ExamType } from "@/prisma/generated/client";
-import prisma from "@/lib/prisma";
-import { auth } from "@/app/auth";
+import type { ExamType } from "@/src/db";
 
 //todo refactor to utility function and move to lib
 const ACRONYM_SKIP_WORDS = new Set([
@@ -129,18 +126,6 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
         permanentRedirect(getPastPaperDetailPath(paper.id, canonicalCode));
     }
 
-    const session = await auth();
-    const isModerator = (session?.user as { role?: string } | undefined)?.role === "MODERATOR";
-    let allTags: Array<{ name: string }> = [];
-    if (isModerator) {
-        try {
-            allTags = await prisma.tag.findMany({ select: { name: true } });
-        } catch (error) {
-            console.error("Error fetching tags:", error);
-        }
-    }
-
-    const postTime = paper.createdAt.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
     const displayTitle = paper.course?.title ?? paper.title.replace(/\.pdf$/i, "");
     const headingTitle = paper.course?.title ? getHeadingTitle(paper.course.title) : displayTitle;
     const displaySlot = paper.slot ?? undefined;
@@ -191,10 +176,6 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
         examType: item.examType,
         year: item.year,
     }));
-
-    const postedTime = TimeHandler(postTime);
-    const postedAtLine = `${postedTime.hours}:${postedTime.minutes}${postedTime.amOrPm} · ${postedTime.day}-${postedTime.month}-${postedTime.year}`;
-    const authorName = paper.author?.name?.slice(0, -10) || "Unknown";
 
     const metaPills: Array<{ label: string; value: string }> = [];
     if (displayExam) metaPills.push({ label: "Exam", value: displayExam });

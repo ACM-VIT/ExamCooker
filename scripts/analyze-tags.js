@@ -1,11 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const dotenv = require("dotenv");
-const { PrismaClient } = require("../src/generated/prisma");
-
-dotenv.config();
-
-const prisma = new PrismaClient();
+const { createScriptDb, queryRows } = require("./lib/db.ts");
 
 const YEAR_REGEX = /^(19|20)\d{2}$/;
 const SLOT_REGEX = /^[A-G][1-2]$/i;
@@ -38,31 +33,46 @@ function totalUsage(count) {
 }
 
 async function main() {
-    const tags = await prisma.tag.findMany({
-        select: {
-            name: true,
-            aliases: true,
-            updatedAt: true,
-            _count: {
-                select: { notes: true, pastPapers: true, forumPosts: true },
-            },
-        },
-    });
+    const { pool, close } = createScriptDb();
+    try {
+        const tags = await queryRows(
+            pool,
+            `
+                SELECT
+                    t.name,
+                    t.aliases,
+                    t."updatedAt",
+                    COUNT(DISTINCT ntt."A")::INT AS notes,
+                    COUNT(DISTINCT ppt."A")::INT AS "pastPapers",
+                    COUNT(DISTINCT fpt."A")::INT AS "forumPosts"
+                FROM "Tag" t
+                LEFT JOIN "_NoteToTag" ntt ON ntt."B" = t.id
+                LEFT JOIN "_PastPaperToTag" ppt ON ppt."B" = t.id
+                LEFT JOIN "_ForumPostToTag" fpt ON fpt."B" = t.id
+                GROUP BY t.id, t.name, t.aliases, t."updatedAt"
+                ORDER BY t.name ASC
+            `,
+        );
 
-    const normalized = tags.map((tag) => {
-        const usage = totalUsage(tag._count);
-        return {
-            name: tag.name,
-            nameLower: tag.name.toLowerCase(),
-            category: classifyTag(tag.name),
-            usage,
-            notes: tag._count.notes,
-            pastPapers: tag._count.pastPapers,
-            forumPosts: tag._count.forumPosts,
-            aliases: tag.aliases || [],
-            updatedAt: tag.updatedAt?.toISOString?.() || null,
-        };
-    });
+        const normalized = tags.map((tag) => {
+            const counts = {
+                notes: Number(tag.notes || 0),
+                pastPapers: Number(tag.pastPapers || 0),
+                forumPosts: Number(tag.forumPosts || 0),
+            };
+            const usage = totalUsage(counts);
+            return {
+                name: tag.name,
+                nameLower: tag.name.toLowerCase(),
+                category: classifyTag(tag.name),
+                usage,
+                notes: counts.notes,
+                pastPapers: counts.pastPapers,
+                forumPosts: counts.forumPosts,
+                aliases: tag.aliases || [],
+                updatedAt: tag.updatedAt ? new Date(tag.updatedAt).toISOString() : null,
+            };
+        });
 
     const totals = normalized.reduce(
         (acc, tag) => {
@@ -111,39 +121,39 @@ async function main() {
         .filter(([, list]) => list.length > 1)
         .map(([key, list]) => ({ key, variants: list }));
 
-    const report = {
-        totals,
-        topTags,
-        topByCategory,
-        noisyCandidates,
-        duplicates,
-    };
+        const report = {
+            totals,
+            topTags,
+            topByCategory,
+            noisyCandidates,
+            duplicates,
+        };
 
-    const outDir = path.join(process.cwd(), "tmp");
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
-    const outPath = path.join(outDir, "tag-audit.json");
-    fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
+        const outDir = path.join(process.cwd(), "tmp");
+        if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+        const outPath = path.join(outDir, "tag-audit.json");
+        fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
 
-    console.log("Tag audit summary");
-    console.log(JSON.stringify({
-        totals,
-        topTagSample: topTags.slice(0, 10).map((t) => ({ name: t.name, usage: t.usage })),
-        topCourseTitleSample: (topByCategory.course_title || [])
-            .slice(0, 10)
-            .map((t) => ({ name: t.name, usage: t.usage })),
-        topTopicSample: (topByCategory.topic || [])
-            .slice(0, 10)
-            .map((t) => ({ name: t.name, usage: t.usage })),
-        duplicateCount: duplicates.length,
-        output: outPath,
-    }, null, 2));
+        console.log("Tag audit summary");
+        console.log(JSON.stringify({
+            totals,
+            topTagSample: topTags.slice(0, 10).map((t) => ({ name: t.name, usage: t.usage })),
+            topCourseTitleSample: (topByCategory.course_title || [])
+                .slice(0, 10)
+                .map((t) => ({ name: t.name, usage: t.usage })),
+            topTopicSample: (topByCategory.topic || [])
+                .slice(0, 10)
+                .map((t) => ({ name: t.name, usage: t.usage })),
+            duplicateCount: duplicates.length,
+            output: outPath,
+        }, null, 2));
+    } finally {
+        await close();
+    }
 }
 
 main()
     .catch((error) => {
         console.error("Tag audit failed", error);
         process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
     });

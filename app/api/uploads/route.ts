@@ -6,12 +6,12 @@ import {
     type ProcessedUploadResult,
     type UploadVariant,
 } from "@/lib/uploads/createUploadedResources";
-import { Campus, ExamType, Semester } from "@/prisma/generated/client";
+import { campusValues, examTypeValues, semesterValues } from "@/src/db";
 
 const uploadVariants = new Set<UploadVariant>(["Notes", "Past Papers"]);
-const examTypes = new Set<string>(Object.values(ExamType));
-const semesters = new Set<string>(Object.values(Semester));
-const campuses = new Set<string>(Object.values(Campus));
+const examTypes = new Set<string>(examTypeValues);
+const semesters = new Set<string>(semesterValues);
+const campuses = new Set<string>(campusValues);
 
 type UploadRequestBody = Partial<Omit<CreateUploadedResourcesInput, "userEmail">>;
 

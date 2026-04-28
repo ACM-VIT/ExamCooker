@@ -1,10 +1,10 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { z } from "zod";
-import prisma from "@/lib/prisma";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { ExamType } from "@/prisma/generated/client";
+import { db, ExamType, upcomingExam } from "@/src/db";
 
 const slotsSchema = z
     .array(z.string().min(1).max(20))
@@ -33,13 +33,11 @@ async function requireModerator() {
 export async function createUpcomingExam(input: z.input<typeof upsertSchema>) {
     await requireModerator();
     const parsed = upsertSchema.parse(input);
-    await prisma.upcomingExam.create({
-        data: {
-            courseId: parsed.courseId,
-            slots: parsed.slots,
-            examType: parsed.examType,
-            scheduledAt: parsed.scheduledAt ? new Date(parsed.scheduledAt) : null,
-        },
+    await db.insert(upcomingExam).values({
+        courseId: parsed.courseId,
+        slots: parsed.slots,
+        examType: parsed.examType,
+        scheduledAt: parsed.scheduledAt ? new Date(parsed.scheduledAt) : null,
     });
     revalidateTag("upcoming_exams", "minutes");
     revalidatePath("/mod/upcoming");
@@ -52,15 +50,15 @@ export async function updateUpcomingExam(
 ) {
     await requireModerator();
     const parsed = upsertSchema.parse(input);
-    await prisma.upcomingExam.update({
-        where: { id },
-        data: {
+    await db
+        .update(upcomingExam)
+        .set({
             courseId: parsed.courseId,
             slots: parsed.slots,
             examType: parsed.examType,
             scheduledAt: parsed.scheduledAt ? new Date(parsed.scheduledAt) : null,
-        },
-    });
+        })
+        .where(eq(upcomingExam.id, id));
     revalidateTag("upcoming_exams", "minutes");
     revalidatePath("/mod/upcoming");
     return { success: true };
@@ -68,7 +66,7 @@ export async function updateUpcomingExam(
 
 export async function deleteUpcomingExam(id: string) {
     await requireModerator();
-    await prisma.upcomingExam.delete({ where: { id } });
+    await db.delete(upcomingExam).where(eq(upcomingExam.id, id));
     revalidateTag("upcoming_exams", "minutes");
     revalidatePath("/mod/upcoming");
     return { success: true };

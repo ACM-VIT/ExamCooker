@@ -1,7 +1,12 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { connection } from "next/server";
-import prisma from "@/lib/prisma";
-import type { ExamType } from "@/prisma/generated/client";
+import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
+import {
+    course,
+    db,
+    type ExamType,
+    upcomingExam,
+} from "@/src/db";
 
 export type UpcomingExamItem = {
     id: string;
@@ -32,42 +37,48 @@ async function getUpcomingExamsCached(
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     const now = new Date(cutoffIso);
-    const rows = await prisma.upcomingExam.findMany({
-        where: {
-            OR: [
-                { scheduledAt: null },
-                { scheduledAt: { gte: now } },
-            ],
-        },
-        orderBy: [
-            { scheduledAt: { sort: "asc", nulls: "last" } },
-            { createdAt: "desc" },
-        ],
-        take: limit ?? undefined,
-        select: {
-            id: true,
-            courseId: true,
-            slots: true,
-            examType: true,
-            scheduledAt: true,
-            course: {
-                select: {
-                    code: true,
-                    title: true,
-                },
-            },
-        },
-    });
+    const rows = await db
+        .select({
+            id: upcomingExam.id,
+            courseId: upcomingExam.courseId,
+            slots: upcomingExam.slots,
+            examType: upcomingExam.examType,
+            scheduledAt: upcomingExam.scheduledAt,
+            createdAt: upcomingExam.createdAt,
+            courseCode: course.code,
+            courseTitle: course.title,
+        })
+        .from(upcomingExam)
+        .innerJoin(course, eq(upcomingExam.courseId, course.id))
+        .where(
+            or(
+                isNull(upcomingExam.scheduledAt),
+                gte(upcomingExam.scheduledAt, now),
+            ),
+        );
 
-    return rows.map((r) => ({
-        id: r.id,
-        courseId: r.courseId,
-        courseCode: r.course.code,
-        courseTitle: r.course.title,
-        slots: r.slots,
-        examType: r.examType,
-        scheduledAt: r.scheduledAt,
-    }));
+    return rows
+        .sort((a, b) => {
+            if (a.scheduledAt === null && b.scheduledAt === null) {
+                return b.createdAt.getTime() - a.createdAt.getTime();
+            }
+            if (a.scheduledAt === null) return 1;
+            if (b.scheduledAt === null) return -1;
+            return (
+                a.scheduledAt.getTime() - b.scheduledAt.getTime() ||
+                b.createdAt.getTime() - a.createdAt.getTime()
+            );
+        })
+        .slice(0, limit ?? undefined)
+        .map((row) => ({
+            id: row.id,
+            courseId: row.courseId,
+            courseCode: row.courseCode,
+            courseTitle: row.courseTitle,
+            slots: row.slots ?? [],
+            examType: row.examType,
+            scheduledAt: row.scheduledAt,
+        }));
 }
 
 export async function getUpcomingExamsForCourses(
@@ -90,32 +101,49 @@ async function getUpcomingExamsForCoursesCached(
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     const now = new Date(cutoffIso);
-    const rows = await prisma.upcomingExam.findMany({
-        where: {
-            courseId: { in: courseIds },
-            OR: [
-                { scheduledAt: null },
-                { scheduledAt: { gte: now } },
-            ],
-        },
-        select: {
-            id: true,
-            courseId: true,
-            slots: true,
-            examType: true,
-            scheduledAt: true,
-            course: { select: { code: true, title: true } },
-        },
-    });
+    const rows = await db
+        .select({
+            id: upcomingExam.id,
+            courseId: upcomingExam.courseId,
+            slots: upcomingExam.slots,
+            examType: upcomingExam.examType,
+            scheduledAt: upcomingExam.scheduledAt,
+            createdAt: upcomingExam.createdAt,
+            courseCode: course.code,
+            courseTitle: course.title,
+        })
+        .from(upcomingExam)
+        .innerJoin(course, eq(upcomingExam.courseId, course.id))
+        .where(
+            and(
+                inArray(upcomingExam.courseId, courseIds),
+                or(
+                    isNull(upcomingExam.scheduledAt),
+                    gte(upcomingExam.scheduledAt, now),
+                ),
+            ),
+        );
 
     const map = new Map<string, UpcomingExamItem[]>();
-    for (const r of rows) {
+    const sortedRows = rows.sort((a, b) => {
+        if (a.scheduledAt === null && b.scheduledAt === null) {
+            return b.createdAt.getTime() - a.createdAt.getTime();
+        }
+        if (a.scheduledAt === null) return 1;
+        if (b.scheduledAt === null) return -1;
+        return (
+            a.scheduledAt.getTime() - b.scheduledAt.getTime() ||
+            b.createdAt.getTime() - a.createdAt.getTime()
+        );
+    });
+
+    for (const r of sortedRows) {
         const item: UpcomingExamItem = {
             id: r.id,
             courseId: r.courseId,
-            courseCode: r.course.code,
-            courseTitle: r.course.title,
-            slots: r.slots,
+            courseCode: r.courseCode,
+            courseTitle: r.courseTitle,
+            slots: r.slots ?? [],
             examType: r.examType,
             scheduledAt: r.scheduledAt,
         };
@@ -127,27 +155,39 @@ async function getUpcomingExamsForCoursesCached(
 }
 
 export async function listUpcomingExamsForMod(): Promise<UpcomingExamItem[]> {
-    const rows = await prisma.upcomingExam.findMany({
-        orderBy: [
-            { scheduledAt: { sort: "asc", nulls: "last" } },
-            { createdAt: "desc" },
-        ],
-        select: {
-            id: true,
-            courseId: true,
-            slots: true,
-            examType: true,
-            scheduledAt: true,
-            course: { select: { code: true, title: true } },
-        },
-    });
-    return rows.map((r) => ({
-        id: r.id,
-        courseId: r.courseId,
-        courseCode: r.course.code,
-        courseTitle: r.course.title,
-        slots: r.slots,
-        examType: r.examType,
-        scheduledAt: r.scheduledAt,
-    }));
+    const rows = await db
+        .select({
+            id: upcomingExam.id,
+            courseId: upcomingExam.courseId,
+            slots: upcomingExam.slots,
+            examType: upcomingExam.examType,
+            scheduledAt: upcomingExam.scheduledAt,
+            createdAt: upcomingExam.createdAt,
+            courseCode: course.code,
+            courseTitle: course.title,
+        })
+        .from(upcomingExam)
+        .innerJoin(course, eq(upcomingExam.courseId, course.id));
+
+    return rows
+        .sort((a, b) => {
+            if (a.scheduledAt === null && b.scheduledAt === null) {
+                return b.createdAt.getTime() - a.createdAt.getTime();
+            }
+            if (a.scheduledAt === null) return 1;
+            if (b.scheduledAt === null) return -1;
+            return (
+                a.scheduledAt.getTime() - b.scheduledAt.getTime() ||
+                b.createdAt.getTime() - a.createdAt.getTime()
+            );
+        })
+        .map((row) => ({
+            id: row.id,
+            courseId: row.courseId,
+            courseCode: row.courseCode,
+            courseTitle: row.courseTitle,
+            slots: row.slots ?? [],
+            examType: row.examType,
+            scheduledAt: row.scheduledAt,
+        }));
 }

@@ -99,10 +99,6 @@ stages:
               mkdir -p "$(packageDir)/.next"
               rsync -a "$(buildDir)/.next/static/" "$(packageDir)/.next/static/"
 
-              if [ -d "$(buildDir)/prisma" ]; then
-                rsync -a "$(buildDir)/prisma/" "$(packageDir)/prisma/"
-              fi
-
               if [ -d "$(buildDir)/lib/generated" ]; then
                 mkdir -p "$(packageDir)/lib/generated"
                 rsync -a "$(buildDir)/lib/generated/" "$(packageDir)/lib/generated/"

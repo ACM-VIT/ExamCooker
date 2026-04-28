@@ -1,12 +1,12 @@
 import React from "react";
 import CreateForum from "@/app/components/create-forum";
-import prisma from "@/lib/prisma";
+import { db, tag } from "@/src/db";
 
 async function NewForumPage () {
-    const allTags = await prisma.tag.findMany();
+    const allTags = await db.select({ name: tag.name }).from(tag).orderBy(tag.name);
     return (
         <div className="create-foum">
-            <CreateForum allTags={allTags.map(i=>i.name)}/>
+            <CreateForum allTags={allTags.map((row) => row.name)}/>
         </div>
     );
 }

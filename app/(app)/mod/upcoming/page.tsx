@@ -1,11 +1,11 @@
 import React from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
 import { auth } from "@/app/auth";
 import { listUpcomingExamsForMod } from "@/lib/data/upcomingExams";
 import UpcomingExamEditor from "@/app/components/mod/UpcomingExamEditor";
 import type { CourseOption } from "@/app/components/mod/CoursePicker";
+import { course, db } from "@/src/db";
 
 export const metadata = {
     title: "Upcoming exams · Mod",
@@ -19,14 +19,19 @@ export default async function UpcomingExamsModPage() {
     if (session.user.role !== "MODERATOR") notFound();
 
     const [courses, existing] = await Promise.all([
-        prisma.course.findMany({
-            select: { id: true, code: true, title: true, aliases: true },
-            orderBy: { code: "asc" },
-        }),
+        db.select({
+            id: course.id,
+            code: course.code,
+            title: course.title,
+            aliases: course.aliases,
+        }).from(course).orderBy(course.code),
         listUpcomingExamsForMod(),
     ]);
 
-    const courseOptions: CourseOption[] = courses;
+    const courseOptions: CourseOption[] = courses.map((row) => ({
+        ...row,
+        aliases: row.aliases ?? [],
+    }));
 
     return (
         <div className="min-h-screen bg-[#F5FAFD] px-3 py-6 text-black dark:bg-transparent dark:text-[#D5D5D5] sm:px-6 lg:px-10">

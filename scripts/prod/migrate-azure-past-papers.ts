@@ -1,16 +1,13 @@
 import path from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
-import dotenv from "dotenv";
 import { BlobServiceClient } from "@azure/storage-blob";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { asc, eq, inArray } from "drizzle-orm";
+import { pastPaper } from "../../src/db";
+import { createScriptDb } from "../lib/db";
+import { loadScriptEnv } from "../lib/env";
 
-import * as prismaClient from "../../prisma/generated/client";
-
-const { PrismaClient } = prismaClient;
-
-dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true, quiet: true });
+loadScriptEnv();
 
 type PromotionManifest = {
   touchedPapers: Array<{
@@ -174,12 +171,6 @@ function parseArgs(argv: string[]): Options {
   return options;
 }
 
-function createClient(connectionString: string) {
-  return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
-  });
-}
-
 async function readJsonFile<T>(pathname: string, fallback: T) {
   try {
     const raw = await readFile(pathname, "utf8");
@@ -221,7 +212,7 @@ async function main() {
   await mkdir(REPORT_DIR, { recursive: true });
 
   const manifest = await readJsonFile<PromotionManifest>(options.manifestFile, { touchedPapers: [] });
-  const target = createClient(options.databaseUrl);
+  const { db: target, close } = createScriptDb(options.databaseUrl);
   const state = await readJsonFile<StateFile>(options.stateFile, {
     version: 1,
     updatedAt: null,
@@ -241,20 +232,16 @@ async function main() {
       await containerClient.createIfNotExists({ access: "blob" });
     }
 
-    const papers = await target.pastPaper.findMany({
-      where: {
-        id: {
-          in: targetPaperIds,
-        },
-      },
-      select: {
-        id: true,
-        title: true,
-        fileUrl: true,
-        thumbNailUrl: true,
-      },
-      orderBy: { id: "asc" },
-    });
+    const papers = await target
+      .select({
+        id: pastPaper.id,
+        title: pastPaper.title,
+        fileUrl: pastPaper.fileUrl,
+        thumbNailUrl: pastPaper.thumbNailUrl,
+      })
+      .from(pastPaper)
+      .where(inArray(pastPaper.id, targetPaperIds))
+      .orderBy(asc(pastPaper.id));
 
     const updates: Array<{
       paperId: string;
@@ -361,10 +348,10 @@ async function main() {
     let updatedRows = 0;
     if (!options.dryRun) {
       for (const [paperId, payload] of mergedUpdates) {
-        await target.pastPaper.update({
-          where: { id: paperId },
-          data: payload,
-        });
+        await target
+          .update(pastPaper)
+          .set(payload)
+          .where(eq(pastPaper.id, paperId));
         updatedRows += 1;
       }
 
@@ -384,7 +371,7 @@ async function main() {
     await writeFile(reportPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
     console.log(JSON.stringify({ ...summary, reportPath }, null, 2));
   } finally {
-    await target.$disconnect();
+    await close();
   }
 }
 

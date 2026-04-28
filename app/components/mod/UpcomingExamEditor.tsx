@@ -10,7 +10,7 @@ import {
     updateUpcomingExam,
 } from "@/app/actions/upcomingExams";
 import type { UpcomingExamItem } from "@/lib/data/upcomingExams";
-import type { ExamType } from "@/prisma/generated/client";
+import type { ExamType } from "@/src/db";
 
 type Props = {
     courses: CourseOption[];

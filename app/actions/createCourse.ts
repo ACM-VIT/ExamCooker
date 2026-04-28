@@ -1,9 +1,10 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+import { eq } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import { normalizeCourseCode } from "@/lib/courseTags";
 import { revalidateTag } from "next/cache";
+import { course, db } from "@/src/db";
 
 export async function createCourse(input: {
     code: string;
@@ -25,19 +26,41 @@ export async function createCourse(input: {
     if (!title) return { success: false, error: "Title is required" };
 
     try {
-        const course = await prisma.course.upsert({
-            where: { code },
-            update: {},
-            create: { code, title, aliases: [title] },
-            select: { id: true, code: true, title: true, aliases: true },
-        });
+        const existingCourse = await db
+            .select({
+                id: course.id,
+                code: course.code,
+                title: course.title,
+                aliases: course.aliases,
+            })
+            .from(course)
+            .where(eq(course.code, code))
+            .then((rows) => rows[0] ?? null);
+
+        const createdCourse =
+            existingCourse ??
+            (await db
+                .insert(course)
+                .values({ code, title, aliases: [title] })
+                .returning({
+                    id: course.id,
+                    code: course.code,
+                    title: course.title,
+                    aliases: course.aliases,
+                })
+                .then((rows) => rows[0] ?? null));
+
+        if (!createdCourse) {
+            return { success: false, error: "Failed to create course" };
+        }
+
         revalidateTag("courses", "minutes");
         return {
             success: true,
-            id: course.id,
-            code: course.code,
-            title: course.title,
-            aliases: course.aliases,
+            id: createdCourse.id,
+            code: createdCourse.code,
+            title: createdCourse.title,
+            aliases: createdCourse.aliases ?? [],
         };
     } catch {
         return { success: false, error: "Failed to create course" };

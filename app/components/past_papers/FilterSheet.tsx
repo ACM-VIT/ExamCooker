@@ -9,7 +9,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Drawer } from "vaul";
 import { SlidersHorizontal, X } from "lucide-react";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/examSlug";
-import type { ExamType, Semester, Campus } from "@/prisma/generated/client";
+import type { Campus, ExamType, Semester } from "@/src/db";
 import { cn } from "@/lib/utils";
 
 type Props = {

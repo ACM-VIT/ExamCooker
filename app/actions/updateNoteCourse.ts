@@ -1,9 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import prisma from "@/lib/prisma";
+import { eq } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { db, note } from "@/src/db";
 
 const schema = z.object({
     id: z.string().min(1),
@@ -21,10 +22,10 @@ export async function updateNoteCourse(input: UpdateNoteCourseInput) {
 
     const parsed = schema.parse(input);
 
-    await prisma.note.update({
-        where: { id: parsed.id },
-        data: { courseId: parsed.courseId },
-    });
+    await db
+        .update(note)
+        .set({ courseId: parsed.courseId })
+        .where(eq(note.id, parsed.id));
 
     revalidatePath("/mod/notes/review");
     revalidateTag("notes", "minutes");

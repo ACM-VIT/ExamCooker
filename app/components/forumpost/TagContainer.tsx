@@ -1,9 +1,13 @@
 import Link from "next/link";
-import type { Tag } from "@/prisma/generated/client";
+
+type ThreadTag = {
+    id: string;
+    name: string;
+};
 
 const COURSE_TAG_REGEX = /\[([A-Z]{2,}\d{3,}[A-Z]?)\]$/;
 
-const TagContainer = ({ tags }: { tags: Tag[] | undefined }) => {
+const TagContainer = ({ tags }: { tags: ThreadTag[] | undefined }) => {
     return <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:gap-5 md:items-center">
         {tags?.map((tag) => (
             <div key={tag.id}>

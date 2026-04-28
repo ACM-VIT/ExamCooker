@@ -14,7 +14,7 @@ import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
 import { buildPastPaperPdfFileName } from "@/lib/downloads/resourceNames";
 import { preloadPdfBuffer } from "@/lib/pdf/pdfBufferCache";
 import { preloadPdfiumEngine } from "@/lib/pdf/pdfiumEngineCache";
-import type { ExamType } from "@/prisma/generated/client";
+import type { ExamType } from "@/src/db";
 
 type Paper = {
     id: string;

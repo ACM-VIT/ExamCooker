@@ -1,11 +1,16 @@
 import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 
-import dotenv from "dotenv";
-import { PrismaPg } from "@prisma/adapter-pg";
+import type { PoolClient } from "pg";
+import { createScriptDb, queryRows } from "../lib/db";
+import { loadScriptEnv } from "../lib/env";
+import {
+  loadPastPaperRows,
+  setPastPaperTags,
+  upsertCourseByCode,
+} from "../lib/pastPapers";
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true, quiet: true });
+loadScriptEnv();
 
 type PaperKey = {
   courseCode: string;
@@ -86,17 +91,8 @@ type ViewHistoryRow = {
   count: number;
   viewedAt: Date;
 };
-
-type PrismaClientLike = {
-  course: any;
-  tag: any;
-  pastPaper: any;
-  studyChat: any;
-  viewHistory: any;
-  $transaction: any;
-  $executeRawUnsafe: any;
-  $disconnect: () => Promise<void>;
-};
+type RepairConnection = ReturnType<typeof createScriptDb>;
+type RepairClient = PoolClient;
 
 const REPORT_DIR = path.resolve(process.cwd(), "scripts/reports");
 
@@ -398,22 +394,8 @@ function parseArgs(argv: string[]): Options {
   return options;
 }
 
-let prismaClientClassPromise: Promise<any> | null = null;
-
-async function getPrismaClientClass() {
-  prismaClientClassPromise ??= (async () => {
-    const prismaModule = await import("../../prisma/generated/client");
-    const resolved = (prismaModule as any).default ?? prismaModule;
-    return resolved.PrismaClient;
-  })();
-  return prismaClientClassPromise;
-}
-
-async function createClient(connectionString: string): Promise<PrismaClientLike> {
-  const PrismaClient = await getPrismaClientClass();
-  return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
-  });
+function createClient(connectionString: string): RepairConnection {
+  return createScriptDb(connectionString);
 }
 
 function timestamp() {
@@ -425,20 +407,14 @@ function sleep(ms: number) {
 }
 
 async function ensureCourse(
-  tx: any,
+  client: RepairClient,
   input: Pick<PaperRetarget, "courseCode" | "courseTitle">,
 ) {
-  const existing = await tx.course.findUnique({
-    where: { code: input.courseCode },
-  });
-  if (existing) return existing;
   const aliases = [...new Set([input.courseTitle, `${input.courseTitle} [${input.courseCode}]`])];
-  return tx.course.create({
-    data: {
-      code: input.courseCode,
-      title: input.courseTitle,
-      aliases,
-    },
+  return upsertCourseByCode(client, {
+    code: input.courseCode,
+    title: input.courseTitle,
+    aliases,
   });
 }
 
@@ -459,8 +435,9 @@ function paperMatchesKey(paper: PaperSnapshot, expectation: PaperKey) {
   );
 }
 
-async function tableExists(tx: any, tableName: string) {
-  const rows = await tx.$queryRawUnsafe(
+async function tableExists(client: RepairClient, tableName: string) {
+  const [row] = await queryRows<{ present: boolean }>(
+    client,
     `
       SELECT EXISTS (
         SELECT 1
@@ -469,9 +446,9 @@ async function tableExists(tx: any, tableName: string) {
           AND table_name = $1
       ) AS present
     `,
-    tableName,
+    [tableName],
   );
-  return Boolean(rows?.[0]?.present);
+  return Boolean(row?.present);
 }
 
 function assertPaperMatchesExpectation(paper: PaperSnapshot, expectation: PaperExpectation) {
@@ -483,54 +460,26 @@ function assertPaperMatchesExpectation(paper: PaperSnapshot, expectation: PaperE
   }
 }
 
-async function loadPaperSnapshots(tx: any, ids: string[]): Promise<Map<string, PaperSnapshot>> {
-  const rows = await tx.pastPaper.findMany({
-    where: { id: { in: ids } },
-    select: {
-      id: true,
-      title: true,
-      fileUrl: true,
-      thumbNailUrl: true,
-      examType: true,
-      slot: true,
-      year: true,
-      semester: true,
-      campus: true,
-      hasAnswerKey: true,
-      questionPaperId: true,
-      createdAt: true,
-      updatedAt: true,
-      courseId: true,
-      course: {
-        select: {
-          id: true,
-          code: true,
-          title: true,
-          aliases: true,
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-  });
-  return new Map(rows.map((row: PaperSnapshot) => [row.id, row]));
+async function loadPaperSnapshots(client: RepairClient, ids: string[]): Promise<Map<string, PaperSnapshot>> {
+  const rows = await loadPastPaperRows(client, { ids });
+  return new Map(rows.map((row) => [row.id, row as PaperSnapshot]));
 }
 
-async function assertRetargetUniqueness(tx: any, keeperId: string, retarget: PaperRetarget) {
-  const existing = await tx.pastPaper.findMany({
-    where: {
-      id: { not: keeperId },
-      course: { code: retarget.courseCode },
-      examType: retarget.examType,
-      slot: retarget.slot,
-      year: retarget.year,
-    },
-    select: { id: true },
-  });
+async function assertRetargetUniqueness(client: RepairClient, keeperId: string, retarget: PaperRetarget) {
+  const existing = await queryRows<{ id: string }>(
+    client,
+    `
+      SELECT p.id
+      FROM "PastPaper" p
+      INNER JOIN "Course" c ON c.id = p."courseId"
+      WHERE p.id <> $1
+        AND c.code = $2
+        AND p."examType" = $3
+        AND p.slot = $4
+        AND p.year = $5
+    `,
+    [keeperId, retarget.courseCode, retarget.examType, retarget.slot, retarget.year],
+  );
   if (existing.length > 0) {
     throw new Error(
       `Retargeting keeper ${keeperId} to ${retarget.courseCode} ${retarget.examType} ${retarget.slot} ${retarget.year} would collide with existing row(s): ${existing
@@ -540,51 +489,30 @@ async function assertRetargetUniqueness(tx: any, keeperId: string, retarget: Pap
   }
 }
 
-async function syncTags(tx: any, paperId: string, tagNames: string[]) {
-  const uniqueNames = [...new Set(tagNames.map((name) => name.trim()).filter(Boolean))];
-  const tags = [];
-  for (const name of uniqueNames) {
-    const tag = await tx.tag.upsert({
-      where: { name },
-      update: {},
-      create: {
-        name,
-        aliases: [],
-      },
-      select: { id: true },
-    });
-    tags.push(tag);
-  }
-  await tx.pastPaper.update({
-    where: { id: paperId },
-    data: {
-      tags: {
-        set: tags,
-      },
-    },
-  });
+async function syncTags(client: RepairClient, paperId: string, tagNames: string[]) {
+  await setPastPaperTags(client, paperId, tagNames);
 }
 
-async function mergeViewHistory(tx: any, keeperId: string, loserIds: string[]) {
-  const keeperRows = (await tx.viewHistory.findMany({
-    where: { pastPaperId: keeperId },
-    select: {
-      id: true,
-      userId: true,
-      count: true,
-      viewedAt: true,
-    },
-  })) as ViewHistoryRow[];
-  const loserRows = (await tx.viewHistory.findMany({
-    where: { pastPaperId: { in: loserIds } },
-    orderBy: [{ userId: "asc" }, { viewedAt: "desc" }, { id: "asc" }],
-    select: {
-      id: true,
-      userId: true,
-      count: true,
-      viewedAt: true,
-    },
-  })) as ViewHistoryRow[];
+async function mergeViewHistory(client: RepairClient, keeperId: string, loserIds: string[]) {
+  const keeperRows = (await queryRows<ViewHistoryRow>(
+    client,
+    `
+      SELECT id, "userId", count, "viewedAt"
+      FROM "ViewHistory"
+      WHERE "pastPaperId" = $1
+    `,
+    [keeperId],
+  )).map((row) => ({ ...row, viewedAt: new Date(row.viewedAt) }));
+  const loserRows = (await queryRows<ViewHistoryRow>(
+    client,
+    `
+      SELECT id, "userId", count, "viewedAt"
+      FROM "ViewHistory"
+      WHERE "pastPaperId" = ANY($1::text[])
+      ORDER BY "userId" ASC, "viewedAt" DESC, id ASC
+    `,
+    [loserIds],
+  )).map((row) => ({ ...row, viewedAt: new Date(row.viewedAt) }));
 
   const keeperByUser = new Map<string, ViewHistoryRow>(
     keeperRows.map((row) => [row.userId, row]),
@@ -594,10 +522,10 @@ async function mergeViewHistory(tx: any, keeperId: string, loserIds: string[]) {
   for (const row of loserRows) {
     const existing = keeperByUser.get(row.userId);
     if (!existing) {
-      await tx.viewHistory.update({
-        where: { id: row.id },
-        data: { pastPaperId: keeperId },
-      });
+      await client.query(
+        'UPDATE "ViewHistory" SET "pastPaperId" = $2 WHERE id = $1',
+        [row.id, keeperId],
+      );
       keeperByUser.set(row.userId, { ...row });
       touched += 1;
       continue;
@@ -605,14 +533,11 @@ async function mergeViewHistory(tx: any, keeperId: string, loserIds: string[]) {
 
     const viewedAt =
       existing.viewedAt.getTime() >= row.viewedAt.getTime() ? existing.viewedAt : row.viewedAt;
-    await tx.viewHistory.update({
-      where: { id: existing.id },
-      data: {
-        count: existing.count + row.count,
-        viewedAt,
-      },
-    });
-    await tx.viewHistory.delete({ where: { id: row.id } });
+    await client.query(
+      'UPDATE "ViewHistory" SET count = $2, "viewedAt" = $3 WHERE id = $1',
+      [existing.id, existing.count + row.count, viewedAt],
+    );
+    await client.query('DELETE FROM "ViewHistory" WHERE id = $1', [row.id]);
     keeperByUser.set(row.userId, {
       ...existing,
       count: existing.count + row.count,
@@ -624,7 +549,7 @@ async function mergeViewHistory(tx: any, keeperId: string, loserIds: string[]) {
   return touched;
 }
 
-async function mergeDuplicateIntoKeeper(tx: any, keeperId: string, loserIds: string[]) {
+async function mergeDuplicateIntoKeeper(client: RepairClient, keeperId: string, loserIds: string[]) {
   if (loserIds.length === 0) {
     return {
       movedBookmarkRows: 0,
@@ -636,17 +561,15 @@ async function mergeDuplicateIntoKeeper(tx: any, keeperId: string, loserIds: str
     };
   }
 
-  const answerKeyDependents = await tx.pastPaper.findMany({
-    where: {
-      questionPaperId: {
-        in: [keeperId, ...loserIds],
-      },
-    },
-    select: {
-      id: true,
-      questionPaperId: true,
-    },
-  });
+  const answerKeyDependents = await queryRows<{ id: string; questionPaperId: string | null }>(
+    client,
+    `
+      SELECT id, "questionPaperId"
+      FROM "PastPaper"
+      WHERE "questionPaperId" = ANY($1::text[])
+    `,
+    [[keeperId, ...loserIds]],
+  );
   const keeperDependents = answerKeyDependents.filter(
     (row: { questionPaperId: string | null }) => row.questionPaperId === keeperId,
   );
@@ -666,24 +589,18 @@ async function mergeDuplicateIntoKeeper(tx: any, keeperId: string, loserIds: str
   }
 
   let movedStudyChatRows = 0;
-  if (await tableExists(tx, "StudyChat")) {
-    const studyChatUpdate = await tx.studyChat.updateMany({
-      where: {
-        pastPaperId: {
-          in: loserIds,
-        },
-      },
-      data: {
-        pastPaperId: keeperId,
-      },
-    });
-    movedStudyChatRows = studyChatUpdate.count;
+  if (await tableExists(client, "StudyChat")) {
+    const studyChatUpdate = await client.query(
+      'UPDATE "StudyChat" SET "pastPaperId" = $2, "updatedAt" = NOW() WHERE "pastPaperId" = ANY($1::text[])',
+      [loserIds, keeperId],
+    );
+    movedStudyChatRows = studyChatUpdate.rowCount ?? 0;
   }
 
-  const mergedViewHistoryRows = await mergeViewHistory(tx, keeperId, loserIds);
+  const mergedViewHistoryRows = await mergeViewHistory(client, keeperId, loserIds);
 
   const loserIdSql = sqlList(loserIds);
-  const movedBookmarkRows = await tx.$executeRawUnsafe(
+  const movedBookmarkResult = await client.query(
     `
       INSERT INTO "_UserBookmarkedPastPapers" ("A", "B")
       SELECT $1, rel."B"
@@ -691,16 +608,16 @@ async function mergeDuplicateIntoKeeper(tx: any, keeperId: string, loserIds: str
       WHERE rel."A" IN (${loserIdSql})
       ON CONFLICT ("A", "B") DO NOTHING
     `,
-    keeperId,
+    [keeperId],
   );
-  await tx.$executeRawUnsafe(
+  await client.query(
     `
       DELETE FROM "_UserBookmarkedPastPapers"
       WHERE "A" IN (${loserIdSql})
     `,
   );
 
-  const movedTagRows = await tx.$executeRawUnsafe(
+  const movedTagResult = await client.query(
     `
       INSERT INTO "_PastPaperToTag" ("A", "B")
       SELECT $1, rel."B"
@@ -708,9 +625,9 @@ async function mergeDuplicateIntoKeeper(tx: any, keeperId: string, loserIds: str
       WHERE rel."A" IN (${loserIdSql})
       ON CONFLICT ("A", "B") DO NOTHING
     `,
-    keeperId,
+    [keeperId],
   );
-  await tx.$executeRawUnsafe(
+  await client.query(
     `
       DELETE FROM "_PastPaperToTag"
       WHERE "A" IN (${loserIdSql})
@@ -719,118 +636,127 @@ async function mergeDuplicateIntoKeeper(tx: any, keeperId: string, loserIds: str
 
   let reattachedAnswerKeys = 0;
   if (loserDependents.length === 1) {
-    await tx.pastPaper.update({
-      where: { id: loserDependents[0].id },
-      data: {
-        questionPaperId: keeperId,
-      },
-    });
+    await client.query(
+      'UPDATE "PastPaper" SET "questionPaperId" = $2, "updatedAt" = NOW() WHERE id = $1',
+      [loserDependents[0].id, keeperId],
+    );
     reattachedAnswerKeys = 1;
   }
 
-  const deleted = await tx.pastPaper.deleteMany({
-    where: {
-      id: {
-        in: loserIds,
-      },
-    },
-  });
+  const deleted = await client.query(
+    'DELETE FROM "PastPaper" WHERE id = ANY($1::text[])',
+    [loserIds],
+  );
 
   return {
-    movedBookmarkRows: Number(movedBookmarkRows),
-    movedTagRows: Number(movedTagRows),
+    movedBookmarkRows: Number(movedBookmarkResult.rowCount ?? 0),
+    movedTagRows: Number(movedTagResult.rowCount ?? 0),
     movedStudyChatRows,
     mergedViewHistoryRows,
     reattachedAnswerKeys,
-    deletedRows: deleted.count,
+    deletedRows: deleted.rowCount ?? 0,
   };
 }
 
-async function runCase(prisma: any, repairCase: RepairCase, dryRun: boolean): Promise<CaseReport> {
+async function runCase(connection: RepairConnection, repairCase: RepairCase, dryRun: boolean): Promise<CaseReport> {
   const attempts = dryRun ? 1 : 5;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const client = await connection.pool.connect();
     try {
-      return await prisma.$transaction(
-        async (tx: any) => {
-          const ids = [repairCase.keeper.id, ...repairCase.losers.map((row) => row.id)];
-          const snapshots = await loadPaperSnapshots(tx, ids);
-          const keeper = snapshots.get(repairCase.keeper.id);
-          if (!keeper) {
-            throw new Error(`Missing keeper ${repairCase.keeper.id}.`);
-          }
-          const keeperMatchesCurrent = paperMatchesKey(keeper, repairCase.keeper);
-          const keeperMatchesRetarget = repairCase.retarget
-            ? paperMatchesKey(keeper, repairCase.retarget)
-            : false;
-          if (!keeperMatchesCurrent && !keeperMatchesRetarget) {
-            assertPaperMatchesExpectation(keeper, repairCase.keeper);
-          }
+      await client.query("BEGIN");
 
-          const remainingLosers: string[] = [];
-          for (const loserExpectation of repairCase.losers) {
-            const loser = snapshots.get(loserExpectation.id);
-            if (!loser) {
-              continue;
-            }
-            assertPaperMatchesExpectation(loser, loserExpectation);
-            remainingLosers.push(loserExpectation.id);
-          }
+      const ids = [repairCase.keeper.id, ...repairCase.losers.map((row) => row.id)];
+      const snapshots = await loadPaperSnapshots(client, ids);
+      const keeper = snapshots.get(repairCase.keeper.id);
+      if (!keeper) {
+        throw new Error(`Missing keeper ${repairCase.keeper.id}.`);
+      }
+      const keeperMatchesCurrent = paperMatchesKey(keeper, repairCase.keeper);
+      const keeperMatchesRetarget = repairCase.retarget
+        ? paperMatchesKey(keeper, repairCase.retarget)
+        : false;
+      if (!keeperMatchesCurrent && !keeperMatchesRetarget) {
+        assertPaperMatchesExpectation(keeper, repairCase.keeper);
+      }
 
-          if (repairCase.retarget && !keeperMatchesRetarget) {
-            await assertRetargetUniqueness(tx, repairCase.keeper.id, repairCase.retarget);
-          }
+      const remainingLosers: string[] = [];
+      for (const loserExpectation of repairCase.losers) {
+        const loser = snapshots.get(loserExpectation.id);
+        if (!loser) {
+          continue;
+        }
+        assertPaperMatchesExpectation(loser, loserExpectation);
+        remainingLosers.push(loserExpectation.id);
+      }
 
-          const report: CaseReport = {
-            key: repairCase.key,
-            description: repairCase.description,
-            action: dryRun ? "dry_run" : "applied",
-            keeperId: repairCase.keeper.id,
-            loserIds: remainingLosers,
-            retargetedTo: repairCase.retarget ?? null,
-            movedBookmarkRows: 0,
-            movedTagRows: 0,
-            movedStudyChatRows: 0,
-            mergedViewHistoryRows: 0,
-            reattachedAnswerKeys: 0,
-            deletedRows: remainingLosers.length,
-          };
+      if (repairCase.retarget && !keeperMatchesRetarget) {
+        await assertRetargetUniqueness(client, repairCase.keeper.id, repairCase.retarget);
+      }
 
-          if (dryRun) {
-            return report;
-          }
+      const report: CaseReport = {
+        key: repairCase.key,
+        description: repairCase.description,
+        action: dryRun ? "dry_run" : "applied",
+        keeperId: repairCase.keeper.id,
+        loserIds: remainingLosers,
+        retargetedTo: repairCase.retarget ?? null,
+        movedBookmarkRows: 0,
+        movedTagRows: 0,
+        movedStudyChatRows: 0,
+        mergedViewHistoryRows: 0,
+        reattachedAnswerKeys: 0,
+        deletedRows: remainingLosers.length,
+      };
 
-          const mergeReport = await mergeDuplicateIntoKeeper(tx, repairCase.keeper.id, remainingLosers);
+      if (dryRun) {
+        await client.query("ROLLBACK");
+        return report;
+      }
 
-          if (repairCase.retarget && !keeperMatchesRetarget) {
-            const course = await ensureCourse(tx, repairCase.retarget);
-            await tx.pastPaper.update({
-              where: { id: repairCase.keeper.id },
-              data: {
-                title: repairCase.retarget.title,
-                courseId: course.id,
-                examType: repairCase.retarget.examType,
-                slot: repairCase.retarget.slot,
-                year: repairCase.retarget.year,
-                semester: repairCase.retarget.semester ?? "UNKNOWN",
-                campus: repairCase.retarget.campus ?? "VELLORE",
-                hasAnswerKey: repairCase.retarget.hasAnswerKey ?? false,
-                isClear: true,
-              },
-            });
+      const mergeReport = await mergeDuplicateIntoKeeper(client, repairCase.keeper.id, remainingLosers);
 
-            if (repairCase.retarget.tagNames?.length) {
-              await syncTags(tx, repairCase.keeper.id, repairCase.retarget.tagNames);
-            }
-          }
+      if (repairCase.retarget && !keeperMatchesRetarget) {
+        const course = await ensureCourse(client, repairCase.retarget);
+        await client.query(
+          `
+            UPDATE "PastPaper"
+            SET title = $2,
+                "courseId" = $3,
+                "examType" = $4,
+                slot = $5,
+                year = $6,
+                semester = $7,
+                campus = $8,
+                "hasAnswerKey" = $9,
+                "isClear" = TRUE,
+                "updatedAt" = NOW()
+            WHERE id = $1
+          `,
+          [
+            repairCase.keeper.id,
+            repairCase.retarget.title,
+            course.id,
+            repairCase.retarget.examType,
+            repairCase.retarget.slot,
+            repairCase.retarget.year,
+            repairCase.retarget.semester ?? "UNKNOWN",
+            repairCase.retarget.campus ?? "VELLORE",
+            repairCase.retarget.hasAnswerKey ?? false,
+          ],
+        );
 
-          return {
-            ...report,
-            ...mergeReport,
-          };
-        },
-        { timeout: 300000, maxWait: 60000 },
-      );
+        if (repairCase.retarget.tagNames?.length) {
+          await syncTags(client, repairCase.keeper.id, repairCase.retarget.tagNames);
+        }
+      }
+
+      await client.query("COMMIT");
+      return {
+        ...report,
+        ...mergeReport,
+      };
     } catch (error: any) {
+      await client.query("ROLLBACK");
       const isRetryable =
         !dryRun &&
         (String(error?.cause?.kind || "").includes("TransactionWriteConflict") ||
@@ -840,6 +766,8 @@ async function runCase(prisma: any, repairCase: RepairCase, dryRun: boolean): Pr
         throw error;
       }
       await sleep(250 * attempt);
+    } finally {
+      client.release();
     }
   }
   throw new Error(`Failed to apply repair case ${repairCase.key}.`);
@@ -849,11 +777,11 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   await mkdir(REPORT_DIR, { recursive: true });
 
-  const prisma = await createClient(options.databaseUrl);
+  const connection = createClient(options.databaseUrl);
   try {
     const caseReports: CaseReport[] = [];
     for (const repairCase of REPAIR_CASES) {
-      const report = await runCase(prisma, repairCase, options.dryRun);
+      const report = await runCase(connection, repairCase, options.dryRun);
       caseReports.push(report);
       console.log(
         `${options.dryRun ? "Validated" : "Applied"} ${repairCase.key} (${repairCase.losers.length} duplicate row(s)).`,
@@ -893,7 +821,7 @@ async function main() {
     console.log(JSON.stringify(output, null, 2));
     console.log(`Report written to ${targetFile}`);
   } finally {
-    await prisma.$disconnect();
+    await connection.close();
   }
 }
 
