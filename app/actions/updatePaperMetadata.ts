@@ -4,12 +4,13 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { Campus, db, ExamType, pastPaper, Semester } from "@/db";
+import { db, pastPaper } from "@/db";
+import { campusValues, examTypeValues, semesterValues } from "@/db/enums";
 
 const schema = z.object({
     id: z.string().min(1),
     courseId: z.string().min(1).nullable(),
-    examType: z.nativeEnum(ExamType).nullable(),
+    examType: z.enum(examTypeValues).nullable(),
     slot: z
         .string()
         .regex(/^[A-G][12]$/i, "Slot must match A1..G2")
@@ -23,8 +24,8 @@ const schema = z.object({
         .max(2100)
         .nullable()
         .or(z.nan().transform(() => null)),
-    semester: z.nativeEnum(Semester),
-    campus: z.nativeEnum(Campus),
+    semester: z.enum(semesterValues),
+    campus: z.enum(campusValues),
     hasAnswerKey: z.boolean(),
 });
 
