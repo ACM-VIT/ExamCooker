@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
@@ -105,7 +105,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     });
   };
 
-  const handleVoiceClick = () => {
+  const handleVoiceClick = useCallback(() => {
     if (!isAuthed) {
       requireAuth("use the voice guide");
       return;
@@ -113,7 +113,13 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
 
     setVoiceRuntimeRequested(true);
     setVoiceStartToken((current) => current + 1);
-  };
+  }, [isAuthed, requireAuth]);
+
+  useEffect(() => {
+    const handler = () => handleVoiceClick();
+    window.addEventListener("examcooker:voice-agent-start", handler);
+    return () => window.removeEventListener("examcooker:voice-agent-start", handler);
+  }, [handleVoiceClick]);
 
   return (
     <>
@@ -154,7 +160,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
         className={`fixed top-0 left-0 z-50 h-dvh max-h-dvh w-fit overflow-visible border-r border-black/15 bg-[#C2E6EC] transition-transform duration-200 ease-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
       >
-        <div className="flex h-full max-h-dvh w-fit flex-col items-center justify-between overflow-y-auto overscroll-contain p-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
+        <div className="flex h-full max-h-dvh w-fit flex-col items-center justify-between overflow-y-auto overscroll-contain p-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] lg:pb-6">
           <div className="flex w-full min-h-[2.5rem] items-center justify-start px-1">
             <button
               type="button"
@@ -213,7 +219,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
             })}
           </div>
 
-          <div className="mb-2 flex flex-col items-center gap-2">
+          <div className="relative z-10 mb-1 flex flex-col items-center gap-2">
             <div className="group flex">
               {voiceRuntimeRequested ? (
                 <VoiceAgentEntry startToken={voiceStartToken} />
@@ -231,18 +237,18 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
             </div>
             <ThemeToggleSwitch />
             {isAuthed ? (
-              <div className="relative" ref={profileRef}>
+              <div className="relative z-10" ref={profileRef}>
                 <button
                   type="button"
                   title="Profile"
                   aria-label="Profile"
                   onClick={() => setShowProfile((v) => !v)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-black/15 bg-white text-xs font-bold text-black/70 transition-colors duration-200 hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:bg-transparent dark:text-[#D5D5D5]/70 dark:hover:border-[#3BF4C7]/60 dark:hover:text-[#3BF4C7]"
+                  className="pointer-events-auto flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-black/15 bg-white text-xs font-bold text-black/70 transition-colors duration-200 hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:bg-transparent dark:text-[#D5D5D5]/70 dark:hover:border-[#3BF4C7]/60 dark:hover:text-[#3BF4C7]"
                 >
                   {(session?.user?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
                 </button>
                 {showProfile && (
-                  <div className="absolute bottom-0 left-full ml-3 w-56 rounded-md border border-black/10 bg-white p-3 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#121B31]">
+                  <div className="absolute bottom-0 left-full z-20 ml-3 w-56 rounded-md border border-black/10 bg-white p-3 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#121B31]">
                     <p className="mb-1 text-sm font-semibold text-black dark:text-[#D5D5D5]">
                       {session?.user?.name}
                     </p>
