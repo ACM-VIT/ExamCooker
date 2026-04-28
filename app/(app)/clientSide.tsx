@@ -221,15 +221,15 @@ export default function ClientSide({
     const toggleNavbar = () => setIsNavOn((v) => !v);
 
     return (
-        <Suspense fallback={<ClientShell isNavOn={isNavOn} toggleNavbar={toggleNavbar}>{children}</ClientShell>}>
-            <ClientProviders initialBookmarks={initialBookmarks}>
-                <Suspense fallback={null}>
-                    <RouteEffects onPathChange={handlePathChange} />
-                </Suspense>
-                <ClientShell isNavOn={isNavOn} toggleNavbar={toggleNavbar}>
+        <ClientShell isNavOn={isNavOn} toggleNavbar={toggleNavbar}>
+            <Suspense fallback={children}>
+                <ClientProviders initialBookmarks={initialBookmarks}>
+                    <Suspense fallback={null}>
+                        <RouteEffects onPathChange={handlePathChange} />
+                    </Suspense>
                     {children}
-                </ClientShell>
-            </ClientProviders>
-        </Suspense>
+                </ClientProviders>
+            </Suspense>
+        </ClientShell>
     );
 }
