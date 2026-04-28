@@ -22,21 +22,26 @@ elif command -v psql >/dev/null 2>&1; then
   psql "$DATABASE_URL" -f "$SQL_FILE"
 else
   node - <<'NODE'
-const path = require('node:path');
-const { PrismaClient } = require('@/prisma/generated/client');
+const { Client } = require('pg');
 
-const prisma = new PrismaClient();
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+});
 
 async function main() {
-  const rows = await prisma.$queryRawUnsafe('EXPLAIN SELECT "name" FROM "Tag" WHERE "name" ILIKE %L', '%foo%');
-  console.log(rows.map(r => Object.values(r).join(' | ')).join('\n'));
+  await client.connect();
+  const result = await client.query(
+    'EXPLAIN SELECT "name" FROM "Tag" WHERE "name" ILIKE $1',
+    ['%foo%'],
+  );
+  console.log(result.rows.map((row) => Object.values(row).join(' | ')).join('\n'));
 }
 
 main()
-  .then(() => prisma.$disconnect())
+  .then(() => client.end())
   .catch(async (error) => {
     console.error(error);
-    await prisma.$disconnect();
+    await client.end();
     process.exit(1);
   });
 NODE

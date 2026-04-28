@@ -6,12 +6,12 @@ import type {
 import NextAuth from "next-auth";
 import { getServerSession } from "next-auth/next";
 import Google from "next-auth/providers/google";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import prisma from "@/lib/prisma";
-import type { PrismaClient as NextAuthPrismaClient } from "@/prisma/generated/client";
+import { eq } from "drizzle-orm";
+import { createAuthAdapter } from "@/src/db/auth-adapter";
+import { db } from "@/src/db";
+import { user as userTable } from "@/src/db/schema";
 
-const prismaForAuth = prisma as unknown as NextAuthPrismaClient;
-const adapter = PrismaAdapter(prismaForAuth);
+const adapter = createAuthAdapter();
 const ROLE_REFRESH_INTERVAL_SECONDS = 5 * 60;
 let warnedAboutStaleSessionCookie = false;
 type AppRole = "USER" | "MODERATOR";
@@ -99,10 +99,12 @@ export const authConfig = {
         (!lastSyncedAt || now - lastSyncedAt > ROLE_REFRESH_INTERVAL_SECONDS)
       ) {
         try {
-          const dbUser = await prismaForAuth.user.findUnique({
-            where: { id: userId },
-            select: { role: true },
-          });
+          const dbUser = await db
+            .select({ role: userTable.role })
+            .from(userTable)
+            .where(eq(userTable.id, userId))
+            .then((rows) => rows[0] ?? null);
+
           if (dbUser?.role) token.role = dbUser.role;
           token.roleSyncedAt = now;
         } catch (error) {

@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
+import { eq } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/courseTags";
 import { examSlugToType } from "@/lib/examSlug";
 import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
@@ -29,12 +29,15 @@ import CoursePaperGrid from "@/app/components/past_papers/CoursePaperGrid";
 import CoursePagination from "@/app/components/past_papers/CoursePagination";
 import CourseVisitTracker from "@/app/components/past_papers/CourseVisitTracker";
 import {
-    Campus as CampusEnum,
-    Semester as SemesterEnum,
+    campusValues,
+    course as courseTable,
+    db,
+    pastPaper,
+    semesterValues,
     type Campus,
     type ExamType,
     type Semester,
-} from "@/prisma/generated/client";
+} from "@/src/db";
 import {
     buildBreadcrumbList,
     buildCollectionPage,
@@ -44,8 +47,8 @@ import {
 
 const PAGE_SIZE = 24;
 const CUID_REGEX = /^c[a-z0-9]{20,}$/i;
-const SEMESTER_VALUES = new Set<Semester>(Object.values(SemesterEnum));
-const CAMPUS_VALUES = new Set<Campus>(Object.values(CampusEnum));
+const SEMESTER_VALUES = new Set<Semester>(semesterValues);
+const CAMPUS_VALUES = new Set<Campus>(campusValues);
 
 type SearchParamsRaw = {
     exam?: string;
@@ -121,12 +124,19 @@ function buildSearchString(raw: SearchParamsRaw): string {
  */
 async function handleLegacyPaperRedirect(rawCode: string): Promise<never | void> {
     if (!CUID_REGEX.test(rawCode)) return;
-    const paper = await prisma.pastPaper.findUnique({
-        where: { id: rawCode },
-        select: { id: true, course: { select: { code: true } } },
-    });
+    const rows = await db
+        .select({
+            id: pastPaper.id,
+            courseCode: courseTable.code,
+        })
+        .from(pastPaper)
+        .leftJoin(courseTable, eq(pastPaper.courseId, courseTable.id))
+        .where(eq(pastPaper.id, rawCode))
+        .limit(1);
+
+    const paper = rows[0];
     if (!paper) notFound();
-    const courseCode = paper.course?.code ?? "unassigned";
+    const courseCode = paper.courseCode ?? "unassigned";
     permanentRedirect(
         `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`,
     );

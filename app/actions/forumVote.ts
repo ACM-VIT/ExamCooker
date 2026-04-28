@@ -1,144 +1,96 @@
 'use server'
 
-import prisma from '@/lib/prisma';
+import { and, eq, sql } from 'drizzle-orm'
 import { auth } from "@/app/auth";
 import { revalidateTag } from "next/cache";
+import { db, forumPost, type VoteType, vote } from '@/src/db'
 
-export async function upvotePost(postId: string) {
+async function toggleVote(postId: string, nextType: VoteType) {
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
-        return
+        return;
     }
+
     try {
-        const existingVote = await prisma.vote.findUnique({
-            where: {
-                userId_forumPostId: {
+        const counts = await db.transaction(async (tx) => {
+            const existingVote = await tx
+                .select()
+                .from(vote)
+                .where(and(eq(vote.userId, userId), eq(vote.forumPostId, postId)))
+                .then((rows) => rows[0] ?? null);
+
+            if (!existingVote) {
+                await tx.insert(vote).values({
                     userId,
                     forumPostId: postId,
-                },
-            },
-        });
-
-        if (existingVote) {
-            if (existingVote.type === 'UPVOTE') {
-                await prisma.vote.delete({
-                    where: {
-                        id: existingVote.id,
-                    },
+                    type: nextType,
                 });
-                await prisma.forumPost.update({
-                    where: { id: postId },
-                    data: { upvoteCount: { decrement: 1 } },
-                });
+                await tx
+                    .update(forumPost)
+                    .set(
+                        nextType === "UPVOTE"
+                            ? { upvoteCount: sql`${forumPost.upvoteCount} + 1` }
+                            : { downvoteCount: sql`${forumPost.downvoteCount} + 1` },
+                    )
+                    .where(eq(forumPost.id, postId));
+            } else if (existingVote.type === nextType) {
+                await tx.delete(vote).where(eq(vote.id, existingVote.id));
+                await tx
+                    .update(forumPost)
+                    .set(
+                        nextType === "UPVOTE"
+                            ? { upvoteCount: sql`${forumPost.upvoteCount} - 1` }
+                            : { downvoteCount: sql`${forumPost.downvoteCount} - 1` },
+                    )
+                    .where(eq(forumPost.id, postId));
             } else {
-                // Change downvote to upvote
-                await prisma.vote.update({
-                    where: { id: existingVote.id },
-                    data: { type: 'UPVOTE' },
-                });
-                await prisma.forumPost.update({
-                    where: { id: postId },
-                    data: {
-                        upvoteCount: { increment: 1 },
-                        downvoteCount: { decrement: 1 },
-                    },
-                });
+                await tx
+                    .update(vote)
+                    .set({ type: nextType })
+                    .where(eq(vote.id, existingVote.id));
+                await tx
+                    .update(forumPost)
+                    .set(
+                        nextType === "UPVOTE"
+                            ? {
+                                upvoteCount: sql`${forumPost.upvoteCount} + 1`,
+                                downvoteCount: sql`${forumPost.downvoteCount} - 1`,
+                            }
+                            : {
+                                upvoteCount: sql`${forumPost.upvoteCount} - 1`,
+                                downvoteCount: sql`${forumPost.downvoteCount} + 1`,
+                            },
+                    )
+                    .where(eq(forumPost.id, postId));
             }
-        } else {
-            await prisma.vote.create({
-                data: {
-                    userId,
-                    forumPostId: postId,
-                    type: 'UPVOTE',
-                },
-            });
-            await prisma.forumPost.update({
-                where: { id: postId },
-                data: { upvoteCount: { increment: 1 } },
-            });
-        }
 
-        const updatedPost = await prisma.forumPost.findUnique({
-            where: { id: postId },
-            select: { upvoteCount: true },
+            return tx
+                .select({
+                    upvoteCount: forumPost.upvoteCount,
+                    downvoteCount: forumPost.downvoteCount,
+                })
+                .from(forumPost)
+                .where(eq(forumPost.id, postId))
+                .then((rows) => rows[0] ?? null);
         });
 
         revalidateTag("forum", "minutes");
-        return { success: true, upvoteCount: updatedPost?.upvoteCount };
+        return {
+            success: true,
+            upvoteCount: counts?.upvoteCount,
+            downvoteCount: counts?.downvoteCount,
+        };
     } catch (error) {
-        console.error('Error upvoting post:', error);
-        return { success: false, error: 'Failed to upvote post' };
+        console.error(`Error toggling ${nextType.toLowerCase()} vote:`, error);
+        return { success: false, error: `Failed to ${nextType.toLowerCase()} post` };
     }
 }
 
-
+export async function upvotePost(postId: string) {
+    return toggleVote(postId, "UPVOTE");
+}
 
 export async function downvotePost(postId: string) {
-    try {
-        const session = await auth();
-        const userId = session?.user?.id;
-        if (!userId) {
-            return
-        }
-        const existingVote = await prisma.vote.findUnique({
-            where: {
-                userId_forumPostId: {
-                    userId,
-                    forumPostId: postId,
-                },
-            },
-        });
-
-        if (existingVote) {
-            if (existingVote.type === 'DOWNVOTE') {
-                await prisma.vote.delete({
-                    where: {
-                        id: existingVote.id,
-                    },
-                });
-                await prisma.forumPost.update({
-                    where: { id: postId },
-                    data: { downvoteCount: { decrement: 1 } },
-                });
-            } else {
-                await prisma.vote.update({
-                    where: { id: existingVote.id },
-                    data: { type: 'DOWNVOTE' },
-                });
-                await prisma.forumPost.update({
-                    where: { id: postId },
-                    data: {
-                        upvoteCount: { decrement: 1 },
-                        downvoteCount: { increment: 1 },
-                    },
-                });
-            }
-        } else {
-            // Add a new downvote
-            await prisma.vote.create({
-                data: {
-                    userId,
-                    forumPostId: postId,
-                    type: 'DOWNVOTE',
-                },
-            });
-            await prisma.forumPost.update({
-                where: { id: postId },
-                data: { downvoteCount: { increment: 1 } },
-            });
-        }
-
-        const updatedPost = await prisma.forumPost.findUnique({
-            where: { id: postId },
-            select: { downvoteCount: true },
-        });
-
-        revalidateTag("forum", "minutes");
-        return { success: true, downvoteCount: updatedPost?.downvoteCount };
-    } catch (error) {
-        console.error('Error downvoting post:', error);
-        return { success: false, error: 'Failed to downvote post' };
-    }
-
+    return toggleVote(postId, "DOWNVOTE");
 }

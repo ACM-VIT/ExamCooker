@@ -1,51 +1,74 @@
 "use server";
 
 import { auth } from "@/app/auth";
-import prisma from "@/lib/prisma";
+import { eq, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
+import { db, viewHistory } from "@/src/db";
 
 export type ViewableItemType = "pastpaper" | "note" | "forumpost" | "subject" | "syllabus";
+
+function upsertViewHistory(
+    values:
+        | { userId: string; pastPaperId: string; viewedAt: Date }
+        | { userId: string; noteId: string; viewedAt: Date }
+        | { userId: string; forumPostId: string; viewedAt: Date }
+        | { userId: string; subjectId: string; viewedAt: Date }
+        | { userId: string; syllabusId: string; viewedAt: Date },
+    target:
+        | [typeof viewHistory.userId, typeof viewHistory.pastPaperId]
+        | [typeof viewHistory.userId, typeof viewHistory.noteId]
+        | [typeof viewHistory.userId, typeof viewHistory.forumPostId]
+        | [typeof viewHistory.userId, typeof viewHistory.subjectId]
+        | [typeof viewHistory.userId, typeof viewHistory.syllabusId],
+) {
+    return db
+        .insert(viewHistory)
+        .values(values)
+        .onConflictDoUpdate({
+            target,
+            set: {
+                viewedAt: new Date(),
+                count: sql`${viewHistory.count} + 1`,
+            },
+        });
+}
 
 export async function recordViewAction(type: ViewableItemType, itemId: string) {
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) return { success: false };
 
+    const viewedAt = new Date();
     switch (type) {
         case "pastpaper":
-            await prisma.viewHistory.upsert({
-                where: { userId_pastPaperId: { userId, pastPaperId: itemId } },
-                update: { viewedAt: new Date(), count: { increment: 1 } },
-                create: { userId, pastPaperId: itemId, viewedAt: new Date() },
-            });
+            await upsertViewHistory(
+                { userId, pastPaperId: itemId, viewedAt },
+                [viewHistory.userId, viewHistory.pastPaperId],
+            );
             break;
         case "note":
-            await prisma.viewHistory.upsert({
-                where: { userId_noteId: { userId, noteId: itemId } },
-                update: { viewedAt: new Date(), count: { increment: 1 } },
-                create: { userId, noteId: itemId, viewedAt: new Date() },
-            });
+            await upsertViewHistory(
+                { userId, noteId: itemId, viewedAt },
+                [viewHistory.userId, viewHistory.noteId],
+            );
             break;
         case "forumpost":
-            await prisma.viewHistory.upsert({
-                where: { userId_forumPostId: { userId, forumPostId: itemId } },
-                update: { viewedAt: new Date(), count: { increment: 1 } },
-                create: { userId, forumPostId: itemId, viewedAt: new Date() },
-            });
+            await upsertViewHistory(
+                { userId, forumPostId: itemId, viewedAt },
+                [viewHistory.userId, viewHistory.forumPostId],
+            );
             break;
         case "subject":
-            await prisma.viewHistory.upsert({
-                where: { userId_subjectId: { userId, subjectId: itemId } },
-                update: { viewedAt: new Date(), count: { increment: 1 } },
-                create: { userId, subjectId: itemId, viewedAt: new Date() },
-            });
+            await upsertViewHistory(
+                { userId, subjectId: itemId, viewedAt },
+                [viewHistory.userId, viewHistory.subjectId],
+            );
             break;
         case "syllabus":
-            await prisma.viewHistory.upsert({
-                where: { userId_syllabusId: { userId, syllabusId: itemId } },
-                update: { viewedAt: new Date(), count: { increment: 1 } },
-                create: { userId, syllabusId: itemId, viewedAt: new Date() },
-            });
+            await upsertViewHistory(
+                { userId, syllabusId: itemId, viewedAt },
+                [viewHistory.userId, viewHistory.syllabusId],
+            );
             break;
         default:
             break;

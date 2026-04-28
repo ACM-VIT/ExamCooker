@@ -1,27 +1,40 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+import { and, count, desc, eq, getTableColumns, ilike, ne, sql } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/pastPaperTitle";
+import { course, db, note, pastPaper, user } from "@/src/db";
 
 export async function fetchUnclearedItems() {
     const session = await auth();
     // @ts-ignore
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    const notes = await prisma.note.findMany({
-        where: { isClear: false },
-        orderBy: { createdAt: "desc" },
-    });
-    const pastPapers = await prisma.pastPaper.findMany({
-        where: { isClear: false },
-        orderBy: { createdAt: "desc" },
-        include: { course: { select: { code: true, title: true } } },
-    });
+    const noteColumns = getTableColumns(note);
+    const pastPaperColumns = getTableColumns(pastPaper);
 
-    const totalUsers = await prisma.user.count();
+    const [notes, pastPapers, totalRows] = await Promise.all([
+        db
+            .select(noteColumns)
+            .from(note)
+            .where(eq(note.isClear, false))
+            .orderBy(desc(note.createdAt)),
+        db
+            .select({
+                ...pastPaperColumns,
+                courseCode: course.code,
+                courseTitle: course.title,
+            })
+            .from(pastPaper)
+            .leftJoin(course, eq(pastPaper.courseId, course.id))
+            .where(eq(pastPaper.isClear, false))
+            .orderBy(desc(pastPaper.createdAt)),
+        db.select({ total: count() }).from(user),
+    ]);
+
+    const totalUsers = totalRows[0]?.total ?? 0;
 
     return {
         notes: notes.map((note) => ({
@@ -33,6 +46,13 @@ export async function fetchUnclearedItems() {
             ...paper,
             fileUrl: normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl,
             thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
+            course:
+                paper.courseCode && paper.courseTitle
+                    ? {
+                        code: paper.courseCode,
+                        title: paper.courseTitle,
+                    }
+                    : null,
         })),
         totalUsers,
     };
@@ -50,19 +70,34 @@ export async function approveItem(
     const allowDuplicate = options?.allowDuplicate ?? false;
 
     if (type === "note") {
-        await prisma.note.update({ where: { id }, data: { isClear: true } });
+        await db.update(note).set({ isClear: true }).where(eq(note.id, id));
     } else {
-        const paper = await prisma.pastPaper.findUnique({
-            where: { id },
-            select: { title: true, fileUrl: true, courseId: true, examType: true, year: true },
-        });
+        const paperRows = await db
+            .select({
+                title: pastPaper.title,
+                fileUrl: pastPaper.fileUrl,
+                courseId: pastPaper.courseId,
+                examType: pastPaper.examType,
+                year: pastPaper.year,
+            })
+            .from(pastPaper)
+            .where(eq(pastPaper.id, id))
+            .limit(1);
+
+        const paper = paperRows[0];
         if (!paper) throw new Error("Past paper not found");
 
         if (!allowDuplicate) {
-            const fileDuplicate = await prisma.pastPaper.findFirst({
-                where: { id: { not: id }, fileUrl: paper.fileUrl },
-                select: { id: true, title: true },
-            });
+            const fileDuplicateRows = await db
+                .select({
+                    id: pastPaper.id,
+                    title: pastPaper.title,
+                })
+                .from(pastPaper)
+                .where(and(ne(pastPaper.id, id), eq(pastPaper.fileUrl, paper.fileUrl)))
+                .limit(1);
+
+            const fileDuplicate = fileDuplicateRows[0];
             if (fileDuplicate) {
                 return {
                     status: "duplicate" as const,
@@ -72,15 +107,23 @@ export async function approveItem(
             }
 
             if (paper.courseId && paper.examType && paper.year) {
-                const structuredDuplicate = await prisma.pastPaper.findFirst({
-                    where: {
-                        id: { not: id },
-                        courseId: paper.courseId,
-                        examType: paper.examType,
-                        year: paper.year,
-                    },
-                    select: { id: true, title: true },
-                });
+                const structuredDuplicateRows = await db
+                    .select({
+                        id: pastPaper.id,
+                        title: pastPaper.title,
+                    })
+                    .from(pastPaper)
+                    .where(
+                        and(
+                            ne(pastPaper.id, id),
+                            eq(pastPaper.courseId, paper.courseId),
+                            eq(pastPaper.examType, paper.examType),
+                            eq(pastPaper.year, paper.year),
+                        ),
+                    )
+                    .limit(1);
+
+                const structuredDuplicate = structuredDuplicateRows[0];
                 if (structuredDuplicate) {
                     return {
                         status: "duplicate" as const,
@@ -89,10 +132,21 @@ export async function approveItem(
                     };
                 }
             } else {
-                const exactTitleDuplicate = await prisma.pastPaper.findFirst({
-                    where: { id: { not: id }, title: { equals: paper.title, mode: "insensitive" } },
-                    select: { id: true, title: true },
-                });
+                const exactTitleDuplicateRows = await db
+                    .select({
+                        id: pastPaper.id,
+                        title: pastPaper.title,
+                    })
+                    .from(pastPaper)
+                    .where(
+                        and(
+                            ne(pastPaper.id, id),
+                            sql`lower(${pastPaper.title}) = lower(${paper.title})`,
+                        ),
+                    )
+                    .limit(1);
+
+                const exactTitleDuplicate = exactTitleDuplicateRows[0];
                 if (exactTitleDuplicate) {
                     return {
                         status: "duplicate" as const,
@@ -103,7 +157,7 @@ export async function approveItem(
             }
         }
 
-        await prisma.pastPaper.update({ where: { id }, data: { isClear: true } });
+        await db.update(pastPaper).set({ isClear: true }).where(eq(pastPaper.id, id));
     }
 
     revalidatePath("/mod");
@@ -118,8 +172,12 @@ export async function renameItem(id: string, type: "note" | "pastPaper", title: 
     // @ts-ignore
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    if (type === "note") await prisma.note.update({ where: { id }, data: { title } });
-    if (type === "pastPaper") await prisma.pastPaper.update({ where: { id }, data: { title } });
+    if (type === "note") {
+        await db.update(note).set({ title }).where(eq(note.id, id));
+    }
+    if (type === "pastPaper") {
+        await db.update(pastPaper).set({ title }).where(eq(pastPaper.id, id));
+    }
 
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
@@ -135,8 +193,8 @@ export async function deleteItem(id: string, type: "note" | "pastPaper") {
     // @ts-ignore
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    if (type === "note") await prisma.note.delete({ where: { id } });
-    if (type === "pastPaper") await prisma.pastPaper.delete({ where: { id } });
+    if (type === "note") await db.delete(note).where(eq(note.id, id));
+    if (type === "pastPaper") await db.delete(pastPaper).where(eq(pastPaper.id, id));
 
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
@@ -148,17 +206,23 @@ export async function generatePastPaperTitle(id: string) {
     // @ts-ignore
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    const paper = await prisma.pastPaper.findUnique({
-        where: { id },
-        select: { title: true, fileUrl: true },
-    });
+    const rows = await db
+        .select({
+            title: pastPaper.title,
+            fileUrl: pastPaper.fileUrl,
+        })
+        .from(pastPaper)
+        .where(eq(pastPaper.id, id))
+        .limit(1);
+
+    const paper = rows[0];
     if (!paper) throw new Error("Past paper not found");
 
     const fileUrl = normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl;
     const aiTitle = await generatePastPaperTitleFromPdf({ fileUrl, fallbackTitle: paper.title });
 
     if (aiTitle && aiTitle !== paper.title) {
-        await prisma.pastPaper.update({ where: { id }, data: { title: aiTitle } });
+        await db.update(pastPaper).set({ title: aiTitle }).where(eq(pastPaper.id, id));
     }
 
     revalidatePath("/mod");

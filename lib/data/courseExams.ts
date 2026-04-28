@@ -1,30 +1,35 @@
 import { cacheLife, cacheTag } from "next/cache";
-import prisma from "@/lib/prisma";
+import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
-import { examTypeLabel, examTypeToSlug, ALL_EXAM_TYPES } from "@/lib/examSlug";
-import type { ExamType } from "@/prisma/generated/client";
+import { examTypeLabel, examTypeToSlug } from "@/lib/examSlug";
+import {
+    course,
+    db,
+    type ExamType,
+    note,
+    pastPaper,
+} from "@/src/db";
 
 export async function getCourseExamCombos() {
-    const combos = await prisma.pastPaper.findMany({
-        where: {
-            isClear: true,
-            courseId: { not: null },
-            examType: { not: null },
-        },
-        select: {
-            examType: true,
-            course: { select: { code: true } },
-        },
-    });
+    const combos = await db
+        .selectDistinct({
+            examType: pastPaper.examType,
+            courseCode: course.code,
+        })
+        .from(pastPaper)
+        .innerJoin(course, eq(pastPaper.courseId, course.id))
+        .where(
+            and(
+                eq(pastPaper.isClear, true),
+                isNotNull(pastPaper.courseId),
+                isNotNull(pastPaper.examType),
+            ),
+        );
 
-    const seen = new Set<string>();
     return combos
         .flatMap((item) => {
-            if (!item.course?.code || !item.examType) return [];
-            const key = `${item.course.code}::${item.examType}`;
-            if (seen.has(key)) return [];
-            seen.add(key);
-            return [{ code: item.course.code, examSlug: examTypeToSlug(item.examType) }];
+            if (!item.courseCode || !item.examType) return [];
+            return [{ code: item.courseCode, examSlug: examTypeToSlug(item.examType) }];
         })
         .sort((a, b) => {
             const codeCompare = a.code.localeCompare(b.code, "en", { sensitivity: "base" });
@@ -38,33 +43,38 @@ export async function getExamHubSummaries() {
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const rows = await Promise.all(
-        ALL_EXAM_TYPES.map(async (examType) => {
-            const [paperCount, courseCount, latest] = await Promise.all([
-                prisma.pastPaper.count({ where: { isClear: true, examType, courseId: { not: null } } }),
-                prisma.course.count({ where: { papers: { some: { isClear: true, examType } } } }),
-                prisma.pastPaper.findFirst({
-                    where: { isClear: true, examType },
-                    orderBy: [{ year: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
-                    select: { year: true },
-                }),
-            ]);
-
-            if (!paperCount || !courseCount) return null;
-
-            return {
-                examType,
-                slug: examTypeToSlug(examType),
-                label: examTypeLabel(examType),
-                paperCount,
-                courseCount,
-                latestYear: latest?.year ?? null,
-            };
-        }),
-    );
+    const rows = await db
+        .select({
+            examType: pastPaper.examType,
+            paperCount: count(),
+            courseCount: sql<number>`count(distinct ${pastPaper.courseId})`,
+            latestYear: sql<number | null>`max(${pastPaper.year})`,
+        })
+        .from(pastPaper)
+        .where(
+            and(
+                eq(pastPaper.isClear, true),
+                isNotNull(pastPaper.courseId),
+                isNotNull(pastPaper.examType),
+            ),
+        )
+        .groupBy(pastPaper.examType);
 
     return rows
-        .filter((row): row is NonNullable<(typeof rows)[number]> => Boolean(row))
+        .flatMap((row) => {
+            if (!row.examType || !row.paperCount || !row.courseCount) {
+                return [];
+            }
+
+            return [{
+                examType: row.examType,
+                slug: examTypeToSlug(row.examType),
+                label: examTypeLabel(row.examType),
+                paperCount: row.paperCount,
+                courseCount: Number(row.courseCount),
+                latestYear: row.latestYear ?? null,
+            }];
+        })
         .sort((a, b) => b.paperCount - a.paperCount);
 }
 
@@ -74,12 +84,21 @@ export async function getExamHubPageData(examType: ExamType) {
     cacheTag("courses");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const grouped = await prisma.pastPaper.groupBy({
-        by: ["courseId"],
-        where: { isClear: true, examType, courseId: { not: null } },
-        _count: { _all: true },
-        _max: { year: true },
-    });
+    const grouped = await db
+        .select({
+            courseId: pastPaper.courseId,
+            paperCount: count(),
+            latestYear: sql<number | null>`max(${pastPaper.year})`,
+        })
+        .from(pastPaper)
+        .where(
+            and(
+                eq(pastPaper.isClear, true),
+                eq(pastPaper.examType, examType),
+                isNotNull(pastPaper.courseId),
+            ),
+        )
+        .groupBy(pastPaper.courseId);
 
     const courseIds = grouped
         .map((row) => row.courseId)
@@ -87,33 +106,61 @@ export async function getExamHubPageData(examType: ExamType) {
 
     if (courseIds.length === 0) return null;
 
-    const [courses, recentPapers] = await Promise.all([
-        prisma.course.findMany({
-            where: { id: { in: courseIds } },
-            select: {
-                id: true,
-                code: true,
-                title: true,
-                aliases: true,
-                _count: { select: { notes: { where: { isClear: true } } } },
-            },
-        }),
-        prisma.pastPaper.findMany({
-            where: { isClear: true, examType, courseId: { not: null } },
-            orderBy: [{ year: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
-            take: 18,
-            select: {
-                id: true,
-                title: true,
-                thumbNailUrl: true,
-                year: true,
-                course: { select: { code: true, title: true } },
-            },
-        }),
+    const [courses, noteCounts, recentPapers] = await Promise.all([
+        db
+            .select({
+                id: course.id,
+                code: course.code,
+                title: course.title,
+                aliases: course.aliases,
+            })
+            .from(course)
+            .where(inArray(course.id, courseIds)),
+        db
+            .select({
+                courseId: note.courseId,
+                noteCount: count(),
+            })
+            .from(note)
+            .where(
+                and(
+                    eq(note.isClear, true),
+                    isNotNull(note.courseId),
+                    inArray(note.courseId, courseIds),
+                ),
+            )
+            .groupBy(note.courseId),
+        db
+            .select({
+                id: pastPaper.id,
+                title: pastPaper.title,
+                thumbNailUrl: pastPaper.thumbNailUrl,
+                year: pastPaper.year,
+                courseCode: course.code,
+                courseTitle: course.title,
+            })
+            .from(pastPaper)
+            .innerJoin(course, eq(pastPaper.courseId, course.id))
+            .where(
+                and(
+                    eq(pastPaper.isClear, true),
+                    eq(pastPaper.examType, examType),
+                    isNotNull(pastPaper.courseId),
+                ),
+            )
+            .orderBy(sql`${pastPaper.year} desc nulls last`, desc(pastPaper.createdAt))
+            .limit(18),
     ]);
 
     const byCourseId = new Map(
-        grouped.map((row) => [row.courseId, { paperCount: row._count._all, latestYear: row._max.year }]),
+        grouped
+            .filter((row) => row.courseId !== null)
+            .map((row) => [row.courseId, { paperCount: row.paperCount, latestYear: row.latestYear }]),
+    );
+    const noteCountByCourseId = new Map(
+        noteCounts
+            .filter((row) => row.courseId !== null)
+            .map((row) => [row.courseId, row.noteCount]),
     );
 
     const courseRows = courses
@@ -124,9 +171,9 @@ export async function getExamHubPageData(examType: ExamType) {
                 id: course.id,
                 code: course.code,
                 title: course.title,
-                aliases: course.aliases,
+                aliases: course.aliases ?? [],
                 paperCount: stats.paperCount,
-                noteCount: course._count.notes,
+                noteCount: noteCountByCourseId.get(course.id) ?? 0,
                 latestYear: stats.latestYear ?? null,
             };
         })
@@ -158,8 +205,8 @@ export async function getExamHubPageData(examType: ExamType) {
             id: paper.id,
             title: paper.title,
             thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
-            courseCode: paper.course?.code ?? null,
-            courseTitle: paper.course?.title ?? null,
+            courseCode: paper.courseCode ?? null,
+            courseTitle: paper.courseTitle ?? null,
             year: paper.year,
             examType,
         })),

@@ -1,13 +1,14 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { after } from "next/server";
-import prisma from "@/lib/prisma";
+import { eq } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/pastPaperTitle";
 import type {
     Campus,
     ExamType,
     Semester,
-} from "@/prisma/generated/client";
+} from "@/src/db";
+import { db, note, pastPaper, user } from "@/src/db";
 
 export const UPLOAD_SUCCESS_MESSAGE = "processed successfully";
 
@@ -53,11 +54,17 @@ export async function createUploadedResources({
     campus,
     hasAnswerKey,
 }: CreateUploadedResourcesInput) {
-    const user = await prisma.user.findUnique({
-        where: { email: userEmail },
-    });
+    const userRows = await db
+        .select({
+            id: user.id,
+        })
+        .from(user)
+        .where(eq(user.email, userEmail))
+        .limit(1);
 
-    if (!user) {
+    const currentUser = userRows[0];
+
+    if (!currentUser) {
         throw new Error(`User with email ${userEmail} does not exist`);
     }
 
@@ -84,42 +91,56 @@ export async function createUploadedResources({
     const parsedSemester = semester as Semester | null | undefined;
     const parsedCampus = campus as Campus | null | undefined;
 
-    const promises =
+    const data =
         variant === "Notes"
-            ? results.map((result) => {
-                  const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
-                  const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                  return prisma.note.create({
-                      data: {
-                          title: result.filename,
-                          fileUrl,
-                          ...(thumbNailUrl ? { thumbNailUrl } : {}),
-                          authorId: user.id,
-                          ...(courseId ? { courseId } : {}),
-                      },
-                  });
-              })
-            : results.map((result) => {
-                  const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
-                  const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                  return prisma.pastPaper.create({
-                      data: {
-                          title: result.filename,
-                          fileUrl,
-                          ...(thumbNailUrl ? { thumbNailUrl } : {}),
-                          authorId: user.id,
-                          ...(courseId ? { courseId } : {}),
-                          ...(parsedExamType ? { examType: parsedExamType } : {}),
-                          ...(slot ? { slot } : {}),
-                          ...(yearInt !== null && !Number.isNaN(yearInt) ? { year: yearInt } : {}),
-                          ...(parsedSemester ? { semester: parsedSemester } : {}),
-                          ...(parsedCampus ? { campus: parsedCampus } : {}),
-                          hasAnswerKey: hasAnswerKey ?? false,
-                      },
-                  });
-              });
+            ? await Promise.all(
+                  results.map(async (result) => {
+                      const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
+                      const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
+                      const rows = await db
+                          .insert(note)
+                          .values({
+                              title: result.filename,
+                              fileUrl,
+                              ...(thumbNailUrl ? { thumbNailUrl } : {}),
+                              authorId: currentUser.id,
+                              ...(courseId ? { courseId } : {}),
+                          })
+                          .returning();
 
-    const data = await Promise.all(promises);
+                      return rows[0];
+                  }),
+              )
+            : await Promise.all(
+                  results.map(async (result) => {
+                      const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
+                      const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
+                      const rows = await db
+                          .insert(pastPaper)
+                          .values({
+                              title: result.filename,
+                              fileUrl,
+                              ...(thumbNailUrl ? { thumbNailUrl } : {}),
+                              authorId: currentUser.id,
+                              ...(courseId ? { courseId } : {}),
+                              ...(parsedExamType ? { examType: parsedExamType } : {}),
+                              ...(slot ? { slot } : {}),
+                              ...(yearInt !== null && !Number.isNaN(yearInt)
+                                  ? { year: yearInt }
+                                  : {}),
+                              ...(parsedSemester ? { semester: parsedSemester } : {}),
+                              ...(parsedCampus ? { campus: parsedCampus } : {}),
+                              hasAnswerKey: hasAnswerKey ?? false,
+                          })
+                          .returning({
+                              id: pastPaper.id,
+                              title: pastPaper.title,
+                              fileUrl: pastPaper.fileUrl,
+                          });
+
+                      return rows[0];
+                  }),
+              );
 
     if (variant === "Past Papers") {
         const createdPapers = data as { id: string; title: string; fileUrl: string }[];
@@ -132,10 +153,10 @@ export async function createUploadedResources({
                             fallbackTitle: paper.title,
                         });
                         if (aiTitle && aiTitle !== paper.title) {
-                            await prisma.pastPaper.update({
-                                where: { id: paper.id },
-                                data: { title: aiTitle },
-                            });
+                            await db
+                                .update(pastPaper)
+                                .set({ title: aiTitle })
+                                .where(eq(pastPaper.id, paper.id));
                         }
                     }),
                 );
