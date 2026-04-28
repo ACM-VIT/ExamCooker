@@ -23,14 +23,14 @@ export default function VoiceAgentButton({
   runtime,
 }: VoiceAgentButtonProps) {
   const Icon =
-    runtime.activity === "connecting"
-      ? Loader2
-      : runtime.activity === "error"
+    runtime.connected
+      ? runtime.muted
         ? MicOff
-        : runtime.connected
-          ? runtime.muted
-            ? MicOff
-            : AudioLines
+        : AudioLines
+      : runtime.activity === "connecting"
+        ? Loader2
+        : runtime.activity === "error"
+          ? MicOff
           : Mic;
 
   return (
@@ -56,7 +56,7 @@ export default function VoiceAgentButton({
       <Icon
         className={cn(
           "h-4 w-4",
-          runtime.activity === "connecting" && "animate-spin",
+          !runtime.connected && runtime.activity === "connecting" && "animate-spin",
         )}
         aria-hidden="true"
       />

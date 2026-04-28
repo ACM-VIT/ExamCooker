@@ -1205,13 +1205,17 @@ class VoiceControlControllerImpl implements VoiceControlController {
     session?.close();
   }
 
-  private syncConnectedStateFromTransport() {
+  private syncConnectedStateFromTransport(event?: RealtimeServerEvent) {
     const session = this.session;
     if (!session) {
       return;
     }
 
-    if (session.transport.status !== "connected") {
+    const hasLiveTransport =
+      session.transport.status === "connected" ||
+      (event !== undefined && event.type !== "error");
+
+    if (!hasLiveTransport) {
       return;
     }
 
@@ -1257,7 +1261,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
   }
 
   private handleTransportEvent(event: RealtimeServerEvent) {
-    this.syncConnectedStateFromTransport();
+    this.syncConnectedStateFromTransport(event);
 
     if (event.type === "response.created") {
       this.responseInFlight = true;

@@ -940,10 +940,10 @@ export default function VoiceAgentProvider({
   }, [controller, hide, runtime.activity, runtime.connected, startVoiceAgent]);
 
   const buttonLabel =
-    runtime.activity === "connecting"
-      ? "Stop the voice guide while it connects"
-      : runtime.connected
-        ? "Disconnect the voice guide"
+    runtime.connected
+      ? "Disconnect the voice guide"
+      : runtime.activity === "connecting"
+        ? "Stop the voice guide while it connects"
         : runtime.activity === "error"
           ? "Retry the voice guide"
           : "Start the voice guide";
