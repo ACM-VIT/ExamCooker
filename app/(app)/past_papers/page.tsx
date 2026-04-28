@@ -30,7 +30,7 @@ import {
 } from "@/lib/structuredData";
 
 const PAGE_SIZE = 24;
-const POPULAR_LIMIT = 6;
+const POPULAR_LIMIT = 12;
 const COURSE_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
 type PastPapersSearchParams = { search?: string; page?: string };
 
@@ -104,7 +104,7 @@ function HeroStats({
                     {idx < items.length - 1 && (
                         <span
                             aria-hidden="true"
-                            className="ml-3 hidden text-black/30 dark:text-[#D5D5D5]/25 sm:inline"
+                            className="ml-3 hidden text-black dark:text-white sm:inline"
                         >
                             ·
                         </span>
@@ -150,7 +150,7 @@ function PopularCoursesShell() {
         <section className="flex flex-col gap-4">
             <header className="flex items-end justify-between">
                 <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
-                    Popular courses
+                    Upcoming exams
                 </h2>
             </header>
             <CourseCardsShell count={POPULAR_LIMIT} />
@@ -202,7 +202,7 @@ function RecentSectionShell() {
             </header>
             <div
                 aria-hidden="true"
-                className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-hidden px-3 pb-2 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10"
+                className="flex snap-x snap-mandatory gap-3 overflow-hidden pb-2"
             >
                 {Array.from({ length: 6 }).map((_, index) => (
                     <div
@@ -231,21 +231,63 @@ function RecentSectionShell() {
 }
 
 async function PopularCoursesSection() {
-    const popular = await getPopularCourseGrid(POPULAR_LIMIT);
-    if (popular.length === 0) return null;
+    const popular = await getPopularCourseGrid(6);
+    
+    const allCourses = await getCourseGrid();
+    const specificTitles = [
+        "Operating Systems",
+        "Structured and Object-Oriented Programming",
+        "Data Structures and Algorithms",
+        "Engineering Physics",
+        "Theory of Computation",
+        "Design and Analysis of Algorithms"
+    ].map(t => t.toLowerCase());
+
+    const specificCourses = [];
+    for (const title of specificTitles) {
+        const found = allCourses.find(c => c.title.toLowerCase().includes(title));
+        if (found) {
+            specificCourses.push(found);
+        }
+    }
+
+    const combined = [...popular];
+    const popularIds = new Set(popular.map(c => c.id));
+    
+    for (const c of specificCourses) {
+        if (!popularIds.has(c.id)) {
+            combined.push(c);
+            popularIds.add(c.id);
+        }
+    }
+
+    if (combined.length < 12) {
+        const morePopular = await getPopularCourseGrid(20);
+        for (const c of morePopular) {
+            if (!popularIds.has(c.id)) {
+                combined.push(c);
+                popularIds.add(c.id);
+            }
+            if (combined.length === 12) break;
+        }
+    }
+
+    const finalCourses = combined.slice(0, 12);
+
+    if (finalCourses.length === 0) return null;
 
     return (
         <section className="flex flex-col gap-4">
             <header className="flex items-end justify-between">
                 <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
-                    Popular courses
+                    Upcoming exams
                 </h2>
             </header>
             <SmartCourseGrid
-                courses={popular}
+                courses={finalCourses}
                 className={COURSE_GRID_CLASS}
                 page={1}
-                pageSize={POPULAR_LIMIT}
+                pageSize={12}
                 rankCourses={false}
             />
         </section>
@@ -330,6 +372,8 @@ async function RecentSection() {
     const recents = await getRecentPapers(10);
     return <RecentPaperStrip items={recents} />;
 }
+
+
 
 async function UpcomingSection() {
     const upcomingExams = await getUpcomingExams(12);
@@ -437,7 +481,7 @@ export default async function PastPapersPage({
 
     return (
         <DirectionalTransition>
-            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+            <div className="min-h-screen overflow-x-clip bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
                 <StructuredData
                     data={[
                         buildCollectionPage({
