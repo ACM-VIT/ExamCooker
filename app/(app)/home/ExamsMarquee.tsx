@@ -5,30 +5,18 @@ import type { UpcomingExamItem } from "@/lib/data/upcomingExams";
 function MarqueeItem({
     item,
     prefetch,
-    variant = "default",
 }: {
     item: UpcomingExamItem;
     prefetch: boolean;
-    variant?: "default" | "past_papers";
 }) {
     return (
         <Link
             href={`/past_papers/${encodeURIComponent(item.courseCode)}`}
             prefetch={prefetch}
             transitionTypes={["nav-forward"]}
-            className={`group inline-flex items-center gap-3 whitespace-nowrap text-base transition-colors md:text-lg ${
-                variant === "default"
-                    ? "text-black/75 hover:text-[#253EE0] md:text-white/85 md:hover:text-[#3BF4C7] dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] dark:md:text-white/85"
-                    : "text-black/75 hover:text-[#253EE0] dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
-            }`}
+            className="group inline-flex items-center gap-3 whitespace-nowrap text-base text-black/75 transition-colors hover:text-[#253EE0] dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] md:text-lg md:text-white/85 md:hover:text-[#3BF4C7] dark:md:text-white/85"
         >
-            <span
-                className={`font-mono text-xs font-semibold uppercase tracking-[0.16em] group-hover:text-current md:text-sm ${
-                    variant === "default"
-                        ? "text-black/55 md:text-white/65 dark:text-[#D5D5D5]/55 dark:md:text-white/65"
-                        : "text-black/55 dark:text-[#D5D5D5]/55"
-                }`}
-            >
+            <span className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-black/55 dark:text-[#D5D5D5]/55 group-hover:text-current md:text-sm md:text-white/65 dark:md:text-white/65">
                 {item.courseCode}
             </span>
             <span className="font-semibold underline-offset-4 decoration-1 group-hover:underline">
@@ -42,12 +30,10 @@ function MarqueeRow({
     items,
     prefetch,
     reverse,
-    variant,
 }: {
     items: UpcomingExamItem[];
     prefetch?: boolean;
     reverse?: boolean;
-    variant: "default" | "past_papers";
 }) {
     const loop = (["base", "clone"] as const).flatMap((copy) =>
         items.map((item) => ({ item, copy })),
@@ -61,14 +47,10 @@ function MarqueeRow({
             >
                 {loop.map(({ item, copy }) => (
                     <React.Fragment key={`${copy}-${item.id}`}>
-                        <MarqueeItem item={item} prefetch={prefetch === true && copy === "base"} variant={variant} />
+                        <MarqueeItem item={item} prefetch={prefetch === true && copy === "base"} />
                         <span
                             aria-hidden="true"
-                            className={`select-none text-xs ${
-                                variant === "default"
-                                    ? "text-black/25 md:text-white/30 dark:text-[#D5D5D5]/20 dark:md:text-white/30"
-                                    : "text-black/25 dark:text-[#D5D5D5]/20"
-                            }`}
+                            className="select-none text-xs text-black/25 dark:text-[#D5D5D5]/20 md:text-white/30 dark:md:text-white/30"
                         >
                             ◆
                         </span>
@@ -79,13 +61,7 @@ function MarqueeRow({
     );
 }
 
-export default async function ExamsMarquee({
-    items,
-    variant = "default",
-}: {
-    items: UpcomingExamItem[];
-    variant?: "default" | "past_papers";
-}) {
+export default async function ExamsMarquee({ items }: { items: UpcomingExamItem[] }) {
     if (items.length === 0) return null;
 
     const mid = Math.ceil(items.length / 2);
@@ -96,11 +72,7 @@ export default async function ExamsMarquee({
         <div
             role="region"
             aria-label="Upcoming exams"
-            className={`relative left-1/2 w-screen -translate-x-1/2 border-y py-4 md:py-5 ${
-                variant === "default"
-                    ? "border-black/10 md:border-white/15 dark:border-[#D5D5D5]/10 dark:md:border-white/15"
-                    : "border-black/10 dark:border-[#D5D5D5]/10"
-            }`}
+            className="relative left-1/2 w-screen -translate-x-1/2 border-y border-black/10 py-4 md:py-5 dark:border-[#D5D5D5]/10 md:border-white/15 dark:md:border-white/15"
         >
             <div
                 aria-hidden="true"
@@ -111,8 +83,8 @@ export default async function ExamsMarquee({
                 className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#C2E6EC] to-transparent md:hidden md:w-32 dark:from-[hsl(224,48%,9%)] dark:md:block"
             />
             <div className="flex flex-col gap-3 md:gap-4">
-                <MarqueeRow items={rowA} prefetch variant={variant} />
-                <MarqueeRow items={rowB} reverse variant={variant} />
+                <MarqueeRow items={rowA} prefetch />
+                <MarqueeRow items={rowB} reverse />
             </div>
         </div>
     );
