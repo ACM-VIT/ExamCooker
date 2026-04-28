@@ -4,6 +4,7 @@ import React, { useMemo, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/examSlug";
 import type { Campus, ExamType, Semester } from "@/db";
+import { campusValues, semesterValues } from "@/db/enums";
 
 type Props = {
     options: {
@@ -43,6 +44,21 @@ function readList(param: string | null): string[] {
         .filter(Boolean);
 }
 
+const semesterValueSet = new Set<string>(semesterValues);
+const campusValueSet = new Set<string>(campusValues);
+
+function parseSemesterList(param: string | null): Semester[] {
+    return readList(param)
+        .map((value) => value.toUpperCase())
+        .filter((value): value is Semester => semesterValueSet.has(value));
+}
+
+function parseCampusList(param: string | null): Campus[] {
+    return readList(param)
+        .map((value) => value.toUpperCase())
+        .filter((value): value is Campus => campusValueSet.has(value));
+}
+
 export default function FilterSidebar({ options, searchString = "" }: Props) {
     const router = useRouter();
     const pathname = usePathname();
@@ -59,8 +75,8 @@ export default function FilterSidebar({ options, searchString = "" }: Props) {
                 .filter((v): v is ExamType => v !== null),
             slots: readList(searchParams.get("slot")),
             years: readList(searchParams.get("year")).map((y) => Number(y)).filter((y) => !Number.isNaN(y)),
-            semesters: readList(searchParams.get("semester")).map((s) => s.toUpperCase() as Semester),
-            campuses: readList(searchParams.get("campus")).map((c) => c.toUpperCase() as Campus),
+            semesters: parseSemesterList(searchParams.get("semester")),
+            campuses: parseCampusList(searchParams.get("campus")),
             answerKey: searchParams.get("answer_key") === "1",
         }),
         [searchParams],

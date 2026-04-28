@@ -2,23 +2,28 @@
 
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { updateFile } from '../actions/UpdateFile';
+import { useToast } from "@/components/ui/use-toast";
+import { type EditableTab, updateFile } from '../actions/UpdateFile';
 
-const EditButton = ({ itemID, title, activeTab } : { itemID: string, title: string, activeTab: string }) => {
+const EditButton = ({ itemID, title, activeTab } : { itemID: string, title: string, activeTab: EditableTab }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [editedTitle, setEditedTitle] = useState(title);
+  const { toast } = useToast();
 
   const handleEdit = async () => {
     try {
       const result = await updateFile(itemID, editedTitle, activeTab);
       if (result?.success) {
-        console.log(`${activeTab} updated successfully:`, result.note);
-        
+        toast({ title: "Title updated" });
       } else {
-        console.error(`Failed to update ${activeTab}:`, result?.error);
+        toast({
+          title: result?.error ?? `Failed to update ${activeTab}.`,
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error(`Error updating ${activeTab}:`, error);
+      toast({ title: `Failed to update ${activeTab}.`, variant: "destructive" });
     } finally {
         setIsOpen(false);
     }
@@ -51,7 +56,7 @@ const EditButton = ({ itemID, title, activeTab } : { itemID: string, title: stri
             className="w-full px-3 py-2 border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] text-black dark:text-[#D5D5D5] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <DialogFooter className="flex justify-end space-x-2 mt-4">
-            {editedTitle !== title && <button
+            {editedTitle.trim() !== title.trim() && <button
               onClick={handleEdit}
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none"
                 >

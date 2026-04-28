@@ -13,7 +13,6 @@ import Link from "next/link";
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
-import Loading from "../loading";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
@@ -1240,7 +1239,6 @@ function UploadFile({ variant, courses }: UploadFileProps) {
 
     return (
         <div className="flex min-h-screen items-start justify-center px-3 py-4 sm:items-center sm:p-6">
-            {pending ? <Loading /> : null}
             <div className="w-full max-w-md border-2 border-dashed border-[#D5D5D5] bg-white p-4 text-black shadow-lg dark:bg-[#0C1222] dark:text-[#D5D5D5] sm:p-6">
                 <UploadHeader
                     formId={ids.formId}

@@ -15,7 +15,6 @@ export const metadata = {
 export default async function UpcomingExamsModPage() {
     const session = await auth();
     if (!session?.user) redirect("/");
-    // @ts-ignore
     if (session.user.role !== "MODERATOR") notFound();
 
     const [courses, existing] = await Promise.all([

@@ -15,7 +15,6 @@ export type UpdateNoteCourseInput = z.input<typeof schema>;
 
 export async function updateNoteCourse(input: UpdateNoteCourseInput) {
     const session = await auth();
-    // @ts-ignore
     if (session?.user?.role !== "MODERATOR") {
         throw new Error("Access denied");
     }

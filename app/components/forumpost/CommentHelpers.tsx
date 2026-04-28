@@ -1,36 +1,36 @@
-export function TimeHandler(isoString: string) {
-    const dateObj = new Date(isoString);
+export function formatRelativeTime(value: Date | string) {
+    const date = typeof value === "string" ? new Date(value) : value;
+    const diffMs = Date.now() - date.getTime();
 
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const hours = String((dateObj.getHours() > 12 ? dateObj.getHours() - 12 : dateObj.getHours())).padStart(2, '0');
-    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-    const seconds = String(dateObj.getSeconds()).padStart(2, '0');
-    const amOrPm = Number(dateObj.getHours()) < 12 ? 'am' : 'pm';
+    if (diffMs < 0) {
+        return "in the future";
+    }
 
-    return {
-        year,
-        month,
-        day,
-        hours,
-        minutes,
-        seconds,
-        amOrPm,
-    };
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    if (diffMinutes < 60) {
+        return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"}`;
+    }
+
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours < 24) {
+        return `${diffHours} hour${diffHours === 1 ? "" : "s"}`;
+    }
+
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return `${diffDays} day${diffDays === 1 ? "" : "s"}`;
 }
 
 export function NumberOfComments({
     commentArray,
     count,
 }: {
-    commentArray?: any[] | undefined;
+    commentArray?: ReadonlyArray<unknown>;
     count?: number;
 }) {
     const total = typeof count === "number" ? count : commentArray?.length ?? 0;
     return (
         <div>
-            <text className="bg-none text-base py-4 px-2">{total} Comments</text>
+            <span className="bg-none px-2 py-4 text-base">{total} Comments</span>
         </div>
     );
 }

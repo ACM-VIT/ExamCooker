@@ -14,11 +14,11 @@ async function toggleVote(postId: string, nextType: VoteType) {
 
     try {
         const counts = await db.transaction(async (tx) => {
-            const existingVote = await tx
+            const existingVotes = await tx
                 .select()
                 .from(vote)
-                .where(and(eq(vote.userId, userId), eq(vote.forumPostId, postId)))
-                .then((rows) => rows[0] ?? null);
+                .where(and(eq(vote.userId, userId), eq(vote.forumPostId, postId)));
+            const existingVote = existingVotes[0] ?? null;
 
             if (!existingVote) {
                 await tx.insert(vote).values({
@@ -65,14 +65,14 @@ async function toggleVote(postId: string, nextType: VoteType) {
                     .where(eq(forumPost.id, postId));
             }
 
-            return tx
+            const countRows = await tx
                 .select({
                     upvoteCount: forumPost.upvoteCount,
                     downvoteCount: forumPost.downvoteCount,
                 })
                 .from(forumPost)
-                .where(eq(forumPost.id, postId))
-                .then((rows) => rows[0] ?? null);
+                .where(eq(forumPost.id, postId));
+            return countRows[0] ?? null;
         });
 
         revalidateTag("forum", "minutes");

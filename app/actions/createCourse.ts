@@ -14,8 +14,7 @@ export async function createCourse(input: {
     | { success: false; error: string }
 > {
     const session = await auth();
-    const role = (session?.user as { role?: string } | undefined)?.role;
-    if (!session?.user || role !== "MODERATOR") {
+    if (session?.user?.role !== "MODERATOR") {
         return { success: false, error: "Unauthorized" };
     }
 
@@ -26,7 +25,7 @@ export async function createCourse(input: {
     if (!title) return { success: false, error: "Title is required" };
 
     try {
-        const existingCourse = await db
+        const existingCourses = await db
             .select({
                 id: course.id,
                 code: course.code,
@@ -34,12 +33,12 @@ export async function createCourse(input: {
                 aliases: course.aliases,
             })
             .from(course)
-            .where(eq(course.code, code))
-            .then((rows) => rows[0] ?? null);
+            .where(eq(course.code, code));
+        const existingCourse = existingCourses[0] ?? null;
 
-        const createdCourse =
-            existingCourse ??
-            (await db
+        let createdCourse = existingCourse;
+        if (!createdCourse) {
+            const createdCourses = await db
                 .insert(course)
                 .values({ code, title, aliases: [title] })
                 .returning({
@@ -47,8 +46,9 @@ export async function createCourse(input: {
                     code: course.code,
                     title: course.title,
                     aliases: course.aliases,
-                })
-                .then((rows) => rows[0] ?? null));
+                });
+            createdCourse = createdCourses[0] ?? null;
+        }
 
         if (!createdCourse) {
             return { success: false, error: "Failed to create course" };

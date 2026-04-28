@@ -40,7 +40,7 @@ export function LandingPageCard({
 }: {
   title: string;
   content: string;
-  imagePath: any;
+  imagePath: React.ComponentProps<typeof Image>["src"];
   altOfImage: string;
   href?: string;
 }) {

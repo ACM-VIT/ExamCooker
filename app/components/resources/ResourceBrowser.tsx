@@ -1,6 +1,6 @@
 "use client";
 
-import { ViewTransition, memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import debounce from "lodash/debounce";
 import { ArrowUpRight, X } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -88,6 +88,18 @@ function ResourceBrowser({
     const pathname = usePathname();
     const [query, setQuery] = useState(initialSearch);
     const [year, setYear] = useState(initialYear);
+    const deferredQuery = useDeferredValue(query);
+
+    const searchableCourses = useMemo(
+        () =>
+            courses.map((course) => ({
+                course,
+                normalizedMatchKeys: course.matchKeys.map((value) =>
+                    normalizeKey(value),
+                ),
+            })),
+        [courses],
+    );
 
     const updateAddressBar = useMemo(
         () =>
@@ -116,10 +128,10 @@ function ResourceBrowser({
     }, []);
 
     const filteredCourses = useMemo(() => {
-        const normalizedSearch = normalizeKey(query);
+        const normalizedSearch = normalizeKey(deferredQuery);
         const normalizedYear = year.trim();
 
-        return courses.filter((course) => {
+        return searchableCourses.filter(({ course, normalizedMatchKeys }) => {
             if (normalizedYear && course.year !== normalizedYear) {
                 return false;
             }
@@ -128,11 +140,11 @@ function ResourceBrowser({
                 return true;
             }
 
-            return course.matchKeys.some((value) =>
-                normalizeKey(value).includes(normalizedSearch),
+            return normalizedMatchKeys.some((value) =>
+                value.includes(normalizedSearch),
             );
-        });
-    }, [courses, query, year]);
+        }).map(({ course }) => course);
+    }, [deferredQuery, searchableCourses, year]);
 
     const handleQueryChange = useCallback(
         (value: string) => {
@@ -242,9 +254,7 @@ function ResourceBrowser({
                     </header>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                         {filteredCourses.map((course) => (
-                            <ViewTransition key={course.id}>
-                                <ResourceCourseCard course={course} />
-                            </ViewTransition>
+                            <ResourceCourseCard key={course.id} course={course} />
                         ))}
                     </div>
                 </section>

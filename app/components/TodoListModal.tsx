@@ -19,18 +19,12 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
   const [newTask, setNewTask] = useState("");
 
   const loadTodos = () => {
-    const storedTodos = getLocalStorage("todos");
+    const storedTodos = getLocalStorage<Todo[]>("todos");
     if (storedTodos) {
-      try {
-        const parsedTodos = JSON.parse(storedTodos);
-        if (Array.isArray(parsedTodos)) {
-          setTodos(parsedTodos);
-        } else {
-          console.error("Stored todos is not an array");
-          setTodos([]);
-        }
-      } catch (error) {
-        console.error("Error parsing stored todos:", error);
+      if (Array.isArray(storedTodos)) {
+        setTodos(storedTodos);
+      } else {
+        console.error("Stored todos is not an array");
         setTodos([]);
       }
     } else {
@@ -108,7 +102,7 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
         { id: Date.now(), task: newTask.trim(), completed: false },
       ];
       setTodos(updatedTodos);
-      setLocalStorage("todos", JSON.stringify(updatedTodos));
+      setLocalStorage("todos", updatedTodos);
       setNewTask("");
     }
   };
@@ -124,18 +118,18 @@ const TodoListDropdown: React.FC<TodoListDropdownProps> = ({ buttonRef }) => {
       todo.id === id ? { ...todo, completed: !todo.completed } : todo
     );
     setTodos(updatedTodos);
-    setLocalStorage("todos", JSON.stringify(updatedTodos));
+    setLocalStorage("todos", updatedTodos);
   };
 
   const removeTodo = (id: number) => {
     const updatedTodos = todos.filter((todo) => todo.id !== id);
     setTodos(updatedTodos);
-    setLocalStorage("todos", JSON.stringify(updatedTodos));
+    setLocalStorage("todos", updatedTodos);
   };
 
   const clearTodos = () => {
     setTodos([]);
-    setLocalStorage("todos", JSON.stringify([]));
+    setLocalStorage("todos", []);
   };
 
   return (

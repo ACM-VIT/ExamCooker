@@ -1,12 +1,17 @@
 import { and, eq } from "drizzle-orm";
 import type {
   Adapter,
-  AdapterAccount,
   AdapterSession,
   AdapterUser,
 } from "next-auth/adapters";
 import { db } from "@/db";
 import { accounts, sessions, user } from "@/db/schema";
+
+type CreateUserInput = Parameters<NonNullable<Adapter["createUser"]>>[0];
+type UpdateUserInput = Parameters<NonNullable<Adapter["updateUser"]>>[0];
+type LinkAccountInput = Parameters<NonNullable<Adapter["linkAccount"]>>[0];
+type CreateSessionInput = Parameters<NonNullable<Adapter["createSession"]>>[0];
+type UpdateSessionInput = Parameters<NonNullable<Adapter["updateSession"]>>[0];
 
 function first<T>(rows: T[]) {
   return rows[0] ?? null;
@@ -18,7 +23,7 @@ function pickDefined<T extends Record<string, unknown>>(value: T) {
   ) as Partial<T>;
 }
 
-function toAdapterAccount(account: AdapterAccount) {
+function toAdapterAccount(account: LinkAccountInput) {
   return {
     userId: account.userId,
     type: account.type,
@@ -30,13 +35,18 @@ function toAdapterAccount(account: AdapterAccount) {
     tokenType: account.token_type,
     scope: account.scope,
     idToken: account.id_token,
-    sessionState: account.session_state,
+    sessionState:
+      typeof account.session_state === "string"
+        ? account.session_state
+        : account.session_state == null
+          ? undefined
+          : JSON.stringify(account.session_state),
   };
 }
 
 export function createAuthAdapter(): Adapter {
   return {
-    async createUser(data) {
+    async createUser(data: CreateUserInput) {
       const [createdUser] = await db.insert(user).values(data).returning();
       if (!createdUser) {
         throw new Error("Failed to create auth user");
@@ -73,7 +83,7 @@ export function createAuthAdapter(): Adapter {
       return (row?.user ?? null) as AdapterUser | null;
     },
 
-    async updateUser(data) {
+    async updateUser(data: UpdateUserInput) {
       const [updatedUser] = await db
         .update(user)
         .set(pickDefined(data))
@@ -87,12 +97,12 @@ export function createAuthAdapter(): Adapter {
       return updatedUser as AdapterUser;
     },
 
-    async linkAccount(data) {
+    async linkAccount(data: LinkAccountInput) {
       await db.insert(accounts).values(toAdapterAccount(data));
       return undefined;
     },
 
-    async createSession(data) {
+    async createSession(data: CreateSessionInput) {
       const [createdSession] = await db.insert(sessions).values(data).returning();
       if (!createdSession) {
         throw new Error("Failed to create auth session");
@@ -119,7 +129,7 @@ export function createAuthAdapter(): Adapter {
       };
     },
 
-    async updateSession(data) {
+    async updateSession(data: UpdateSessionInput) {
       const [updatedSession] = await db
         .update(sessions)
         .set(pickDefined(data))

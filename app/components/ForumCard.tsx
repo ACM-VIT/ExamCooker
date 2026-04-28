@@ -1,14 +1,14 @@
 "use client";
 
 import React from 'react';
-import { NumberOfComments, TimeHandler } from "@/app/components/forumpost/CommentHelpers";
+import { NumberOfComments, formatRelativeTime } from "@/app/components/forumpost/CommentHelpers";
 import TagContainer from "@/app/components/forumpost/TagContainer";
 import { VoteButtons } from "@/app/components/common/Buttons";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart } from '@fortawesome/free-solid-svg-icons';
 import { useBookmarks } from './BookmarksProvider';
 import { useRouter } from 'next/navigation';
-import type { ForumPost, User, Vote } from "@/db";
+import type { VoteType } from "@/db";
 import { useToast } from "@/components/ui/use-toast";
 
 type ForumCardTag = {
@@ -16,12 +16,16 @@ type ForumCardTag = {
     name: string;
 };
 
+type ForumCardPost = {
+    id: string;
+    title: string;
+    upvoteCount: number | null;
+    downvoteCount: number | null;
+    votes: Array<{ type: VoteType }>;
+};
+
 interface ForumCardProps {
-    post: ForumPost & {
-        author: User;
-        tags: ForumCardTag[];
-        votes: Vote[];
-    } | any;
+    post: ForumCardPost;
     title: string;
     desc: string;
     author: string | null;
@@ -30,44 +34,7 @@ interface ForumCardProps {
     commentCount: number;
 }
 
-function formatTimeDifference(hours: string, minutes: string, seconds: string, amOrPm: string, day: string, month: string, year: number): string {
-
-    let inputHours = parseInt(hours);
-    const inputMinutes = parseInt(minutes);
-    const inputSeconds = parseInt(seconds);
-    const inputDay = parseInt(day);
-    const inputMonth = parseInt(month) - 1;
-    const inputYear = year;
-
-    if (amOrPm.toLowerCase() === 'pm' && inputHours < 12) {
-        inputHours += 12;
-    } else if (amOrPm.toLowerCase() === 'am' && inputHours === 12) {
-        inputHours = 0;
-    }
-
-    const inputDate = new Date(inputYear, inputMonth, inputDay, inputHours, inputMinutes, inputSeconds);
-
-    const currentDate = new Date();
-
-    const diffMillis = currentDate.getTime() - inputDate.getTime();
-
-    const diffMinutes = Math.floor(diffMillis / (1000 * 60));
-    const diffHours = Math.floor(diffMillis / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMillis / (1000 * 60 * 60 * 24));
-
-    if (diffMillis < 0) {
-        return "Input time is in the future";
-    } else if (diffMinutes < 60) {
-        return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`;
-    } else if (diffHours < 24) {
-        return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
-    } else {
-        return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
-    }
-}
-
 export default function ForumCard({ post, title, desc, author, tags, createdAt, commentCount }: ForumCardProps) {
-    const dateTimeObj = TimeHandler(createdAt.toISOString());
     const router = useRouter();
 
     const { toast } = useToast();
@@ -144,7 +111,7 @@ export default function ForumCard({ post, title, desc, author, tags, createdAt, 
                 </div>
 
                 <div className="text-xs text-right">
-                    <p>{author?.slice(0, -10)} asked {formatTimeDifference(dateTimeObj.hours, dateTimeObj.minutes, dateTimeObj.seconds, dateTimeObj.amOrPm, dateTimeObj.day, dateTimeObj.month, dateTimeObj.year)} ago</p>
+                    <p>{author?.slice(0, -10)} asked {formatRelativeTime(createdAt)} ago</p>
                 </div>
             </div>
         </div>

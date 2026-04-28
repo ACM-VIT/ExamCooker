@@ -12,12 +12,8 @@ import {
     WordBetweenLine,
 } from "@/app/components/landing_page/landing";
 import { SignIn } from "@/app/components/sign-in";
-import { auth } from "@/app/auth";
 
-export default async function HomeMarketingSections() {
-    const session = await auth();
-    const isAuthed = Boolean(session?.user);
-
+export default function HomeMarketingSections({ isAuthed }: { isAuthed: boolean }) {
     return (
         <div className="space-y-24 bg-[#C2E6EC] pt-24 text-black transition-colors dark:bg-[#0C1222] dark:text-[#D5D5D5] md:space-y-40 lg:space-y-[18vh] lg:pt-40">
             <section className="min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-10 px-4 py-16 md:gap-12 md:py-24 lg:min-h-screen lg:py-12 lg:sticky lg:top-[-50px]">

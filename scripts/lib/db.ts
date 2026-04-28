@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import type { QueryResultRow } from "pg";
 import * as schema from "../../db/schema";
 import { loadScriptEnv } from "./env";
 
@@ -66,7 +67,7 @@ export function createScriptDb(connectionString?: string | null) {
   };
 }
 
-export async function queryRows<T = Record<string, unknown>>(
+export async function queryRows<T extends QueryResultRow = QueryResultRow>(
   queryable: Queryable,
   sqlText: string,
   params: unknown[] = [],

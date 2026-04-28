@@ -17,7 +17,6 @@ export const metadata = {
 export default async function PaperReviewPage() {
     const session = await auth();
     if (!session?.user) redirect("/");
-    // @ts-ignore
     if (session.user.role !== "MODERATOR") notFound();
 
     const [papers, courses] = await Promise.all([

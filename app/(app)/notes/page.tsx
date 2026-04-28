@@ -2,7 +2,6 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ViewTransition } from "react";
 import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import { GradientText } from "@/app/components/landing_page/landing";
 import NotesCourseGridCard from "@/app/components/notes/NotesCourseGridCard";
@@ -168,9 +167,7 @@ async function CourseGridSection({
                     </header>
                     <div className={COURSE_GRID_CLASS}>
                         {popular.map((course) => (
-                            <ViewTransition key={course.id}>
-                                <NotesCourseGridCard course={course} />
-                            </ViewTransition>
+                            <NotesCourseGridCard key={course.id} course={course} />
                         ))}
                     </div>
                 </section>
@@ -191,9 +188,7 @@ async function CourseGridSection({
                 </header>
                 <div className={COURSE_GRID_CLASS}>
                     {slice.map((course) => (
-                        <ViewTransition key={course.id}>
-                            <NotesCourseGridCard course={course} />
-                        </ViewTransition>
+                        <NotesCourseGridCard key={course.id} course={course} />
                     ))}
                 </div>
                 {totalPages > 1 && (

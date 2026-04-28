@@ -93,7 +93,7 @@ async function main() {
 
     const papers: CandidatePaper[] = rows.map((row) => ({
       ...row,
-      course: row.course.code ? row.course : null,
+      course: row.course?.code ? row.course : null,
     }));
 
     const filteredPapers =

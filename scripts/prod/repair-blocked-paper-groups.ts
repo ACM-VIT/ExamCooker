@@ -755,13 +755,22 @@ async function runCase(connection: RepairConnection, repairCase: RepairCase, dry
         ...report,
         ...mergeReport,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       await client.query("ROLLBACK");
+      const errorMessage =
+        error instanceof Error ? error.message : String(error ?? "");
+      const errorCauseKind =
+        error instanceof Error &&
+        typeof error.cause === "object" &&
+        error.cause !== null &&
+        "kind" in error.cause
+          ? String(error.cause.kind ?? "")
+          : "";
       const isRetryable =
         !dryRun &&
-        (String(error?.cause?.kind || "").includes("TransactionWriteConflict") ||
-          String(error?.message || "").includes("restart transaction") ||
-          String(error?.message || "").includes("TransactionWriteConflict"));
+        (errorCauseKind.includes("TransactionWriteConflict") ||
+          errorMessage.includes("restart transaction") ||
+          errorMessage.includes("TransactionWriteConflict"));
       if (!isRetryable || attempt === attempts) {
         throw error;
       }

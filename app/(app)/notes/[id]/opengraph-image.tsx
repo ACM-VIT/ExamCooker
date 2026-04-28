@@ -5,15 +5,12 @@ import {
     OG_IMAGE_SIZE,
     renderExamCookerOgImage,
 } from "@/lib/og";
+import { stripPdfExtension } from "@/lib/pdf";
 
 export const runtime = "nodejs";
 export const alt = OG_ALT;
 export const size = OG_IMAGE_SIZE;
 export const contentType = OG_CONTENT_TYPE;
-
-function removePdfExtension(filename: string) {
-    return filename.endsWith(".pdf") ? filename.slice(0, -4) : filename;
-}
 
 export default async function Image({
     params,
@@ -31,7 +28,7 @@ export default async function Image({
         });
     }
 
-    const cleanTitle = removePdfExtension(note.title);
+    const cleanTitle = stripPdfExtension(note.title);
     const courseCode = note.course?.code;
     const courseTitle = note.course?.title;
 

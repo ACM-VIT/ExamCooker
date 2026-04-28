@@ -7,7 +7,6 @@
     ],
     "allowJs": true,
     "skipLibCheck": true,
-    // "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -27,7 +26,7 @@
       ]
     },
     "target": "ES2017",
-    "strict": false
+    "strict": true
   },
   "include": [
     "next-env.d.ts",

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useCallback, useMemo, useState, ViewTransition } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
 import NotesCard from "@/app/components/NotesCard";
+import { useToast } from "@/components/ui/use-toast";
 import type { CourseNoteListItem } from "@/lib/data/notes";
 import {
     downloadPdfFile,
@@ -27,6 +28,7 @@ export default function CourseNotesGrid({
 }: Props) {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [isDownloading, setIsDownloading] = useState(false);
+    const { toast } = useToast();
 
     const noteById = useMemo(
         () => new Map(notes.map((note) => [note.id, note])),
@@ -86,11 +88,14 @@ export default function CourseNotesGrid({
                 })),
             });
         } catch {
-            window.alert("Could not create the notes zip file. Please try again.");
+            toast({
+                title: "Could not create the notes zip file.",
+                variant: "destructive",
+            });
         } finally {
             setIsDownloading(false);
         }
-    }, [courseCode, courseTitle, getFileName, isDownloading, noteById, selected]);
+    }, [courseCode, courseTitle, getFileName, isDownloading, noteById, selected, toast]);
 
     const count = selected.size;
 
@@ -98,15 +103,14 @@ export default function CourseNotesGrid({
         <>
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {notes.map((note, index) => (
-                    <ViewTransition key={note.id}>
-                        <NotesCard
-                            note={note}
-                            index={index}
-                            selected={selected.has(note.id)}
-                            onToggleSelect={toggle}
-                            onDownload={downloadNote}
-                        />
-                    </ViewTransition>
+                    <NotesCard
+                        key={note.id}
+                        note={note}
+                        index={index}
+                        selected={selected.has(note.id)}
+                        onToggleSelect={toggle}
+                        onDownload={downloadNote}
+                    />
                 ))}
             </section>
 

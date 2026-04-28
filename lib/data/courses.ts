@@ -1,5 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { and, count, eq, or, sql } from "drizzle-orm";
+import { and, arrayContains, count, eq, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/courseTags";
 import { course, db, note, pastPaper } from "@/db";
 
@@ -26,7 +26,7 @@ export async function getCourseByCodeAny(code: string): Promise<CourseSummary | 
         .where(
             or(
                 eq(course.code, normalized),
-                sql`${normalized} = any(${course.aliases})`,
+                arrayContains(course.aliases, [normalized]),
             ),
         )
         .limit(1);

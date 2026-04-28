@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
+import { useToast } from "@/components/ui/use-toast";
 import { formatSyllabusDisplayName, getCourseSyllabusPath, parseSyllabusName } from "@/lib/seo";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -108,6 +109,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [isDownloading, setIsDownloading] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
 
     const syllabusById = useMemo(
         () => new Map(syllabi.map((syllabus) => [syllabus.id, syllabus])),
@@ -173,11 +175,14 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                 })),
             });
         } catch {
-            window.alert("Could not create the syllabus zip file. Please try again.");
+            toast({
+                title: "Could not create the syllabus zip file.",
+                variant: "destructive",
+            });
         } finally {
             setIsDownloading(false);
         }
-    }, [isDownloading, selected, syllabusById]);
+    }, [isDownloading, selected, syllabusById, toast]);
 
     const count = selected.size;
 

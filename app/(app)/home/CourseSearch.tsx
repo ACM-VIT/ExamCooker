@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import Image from "@/app/components/common/AppImage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,9 +41,22 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const deferredQuery = useDeferredValue(query);
+
+    const searchableCourses = useMemo(
+        () =>
+            courses.map((course) => ({
+                course,
+                codeUpper: course.code.toUpperCase(),
+                normalizedSearchable: normalizeSearchInput(
+                    `${course.code} ${course.title}`,
+                ),
+            })),
+        [courses],
+    );
 
     const filteredCourses = useMemo(() => {
-        const trimmed = query.trim();
+        const trimmed = deferredQuery.trim();
         if (!trimmed) return [];
         const aliasCodes = getAliasCourseCodes(trimmed);
         const aliasSet = new Set(aliasCodes.map((code) => code.toUpperCase()));
@@ -51,16 +64,14 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
         const normalizedQuery = normalizeSearchInput(trimmed);
         const queryTerms = normalizedQuery.split(" ").filter(Boolean);
 
-        return courses
-            .filter(course => {
-                const codeUpper = course.code.toUpperCase();
+        return searchableCourses
+            .filter(({ course, codeUpper, normalizedSearchable }) => {
                 if (aliasSet.has(codeUpper) || codeUpper === normalizedCodeQuery) return true;
-
-                const normalizedSearchable = normalizeSearchInput(`${course.code} ${course.title}`);
                 return queryTerms.every((term) => normalizedSearchable.includes(term));
             })
+            .map(({ course }) => course)
             .slice(0, 8);
-    }, [query, courses]);
+    }, [deferredQuery, searchableCourses]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
