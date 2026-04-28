@@ -5,7 +5,7 @@ import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/pastPaperTitle";
-import { course, db, note, pastPaper, user } from "@/src/db";
+import { course, db, note, pastPaper, user } from "@/db";
 
 export async function fetchUnclearedItems() {
     const session = await auth();

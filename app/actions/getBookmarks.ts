@@ -19,8 +19,8 @@ import {
     userBookmarkedPastPapers,
     userBookmarkedResources,
     vote,
-} from "@/src/db";
-import { requireUserByEmail } from "@/src/db/helpers";
+} from "@/db";
+import { requireUserByEmail } from "@/db/helpers";
 
 type BookmarkWithMeta = Bookmark & {
     thumbNailUrl?: string | null;

@@ -5,7 +5,7 @@ import { auth } from "@/app/auth";
 import { listUpcomingExamsForMod } from "@/lib/data/upcomingExams";
 import UpcomingExamEditor from "@/app/components/mod/UpcomingExamEditor";
 import type { CourseOption } from "@/app/components/mod/CoursePicker";
-import { course, db } from "@/src/db";
+import { course, db } from "@/db";
 
 export const metadata = {
     title: "Upcoming exams · Mod",

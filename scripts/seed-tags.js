@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
 const { createScriptDb } = require("./lib/db.ts");
-const { tag } = require("../src/db/schema.ts");
+const { tag } = require("../db/schema.ts");
 
 async function main(filepath) {
     const { db, close } = createScriptDb();

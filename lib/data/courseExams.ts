@@ -8,7 +8,7 @@ import {
     type ExamType,
     note,
     pastPaper,
-} from "@/src/db";
+} from "@/db";
 
 export async function getCourseExamCombos() {
     const combos = await db

@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import * as schema from "../../src/db/schema";
+import * as schema from "../../db/schema";
 import { loadScriptEnv } from "./env";
 
 export type ScriptDatabase = NodePgDatabase<typeof schema> & {

@@ -12,7 +12,7 @@ import {
     parseSubjectName,
 } from "@/lib/seo";
 import { getVinCourseById } from "@/lib/data/vinTogether";
-import { db, module as moduleTable, type Module, subject, type Subject } from "@/src/db";
+import { db, module as moduleTable, type Module, subject, type Subject } from "@/db";
 
 async function fetchLegacySubject(id: string) {
     const foundSubject = await db

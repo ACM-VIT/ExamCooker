@@ -1,7 +1,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { asc } = require("drizzle-orm");
-const { tag } = require("../src/db/schema.ts");
+const { tag } = require("../db/schema.ts");
 const { createScriptDb } = require("./lib/db.ts");
 const OUTPUT_FILE = path.resolve(__dirname, 'current_tags.json')
 

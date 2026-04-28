@@ -19,7 +19,7 @@ import {
     type Campus,
     type ExamType,
     type Semester,
-} from "@/src/db";
+} from "@/db";
 
 function normalizePaperLinkSummary<T extends {
     id: string;

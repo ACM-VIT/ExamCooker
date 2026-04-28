@@ -11,7 +11,7 @@ import {
   tag,
   user,
   vote,
-} from "@/src/db";
+} from "@/db";
 
 async function forumPostThread({
   params,

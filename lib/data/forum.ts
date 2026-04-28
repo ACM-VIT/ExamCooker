@@ -18,7 +18,7 @@ import {
     tag,
     user,
     vote,
-} from "@/src/db";
+} from "@/db";
 
 function buildWhere(search: string, tags: string[]) {
     const filters = [];

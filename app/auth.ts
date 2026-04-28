@@ -7,9 +7,9 @@ import NextAuth from "next-auth";
 import { getServerSession } from "next-auth/next";
 import Google from "next-auth/providers/google";
 import { eq } from "drizzle-orm";
-import { createAuthAdapter } from "@/src/db/auth-adapter";
-import { db } from "@/src/db";
-import { user as userTable } from "@/src/db/schema";
+import { createAuthAdapter } from "@/db/auth-adapter";
+import { db } from "@/db";
+import { user as userTable } from "@/db/schema";
 
 const adapter = createAuthAdapter();
 const ROLE_REFRESH_INTERVAL_SECONDS = 5 * 60;

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import CoursePicker, { type CourseOption } from "./CoursePicker";
 import { updatePaperMetadata } from "@/app/actions/updatePaperMetadata";
-import type { Campus, ExamType, Semester } from "@/src/db";
+import type { Campus, ExamType, Semester } from "@/db";
 
 export type PaperRowData = {
     id: string;

@@ -20,7 +20,7 @@ import {
     noteToTag,
     pastPaper,
     tag,
-} from "@/src/db";
+} from "@/db";
 
 function buildWhere(search: string, tags: string[]) {
     const filters = [eq(note.isClear, true)];

@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { BlobServiceClient } from "@azure/storage-blob";
 import { asc, eq, inArray } from "drizzle-orm";
-import { pastPaper } from "../../src/db";
+import { pastPaper } from "../../db";
 import { createScriptDb } from "../lib/db";
 import { loadScriptEnv } from "../lib/env";
 

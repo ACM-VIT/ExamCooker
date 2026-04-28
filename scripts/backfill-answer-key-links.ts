@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import { and, eq, isNotNull } from "drizzle-orm";
 import { createScriptDb } from "./lib/db";
-import { course, pastPaper } from "../src/db";
+import { course, pastPaper } from "../db";
 
 type CandidatePaper = {
   id: string;

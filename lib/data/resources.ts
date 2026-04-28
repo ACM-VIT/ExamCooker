@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { asc, count, eq, ilike, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/courseTags";
-import { db, module, subject } from "@/src/db";
+import { db, module, subject } from "@/db";
 
 function buildWhere(search: string) {
     const value = search.trim();

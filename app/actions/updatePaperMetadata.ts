@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { Campus, db, ExamType, pastPaper, Semester } from "@/src/db";
+import { Campus, db, ExamType, pastPaper, Semester } from "@/db";
 
 const schema = z.object({
     id: z.string().min(1),

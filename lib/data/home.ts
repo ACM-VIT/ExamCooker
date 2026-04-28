@@ -11,7 +11,7 @@ import {
     userBookmarkedPastPapers,
     userBookmarkedResources,
     viewHistory,
-} from "@/src/db";
+} from "@/db";
 
 export type HomeItem =
     | { type: "note"; item: { id: string; title: string } }

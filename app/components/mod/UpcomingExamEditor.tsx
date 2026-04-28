@@ -10,7 +10,7 @@ import {
     updateUpcomingExam,
 } from "@/app/actions/upcomingExams";
 import type { UpcomingExamItem } from "@/lib/data/upcomingExams";
-import type { ExamType } from "@/src/db";
+import type { ExamType } from "@/db";
 
 type Props = {
     courses: CourseOption[];

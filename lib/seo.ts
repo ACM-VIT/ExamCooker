@@ -1,6 +1,6 @@
 import { examTypeLabel } from "@/lib/examSlug";
 import { normalizeCourseCode } from "@/lib/courseTags";
-import type { ExamType } from "@/src/db";
+import type { ExamType } from "@/db";
 
 const PRODUCTION_BASE_URL = "https://examcooker.acmvit.in";
 const BETA_BASE_URL = "https://beta.examcooker.acmvit.in";

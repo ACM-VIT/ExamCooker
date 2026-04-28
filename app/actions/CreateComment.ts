@@ -2,8 +2,8 @@
 
 import { auth } from '../auth'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { comment, db, type Comment } from '@/src/db'
-import { requireUserByEmail } from '@/src/db/helpers'
+import { comment, db, type Comment } from '@/db'
+import { requireUserByEmail } from '@/db/helpers'
 
 type CreateCommentInput = {
   content: string
