@@ -1,6 +1,6 @@
 "use client";
 
-import { startGoogleSignIn } from "@/lib/auth-origin";
+import { startGoogleSignIn } from "@/lib/start-google-sign-in";
 
 export function SignIn({ displayText }: { displayText: string }) {
     return (

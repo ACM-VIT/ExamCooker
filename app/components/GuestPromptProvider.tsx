@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Session } from "next-auth";
 import { getSession } from "next-auth/react";
+import { startGoogleSignIn } from "@/lib/start-google-sign-in";
 
 type GuestPromptContextType = {
     isAuthed: boolean;
@@ -138,15 +139,12 @@ export default function GuestPromptProvider({
         };
     }, [clearPhaseTimers]);
 
-    const signInHref = `/api/auth/init?redirect=${encodeURIComponent(prompt.redirect ?? "/")}`;
     const actionLabel = prompt.action ? `to ${prompt.action}` : "to continue";
     const visible = phase === "open";
     const mounted = phase !== "closed";
     const handleSignIn = useCallback(() => {
-        if (typeof window !== "undefined") {
-            window.location.assign(signInHref);
-        }
-    }, [signInHref]);
+        startGoogleSignIn(prompt.redirect ?? "/");
+    }, [prompt.redirect]);
 
     return (
         <GuestPromptContext.Provider
