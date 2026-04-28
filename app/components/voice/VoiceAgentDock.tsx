@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Mic, MicOff, RefreshCcw, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import type {
@@ -19,6 +19,17 @@ type VoiceAgentDockProps = {
 
 const TOOL_ACTION_HOLD_MS = 4500;
 const DOCK_EXIT_MS = 220;
+const LISTENING_TIP_INTERVAL_MS = 3200;
+
+const LISTENING_TIPS = [
+  "Say hi, I'm listening",
+  'Try "take me to notes"',
+  'Try "show me previous papers"',
+  'Try "open the schedule"',
+  "Ask me anything on this page",
+  'Try "scroll down"',
+  'Try "go back"',
+];
 
 function splitWords(text: string) {
   return text.split(/\s+/).filter(Boolean);
@@ -129,19 +140,37 @@ function useToolActionCaption(runtime: UseVoiceControlReturn) {
   return caption;
 }
 
+function useListeningTip(active: boolean) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      setIndex(0);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setIndex((i) => (i + 1) % LISTENING_TIPS.length);
+    }, LISTENING_TIP_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [active]);
+
+  return active ? LISTENING_TIPS[index] : null;
+}
+
 function getStatusFallback(
   runtime: UseVoiceControlReturn,
   lastError: string | null,
+  listeningTip: string | null,
 ): { text: string; tone: "default" | "error" | "muted" } | null {
   if (lastError) return { text: "Couldn't reach voice", tone: "error" };
   if (!runtime.connected) {
     return runtime.activity === "connecting"
-      ? { text: "Connecting", tone: "default" }
+      ? { text: "Getting ready…", tone: "default" }
       : null;
   }
-  if (runtime.muted) return { text: "Muted", tone: "muted" };
-  if (runtime.activity === "processing") return { text: "Thinking", tone: "default" };
-  return { text: "Listening", tone: "default" };
+  if (runtime.muted) return { text: "Muted. Tap mic to talk", tone: "muted" };
+  if (runtime.activity === "processing") return { text: "Thinking…", tone: "default" };
+  return { text: listeningTip ?? "Say hi, I'm listening", tone: "default" };
 }
 
 function StatusCaption({
@@ -154,12 +183,12 @@ function StatusCaption({
   return (
     <div
       className={cn(
-        "h-4 overflow-hidden text-[10.5px] font-semibold uppercase leading-4 tracking-[0.22em] transition-colors duration-200",
+        "h-5 overflow-hidden text-[12.5px] font-medium leading-5 tracking-[-0.005em] transition-colors duration-200",
         tone === "error"
-          ? "text-red-500 dark:text-red-400"
+          ? "text-red-500/90 dark:text-red-400/90"
           : tone === "muted"
-            ? "text-black/40 dark:text-[#D5D5D5]/40"
-            : "text-black/55 dark:text-[#D5D5D5]/55",
+            ? "text-black/45 dark:text-[#D5D5D5]/45"
+            : "text-black/60 dark:text-[#D5D5D5]/65",
       )}
     >
       <span key={text} className="voice-caption-line block truncate">
@@ -193,6 +222,14 @@ export default function VoiceAgentDock({
 }: VoiceAgentDockProps) {
   const toolCaption = useToolActionCaption(runtime);
 
+  const showListeningTip =
+    runtime.connected &&
+    !runtime.muted &&
+    runtime.activity === "listening" &&
+    !toolCaption &&
+    runtime.transcript.trim().length === 0;
+  const listeningTip = useListeningTip(showListeningTip);
+
   const visible =
     runtime.connected ||
     runtime.activity === "connecting" ||
@@ -217,7 +254,7 @@ export default function VoiceAgentDock({
   if (typeof document === "undefined") return null;
 
   const currentTranscript = runtime.transcript.trim();
-  const fallback = getStatusFallback(runtime, lastError);
+  const fallback = getStatusFallback(runtime, lastError, listeningTip);
   const captionText = toolCaption ?? fallback?.text ?? "";
   const captionTone =
     lastError != null
@@ -225,7 +262,6 @@ export default function VoiceAgentDock({
       : toolCaption
         ? "default"
         : (fallback?.tone ?? "default");
-
   const showSpinner = !runtime.connected && !lastError;
 
   return createPortal(
