@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, count, eq, isNotNull } from "drizzle-orm";
 import { getBaseUrl } from "@/lib/seo";
-import { getCourseGrid, getSearchableCourses } from "@/lib/data/courseCatalog";
+import { getCourseGrid, getCourseSearchRecords } from "@/lib/data/courseCatalog";
 import { getCourseExamCombos } from "@/lib/data/courseExams";
 import { getExamHubSummaries } from "@/lib/data/courseExams";
 import { db, note, pastPaper, subject, syllabi } from "@/db";
@@ -48,7 +48,7 @@ export async function GET() {
                 .then((rows) => rows[0]?.total ?? 0),
             getCourseGrid(),
             getCourseExamCombos(),
-            getSearchableCourses(),
+            getCourseSearchRecords(),
             getExamHubSummaries(),
         ]);
 
