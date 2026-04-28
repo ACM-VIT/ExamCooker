@@ -153,6 +153,46 @@ function NavBarFallback({
     );
 }
 
+function ClientShell({
+    children,
+    isNavOn,
+    toggleNavbar,
+}: {
+    children: React.ReactNode;
+    isNavOn: boolean;
+    toggleNavbar: () => void;
+}) {
+    return (
+        <div className="relative flex">
+            <Suspense fallback={<NavBarFallback isNavOn={isNavOn} toggleNavbar={toggleNavbar} />}>
+                <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
+            </Suspense>
+            <Suspense fallback={null}>
+                <MobileLogoLink />
+            </Suspense>
+            <main className="min-w-0 flex-1 pt-14 lg:pt-0 lg:pl-14">
+                {children}
+            </main>
+        </div>
+    );
+}
+
+function ClientProviders({
+    children,
+    initialBookmarks,
+}: {
+    children: React.ReactNode;
+    initialBookmarks: Bookmark[];
+}) {
+    return (
+        <GuestPromptProvider>
+            <BookmarksProvider initialBookmarks={initialBookmarks}>
+                {children}
+            </BookmarksProvider>
+        </GuestPromptProvider>
+    );
+}
+
 export default function ClientSide({
     children,
     initialBookmarks,
@@ -181,23 +221,15 @@ export default function ClientSide({
     const toggleNavbar = () => setIsNavOn((v) => !v);
 
     return (
-        <GuestPromptProvider>
-            <BookmarksProvider initialBookmarks={initialBookmarks}>
-                <Suspense fallback={null}>
-                    <RouteEffects onPathChange={handlePathChange} />
-                </Suspense>
-                <div className="relative flex">
-                    <Suspense fallback={<NavBarFallback isNavOn={isNavOn} toggleNavbar={toggleNavbar} />}>
-                        <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
-                    </Suspense>
+        <ClientShell isNavOn={isNavOn} toggleNavbar={toggleNavbar}>
+            <Suspense fallback={children}>
+                <ClientProviders initialBookmarks={initialBookmarks}>
                     <Suspense fallback={null}>
-                        <MobileLogoLink />
+                        <RouteEffects onPathChange={handlePathChange} />
                     </Suspense>
-                    <main className="min-w-0 flex-1 pt-14 lg:pt-0 lg:pl-14">
-                        {children}
-                    </main>
-                </div>
-            </BookmarksProvider>
-        </GuestPromptProvider>
+                    {children}
+                </ClientProviders>
+            </Suspense>
+        </ClientShell>
     );
 }

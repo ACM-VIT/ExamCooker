@@ -12,7 +12,11 @@ type BookmarksContextType = {
     isBookmarked: (id: string, type: Bookmark['type']) => boolean;
 };
 
-const BookmarksContext = createContext<BookmarksContextType | undefined>(undefined);
+const BookmarksContext = createContext<BookmarksContextType>({
+    bookmarks: [],
+    toggleBookmark: async () => undefined,
+    isBookmarked: () => false,
+});
 
 function toggleBookmarkInList(bookmarks: Bookmark[], bookmark: Bookmark) {
     const index = bookmarks.findIndex(
@@ -27,11 +31,7 @@ function toggleBookmarkInList(bookmarks: Bookmark[], bookmark: Bookmark) {
 }
 
 export function useBookmarks() {
-    const context = useContext(BookmarksContext);
-    if (context === undefined) {
-        throw new Error('useBookmarks must be used within a BookmarksProvider');
-    }
-    return context;
+    return useContext(BookmarksContext);
 }
 
 export default function BookmarksProvider({ children, initialBookmarks }: { children: React.ReactNode, initialBookmarks: Bookmark[] }) {

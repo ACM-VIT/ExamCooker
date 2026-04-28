@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import DirectionalTransition from "@/app/components/common/DirectionalTransition";
 import ResourceBrowser from "@/app/components/resources/ResourceBrowser";
@@ -49,12 +50,49 @@ function HeroStats({
     );
 }
 
-export default async function ResourcesPage({
-    searchParams,
+function ResourceBrowserShell() {
+    return (
+        <div className="flex flex-col gap-4" aria-hidden="true">
+            <div className="flex items-stretch gap-2 sm:gap-3">
+                <div className="h-12 min-w-0 flex-1 border border-black/25 bg-white dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+                {Array.from({ length: 5 }).map((_, index) => (
+                    <span
+                        key={index}
+                        className="inline-flex h-9 w-16 border-2 border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]"
+                    />
+                ))}
+            </div>
+            <div className="flex flex-col gap-4 pt-2">
+                <span className="h-5 w-32 bg-black/10 dark:bg-white/10" />
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {Array.from({ length: 8 }).map((_, index) => (
+                        <div
+                            key={index}
+                            className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222]"
+                        >
+                            <span className="block h-3 w-20 bg-black/10 dark:bg-white/10" />
+                            <span className="block h-4 w-full bg-black/10 dark:bg-white/10" />
+                            <span className="block h-4 w-3/5 bg-black/10 dark:bg-white/10" />
+                            <div className="mt-auto flex items-end gap-1 pt-1">
+                                <span className="block h-7 w-10 bg-black/10 dark:bg-white/10" />
+                                <span className="block h-3 w-12 bg-black/10 dark:bg-white/10" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+async function ResourceBrowserSection({
+    searchParamsPromise,
 }: {
-    searchParams?: Promise<ResourcesSearchParams>;
+    searchParamsPromise: Promise<ResourcesSearchParams> | undefined;
 }) {
-    const params = (await searchParams) ?? {};
+    const params = (await searchParamsPromise) ?? {};
     const search = params.search?.trim() ?? "";
     const year = params.year?.trim() ?? "";
     const years = getVinYears();
@@ -71,10 +109,27 @@ export default async function ResourcesPage({
     }));
 
     return (
+        <ResourceBrowser
+            courses={courseCards}
+            initialSearch={search}
+            initialYear={year}
+            years={years}
+            sourceUrl={meta.source.coursesUrl}
+        />
+    );
+}
+
+export default async function ResourcesPage({
+    searchParams,
+}: {
+    searchParams?: Promise<ResourcesSearchParams>;
+}) {
+    const meta = getVinCatalogMeta();
+
+    return (
         <DirectionalTransition>
             <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
                 <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
-                    {/* Hero */}
                     <section className="flex flex-col gap-5">
                         <h1 className="whitespace-nowrap text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
                             Resource{" "}
@@ -83,13 +138,9 @@ export default async function ResourcesPage({
 
                         <HeroStats stats={meta.counts} />
 
-                        <ResourceBrowser
-                            courses={courseCards}
-                            initialSearch={search}
-                            initialYear={year}
-                            years={years}
-                            sourceUrl={meta.source.coursesUrl}
-                        />
+                        <Suspense fallback={<ResourceBrowserShell />}>
+                            <ResourceBrowserSection searchParamsPromise={searchParams} />
+                        </Suspense>
                     </section>
                 </div>
             </div>

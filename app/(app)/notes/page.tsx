@@ -110,10 +110,11 @@ function validatePage(page: number, totalPages: number): number {
 }
 
 async function CourseGridSection({
-    params,
+    searchParamsPromise,
 }: {
-    params: NotesSearchParams;
+    searchParamsPromise: Promise<NotesSearchParams> | undefined;
 }) {
+    const params = (await searchParamsPromise) ?? {};
     const search = params.search?.trim() || "";
     const rawPage = Number.parseInt(params.page || "1", 10) || 1;
 
@@ -243,13 +244,53 @@ function SearchControls({
     );
 }
 
+function SearchControlsShell() {
+    return (
+        <div
+            className="flex w-full items-stretch gap-2 sm:gap-3"
+            aria-hidden="true"
+        >
+            <div className="h-12 min-w-0 flex-1 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11" />
+            <div className="h-12 w-12 shrink-0 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11 sm:w-11" />
+        </div>
+    );
+}
+
+function DynamicSectionsShell() {
+    return (
+        <>
+            <SearchControlsShell />
+            <CourseGridShell />
+        </>
+    );
+}
+
+async function DynamicSections({
+    searchParamsPromise,
+    searchable,
+}: {
+    searchParamsPromise: Promise<NotesSearchParams> | undefined;
+    searchable: Awaited<ReturnType<typeof getSearchableNoteCourses>>;
+}) {
+    const params = (await searchParamsPromise) ?? {};
+    const search = params.search || "";
+
+    return (
+        <>
+            <SearchControls search={search} searchable={searchable} />
+
+            <Suspense fallback={<CourseGridShell />}>
+                <CourseGridSection searchParamsPromise={searchParamsPromise} />
+            </Suspense>
+        </>
+    );
+}
+
 export default async function NotesPage({
     searchParams,
 }: {
     searchParams?: Promise<NotesSearchParams>;
 }) {
-    const params = (await searchParams) ?? {};
-    const search = params.search || "";
     const [stats, searchable] = await Promise.all([
         getNotesStats(),
         getSearchableNoteCourses(),
@@ -266,15 +307,13 @@ export default async function NotesPage({
                         </h1>
 
                         <HeroStats stats={stats} />
-
-                        <SearchControls
-                            search={search}
-                            searchable={searchable}
-                        />
                     </section>
 
-                    <Suspense fallback={<CourseGridShell />}>
-                        <CourseGridSection params={params} />
+                    <Suspense fallback={<DynamicSectionsShell />}>
+                        <DynamicSections
+                            searchParamsPromise={searchParams}
+                            searchable={searchable}
+                        />
                     </Suspense>
                 </div>
             </div>

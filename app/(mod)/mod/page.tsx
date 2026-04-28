@@ -1,13 +1,23 @@
-import React from "react";
+import React, { Suspense } from "react";
 import {auth} from "../../auth";
 import {fetchUnclearedItems} from "../../actions/moderatorActions";
 import ModeratorDashboardClient from "../../components/ModeratorDashBoard";
 import { notFound, redirect } from "next/navigation";
 
-async function ModeratorDashboard({
-    searchParams,
+type ModeratorSearchParams = { page?: string; search?: string; tags?: string | string[] };
+
+function ModeratorDashboardShell() {
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-[#C2E6EC] dark:bg-[hsl(224,48%,9%)]" aria-hidden="true">
+            <div className="h-8 w-8 animate-spin border-2 border-black border-t-transparent dark:border-[#D5D5D5] dark:border-t-transparent" />
+        </div>
+    );
+}
+
+async function ModeratorDashboardContent({
+    searchParamsPromise,
 }: {
-    searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+    searchParamsPromise: Promise<ModeratorSearchParams> | undefined;
 }) {
     const session = await auth();
 
@@ -20,7 +30,7 @@ async function ModeratorDashboard({
     }
 
     try {
-        const params = (await searchParams) ?? {};
+        const params = (await searchParamsPromise) ?? {};
         const {notes, pastPapers, totalUsers} = await fetchUnclearedItems();
         return (
             <ModeratorDashboardClient
@@ -37,6 +47,18 @@ async function ModeratorDashboard({
             return <div>Error fetching data: Unknown error occurred.</div>;
         }
     }
+}
+
+function ModeratorDashboard({
+    searchParams,
+}: {
+    searchParams?: Promise<ModeratorSearchParams>;
+}) {
+    return (
+        <Suspense fallback={<ModeratorDashboardShell />}>
+            <ModeratorDashboardContent searchParamsPromise={searchParams} />
+        </Suspense>
+    );
 }
 
 export default ModeratorDashboard;

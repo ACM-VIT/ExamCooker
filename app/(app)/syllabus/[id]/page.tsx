@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import PDFViewerClient from '@/app/components/PDFViewerClient';
@@ -48,9 +48,26 @@ export async function generateMetadata({
     };
 }
 
-async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> }) {
+function SyllabusViewerShell() {
+    return (
+        <div
+            className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10"
+            aria-hidden="true"
+        >
+            <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
+            <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+            <div className="h-[70dvh] border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]" />
+        </div>
+    );
+}
+
+async function SyllabusViewerContent({
+    paramsPromise,
+}: {
+    paramsPromise: Promise<{ id: string }>;
+}) {
     let syllabus;
-    const { id } = await params;
+    const { id } = await paramsPromise;
 
     try {
         syllabus = await getSyllabusDetail(id);
@@ -87,13 +104,12 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
     //const postTime: string = syllabus.createdAt.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
 
     return (
-        <DirectionalTransition>
-            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-                <ViewTracker
-                    id={syllabus.id}
-                    type="syllabus"
-                    title={title}
-                />
+        <>
+            <ViewTracker
+                id={syllabus.id}
+                type="syllabus"
+                title={title}
+            />
 
                 <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
                     <Link
@@ -142,6 +158,17 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
                         </div>
                     </div>
                 </div>
+        </>
+    );
+}
+
+function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> }) {
+    return (
+        <DirectionalTransition>
+            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <Suspense fallback={<SyllabusViewerShell />}>
+                    <SyllabusViewerContent paramsPromise={params} />
+                </Suspense>
             </div>
         </DirectionalTransition>
     );

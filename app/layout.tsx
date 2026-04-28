@@ -81,15 +81,14 @@ export default function RootLayout({
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
-                <PostHogProvider>
-                    {children}
-                    <Toaster />
-                    <UpsellToast />
-                    <UpsellModal />
-                    {process.env.GA_ID && (
-                        <GoogleAnalytics gaId={process.env.GA_ID} />
-                    )}
-                </PostHogProvider>
+                <PostHogProvider />
+                {children}
+                <Toaster />
+                <UpsellToast />
+                <UpsellModal />
+                {process.env.GA_ID && (
+                    <GoogleAnalytics gaId={process.env.GA_ID} />
+                )}
             </body>
         </html>
     );

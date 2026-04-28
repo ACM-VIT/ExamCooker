@@ -336,19 +336,9 @@ export async function getNotesStats(): Promise<NotesStats> {
     cacheTag("notes");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const [noteRows, courseRows] = await Promise.all([
-        db
-            .select({ total: count() })
-            .from(note)
-            .where(eq(note.isClear, true)),
-        db
-            .selectDistinct({ courseId: note.courseId })
-            .from(note)
-            .where(and(eq(note.isClear, true), isNotNull(note.courseId))),
-    ]);
-
-    const noteCount = noteRows[0]?.total ?? 0;
-    const courseCount = courseRows.length;
+    const courses = await getCoursesWithNoteStats();
+    const noteCount = courses.reduce((sum, courseRow) => sum + courseRow.noteCount, 0);
+    const courseCount = courses.length;
 
     return { noteCount, courseCount };
 }

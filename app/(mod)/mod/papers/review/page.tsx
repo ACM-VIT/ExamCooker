@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { desc, isNull, or } from "drizzle-orm";
@@ -14,7 +14,18 @@ export const metadata = {
     robots: { index: false, follow: false },
 };
 
-export default async function PaperReviewPage() {
+function PaperReviewShell() {
+    return (
+        <div
+            className="flex min-h-screen items-center justify-center bg-[#F5FAFD] dark:bg-transparent"
+            aria-hidden="true"
+        >
+            <div className="h-8 w-8 animate-spin border-2 border-black border-t-transparent dark:border-[#D5D5D5] dark:border-t-transparent" />
+        </div>
+    );
+}
+
+async function PaperReviewContent() {
     const session = await auth();
     if (!session?.user) redirect("/");
     if (session.user.role !== "MODERATOR") notFound();
@@ -89,5 +100,13 @@ export default async function PaperReviewPage() {
                 <PaperReviewList initialPapers={rows} courses={courseOptions} />
             </div>
         </div>
+    );
+}
+
+export default function PaperReviewPage() {
+    return (
+        <Suspense fallback={<PaperReviewShell />}>
+            <PaperReviewContent />
+        </Suspense>
     );
 }
