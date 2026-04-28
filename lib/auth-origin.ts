@@ -191,13 +191,3 @@ export function getAuthOriginCookieConfig(publicOrigin: AllowedOrigin) {
         },
     };
 }
-
-export function buildAuthInitUrl(callbackUrl: string) {
-    const url = new URL("/api/auth/init", window.location.origin);
-    url.searchParams.set("redirect", callbackUrl || "/");
-    return url.toString();
-}
-
-export function startGoogleSignIn(callbackUrl: string) {
-    window.location.assign(buildAuthInitUrl(callbackUrl));
-}

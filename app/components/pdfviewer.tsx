@@ -39,6 +39,10 @@ import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resourceNames";
 import { loadPdfBuffer } from "@/lib/pdf/pdfBufferCache";
 import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfiumEngineCache";
+import {
+  clearActivePdfSnapshot,
+  setActivePdfSnapshot,
+} from "@/app/components/voice/pdfVoiceContext";
 
 const TOOLBAR_BUTTON_CLASS =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500";
@@ -352,6 +356,54 @@ function ViewerToolbar({
   );
 }
 
+function PdfVoiceBridge({
+  documentId,
+  fileName,
+  fileUrl,
+}: {
+  documentId: string;
+  fileName: string;
+  fileUrl: string;
+}) {
+  const viewerIdRef = useRef(`pdf_${Math.random().toString(36).slice(2, 10)}`);
+  const { provides: scrollControls, state: scrollState } = useScroll(documentId);
+  const currentPage = Math.max(scrollState.currentPage || 1, 1);
+  const totalPages = Math.max(scrollState.totalPages || 1, 1);
+
+  const navigateToPage = useCallback(
+    (pageNumber: number) => {
+      scrollControls?.scrollToPage({
+        pageNumber: Math.min(Math.max(Math.round(pageNumber), 1), totalPages),
+        behavior: "smooth",
+        alignX: 50,
+        alignY: 0,
+      });
+    },
+    [scrollControls, totalPages],
+  );
+
+  useEffect(() => {
+    setActivePdfSnapshot({
+      currentPage,
+      fileName,
+      fileUrl,
+      navigateToPage,
+      title: document.title,
+      totalPages,
+      viewerId: viewerIdRef.current,
+    });
+  }, [currentPage, fileName, fileUrl, navigateToPage, totalPages]);
+
+  useEffect(
+    () => () => {
+      clearActivePdfSnapshot(viewerIdRef.current);
+    },
+    [],
+  );
+
+  return null;
+}
+
 function DocumentViewport({
   documentId,
   fileUrl,
@@ -387,6 +439,11 @@ function DocumentViewport({
 
         return (
           <div className="flex h-full min-h-0 w-full flex-col">
+            <PdfVoiceBridge
+              documentId={documentId}
+              fileName={fileName}
+              fileUrl={fileUrl}
+            />
             <ViewerToolbar
               documentId={documentId}
               fileUrl={fileUrl}

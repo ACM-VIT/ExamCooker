@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/app/auth";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { db, viewHistory } from "@/db";
 
@@ -39,39 +39,45 @@ export async function recordViewAction(type: ViewableItemType, itemId: string) {
     if (!userId) return { success: false };
 
     const viewedAt = new Date();
-    switch (type) {
-        case "pastpaper":
-            await upsertViewHistory(
-                { userId, pastPaperId: itemId, viewedAt },
-                [viewHistory.userId, viewHistory.pastPaperId],
-            );
-            break;
-        case "note":
-            await upsertViewHistory(
-                { userId, noteId: itemId, viewedAt },
-                [viewHistory.userId, viewHistory.noteId],
-            );
-            break;
-        case "forumpost":
-            await upsertViewHistory(
-                { userId, forumPostId: itemId, viewedAt },
-                [viewHistory.userId, viewHistory.forumPostId],
-            );
-            break;
-        case "subject":
-            await upsertViewHistory(
-                { userId, subjectId: itemId, viewedAt },
-                [viewHistory.userId, viewHistory.subjectId],
-            );
-            break;
-        case "syllabus":
-            await upsertViewHistory(
-                { userId, syllabusId: itemId, viewedAt },
-                [viewHistory.userId, viewHistory.syllabusId],
-            );
-            break;
-        default:
-            break;
+
+    try {
+        switch (type) {
+            case "pastpaper":
+                await upsertViewHistory(
+                    { userId, pastPaperId: itemId, viewedAt },
+                    [viewHistory.userId, viewHistory.pastPaperId],
+                );
+                break;
+            case "note":
+                await upsertViewHistory(
+                    { userId, noteId: itemId, viewedAt },
+                    [viewHistory.userId, viewHistory.noteId],
+                );
+                break;
+            case "forumpost":
+                await upsertViewHistory(
+                    { userId, forumPostId: itemId, viewedAt },
+                    [viewHistory.userId, viewHistory.forumPostId],
+                );
+                break;
+            case "subject":
+                await upsertViewHistory(
+                    { userId, subjectId: itemId, viewedAt },
+                    [viewHistory.userId, viewHistory.subjectId],
+                );
+                break;
+            case "syllabus":
+                await upsertViewHistory(
+                    { userId, syllabusId: itemId, viewedAt },
+                    [viewHistory.userId, viewHistory.syllabusId],
+                );
+                break;
+            default:
+                return { success: false };
+        }
+    } catch (error) {
+        console.error("Failed to record view history", { type, itemId, userId, error });
+        return { success: false };
     }
 
     revalidateTag("home", "minutes");
