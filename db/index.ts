@@ -9,6 +9,29 @@ function readPositiveInt(name: string, fallback: number) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+function readNonNegativeInt(name: string, fallback: number) {
+  const value = Number.parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function readOptionalPositiveInt(name: string) {
+  const value = Number.parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function readBoolean(name: string, fallback = false) {
+  const value = process.env[name]?.trim().toLowerCase();
+  if (!value) return fallback;
+  if (["1", "true", "yes", "on"].includes(value)) return true;
+  if (["0", "false", "no", "off"].includes(value)) return false;
+  return fallback;
+}
+
+function readString(name: string, fallback: string) {
+  const value = process.env[name]?.trim();
+  return value ? value : fallback;
+}
+
 const TRANSIENT_DB_ERROR_CODES = new Set([
   "08000",
   "08003",
@@ -69,7 +92,7 @@ function isTransientDbError(error: unknown): boolean {
     return true;
   }
 
-  const message = candidate.message.toLowerCase();
+  const message = candidate.message?.toLowerCase() ?? "";
   if (TRANSIENT_DB_ERROR_MESSAGES.some((snippet) => message.includes(snippet))) {
     return true;
   }
@@ -93,6 +116,19 @@ function getQueryText(args: unknown[]): string | null {
   }
 
   return null;
+}
+
+function summarizeQueryText(queryText: string) {
+  const normalized = stripLeadingSqlComments(queryText).replace(/\s+/g, " ").trim();
+  if (normalized.length <= 240) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, 237)}...`;
+}
+
+function describePoolState(pool: Pool) {
+  return `total=${pool.totalCount} idle=${pool.idleCount} waiting=${pool.waitingCount}`;
 }
 
 function stripLeadingSqlComments(queryText: string) {
@@ -130,9 +166,21 @@ function isRetrySafeQuery(args: unknown[]) {
 }
 
 function attachQueryRetry(pool: Pool) {
-  const maxRetries = readPositiveInt("DATABASE_QUERY_RETRIES", 2);
+  const maxRetries = readNonNegativeInt("DATABASE_QUERY_RETRIES", 2);
   const retryDelayMs = readPositiveInt("DATABASE_QUERY_RETRY_DELAY_MS", 250);
+  const slowQueryThresholdMs = readNonNegativeInt("DATABASE_LOG_SLOW_QUERY_MS", 0);
+  const logConnectionEvents = readBoolean("DATABASE_LOG_CONNECTION_EVENTS", false);
   const rawQuery = pool.query.bind(pool) as (...args: unknown[]) => unknown;
+
+  if (logConnectionEvents) {
+    pool.on("connect", () => {
+      console.info(`[db] pool connect (${describePoolState(pool)})`);
+    });
+
+    pool.on("remove", () => {
+      console.info(`[db] pool remove (${describePoolState(pool)})`);
+    });
+  }
 
   pool.query = ((...args: unknown[]) => {
     if (typeof args.at(-1) === "function" || !isRetrySafeQuery(args)) {
@@ -140,16 +188,35 @@ function attachQueryRetry(pool: Pool) {
     }
 
     return (async () => {
+      const queryText = getQueryText(args);
+      const queryLabel = queryText ? summarizeQueryText(queryText) : "unknown query";
+      const startedAt = Date.now();
+
       for (let attempt = 0; ; attempt += 1) {
         try {
-          return await rawQuery(...args);
+          const result = await rawQuery(...args);
+          const totalDurationMs = Date.now() - startedAt;
+
+          if (slowQueryThresholdMs > 0 && totalDurationMs >= slowQueryThresholdMs) {
+            console.warn(
+              `[db] slow query ${totalDurationMs}ms (${describePoolState(pool)}) ${queryLabel}`,
+            );
+          }
+
+          return result;
         } catch (error) {
+          const totalDurationMs = Date.now() - startedAt;
+
           if (attempt >= maxRetries || !isTransientDbError(error)) {
+            console.error(
+              `[db] query failure after ${totalDurationMs}ms (${describePoolState(pool)}) ${queryLabel}`,
+              describeDbError(error),
+            );
             throw error;
           }
 
           console.warn(
-            `[db] transient query failure, retrying ${attempt + 1}/${maxRetries}`,
+            `[db] transient query failure after ${totalDurationMs}ms, retrying ${attempt + 1}/${maxRetries + 1} (${describePoolState(pool)}) ${queryLabel}`,
             describeDbError(error),
           );
           await sleep(retryDelayMs * (attempt + 1));
@@ -165,27 +232,51 @@ function createPool() {
     throw new Error("DATABASE_URL is not set");
   }
 
+  const applicationName = readString("DATABASE_APPLICATION_NAME", "examcooker-web");
+  const poolMin = readNonNegativeInt("DATABASE_POOL_MIN", 0);
+  const poolMax = readPositiveInt("DATABASE_POOL_MAX", 5);
+  const maxLifetimeSeconds = readOptionalPositiveInt(
+    "DATABASE_POOL_MAX_LIFETIME_SECONDS",
+  );
+  const maxUses = readOptionalPositiveInt("DATABASE_POOL_MAX_USES");
+  const connectionTimeoutMillis = readPositiveInt(
+    "DATABASE_CONNECTION_TIMEOUT_MS",
+    10_000,
+  );
+  const idleTimeoutMillis = readPositiveInt("DATABASE_IDLE_TIMEOUT_MS", 30_000);
+  const keepAliveInitialDelayMillis = readPositiveInt(
+    "DATABASE_KEEPALIVE_INITIAL_DELAY_MS",
+    5_000,
+  );
+  const queryTimeoutMillis = readPositiveInt("DATABASE_QUERY_TIMEOUT_MS", 20_000);
+  const statementTimeoutMillis = readPositiveInt(
+    "DATABASE_STATEMENT_TIMEOUT_MS",
+    20_000,
+  );
+
   const pool = new Pool({
     connectionString,
-    max: readPositiveInt("DATABASE_POOL_MAX", 5),
-    connectionTimeoutMillis: readPositiveInt(
-      "DATABASE_CONNECTION_TIMEOUT_MS",
-      10_000,
-    ),
-    idleTimeoutMillis: readPositiveInt("DATABASE_IDLE_TIMEOUT_MS", 30_000),
+    application_name: applicationName,
+    min: poolMin,
+    max: poolMax,
+    maxLifetimeSeconds,
+    maxUses,
+    connectionTimeoutMillis,
+    idleTimeoutMillis,
     keepAlive: true,
-    keepAliveInitialDelayMillis: readPositiveInt(
-      "DATABASE_KEEPALIVE_INITIAL_DELAY_MS",
-      10_000,
-    ),
-    query_timeout: readPositiveInt("DATABASE_QUERY_TIMEOUT_MS", 20_000),
-    statement_timeout: readPositiveInt("DATABASE_STATEMENT_TIMEOUT_MS", 20_000),
+    keepAliveInitialDelayMillis,
+    query_timeout: queryTimeoutMillis,
+    statement_timeout: statementTimeoutMillis,
   });
+
+  console.info(
+    `[db] pool configured app=${applicationName} min=${poolMin} max=${poolMax} connectTimeoutMs=${connectionTimeoutMillis} idleTimeoutMs=${idleTimeoutMillis} keepAliveInitialDelayMs=${keepAliveInitialDelayMillis} queryTimeoutMs=${queryTimeoutMillis} statementTimeoutMs=${statementTimeoutMillis} maxLifetimeSeconds=${maxLifetimeSeconds ?? 0} maxUses=${maxUses ?? 0}`,
+  );
 
   attachQueryRetry(pool);
 
   pool.on("error", (error) => {
-    console.error("[db] pg pool error", error);
+    console.error(`[db] pg pool error (${describePoolState(pool)})`, error);
   });
 
   return pool;
