@@ -1,11 +1,13 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import { usePathname } from "next/navigation";
 import ThemeToggleSwitch from "@/app/components/common/ThemeToggle";
 import { SignOut } from "@/app/components/sign-out";
-import { startGoogleSignIn } from "@/lib/auth-origin";
+import VoiceAgentButton from "@/app/components/voice/VoiceAgentButton";
+import { startGoogleSignIn } from "@/lib/start-google-sign-in";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 type MenuLink = {
@@ -31,10 +33,31 @@ type Props = {
   toggleNavbar: () => void;
 };
 
+const VoiceAgentEntry = dynamic(
+  () => import("@/app/components/voice/VoiceAgentEntry"),
+  {
+    ssr: false,
+    loading: () => (
+      <VoiceAgentButton
+        buttonLabel="Starting the voice guide"
+        disabled
+        onClick={() => undefined}
+        runtime={{
+          activity: "connecting",
+          connected: false,
+          muted: false,
+        }}
+      />
+    ),
+  },
+);
+
 const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const pathname = usePathname();
-  const { isAuthed, session } = useGuestPrompt();
+  const { isAuthed, requireAuth, session } = useGuestPrompt();
   const [showProfile, setShowProfile] = useState(false);
+  const [voiceRuntimeRequested, setVoiceRuntimeRequested] = useState(false);
+  const [voiceStartToken, setVoiceStartToken] = useState(0);
   const [hoveredTooltip, setHoveredTooltip] = useState<{
     content: string;
     top: number;
@@ -81,6 +104,16 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
       top: rect.top + rect.height / 2,
       left: rect.right + 10,
     });
+  };
+
+  const handleVoiceClick = () => {
+    if (!isAuthed) {
+      requireAuth("use the voice guide");
+      return;
+    }
+
+    setVoiceRuntimeRequested(true);
+    setVoiceStartToken((current) => current + 1);
   };
 
   return (
@@ -182,6 +215,27 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
           </div>
 
           <div className="mb-2 flex flex-col items-center gap-2">
+            <div
+              className="group flex"
+              onMouseEnter={(event) => showTooltip(event, "Voice guide")}
+              onMouseLeave={() => setHoveredTooltip(null)}
+              onFocus={(event) => showTooltip(event, "Voice guide")}
+              onBlur={() => setHoveredTooltip(null)}
+            >
+              {voiceRuntimeRequested ? (
+                <VoiceAgentEntry startToken={voiceStartToken} />
+              ) : (
+                <VoiceAgentButton
+                  buttonLabel="Start the voice guide"
+                  onClick={handleVoiceClick}
+                  runtime={{
+                    activity: "idle",
+                    connected: false,
+                    muted: false,
+                  }}
+                />
+              )}
+            </div>
             <ThemeToggleSwitch />
             {isAuthed ? (
               <div className="relative" ref={profileRef}>

@@ -6,6 +6,7 @@ import Image from "@/app/components/common/AppImage";
 import profile from "@/public/assets/Profile.svg";
 import { SignOut } from "./sign-out";
 import ThemeToggleSwitch from "./common/ThemeToggle";
+import { startGoogleSignIn } from "@/lib/start-google-sign-in";
 
 interface HeaderProps {
   toggleTheme: () => void;
@@ -114,12 +115,13 @@ const Header: React.FC<HeaderProps> = ({ toggleNavbar, isNavOn }) => {
             </div>
           </>
         ) : (
-          <a
-            href="/api/auth/init"
+          <button
+            type="button"
+            onClick={() => startGoogleSignIn()}
             className="border border-black dark:border-[#D5D5D5] px-3 py-1 text-sm font-semibold bg-[#3BF4C7] text-black dark:bg-[#0C1222] dark:text-[#D5D5D5] hover:-translate-x-0.5 hover:-translate-y-0.5 transition"
           >
             Sign In
-          </a>
+          </button>
         )}
       </div>
     </header>
