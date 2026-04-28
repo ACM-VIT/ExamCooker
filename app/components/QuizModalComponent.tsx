@@ -150,9 +150,13 @@ export default function QuizModalContent({
         /:/g,
         ""
       );
-      router.push(
-        `/quiz/weeks=${formattedWeeks}&numQ=${quizState.numQuestions}&time=${formattedDuration}&course=${courseCode}`
-      );
+      const params = new URLSearchParams({
+        weeks: formattedWeeks,
+        numQ: String(quizState.numQuestions),
+        time: formattedDuration,
+        course: courseCode,
+      });
+      router.push(`/quiz?${params.toString()}`);
     }
   };
 
