@@ -12,7 +12,10 @@ import {
     parseSyllabusName,
     safeEncodeURIComponent,
 } from "@/lib/seo";
-import { getCourseGrid, getSearchableCourses } from "@/lib/data/courseCatalog";
+import {
+    getCourseGrid,
+    getCourseSearchRecords,
+} from "@/lib/data/courseCatalog";
 import {
     getCourseExamCombos,
     getExamHubSummaries,
@@ -112,7 +115,7 @@ export async function GET(
             loc: `${baseUrl}${getCourseExamPath(combo.code, combo.examSlug)}`,
         }));
     } else if (collectionName === "course-notes") {
-        const courses = await getSearchableCourses();
+        const courses = await getCourseSearchRecords();
         const pageItems = courses
             .filter((course) => course.noteCount > 0)
             .slice(skip, skip + PAGE_SIZE);

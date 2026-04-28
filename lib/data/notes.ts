@@ -1,8 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { cache } from "react";
 import {
     and,
-    asc,
     count,
     desc,
     eq,
@@ -14,11 +12,14 @@ import {
 } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import {
+    getCourseSearchRecords,
+    type CourseSearchRecord,
+} from "@/lib/data/courseCatalog";
+import {
     course,
     db,
     note,
     noteToTag,
-    pastPaper,
     tag,
 } from "@/db";
 
@@ -185,82 +186,15 @@ export async function getCourseNotesPage(input: {
     }));
 }
 
-type CourseNoteStatsRow = {
-    id: string;
-    code: string;
-    title: string;
-    aliases: string[];
-    noteCount: number;
-    paperCount: number;
-};
+async function getNoteCourseRecords(): Promise<CourseSearchRecord[]> {
+    "use cache";
+    cacheTag("courses", "notes", "past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-const getCoursesWithNoteStats = cache(async (): Promise<CourseNoteStatsRow[]> => {
-    const noteCounts = await db
-        .select({
-            courseId: note.courseId,
-            noteCount: count(),
-        })
-        .from(note)
-        .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
-        .groupBy(note.courseId);
-
-    const courseIds = noteCounts
-        .map((row) => row.courseId)
-        .filter((courseId): courseId is string => Boolean(courseId));
-
-    if (courseIds.length === 0) {
-        return [];
-    }
-
-    const [courses, paperCounts] = await Promise.all([
-        db
-            .select({
-                id: course.id,
-                code: course.code,
-                title: course.title,
-                aliases: course.aliases,
-            })
-            .from(course)
-            .where(inArray(course.id, courseIds)),
-        db
-            .select({
-                courseId: pastPaper.courseId,
-                paperCount: count(),
-            })
-            .from(pastPaper)
-            .where(
-                and(
-                    eq(pastPaper.isClear, true),
-                    isNotNull(pastPaper.courseId),
-                    inArray(pastPaper.courseId, courseIds),
-                ),
-            )
-            .groupBy(pastPaper.courseId),
-    ]);
-
-    const noteCountByCourseId = new Map(
-        noteCounts
-            .filter((row) => row.courseId !== null)
-            .map((row) => [row.courseId, row.noteCount]),
-    );
-    const paperCountByCourseId = new Map(
-        paperCounts
-            .filter((row) => row.courseId !== null)
-            .map((row) => [row.courseId, row.paperCount]),
-    );
-
-    return courses
-        .map((courseRow) => ({
-            id: courseRow.id,
-            code: courseRow.code,
-            title: courseRow.title,
-            aliases: courseRow.aliases ?? [],
-            noteCount: noteCountByCourseId.get(courseRow.id) ?? 0,
-            paperCount: paperCountByCourseId.get(courseRow.id) ?? 0,
-        }))
+    return (await getCourseSearchRecords())
         .filter((courseRow) => courseRow.noteCount > 0)
         .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base" }));
-});
+}
 
 /* ─── Notes course grid (mirrors courseCatalog pattern) ─── */
 
@@ -274,10 +208,10 @@ export type NotesCourseGridItem = {
 
 export async function getNotesCourseGrid(): Promise<NotesCourseGridItem[]> {
     "use cache";
-    cacheTag("notes", "courses");
+    cacheTag("notes", "courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await getCoursesWithNoteStats();
+    const courses = await getNoteCourseRecords();
 
     return courses.map((c) => ({
         id: c.id,
@@ -333,10 +267,10 @@ export type NotesStats = {
 
 export async function getNotesStats(): Promise<NotesStats> {
     "use cache";
-    cacheTag("notes");
+    cacheTag("notes", "courses");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await getCoursesWithNoteStats();
+    const courses = await getNoteCourseRecords();
     const noteCount = courses.reduce((sum, courseRow) => sum + courseRow.noteCount, 0);
     const courseCount = courses.length;
 
@@ -356,10 +290,10 @@ export async function getSearchableNoteCourses(): Promise<
     SearchableNoteCourse[]
 > {
     "use cache";
-    cacheTag("notes", "courses");
+    cacheTag("notes", "courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await getCoursesWithNoteStats();
+    const courses = await getNoteCourseRecords();
 
     return courses
         .map((c) => ({

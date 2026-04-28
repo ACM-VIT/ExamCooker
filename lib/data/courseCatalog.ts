@@ -6,7 +6,6 @@ import {
     count,
     desc,
     eq,
-    inArray,
     isNotNull,
     sql,
 } from "drizzle-orm";
@@ -52,11 +51,20 @@ type CourseCatalogRow = {
     noteCount: number;
 };
 
-type CourseSearchRecord = CourseGridItem & {
+export type CourseSearchRecord = {
+    id: string;
+    code: string;
+    title: string;
+    paperCount: number;
+    noteCount: number;
     aliases: string[];
 };
 
-const getSyllabusIdByCourseCode = cache(async () => {
+async function getSyllabusIdByCourseCode() {
+    "use cache";
+    cacheTag("syllabus");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
     const syllabusRows = await db
         .select({
             id: syllabi.id,
@@ -65,44 +73,46 @@ const getSyllabusIdByCourseCode = cache(async () => {
         .from(syllabi)
         .orderBy(syllabi.name);
 
-    const syllabusIdByCode = new Map<string, string>();
+    const syllabusIdByCode: Record<string, string> = {};
     for (const syllabus of syllabusRows) {
         const code = normalizeCourseCode(syllabus.name.split("_")[0] ?? "");
-        if (code && !syllabusIdByCode.has(code)) {
-            syllabusIdByCode.set(code, syllabus.id);
+        if (code && !syllabusIdByCode[code]) {
+            syllabusIdByCode[code] = syllabus.id;
         }
     }
 
     return syllabusIdByCode;
-});
+}
 
-const getCourseCatalogRows = cache(async (): Promise<CourseCatalogRow[]> => {
-    const [courses, noteCounts, paperCounts] = await Promise.all([
-        db
-            .select({
-                id: course.id,
-                code: course.code,
-                title: course.title,
-                aliases: course.aliases,
-            })
-            .from(course),
-        db
-            .select({
-                courseId: note.courseId,
-                noteCount: count(),
-            })
-            .from(note)
-            .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
-            .groupBy(note.courseId),
-        db
-            .select({
-                courseId: pastPaper.courseId,
-                paperCount: count(),
-            })
-            .from(pastPaper)
-            .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
-            .groupBy(pastPaper.courseId),
-    ]);
+async function getCourseCatalogRows(): Promise<CourseCatalogRow[]> {
+    "use cache";
+    cacheTag("courses", "notes", "past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const courses = await db
+        .select({
+            id: course.id,
+            code: course.code,
+            title: course.title,
+            aliases: course.aliases,
+        })
+        .from(course);
+    const noteCounts = await db
+        .select({
+            courseId: note.courseId,
+            noteCount: count(),
+        })
+        .from(note)
+        .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
+        .groupBy(note.courseId);
+    const paperCounts = await db
+        .select({
+            courseId: pastPaper.courseId,
+            paperCount: count(),
+        })
+        .from(pastPaper)
+        .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
+        .groupBy(pastPaper.courseId);
 
     const noteCountByCourseId = new Map(
         noteCounts
@@ -123,9 +133,13 @@ const getCourseCatalogRows = cache(async (): Promise<CourseCatalogRow[]> => {
         paperCount: paperCountByCourseId.get(courseRow.id) ?? 0,
         noteCount: noteCountByCourseId.get(courseRow.id) ?? 0,
     }));
-});
+}
 
-const getCourseSearchRecords = cache(async (): Promise<CourseSearchRecord[]> => {
+export async function getCourseSearchRecords(): Promise<CourseSearchRecord[]> {
+    "use cache";
+    cacheTag("courses", "notes", "past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
     const courses = await getCourseCatalogRows();
 
     return courses
@@ -136,10 +150,9 @@ const getCourseSearchRecords = cache(async (): Promise<CourseSearchRecord[]> => 
             title: courseRow.title,
             paperCount: courseRow.paperCount,
             noteCount: courseRow.noteCount,
-            viewCount: 0,
             aliases: courseRow.aliases,
         }));
-});
+}
 
 const getCourseSearchIndex = cache(async () => {
     const records = await getCourseSearchRecords();
@@ -158,7 +171,7 @@ const getCourseSearchIndex = cache(async () => {
 
 export async function getCourseGrid(): Promise<CourseGridItem[]> {
     "use cache";
-    cacheTag("courses", "past_papers");
+    cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     const courses = await getCourseGridBase();
@@ -173,62 +186,43 @@ export async function getCourseGrid(): Promise<CourseGridItem[]> {
 async function getCourseGridBase(): Promise<CourseGridItem[]> {
     const courses = await getCourseSearchRecords();
 
-    return courses.map(({ aliases: _aliases, ...courseRow }) => courseRow);
+    return courses.map(({ aliases: _aliases, ...courseRow }) => ({
+        ...courseRow,
+        viewCount: 0,
+    }));
 }
 
-const loadCourseDetailByCode = cache(async (normalized: string) => {
-    const rows = await db
-        .select({
-            id: course.id,
-            code: course.code,
-            title: course.title,
-            aliases: course.aliases,
-        })
-        .from(course)
-        .where(eq(course.code, normalized))
-        .limit(1);
-
-    const courseRow = rows[0];
+async function loadCourseDetailByCode(normalized: string) {
+    const courseRow = (await getCourseCatalogRows()).find(
+        (candidate) => candidate.code === normalized,
+    );
     if (!courseRow) return null;
-
-    const [paperRows, noteRows] = await Promise.all([
-        db
-            .select({ total: count() })
-            .from(pastPaper)
-            .where(and(eq(pastPaper.courseId, courseRow.id), eq(pastPaper.isClear, true))),
-        db
-            .select({ total: count() })
-            .from(note)
-            .where(and(eq(note.courseId, courseRow.id), eq(note.isClear, true))),
-    ]);
 
     return {
         id: courseRow.id,
         code: courseRow.code,
         title: courseRow.title,
         aliases: courseRow.aliases ?? [],
-        paperCount: paperRows[0]?.total ?? 0,
-        noteCount: noteRows[0]?.total ?? 0,
+        paperCount: courseRow.paperCount,
+        noteCount: courseRow.noteCount,
     } satisfies CourseDetail;
-});
+}
 
 export async function getPopularCourseGrid(limit = 6): Promise<CourseGridItem[]> {
     "use cache";
-    cacheTag("courses", "past_papers");
+    cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const [courses, viewCounts] = await Promise.all([
-        getCourseCatalogRows(),
-        db
-            .select({
-                courseId: pastPaper.courseId,
-                viewCount: sql<number>`coalesce(sum(${viewHistory.count}), 0)`,
-            })
-            .from(viewHistory)
-            .innerJoin(pastPaper, eq(viewHistory.pastPaperId, pastPaper.id))
-            .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
-            .groupBy(pastPaper.courseId),
-    ]);
+    const courses = await getCourseCatalogRows();
+    const viewCounts = await db
+        .select({
+            courseId: pastPaper.courseId,
+            viewCount: sql<number>`coalesce(sum(${viewHistory.count}), 0)`,
+        })
+        .from(viewHistory)
+        .innerJoin(pastPaper, eq(viewHistory.pastPaperId, pastPaper.id))
+        .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
+        .groupBy(pastPaper.courseId);
 
     const viewCountByCourseId = new Map(
         viewCounts
@@ -257,11 +251,12 @@ export async function getPopularCourseGrid(limit = 6): Promise<CourseGridItem[]>
 }
 
 export async function searchCourseGrid(query: string): Promise<CourseGridItem[]> {
-    const [records, fuse] = await Promise.all([
-        getCourseSearchRecords(),
-        getCourseSearchIndex(),
-    ]);
-    const grid = records.map(({ aliases: _aliases, ...courseRow }) => courseRow);
+    const records = await getCourseSearchRecords();
+    const fuse = await getCourseSearchIndex();
+    const grid = records.map(({ aliases: _aliases, ...courseRow }) => ({
+        ...courseRow,
+        viewCount: 0,
+    }));
     const trimmed = query.trim();
     if (!trimmed) return grid;
 
@@ -284,12 +279,18 @@ export async function searchCourseGrid(query: string): Promise<CourseGridItem[]>
     });
 
     if (substring.length > 0) {
-        return substring.map(({ aliases: _aliases, ...rest }) => rest);
+        return substring.map(({ aliases: _aliases, ...rest }) => ({
+            ...rest,
+            viewCount: 0,
+        }));
     }
 
     return fuse.search(trimmed).map(({ item }) => {
         const { aliases: _aliases, ...rest } = item;
-        return rest;
+        return {
+            ...rest,
+            viewCount: 0,
+        };
     });
 }
 
@@ -305,13 +306,11 @@ export type SearchableCourseRecord = {
 
 export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> {
     "use cache";
-    cacheTag("courses", "past_papers", "syllabus");
+    cacheTag("courses", "notes", "past_papers", "syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const [courses, syllabusIdByCode] = await Promise.all([
-        getCourseSearchRecords(),
-        getSyllabusIdByCourseCode(),
-    ]);
+    const courses = await getCourseSearchRecords();
+    const syllabusIdByCode = await getSyllabusIdByCourseCode();
 
     return courses
         .map((c) => ({
@@ -321,7 +320,7 @@ export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> 
             aliases: c.aliases,
             paperCount: c.paperCount,
             noteCount: c.noteCount,
-            syllabusId: syllabusIdByCode.get(c.code) ?? null,
+            syllabusId: syllabusIdByCode[c.code] ?? null,
         }))
         .filter((c) => c.paperCount > 0 || c.noteCount > 0 || c.syllabusId)
         .sort((a, b) => b.paperCount - a.paperCount);
@@ -379,7 +378,7 @@ export async function getRecentPapers(limit = 10): Promise<RecentPaper[]> {
 
 export async function getCourseDetailByCode(code: string): Promise<CourseDetail | null> {
     "use cache";
-    cacheTag("courses");
+    cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     const normalized = normalizeCourseCode(code);

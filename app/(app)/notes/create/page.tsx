@@ -1,10 +1,10 @@
 import React from "react";
 import UploadFile from "@/app/components/UploadFile";
 import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import { getSearchableCourses } from "@/lib/data/courseCatalog";
+import { getCourseSearchRecords } from "@/lib/data/courseCatalog";
 
 async function NewNotePage() {
-    const courses = await getSearchableCourses();
+    const courses = await getCourseSearchRecords();
     return (
         <DirectionalTransition>
             <div className="create-notes">

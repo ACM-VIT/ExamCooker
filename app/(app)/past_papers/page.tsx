@@ -12,10 +12,10 @@ import PastPapersCourseSearch from "@/app/components/past_papers/PastPapersCours
 import UpcomingExamsStrip from "@/app/components/past_papers/UpcomingExamsStrip";
 import {
     getCatalogStats,
+    getCourseSearchRecords,
     getCourseGrid,
     getPopularCourseGrid,
     getRecentPapers,
-    getSearchableCourses,
     searchCourseGrid,
     type CourseGridItem,
 } from "@/lib/data/courseCatalog";
@@ -342,7 +342,7 @@ function SearchControls({
     searchable,
 }: {
     search: string;
-    searchable: Awaited<ReturnType<typeof getSearchableCourses>>;
+    searchable: Awaited<ReturnType<typeof getCourseSearchRecords>>;
 }) {
     return (
         <div className="flex w-full items-stretch gap-2 sm:gap-3">
@@ -387,7 +387,7 @@ async function DynamicHomeSections({
     searchable,
 }: {
     searchParamsPromise: Promise<PastPapersSearchParams> | undefined;
-    searchable: Awaited<ReturnType<typeof getSearchableCourses>>;
+    searchable: Awaited<ReturnType<typeof getCourseSearchRecords>>;
 }) {
     const params = (await searchParamsPromise) ?? {};
     const search = params.search?.trim() || "";
@@ -422,7 +422,7 @@ export default async function PastPapersPage({
 }) {
     const [stats, searchable] = await Promise.all([
         getCatalogStats(),
-        getSearchableCourses(),
+        getCourseSearchRecords(),
     ]);
     const faq = [
         {
