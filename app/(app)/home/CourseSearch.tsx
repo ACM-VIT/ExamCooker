@@ -144,12 +144,12 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     return (
         <div className="mx-auto w-full min-w-0 text-left">
             <div className="relative">
-                <div className="relative flex h-14 sm:h-16 w-full min-w-0 items-center overflow-hidden bg-white pl-4 pr-2 dark:bg-[#3D414E] border border-black/25 dark:border-[#D5D5D5]/30">
+                <div className="relative flex h-12 sm:h-14 lg:h-16 w-full min-w-0 items-center overflow-hidden bg-white pl-4 pr-2 dark:bg-[#3D414E] border border-black/25 dark:border-[#D5D5D5]/30">
                     <Image src={SearchIcon} alt="search" className="dark:invert-[.835] h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                     <input
                         ref={inputRef}
                         type="text"
-                        className="h-full min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap bg-transparent px-3 text-base text-black focus:outline-none placeholder:text-black/50 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60 sm:px-4 sm:text-lg"
+                        className="h-full min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap bg-transparent px-3 text-sm text-black focus:outline-none placeholder:text-black/50 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60 sm:px-4 sm:text-base lg:text-lg"
                         placeholder="Search for a course..."
                         value={query}
                         onChange={handleInputChange}
@@ -227,7 +227,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                 )}
             </div>
 
-            <div className="mt-6 h-[10.75rem] sm:h-[8.75rem]">
+            <div className="mt-4 sm:mt-6 h-[10.75rem] sm:h-[8.75rem]">
                 {selectedCourse && (
                     <div className="h-full animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="flex h-full min-w-0 flex-col overflow-hidden border border-black/20 bg-white text-black dark:border-[#D5D5D5]/20 dark:bg-[#0C1222] dark:text-[#D5D5D5]">

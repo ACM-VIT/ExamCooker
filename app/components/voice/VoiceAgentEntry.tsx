@@ -11,8 +11,8 @@ function ConnectedVoiceAgentButton({
   startToken: number;
 }) {
   const { isAuthed, requireAuth } = useGuestPrompt();
-  const { buttonLabel, runtime, toggleVoiceAgent } = useVoiceAgent();
-  const lastAutoStartTokenRef = useRef(0);
+  const { buttonLabel, runtime, startVoiceAgent, toggleVoiceAgent } = useVoiceAgent();
+  const lastStartedTokenRef = useRef(0);
 
   const handleClick = useCallback(() => {
     if (!isAuthed) {
@@ -24,16 +24,21 @@ function ConnectedVoiceAgentButton({
   }, [isAuthed, requireAuth, toggleVoiceAgent]);
 
   useEffect(() => {
-    if (!isAuthed || startToken <= lastAutoStartTokenRef.current) {
+    if (!isAuthed || startToken <= lastStartedTokenRef.current) {
       return;
     }
 
-    lastAutoStartTokenRef.current = startToken;
+    // Defer the auto-start so React Strict Mode's throwaway mount can cancel the timer
+    // without consuming the token before the real mounted effect runs.
+    const timeout = window.setTimeout(() => {
+      lastStartedTokenRef.current = startToken;
+      startVoiceAgent();
+    }, 0);
 
-    if (!runtime.connected && runtime.activity !== "connecting") {
-      toggleVoiceAgent();
-    }
-  }, [isAuthed, runtime.activity, runtime.connected, startToken, toggleVoiceAgent]);
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [isAuthed, startToken, startVoiceAgent]);
 
   return (
     <VoiceAgentButton

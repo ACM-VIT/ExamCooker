@@ -1073,6 +1073,33 @@ class VoiceControlControllerImpl implements VoiceControlController {
     session?.close();
   }
 
+  private syncConnectedStateFromTransport() {
+    const session = this.session;
+    if (!session) {
+      return;
+    }
+
+    if (session.transport.status !== "connected") {
+      return;
+    }
+
+    if (!this.connected) {
+      this.setConnected(true);
+    }
+
+    this.setMutedState(Boolean(session.muted));
+
+    if (this.activity === "connecting") {
+      if (this.runningToolCallCount > 0) {
+        this.setActivity("executing");
+      } else if (this.responseInFlight) {
+        this.setActivity("processing");
+      } else {
+        this.setActivity("listening");
+      }
+    }
+  }
+
   private async applyConnectedSessionUpdate(nextSessionConfig: VoiceControlResolvedSessionConfig) {
     const session = this.session;
     if (!session) {
@@ -1098,6 +1125,8 @@ class VoiceControlControllerImpl implements VoiceControlController {
   }
 
   private handleTransportEvent(event: RealtimeServerEvent) {
+    this.syncConnectedStateFromTransport();
+
     if (event.type === "response.created") {
       this.responseInFlight = true;
       this.setTranscript("");
