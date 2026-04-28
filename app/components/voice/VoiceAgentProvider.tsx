@@ -90,6 +90,7 @@ type VoiceAgentContextValue = {
   controller: VoiceControlController;
   lastError: string | null;
   runtime: UseVoiceControlReturn;
+  startVoiceAgent: () => void;
   toggleVoiceAgent: () => void;
 };
 
@@ -339,7 +340,7 @@ export default function VoiceAgentProvider({
   const { cursorState, run, hide } = useGhostCursor();
 
   useEffect(() => {
-    return () => controller.destroy();
+    return () => controller.disconnect();
   }, [controller]);
 
   const getFreshSnapshot = useCallback((maxControls = MAX_VISIBLE_CONTROLS) => {
@@ -953,9 +954,10 @@ export default function VoiceAgentProvider({
       controller,
       lastError,
       runtime,
+      startVoiceAgent,
       toggleVoiceAgent,
     }),
-    [buttonLabel, controller, lastError, runtime, toggleVoiceAgent],
+    [buttonLabel, controller, lastError, runtime, startVoiceAgent, toggleVoiceAgent],
   );
 
   return (
