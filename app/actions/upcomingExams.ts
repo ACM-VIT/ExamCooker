@@ -4,7 +4,8 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { db, ExamType, upcomingExam } from "@/db";
+import { db, upcomingExam } from "@/db";
+import { examTypeValues } from "@/db/enums";
 
 const slotsSchema = z
     .array(z.string().min(1).max(20))
@@ -14,7 +15,7 @@ const slotsSchema = z
 const upsertSchema = z.object({
     courseId: z.string().min(1),
     slots: slotsSchema,
-    examType: z.nativeEnum(ExamType).nullable(),
+    examType: z.enum(examTypeValues).nullable(),
     scheduledAt: z
         .string()
         .datetime()
