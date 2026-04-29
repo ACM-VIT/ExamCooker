@@ -234,7 +234,7 @@ function createPool() {
 
   const applicationName = readString("DATABASE_APPLICATION_NAME", "examcooker-web");
   const poolMin = readNonNegativeInt("DATABASE_POOL_MIN", 0);
-  const poolMax = readPositiveInt("DATABASE_POOL_MAX", 5);
+  const poolMax = readPositiveInt("DATABASE_POOL_MAX", 10);
   const maxLifetimeSeconds = readOptionalPositiveInt(
     "DATABASE_POOL_MAX_LIFETIME_SECONDS",
   );
@@ -243,7 +243,7 @@ function createPool() {
     "DATABASE_CONNECTION_TIMEOUT_MS",
     10_000,
   );
-  const idleTimeoutMillis = readPositiveInt("DATABASE_IDLE_TIMEOUT_MS", 30_000);
+  const idleTimeoutMillis = readPositiveInt("DATABASE_IDLE_TIMEOUT_MS", 10_000);
   const keepAliveInitialDelayMillis = readPositiveInt(
     "DATABASE_KEEPALIVE_INITIAL_DELAY_MS",
     5_000,

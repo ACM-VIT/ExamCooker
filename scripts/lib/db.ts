@@ -18,12 +18,12 @@ function readPositiveInt(name: string, fallback: number) {
 function createPool(connectionString: string) {
   const pool = new Pool({
     connectionString,
-    max: readPositiveInt("DATABASE_POOL_MAX", 5),
+    max: readPositiveInt("DATABASE_POOL_MAX", 10),
     connectionTimeoutMillis: readPositiveInt(
       "DATABASE_CONNECTION_TIMEOUT_MS",
       10_000,
     ),
-    idleTimeoutMillis: readPositiveInt("DATABASE_IDLE_TIMEOUT_MS", 30_000),
+    idleTimeoutMillis: readPositiveInt("DATABASE_IDLE_TIMEOUT_MS", 10_000),
     query_timeout: readPositiveInt("DATABASE_QUERY_TIMEOUT_MS", 60_000),
     statement_timeout: readPositiveInt("DATABASE_STATEMENT_TIMEOUT_MS", 60_000),
   });
