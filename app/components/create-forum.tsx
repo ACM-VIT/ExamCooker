@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import Fuse from "fuse.js";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faSquareXmark } from "@fortawesome/free-solid-svg-icons";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/app/components/ui/use-toast";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 
 const years = ["2020", "2021", "2022", "2023", "2024"];

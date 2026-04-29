@@ -1,11 +1,14 @@
 {
-  "name": "exam-cooker-2024",
+  "name": "examcooker-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "cli": "node ./packages/cli/dist/cli.js",
     "dev": "node scripts/sync-vin-together.js && next dev",
     "build": "node scripts/sync-vin-together.js && next build",
     "start": "next start",
+    "cli:build": "pnpm --filter examcooker build",
+    "cli:dev": "pnpm --filter examcooker dev",
     "lint": "next lint",
     "sync_vin_together": "node scripts/sync-vin-together.js",
     "seed_tags": "tsx scripts/seed-tags.js",

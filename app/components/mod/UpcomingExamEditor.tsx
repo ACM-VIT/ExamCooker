@@ -3,7 +3,7 @@
 import React, { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import CoursePicker, { type CourseOption } from "./CoursePicker";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/app/components/ui/use-toast";
 import {
     createUpcomingExam,
     deleteUpcomingExam,

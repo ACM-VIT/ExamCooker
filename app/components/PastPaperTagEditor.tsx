@@ -8,7 +8,7 @@ import React, {
     useTransition,
 } from "react";
 import { updatePastPaperTags } from "@/app/actions/updatePastPaperTags";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/app/components/ui/use-toast";
 import Fuse from "fuse.js";
 
 type PastPaperTagEditorProps = {

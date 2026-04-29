@@ -4,7 +4,7 @@ import React, { useCallback, useRef, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/AppImage";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/app/components/ui/use-toast";
 import { formatSyllabusDisplayName, getCourseSyllabusPath, parseSyllabusName } from "@/lib/seo";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";

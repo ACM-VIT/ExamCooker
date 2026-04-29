@@ -3,7 +3,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/app/components/ui/use-toast";
 import CoursePaperCard from "./CoursePaperCard";
 import type { CoursePaperListItem } from "@/lib/data/coursePapers";
 import { downloadPdfZip } from "@/lib/downloads/browserDownloads";

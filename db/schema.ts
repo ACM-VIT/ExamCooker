@@ -49,6 +49,11 @@ export const studyScope = cockroachEnum("StudyScope", studyScopeValues);
 export const examType = cockroachEnum("ExamType", examTypeValues);
 export const semester = cockroachEnum("Semester", semesterValues);
 export const campus = cockroachEnum("Campus", campusValues);
+export const cliDeviceAuthStatus = cockroachEnum("CliDeviceAuthStatus", [
+  "PENDING",
+  "AUTHORIZED",
+  "DENIED",
+]);
 
 export const prismaMigrations = cockroachTable("_prisma_migrations", {
   id: varchar({ length: 36 }).primaryKey(),
@@ -130,6 +135,68 @@ export const sessions = cockroachTable(
       table.sessionToken.asc(),
     ),
     index("sessions_user_id_idx").using("btree", table.userId.asc()),
+  ],
+);
+
+export const cliAccessToken = cockroachTable(
+  "CliAccessToken",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    userId: string()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    label: string().notNull(),
+    lastUsedAt: timestamp({ mode: "date", precision: 3 }),
+    revokedAt: timestamp({ mode: "date", precision: 3 }),
+    expiresAt: timestamp({ mode: "date", precision: 3 }),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    index("CliAccessToken_expiresAt_idx").using("btree", table.expiresAt.asc()),
+    index("CliAccessToken_revokedAt_idx").using("btree", table.revokedAt.asc()),
+    index("CliAccessToken_userId_idx").using("btree", table.userId.asc()),
+  ],
+);
+
+export const cliDeviceAuthRequest = cockroachTable(
+  "CliDeviceAuthRequest",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    userCode: string().notNull(),
+    deviceCodeHash: string().notNull(),
+    deviceName: string(),
+    status: cliDeviceAuthStatus().default("PENDING").notNull(),
+    userId: string().references(() => user.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    accessTokenId: string().references(() => cliAccessToken.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    authorizedAt: timestamp({ mode: "date", precision: 3 }),
+    lastPolledAt: timestamp({ mode: "date", precision: 3 }),
+    completedAt: timestamp({ mode: "date", precision: 3 }),
+    expiresAt: timestamp({ mode: "date", precision: 3 }).notNull(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("CliDeviceAuthRequest_deviceCodeHash_key").using(
+      "btree",
+      table.deviceCodeHash.asc(),
+    ),
+    index("CliDeviceAuthRequest_expiresAt_idx").using(
+      "btree",
+      table.expiresAt.asc(),
+    ),
+    index("CliDeviceAuthRequest_status_idx").using("btree", table.status.asc()),
+    uniqueIndex("CliDeviceAuthRequest_userCode_key").using(
+      "btree",
+      table.userCode.asc(),
+    ),
+    index("CliDeviceAuthRequest_userId_idx").using("btree", table.userId.asc()),
   ],
 );
 

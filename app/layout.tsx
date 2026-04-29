@@ -1,10 +1,10 @@
 import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/app/components/ui/toaster";
 import "@/app/globals.css";
-import UpsellToast from "@/components/ui/UpsellToast";
-import UpsellModal from "@/components/ui/UpsellModal";
+import UpsellToast from "@/app/components/ui/UpsellToast";
+import UpsellModal from "@/app/components/ui/UpsellModal";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
