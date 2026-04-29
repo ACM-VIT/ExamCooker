@@ -45,6 +45,7 @@ type ToolCallStatus = "running" | "success" | "error" | "skipped";
 type VoiceControlErrorCode =
   | "aborted"
   | "device_unavailable"
+  | "invalid_tool_input"
   | "insecure_context"
   | "network_error"
   | "permission_denied"
@@ -246,6 +247,9 @@ type MutableRealtimeSession<TContext = unknown> = RealtimeSession<TContext> & {
 const DEFAULT_MODEL = "gpt-realtime-mini";
 const DEFAULT_INSTRUCTIONS =
   "You are a voice control agent for a web app. Use registered tools whenever you can take action. Keep any spoken reply brief.";
+const TOOL_INPUT_RECOVERY_PROMPT =
+  "The previous tool call used invalid JSON arguments. Retry the same action with valid JSON that matches the tool schema. Keep the spoken reply brief.";
+const TOOL_INPUT_RECOVERY_COOLDOWN_MS = 2500;
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
@@ -629,6 +633,17 @@ function normalizeError(error: unknown): VoiceControlError {
 
     if (error.name === "AbortError") {
       code = "aborted";
+    } else if (
+      error.name === "InvalidToolInputError" ||
+      message.includes("invalid json input for tool") ||
+      message.includes("while parsing tool arguments") ||
+      message.includes("after property name in json") ||
+      message.includes("unterminated string in json") ||
+      message.includes("unexpected end of json input") ||
+      message.includes("unexpected non-whitespace character after json") ||
+      (message.includes("unexpected token") && message.includes("json"))
+    ) {
+      code = "invalid_tool_input";
     } else if (error.name === "NotAllowedError") {
       code = message.includes("secure context") ? "insecure_context" : "permission_denied";
     } else if (
@@ -825,6 +840,7 @@ function getToolCallId(toolName: string, details?: unknown) {
 class VoiceControlControllerImpl implements VoiceControlController {
   private connectAttempt = 0;
   private destroyed = false;
+  private lastRecoverableToolInputAt = 0;
   private listeners = new Set<() => void>();
   private liveInstructions: string;
   private liveTools: VoiceTool[];
@@ -1385,8 +1401,43 @@ class VoiceControlControllerImpl implements VoiceControlController {
     return this.connected ? "listening" : "idle";
   }
 
+  private recoverFromInvalidToolInput() {
+    this.resetResponseState();
+    this.setActivity(this.restingActivity());
+
+    if (!this.connected || !this.session) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastRecoverableToolInputAt < TOOL_INPUT_RECOVERY_COOLDOWN_MS) {
+      return;
+    }
+
+    this.lastRecoverableToolInputAt = now;
+    this.sendClientEvent({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "system",
+        content: [
+          {
+            type: "input_text",
+            text: TOOL_INPUT_RECOVERY_PROMPT,
+          },
+        ],
+      },
+    });
+    this.requestResponse();
+  }
+
   private emitError(error: unknown, disconnect: boolean) {
     const normalized = normalizeError(error);
+
+    if (!disconnect && normalized.code === "invalid_tool_input") {
+      this.recoverFromInvalidToolInput();
+      return;
+    }
 
     if (disconnect) {
       this.cleanupSession();
