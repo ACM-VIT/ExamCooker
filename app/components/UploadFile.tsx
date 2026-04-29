@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useDropzone } from "react-dropzone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/app/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
 import CoursePicker, { type CourseOption } from "@/app/components/mod/CoursePicker";

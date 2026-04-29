@@ -15,17 +15,21 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
     const [papers, setPapers] = useState(initialPapersRef.current);
     const [courseOptions, setCourseOptions] = useState(initialCoursesRef.current);
     const [filter, setFilter] = useState<
-        "all" | "no_course" | "no_exam" | "no_year"
+        "all" | "uncleared" | "no_course" | "no_exam" | "no_year" | "needs_link"
     >("all");
 
     const filtered = useMemo(() => {
         switch (filter) {
+            case "uncleared":
+                return papers.filter((p) => !p.isClear);
             case "no_course":
                 return papers.filter((p) => p.courseId === null);
             case "no_exam":
                 return papers.filter((p) => p.examType === null);
             case "no_year":
                 return papers.filter((p) => p.year === null);
+            case "needs_link":
+                return papers.filter((p) => p.hasAnswerKey && p.questionPaper === null);
             default:
                 return papers;
         }
@@ -60,9 +64,11 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
                     {(
                         [
                             ["all", "All"],
+                            ["uncleared", "Uncleared"],
                             ["no_course", "No course"],
                             ["no_exam", "No exam"],
                             ["no_year", "No year"],
+                            ["needs_link", "Needs link"],
                         ] as const
                     ).map(([key, label]) => (
                         <button

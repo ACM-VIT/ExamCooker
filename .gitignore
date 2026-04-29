@@ -58,3 +58,5 @@ docs/past-paper-prod-cutover.md
 .playwright-mcp
 creds.json
 cutover.md
+packages/cli/dist
+packages/cli/node_modules

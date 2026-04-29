@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog";
+import { useToast } from "@/app/components/ui/use-toast";
 import { type EditableTab, updateFile } from '../actions/UpdateFile';
 
 const EditButton = ({ itemID, title, activeTab } : { itemID: string, title: string, activeTab: EditableTab }) => {

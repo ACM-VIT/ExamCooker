@@ -4,7 +4,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
 import NotesCard from "@/app/components/NotesCard";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/app/components/ui/use-toast";
 import type { CourseNoteListItem } from "@/lib/data/notes";
 import {
     downloadPdfFile,

@@ -1,0 +1,47 @@
+{
+  "name": "examcooker",
+  "version": "0.1.0",
+  "description": "Official CLI for searching, downloading, and uploading ExamCooker resources",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ACM-VIT/ExamCooker.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/ACM-VIT/ExamCooker/tree/main/packages/cli",
+  "bugs": {
+    "url": "https://github.com/ACM-VIT/ExamCooker/issues"
+  },
+  "keywords": [
+    "examcooker",
+    "cli",
+    "vit",
+    "past-papers",
+    "notes"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "examcooker": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "prepack": "npm run build",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "figlet": "^1.11.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "25.1.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}

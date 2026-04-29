@@ -3,7 +3,7 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import type { Note, PastPaper } from "@/db";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/app/components/ui/use-toast";
 import Pagination from "./Pagination";
 import NotesCard from "./NotesCard";
 import PastPaperCard from "./PastPaperCard";

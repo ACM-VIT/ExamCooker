@@ -23,7 +23,7 @@ import {
   type VoiceControlController,
 } from "./voiceRuntime";
 import { z } from "zod";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/app/components/ui/use-toast";
 import {
   collectVoicePageSnapshot,
   findRegistryEntryById,

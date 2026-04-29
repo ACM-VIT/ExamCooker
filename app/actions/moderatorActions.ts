@@ -1,6 +1,6 @@
 "use server";
 
-import { and, count, desc, eq, getTableColumns, ilike, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, getTableColumns, ilike, isNull, ne, sql } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
@@ -76,7 +76,11 @@ export async function approveItem(
                 fileUrl: pastPaper.fileUrl,
                 courseId: pastPaper.courseId,
                 examType: pastPaper.examType,
+                slot: pastPaper.slot,
                 year: pastPaper.year,
+                semester: pastPaper.semester,
+                campus: pastPaper.campus,
+                hasAnswerKey: pastPaper.hasAnswerKey,
             })
             .from(pastPaper)
             .where(eq(pastPaper.id, id))
@@ -117,6 +121,12 @@ export async function approveItem(
                             eq(pastPaper.courseId, paper.courseId),
                             eq(pastPaper.examType, paper.examType),
                             eq(pastPaper.year, paper.year),
+                            paper.slot === null
+                                ? isNull(pastPaper.slot)
+                                : eq(pastPaper.slot, paper.slot),
+                            eq(pastPaper.semester, paper.semester),
+                            eq(pastPaper.campus, paper.campus),
+                            eq(pastPaper.hasAnswerKey, paper.hasAnswerKey),
                         ),
                     )
                     .limit(1);
