@@ -48,6 +48,7 @@ import {
 
 const MAX_VISIBLE_CONTROLS = 48;
 const ROUTE_RENDER_TIMEOUT_MS = 5000;
+const VOICE_SESSION_MAX_MS = 3 * 60 * 1000;
 const COURSE_EXAM_REQUEST_ALIASES: Record<
   string,
   Parameters<typeof examTypeToSlug>[0]
@@ -1072,6 +1073,26 @@ export default function VoiceAgentProvider({
       window.clearTimeout(timeout);
     };
   }, [browserPath, controller, getFreshSnapshot, runtime.connected]);
+
+  useEffect(() => {
+    if (!runtime.connected) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setLastError(null);
+      controller.disconnect();
+      hide();
+      toast({
+        title: "Voice session ended",
+        description: "Voice sessions are limited to 3 minutes. Start it again to continue.",
+      });
+    }, VOICE_SESSION_MAX_MS);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [controller, hide, runtime.connected]);
 
   const startVoiceAgent = useCallback(() => {
     if (runtime.activity === "connecting") {
