@@ -4,13 +4,16 @@ import React, { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import CoursePicker, { type CourseOption } from "./CoursePicker";
+import PaperPicker from "./PaperPicker";
 import { updatePaperMetadata } from "@/app/actions/updatePaperMetadata";
 import type { Campus, ExamType, Semester } from "@/db";
+import { formatPaperLinkOption, type PaperLinkOption } from "./paperLinkTypes";
 
 export type PaperRowData = {
     id: string;
     title: string;
     thumbNailUrl: string | null;
+    isClear: boolean;
     courseId: string | null;
     examType: ExamType | null;
     slot: string | null;
@@ -18,6 +21,7 @@ export type PaperRowData = {
     semester: Semester;
     campus: Campus;
     hasAnswerKey: boolean;
+    questionPaper: PaperLinkOption | null;
 };
 
 type Props = {
@@ -64,7 +68,10 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
     const [error, setError] = useState<string | null>(null);
 
     const isComplete =
-        draft.courseId !== null && draft.examType !== null && draft.year !== null;
+        draft.courseId !== null &&
+        draft.examType !== null &&
+        draft.year !== null &&
+        (!draft.hasAnswerKey || draft.questionPaper !== null);
 
     const save = async () => {
         setError(null);
@@ -79,6 +86,7 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                 semester: draft.semester,
                 campus: draft.campus,
                 hasAnswerKey: draft.hasAnswerKey,
+                questionPaperId: draft.hasAnswerKey ? draft.questionPaper?.id ?? null : null,
             });
             if (isComplete) onResolved(draft.id);
         } catch (err) {
@@ -115,7 +123,23 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                     <p className="mt-1 font-mono text-xs text-black/50 dark:text-[#D5D5D5]/50">
                         {draft.id}
                     </p>
+                    {draft.questionPaper && (
+                        <p className="mt-1 text-xs text-black/60 dark:text-[#D5D5D5]/60">
+                            Linked to:{" "}
+                            <span className="font-semibold">
+                                {draft.questionPaper.title}
+                            </span>
+                            {formatPaperLinkOption(draft.questionPaper)
+                                ? ` (${formatPaperLinkOption(draft.questionPaper)})`
+                                : ""}
+                        </p>
+                    )}
                     <div className="mt-1 flex flex-wrap gap-1 text-xs">
+                        {!draft.isClear && (
+                            <span className="border border-amber-600/60 px-1.5 py-0.5 text-amber-700 dark:border-amber-400/60 dark:text-amber-300">
+                                uncleared
+                            </span>
+                        )}
                         {draft.courseId === null && (
                             <span className="border border-red-600/60 px-1.5 py-0.5 text-red-700 dark:border-red-400/60 dark:text-red-300">
                                 no course
@@ -129,6 +153,11 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                         {draft.year === null && (
                             <span className="border border-red-600/60 px-1.5 py-0.5 text-red-700 dark:border-red-400/60 dark:text-red-300">
                                 no year
+                            </span>
+                        )}
+                        {draft.hasAnswerKey && draft.questionPaper === null && (
+                            <span className="border border-red-600/60 px-1.5 py-0.5 text-red-700 dark:border-red-400/60 dark:text-red-300">
+                                no question paper
                             </span>
                         )}
                     </div>
@@ -240,15 +269,38 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                             type="checkbox"
                             checked={draft.hasAnswerKey}
                             onChange={(e) =>
-                                setDraft({ ...draft, hasAnswerKey: e.target.checked })
+                                setDraft({
+                                    ...draft,
+                                    hasAnswerKey: e.target.checked,
+                                    questionPaper: e.target.checked ? draft.questionPaper : null,
+                                })
                             }
                             className="h-4 w-4 accent-[#5FC4E7]"
                         />
                         <span className="text-sm text-black dark:text-[#D5D5D5]">
-                            included in paper
+                            this upload is an answer key
                         </span>
                     </label>
                 </FieldLabel>
+
+                {draft.hasAnswerKey && (
+                    <div className="sm:col-span-2 lg:col-span-2">
+                        <FieldLabel
+                            label="Question paper"
+                            required
+                            missing={draft.questionPaper === null}
+                        >
+                            <PaperPicker
+                                value={draft.questionPaper}
+                                excludePaperId={draft.id}
+                                courseId={draft.courseId}
+                                onChange={(questionPaper) =>
+                                    setDraft({ ...draft, questionPaper })
+                                }
+                            />
+                        </FieldLabel>
+                    </div>
+                )}
 
                 <div className="flex items-end">
                     <button

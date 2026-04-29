@@ -1,12 +1,13 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { desc, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
 import PaperReviewList from "@/app/components/mod/PaperReviewList";
 import type { CourseOption } from "@/app/components/mod/CoursePicker";
 import type { PaperRowData } from "@/app/components/mod/PaperReviewRow";
+import type { PaperLinkOption } from "@/app/components/mod/paperLinkTypes";
 import { course, db, pastPaper } from "@/db";
 
 export const metadata = {
@@ -36,6 +37,7 @@ async function PaperReviewContent() {
                 id: pastPaper.id,
                 title: pastPaper.title,
                 thumbNailUrl: pastPaper.thumbNailUrl,
+                isClear: pastPaper.isClear,
                 courseId: pastPaper.courseId,
                 examType: pastPaper.examType,
                 slot: pastPaper.slot,
@@ -43,13 +45,16 @@ async function PaperReviewContent() {
                 semester: pastPaper.semester,
                 campus: pastPaper.campus,
                 hasAnswerKey: pastPaper.hasAnswerKey,
+                questionPaperId: pastPaper.questionPaperId,
             })
             .from(pastPaper)
             .where(
                 or(
+                    eq(pastPaper.isClear, false),
                     isNull(pastPaper.courseId),
                     isNull(pastPaper.examType),
                     isNull(pastPaper.year),
+                    and(eq(pastPaper.hasAnswerKey, true), isNull(pastPaper.questionPaperId)),
                 ),
             )
             .orderBy(desc(pastPaper.createdAt))
@@ -66,9 +71,53 @@ async function PaperReviewContent() {
             .limit(500),
     ]);
 
+    const linkedQuestionPaperIds = [
+        ...new Set(
+            papers
+                .map((paper) => paper.questionPaperId)
+                .filter((questionPaperId): questionPaperId is string => questionPaperId !== null),
+        ),
+    ];
+
+    const linkedQuestionPapers = linkedQuestionPaperIds.length
+        ? await db
+              .select({
+                  id: pastPaper.id,
+                  title: pastPaper.title,
+                  courseCode: course.code,
+                  courseTitle: course.title,
+                  examType: pastPaper.examType,
+                  slot: pastPaper.slot,
+                  year: pastPaper.year,
+                  hasAnswerKey: pastPaper.hasAnswerKey,
+              })
+              .from(pastPaper)
+              .leftJoin(course, eq(pastPaper.courseId, course.id))
+              .where(inArray(pastPaper.id, linkedQuestionPaperIds))
+        : [];
+
+    const linkedQuestionPaperMap = new Map<string, PaperLinkOption>(
+        linkedQuestionPapers.map((paper) => [
+            paper.id,
+            {
+                id: paper.id,
+                title: paper.title,
+                courseCode: paper.courseCode,
+                courseTitle: paper.courseTitle,
+                examType: paper.examType,
+                slot: paper.slot,
+                year: paper.year,
+                hasAnswerKey: paper.hasAnswerKey,
+            },
+        ]),
+    );
+
     const rows: PaperRowData[] = papers.map((p) => ({
         ...p,
         thumbNailUrl: normalizeGcsUrl(p.thumbNailUrl) ?? p.thumbNailUrl,
+        questionPaper: p.questionPaperId
+            ? linkedQuestionPaperMap.get(p.questionPaperId) ?? null
+            : null,
     }));
     const courseOptions: CourseOption[] = courses.map((row) => ({
         ...row,
@@ -85,8 +134,9 @@ async function PaperReviewContent() {
                         </p>
                         <h1 className="text-2xl font-bold">Paper metadata review</h1>
                         <p className="mt-1 text-sm text-black/70 dark:text-[#D5D5D5]/70">
-                            Papers missing course, exam, or year. Fill in the gaps and save —
-                            the row drops off the queue automatically.
+                            Papers missing course, exam, year, or an answer-key link. Fill in
+                            the gaps and save; once the row is complete it drops off the queue
+                            automatically.
                         </p>
                     </div>
                     <Link
