@@ -51,7 +51,7 @@ function HeroStats({
                     {idx < items.length - 1 && (
                         <span
                             aria-hidden="true"
-                            className="ml-3 hidden text-black/30 dark:text-[#D5D5D5]/25 sm:inline"
+                            className="ml-3 hidden text-black dark:text-white sm:inline"
                         >
                             ·
                         </span>

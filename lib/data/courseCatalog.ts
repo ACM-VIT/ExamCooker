@@ -384,3 +384,38 @@ export async function getCourseDetailByCode(code: string): Promise<CourseDetail 
     const normalized = normalizeCourseCode(code);
     return loadCourseDetailByCode(normalized);
 }
+
+export async function getUpcomingExamsCourseGrid(): Promise<CourseGridItem[]> {
+    "use cache";
+    cacheTag("courses", "notes", "past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const targetCodes = [
+        "BMAT201L",
+        "BCSE304L",
+        "BMAT101L",
+        "BGER101L",
+        "BCSE355L",
+        "BCSE202L",
+        "BCSE303L",
+        "BCSE102L",
+        "BPHY101L",
+        "BCSE204L",
+        "BMEE209L",
+        "BMAT102L"
+    ];
+
+    const courses = await getCourseCatalogRows();
+    const gridItems = courses
+        .filter(c => targetCodes.includes(c.code))
+        .map(c => ({
+            id: c.id,
+            code: c.code,
+            title: c.title,
+            paperCount: c.paperCount,
+            noteCount: c.noteCount,
+            viewCount: 0,
+        }));
+
+    return gridItems.sort((a, b) => targetCodes.indexOf(a.code) - targetCodes.indexOf(b.code));
+}

@@ -16,6 +16,7 @@ import {
     getCourseGrid,
     getPopularCourseGrid,
     getRecentPapers,
+    getUpcomingExamsCourseGrid,
     searchCourseGrid,
     type CourseGridItem,
 } from "@/lib/data/courseCatalog";
@@ -30,7 +31,7 @@ import {
 } from "@/lib/structuredData";
 
 const PAGE_SIZE = 24;
-const POPULAR_LIMIT = 6;
+const POPULAR_LIMIT = 12;
 const COURSE_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
 type PastPapersSearchParams = { search?: string; page?: string };
 
@@ -104,7 +105,7 @@ function HeroStats({
                     {idx < items.length - 1 && (
                         <span
                             aria-hidden="true"
-                            className="ml-3 hidden text-black/30 dark:text-[#D5D5D5]/25 sm:inline"
+                            className="ml-3 hidden text-black dark:text-white sm:inline"
                         >
                             ·
                         </span>
@@ -150,7 +151,7 @@ function PopularCoursesShell() {
         <section className="flex flex-col gap-4">
             <header className="flex items-end justify-between">
                 <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
-                    Popular courses
+                    Upcoming exams
                 </h2>
             </header>
             <CourseCardsShell count={POPULAR_LIMIT} />
@@ -202,7 +203,7 @@ function RecentSectionShell() {
             </header>
             <div
                 aria-hidden="true"
-                className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-hidden px-3 pb-2 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10"
+                className="flex snap-x snap-mandatory gap-3 overflow-hidden pb-2"
             >
                 {Array.from({ length: 6 }).map((_, index) => (
                     <div
@@ -231,14 +232,14 @@ function RecentSectionShell() {
 }
 
 async function PopularCoursesSection() {
-    const popular = await getPopularCourseGrid(POPULAR_LIMIT);
+    const popular = await getUpcomingExamsCourseGrid();
     if (popular.length === 0) return null;
 
     return (
         <section className="flex flex-col gap-4">
             <header className="flex items-end justify-between">
                 <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
-                    Popular courses
+                    Upcoming exams
                 </h2>
             </header>
             <SmartCourseGrid
@@ -376,7 +377,6 @@ function DynamicHomeSectionsShell() {
         <>
             <SearchControlsShell />
             <PopularCoursesShell />
-            <CourseGridSectionShell search="" />
             <RecentSectionShell />
         </>
     );
@@ -402,9 +402,11 @@ async function DynamicHomeSections({
                 </Suspense>
             )}
 
-            <Suspense fallback={<CourseGridSectionShell search={search} />}>
-                <CourseGridSection searchParamsPromise={searchParamsPromise} />
-            </Suspense>
+            {search && (
+                <Suspense fallback={<CourseGridSectionShell search={search} />}>
+                    <CourseGridSection searchParamsPromise={searchParamsPromise} />
+                </Suspense>
+            )}
 
             {!search && (
                 <Suspense fallback={<RecentSectionShell />}>

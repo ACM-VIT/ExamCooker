@@ -34,13 +34,15 @@ function HomeFooter() {
     return (
         <footer className="w-full text-black dark:text-[#D5D5D5] flex flex-col sm:flex-row justify-between items-center gap-5 pt-6 pb-6 bg-[#C2E6EC] dark:bg-[#0C1222] border-t border-black/10 dark:border-[#D5D5D5]/15 px-4 sm:px-8">
             <div className="flex justify-center mb-4 sm:mb-0">
-                <Image
-                    src={'/assets/ACM logo.svg'}
-                    alt="ACM VIT Student Chapter"
-                    width={180}
-                    height={180}
-                    className="rounded-full hidden sm:block"
-                />
+                <a href="https://www.acmvit.in/" target="_blank" rel="noopener noreferrer">
+                    <Image
+                        src={'/assets/ACM logo.svg'}
+                        alt="ACM VIT Student Chapter"
+                        width={180}
+                        height={180}
+                        className="rounded-full hidden sm:block"
+                    />
+                </a>
             </div>
             <ExamCookerLogo />
             <div className="flex items-center gap-3 sm:gap-4">
