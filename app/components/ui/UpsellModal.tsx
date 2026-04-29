@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { GradientText } from "@/app/components/landing_page/landing";
 
 const MODAL_STORAGE_KEY = "examcooker.upsellModal.v1";
@@ -42,16 +43,23 @@ const FEATURES = [
 ];
 
 const UpsellModal = () => {
+    const pathname = usePathname();
     const [phase, setPhase] = useState<"idle" | "entering" | "open" | "leaving" | "closed">("idle");
 
+    const isCliPage = pathname === "/cli";
+
     useEffect(() => {
+        if (isCliPage) {
+            setPhase("closed");
+            return;
+        }
         if (hasSeenModal()) {
             setPhase("closed");
             return;
         }
         const timer = window.setTimeout(() => setPhase("entering"), MODAL_SHOW_DELAY_MS);
         return () => window.clearTimeout(timer);
-    }, []);
+    }, [isCliPage]);
 
     useEffect(() => {
         if (phase === "entering") {
@@ -71,7 +79,7 @@ const UpsellModal = () => {
     const isVisible = phase === "open";
     const isRendered = phase !== "idle" && phase !== "closed";
 
-    if (!isRendered) return null;
+    if (isCliPage || !isRendered) return null;
 
     return (
         <div

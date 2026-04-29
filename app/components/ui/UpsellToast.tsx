@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
     type Upsell,
     type UpsellAccent,
@@ -33,11 +34,15 @@ const accentStyles: Record<
 };
 
 const UpsellToast = () => {
+    const pathname = usePathname();
     const [upsell, setUpsell] = useState<Upsell | null>(null);
     const [mounted, setMounted] = useState(false);
     const [visible, setVisible] = useState(false);
 
+    const isCliPage = pathname === "/cli";
+
     useEffect(() => {
+        if (isCliPage) return;
         const next = pickNextUpsell();
         if (!next) return;
         const timer = window.setTimeout(() => {
@@ -45,7 +50,7 @@ const UpsellToast = () => {
             setMounted(true);
         }, UPSELL_SHOW_DELAY_MS);
         return () => window.clearTimeout(timer);
-    }, []);
+    }, [isCliPage]);
 
     useEffect(() => {
         if (!mounted) return;
@@ -55,12 +60,19 @@ const UpsellToast = () => {
         return () => cancelAnimationFrame(raf);
     }, [mounted]);
 
+    useEffect(() => {
+        if (!isCliPage) return;
+        setVisible(false);
+        setMounted(false);
+        setUpsell(null);
+    }, [isCliPage]);
+
     const accent = useMemo<UpsellAccent>(
         () => upsell?.accent ?? "mint",
         [upsell]
     );
 
-    if (!mounted || !upsell) return null;
+    if (isCliPage || !mounted || !upsell) return null;
 
     const handleDismiss = () => {
         markUpsellDismissed(upsell.id);
