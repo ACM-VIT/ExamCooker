@@ -23,7 +23,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { id } = await params;
     const syllabus = await getSyllabusDetail(id);
-    if (!syllabus) return {};
+    if (!syllabus) return { robots: { index: false, follow: true } };
     const parsed = parseSyllabusName(syllabus.name);
     const title = parsed.displayName;
     const description = `View ${title} syllabus on ExamCooker.`;
@@ -45,6 +45,7 @@ export async function generateMetadata({
             description,
             url: canonical,
         },
+        robots: { index: true, follow: true },
     };
 }
 

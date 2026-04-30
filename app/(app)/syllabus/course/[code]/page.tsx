@@ -60,7 +60,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { code } = await params;
     const context = await loadCourseSyllabusContext(code);
-    if (!context) return {};
+    if (!context) return { robots: { index: false, follow: true } };
 
     const title = `${context.code} syllabus | ${context.title}`;
     const description = `View the ${context.code} syllabus PDF for ${context.title} on ExamCooker.`;

@@ -9,7 +9,6 @@ import { course, db } from "@/db";
 
 export const metadata = {
     title: "Upcoming exams · Mod",
-    robots: { index: false, follow: false },
 };
 
 function UpcomingExamsShell() {

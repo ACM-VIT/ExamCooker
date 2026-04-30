@@ -31,10 +31,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { exam } = await params;
     const examType = examSlugToType(exam);
-    if (!examType) return {};
+    if (!examType) return { robots: { index: false, follow: true } };
 
     const data = await getExamHubPageData(examType);
-    if (!data) return {};
+    if (!data) return { robots: { index: false, follow: true } };
 
     const title = `${data.label} past papers | VIT previous year question papers`;
     const description = `Browse ${data.totalPapers} ${data.label} past papers across ${data.courseCount} VIT courses on ExamCooker.`;

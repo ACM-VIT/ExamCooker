@@ -36,11 +36,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { code, exam } = await params;
     const examType = examSlugToType(exam);
-    if (!examType) return {};
+    if (!examType) return { robots: { index: false, follow: true } };
 
     const normalized = normalizeCourseCode(code);
     const course = await getCourseDetailByCode(normalized);
-    if (!course) return {};
+    if (!course) return { robots: { index: false, follow: true } };
 
     const label = examTypeLabel(examType);
     const title = `${course.code} ${label} past papers | ${course.title}`;

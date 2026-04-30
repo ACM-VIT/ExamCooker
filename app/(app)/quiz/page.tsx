@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import QuizClient from "./quiz-client";
 import QuizLandingClient from "./quiz-landing-client";
 
@@ -40,6 +41,25 @@ async function QuizPageContent({
     }).toString();
 
     return <QuizClient quizConfig={quizConfig} />;
+}
+
+export async function generateMetadata({
+    searchParams,
+}: {
+    searchParams?: Promise<QuizSearchParams>;
+}): Promise<Metadata> {
+    const params = (await searchParams) ?? {};
+    const hasSession = !!(
+        params.weeks &&
+        params.numQ &&
+        params.time &&
+        params.course
+    );
+    return {
+        title: hasSession ? "Practice quiz" : "Quiz",
+        alternates: { canonical: "/quiz" },
+        robots: { index: !hasSession, follow: true },
+    };
 }
 
 export default function QuizPage({

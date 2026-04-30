@@ -324,7 +324,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { id } = await params;
     const paper = await getPastPaperDetail(id);
-    if (!paper) return {};
+    if (!paper) return { robots: { index: false, follow: true } };
 
     const canonicalCode = paper.course?.code ?? "unassigned";
     const displayTitle = paper.course?.title ?? paper.title.replace(/\.pdf$/i, "");
