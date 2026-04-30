@@ -56,6 +56,9 @@ stages:
             displayName: Install dependencies
             env:
               NEXT_PUBLIC_MICROSERVICE_URL: $(nextPublicMicroserviceUrl)
+              NEXT_PUBLIC_POSTHOG_KEY: $(NEXT_PUBLIC_POSTHOG_KEY)
+              NEXT_PUBLIC_POSTHOG_HOST: $(NEXT_PUBLIC_POSTHOG_HOST)
+              NEXT_PUBLIC_POSTHOG_PROXY_PATH: $(NEXT_PUBLIC_POSTHOG_PROXY_PATH)
 
           - script: |
               set -eu
@@ -78,6 +81,9 @@ stages:
             condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
             env:
               NEXT_PUBLIC_MICROSERVICE_URL: $(nextPublicMicroserviceUrl)
+              NEXT_PUBLIC_POSTHOG_KEY: $(NEXT_PUBLIC_POSTHOG_KEY)
+              NEXT_PUBLIC_POSTHOG_HOST: $(NEXT_PUBLIC_POSTHOG_HOST)
+              NEXT_PUBLIC_POSTHOG_PROXY_PATH: $(NEXT_PUBLIC_POSTHOG_PROXY_PATH)
               NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: $(NEXT_SERVER_ACTIONS_ENCRYPTION_KEY)
 
           - script: |
@@ -88,6 +94,9 @@ stages:
             condition: ne(variables['Build.SourceBranch'], 'refs/heads/main')
             env:
               NEXT_PUBLIC_MICROSERVICE_URL: $(nextPublicMicroserviceUrl)
+              NEXT_PUBLIC_POSTHOG_KEY: $(NEXT_PUBLIC_POSTHOG_KEY)
+              NEXT_PUBLIC_POSTHOG_HOST: $(NEXT_PUBLIC_POSTHOG_HOST)
+              NEXT_PUBLIC_POSTHOG_PROXY_PATH: $(NEXT_PUBLIC_POSTHOG_PROXY_PATH)
 
           - script: |
               set -eux
