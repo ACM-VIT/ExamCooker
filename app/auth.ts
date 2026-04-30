@@ -3,6 +3,7 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
+import { after } from "next/server";
 import { cache } from "react";
 import NextAuth from "next-auth";
 import type { Session } from "next-auth";
@@ -55,7 +56,7 @@ function isStaleSessionCookieError(code: string, metadata: unknown) {
   );
 }
 
-function captureAuthServerEvent(input: {
+async function captureAuthServerEvent(input: {
   distinctId?: string;
   event: string;
   properties: Record<string, string | number | boolean | null | undefined>;
@@ -75,9 +76,7 @@ function captureAuthServerEvent(input: {
       event: input.event,
       properties: input.properties,
     });
-    void posthog.shutdown().catch((error) => {
-      console.error("[auth] posthog flush failed", error);
-    });
+    await posthog.shutdown();
   } catch (error) {
     console.error("[auth] posthog capture failed", error);
   }
@@ -155,14 +154,21 @@ export const authConfig = {
           ? user.email.split("@")[1] ?? null
           : null;
 
-      captureAuthServerEvent({
-        distinctId: typeof user.id === "string" ? user.id : undefined,
-        event: "sign_in_completed",
-        properties: {
-          provider: account?.provider ?? "unknown",
-          email_domain: emailDomain,
-          is_new_user: Boolean(isNewUser),
-        },
+      const distinctId = typeof user.id === "string" ? user.id : undefined;
+      if (!distinctId) {
+        return;
+      }
+
+      after(async () => {
+        await captureAuthServerEvent({
+          distinctId,
+          event: "sign_in_completed",
+          properties: {
+            provider: account?.provider ?? "unknown",
+            email_domain: emailDomain,
+            is_new_user: Boolean(isNewUser),
+          },
+        });
       });
     },
   },

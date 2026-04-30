@@ -13,17 +13,21 @@ async function captureUploadServerEvent(input: {
     event: string;
     properties: Record<string, string | number | boolean | null | undefined>;
 }) {
-    const posthog = createPostHogServer();
-    if (!posthog) {
-        return;
-    }
+    try {
+        const posthog = createPostHogServer();
+        if (!posthog) {
+            return;
+        }
 
-    posthog.capture({
-        distinctId: input.distinctId,
-        event: input.event,
-        properties: input.properties,
-    });
-    await posthog.shutdown();
+        posthog.capture({
+            distinctId: input.distinctId,
+            event: input.event,
+            properties: input.properties,
+        });
+        await posthog.shutdown();
+    } catch (error) {
+        console.error("[upload] posthog capture failed", error);
+    }
 }
 
 export default async function uploadFile({
