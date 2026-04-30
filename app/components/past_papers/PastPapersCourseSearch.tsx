@@ -5,6 +5,11 @@ import Image from "@/app/components/common/AppImage";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
 import { normalizeCourseCode } from "@/lib/courseTags";
+import {
+    captureCourseSearchSelection,
+    captureCourseSearchSubmitted,
+    type CourseSearchInteraction,
+} from "@/lib/posthog/client";
 
 export type SearchableCourse = {
     id: string;
@@ -88,7 +93,24 @@ export default function PastPapersCourseSearch({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const navigate = (course: SearchableCourse) => {
+    const navigate = (
+        course: SearchableCourse,
+        options?: {
+            interaction?: CourseSearchInteraction;
+            resultIndex?: number;
+        },
+    ) => {
+        captureCourseSearchSelection({
+            context: "past_papers",
+            interaction: options?.interaction ?? "click",
+            courseCode: course.code,
+            resultCount: filtered.length,
+            resultIndex: options?.resultIndex,
+            paperCount: course.paperCount,
+            noteCount: course.noteCount,
+            hasSyllabus: false,
+        });
+
         startTransition(() => {
             addTransitionType("nav-forward");
             router.push(`/past_papers/${encodeURIComponent(course.code)}`);
@@ -101,8 +123,16 @@ export default function PastPapersCourseSearch({
         if (!trimmed) return;
         const codeQuery = normalizeCourseCode(trimmed);
         const exact = courses.find((c) => c.code === codeQuery);
+        captureCourseSearchSubmitted({
+            context: "past_papers",
+            query: trimmed,
+            resultCount: filtered.length,
+            exactMatchFound: Boolean(exact),
+        });
         if (exact) {
-            navigate(exact);
+            navigate(exact, {
+                interaction: "submit_exact_match",
+            });
             return;
         }
         startTransition(() => {
@@ -123,7 +153,10 @@ export default function PastPapersCourseSearch({
         } else if (e.key === "Enter") {
             e.preventDefault();
             if (isOpen && highlightedIndex >= 0 && filtered[highlightedIndex]) {
-                navigate(filtered[highlightedIndex]);
+                navigate(filtered[highlightedIndex], {
+                    interaction: "keyboard",
+                    resultIndex: highlightedIndex,
+                });
             } else {
                 submitFreeText();
             }
@@ -190,7 +223,10 @@ export default function PastPapersCourseSearch({
                             type="button"
                             onMouseDown={(e) => {
                                 e.preventDefault();
-                                navigate(course);
+                                navigate(course, {
+                                    interaction: "click",
+                                    resultIndex: index,
+                                });
                             }}
                             onMouseEnter={() => setHighlightedIndex(index)}
                             className={`flex w-full items-center justify-between gap-3 border-b border-black/10 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/15 dark:hover:bg-[#3BF4C7]/10 ${

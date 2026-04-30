@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
+import { captureUploadClick } from "@/lib/posthog/client";
 
 const UploadButtonNotes: React.FC = () => {
     const { requireAuth } = useGuestPrompt();
@@ -11,7 +12,9 @@ const UploadButtonNotes: React.FC = () => {
         (event: React.MouseEvent<HTMLAnchorElement>) => {
             if (!requireAuth("upload notes")) {
                 event.preventDefault();
+                return;
             }
+            captureUploadClick("note");
         },
         [requireAuth]
     );

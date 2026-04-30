@@ -174,7 +174,23 @@ export type UseVoiceControlOptions = {
   maxOutputTokens?: number | "inf";
   postToolResponse?: boolean;
   debug?: boolean;
+  onGenerationCompleted?: (generation: VoiceControlGeneration) => void;
   onError?: (error: VoiceControlError) => void;
+};
+
+export type VoiceControlGeneration = {
+  conversationId?: string | null;
+  errorMessage?: string;
+  inputText: string;
+  inputTokens?: number;
+  latencyMs: number;
+  model: string;
+  outputText: string | null;
+  outputTokens?: number;
+  responseId?: string | null;
+  status: string;
+  stopReason?: string;
+  timeToFirstTokenMs?: number;
 };
 
 type VoiceControlSnapshot = {
@@ -735,6 +751,36 @@ function extractCompletedText(event: RealtimeServerEvent) {
   return null;
 }
 
+function readStatusText(
+  statusDetails: Record<string, unknown> | null | undefined,
+  key: string,
+) {
+  const value = statusDetails?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function extractResponseStopReason(statusDetails: unknown) {
+  if (!statusDetails || typeof statusDetails !== "object") {
+    return null;
+  }
+
+  const details = statusDetails as Record<string, unknown>;
+
+  return (
+    readStatusText(details, "reason") ??
+    readStatusText(details, "status") ??
+    readStatusText(details, "type")
+  );
+}
+
+function extractResponseError(statusDetails: unknown) {
+  if (!statusDetails || typeof statusDetails !== "object") {
+    return null;
+  }
+
+  return extractObjectMessage(statusDetails as Record<string, unknown>);
+}
+
 function extractFinalMessageText(outputItems: unknown[]) {
   for (let index = outputItems.length - 1; index >= 0; index -= 1) {
     const item = outputItems[index];
@@ -837,15 +883,25 @@ function getToolCallId(toolName: string, details?: unknown) {
   );
 }
 
+type PendingVoiceGeneration = {
+  conversationId?: string | null;
+  inputText: string;
+  responseId?: string | null;
+  startedAt: number;
+  timeToFirstTokenAt?: number;
+};
+
 class VoiceControlControllerImpl implements VoiceControlController {
   private connectAttempt = 0;
   private destroyed = false;
+  private lastInputTranscript: string | null = null;
   private lastRecoverableToolInputAt = 0;
   private listeners = new Set<() => void>();
   private liveInstructions: string;
   private liveTools: VoiceTool[];
   private nextToolCallSequence = 1;
   private options: UseVoiceControlOptions;
+  private pendingGeneration: PendingVoiceGeneration | null = null;
   private responseInFlight = false;
   private runningToolCallCount = 0;
   private session: RealtimeSession<unknown> | null = null;
@@ -944,6 +1000,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
     const connectSignal = this.sessionAbortController.signal;
 
     this.setActivity("connecting");
+    this.lastInputTranscript = null;
     this.setTranscript("");
     this.clearToolCalls();
     this.resetResponseState();
@@ -1002,6 +1059,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
     this.setConnected(false);
     this.setMutedState(false);
     this.setActivity("idle");
+    this.lastInputTranscript = null;
     this.setTranscript("");
     this.resetResponseState();
   };
@@ -1279,7 +1337,32 @@ class VoiceControlControllerImpl implements VoiceControlController {
   private handleTransportEvent(event: RealtimeServerEvent) {
     this.syncConnectedStateFromTransport(event);
 
+    if (event.type === "conversation.item.input_audio_transcription.completed") {
+      const transcript =
+        typeof event.transcript === "string" ? event.transcript.trim() : "";
+
+      if (transcript) {
+        this.lastInputTranscript = transcript;
+      }
+    }
+
     if (event.type === "response.created") {
+      const response = event.response as
+        | {
+            conversation_id?: string | null;
+            id?: string | null;
+          }
+        | undefined;
+
+      this.pendingGeneration = {
+        conversationId:
+          typeof response?.conversation_id === "string"
+            ? response.conversation_id
+            : null,
+        inputText: this.lastInputTranscript ?? "",
+        responseId: typeof response?.id === "string" ? response.id : null,
+        startedAt: Date.now(),
+      };
       this.responseInFlight = true;
       this.setTranscript("");
       if (this.runningToolCallCount === 0) {
@@ -1289,23 +1372,91 @@ class VoiceControlControllerImpl implements VoiceControlController {
 
     const textDelta = extractTextDelta(event);
     if (textDelta) {
+      if (
+        this.pendingGeneration &&
+        this.pendingGeneration.timeToFirstTokenAt === undefined
+      ) {
+        this.pendingGeneration.timeToFirstTokenAt = Date.now();
+      }
       this.setTranscript(`${this.transcript}${textDelta}`);
     }
 
     const completedText = extractCompletedText(event);
     if (completedText) {
+      if (
+        this.pendingGeneration &&
+        this.pendingGeneration.timeToFirstTokenAt === undefined
+      ) {
+        this.pendingGeneration.timeToFirstTokenAt = Date.now();
+      }
       this.setTranscript(completedText);
     }
 
     if (event.type === "response.done") {
       this.responseInFlight = false;
-      const response = event.response as { output?: unknown[] } | undefined;
+      const response = event.response as
+        | {
+            conversation_id?: string | null;
+            id?: string | null;
+            output?: unknown[];
+            status?: string | null;
+            status_details?: Record<string, unknown> | null;
+            usage?: {
+              input_tokens?: number;
+              output_tokens?: number;
+            } | null;
+          }
+        | undefined;
       const finalText = Array.isArray(response?.output)
         ? extractFinalMessageText(response.output)
         : null;
+      const pendingGeneration = this.pendingGeneration;
+
+      this.pendingGeneration = null;
 
       if (finalText) {
         this.setTranscript(finalText);
+      }
+
+      if (pendingGeneration?.inputText.trim()) {
+        const status =
+          typeof response?.status === "string" && response.status.trim()
+            ? response.status
+            : "completed";
+
+        this.options.onGenerationCompleted?.({
+          conversationId:
+            typeof response?.conversation_id === "string"
+              ? response.conversation_id
+              : pendingGeneration.conversationId ?? null,
+          errorMessage: extractResponseError(response?.status_details) ?? undefined,
+          inputText: pendingGeneration.inputText,
+          inputTokens:
+            typeof response?.usage?.input_tokens === "number"
+              ? response.usage.input_tokens
+              : undefined,
+          latencyMs: Math.max(Date.now() - pendingGeneration.startedAt, 0),
+          model: this.sessionConfig.model,
+          outputText: finalText,
+          outputTokens:
+            typeof response?.usage?.output_tokens === "number"
+              ? response.usage.output_tokens
+              : undefined,
+          responseId:
+            typeof response?.id === "string"
+              ? response.id
+              : pendingGeneration.responseId ?? null,
+          status,
+          stopReason: extractResponseStopReason(response?.status_details) ?? undefined,
+          timeToFirstTokenMs:
+            pendingGeneration.timeToFirstTokenAt !== undefined
+              ? Math.max(
+                  pendingGeneration.timeToFirstTokenAt -
+                    pendingGeneration.startedAt,
+                  0,
+                )
+              : undefined,
+        });
       }
 
       if (this.runningToolCallCount === 0) {
@@ -1393,6 +1544,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
   }
 
   private resetResponseState() {
+    this.pendingGeneration = null;
     this.responseInFlight = false;
     this.runningToolCallCount = 0;
   }

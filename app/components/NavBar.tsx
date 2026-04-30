@@ -9,6 +9,12 @@ import { SignOut } from "@/app/components/sign-out";
 import VoiceAgentButton from "@/app/components/voice/VoiceAgentButton";
 import { startGoogleSignIn } from "@/lib/start-google-sign-in";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
+import {
+  captureVoiceAgentRequested,
+  type VoiceAgentEntryPoint,
+} from "@/lib/posthog/client";
+import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
+import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/useFeatureFlagEnabled";
 
 type MenuLink = {
   href: string;
@@ -54,6 +60,8 @@ const VoiceAgentEntry = dynamic(
 const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const pathname = usePathname();
   const { isAuthed, requireAuth, session } = useGuestPrompt();
+  const voiceAgentEnabled =
+    usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? true;
   const [showProfile, setShowProfile] = useState(false);
   const [profileMenuPosition, setProfileMenuPosition] = useState<{
     top: number;
@@ -61,6 +69,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   } | null>(null);
   const [voiceRuntimeRequested, setVoiceRuntimeRequested] = useState(false);
   const [voiceStartToken, setVoiceStartToken] = useState(0);
+  const [voiceEntryPoint, setVoiceEntryPoint] = useState<VoiceAgentEntryPoint>("nav");
   const [hoveredTooltip, setHoveredTooltip] = useState<{
     content: string;
     top: number;
@@ -156,18 +165,34 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     });
   };
 
-  const handleVoiceClick = useCallback(() => {
+  const handleVoiceClick = useCallback((entryPoint: VoiceAgentEntryPoint = "nav") => {
+    captureVoiceAgentRequested({
+      entryPoint,
+      authenticated: isAuthed,
+    });
+
     if (!isAuthed) {
       requireAuth("use the voice guide");
       return;
     }
 
+    setVoiceEntryPoint(entryPoint);
     setVoiceRuntimeRequested(true);
     setVoiceStartToken((current) => current + 1);
   }, [isAuthed, requireAuth]);
 
   useEffect(() => {
-    const handler = () => handleVoiceClick();
+    const handler = (event: Event) => {
+      const source =
+        event instanceof CustomEvent &&
+        typeof event.detail === "object" &&
+        event.detail !== null &&
+        "source" in event.detail &&
+        (event.detail.source === "home_search" || event.detail.source === "nav")
+          ? event.detail.source
+          : "home_search";
+      handleVoiceClick(source);
+    };
     window.addEventListener("examcooker:voice-agent-start", handler);
     return () => window.removeEventListener("examcooker:voice-agent-start", handler);
   }, [handleVoiceClick]);
@@ -271,21 +296,26 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
           </div>
 
           <div className="relative z-10 mb-1 flex flex-col items-center gap-2">
-            <div className="group flex">
-              {voiceRuntimeRequested ? (
-                <VoiceAgentEntry startToken={voiceStartToken} />
-              ) : (
-                <VoiceAgentButton
-                  buttonLabel="Start the voice guide"
-                  onClick={handleVoiceClick}
-                  runtime={{
-                    activity: "idle",
-                    connected: false,
-                    muted: false,
-                  }}
-                />
-              )}
-            </div>
+            {voiceAgentEnabled ? (
+              <div className="group flex">
+                {voiceRuntimeRequested ? (
+                  <VoiceAgentEntry
+                    entryPoint={voiceEntryPoint}
+                    startToken={voiceStartToken}
+                  />
+                ) : (
+                  <VoiceAgentButton
+                    buttonLabel="Start the voice guide"
+                    onClick={() => handleVoiceClick("nav")}
+                    runtime={{
+                      activity: "idle",
+                      connected: false,
+                      muted: false,
+                    }}
+                  />
+                )}
+              </div>
+            ) : null}
             <ThemeToggleSwitch />
             {isAuthed ? (
               <div className="relative z-10" ref={profileRef}>
@@ -336,7 +366,11 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                 type="button"
                 title="Sign in"
                 aria-label="Sign in"
-                onClick={() => startGoogleSignIn(pathname ?? "/")}
+                onClick={() =>
+                  startGoogleSignIn(pathname ?? "/", {
+                    source: "navbar",
+                  })
+                }
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-black/70 transition-colors duration-200 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
               >
                 <svg

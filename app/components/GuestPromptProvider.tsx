@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import type { Session } from "next-auth";
 import { getSession } from "next-auth/react";
 import { startGoogleSignIn } from "@/lib/start-google-sign-in";
+import { captureAuthPromptOpened } from "@/lib/posthog/client";
 
 type GuestPromptContextType = {
     isAuthed: boolean;
@@ -70,6 +71,7 @@ export default function GuestPromptProvider({
         clearPhaseTimers();
         setPrompt({ action, redirect });
         if (phase === "open" || phase === "entering") return;
+        captureAuthPromptOpened(action);
         setPhase("entering");
         openRafRef.current = requestAnimationFrame(() => {
             openRafRef.current = requestAnimationFrame(() => {
@@ -143,7 +145,9 @@ export default function GuestPromptProvider({
     const visible = phase === "open";
     const mounted = phase !== "closed";
     const handleSignIn = useCallback(() => {
-        startGoogleSignIn(prompt.redirect ?? "/");
+        startGoogleSignIn(prompt.redirect ?? "/", {
+            source: "guest_prompt",
+        });
     }, [prompt.redirect]);
 
     return (

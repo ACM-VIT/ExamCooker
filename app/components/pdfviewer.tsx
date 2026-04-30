@@ -35,6 +35,7 @@ import {
   Sun,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import posthog from "posthog-js";
 import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resourceNames";
 import { loadPdfBuffer } from "@/lib/pdf/pdfBufferCache";
@@ -224,6 +225,7 @@ function ViewerToolbar({
     if (isDownloading) return;
 
     setIsDownloading(true);
+    posthog.capture("pdf_downloaded", { file_name: fileName, file_url: fileUrl });
     try {
       await downloadPdfFile({ fileUrl, fileName });
     } finally {

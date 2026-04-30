@@ -117,7 +117,11 @@ const Header: React.FC<HeaderProps> = ({ toggleNavbar, isNavOn }) => {
         ) : (
           <button
             type="button"
-            onClick={() => startGoogleSignIn()}
+            onClick={() =>
+              startGoogleSignIn(undefined, {
+                source: "header",
+              })
+            }
             className="border border-black dark:border-[#D5D5D5] px-3 py-1 text-sm font-semibold bg-[#3BF4C7] text-black dark:bg-[#0C1222] dark:text-[#D5D5D5] hover:-translate-x-0.5 hover:-translate-y-0.5 transition"
           >
             Sign In

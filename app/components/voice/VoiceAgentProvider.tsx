@@ -41,6 +41,14 @@ import {
 } from "./voiceNavigation";
 import VoiceAgentDock from "./VoiceAgentDock";
 import {
+  captureVoiceAgentLlmGeneration,
+  captureVoiceAgentError,
+  captureVoiceAgentSessionEnded,
+  captureVoiceAgentSessionStarted,
+  getPostHogSessionId,
+  type VoiceAgentEntryPoint,
+} from "@/lib/posthog/client";
+import {
   examSlugToType,
   examTypeLabel,
   examTypeToSlug,
@@ -427,8 +435,10 @@ export function useVoiceAgent() {
 }
 
 export default function VoiceAgentProvider({
+  entryPoint,
   children,
 }: {
+  entryPoint: VoiceAgentEntryPoint;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -445,6 +455,12 @@ export default function VoiceAgentProvider({
     }),
   );
   const [lastError, setLastError] = useState<string | null>(null);
+  const sessionStartedAtRef = useRef<number | null>(null);
+  const sessionEntryPointRef = useRef<VoiceAgentEntryPoint>(entryPoint);
+  const voiceAnalyticsSessionIdRef = useRef<string | null>(null);
+  const pendingDisconnectReasonRef = useRef<
+    "manual" | "timeout" | "error" | "unexpected_disconnect" | null
+  >(null);
   const controlRegistryRef = useRef<VoiceControlRegistryEntry[]>([]);
   const inAppHistoryRef = useRef<{ entries: string[]; index: number }>({
     entries: [],
@@ -506,6 +522,10 @@ export default function VoiceAgentProvider({
       throw new Error("There is no open PDF right now.");
     }
 
+    const voiceSessionId =
+      voiceAnalyticsSessionIdRef.current ?? crypto.randomUUID();
+    voiceAnalyticsSessionIdRef.current = voiceSessionId;
+
     const response = await fetch("/api/realtime/pdf-answer", {
       method: "POST",
       headers: {
@@ -515,9 +535,12 @@ export default function VoiceAgentProvider({
         currentPage: activePdf.currentPage,
         fileName: activePdf.fileName,
         fileUrl: new URL(activePdf.fileUrl, window.location.origin).toString(),
+        posthogSessionId: getPostHogSessionId(),
         question,
         title: document.title,
         totalPages: activePdf.totalPages,
+        voiceEntryPoint: sessionEntryPointRef.current,
+        voiceSessionId,
       }),
       cache: "no-store",
     });
@@ -1028,8 +1051,40 @@ export default function VoiceAgentProvider({
       instructions: VOICE_GUIDE_INSTRUCTIONS,
       maxOutputTokens: 400,
       model: "gpt-realtime-mini",
+      onGenerationCompleted: (generation) => {
+        const voiceSessionId = voiceAnalyticsSessionIdRef.current;
+        if (!voiceSessionId) {
+          return;
+        }
+
+        captureVoiceAgentLlmGeneration({
+          browserPath: currentBrowserPath(),
+          conversationId: generation.conversationId ?? null,
+          entryPoint: sessionEntryPointRef.current,
+          errorMessage: generation.errorMessage ?? null,
+          inputText: generation.inputText,
+          inputTokens: generation.inputTokens,
+          latencySeconds: generation.latencyMs / 1000,
+          model: generation.model,
+          outputText: generation.outputText,
+          outputTokens: generation.outputTokens,
+          responseId: generation.responseId ?? null,
+          status: generation.status,
+          stopReason: generation.stopReason ?? null,
+          timeToFirstTokenSeconds:
+            generation.timeToFirstTokenMs !== undefined
+              ? generation.timeToFirstTokenMs / 1000
+              : undefined,
+          voiceSessionId,
+        });
+      },
       onError: (error) => {
+        pendingDisconnectReasonRef.current = "error";
         setLastError(error.message);
+        captureVoiceAgentError({
+          entryPoint,
+          message: error.message,
+        });
         toast({
           title: "Voice guide unavailable",
           description: error.message,
@@ -1040,7 +1095,7 @@ export default function VoiceAgentProvider({
       postToolResponse: true,
       tools,
     }),
-    [tools],
+    [entryPoint, tools],
   );
 
   useEffect(() => {
@@ -1075,12 +1130,41 @@ export default function VoiceAgentProvider({
   }, [browserPath, controller, getFreshSnapshot, runtime.connected]);
 
   useEffect(() => {
+    if (runtime.connected) {
+      if (sessionStartedAtRef.current === null) {
+        sessionStartedAtRef.current = Date.now();
+        sessionEntryPointRef.current = entryPoint;
+        voiceAnalyticsSessionIdRef.current ??= crypto.randomUUID();
+        captureVoiceAgentSessionStarted(sessionEntryPointRef.current);
+      }
+
+      return;
+    }
+
+    if (sessionStartedAtRef.current === null) {
+      return;
+    }
+
+    captureVoiceAgentSessionEnded({
+      entryPoint: sessionEntryPointRef.current,
+      reason:
+        pendingDisconnectReasonRef.current ??
+        (lastError ? "error" : "unexpected_disconnect"),
+      startedAt: sessionStartedAtRef.current,
+    });
+    sessionStartedAtRef.current = null;
+    voiceAnalyticsSessionIdRef.current = null;
+    pendingDisconnectReasonRef.current = null;
+  }, [entryPoint, lastError, runtime.connected]);
+
+  useEffect(() => {
     if (!runtime.connected) {
       return;
     }
 
     const timeout = window.setTimeout(() => {
       setLastError(null);
+      pendingDisconnectReasonRef.current = "timeout";
       controller.disconnect();
       hide();
       toast({
@@ -1110,6 +1194,7 @@ export default function VoiceAgentProvider({
       hide();
     }
 
+    voiceAnalyticsSessionIdRef.current = crypto.randomUUID();
     void controller.connect();
   }, [controller, hide, runtime.activity, runtime.connected]);
 
@@ -1119,6 +1204,7 @@ export default function VoiceAgentProvider({
 
   const toggleVoiceAgent = useCallback(() => {
     if (runtime.connected || runtime.activity === "connecting") {
+      pendingDisconnectReasonRef.current = "manual";
       controller.disconnect();
       hide();
       return;

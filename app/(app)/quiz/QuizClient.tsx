@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import {
     ChevronRight,
     Clock,
@@ -70,6 +71,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
     const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false);
     const [expandedQuestionIndex, setExpandedQuestionIndex] = useState<number | null>(null);
     const [showError, setShowError] = useState(false);
+    const quizMetaRef = useRef<{ courseCode: string; totalQuestions: number }>({ courseCode: "", totalQuestions: 0 });
 
     useEffect(() => {
         const params = new URLSearchParams(decodeURIComponent(quizConfig));
@@ -77,6 +79,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
         const numQuestions = Number.parseInt(params.get("numQ") || "0", 10);
         const time = params.get("time") || "000000";
         const courseCode = params.get("course") || "102104073";
+        quizMetaRef.current.courseCode = courseCode;
 
         const hours = Number.parseInt(time.slice(0, 2), 10);
         const minutes = Number.parseInt(time.slice(2, 4), 10);
@@ -109,6 +112,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
             ...q,
             originalIndex: index,
         }));
+        quizMetaRef.current.totalQuestions = selectedQuestions.length;
         setQuestions(selectedQuestions);
     }, [quizConfig]);
 
@@ -167,6 +171,14 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
         }).length;
         setScore(correctAnswersCount);
         setQuizSubmitted(true);
+        posthog.capture("quiz_submitted", {
+            course_code: quizMetaRef.current.courseCode,
+            score: correctAnswersCount,
+            total_questions: quizMetaRef.current.totalQuestions,
+            percentage: quizMetaRef.current.totalQuestions > 0
+                ? Math.round((correctAnswersCount / quizMetaRef.current.totalQuestions) * 100)
+                : 0,
+        });
     };
 
     const goToNextQuestion = () => {
