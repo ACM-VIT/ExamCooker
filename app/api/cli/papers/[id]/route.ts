@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getPublicAuthOrigin } from "@/lib/auth-origin";
 import { getCliPastPaperDetail } from "@/lib/cli/papers";
 import { requireCliRequestUser } from "@/lib/cli/request-auth";
 
@@ -12,8 +13,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return user;
   }
 
+  const publicOrigin = getPublicAuthOrigin(request);
+  const baseUrl = publicOrigin?.origin ?? request.nextUrl.origin;
   const { id } = await context.params;
-  const paper = await getCliPastPaperDetail(request.nextUrl.origin, id);
+  const paper = await getCliPastPaperDetail(baseUrl, id);
 
   if (!paper) {
     return NextResponse.json(

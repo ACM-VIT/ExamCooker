@@ -482,6 +482,19 @@ function buildCoursePageUrl(baseUrl: string, courseCode: string) {
   return `${baseUrl}/past_papers/${encodeURIComponent(courseCode)}`;
 }
 
+function buildPaperPageUrl(
+  baseUrl: string,
+  paperId: string,
+  courseCode?: string | null,
+  fallbackUrl?: string | null,
+) {
+  if (!courseCode) {
+    return fallbackUrl || `${baseUrl}/past_papers`;
+  }
+
+  return `${buildCoursePageUrl(baseUrl, courseCode)}/paper/${paperId}`;
+}
+
 function showCourseSummaryNote(course: CliCourse) {
   p.note(
     [
@@ -758,7 +771,17 @@ async function fetchPaperSearchResults(
     total: payload.total,
     page: payload.page,
     limit: payload.limit,
-    papers: sortPapers(payload.papers),
+    papers: sortPapers(
+      payload.papers.map((paper) => ({
+        ...paper,
+        pageUrl: buildPaperPageUrl(
+          runtimeConfig.baseUrl,
+          paper.id,
+          paper.course?.code,
+          paper.pageUrl,
+        ),
+      })),
+    ),
   };
 }
 
@@ -770,7 +793,15 @@ async function fetchPaperDetail(runtimeConfig: RuntimeConfig, paperId: string) {
     token: runtimeConfig.token,
   });
 
-  return payload.paper;
+  return {
+    ...payload.paper,
+    pageUrl: buildPaperPageUrl(
+      runtimeConfig.baseUrl,
+      payload.paper.id,
+      payload.paper.course?.code,
+      payload.paper.pageUrl,
+    ),
+  };
 }
 
 async function promptForQuery(input: {
