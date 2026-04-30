@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCliPastPaperDetail } from "@/lib/cli/papers";
-import { requireCliRequestUser } from "@/lib/cli/requestAuth";
+import { requireCliRequestUser } from "@/lib/cli/request-auth";
 
 type RouteContext = {
   params: Promise<{ id: string }>;

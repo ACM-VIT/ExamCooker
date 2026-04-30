@@ -1,8 +1,8 @@
 import React from "react";
-import ClientSide from "./clientSide";
-import PostHogIdentify from "@/app/components/PostHogIdentify";
-import AuthSessionProvider from "@/app/components/AuthSessionProvider";
-import HomeFooter from "@/app/(app)/home/home_footer";
+import ClientSide from "./client-side";
+import PostHogIdentify from "@/app/components/post-hog-identify";
+import AuthSessionProvider from "@/app/components/auth-session-provider";
+import HomeFooter from "@/app/(app)/home/home-footer";
 
 export default function Layout({
                                          children,

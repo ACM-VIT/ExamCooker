@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireCliRequestUser } from "@/lib/cli/requestAuth";
-import { searchCourseGrid } from "@/lib/data/courseCatalog";
+import { requireCliRequestUser } from "@/lib/cli/request-auth";
+import { searchCourseGrid } from "@/lib/data/course-catalog";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;

@@ -1,5 +1,5 @@
-import { getPastPaperDetail } from "@/lib/data/pastPaperDetail";
-import { examTypeLabel } from "@/lib/examSlug";
+import { getPastPaperDetail } from "@/lib/data/past-paper-detail";
+import { examTypeLabel } from "@/lib/exam-slug";
 import {
     OG_ALT,
     OG_CONTENT_TYPE,

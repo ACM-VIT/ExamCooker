@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { auth } from "@/app/auth";
-import { authorizeCliDeviceAuthRequest } from "@/lib/cli/deviceAuth";
+import { authorizeCliDeviceAuthRequest } from "@/lib/cli/device-auth";
 import { normalizeCliUserCode } from "@/lib/cli/tokens";
 
 export async function approveCliDeviceAuthAction(formData: FormData) {

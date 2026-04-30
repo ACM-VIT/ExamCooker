@@ -24,7 +24,7 @@ const MUTED_TEXT_COLOR = "rgba(241,243,248,0.78)";
 const SUBTLE_TEXT_COLOR = "rgba(241,243,248,0.62)";
 
 const logoIconPromise = readFile(
-    join(process.cwd(), "public", "assets", "LogoIcon.svg"),
+    join(process.cwd(), "public", "assets", "logo-icon.svg"),
     "utf8",
 ).then((svg) => svgToDataUrl(svg));
 
@@ -35,13 +35,13 @@ function bufToArrayBuffer(buf: Buffer): ArrayBuffer {
 }
 
 const fontBoldPromise = readFile(
-    join(process.cwd(), "public", "assets", "fonts", "PlusJakartaSans-Bold.ttf"),
+    join(process.cwd(), "public", "assets", "fonts", "plus-jakarta-sans-bold.ttf"),
 )
     .then(bufToArrayBuffer)
     .catch(() => null);
 
 const fontExtraBoldPromise = readFile(
-    join(process.cwd(), "public", "assets", "fonts", "PlusJakartaSans-ExtraBold.ttf"),
+    join(process.cwd(), "public", "assets", "fonts", "plus-jakarta-sans-extra-bold.ttf"),
 )
     .then(bufToArrayBuffer)
     .catch(() => null);

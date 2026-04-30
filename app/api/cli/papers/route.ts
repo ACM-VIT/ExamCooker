@@ -8,7 +8,7 @@ import {
   type Semester,
 } from "@/db";
 import { searchCliPapers } from "@/lib/cli/papers";
-import { requireCliRequestUser } from "@/lib/cli/requestAuth";
+import { requireCliRequestUser } from "@/lib/cli/request-auth";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 250;

@@ -8,7 +8,7 @@ import {
   loadPastPaperRows,
   setPastPaperTags,
   upsertCourseByCode,
-} from "../lib/pastPapers";
+} from "../lib/past-papers";
 
 loadScriptEnv();
 

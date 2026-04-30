@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { and, count, eq, isNotNull } from "drizzle-orm";
 import { getBaseUrl } from "@/lib/seo";
-import { getCourseGrid, getCourseSearchRecords } from "@/lib/data/courseCatalog";
-import { getCourseExamCombos } from "@/lib/data/courseExams";
-import { getExamHubSummaries } from "@/lib/data/courseExams";
+import { getCourseGrid, getCourseSearchRecords } from "@/lib/data/course-catalog";
+import { getCourseExamCombos } from "@/lib/data/course-exams";
+import { getExamHubSummaries } from "@/lib/data/course-exams";
 import { db, note, pastPaper, subject, syllabi } from "@/db";
 
 const PAGE_SIZE = 40000;

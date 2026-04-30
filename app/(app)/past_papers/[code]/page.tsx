@@ -3,31 +3,31 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { examSlugToType } from "@/lib/examSlug";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { examSlugToType } from "@/lib/exam-slug";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import {
     getCoursePaperFilterOptions,
     getCoursePapers,
     type CoursePaperSort,
-} from "@/lib/data/coursePapers";
+} from "@/lib/data/course-papers";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
-import StructuredData from "@/app/components/seo/StructuredData";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import StructuredData from "@/app/components/seo/structured-data";
+import DirectionalTransition from "@/app/components/common/directional-transition";
 import {
     buildCourseKeywordSet,
     getCoursePastPapersPath,
     getPastPaperDetailPath,
 } from "@/lib/seo";
-import CourseHeader from "@/app/components/past_papers/CourseHeader";
-import FilterBar from "@/app/components/past_papers/FilterBar";
-import FilterSheet from "@/app/components/past_papers/FilterSheet";
-import AnswerKeyButton from "@/app/components/past_papers/AnswerKeyButton";
-import SortDropdown from "@/app/components/past_papers/SortDropdown";
-import AnswerKeyToggle from "@/app/components/past_papers/AnswerKeyToggle";
-import CoursePaperGrid from "@/app/components/past_papers/CoursePaperGrid";
-import CoursePagination from "@/app/components/past_papers/CoursePagination";
-import CourseVisitTracker from "@/app/components/past_papers/CourseVisitTracker";
+import CourseHeader from "@/app/components/past_papers/course-header";
+import FilterBar from "@/app/components/past_papers/filter-bar";
+import FilterSheet from "@/app/components/past_papers/filter-sheet";
+import AnswerKeyButton from "@/app/components/past_papers/answer-key-button";
+import SortDropdown from "@/app/components/past_papers/sort-dropdown";
+import AnswerKeyToggle from "@/app/components/past_papers/answer-key-toggle";
+import CoursePaperGrid from "@/app/components/past_papers/course-paper-grid";
+import CoursePagination from "@/app/components/past_papers/course-pagination";
+import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
 import {
     campusValues,
     course as courseTable,
@@ -43,7 +43,7 @@ import {
     buildCollectionPage,
     buildFaqPage,
     buildItemList,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 const PAGE_SIZE = 24;
 const CUID_REGEX = /^c[a-z0-9]{20,}$/i;

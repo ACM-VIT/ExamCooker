@@ -1,18 +1,18 @@
 import React, { Suspense } from 'react';
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import PDFViewerClient from '@/app/components/PDFViewerClient';
+import PDFViewerClient from '@/app/components/pdf-viewer-client';
 import {notFound} from "next/navigation";
 import {Metadata} from "next";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import StructuredData from "@/app/components/seo/StructuredData";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import StructuredData from "@/app/components/seo/structured-data";
 
-import ShareLink from '@/app/components/ShareLink';
-import ViewTracker from "@/app/components/ViewTracker";
-import ItemActions from "@/app/components/ItemActions";
-import { getNoteDetail } from "@/lib/data/noteDetail";
+import ShareLink from '@/app/components/share-link';
+import ViewTracker from "@/app/components/view-tracker";
+import ItemActions from "@/app/components/item-actions";
+import { getNoteDetail } from "@/lib/data/note-detail";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getCourseNotesPath } from "@/lib/seo";
-import { buildNotePdfFileName } from "@/lib/downloads/resourceNames";
+import { buildNotePdfFileName } from "@/lib/downloads/resource-names";
 import { stripPdfExtension } from "@/lib/pdf";
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';

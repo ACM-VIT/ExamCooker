@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/auth";
-import { getCliDeviceAuthRequestByUserCode } from "@/lib/cli/deviceAuth";
+import { getCliDeviceAuthRequestByUserCode } from "@/lib/cli/device-auth";
 import { normalizeCliUserCode } from "@/lib/cli/tokens";
 
 type CliLookupState = "idle" | "invalid" | "pending" | "approved" | "expired";

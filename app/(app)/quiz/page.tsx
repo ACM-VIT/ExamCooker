@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import QuizClient from "./QuizClient";
-import QuizLandingClient from "./QuizLandingClient";
+import QuizClient from "./quiz-client";
+import QuizLandingClient from "./quiz-landing-client";
 
 type QuizSearchParams = {
     weeks?: string;

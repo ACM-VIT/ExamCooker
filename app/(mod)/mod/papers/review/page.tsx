@@ -3,11 +3,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { auth } from "@/app/auth";
-import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
-import PaperReviewList from "@/app/components/mod/PaperReviewList";
-import type { CourseOption } from "@/app/components/mod/CoursePicker";
-import type { PaperRowData } from "@/app/components/mod/PaperReviewRow";
-import type { PaperLinkOption } from "@/app/components/mod/paperLinkTypes";
+import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
+import PaperReviewList from "@/app/components/mod/paper-review-list";
+import type { CourseOption } from "@/app/components/mod/course-picker";
+import type { PaperRowData } from "@/app/components/mod/paper-review-row";
+import type { PaperLinkOption } from "@/app/components/mod/paper-link-types";
 import { course, db, pastPaper } from "@/db";
 
 export const metadata = {

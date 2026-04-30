@@ -2,14 +2,14 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import PastPaperCard from "@/app/components/PastPaperCard";
-import StructuredData from "@/app/components/seo/StructuredData";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import PastPaperCard from "@/app/components/past-paper-card";
+import StructuredData from "@/app/components/seo/structured-data";
+import DirectionalTransition from "@/app/components/common/directional-transition";
 import {
     getExamHubPageData,
     getExamHubSummaries,
-} from "@/lib/data/courseExams";
-import { examSlugToType } from "@/lib/examSlug";
+} from "@/lib/data/course-exams";
+import { examSlugToType } from "@/lib/exam-slug";
 import {
     buildExamHubKeywordSet,
     getCourseExamPath,
@@ -22,7 +22,7 @@ import {
     buildCollectionPage,
     buildFaqPage,
     buildItemList,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 export async function generateMetadata({
     params,

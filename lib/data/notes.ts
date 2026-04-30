@@ -10,11 +10,11 @@ import {
     isNotNull,
     or,
 } from "drizzle-orm";
-import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
+import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import {
     getCourseSearchRecords,
     type CourseSearchRecord,
-} from "@/lib/data/courseCatalog";
+} from "@/lib/data/course-catalog";
 import {
     course,
     db,

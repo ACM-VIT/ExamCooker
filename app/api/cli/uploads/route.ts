@@ -10,13 +10,13 @@ import {
   type ExamType,
   type Semester,
 } from "@/db";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { requireCliRequestUser } from "@/lib/cli/requestAuth";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { requireCliRequestUser } from "@/lib/cli/request-auth";
 import {
   createUploadedResources,
   type UploadVariant,
-} from "@/lib/uploads/createUploadedResources";
-import { processUploadFile } from "@/lib/uploads/processorClient";
+} from "@/lib/uploads/create-uploaded-resources";
+import { processUploadFile } from "@/lib/uploads/processor-client";
 
 const uploadVariants = new Set<UploadVariant>(["Notes", "Past Papers"]);
 const examTypes = new Set<string>(examTypeValues);

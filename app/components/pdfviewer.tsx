@@ -36,14 +36,14 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import posthog from "posthog-js";
-import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
-import { getFallbackPdfFileName } from "@/lib/downloads/resourceNames";
-import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdfBufferCache";
-import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfiumEngineCache";
+import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
+import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
+import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
+import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
 import {
   clearActivePdfSnapshot,
   setActivePdfSnapshot,
-} from "@/app/components/voice/pdfVoiceContext";
+} from "@/app/components/voice/pdf-voice-context";
 
 const TOOLBAR_BUTTON_CLASS =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500";
