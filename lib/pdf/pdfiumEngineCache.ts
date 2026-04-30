@@ -48,7 +48,7 @@ export function preloadPdfiumEngine() {
   return enginePromise;
 }
 
-export function usePreloadedPdfiumEngine(): PdfiumEngineState {
+export function usePreloadedPdfiumEngine(retryKey = 0): PdfiumEngineState {
   const [state, setState] = useState<PdfiumEngineState>(() => {
     if (cachedEngine) {
       return { status: "loaded", engine: cachedEngine, error: null };
@@ -64,6 +64,10 @@ export function usePreloadedPdfiumEngine(): PdfiumEngineState {
   useEffect(() => {
     let isActive = true;
 
+    if (!cachedEngine) {
+      setState({ status: "loading", engine: null, error: null });
+    }
+
     preloadPdfiumEngine()
       .then((engine) => {
         if (!isActive) return;
@@ -77,7 +81,7 @@ export function usePreloadedPdfiumEngine(): PdfiumEngineState {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [retryKey]);
 
   return state;
 }
