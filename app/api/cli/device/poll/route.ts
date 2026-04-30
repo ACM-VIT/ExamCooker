@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pollCliDeviceAuthRequest } from "@/lib/cli/deviceAuth";
+import { pollCliDeviceAuthRequest } from "@/lib/cli/device-auth";
 import { getPublicAuthOrigin } from "@/lib/auth-origin";
 
 export async function POST(request: NextRequest) {

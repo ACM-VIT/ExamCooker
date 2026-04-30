@@ -1,7 +1,7 @@
 import React, { Suspense } from "react";
 import {auth} from "../../auth";
-import {fetchUnclearedItems} from "../../actions/moderatorActions";
-import ModeratorDashboardClient from "../../components/ModeratorDashBoard";
+import {fetchUnclearedItems} from "../../actions/moderator-actions";
+import ModeratorDashboardClient from "../../components/moderator-dash-board";
 import { notFound, redirect } from "next/navigation";
 
 type ModeratorSearchParams = { page?: string; search?: string; tags?: string | string[] };

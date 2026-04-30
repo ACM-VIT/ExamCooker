@@ -1,18 +1,18 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { asc, eq } from "drizzle-orm";
-import ModuleDropdown from "@/app/components/ModuleDropdown";
-import VinCoursePage from "@/app/components/resources/VinCoursePage";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import ModuleDropdown from "@/app/components/module-dropdown";
+import VinCoursePage from "@/app/components/resources/vin-course-page";
+import DirectionalTransition from "@/app/components/common/directional-transition";
 import { notFound, permanentRedirect } from "next/navigation";
-import ViewTracker from "@/app/components/ViewTracker";
+import ViewTracker from "@/app/components/view-tracker";
 import {
     buildKeywords,
     DEFAULT_KEYWORDS,
     getCourseResourcesPath,
     parseSubjectName,
 } from "@/lib/seo";
-import { getVinCourseById } from "@/lib/data/vinTogether";
+import { getVinCourseById } from "@/lib/data/vin-together";
 import { db, module as moduleTable, type Module, subject, type Subject } from "@/db";
 
 async function fetchLegacySubject(id: string) {

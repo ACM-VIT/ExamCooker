@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import CliAuthScreen, { CliAuthScreenFallback } from "./CliAuthScreen";
+import CliAuthScreen, { CliAuthScreenFallback } from "./cli-auth-screen";
 
 export default function CliPage() {
   return (

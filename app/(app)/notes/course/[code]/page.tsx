@@ -2,17 +2,17 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import CourseNotesGrid from "@/app/components/notes/CourseNotesGrid";
-import Pagination from "@/app/components/Pagination";
-import StructuredData from "@/app/components/seo/StructuredData";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import CourseNotesGrid from "@/app/components/notes/course-notes-grid";
+import Pagination from "@/app/components/pagination";
+import StructuredData from "@/app/components/seo/structured-data";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import {
     getCourseNotesCount,
     getCourseNotesPage,
 } from "@/lib/data/notes";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     buildCourseKeywordSet,
     getCourseNotesPath,
@@ -25,7 +25,7 @@ import {
     buildCourseStructuredData,
     buildFaqPage,
     buildItemList,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 const PAGE_SIZE = 12;
 

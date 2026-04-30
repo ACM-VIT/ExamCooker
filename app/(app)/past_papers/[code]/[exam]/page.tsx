@@ -2,16 +2,16 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { examSlugToType, examTypeLabel, examTypeToSlug } from "@/lib/examSlug";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { examSlugToType, examTypeLabel, examTypeToSlug } from "@/lib/exam-slug";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import {
     getCoursePaperFilterOptions,
     getCoursePapers,
-} from "@/lib/data/coursePapers";
+} from "@/lib/data/course-papers";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
-import StructuredData from "@/app/components/seo/StructuredData";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import StructuredData from "@/app/components/seo/structured-data";
+import DirectionalTransition from "@/app/components/common/directional-transition";
 import {
     buildCourseExamKeywordSet,
     getCourseExamPath,
@@ -20,14 +20,14 @@ import {
     getPastPaperDetailPath,
     getCourseSyllabusPath,
 } from "@/lib/seo";
-import CourseHeader from "@/app/components/past_papers/CourseHeader";
-import CoursePaperGrid from "@/app/components/past_papers/CoursePaperGrid";
+import CourseHeader from "@/app/components/past_papers/course-header";
+import CoursePaperGrid from "@/app/components/past_papers/course-paper-grid";
 import {
     buildBreadcrumbList,
     buildCollectionPage,
     buildFaqPage,
     buildItemList,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 export async function generateMetadata({
     params,

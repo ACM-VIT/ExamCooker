@@ -1,7 +1,7 @@
 import React from "react";
-import UploadFile from "@/app/components/UploadFile";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import { getCourseSearchRecords } from "@/lib/data/courseCatalog";
+import UploadFile from "@/app/components/upload-file";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import { getCourseSearchRecords } from "@/lib/data/course-catalog";
 
 async function NewNotePage() {
     const courses = await getCourseSearchRecords();

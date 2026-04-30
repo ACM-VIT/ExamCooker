@@ -2,17 +2,17 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ModuleDropdown from "@/app/components/ModuleDropdown";
-import VinCoursePage from "@/app/components/resources/VinCoursePage";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import ViewTracker from "@/app/components/ViewTracker";
-import StructuredData from "@/app/components/seo/StructuredData";
+import ModuleDropdown from "@/app/components/module-dropdown";
+import VinCoursePage from "@/app/components/resources/vin-course-page";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import ViewTracker from "@/app/components/view-tracker";
+import StructuredData from "@/app/components/seo/structured-data";
 import { getCourseByCodeAny } from "@/lib/data/courses";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
-import { findVinCourseByNames, type VinCourse } from "@/lib/data/vinTogether";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
+import { findVinCourseByNames, type VinCourse } from "@/lib/data/vin-together";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     buildCourseKeywordSet,
     getCourseNotesPath,
@@ -27,7 +27,7 @@ import {
     buildCollectionPage,
     buildCourseStructuredData,
     buildFaqPage,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 type CourseResourceContext = {
     code: string;

@@ -1,5 +1,5 @@
-import { getExamHubPageData } from "@/lib/data/courseExams";
-import { examSlugToType } from "@/lib/examSlug";
+import { getExamHubPageData } from "@/lib/data/course-exams";
+import { examSlugToType } from "@/lib/exam-slug";
 import { formatCountChip, OG_ALT, OG_CONTENT_TYPE, OG_IMAGE_SIZE, renderExamCookerOgImage } from "@/lib/og";
 
 export const runtime = "nodejs";

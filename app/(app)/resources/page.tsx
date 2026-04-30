@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import ResourceBrowser from "@/app/components/resources/ResourceBrowser";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import ResourceBrowser from "@/app/components/resources/resource-browser";
 import { GradientText } from "@/app/components/landing_page/landing";
 import { DEFAULT_KEYWORDS } from "@/lib/seo";
-import { getVinCatalogMeta, getVinCourses, getVinYears } from "@/lib/data/vinTogether";
+import { getVinCatalogMeta, getVinCourses, getVinYears } from "@/lib/data/vin-together";
 
 type ResourcesSearchParams = { search?: string; year?: string };
 

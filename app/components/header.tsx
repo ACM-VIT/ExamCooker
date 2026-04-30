@@ -2,10 +2,10 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import Image from "@/app/components/common/AppImage";
-import profile from "@/public/assets/Profile.svg";
+import Image from "@/app/components/common/app-image";
+import profile from "@/public/assets/profile.svg";
 import { SignOut } from "./sign-out";
-import ThemeToggleSwitch from "./common/ThemeToggle";
+import ThemeToggleSwitch from "./common/theme-toggle";
 import { startGoogleSignIn } from "@/lib/start-google-sign-in";
 
 interface HeaderProps {
@@ -53,7 +53,7 @@ const Header: React.FC<HeaderProps> = ({ toggleNavbar, isNavOn }) => {
             className="inline-flex h-10 w-10 items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-black/40 dark:focus-visible:ring-[#3BF4C7]/50"
           >
             <Image
-              src="/assets/HamburgerIcon.svg"
+              src="/assets/hamburger-icon.svg"
               alt="Menu"
               width={26}
               height={26}

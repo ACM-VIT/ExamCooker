@@ -9,6 +9,7 @@ import * as p from "@clack/prompts";
 import pc from "picocolors";
 import {
   clearConfig,
+  getDefaultBaseUrl,
   getConfigPath,
   resolveRuntimeConfig,
   saveConfig,
@@ -70,6 +71,8 @@ type ParsedFlags = {
 };
 
 type RuntimeConfig = Awaited<ReturnType<typeof resolveRuntimeConfig>>;
+
+let lastRuntimeConfig: RuntimeConfig | null = null;
 
 type CliCourse = {
   id: string;
@@ -243,6 +246,12 @@ function hasFlag(
   key: string,
 ) {
   return Object.prototype.hasOwnProperty.call(flags, key);
+}
+
+async function resolveCliRuntimeConfig(input?: { baseUrl?: string | null }) {
+  const runtimeConfig = await resolveRuntimeConfig(input);
+  lastRuntimeConfig = runtimeConfig;
+  return runtimeConfig;
 }
 
 function buildQuery(params: Record<string, string | number | boolean | null | undefined>) {
@@ -473,6 +482,19 @@ function buildCoursePageUrl(baseUrl: string, courseCode: string) {
   return `${baseUrl}/past_papers/${encodeURIComponent(courseCode)}`;
 }
 
+function buildPaperPageUrl(
+  baseUrl: string,
+  paperId: string,
+  courseCode?: string | null,
+  fallbackUrl?: string | null,
+) {
+  if (!courseCode) {
+    return fallbackUrl || `${baseUrl}/past_papers`;
+  }
+
+  return `${buildCoursePageUrl(baseUrl, courseCode)}/paper/${paperId}`;
+}
+
 function showCourseSummaryNote(course: CliCourse) {
   p.note(
     [
@@ -683,7 +705,9 @@ async function openExternal(url: string) {
 }
 
 async function requireAuthContext(baseUrlOverride?: string) {
-  const runtimeConfig = await resolveRuntimeConfig({ baseUrl: baseUrlOverride });
+  const runtimeConfig = await resolveCliRuntimeConfig({
+    baseUrl: baseUrlOverride,
+  });
   if (!runtimeConfig.token) {
     throw new Error("Not authenticated. Run `examcooker auth login` first.");
   }
@@ -747,7 +771,17 @@ async function fetchPaperSearchResults(
     total: payload.total,
     page: payload.page,
     limit: payload.limit,
-    papers: sortPapers(payload.papers),
+    papers: sortPapers(
+      payload.papers.map((paper) => ({
+        ...paper,
+        pageUrl: buildPaperPageUrl(
+          runtimeConfig.baseUrl,
+          paper.id,
+          paper.course?.code,
+          paper.pageUrl,
+        ),
+      })),
+    ),
   };
 }
 
@@ -759,7 +793,15 @@ async function fetchPaperDetail(runtimeConfig: RuntimeConfig, paperId: string) {
     token: runtimeConfig.token,
   });
 
-  return payload.paper;
+  return {
+    ...payload.paper,
+    pageUrl: buildPaperPageUrl(
+      runtimeConfig.baseUrl,
+      payload.paper.id,
+      payload.paper.course?.code,
+      payload.paper.pageUrl,
+    ),
+  };
 }
 
 async function promptForQuery(input: {
@@ -1280,14 +1322,22 @@ async function runInteractivePaperExplorer(
 async function runAuthLogin(args: string[]) {
   const { values } = parseFlags(args, {
     baseUrl: { alias: "b", type: "string" },
+    debug: { type: "boolean" },
     open: { type: "boolean" },
   });
   const baseUrlOverride = getStringFlag(values, "baseUrl");
+  const debug = getBooleanFlag(values, "debug");
   const shouldOpen = values.open !== false;
-  const runtimeConfig = await resolveRuntimeConfig({ baseUrl: baseUrlOverride });
+  const runtimeConfig = await resolveCliRuntimeConfig({
+    baseUrl: baseUrlOverride,
+  });
   const deviceName = `${hostname()} (${platform()})`;
 
   p.intro(pc.bgCyan(pc.black(" examcooker auth ")));
+
+  if (debug) {
+    printRuntimeDebug(runtimeConfig);
+  }
 
   const startSpinner = createSpinner();
   startSpinner.start("Starting device login...");
@@ -1425,7 +1475,7 @@ async function runAuthLogout(args: string[]) {
   const { values } = parseFlags(args, {
     baseUrl: { alias: "b", type: "string" },
   });
-  const runtimeConfig = await resolveRuntimeConfig({
+  const runtimeConfig = await resolveCliRuntimeConfig({
     baseUrl: getStringFlag(values, "baseUrl"),
   });
 
@@ -1443,11 +1493,17 @@ async function runAuthLogout(args: string[]) {
 async function runWhoAmI(args: string[]) {
   const { values } = parseFlags(args, {
     baseUrl: { alias: "b", type: "string" },
+    debug: { type: "boolean" },
     json: { type: "boolean" },
     showToken: { type: "boolean" },
   });
   const jsonOutput = getBooleanFlag(values, "json");
   const runtimeConfig = await requireAuthContext(getStringFlag(values, "baseUrl"));
+
+  if (getBooleanFlag(values, "debug")) {
+    printRuntimeDebug(runtimeConfig);
+  }
+
   const payload = await requestJson<{
     success: boolean;
     user: { id: string; email: string; name: string | null; role: string };
@@ -2027,6 +2083,17 @@ async function runPaperUpload(args: string[]) {
 }
 
 function formatCliErrorMessage(error: unknown) {
+  const runtimeConfig = lastRuntimeConfig;
+
+  if (
+    runtimeConfig &&
+    error instanceof Error &&
+    !(error instanceof ApiError) &&
+    isNetworkErrorMessage(error.message)
+  ) {
+    return formatRuntimeConnectionError(runtimeConfig, error.message);
+  }
+
   if (error instanceof ApiError) {
     return error.message;
   }
@@ -2038,11 +2105,64 @@ function formatCliErrorMessage(error: unknown) {
   return "Unknown error";
 }
 
+function isNetworkErrorMessage(message: string) {
+  const normalized = message.trim().toLowerCase();
+  return (
+    normalized === "fetch failed" ||
+    normalized.includes("unable to connect") ||
+    normalized.includes("network") ||
+    normalized.includes("econnrefused") ||
+    normalized.includes("enotfound") ||
+    normalized.includes("timed out")
+  );
+}
+
+function isLikelyLocalBaseUrl(baseUrl: string) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(baseUrl);
+}
+
+function formatRuntimeConnectionError(
+  runtimeConfig: RuntimeConfig,
+  rawMessage: string,
+) {
+  const lines = [`Could not reach ${runtimeConfig.baseUrl}.`];
+
+  if (runtimeConfig.baseUrlSource === "config") {
+    lines.push(`This base URL is coming from ${getConfigPath()}.`);
+  } else if (runtimeConfig.baseUrlSource === "env") {
+    lines.push("This base URL is coming from EXAMCOOKER_BASE_URL.");
+  }
+
+  if (isLikelyLocalBaseUrl(runtimeConfig.baseUrl)) {
+    lines.push(
+      `That looks like a local ExamCooker server. Start it, or rerun with \`--base-url ${getDefaultBaseUrl()}\`.`,
+    );
+  } else if (runtimeConfig.baseUrl !== getDefaultBaseUrl()) {
+    lines.push(
+      `If you meant to use production, rerun with \`--base-url ${getDefaultBaseUrl()}\`.`,
+    );
+  }
+
+  lines.push(`Original error: ${rawMessage}`);
+  return lines.join("\n");
+}
+
+function printRuntimeDebug(runtimeConfig: RuntimeConfig) {
+  p.note(
+    [
+      `Base URL: ${runtimeConfig.baseUrl}`,
+      `Source: ${runtimeConfig.baseUrlSource}`,
+      `Config: ${getConfigPath()}`,
+    ].join("\n"),
+    "Debug",
+  );
+}
+
 async function runInteractiveHome() {
   showBanner();
 
   for (;;) {
-    const runtimeConfig = await resolveRuntimeConfig();
+    const runtimeConfig = await resolveCliRuntimeConfig();
     const accountLabel =
       runtimeConfig.storedConfig.user?.email ??
       runtimeConfig.storedConfig.user?.name ??

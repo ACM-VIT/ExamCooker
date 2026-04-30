@@ -1,11 +1,11 @@
 import React, { Suspense } from 'react';
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import PDFViewerClient from '@/app/components/PDFViewerClient';
+import PDFViewerClient from '@/app/components/pdf-viewer-client';
 import { notFound, permanentRedirect } from "next/navigation";
-import ViewTracker from "@/app/components/ViewTracker";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import { getSyllabusDetail } from "@/lib/data/syllabusDetail";
+import ViewTracker from "@/app/components/view-tracker";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import { getSyllabusDetail } from "@/lib/data/syllabus-detail";
 import type { Metadata } from "next";
 import {
     buildKeywords,
@@ -14,7 +14,7 @@ import {
     getCourseSyllabusPath,
     parseSyllabusName,
 } from "@/lib/seo";
-import { buildSyllabusPdfFileName } from "@/lib/downloads/resourceNames";
+import { buildSyllabusPdfFileName } from "@/lib/downloads/resource-names";
 
 export async function generateMetadata({
     params,

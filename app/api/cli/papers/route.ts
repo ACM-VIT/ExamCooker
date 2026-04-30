@@ -8,7 +8,8 @@ import {
   type Semester,
 } from "@/db";
 import { searchCliPapers } from "@/lib/cli/papers";
-import { requireCliRequestUser } from "@/lib/cli/requestAuth";
+import { getPublicAuthOrigin } from "@/lib/auth-origin";
+import { requireCliRequestUser } from "@/lib/cli/request-auth";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 250;
@@ -78,6 +79,9 @@ export async function GET(request: NextRequest) {
     return user;
   }
 
+  const publicOrigin = getPublicAuthOrigin(request);
+  const baseUrl = publicOrigin?.origin ?? request.nextUrl.origin;
+
   const searchParams = request.nextUrl.searchParams;
   const includeDrafts = parseBooleanFlag(searchParams.get("includeDrafts"));
   const examType = parseOptionalEnum<ExamType>(
@@ -119,7 +123,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const result = await searchCliPapers(request.nextUrl.origin, {
+  const result = await searchCliPapers(baseUrl, {
     query: searchParams.get("q"),
     course: searchParams.get("course"),
     examType: examType.value,

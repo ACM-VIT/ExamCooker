@@ -2,9 +2,9 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/app/auth";
-import { listUpcomingExamsForMod } from "@/lib/data/upcomingExams";
-import UpcomingExamEditor from "@/app/components/mod/UpcomingExamEditor";
-import type { CourseOption } from "@/app/components/mod/CoursePicker";
+import { listUpcomingExamsForMod } from "@/lib/data/upcoming-exams";
+import UpcomingExamEditor from "@/app/components/mod/upcoming-exam-editor";
+import type { CourseOption } from "@/app/components/mod/course-picker";
 import { course, db } from "@/db";
 
 export const metadata = {

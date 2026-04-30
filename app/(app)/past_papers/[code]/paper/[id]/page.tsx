@@ -1,25 +1,25 @@
 import React, { Suspense } from 'react';
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import PDFViewerClient from '@/app/components/PDFViewerClient';
+import PDFViewerClient from '@/app/components/pdf-viewer-client';
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import RecentPaperStrip from "@/app/components/past_papers/RecentPaperStrip";
-import ShareLink from '@/app/components/ShareLink';
-import ViewTracker from "@/app/components/ViewTracker";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
+import ShareLink from '@/app/components/share-link';
+import ViewTracker from "@/app/components/view-tracker";
 import {
     getAdjacentPapersInCourse,
     getPastPaperDetail,
     getSiblingPastPaper,
     getRelatedPapersForCourse,
-} from "@/lib/data/pastPaperDetail";
-import ItemActions from "@/app/components/ItemActions";
-// import PastPaperTagEditor from "@/app/components/PastPaperTagEditor";
+} from "@/lib/data/past-paper-detail";
+import ItemActions from "@/app/components/item-actions";
+// import PastPaperTagEditor from "@/app/components/past-paper-tag-editor";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } from "@/lib/seo";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { examTypeLabel } from "@/lib/examSlug";
-import { buildPastPaperPdfFileName } from "@/lib/downloads/resourceNames";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { examTypeLabel } from "@/lib/exam-slug";
+import { buildPastPaperPdfFileName } from "@/lib/downloads/resource-names";
 import type { ExamType } from "@/db";
 
 //todo refactor to utility function and move to lib

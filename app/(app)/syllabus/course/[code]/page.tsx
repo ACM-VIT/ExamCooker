@@ -3,15 +3,15 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import PDFViewerClient from "@/app/components/PDFViewerClient";
-import ViewTracker from "@/app/components/ViewTracker";
-import StructuredData from "@/app/components/seo/StructuredData";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import PDFViewerClient from "@/app/components/pdf-viewer-client";
+import ViewTracker from "@/app/components/view-tracker";
+import StructuredData from "@/app/components/seo/structured-data";
+import DirectionalTransition from "@/app/components/common/directional-transition";
 import { getCourseByCodeAny } from "@/lib/data/courses";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
 import { getSyllabusDetailByCourseCode } from "@/lib/data/syllabus";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     absoluteUrl,
     buildCourseKeywordSet,
@@ -19,12 +19,12 @@ import {
     getCoursePath,
     getCourseSyllabusPath,
 } from "@/lib/seo";
-import { buildSyllabusPdfFileName } from "@/lib/downloads/resourceNames";
+import { buildSyllabusPdfFileName } from "@/lib/downloads/resource-names";
 import {
     buildBreadcrumbList,
     buildCourseStructuredData,
     buildFaqPage,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 async function loadCourseSyllabusContext(rawCode: string) {
     const normalized = normalizeCourseCode(rawCode);

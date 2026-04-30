@@ -15,11 +15,11 @@ import {
 import {
     getCourseGrid,
     getCourseSearchRecords,
-} from "@/lib/data/courseCatalog";
+} from "@/lib/data/course-catalog";
 import {
     getCourseExamCombos,
     getExamHubSummaries,
-} from "@/lib/data/courseExams";
+} from "@/lib/data/course-exams";
 import { course, db, note, pastPaper, subject, syllabi } from "@/db";
 
 const PAGE_SIZE = 40000;

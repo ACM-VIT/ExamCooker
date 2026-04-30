@@ -13,6 +13,8 @@ export type ExamCookerConfig = {
   tokenLabel?: string | null;
 };
 
+export type RuntimeConfigSource = "flag" | "env" | "config" | "default";
+
 const DEFAULT_BASE_URL = "https://examcooker.acmvit.in";
 
 function getConfigDirectory() {
@@ -80,17 +82,25 @@ export async function clearConfig() {
 
 export async function resolveRuntimeConfig(input?: { baseUrl?: string | null }) {
   const storedConfig = await loadConfig();
+  const flagBaseUrl = input?.baseUrl?.trim();
+  const envBaseUrl = process.env.EXAMCOOKER_BASE_URL?.trim();
+  const configBaseUrl = storedConfig.baseUrl?.trim();
+  const baseUrlSource: RuntimeConfigSource = flagBaseUrl
+    ? "flag"
+    : envBaseUrl
+      ? "env"
+      : configBaseUrl
+        ? "config"
+        : "default";
   const baseUrl = normalizeBaseUrl(
-    input?.baseUrl?.trim() ||
-      process.env.EXAMCOOKER_BASE_URL?.trim() ||
-      storedConfig.baseUrl ||
-      DEFAULT_BASE_URL,
+    flagBaseUrl || envBaseUrl || configBaseUrl || DEFAULT_BASE_URL,
   );
   const token = process.env.EXAMCOOKER_TOKEN?.trim() || storedConfig.token || "";
 
   return {
     storedConfig,
     baseUrl,
+    baseUrlSource,
     token,
   };
 }

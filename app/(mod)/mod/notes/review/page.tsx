@@ -3,10 +3,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { desc, eq, isNull } from "drizzle-orm";
 import { auth } from "@/app/auth";
-import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
-import NoteReviewList from "@/app/components/mod/NoteReviewList";
-import type { CourseOption } from "@/app/components/mod/CoursePicker";
-import type { NoteRowData } from "@/app/components/mod/NoteReviewRow";
+import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
+import NoteReviewList from "@/app/components/mod/note-review-list";
+import type { CourseOption } from "@/app/components/mod/course-picker";
+import type { NoteRowData } from "@/app/components/mod/note-review-row";
 import { course, db, note } from "@/db";
 
 export const metadata = {

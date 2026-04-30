@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revokeCliAccessToken } from "@/lib/cli/deviceAuth";
-import { requireCliRequestUser } from "@/lib/cli/requestAuth";
+import { revokeCliAccessToken } from "@/lib/cli/device-auth";
+import { requireCliRequestUser } from "@/lib/cli/request-auth";
 
 export async function POST(request: NextRequest) {
   const user = await requireCliRequestUser(request);

@@ -1,9 +1,9 @@
 import { and, count, eq, ilike, or, desc } from "drizzle-orm";
 import type { Campus, ExamType, Semester } from "@/db";
 import { course, db, pastPaper } from "@/db";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { getSiblingPastPaper, getPastPaperDetail } from "@/lib/data/pastPaperDetail";
-import { examTypeLabel } from "@/lib/examSlug";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { getSiblingPastPaper, getPastPaperDetail } from "@/lib/data/past-paper-detail";
+import { examTypeLabel } from "@/lib/exam-slug";
 import { getPastPaperDetailPath } from "@/lib/seo";
 
 const UUID_PATTERN =

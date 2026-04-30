@@ -36,20 +36,20 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import posthog from "posthog-js";
-import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
-import { getFallbackPdfFileName } from "@/lib/downloads/resourceNames";
-import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdfBufferCache";
-import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfiumEngineCache";
+import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
+import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
+import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
+import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
 import {
   clearActivePdfSnapshot,
   setActivePdfSnapshot,
-} from "@/app/components/voice/pdfVoiceContext";
+} from "@/app/components/voice/pdf-voice-context";
 
 const TOOLBAR_BUTTON_CLASS =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500";
 const PAGE_INPUT_CLASS =
   "h-8 w-12 rounded border border-gray-300 bg-white px-1 text-center text-sm tabular-nums text-gray-700 outline-none transition focus:border-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 sm:w-14";
-const MIN_ZOOM = 0.5;
+const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 3;
 const SLOW_LOAD_NOTICE_MS = 3500;
 const PDF_DARK_MODE_FILTER =
@@ -670,7 +670,7 @@ export default function PDFViewer({
         defaultZoomLevel: ZoomMode.FitWidth,
         minZoom: MIN_ZOOM,
         maxZoom: MAX_ZOOM,
-        zoomStep: 0.2,
+        zoomStep: 0.1,
       }),
     ],
     [bufferState, downloadFileName]

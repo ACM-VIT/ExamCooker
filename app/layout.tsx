@@ -3,16 +3,16 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { Toaster } from "@/app/components/ui/toaster";
 import "@/app/globals.css";
-import UpsellToast from "@/app/components/ui/UpsellToast";
-import UpsellModal from "@/app/components/ui/UpsellModal";
+import UpsellToast from "@/app/components/ui/upsell-toast";
+import UpsellModal from "@/app/components/ui/upsell-modal";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
-import StructuredData from "@/app/components/seo/StructuredData";
+import StructuredData from "@/app/components/seo/structured-data";
 import {
     buildOrganizationStructuredData,
     buildWebSiteStructuredData,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 const baseUrl = getBaseUrl();
 

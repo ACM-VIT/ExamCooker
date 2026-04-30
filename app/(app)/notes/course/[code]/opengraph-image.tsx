@@ -1,5 +1,5 @@
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import { getCourseNotesCount } from "@/lib/data/notes";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
