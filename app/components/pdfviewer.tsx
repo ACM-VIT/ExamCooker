@@ -38,7 +38,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import posthog from "posthog-js";
 import { downloadPdfFile } from "@/lib/downloads/browserDownloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resourceNames";
-import { loadPdfBuffer } from "@/lib/pdf/pdfBufferCache";
+import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdfBufferCache";
 import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfiumEngineCache";
 import {
   clearActivePdfSnapshot,
@@ -51,6 +51,7 @@ const PAGE_INPUT_CLASS =
   "h-8 w-12 rounded border border-gray-300 bg-white px-1 text-center text-sm tabular-nums text-gray-700 outline-none transition focus:border-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 sm:w-14";
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
+const SLOW_LOAD_NOTICE_MS = 3500;
 const PDF_DARK_MODE_FILTER =
   "invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95)";
 
@@ -59,26 +60,98 @@ type PdfBufferState =
   | { status: "loaded"; buffer: ArrayBuffer }
   | { status: "error"; message: string };
 
-function LoadingState({ label }: { label: string }) {
+function LoadingState({
+  label,
+  fileUrl,
+  progress,
+  showFallback = false,
+  onRetry,
+}: {
+  label: string;
+  fileUrl?: string;
+  progress?: number | null;
+  showFallback?: boolean;
+  onRetry?: () => void;
+}) {
   return (
-    <div className="flex h-full min-h-[320px] items-center justify-center bg-gray-100 text-sm text-gray-500 dark:bg-gray-950 dark:text-gray-300">
-      {label}
+    <div className="flex h-full min-h-[320px] items-center justify-center bg-gray-100 px-4 text-center text-sm text-gray-500 dark:bg-gray-950 dark:text-gray-300">
+      <div className="flex w-full max-w-sm flex-col items-center gap-3">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
+          <div
+            className="h-full w-1/3 animate-pulse rounded-full bg-gray-900 dark:bg-gray-100"
+            style={
+              typeof progress === "number"
+                ? { width: `${Math.min(Math.max(progress, 3), 100)}%` }
+                : undefined
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <p className="font-semibold text-gray-700 dark:text-gray-100">{label}</p>
+          {showFallback ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Taking longer than usual. Open the original PDF, or retry the
+              viewer.
+            </p>
+          ) : null}
+        </div>
+        {showFallback && fileUrl ? (
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {onRetry ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="rounded border border-black/15 bg-white px-3 py-1.5 font-semibold text-black transition hover:border-black/30 dark:border-white/15 dark:bg-gray-900 dark:text-gray-100 dark:hover:border-white/30"
+              >
+                Retry
+              </button>
+            ) : null}
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded bg-black px-3 py-1.5 font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+            >
+              Open original
+            </a>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-function ErrorState({ fileUrl }: { fileUrl: string }) {
+function ErrorState({
+  fileUrl,
+  message = "PDF viewer failed to load.",
+  onRetry,
+}: {
+  fileUrl: string;
+  message?: string;
+  onRetry?: () => void;
+}) {
   return (
     <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 bg-gray-100 px-4 text-center text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
-      <p>PDF viewer failed to load.</p>
-      <a
-        href={fileUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="rounded border border-black/15 bg-white px-3 py-1.5 font-semibold text-black transition hover:border-black/30 dark:border-white/15 dark:bg-gray-900 dark:text-gray-100 dark:hover:border-white/30"
-      >
-        Open PDF file
-      </a>
+      <p>{message}</p>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded border border-black/15 bg-white px-3 py-1.5 font-semibold text-black transition hover:border-black/30 dark:border-white/15 dark:bg-gray-900 dark:text-gray-100 dark:hover:border-white/30"
+          >
+            Retry viewer
+          </button>
+        ) : null}
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded bg-black px-3 py-1.5 font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+        >
+          Open original
+        </a>
+      </div>
     </div>
   );
 }
@@ -508,11 +581,23 @@ export default function PDFViewer({
     status: "loading",
     progress: null,
   });
-  const engineState = usePreloadedPdfiumEngine();
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [showSlowLoadFallback, setShowSlowLoadFallback] = useState(false);
+  const engineState = usePreloadedPdfiumEngine(retryNonce);
+
+  const retryViewerLoad = useCallback(() => {
+    setShowSlowLoadFallback(false);
+    setRetryNonce((currentValue) => currentValue + 1);
+  }, []);
 
   useEffect(() => {
     let isActive = true;
+    setShowSlowLoadFallback(false);
     setBufferState({ status: "loading", progress: null });
+
+    if (retryNonce > 0) {
+      invalidatePdfBuffer(fileUrl);
+    }
 
     const { promise, unsubscribe } = loadPdfBuffer(fileUrl, (progress) => {
       if (!isActive) return;
@@ -539,7 +624,20 @@ export default function PDFViewer({
       isActive = false;
       unsubscribe();
     };
-  }, [fileUrl]);
+  }, [fileUrl, retryNonce]);
+
+  useEffect(() => {
+    if (engineState.status !== "loading" && bufferState.status !== "loading") {
+      setShowSlowLoadFallback(false);
+      return;
+    }
+
+    const slowLoadTimer = window.setTimeout(() => {
+      setShowSlowLoadFallback(true);
+    }, SLOW_LOAD_NOTICE_MS);
+
+    return () => window.clearTimeout(slowLoadTimer);
+  }, [bufferState.status, engineState.status, retryNonce]);
 
   const plugins = useMemo(
     () => [
@@ -587,15 +685,34 @@ export default function PDFViewer({
   }, []);
 
   if (engineState.status === "error") {
-    return <ErrorState fileUrl={fileUrl} />;
+    return (
+      <ErrorState
+        fileUrl={fileUrl}
+        message="The fast PDF engine could not start."
+        onRetry={retryViewerLoad}
+      />
+    );
   }
 
   if (engineState.status === "loading") {
-    return <LoadingState label="Loading PDF engine" />;
+    return (
+      <LoadingState
+        label="Loading PDF engine"
+        fileUrl={fileUrl}
+        showFallback={showSlowLoadFallback}
+        onRetry={retryViewerLoad}
+      />
+    );
   }
 
   if (bufferState.status === "error") {
-    return <ErrorState fileUrl={fileUrl} />;
+    return (
+      <ErrorState
+        fileUrl={fileUrl}
+        message={bufferState.message}
+        onRetry={retryViewerLoad}
+      />
+    );
   }
 
   if (bufferState.status === "loading") {
@@ -604,7 +721,15 @@ export default function PDFViewer({
         ? ` ${Math.round(bufferState.progress)}%`
         : "";
 
-    return <LoadingState label={`Downloading PDF${progress}`} />;
+    return (
+      <LoadingState
+        label={`Downloading PDF${progress}`}
+        fileUrl={fileUrl}
+        progress={bufferState.progress}
+        showFallback={showSlowLoadFallback}
+        onRetry={retryViewerLoad}
+      />
+    );
   }
 
   return (
