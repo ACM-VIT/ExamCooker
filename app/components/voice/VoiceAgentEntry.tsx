@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
+import type { VoiceAgentEntryPoint } from "@/lib/posthog/client";
 import VoiceAgentButton from "./VoiceAgentButton";
 import VoiceAgentProvider, { useVoiceAgent } from "./VoiceAgentProvider";
 
@@ -50,12 +51,14 @@ function ConnectedVoiceAgentButton({
 }
 
 export default function VoiceAgentEntry({
+  entryPoint,
   startToken,
 }: {
+  entryPoint: VoiceAgentEntryPoint;
   startToken: number;
 }) {
   return (
-    <VoiceAgentProvider>
+    <VoiceAgentProvider entryPoint={entryPoint}>
       <ConnectedVoiceAgentButton startToken={startToken} />
     </VoiceAgentProvider>
   );

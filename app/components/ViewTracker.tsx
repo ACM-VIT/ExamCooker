@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { recordGuestRecentView } from "@/lib/guestStorage";
 import { recordViewAction, type ViewableItemType } from "@/app/actions/recordView";
+import { captureContentViewed } from "@/lib/posthog/client";
 
 type ViewTrackerProps = {
     id: string;
@@ -16,6 +17,12 @@ export default function ViewTracker({ id, type, title }: ViewTrackerProps) {
     useEffect(() => {
         if (didRun.current) return;
         didRun.current = true;
+
+        captureContentViewed({
+            contentType: type,
+            contentId: id,
+            title,
+        });
 
         recordViewAction(type, id)
             .then((result) => {

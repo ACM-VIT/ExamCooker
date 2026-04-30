@@ -1,17 +1,29 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { auth } from "@/app/auth";
+import {
+  capturePostHogAiGeneration,
+  createAiTextMessage,
+} from "@/lib/posthog/llm";
 
 const DEFAULT_PDF_QA_MODEL =
   process.env.OPENAI_PDF_QA_MODEL?.trim() || "gpt-5.4-mini";
+const PDF_ANSWER_SYSTEM_PROMPT =
+  "You answer questions about an ExamCooker PDF. Ground every answer in the document. " +
+  "Mention page numbers when they are helpful or when the user asks about a specific page. " +
+  "If the answer is not in the PDF, say so briefly instead of guessing. " +
+  "Keep answers concise for spoken delivery unless the user explicitly asks for detail.";
 
 const PdfQuestionRequestSchema = z.object({
   currentPage: z.number().int().min(1).max(10000).optional(),
   fileName: z.string().trim().min(1).max(240),
   fileUrl: z.string().trim().url(),
+  posthogSessionId: z.string().trim().min(1).max(200).nullable().optional(),
   question: z.string().trim().min(1).max(1200),
   title: z.string().trim().max(240).optional(),
   totalPages: z.number().int().min(1).max(10000).optional(),
+  voiceEntryPoint: z.enum(["nav", "home_search"]).optional(),
+  voiceSessionId: z.string().trim().min(1).max(200).optional(),
 });
 
 type ResponsesApiPayload = {
@@ -29,6 +41,11 @@ type ResponsesApiPayload = {
     type?: string;
   }>;
   output_text?: string;
+  status?: string | null;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+  } | null;
 };
 
 type AllowedPdfSource = {
@@ -131,10 +148,7 @@ function buildPdfQuestionPrompt(input: z.infer<typeof PdfQuestionRequestSchema>)
         : null,
   ].filter(Boolean);
 
-  return [
-    ...contextParts,
-    `User question: ${input.question}`,
-  ].join(" ");
+  return [...contextParts, `User question: ${input.question}`].join(" ");
 }
 
 function extractOutputText(payload: ResponsesApiPayload) {
@@ -144,12 +158,73 @@ function extractOutputText(payload: ResponsesApiPayload) {
 
   const text = (payload.output ?? [])
     .flatMap((item) => item.content ?? [])
-    .filter((content) => content.type === "output_text" && typeof content.text === "string")
+    .filter(
+      (content) =>
+        content.type === "output_text" && typeof content.text === "string",
+    )
     .map((content) => content.text?.trim())
     .filter(Boolean)
     .join("\n\n");
 
   return text || null;
+}
+
+function schedulePdfAnswerCapture(input: {
+  answer?: string | null;
+  body: z.infer<typeof PdfQuestionRequestSchema>;
+  distinctId: string | null;
+  errorMessage?: string;
+  httpStatus?: number;
+  inputPrompt: string;
+  latencySeconds: number;
+  payload: ResponsesApiPayload | null;
+}) {
+  if (!input.distinctId) {
+    return;
+  }
+
+  const distinctId = input.distinctId;
+
+  after(async () => {
+    await capturePostHogAiGeneration({
+      distinctId,
+      traceId: input.body.voiceSessionId ?? crypto.randomUUID(),
+      sessionId: input.body.posthogSessionId ?? undefined,
+      spanId: crypto.randomUUID(),
+      spanName: "voice_pdf_answer",
+      model: DEFAULT_PDF_QA_MODEL,
+      provider: "openai",
+      input: [
+        createAiTextMessage("system", PDF_ANSWER_SYSTEM_PROMPT),
+        createAiTextMessage("user", input.inputPrompt),
+      ],
+      inputTokens: input.payload?.usage?.input_tokens,
+      outputChoices: input.answer
+        ? [createAiTextMessage("assistant", input.answer)]
+        : undefined,
+      outputTokens: input.payload?.usage?.output_tokens,
+      latencySeconds: input.latencySeconds,
+      httpStatus: input.httpStatus,
+      baseUrl: "https://api.openai.com/v1",
+      requestUrl: "https://api.openai.com/v1/responses",
+      isError: Boolean(input.errorMessage),
+      error: input.errorMessage,
+      stopReason:
+        input.payload?.incomplete_details?.reason ??
+        input.payload?.status ??
+        undefined,
+      stream: false,
+      extraProperties: {
+        ai_surface: "voice_agent",
+        voice_current_page: input.body.currentPage,
+        voice_entry_point: input.body.voiceEntryPoint,
+        voice_file_name: input.body.fileName,
+        voice_pdf_title: input.body.title,
+        voice_route_path: "/api/realtime/pdf-answer",
+        voice_total_pages: input.body.totalPages,
+      },
+    });
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -218,6 +293,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const inputPrompt = buildPdfQuestionPrompt(parsedBody);
+  const llmStartedAt = Date.now();
+
   const upstreamResponse = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -233,11 +311,7 @@ export async function POST(request: NextRequest) {
           content: [
             {
               type: "input_text",
-              text:
-                "You answer questions about an ExamCooker PDF. Ground every answer in the document. " +
-                "Mention page numbers when they are helpful or when the user asks about a specific page. " +
-                "If the answer is not in the PDF, say so briefly instead of guessing. " +
-                "Keep answers concise for spoken delivery unless the user explicitly asks for detail.",
+              text: PDF_ANSWER_SYSTEM_PROMPT,
             },
           ],
         },
@@ -246,7 +320,7 @@ export async function POST(request: NextRequest) {
           content: [
             {
               type: "input_text",
-              text: buildPdfQuestionPrompt(parsedBody),
+              text: inputPrompt,
             },
             {
               type: "input_file",
@@ -260,6 +334,7 @@ export async function POST(request: NextRequest) {
   });
 
   const responseText = await upstreamResponse.text();
+  const latencySeconds = Math.max(Date.now() - llmStartedAt, 0) / 1000;
   let payload: ResponsesApiPayload | null = null;
 
   try {
@@ -273,6 +348,17 @@ export async function POST(request: NextRequest) {
       payload?.error?.message ||
       responseText ||
       "Failed to answer the PDF question.";
+
+    schedulePdfAnswerCapture({
+      body: parsedBody,
+      distinctId: session.user.id ?? session.user.email ?? null,
+      errorMessage: message,
+      httpStatus: upstreamResponse.status,
+      inputPrompt,
+      latencySeconds,
+      payload,
+    });
+
     return NextResponse.json(
       {
         error: message,
@@ -288,12 +374,23 @@ export async function POST(request: NextRequest) {
 
   const answer = payload ? extractOutputText(payload) : null;
   if (!answer) {
+    const message = payload?.incomplete_details?.reason
+      ? `The PDF answer was incomplete: ${payload.incomplete_details.reason}.`
+      : "OpenAI did not return a usable PDF answer.";
+
+    schedulePdfAnswerCapture({
+      body: parsedBody,
+      distinctId: session.user.id ?? session.user.email ?? null,
+      errorMessage: message,
+      httpStatus: upstreamResponse.status,
+      inputPrompt,
+      latencySeconds,
+      payload,
+    });
+
     return NextResponse.json(
       {
-        error:
-          payload?.incomplete_details?.reason
-            ? `The PDF answer was incomplete: ${payload.incomplete_details.reason}.`
-            : "OpenAI did not return a usable PDF answer.",
+        error: message,
       },
       {
         status: 502,
@@ -303,6 +400,16 @@ export async function POST(request: NextRequest) {
       },
     );
   }
+
+  schedulePdfAnswerCapture({
+    answer,
+    body: parsedBody,
+    distinctId: session.user.id ?? session.user.email ?? null,
+    httpStatus: upstreamResponse.status,
+    inputPrompt,
+    latencySeconds,
+    payload,
+  });
 
   return NextResponse.json(
     {

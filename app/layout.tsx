@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { Toaster } from "@/app/components/ui/toaster";
@@ -8,7 +8,6 @@ import UpsellModal from "@/app/components/ui/UpsellModal";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
-import PostHogProvider from "@/app/posthog-provider";
 import StructuredData from "@/app/components/seo/StructuredData";
 import {
     buildOrganizationStructuredData,
@@ -81,11 +80,14 @@ export default function RootLayout({
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
-                <PostHogProvider />
                 {children}
                 <Toaster />
-                <UpsellToast />
-                <UpsellModal />
+                <Suspense fallback={null}>
+                    <UpsellToast />
+                </Suspense>
+                <Suspense fallback={null}>
+                    <UpsellModal />
+                </Suspense>
                 {process.env.GA_ID && (
                     <GoogleAnalytics gaId={process.env.GA_ID} />
                 )}

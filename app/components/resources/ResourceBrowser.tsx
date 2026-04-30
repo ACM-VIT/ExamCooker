@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import Image from "@/app/components/common/AppImage";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import ResourceCourseCard from "@/app/components/resources/ResourceCourseCard";
+import { captureResourceSourceOpened } from "@/lib/posthog/client";
 import type { VinCourse } from "@/lib/data/vinTogether";
 
 type ResourceBrowserCourse = Pick<
@@ -56,8 +57,10 @@ function replaceResourceUrl(pathname: string, nextQuery: string, nextYear: strin
 }
 
 function SourceButton({
+    pathname,
     sourceUrl,
 }: {
+    pathname: string;
     sourceUrl: string;
 }) {
     return (
@@ -69,6 +72,12 @@ function SourceButton({
                 href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() =>
+                    captureResourceSourceOpened({
+                        pathname,
+                        sourceUrl,
+                    })
+                }
                 className="relative inline-flex h-full items-center gap-1.5 border-2 border-black bg-[#82BEE9] px-4 text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]"
             >
                 Source
@@ -240,7 +249,7 @@ function ResourceBrowser({
                         </div>
                     </div>
                 </div>
-                <SourceButton sourceUrl={sourceUrl} />
+                <SourceButton pathname={pathname} sourceUrl={sourceUrl} />
             </div>
 
             {filteredCourses.length > 0 ? (

@@ -2,7 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import { getSession } from "next-auth/react";
-import posthog from "posthog-js";
+import {
+    identifyPostHogUser,
+    resetPostHogUser,
+} from "@/lib/posthog/client";
 
 export default function PostHogIdentify() {
     const lastIdentifiedUserId = useRef<string | null>(null);
@@ -19,10 +22,11 @@ export default function PostHogIdentify() {
                 if (cancelled) return;
 
                 if (session?.user?.id) {
-                    posthog.identify(session.user.id, {
-                        email: session.user.email ?? undefined,
-                        name: session.user.name ?? undefined,
-                        role: session.user.role ?? undefined,
+                    identifyPostHogUser({
+                        id: session.user.id,
+                        email: session.user.email,
+                        name: session.user.name,
+                        role: session.user.role,
                     });
                     lastIdentifiedUserId.current = session.user.id;
                     return;
@@ -32,7 +36,7 @@ export default function PostHogIdentify() {
             }
 
             if (lastIdentifiedUserId.current !== null) {
-                posthog.reset();
+                resetPostHogUser();
                 lastIdentifiedUserId.current = null;
             }
         }

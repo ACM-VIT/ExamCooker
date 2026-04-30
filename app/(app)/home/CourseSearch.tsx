@@ -9,6 +9,14 @@ import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { getAliasCourseCodes } from "@/lib/courseAliases";
 import { normalizeCourseCode } from "@/lib/courseTags";
 import {
+    captureCourseSearchDestinationClicked,
+    captureCourseSearchSelection,
+    type CourseSearchInteraction,
+    type VoiceAgentEntryPoint,
+} from "@/lib/posthog/client";
+import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
+import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/useFeatureFlagEnabled";
+import {
     getCourseNotesPath,
     getCoursePastPapersPath,
     getCourseSyllabusPath,
@@ -43,6 +51,8 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const deferredQuery = useDeferredValue(query);
+    const voiceAgentEnabled =
+        usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? true;
 
     const searchableCourses = useMemo(
         () =>
@@ -100,8 +110,33 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
         }
     };
 
-    const handleSelectCourse = (course: CourseResult) => {
-        if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) {
+    const handleSelectCourse = (
+        course: CourseResult,
+        options?: {
+            interaction?: CourseSearchInteraction;
+            resultIndex?: number;
+        },
+    ) => {
+        const isMobile =
+            typeof window !== "undefined" &&
+            window.matchMedia("(max-width: 639px)").matches;
+        const interaction =
+            isMobile && options?.interaction === "click"
+                ? "mobile_tap"
+                : options?.interaction ?? "click";
+
+        captureCourseSearchSelection({
+            context: "home",
+            interaction,
+            courseCode: course.code,
+            resultCount: filteredCourses.length,
+            resultIndex: options?.resultIndex,
+            paperCount: course.paperCount,
+            noteCount: course.noteCount,
+            hasSyllabus: Boolean(course.syllabusId),
+        });
+
+        if (isMobile) {
             setIsOpen(false);
             setHighlightedIndex(-1);
             router.push(getCoursePastPapersPath(course.code));
@@ -129,7 +164,10 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
             );
         } else if (e.key === 'Enter' && highlightedIndex >= 0) {
             e.preventDefault();
-            handleSelectCourse(filteredCourses[highlightedIndex]);
+            handleSelectCourse(filteredCourses[highlightedIndex], {
+                interaction: "keyboard",
+                resultIndex: highlightedIndex,
+            });
         } else if (e.key === 'Escape') {
             setIsOpen(false);
         }
@@ -143,8 +181,17 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     };
 
     const handleVoiceClick = () => {
-        if (typeof window === "undefined") return;
-        window.dispatchEvent(new CustomEvent("examcooker:voice-agent-start"));
+        if (typeof window === "undefined" || !voiceAgentEnabled) return;
+        window.dispatchEvent(
+            new CustomEvent<{ source: VoiceAgentEntryPoint }>(
+                "examcooker:voice-agent-start",
+                {
+                    detail: {
+                        source: "home_search",
+                    },
+                },
+            ),
+        );
     };
 
     return (
@@ -182,15 +229,17 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                             <path d="M1 1L13 13M13 1L1 13" />
                         </svg>
                     </button>
-                    <button
-                        onClick={handleVoiceClick}
-                        type="button"
-                        aria-label="Talk to ExamCooker"
-                        title="Talk to ExamCooker"
-                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
-                    >
-                        <Mic className="h-4 w-4" aria-hidden="true" />
-                    </button>
+                    {voiceAgentEnabled ? (
+                        <button
+                            onClick={handleVoiceClick}
+                            type="button"
+                            aria-label="Talk to ExamCooker"
+                            title="Talk to ExamCooker"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
+                        >
+                            <Mic className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                    ) : null}
                 </div>
 
                 {isOpen && filteredCourses.length > 0 && (
@@ -201,7 +250,12 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                         {filteredCourses.map((course, index) => (
                             <button
                                 key={course.code}
-                                onClick={() => handleSelectCourse(course)}
+                                onClick={() =>
+                                    handleSelectCourse(course, {
+                                        interaction: "click",
+                                        resultIndex: index,
+                                    })
+                                }
                                 className={`w-full px-4 py-3 text-left flex justify-between items-center gap-3 transition-colors border-b border-black/10 dark:border-[#D5D5D5]/15 last:border-b-0 hover:bg-[#5FC4E7]/25 dark:hover:bg-[#3BF4C7]/10 ${highlightedIndex === index
                                         ? 'bg-[#5FC4E7]/25 dark:bg-[#3BF4C7]/10'
                                         : ''
@@ -256,12 +310,17 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                             </div>
 
                             {(() => {
-                                const actions: Array<{ href: string; label: string }> = [];
+                                const actions: Array<{
+                                    href: string;
+                                    label: string;
+                                    destination: "past_papers" | "notes" | "syllabus";
+                                }> = [];
 
                                 if (selectedCourse.paperCount > 0) {
                                     actions.push({
                                         href: getCoursePastPapersPath(selectedCourse.code),
                                         label: `Past Papers (${selectedCourse.paperCount})`,
+                                        destination: "past_papers",
                                     });
                                 }
 
@@ -269,6 +328,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                                     actions.push({
                                         href: getCourseNotesPath(selectedCourse.code),
                                         label: `Notes (${selectedCourse.noteCount})`,
+                                        destination: "notes",
                                     });
                                 }
 
@@ -276,6 +336,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                                     actions.push({
                                         href: getCourseSyllabusPath(selectedCourse.code),
                                         label: 'Syllabus',
+                                        destination: "syllabus",
                                     });
                                 }
 
@@ -293,6 +354,13 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                                             <Link
                                                 key={action.href}
                                                 href={action.href}
+                                                onClick={() =>
+                                                    captureCourseSearchDestinationClicked({
+                                                        context: "home",
+                                                        courseCode: selectedCourse.code,
+                                                        destination: action.destination,
+                                                    })
+                                                }
                                                 className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap border border-black/70 px-3 text-sm font-semibold text-black transition-colors hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/60 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7]/10 dark:hover:text-[#3BF4C7]"
                                             >
                                                 {action.label}

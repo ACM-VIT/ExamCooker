@@ -2,6 +2,7 @@
 import { faShareNodes } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react'
+import { captureSharedContent } from "@/lib/posthog/client";
 
 const ShareLink = ({ fileType }: { fileType: string }) => {
 
@@ -15,6 +16,10 @@ const ShareLink = ({ fileType }: { fileType: string }) => {
     const handleClick = () => {
         setisVisible(true);
         copyToClipboard();
+        captureSharedContent({
+            contentType: fileType,
+            url: typeof window !== "undefined" ? window.location.href : undefined,
+        });
     }
 
     useEffect(() => {

@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { createAuthAdapter } from "@/db/auth-adapter";
 import { db } from "@/db";
 import { user as userTable } from "@/db/schema";
+import { createPostHogServer } from "@/lib/posthog-server";
 
 const adapter = createAuthAdapter();
 const ROLE_REFRESH_INTERVAL_SECONDS = 5 * 60;
@@ -52,6 +53,34 @@ function isStaleSessionCookieError(code: string, metadata: unknown) {
     "code" in metadata &&
     metadata.code === "ERR_JWE_INVALID"
   );
+}
+
+function captureAuthServerEvent(input: {
+  distinctId?: string;
+  event: string;
+  properties: Record<string, string | number | boolean | null | undefined>;
+}) {
+  if (!input.distinctId) {
+    return;
+  }
+
+  try {
+    const posthog = createPostHogServer();
+    if (!posthog) {
+      return;
+    }
+
+    posthog.capture({
+      distinctId: input.distinctId,
+      event: input.event,
+      properties: input.properties,
+    });
+    void posthog.shutdown().catch((error) => {
+      console.error("[auth] posthog flush failed", error);
+    });
+  } catch (error) {
+    console.error("[auth] posthog capture failed", error);
+  }
 }
 
 export const authConfig = {
@@ -113,6 +142,28 @@ export const authConfig = {
         session.user.role = token.role === "MODERATOR" ? "MODERATOR" : "USER";
       }
       return session;
+    },
+  },
+  events: {
+    signIn({ user, account, isNewUser }: {
+      user: { id?: string | null; email?: string | null };
+      account?: { provider?: string | null } | null;
+      isNewUser?: boolean;
+    }) {
+      const emailDomain =
+        typeof user.email === "string" && user.email.includes("@")
+          ? user.email.split("@")[1] ?? null
+          : null;
+
+      captureAuthServerEvent({
+        distinctId: typeof user.id === "string" ? user.id : undefined,
+        event: "sign_in_completed",
+        properties: {
+          provider: account?.provider ?? "unknown",
+          email_domain: emailDomain,
+          is_new_user: Boolean(isNewUser),
+        },
+      });
     },
   },
   logger: {
