@@ -7,15 +7,10 @@ import { usePathname, useSearchParams } from "next/navigation";
 import AppImage from "@/app/components/common/app-image";
 import ExamCookerLogoIcon from "@/public/assets/logo-icon.svg";
 import { markRenderedRoutePath } from "@/app/components/voice/voice-navigation";
-
-const NAV_LINKS = [
-    { href: "/", label: "Home" },
-    { href: "/past_papers", label: "Papers" },
-    { href: "/notes", label: "Notes" },
-    { href: "/syllabus", label: "Syllabus" },
-    { href: "/resources", label: "Resources" },
-    { href: "/quiz", label: "Quiz" },
-] as const;
+import MobileTabBar from "@/app/components/mobile-tab-bar";
+import NativeIosTabSync from "@/app/components/native-ios-tab-sync";
+import { APP_NAV_LINKS } from "@/lib/app-nav-links";
+import { MoreHorizontal, X } from "lucide-react";
 
 function RouteEffects({ onPathChange }: { onPathChange: () => void }) {
     const pathname = usePathname();
@@ -64,7 +59,7 @@ function MobileLogoLink() {
             href="/"
             aria-label="ExamCooker home"
             style={{ viewTransitionName: "persistent-mobile-logo" }}
-            className="fixed left-16 top-3 z-[55] flex h-11 max-w-[calc(100vw-5.5rem)] items-center gap-2.5 rounded-xl border border-black/10 bg-white/90 px-3.5 text-[15px] font-semibold leading-none text-black shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur transition-colors hover:border-black/25 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 lg:hidden"
+            className="fixed left-3 z-[55] flex h-11 max-w-[calc(100vw-7rem)] items-center gap-2.5 rounded-xl border border-black/10 bg-white/90 px-3.5 text-[15px] font-semibold leading-none text-black shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur transition-colors hover:border-black/25 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 lg:hidden top-[max(0.75rem,env(safe-area-inset-top))]"
         >
             <AppImage
                 src={ExamCookerLogoIcon}
@@ -86,79 +81,64 @@ function MobileLogoLink() {
 function NavBarFallback({
     isNavOn,
     toggleNavbar,
+    hideMobilePrimaryLinks,
 }: {
     isNavOn: boolean;
     toggleNavbar: () => void;
+    hideMobilePrimaryLinks: boolean;
 }) {
     return (
         <>
             <button
                 type="button"
                 onClick={toggleNavbar}
-                aria-label={isNavOn ? "Close navigation" : "Open navigation"}
+                aria-label={isNavOn ? "Close tools menu" : "Open tools menu"}
                 aria-expanded={isNavOn}
                 style={{ viewTransitionName: "persistent-menu-button" }}
-                className={`fixed top-3 left-3 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-xl border border-black/10 bg-white/90 text-black shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur transition-all duration-200 active:scale-95 hover:border-black/25 hover:bg-white hover:shadow-md dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/40 dark:hover:bg-[#0C1222] lg:hidden ${isNavOn ? "pointer-events-none opacity-0" : "opacity-100"}`}
+                className={`fixed right-[max(0.75rem,env(safe-area-inset-right))] z-[60] flex h-11 w-11 items-center justify-center rounded-lg text-black/65 transition-colors active:bg-black/[0.08] dark:text-[#D5D5D5]/85 dark:active:bg-white/[0.07] lg:hidden ${isNavOn ? "pointer-events-none opacity-0" : "opacity-100"} top-[max(0.75rem,env(safe-area-inset-top))]`}
             >
-                <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                    className="h-5 w-5"
-                >
-                    <path d="M4 7h16" />
-                    <path d="M4 12h16" />
-                    <path d="M4 17h10" />
-                </svg>
+                <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} aria-hidden />
             </button>
 
             <div
                 onClick={toggleNavbar}
                 aria-hidden="true"
-                className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${isNavOn ? "opacity-100" : "pointer-events-none opacity-0"}`}
+                className={`fixed inset-0 z-[54] bg-black/45 backdrop-blur-[2px] transition-opacity duration-200 lg:hidden ${isNavOn ? "opacity-100" : "pointer-events-none opacity-0"}`}
             />
 
             <nav
                 style={{ viewTransitionName: "persistent-nav" }}
-                className={`fixed top-0 left-0 z-50 h-dvh max-h-dvh w-fit overflow-visible border-r border-black/15 bg-[#C2E6EC] transition-transform duration-200 ease-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+                className={`fixed z-[55] overflow-hidden border-black/15 bg-[#C2E6EC] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-y-0" : "translate-y-[calc(100%+16px)]"} inset-x-0 bottom-0 max-h-[min(520px,88dvh)] w-full rounded-t-[1.35rem] border border-b-0 lg:inset-x-auto lg:bottom-auto lg:left-0 lg:top-0 lg:flex lg:h-dvh lg:max-h-dvh lg:w-fit lg:translate-x-0 lg:translate-y-0 lg:rounded-none lg:border lg:border-y-0 lg:border-l-0 lg:border-r`}
             >
-                <div className="flex h-full max-h-dvh w-fit flex-col items-center justify-between overflow-y-auto overscroll-contain p-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
-                    <div className="flex w-full min-h-[2.5rem] items-center justify-start px-1">
-                        <button
-                            type="button"
-                            onClick={toggleNavbar}
-                            aria-label="Close navigation"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-black/60 transition-colors hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5] lg:hidden"
-                        >
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="h-4 w-4"
-                                aria-hidden="true"
+                <div className="flex max-h-[min(520px,88dvh)] min-h-0 w-full flex-col overflow-y-auto overscroll-contain lg:h-full lg:max-h-dvh lg:w-fit lg:pb-[calc(env(safe-area-inset-bottom)+0.5rem)] lg:pt-[max(0.5rem,env(safe-area-inset-top))]">
+                    <div className="order-1 shrink-0 border-b border-black/10 px-4 pb-3 pt-3 dark:border-white/10 lg:hidden">
+                        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-black/12 dark:bg-white/18" aria-hidden />
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="text-[17px] font-semibold text-black dark:text-[#EAF6FF]">Tools</p>
+                            <button
+                                type="button"
+                                onClick={toggleNavbar}
+                                aria-label="Close tools menu"
+                                className="flex h-10 w-10 items-center justify-center rounded-full text-black/50 hover:bg-black/[0.07] dark:text-[#D5D5D5]/55 dark:hover:bg-white/[0.08]"
                             >
-                                <path d="M18 6 6 18" />
-                                <path d="m6 6 12 12" />
-                            </svg>
-                        </button>
+                                <X className="h-5 w-5" aria-hidden />
+                            </button>
+                        </div>
                     </div>
-
-                    <div className="flex flex-col items-center">
-                        {NAV_LINKS.map((link) => (
+                    <div className="hidden min-h-[2.5rem] lg:block" aria-hidden />
+                    <div
+                        className={
+                            hideMobilePrimaryLinks
+                                ? "order-3 hidden min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 py-2 lg:order-2 lg:flex lg:justify-center lg:overflow-visible lg:px-1 lg:py-2"
+                                : "order-3 flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 py-3 lg:order-2 lg:justify-center lg:overflow-visible lg:px-1 lg:py-2"
+                        }
+                    >
+                        {APP_NAV_LINKS.map((link) => (
                             <Link key={link.href} href={link.href} className="m-2 text-sm font-medium">
                                 {link.label}
                             </Link>
                         ))}
                     </div>
-
-                    <div className="mb-2 h-8 w-8 rounded-full border border-black/15 bg-white dark:border-[#D5D5D5]/20 dark:bg-transparent" />
                 </div>
             </nav>
         </>
@@ -176,15 +156,33 @@ function ClientShell({
 }) {
     return (
         <div className="relative flex">
-            <Suspense fallback={<NavBarFallback isNavOn={isNavOn} toggleNavbar={toggleNavbar} />}>
-                <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
+            <Suspense
+                fallback={
+                    <NavBarFallback
+                        isNavOn={isNavOn}
+                        toggleNavbar={toggleNavbar}
+                        hideMobilePrimaryLinks
+                    />
+                }
+            >
+                <NavBar
+                    isNavOn={isNavOn}
+                    toggleNavbar={toggleNavbar}
+                    hideMobilePrimaryLinks
+                />
             </Suspense>
             <Suspense fallback={null}>
                 <MobileLogoLink />
             </Suspense>
-            <main className="min-w-0 flex-1 pt-14 lg:pt-0 lg:pl-14">
+            <main className="ec-app-main min-w-0 flex-1 pt-[max(3.5rem,env(safe-area-inset-top)+0.75rem)] pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0 lg:pl-14 lg:pt-0">
                 {children}
             </main>
+            <Suspense fallback={null}>
+                <MobileTabBar />
+            </Suspense>
+            <Suspense fallback={null}>
+                <NativeIosTabSync />
+            </Suspense>
         </div>
     );
 }

@@ -6,6 +6,7 @@ import "@/app/globals.css";
 import UpsellToast from "@/app/components/ui/upsell-toast";
 import UpsellModal from "@/app/components/ui/upsell-modal";
 import PwaServiceWorker from "@/app/components/pwa-service-worker";
+import CapacitorBridge from "@/app/components/capacitor-bridge";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
@@ -21,6 +22,10 @@ export const viewport: Viewport = {
     width: "device-width",
     initialScale: 1,
     viewportFit: "cover",
+    themeColor: [
+        { media: "(prefers-color-scheme: dark)", color: "#0C1222" },
+        { media: "(prefers-color-scheme: light)", color: "#C2E6EC" },
+    ],
 };
 
 export const metadata: Metadata = {
@@ -104,6 +109,7 @@ export default function RootLayout({
                     <UpsellModal />
                 </Suspense>
                 <PwaServiceWorker />
+                <CapacitorBridge />
                 {process.env.GA_ID && (
                     <GoogleAnalytics gaId={process.env.GA_ID} />
                 )}

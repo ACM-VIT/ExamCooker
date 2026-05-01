@@ -35,8 +35,14 @@
     "@ai-sdk/openai": "^3.0.53",
     "@azure/storage-blob": "^12.31.0",
     "@capacitor/android": "^8.3.1",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/browser": "^8.0.3",
     "@capacitor/core": "^8.3.1",
     "@capacitor/ios": "^8.3.1",
+    "@capacitor/push-notifications": "^8.0.3",
+    "@capacitor/share": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "@embedpdf/core": "^2.14.1",
     "@embedpdf/engines": "^2.14.1",
     "@embedpdf/pdfium": "^2.14.1",
@@ -58,6 +64,7 @@
     "@upstash/ratelimit": "^2.0.6",
     "@upstash/redis": "^1.35.4",
     "ai": "^6.0.66",
+    "capacitor-native-tabs": "^1.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
@@ -103,6 +110,9 @@
     "overrides": {
       "postcss": "8.5.13",
       "uuid": "14.0.0"
+    },
+    "patchedDependencies": {
+      "capacitor-native-tabs@1.0.3": "patches/capacitor-native-tabs@1.0.3.patch"
     }
   }
 }
