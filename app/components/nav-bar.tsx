@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import ThemeToggleSwitch from "@/app/components/common/theme-toggle";
 import { SignOut } from "@/app/components/sign-out";
 import VoiceAgentButton from "@/app/components/voice/voice-agent-button";
-import { useGuestPrompt } from "@/app/components/guest-prompt-provider";
+import { useGuestPrompt } from "@/app/components/auth-gate";
 import {
   captureVoiceAgentRequested,
   type VoiceAgentEntryPoint,

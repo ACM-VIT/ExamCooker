@@ -120,6 +120,9 @@ export const authConfig = {
   adapter,
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" as const },
+  pages: {
+    signIn: "/auth",
+  },
   providers: buildProviders(),
   callbacks: {
     async jwt({ token, user }: JwtCallbackParams) {

@@ -1,6 +1,5 @@
 "use client";
 
-import { signIn } from "next-auth/react";
 import { captureSignInStarted } from "@/lib/posthog/client";
 
 type AuthProvider = "apple" | "google";
@@ -29,7 +28,12 @@ function startProviderSignIn(
         source: options?.source ?? "unknown",
         callbackPath: redirectTarget,
     });
-    void signIn(provider, { callbackUrl: redirectTarget });
+
+    const params = new URLSearchParams({
+        callbackUrl: redirectTarget,
+        provider,
+    });
+    window.location.assign(`/auth?${params.toString()}`);
 }
 
 export function startGoogleSignIn(

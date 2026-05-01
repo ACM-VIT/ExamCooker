@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { upvotePost, downvotePost } from '@/app/actions/forum-vote';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faThumbsDown, faThumbsUp } from "@fortawesome/free-solid-svg-icons";
-import { useGuestPrompt } from "@/app/components/guest-prompt-provider";
+import { useGuestPrompt } from "@/app/components/auth-gate";
 
 interface VoteButtonsProps {
     postId: string;

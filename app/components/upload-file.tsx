@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { useToast } from "@/app/components/ui/use-toast";
 import { useRouter } from "next/navigation";
-import { useGuestPrompt } from "@/app/components/guest-prompt-provider";
+import { useGuestPrompt } from "@/app/components/auth-gate";
 import CoursePicker, { type CourseOption } from "@/app/components/mod/course-picker";
 import AppImage from "@/app/components/common/app-image";
 

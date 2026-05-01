@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useGuestPrompt } from "@/app/components/guest-prompt-provider";
+import { useGuestPrompt } from "@/app/components/auth-gate";
 import type { VoiceAgentEntryPoint } from "@/lib/posthog/client";
 import VoiceAgentButton from "./voice-agent-button";
 import VoiceAgentProvider, { useVoiceAgent } from "./voice-agent-provider";
