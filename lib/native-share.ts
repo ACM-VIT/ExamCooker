@@ -12,10 +12,10 @@ export async function shareUrl(payload: SharePayload): Promise<boolean> {
     const { Capacitor } = await import("@capacitor/core");
     if (Capacitor.isNativePlatform()) {
       const { Share } = await import("@capacitor/share");
+      const nativeText = [payload.text?.trim(), url].filter(Boolean).join("\n");
       await Share.share({
         title: payload.title,
-        text: payload.text,
-        url,
+        text: nativeText,
         dialogTitle: payload.title ?? "Share",
       });
       return true;
@@ -39,7 +39,9 @@ export async function shareUrl(payload: SharePayload): Promise<boolean> {
   }
 
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(
+      [payload.text?.trim(), url].filter(Boolean).join("\n"),
+    );
     return true;
   }
 

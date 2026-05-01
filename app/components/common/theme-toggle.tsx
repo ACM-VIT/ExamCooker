@@ -12,13 +12,10 @@ function ThemeToggleSwitch() {
 
     const applyTheme = (next: boolean) => {
         const root = document.documentElement;
-        if (next) {
-            root.classList.add("dark");
-            localStorage.setItem("theme", "dark");
-        } else {
-            root.classList.remove("dark");
-            localStorage.setItem("theme", "light");
-        }
+        root.classList.toggle("dark", next);
+        root.dataset.theme = next ? "dark" : "light";
+        root.style.colorScheme = next ? "dark" : "light";
+        localStorage.setItem("theme", next ? "dark" : "light");
         setDarkMode(next);
     };
 

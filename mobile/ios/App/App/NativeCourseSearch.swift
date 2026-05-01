@@ -14,6 +14,8 @@ private struct NativeCourseSearchRecord {
 }
 
 private final class NativeCourseSearchViewController: UITableViewController, UISearchResultsUpdating, UISearchBarDelegate {
+    private static let initialResultLimit = 6
+
     private let courses: [NativeCourseSearchRecord]
     private let placeholder: String
     private let initialQuery: String
@@ -55,14 +57,15 @@ private final class NativeCourseSearchViewController: UITableViewController, UIS
         super.viewDidLoad()
 
         overrideUserInterfaceStyle = darkMode ? .dark : .light
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = sheetBackgroundColor
         navigationController?.navigationBar.overrideUserInterfaceStyle = overrideUserInterfaceStyle
         navigationController?.navigationBar.tintColor = .label
         navigationController?.navigationBar.standardAppearance = navigationBarAppearance()
         navigationController?.navigationBar.scrollEdgeAppearance = navigationBarAppearance()
 
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "CourseCell")
-        tableView.backgroundColor = .systemBackground
+        tableView.backgroundColor = sheetBackgroundColor
+        tableView.separatorColor = separatorColor
         tableView.keyboardDismissMode = .onDrag
 
         navigationItem.rightBarButtonItem = UIBarButtonItem(
@@ -78,9 +81,14 @@ private final class NativeCourseSearchViewController: UITableViewController, UIS
         searchController.searchBar.autocapitalizationType = .allCharacters
         searchController.searchBar.returnKeyType = .search
         searchController.searchBar.searchTextField.overrideUserInterfaceStyle = overrideUserInterfaceStyle
-        searchController.searchBar.searchTextField.backgroundColor = .secondarySystemBackground
+        searchController.searchBar.searchTextField.backgroundColor = searchFieldBackgroundColor
         searchController.searchBar.searchTextField.textColor = .label
         searchController.searchBar.searchTextField.tintColor = .label
+        searchController.searchBar.searchTextField.leftView?.tintColor = .secondaryLabel
+        searchController.searchBar.searchTextField.attributedPlaceholder = NSAttributedString(
+            string: placeholder,
+            attributes: [.foregroundColor: UIColor.secondaryLabel]
+        )
         navigationItem.searchController = searchController
         navigationItem.hidesSearchBarWhenScrolling = false
         definesPresentationContext = true
@@ -114,15 +122,17 @@ private final class NativeCourseSearchViewController: UITableViewController, UIS
         let course = filteredCourses[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "CourseCell", for: indexPath)
         cell.overrideUserInterfaceStyle = overrideUserInterfaceStyle
-        cell.backgroundColor = .secondarySystemGroupedBackground
+        cell.backgroundColor = cellBackgroundColor
         var content = cell.defaultContentConfiguration()
         content.text = course.title
         content.secondaryText = courseSummary(course)
         content.textProperties.font = .preferredFont(forTextStyle: .body)
+        content.textProperties.color = .label
         content.secondaryTextProperties.font = .preferredFont(forTextStyle: .subheadline)
         content.secondaryTextProperties.color = .secondaryLabel
         cell.contentConfiguration = content
         cell.accessoryType = .disclosureIndicator
+        cell.tintColor = .tertiaryLabel
         return cell
     }
 
@@ -141,7 +151,7 @@ private final class NativeCourseSearchViewController: UITableViewController, UIS
         let codeQuery = rawQuery.normalizedCourseCode()
 
         if query.isEmpty {
-            filteredCourses = courses
+            filteredCourses = Array(courses.prefix(Self.initialResultLimit))
         } else {
             let terms = query.split(separator: " ").map(String.init)
             filteredCourses = courses.filter { course in
@@ -181,10 +191,26 @@ private final class NativeCourseSearchViewController: UITableViewController, UIS
     private func navigationBarAppearance() -> UINavigationBarAppearance {
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .systemBackground
+        appearance.backgroundColor = sheetBackgroundColor
         appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
         appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
         return appearance
+    }
+
+    private var sheetBackgroundColor: UIColor {
+        darkMode ? UIColor(red: 0.04, green: 0.06, blue: 0.11, alpha: 1) : .systemBackground
+    }
+
+    private var cellBackgroundColor: UIColor {
+        darkMode ? UIColor(red: 0.08, green: 0.10, blue: 0.17, alpha: 1) : .secondarySystemGroupedBackground
+    }
+
+    private var searchFieldBackgroundColor: UIColor {
+        darkMode ? UIColor(red: 0.12, green: 0.14, blue: 0.20, alpha: 1) : .secondarySystemBackground
+    }
+
+    private var separatorColor: UIColor {
+        darkMode ? UIColor.white.withAlphaComponent(0.10) : .separator
     }
 }
 
@@ -256,8 +282,13 @@ public final class NativeCourseSearch: CAPPlugin, CAPBridgedPlugin {
 
             let navigationController = UINavigationController(rootViewController: viewController)
             navigationController.overrideUserInterfaceStyle = darkMode ? .dark : .light
+            navigationController.view.overrideUserInterfaceStyle = darkMode ? .dark : .light
+            navigationController.view.backgroundColor = darkMode
+                ? UIColor(red: 0.04, green: 0.06, blue: 0.11, alpha: 1)
+                : .systemBackground
             if let sheet = navigationController.sheetPresentationController {
-                sheet.detents = [.large()]
+                sheet.detents = [.medium(), .large()]
+                sheet.selectedDetentIdentifier = .medium
                 sheet.prefersGrabberVisible = true
             }
             navigationController.modalPresentationStyle = .pageSheet

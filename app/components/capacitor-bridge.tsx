@@ -23,9 +23,23 @@ function navigateFromDeepLink(rawUrl: string) {
   }
 }
 
+function isDarkTheme() {
+  const root = document.documentElement;
+  const explicitTheme = root.dataset.theme;
+
+  if (explicitTheme === "dark") return true;
+  if (explicitTheme === "light") return false;
+
+  return (
+    root.classList.contains("dark") ||
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+}
+
 export default function CapacitorBridge() {
   useEffect(() => {
     let cancelled = false;
+    let cleanupStatusBar: (() => void) | undefined;
 
     void (async () => {
       const { Capacitor } = await import("@capacitor/core");
@@ -36,10 +50,31 @@ export default function CapacitorBridge() {
         import("@capacitor/status-bar"),
         import("@capacitor/app"),
       ]);
+      if (cancelled) return;
 
       await StatusBar.setOverlaysWebView({ overlay: true }).catch(() => undefined);
-      await StatusBar.setStyle({ style: Style.Dark }).catch(() => undefined);
-      await StatusBar.setBackgroundColor({ color: "#0C1222" }).catch(() => undefined);
+      const applyStatusBarAppearance = () => {
+        const dark = isDarkTheme();
+        void StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light }).catch(
+          () => undefined,
+        );
+        void StatusBar.setBackgroundColor({
+          color: dark ? "#0C1222" : "#C2E6EC",
+        }).catch(() => undefined);
+      };
+      applyStatusBarAppearance();
+
+      const themeObserver = new MutationObserver(applyStatusBarAppearance);
+      themeObserver.observe(document.documentElement, {
+        attributeFilter: ["class", "data-theme", "style"],
+      });
+
+      const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      colorSchemeQuery.addEventListener("change", applyStatusBarAppearance);
+      cleanupStatusBar = () => {
+        themeObserver.disconnect();
+        colorSchemeQuery.removeEventListener("change", applyStatusBarAppearance);
+      };
 
       if (Capacitor.getPlatform() === "ios") {
         try {
@@ -110,6 +145,7 @@ export default function CapacitorBridge() {
 
     return () => {
       cancelled = true;
+      cleanupStatusBar?.();
     };
   }, []);
 

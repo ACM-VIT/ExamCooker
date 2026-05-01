@@ -3,22 +3,49 @@ import { faShareNodes } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react'
 import { captureSharedContent } from "@/lib/posthog/client";
+import { shareUrl } from "@/lib/native-share";
 
-const ShareLink = ({ fileType }: { fileType: string }) => {
+type ShareLinkProps = {
+    fileType: string;
+    resourceTitle?: string;
+    resourceKind?: "paper" | "notes";
+};
+
+function fallbackShareSubject(fileType: string) {
+    return fileType
+        .trim()
+        .replace(/^this\s+/i, "")
+        .replace(/^these\s+/i, "")
+        .toLowerCase();
+}
+
+const ShareLink = ({
+    fileType,
+    resourceTitle,
+    resourceKind,
+}: ShareLinkProps) => {
 
     const [isVisible, setisVisible] = useState(false);
+    const [toastLabel, setToastLabel] = useState("Copied!");
 
-    const copyToClipboard = () => {
-        const msg: string = `Dude! Checkout ${fileType}! ${location.href}`;
-        navigator.clipboard.writeText(msg);
-    }
+    const handleClick = async () => {
+        const url = window.location.href;
+        const subject = resourceTitle?.trim() || fallbackShareSubject(fileType);
+        const kind = resourceKind ?? fallbackShareSubject(fileType);
+        const text = `${subject} ${kind} on ExamCooker:`;
+        const shared = await shareUrl({
+            title: "ExamCooker study resource",
+            text,
+            url,
+        });
 
-    const handleClick = () => {
+        if (!shared) return;
+
+        setToastLabel("Shared");
         setisVisible(true);
-        copyToClipboard();
         captureSharedContent({
             contentType: fileType,
-            url: typeof window !== "undefined" ? window.location.href : undefined,
+            url,
         });
     }
 
@@ -36,7 +63,11 @@ const ShareLink = ({ fileType }: { fileType: string }) => {
     }, [isVisible])
 
     return (
-        <button onClick={handleClick}>
+        <button
+            type="button"
+            onClick={handleClick}
+            aria-label={`Share ${fileType}`}
+        >
             <div className="group relative">
                 <div className={`
                 px-3 py-2 absolute right-0 bottom-0 -translate-y-full
@@ -47,7 +78,7 @@ const ShareLink = ({ fileType }: { fileType: string }) => {
                 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}
                 `}
                 >
-                    Copied!
+                    {toastLabel}
                 </div>
             </div>
             <FontAwesomeIcon icon={faShareNodes} />
