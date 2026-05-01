@@ -21,14 +21,15 @@ function Footer() {
         </div>
         
         <div className="mx-auto max-w-xs sm:max-w-md">
-          <Image
-            src={'./assets/acm-logo.svg'}
-            alt="ACM VIT Student Chapter"
-            width={500}
-            height={500}
-            className="rounded-full"
-          />
-          
+          <a href="https://www.acmvit.in/" target="_blank" rel="noopener noreferrer">
+            <Image
+              src={'./assets/acm-logo.svg'}
+              alt="ACM VIT Student Chapter"
+              width={500}
+              height={500}
+              className="rounded-full"
+            />
+          </a>
         </div>
         <div className="text-right">
           <h6 className="text-1xl mb-2">Find Us</h6>
