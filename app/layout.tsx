@@ -5,6 +5,7 @@ import { Toaster } from "@/app/components/ui/toaster";
 import "@/app/globals.css";
 import UpsellToast from "@/app/components/ui/upsell-toast";
 import UpsellModal from "@/app/components/ui/upsell-modal";
+import PwaServiceWorker from "@/app/components/pwa-service-worker";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
@@ -31,8 +32,22 @@ export const metadata: Metadata = {
         "ExamCooker helps students find past papers, previous year question papers, notes, syllabus PDFs, and course resources in one place.",
     keywords: DEFAULT_KEYWORDS,
     metadataBase: new URL(baseUrl),
-    alternates: {
-        canonical: "/",
+    applicationName: "ExamCooker",
+    appleWebApp: {
+        capable: true,
+        title: "ExamCooker",
+        statusBarStyle: "black-translucent",
+    },
+    formatDetection: {
+        telephone: false,
+    },
+    icons: {
+        icon: [
+            { url: "/assets/logo-icon.svg", type: "image/svg+xml" },
+            { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+            { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+        ],
+        apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
     },
     openGraph: {
         type: "website",
@@ -88,6 +103,7 @@ export default function RootLayout({
                 <Suspense fallback={null}>
                     <UpsellModal />
                 </Suspense>
+                <PwaServiceWorker />
                 {process.env.GA_ID && (
                     <GoogleAnalytics gaId={process.env.GA_ID} />
                 )}
