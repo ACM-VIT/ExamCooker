@@ -18,7 +18,6 @@ import {
 } from "@embedpdf/plugin-scroll/react";
 import { Viewport, ViewportPluginPackage } from "@embedpdf/plugin-viewport/react";
 import {
-  ZoomGestureWrapper,
   ZoomMode,
   ZoomPluginPackage,
   useZoom,
@@ -531,31 +530,29 @@ function DocumentViewport({
             <Viewport
               documentId={documentId}
               className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950"
-              style={{ scrollbarGutter: "stable" }}
+              style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
             >
-              <ZoomGestureWrapper documentId={documentId} className="min-h-full">
-                <Scroller
-                  documentId={documentId}
-                  className="py-3 sm:py-4"
-                  renderPage={({ pageIndex, rotatedHeight, rotatedWidth }) => (
-                    <div
-                      className={`relative overflow-hidden shadow-[0_3px_18px_-10px_rgba(0,0,0,0.45)] ${
-                        isPdfDarkMode ? "bg-black" : "bg-white"
-                      }`}
-                      style={{
-                        width: rotatedWidth,
-                        height: rotatedHeight,
-                      }}
-                    >
-                      <PageRenderLayer
-                        documentId={documentId}
-                        isPdfDarkMode={isPdfDarkMode}
-                        pageIndex={pageIndex}
-                      />
-                    </div>
-                  )}
-                />
-              </ZoomGestureWrapper>
+              <Scroller
+                documentId={documentId}
+                className="py-3 sm:py-4"
+                renderPage={({ pageIndex, rotatedHeight, rotatedWidth }) => (
+                  <div
+                    className={`relative overflow-hidden shadow-[0_3px_18px_-10px_rgba(0,0,0,0.45)] ${
+                      isPdfDarkMode ? "bg-black" : "bg-white"
+                    }`}
+                    style={{
+                      width: rotatedWidth,
+                      height: rotatedHeight,
+                    }}
+                  >
+                    <PageRenderLayer
+                      documentId={documentId}
+                      isPdfDarkMode={isPdfDarkMode}
+                      pageIndex={pageIndex}
+                    />
+                  </div>
+                )}
+              />
             </Viewport>
           </div>
         );

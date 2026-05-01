@@ -1,0 +1,19 @@
+diff --git a/Package.swift b/Package.swift
+index 0444f0df7b14c166be15e614bfc6f86bce2f068f..cb7ea17d13017375331d5b8e303c5afaa96b5f47 100644
+--- a/Package.swift
++++ b/Package.swift
+@@ -7,10 +7,13 @@ let package = Package(
+     products: [
+         .library(
+             name: "NativeTabsPlugin",
++            targets: ["NativeTabsPlugin"]),
++        .library(
++            name: "CapacitorNativeTabs",
+             targets: ["NativeTabsPlugin"])
+     ],
+     dependencies: [
+-        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", branch: "main")
++        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.3.1")
+     ],
+     targets: [
+         .target(

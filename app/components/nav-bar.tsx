@@ -15,33 +15,13 @@ import {
 } from "@/lib/posthog/client";
 import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
-import HomeIcon from "@/public/assets/home.svg";
-import PastPapersIcon from "@/public/assets/past-papers-icon.svg";
-import NotesIcon from "@/public/assets/notes-icon.svg";
-import SyllabusIcon from "@/public/assets/syllabus-logo.svg";
-import ResourcesIcon from "@/public/assets/book-icon.svg";
-import QuizIcon from "@/public/assets/quiz-icon.svg";
-
-type MenuLink = {
-  href: string;
-  svgSource: string | { src: string; width?: number; height?: number };
-  alt: string;
-  matches?: (pathname: string | null) => boolean;
-};
-
-const LINKS: MenuLink[] = [
-  { href: "/", svgSource: HomeIcon, alt: "Home" },
-  { href: "/past_papers", svgSource: PastPapersIcon, alt: "Papers" },
-  { href: "/notes", svgSource: NotesIcon, alt: "Notes" },
-  { href: "/syllabus", svgSource: SyllabusIcon, alt: "Syllabus" },
-  // { href: "/forum", svgSource: "/assets/forum-icon.svg", alt: "Forum" },
-  { href: "/resources", svgSource: ResourcesIcon, alt: "Resources" },
-  { href: "/quiz", svgSource: QuizIcon, alt: "Quiz" },
-];
+import { APP_NAV_LINKS } from "@/lib/app-nav-links";
+import { MoreHorizontal, X } from "lucide-react";
 
 type Props = {
   isNavOn: boolean;
   toggleNavbar: () => void;
+  hideMobilePrimaryLinks?: boolean;
 };
 
 const VoiceAgentEntry = dynamic(
@@ -63,7 +43,11 @@ const VoiceAgentEntry = dynamic(
   },
 );
 
-const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
+const NavBar: React.FC<Props> = ({
+  isNavOn,
+  toggleNavbar,
+  hideMobilePrimaryLinks = false,
+}) => {
   const pathname = usePathname();
   const { isAuthed, requireAuth, session } = useGuestPrompt();
   const voiceAgentEnabled =
@@ -120,6 +104,21 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     const menuHeight = menuRect?.height ?? 120;
     const margin = 12;
     const gap = 12;
+
+    const compactMobile = window.matchMedia("(max-width: 1023px)").matches;
+
+    if (compactMobile) {
+      const left = Math.min(
+        Math.max(buttonRect.left + buttonRect.width / 2 - menuWidth / 2, margin),
+        window.innerWidth - menuWidth - margin,
+      );
+      const top = Math.min(
+        Math.max(buttonRect.top - menuHeight - gap, margin),
+        window.innerHeight - menuHeight - margin,
+      );
+      setProfileMenuPosition({ top, left });
+      return;
+    }
 
     const top = Math.min(
       Math.max(buttonRect.top, margin),
@@ -208,66 +207,173 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
       <button
         type="button"
         onClick={toggleNavbar}
-        aria-label={isNavOn ? "Close navigation" : "Open navigation"}
+        aria-label={isNavOn ? "Close tools menu" : "Open tools menu"}
         aria-expanded={isNavOn}
         style={{ viewTransitionName: "persistent-menu-button" }}
-        className={`fixed top-3 left-3 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-xl border border-black/10 bg-white/90 text-black shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur transition-all duration-200 active:scale-95 hover:border-black/25 hover:bg-white hover:shadow-md dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/40 dark:hover:bg-[#0C1222] lg:hidden ${isNavOn ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
+        className={`fixed right-[max(0.75rem,env(safe-area-inset-right))] z-[60] flex h-11 w-11 items-center justify-center rounded-lg text-black/65 transition-colors active:bg-black/[0.08] dark:text-[#D5D5D5]/85 dark:active:bg-white/[0.07] lg:hidden ${isNavOn ? "pointer-events-none opacity-0" : "opacity-100"} top-[max(0.75rem,env(safe-area-inset-top))]`}
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-          className="h-5 w-5"
-        >
-          <path d="M4 7h16" />
-          <path d="M4 12h16" />
-          <path d="M4 17h10" />
-        </svg>
+        <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} aria-hidden />
       </button>
 
       <div
         onClick={toggleNavbar}
         aria-hidden="true"
-        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${isNavOn ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
+        className={`fixed inset-0 z-[54] bg-black/45 backdrop-blur-[2px] transition-opacity duration-200 lg:hidden ${isNavOn ? "opacity-100" : "pointer-events-none opacity-0"}`}
       />
 
       <nav
+        aria-label="Tools and navigation"
         style={{ viewTransitionName: "persistent-nav" }}
-        className={`fixed top-0 left-0 z-50 h-dvh max-h-dvh w-fit overflow-visible border-r border-black/15 bg-[#C2E6EC] transition-transform duration-200 ease-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-          }`}
+        className={`fixed z-[55] overflow-hidden border-black/15 bg-[#C2E6EC] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-y-0" : "translate-y-[calc(100%+16px)]"} inset-x-0 bottom-0 max-h-[min(520px,88dvh)] w-full rounded-t-[1.35rem] border border-b-0 shadow-[0_-12px_40px_rgba(0,0,0,0.14)] dark:shadow-[0_-16px_48px_rgba(0,0,0,0.45)] lg:inset-x-auto lg:bottom-auto lg:left-0 lg:top-0 lg:flex lg:h-dvh lg:max-h-dvh lg:w-fit lg:translate-x-0 lg:translate-y-0 lg:rounded-none lg:border lg:border-y-0 lg:border-l-0 lg:border-r lg:shadow-none`}
       >
-        <div className="flex h-full max-h-dvh w-fit flex-col items-center justify-between overflow-y-auto overscroll-contain p-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] lg:pb-6">
-          <div className="flex w-full min-h-[2.5rem] items-center justify-start px-1">
-            <button
-              type="button"
-              onClick={toggleNavbar}
-              aria-label="Close navigation"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-black/60 transition-colors hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5] lg:hidden"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4"
-                aria-hidden="true"
-              >
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-            </button>
+        <div className="flex max-h-[min(520px,88dvh)] min-h-0 w-full flex-col overflow-y-auto overscroll-contain lg:h-full lg:max-h-dvh lg:w-fit lg:pb-[calc(env(safe-area-inset-bottom)+0.5rem)] lg:pt-[max(0.5rem,env(safe-area-inset-top))]">
+          <div className="order-1 shrink-0 lg:order-1">
+            <div className="border-b border-black/10 px-4 pb-3 pt-3 dark:border-white/10 lg:hidden">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-black/12 dark:bg-white/18" aria-hidden />
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[17px] font-semibold tracking-tight text-black dark:text-[#EAF6FF]">
+                  Tools
+                </p>
+                <button
+                  type="button"
+                  onClick={toggleNavbar}
+                  aria-label="Close tools menu"
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-black/50 transition-colors hover:bg-black/[0.07] active:bg-black/[0.11] dark:text-[#D5D5D5]/55 dark:hover:bg-white/[0.08] dark:active:bg-white/[0.12]"
+                >
+                  <X className="h-5 w-5" aria-hidden />
+                </button>
+              </div>
+            </div>
+            <div className="hidden min-h-[2.5rem] lg:block" aria-hidden />
           </div>
 
-          <div className="flex flex-col items-center">
-            {LINKS.map((link) => {
+          <div className="order-2 grid grid-cols-3 gap-3 border-b border-black/10 px-5 py-4 dark:border-white/10 lg:order-3 lg:mt-auto lg:flex lg:w-full lg:flex-col lg:items-center lg:gap-3 lg:border-b-0 lg:px-2 lg:py-0">
+            <div className="flex flex-col items-center gap-2 lg:gap-2">
+              <div className="flex min-h-10 items-center justify-center">
+                {voiceAgentEnabled ? (
+                  <div className="group flex">
+                    {voiceRuntimeRequested ? (
+                      <VoiceAgentEntry
+                        entryPoint={voiceEntryPoint}
+                        startToken={voiceStartToken}
+                      />
+                    ) : (
+                      <VoiceAgentButton
+                        buttonLabel="Start the voice guide"
+                        onClick={() => handleVoiceClick("nav")}
+                        runtime={{
+                          activity: "idle",
+                          connected: false,
+                          muted: false,
+                        }}
+                      />
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <span className="text-[11px] font-semibold text-black/48 dark:text-[#D5D5D5]/55 lg:hidden">
+                Voice
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center gap-2 lg:gap-2">
+              <div className="flex min-h-10 items-center justify-center">
+                <ThemeToggleSwitch />
+              </div>
+              <span className="text-[11px] font-semibold text-black/48 dark:text-[#D5D5D5]/55 lg:hidden">
+                Theme
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center gap-2 lg:gap-2">
+              <div className="relative z-10 flex min-h-10 items-center justify-center">
+                {isAuthed ? (
+                  <div ref={profileRef}>
+                    <button
+                      ref={profileButtonRef}
+                      type="button"
+                      title="Profile"
+                      aria-label="Profile"
+                      onClick={() => setShowProfile((v) => !v)}
+                      className="pointer-events-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-black/15 bg-white text-xs font-bold text-black/70 transition-colors duration-200 hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:bg-transparent dark:text-[#D5D5D5]/70 dark:hover:border-[#3BF4C7]/60 dark:hover:text-[#3BF4C7]"
+                    >
+                      {(session?.user?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                    </button>
+                    {showProfile && (
+                      <div
+                        ref={profileMenuRef}
+                        className="fixed z-[90] w-56 rounded-md border border-black/10 bg-white p-3 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#121B31]"
+                        style={
+                          profileMenuPosition
+                            ? {
+                                top: profileMenuPosition.top,
+                                left: profileMenuPosition.left,
+                                maxHeight: "calc(100dvh - 1.5rem)",
+                              }
+                            : {
+                                top: 12,
+                                left: 12,
+                                visibility: "hidden",
+                              }
+                        }
+                      >
+                        <p className="mb-1 text-sm font-semibold text-black dark:text-[#D5D5D5]">
+                          {session?.user?.name}
+                        </p>
+                        <p className="mb-3 break-words text-xs text-black/60 dark:text-[#D5D5D5]/60">
+                          {session?.user?.email}
+                        </p>
+                        <SignOut>
+                          <span className="text-xs font-semibold text-red-500 hover:underline dark:text-red-400">
+                            Sign out
+                          </span>
+                        </SignOut>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    title="Sign in"
+                    aria-label="Sign in"
+                    onClick={() =>
+                      startGoogleSignIn(pathname ?? "/", {
+                        source: "navbar",
+                      })
+                    }
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-black/70 transition-colors duration-200 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    >
+                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                      <polyline points="10 17 15 12 10 7" />
+                      <line x1="15" y1="12" x2="3" y2="12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <span className="text-[11px] font-semibold text-black/48 dark:text-[#D5D5D5]/55 lg:hidden">
+                Account
+              </span>
+            </div>
+          </div>
+
+          <div
+            className={
+              hideMobilePrimaryLinks
+                ? "order-3 hidden min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 py-2 lg:order-2 lg:flex lg:justify-center lg:overflow-visible lg:px-1 lg:py-2"
+                : "order-3 flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 py-3 lg:order-2 lg:justify-center lg:overflow-visible lg:px-1 lg:py-2"
+            }
+          >
+            {APP_NAV_LINKS.map((link) => {
               const isActive = link.matches
                 ? link.matches(pathname)
                 : pathname === link.href;
@@ -299,102 +405,6 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                 </Link>
               );
             })}
-          </div>
-
-          <div className="relative z-10 mb-1 flex flex-col items-center gap-2">
-            {voiceAgentEnabled ? (
-              <div className="group flex">
-                {voiceRuntimeRequested ? (
-                  <VoiceAgentEntry
-                    entryPoint={voiceEntryPoint}
-                    startToken={voiceStartToken}
-                  />
-                ) : (
-                  <VoiceAgentButton
-                    buttonLabel="Start the voice guide"
-                    onClick={() => handleVoiceClick("nav")}
-                    runtime={{
-                      activity: "idle",
-                      connected: false,
-                      muted: false,
-                    }}
-                  />
-                )}
-              </div>
-            ) : null}
-            <ThemeToggleSwitch />
-            {isAuthed ? (
-              <div className="relative z-10" ref={profileRef}>
-                <button
-                  ref={profileButtonRef}
-                  type="button"
-                  title="Profile"
-                  aria-label="Profile"
-                  onClick={() => setShowProfile((v) => !v)}
-                  className="pointer-events-auto flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-black/15 bg-white text-xs font-bold text-black/70 transition-colors duration-200 hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:bg-transparent dark:text-[#D5D5D5]/70 dark:hover:border-[#3BF4C7]/60 dark:hover:text-[#3BF4C7]"
-                >
-                  {(session?.user?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
-                </button>
-                {showProfile && (
-                  <div
-                    ref={profileMenuRef}
-                    className="fixed z-[90] w-56 rounded-md border border-black/10 bg-white p-3 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#121B31]"
-                    style={
-                      profileMenuPosition
-                        ? {
-                          top: profileMenuPosition.top,
-                          left: profileMenuPosition.left,
-                          maxHeight: "calc(100dvh - 1.5rem)",
-                        }
-                        : {
-                          top: 12,
-                          left: 12,
-                          visibility: "hidden",
-                        }
-                    }
-                  >
-                    <p className="mb-1 text-sm font-semibold text-black dark:text-[#D5D5D5]">
-                      {session?.user?.name}
-                    </p>
-                    <p className="mb-3 break-words text-xs text-black/60 dark:text-[#D5D5D5]/60">
-                      {session?.user?.email}
-                    </p>
-                    <SignOut>
-                      <span className="text-xs font-semibold text-red-500 hover:underline dark:text-red-400">
-                        Sign out
-                      </span>
-                    </SignOut>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <button
-                type="button"
-                title="Sign in"
-                aria-label="Sign in"
-                onClick={() =>
-                  startGoogleSignIn(pathname ?? "/", {
-                    source: "navbar",
-                  })
-                }
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-black/70 transition-colors duration-200 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-4 w-4"
-                  aria-hidden="true"
-                >
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                  <polyline points="10 17 15 12 10 7" />
-                  <line x1="15" y1="12" x2="3" y2="12" />
-                </svg>
-              </button>
-            )}
           </div>
         </div>
       </nav>

@@ -23,6 +23,19 @@ const config: CapacitorConfig = {
   ios: {
     path: "mobile/ios",
   },
+  plugins: {
+    SplashScreen: {
+      launchAutoHide: true,
+      backgroundColor: "#0C1222",
+      androidSplashResourceName: "splash",
+      launchFadeOutDuration: 260,
+    },
+    StatusBar: {
+      style: "DARK",
+      backgroundColor: "#0C1222",
+      overlaysWebView: true,
+    },
+  },
   server: {
     url: appUrl,
     cleartext: appUrl.startsWith("http://"),
