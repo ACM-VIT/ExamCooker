@@ -22,6 +22,13 @@ type Props = {
   toggleNavbar: () => void;
 };
 
+const navActionButtonClassName =
+  "text-black hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:hover:bg-transparent lg:dark:bg-transparent lg:dark:hover:bg-transparent";
+const navActionIconClassName =
+  "h-6 w-6 transform-gpu transition-all can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110";
+const navActionLabelClassName =
+  "hidden overflow-hidden whitespace-nowrap text-sm font-medium text-black opacity-0 transition-all duration-300 lg:block lg:max-w-0 lg:group-hover/nav:ml-3 lg:group-hover/nav:max-w-[150px] lg:group-hover/nav:opacity-100 lg:group-hover/action:text-[#0D5875] lg:dark:text-[#D5D5D5] lg:dark:group-hover/action:text-[#3BF4C7]";
+
 const VoiceAgentEntry = dynamic(
   () => import("@/app/components/voice/voice-agent-entry"),
   {
@@ -29,7 +36,9 @@ const VoiceAgentEntry = dynamic(
     loading: () => (
       <VoiceAgentButton
         buttonLabel="Starting the voice guide"
+        className={navActionButtonClassName}
         disabled
+        iconClassName={navActionIconClassName}
         onClick={() => undefined}
         runtime={{
           activity: "connecting",
@@ -220,11 +229,11 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
             <div className="hidden min-h-[2.5rem] lg:block" aria-hidden />
           </div>
 
-          <div className="order-2 grid grid-cols-3 gap-3 border-b border-black/10 px-5 py-4 dark:border-white/10 lg:order-3 lg:mt-auto lg:flex lg:w-full lg:flex-col lg:items-center lg:gap-3 lg:border-b-0 lg:px-2 lg:py-0">
-            <div className="flex flex-col items-center gap-2 lg:gap-2">
-              <div className="flex min-h-10 items-center justify-center">
+          <div className="order-2 grid grid-cols-3 gap-3 border-b border-black/10 px-5 py-4 dark:border-white/10 lg:order-3 lg:mt-auto lg:flex lg:w-full lg:flex-col lg:items-stretch lg:gap-0 lg:border-b-0 lg:px-1 lg:py-2">
+            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0">
+              <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
                 {voiceAgentEnabled ? (
-                  <div className="group flex">
+                  <div className="flex lg:w-full">
                     {voiceRuntimeRequested ? (
                       <VoiceAgentEntry
                         entryPoint={voiceEntryPoint}
@@ -233,13 +242,17 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                     ) : (
                       <VoiceAgentButton
                         buttonLabel="Start the voice guide"
+                        className={navActionButtonClassName}
+                        iconClassName={navActionIconClassName}
                         onClick={() => handleVoiceClick("nav")}
                         runtime={{
                           activity: "idle",
                           connected: false,
                           muted: false,
                         }}
-                      />
+                      >
+                        <span className={navActionLabelClassName}>Voice</span>
+                      </VoiceAgentButton>
                     )}
                   </div>
                 ) : null}
@@ -249,28 +262,36 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
               </span>
             </div>
 
-            <div className="flex flex-col items-center gap-2 lg:gap-2">
-              <div className="flex min-h-10 items-center justify-center">
-                <ThemeToggleSwitch />
+            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0">
+              <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
+                <ThemeToggleSwitch
+                  className={navActionButtonClassName}
+                  iconClassName={navActionIconClassName}
+                >
+                  <span className={navActionLabelClassName}>Theme</span>
+                </ThemeToggleSwitch>
               </div>
               <span className="text-[11px] font-semibold text-black/48 dark:text-[#D5D5D5]/55 lg:hidden">
                 Theme
               </span>
             </div>
 
-            <div className="flex flex-col items-center gap-2 lg:gap-2">
-              <div className="relative z-10 flex min-h-10 items-center justify-center">
+            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0">
+              <div className="relative z-10 flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
                 {isAuthed ? (
-                  <div ref={profileRef}>
+                  <div className="lg:w-full" ref={profileRef}>
                     <button
                       ref={profileButtonRef}
                       type="button"
                       title="Profile"
                       aria-label="Profile"
                       onClick={() => setShowProfile((v) => !v)}
-                      className="pointer-events-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-black/15 bg-white text-xs font-bold text-black/70 transition-colors duration-200 hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:bg-transparent dark:text-[#D5D5D5]/70 dark:hover:border-[#3BF4C7]/60 dark:hover:text-[#3BF4C7]"
+                      className="pointer-events-auto flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-black transition-colors duration-200 hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:p-0"
                     >
-                      {(session?.user?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-200 can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110">
+                        {(session?.user?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                      </span>
+                      <span className={navActionLabelClassName}>Account</span>
                     </button>
                     {showProfile && (
                       <div
@@ -310,7 +331,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                     title="Sign in"
                     aria-label="Sign in"
                     onClick={() => openPrompt("continue")}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-black/70 transition-colors duration-200 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-black transition-colors duration-200 hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:p-0"
                   >
                     <svg
                       viewBox="0 0 24 24"
@@ -319,13 +340,14 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="h-4 w-4"
+                      className={navActionIconClassName}
                       aria-hidden="true"
                     >
                       <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
                       <polyline points="10 17 15 12 10 7" />
                       <line x1="15" y1="12" x2="3" y2="12" />
                     </svg>
+                    <span className={navActionLabelClassName}>Account</span>
                   </button>
                 )}
               </div>
@@ -345,22 +367,22 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                   key={link.href}
                   href={link.href}
                   transitionTypes={isActive ? undefined : ["nav-lateral"]}
-                  className={isActive ? "bg-[#ffffff]/20" : ""}
+                  className={`group/action m-2 flex min-h-8 items-center rounded-md ${isActive ? "bg-[#ffffff]/20" : ""}`}
                 >
-                  <div className="group flex items-center m-2 cursor-pointer">
+                  <div className="flex items-center cursor-pointer">
                     <div className="flex-shrink-0 flex items-center justify-center">
                       <Image
                         src={link.svgSource}
                         alt={link.alt}
                         width={24}
                         height={25}
-                        className={`dark:invert-[.835] transition-all transform-gpu can-hover:group-hover:scale-110 group-hover:[filter:invert(67%)_sepia(97%)_saturate(402%)_hue-rotate(164deg)_brightness(97%)_contrast(86%)] dark:group-hover:[filter:invert(78%)_sepia(38%)_saturate(690%)_hue-rotate(107deg)_brightness(96%)_contrast(100%)] ${!isActive
-                          ? "can-hover:group-hover:-translate-y-1 can-hover:group-hover:rotate-[-5deg]"
+                        className={`dark:invert-[.835] transition-all transform-gpu can-hover:group-hover/action:scale-110 group-hover/action:[filter:invert(27%)_sepia(85%)_saturate(782%)_hue-rotate(159deg)_brightness(86%)_contrast(91%)] dark:group-hover/action:[filter:invert(78%)_sepia(38%)_saturate(690%)_hue-rotate(107deg)_brightness(96%)_contrast(100%)] ${!isActive
+                          ? "can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg]"
                           : ""
                           }`}
                       />
                     </div>
-                    <span className="overflow-hidden whitespace-nowrap text-sm font-medium text-black opacity-0 transition-all duration-300 max-w-0 group-hover/nav:ml-3 group-hover/nav:max-w-[150px] group-hover/nav:opacity-100 group-hover:text-[#5fc4e7] dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7]">
+                    <span className="overflow-hidden whitespace-nowrap text-sm font-medium text-black opacity-0 transition-all duration-300 max-w-0 group-hover/nav:ml-3 group-hover/nav:max-w-[150px] group-hover/nav:opacity-100 group-hover/action:text-[#0D5875] dark:text-[#D5D5D5] dark:group-hover/action:text-[#3BF4C7]">
                       {link.alt}
                     </span>
                   </div>
