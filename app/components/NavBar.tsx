@@ -35,11 +35,6 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const { data: session } = useSession();
   const isAuthed = Boolean(session?.user);
   const [showProfile, setShowProfile] = useState(false);
-  const [hoveredTooltip, setHoveredTooltip] = useState<{
-    content: string;
-    top: number;
-    left: number;
-  } | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,43 +50,13 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const clearTooltip = () => setHoveredTooltip(null);
-    window.addEventListener("resize", clearTooltip);
-    window.addEventListener("scroll", clearTooltip, true);
-    return () => {
-      window.removeEventListener("resize", clearTooltip);
-      window.removeEventListener("scroll", clearTooltip, true);
-    };
-  }, []);
-
-  const showTooltip = (
-    event: React.MouseEvent<HTMLDivElement> | React.FocusEvent<HTMLDivElement>,
-    content: string,
-  ) => {
-    if (typeof window !== "undefined") {
-      const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-      const isFocusEvent = event.type === "focus";
-      if (!canHover && !isFocusEvent) return;
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    setHoveredTooltip({
-      content,
-      top: rect.top + rect.height / 2,
-      left: rect.right + 10,
-    });
-  };
-
   return (
     <>
       <button
         type="button"
         onClick={toggleNavbar}
         aria-label={isNavOn ? "Close navigation" : "Open navigation"}
-        aria-expanded={isNavOn}
-        style={{ viewTransitionName: "persistent-menu-button" }}
-        className={`fixed top-3 left-3 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-xl border border-black/10 bg-white/90 text-black shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur transition-all duration-200 active:scale-95 hover:border-black/25 hover:bg-white hover:shadow-md dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/40 dark:hover:bg-[#0C1222] lg:hidden ${isNavOn ? "opacity-0 pointer-events-none" : "opacity-100"
+        className={`vt-persistent-menu-button fixed top-3 left-3 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-xl border border-black/10 bg-white/90 text-black shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur transition-all duration-200 active:scale-95 hover:border-black/25 hover:bg-white hover:shadow-md dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/40 dark:hover:bg-[#0C1222] lg:hidden ${isNavOn ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
       >
         <svg
@@ -118,8 +83,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
       />
 
       <nav
-        style={{ viewTransitionName: "persistent-nav" }}
-        className={`fixed top-0 left-0 z-50 h-dvh max-h-dvh w-fit overflow-visible border-r border-black/15 bg-[#C2E6EC] transition-transform duration-200 ease-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        className={`vt-persistent-nav fixed top-0 left-0 z-50 h-dvh max-h-dvh w-fit overflow-visible border-r border-black/15 bg-[#C2E6EC] transition-transform duration-200 ease-out dark:border-r-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
       >
         <div className="flex h-full max-h-dvh w-fit flex-col items-center justify-between overflow-y-auto overscroll-contain p-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
@@ -155,16 +119,11 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                 <Link
                   key={link.href}
                   href={link.href}
+                  title={link.alt}
                   transitionTypes={isActive ? undefined : ["nav-lateral"]}
                   className={isActive ? "bg-[#ffffff]/20" : ""}
                 >
-                  <div
-                    className="group flex m-2"
-                    onMouseEnter={(event) => showTooltip(event, link.alt)}
-                    onMouseLeave={() => setHoveredTooltip(null)}
-                    onFocus={(event) => showTooltip(event, link.alt)}
-                    onBlur={() => setHoveredTooltip(null)}
-                  >
+                  <div className="group flex m-2">
                     <Image
                       src={link.svgSource}
                       alt={link.alt}
@@ -237,15 +196,6 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
           </div>
         </div>
       </nav>
-      {hoveredTooltip && (
-        <div
-          className="pointer-events-none fixed z-[80] max-w-xs -translate-y-1/2 whitespace-nowrap rounded-md bg-gradient-to-r from-[#5fc4e7] to-[#4db3d6] px-3 py-2 text-sm text-white shadow-lg backdrop-blur-sm dark:from-[#3BF4C7] dark:to-[#2ad3a7] dark:text-[#232530]"
-          style={{ top: hoveredTooltip.top, left: hoveredTooltip.left }}
-        >
-          <span className="font-medium">{hoveredTooltip.content}</span>
-          <div className="absolute -left-[6px] top-1/2 h-0 w-0 -translate-y-1/2 border-b-[6px] border-r-[6px] border-t-[6px] border-b-transparent border-r-[#5fc4e7] border-t-transparent dark:border-r-[#3BF4C7]" />
-        </div>
-      )}
     </>
   );
 };

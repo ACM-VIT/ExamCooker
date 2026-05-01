@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import type { ExamType } from "@/prisma/generated/client";
+import { hasDatabaseUrl } from "@/lib/serverEnv";
 
 export type UpcomingExamItem = {
     id: string;
@@ -16,6 +17,10 @@ export async function getUpcomingExams(limit?: number): Promise<UpcomingExamItem
     "use cache";
     cacheTag("upcoming_exams");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    if (!hasDatabaseUrl()) {
+        return [];
+    }
 
     const now = new Date();
     const rows = await prisma.upcomingExam.findMany({
@@ -63,6 +68,7 @@ export async function getUpcomingExamsForCourses(
     cacheTag("upcoming_exams");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
+    if (!hasDatabaseUrl()) return new Map();
     if (courseIds.length === 0) return new Map();
 
     const now = new Date();
@@ -103,6 +109,10 @@ export async function getUpcomingExamsForCourses(
 }
 
 export async function listUpcomingExamsForMod(): Promise<UpcomingExamItem[]> {
+    if (!hasDatabaseUrl()) {
+        return [];
+    }
+
     const rows = await prisma.upcomingExam.findMany({
         orderBy: [
             { scheduledAt: { sort: "asc", nulls: "last" } },

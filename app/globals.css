@@ -93,6 +93,36 @@
     }
 }
 
+@keyframes doodle-drift-a {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    50% { transform: translate3d(0, -10px, 0) rotate(-2deg); }
+}
+
+@keyframes doodle-drift-b {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    50% { transform: translate3d(8px, 7px, 0) rotate(2deg); }
+}
+
+@keyframes doodle-drift-c {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    50% { transform: translate3d(-9px, 5px, 0) rotate(-3deg); }
+}
+
+.doodle-drift-a {
+    animation: doodle-drift-a 8s ease-in-out infinite;
+    will-change: transform;
+}
+
+.doodle-drift-b {
+    animation: doodle-drift-b 10s ease-in-out infinite;
+    will-change: transform;
+}
+
+.doodle-drift-c {
+    animation: doodle-drift-c 12s ease-in-out infinite;
+    will-change: transform;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
     animation: none;
@@ -119,6 +149,14 @@
 .theme-transition *::before,
 .theme-transition *::after {
     view-transition-name: none !important;
+}
+
+.vt-persistent-menu-button {
+    view-transition-name: persistent-menu-button;
+}
+
+.vt-persistent-nav {
+    view-transition-name: persistent-nav;
 }
 
 .filter-sheet-content {
@@ -307,6 +345,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .doodle-drift-a,
+    .doodle-drift-b,
+    .doodle-drift-c,
     ::view-transition-old(*),
     ::view-transition-new(*),
     ::view-transition-group(*) {

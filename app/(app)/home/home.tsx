@@ -9,6 +9,7 @@ import { getUpcomingExams } from "@/lib/data/upcomingExams";
 import CourseSearch from "./CourseSearch";
 import HomeMarketingSections from "./HomeMarketingSections";
 import WelcomeBackSubtitle from "./WelcomeBackSubtitle";
+import DoodleBackdrop from "./DoodleBackdrop";
 
 const HOME_SUBTITLE = "Your one-stop solution to cram before exams.";
 
@@ -45,8 +46,10 @@ async function HomeSubtitle() {
 const Home = () => {
     return (
         <div className="overflow-x-clip bg-[#C2E6EC] dark:bg-[hsl(224,48%,9%)] text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
-            <section className="container mx-auto px-4 max-w-7xl min-h-screen flex flex-col">
-                <div className="flex flex-1 flex-col justify-center text-center py-10 md:py-14">
+            <section className="relative overflow-hidden container mx-auto px-4 max-w-7xl min-h-screen flex flex-col">
+                <DoodleBackdrop />
+
+                <div className="relative z-10 flex flex-1 flex-col justify-center text-center py-10 md:py-14">
                     <div className="mb-10 md:mb-12 flex flex-col items-center">
                         <ExamCookerLogo />
                     </div>
@@ -64,7 +67,7 @@ const Home = () => {
                     <HomeSearchSection />
                 </div>
 
-                <div className="pb-4 md:pb-6">
+                <div className="relative z-10 pb-4 md:pb-6">
                     <Suspense fallback={null}>
                         <HomeMarqueeSection />
                     </Suspense>

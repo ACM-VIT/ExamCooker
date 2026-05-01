@@ -79,6 +79,9 @@ const UserName: React.FC = () => {
     } else {
         name = name?.split(' ',1)[0]
     }
+    if (!name) {
+        name = "there";
+    }
     return <>
         {name}
     </>

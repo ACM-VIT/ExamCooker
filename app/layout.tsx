@@ -69,7 +69,7 @@ export default function RootLayout({
                     ]}
                 />
                 <Script id="theme-init" strategy="beforeInteractive">
-                    {"(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();"}
+                    {"(function(){try{var t=localStorage.getItem('theme');var d=t===null||t==='dark';if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){document.documentElement.classList.add('dark');}})();"}
                 </Script>
             </head>
             <body

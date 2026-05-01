@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthConfigured } from "@/lib/serverEnv";
 
 const PUBLIC_AUTH_HOSTS = new Set([
     "beta.examcooker.acmvit.in",
@@ -52,6 +53,10 @@ function getAllowedHost(value: string | null) {
 }
 
 export async function GET(req: NextRequest) {
+    if (!isAuthConfigured()) {
+        return NextResponse.redirect(new URL("/home", req.url));
+    }
+
     const callbackUrl = req.nextUrl.searchParams.get("redirect") || "/";
     const forwardedHost = getAllowedHost(req.headers.get("x-forwarded-host"));
     const host = forwardedHost || getAllowedHost(req.headers.get("host"));

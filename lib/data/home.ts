@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
+import { hasDatabaseUrl } from "@/lib/serverEnv";
 
 export type HomeItem =
     | { type: "note"; item: { id: string; title: string } }
@@ -12,6 +13,10 @@ export async function getHomeRecentViews(userId: string): Promise<HomeItem[]> {
     cacheTag("home");
     cacheTag(`home:${userId}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    if (!hasDatabaseUrl()) {
+        return [];
+    }
 
     const recentViews = await prisma.viewHistory.findMany({
         where: { userId },
@@ -41,6 +46,10 @@ export async function getHomeFavorites(userId: string): Promise<HomeItem[]> {
     cacheTag("home");
     cacheTag(`home:${userId}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    if (!hasDatabaseUrl()) {
+        return [];
+    }
 
     const user = await prisma.user.findUnique({
         where: { id: userId },

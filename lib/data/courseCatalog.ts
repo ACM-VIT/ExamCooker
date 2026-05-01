@@ -2,6 +2,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import Fuse from "fuse.js";
 import prisma from "@/lib/prisma";
 import { normalizeCourseCode } from "@/lib/courseTags";
+import { hasDatabaseUrl } from "@/lib/serverEnv";
 
 export type CourseGridItem = {
     id: string;
@@ -36,6 +37,10 @@ export async function getCourseGrid(): Promise<CourseGridItem[]> {
 }
 
 async function getCourseGridBase(): Promise<CourseGridItem[]> {
+    if (!hasDatabaseUrl()) {
+        return [];
+    }
+
     const courses = await prisma.course.findMany({
         select: {
             id: true,
@@ -66,6 +71,10 @@ export async function getPopularCourseGrid(limit = 6): Promise<CourseGridItem[]>
     "use cache";
     cacheTag("courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    if (!hasDatabaseUrl()) {
+        return [];
+    }
 
     const rows = await prisma.$queryRaw<
         Array<{
@@ -196,6 +205,10 @@ export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> 
     cacheTag("courses", "past_papers", "syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
+    if (!hasDatabaseUrl()) {
+        return [];
+    }
+
     const [courses, syllabi] = await Promise.all([
         prisma.course.findMany({
             select: {
@@ -250,6 +263,10 @@ export async function getCatalogStats(): Promise<CatalogStats> {
     cacheTag("courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
+    if (!hasDatabaseUrl()) {
+        return { courseCount: 0, paperCount: 0, noteCount: 0 };
+    }
+
     const [courseCount, paperCount, noteCount] = await Promise.all([
         prisma.course.count({
             where: {
@@ -280,6 +297,10 @@ export async function getRecentPapers(limit = 10): Promise<RecentPaper[]> {
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
+    if (!hasDatabaseUrl()) {
+        return [];
+    }
+
     const papers = await prisma.pastPaper.findMany({
         where: { isClear: true, courseId: { not: null } },
         orderBy: { createdAt: "desc" },
@@ -308,6 +329,10 @@ export async function getCourseDetailByCode(code: string): Promise<CourseDetail 
     "use cache";
     cacheTag("courses");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    if (!hasDatabaseUrl()) {
+        return null;
+    }
 
     const normalized = normalizeCourseCode(code);
     const course = await prisma.course.findUnique({

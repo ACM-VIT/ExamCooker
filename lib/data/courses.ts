@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { normalizeCourseCode } from "@/lib/courseTags";
+import { hasDatabaseUrl } from "@/lib/serverEnv";
 
 export type CourseSummary = {
     code: string;
@@ -13,6 +14,10 @@ export async function getCourseByCodeAny(code: string): Promise<CourseSummary | 
     "use cache";
     cacheTag("courses");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    if (!hasDatabaseUrl()) {
+        return null;
+    }
 
     const normalized = normalizeCourseCode(code.trim());
     const course = await prisma.course.findFirst({

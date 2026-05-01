@@ -9,9 +9,16 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import prisma from "@/lib/prisma";
 import type { PrismaClient as NextAuthPrismaClient } from "@/prisma/generated/client";
+import { hasDatabaseUrl, hasGoogleAuthConfig } from "@/lib/serverEnv";
+
+if (process.env.NODE_ENV === "development") {
+  process.env.NEXTAUTH_URL ??= "http://localhost:3000";
+}
 
 const prismaForAuth = prisma as unknown as NextAuthPrismaClient;
-const adapter = PrismaAdapter(prismaForAuth);
+const databaseConfigured = hasDatabaseUrl();
+const googleAuthConfigured = hasGoogleAuthConfig();
+const adapter = databaseConfigured ? PrismaAdapter(prismaForAuth) : undefined;
 const ROLE_REFRESH_INTERVAL_SECONDS = 5 * 60;
 let warnedAboutStaleSessionCookie = false;
 type AppRole = "USER" | "MODERATOR";
@@ -42,15 +49,6 @@ type SessionCallbackParams = {
   token: AuthToken;
 };
 
-function requiredEnv(name: "AUTH_GOOGLE_ID" | "AUTH_GOOGLE_SECRET") {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required auth environment variable: ${name}`);
-  }
-
-  return value;
-}
-
 function isStaleSessionCookieError(code: string, metadata: unknown) {
   return (
     code === "JWT_SESSION_ERROR" &&
@@ -63,22 +61,28 @@ function isStaleSessionCookieError(code: string, metadata: unknown) {
 
 export const authConfig = {
   adapter,
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  secret:
+    process.env.AUTH_SECRET ??
+    process.env.NEXTAUTH_SECRET ??
+    (process.env.NODE_ENV === "development" ? "examcooker-local-dev-secret" : undefined),
+  trustHost: true,
   session: { strategy: "jwt" as const },
-  providers: [
-    Google({
-      clientId: requiredEnv("AUTH_GOOGLE_ID"),
-      clientSecret: requiredEnv("AUTH_GOOGLE_SECRET"),
-      authorization: {
-        params: {
-          prompt: "select_account",
-          access_type: "offline",
-          response_type: "code",
-          hd: "vitstudent.ac.in",
-        },
-      },
-    }),
-  ],
+  providers: googleAuthConfigured
+    ? [
+        Google({
+          clientId: process.env.AUTH_GOOGLE_ID!,
+          clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+          authorization: {
+            params: {
+              prompt: "select_account",
+              access_type: "offline",
+              response_type: "code",
+              hd: "vitstudent.ac.in",
+            },
+          },
+        }),
+      ]
+    : [],
   callbacks: {
     async jwt({ token, user }: JwtCallbackParams) {
       const now = Math.floor(Date.now() / 1000);
@@ -95,6 +99,7 @@ export const authConfig = {
       const lastSyncedAt = Number(token.roleSyncedAt ?? 0);
       const userId = typeof token.id === "string" ? token.id : null;
       if (
+        databaseConfigured &&
         userId &&
         (!lastSyncedAt || now - lastSyncedAt > ROLE_REFRESH_INTERVAL_SECONDS)
       ) {

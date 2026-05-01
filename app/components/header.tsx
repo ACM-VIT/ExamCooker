@@ -12,9 +12,10 @@ interface HeaderProps {
   darkMode: boolean;
   toggleNavbar?: () => void;
   isNavOn?: boolean;
+  authEnabled: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ toggleNavbar, isNavOn }) => {
+const Header: React.FC<HeaderProps> = ({ toggleNavbar, isNavOn, authEnabled }) => {
   const { data: session } = useSession();
   const isAuthed = Boolean(session?.user);
   const [showOverlay, setShowOverlay] = useState(false);
@@ -113,13 +114,17 @@ const Header: React.FC<HeaderProps> = ({ toggleNavbar, isNavOn }) => {
               )}
             </div>
           </>
-        ) : (
+        ) : authEnabled ? (
           <a
             href="/api/auth/init"
             className="border border-black dark:border-[#D5D5D5] px-3 py-1 text-sm font-semibold bg-[#3BF4C7] text-black dark:bg-[#0C1222] dark:text-[#D5D5D5] hover:-translate-x-0.5 hover:-translate-y-0.5 transition"
           >
             Sign In
           </a>
+        ) : (
+          <span className="border border-black/50 dark:border-[#D5D5D5]/40 px-3 py-1 text-sm font-semibold text-black/60 dark:text-[#D5D5D5]/70">
+            Local Preview
+          </span>
         )}
       </div>
     </header>
