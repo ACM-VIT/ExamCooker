@@ -188,68 +188,56 @@ function ResourceBrowser({
 
     return (
         <>
-            <div className="flex w-full items-stretch gap-2 sm:gap-3">
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-col gap-4">
-                        <div className="flex items-stretch gap-2 sm:gap-3">
-                            <div className="relative flex h-12 min-w-0 flex-1 items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]">
-                                <Image src={SearchIcon} alt="search" className="dark:invert-[.835]" />
-                                <input
-                                    type="search"
-                                    value={query}
-                                    onChange={(event) => handleQueryChange(event.target.value)}
-                                    placeholder="Search courses, modules, or topics..."
-                                    className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 focus:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
-                                />
-                                {query ? (
-                                    <button
-                                        onClick={() => handleQueryChange("")}
-                                        type="button"
-                                        aria-label="Clear search"
-                                        className="inline-flex h-7 w-7 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                ) : null}
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
+            <div className="flex w-full flex-col gap-4">
+                <div className="flex w-full items-stretch gap-2 sm:gap-3">
+                    <div className="relative flex h-12 min-w-0 flex-1 items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]">
+                        <Image src={SearchIcon} alt="search" className="dark:invert-[.835]" />
+                        <input
+                            type="search"
+                            value={query}
+                            onChange={(event) => handleQueryChange(event.target.value)}
+                            placeholder="Search courses, modules, or topics..."
+                            className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 focus:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
+                        />
+                        {query ? (
                             <button
+                                onClick={() => handleQueryChange("")}
                                 type="button"
-                                onClick={() => handleYearSelect("")}
-                                className={`inline-flex h-9 items-center border-2 px-3 text-sm font-semibold transition ${
-                                    !year ? activeYearClass : inactiveYearClass
-                                }`}
+                                aria-label="Clear search"
+                                className="inline-flex h-7 w-7 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
                             >
-                                All years
+                                <X className="h-3.5 w-3.5" />
                             </button>
-                            {years.map((item) => (
-                                <button
-                                    key={item}
-                                    type="button"
-                                    onClick={() => handleYearSelect(item)}
-                                    className={`inline-flex h-9 items-center border-2 px-3 text-sm font-semibold transition ${
-                                        year === item ? activeYearClass : inactiveYearClass
-                                    }`}
-                                >
-                                    {item}
-                                </button>
-                            ))}
-                            {hasFilters ? (
-                                <button
-                                    type="button"
-                                    onClick={clearFilters}
-                                    className="inline-flex h-9 items-center gap-1.5 px-2 text-sm font-medium text-black/60 transition hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                    Reset
-                                </button>
-                            ) : null}
-                        </div>
+                        ) : null}
                     </div>
+
+                    <SourceButton pathname={pathname} sourceUrl={sourceUrl} />
                 </div>
-                <SourceButton pathname={pathname} sourceUrl={sourceUrl} />
+
+                <div className="flex flex-nowrap items-center gap-1 overflow-x-auto sm:flex-wrap sm:gap-2">
+                    {years.map((item) => (
+                        <button
+                            key={item}
+                            type="button"
+                            onClick={() => handleYearSelect(item)}
+                            className={`inline-flex h-8 shrink-0 items-center border-2 px-2 text-xs font-semibold transition min-[380px]:h-9 min-[380px]:px-3 min-[380px]:text-sm ${
+                                year === item ? activeYearClass : inactiveYearClass
+                            }`}
+                        >
+                            {item}
+                        </button>
+                    ))}
+                    {hasFilters ? (
+                        <button
+                            type="button"
+                            onClick={clearFilters}
+                            className="inline-flex h-9 items-center gap-1.5 px-2 text-sm font-medium text-black/60 transition hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                            Reset
+                        </button>
+                    ) : null}
+                </div>
             </div>
 
             {filteredCourses.length > 0 ? (

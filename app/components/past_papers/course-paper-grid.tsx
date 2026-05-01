@@ -114,7 +114,7 @@ export default function CoursePaperGrid({
                 <div
                     role="region"
                     aria-label="Selection toolbar"
-                    className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-3"
+                    className="fixed inset-x-0 bottom-[calc(4.75rem_+_env(safe-area-inset-bottom))] z-40 flex justify-center px-3 sm:bottom-4"
                 >
                     <div className="flex items-center gap-2 rounded-md border border-black/15 bg-white/95 px-3 py-2 shadow-lg backdrop-blur dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/95">
                         <span className="text-xs font-semibold text-black dark:text-[#D5D5D5] sm:text-sm">

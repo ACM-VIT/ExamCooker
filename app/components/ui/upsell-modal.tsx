@@ -86,7 +86,7 @@ const UpsellModal = () => {
             role="dialog"
             aria-modal="true"
             aria-label="Introducing the refreshed ExamCooker"
-            className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
+            className="fixed inset-0 z-[100] flex items-center justify-center px-4 pb-[calc(5.5rem_+_env(safe-area-inset-bottom))] pt-4 sm:py-6"
         >
             <div
                 onClick={handleDismiss}
@@ -96,7 +96,7 @@ const UpsellModal = () => {
             />
 
             <div
-                className="relative flex w-full max-h-[calc(100dvh-3rem)] max-w-[24rem] flex-col overflow-hidden bg-white dark:bg-[#0C1222] sm:max-w-[28rem]"
+                className="relative flex w-full max-h-[calc(100dvh_-_7rem_-_env(safe-area-inset-bottom))] max-w-[24rem] flex-col overflow-hidden bg-white dark:bg-[#0C1222] sm:max-h-[calc(100dvh_-_3rem)] sm:max-w-[28rem]"
                 style={{
                     transitionProperty: "transform, opacity",
                     transitionDuration: "320ms",
