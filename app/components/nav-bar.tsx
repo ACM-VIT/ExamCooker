@@ -72,7 +72,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const navLabelClassName = `${navActionLabelBaseClassName} ${
     keepNavExpanded
       ? "lg:ml-3 lg:max-w-[150px] lg:opacity-100"
-      : "lg:max-w-0 lg:opacity-0 lg:group-hover/nav:ml-3 lg:group-hover/nav:max-w-[150px] lg:group-hover/nav:opacity-100 lg:group-focus-within/nav:ml-3 lg:group-focus-within/nav:max-w-[150px] lg:group-focus-within/nav:opacity-100"
+      : "lg:max-w-0 lg:opacity-0 lg:group-hover/nav:ml-3 lg:group-hover/nav:max-w-[150px] lg:group-hover/nav:opacity-100"
   }`;
 
   useEffect(() => {
@@ -181,6 +181,10 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     setKeepNavExpanded(true);
   };
 
+  const collapseNavAfterPointerLeave = () => {
+    setKeepNavExpanded(false);
+  };
+
   const handleNavLinkClick = (
     event: React.MouseEvent<HTMLAnchorElement>,
     href: string,
@@ -272,6 +276,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
       <nav
         aria-label="Tools and navigation"
         onClickCapture={keepExpandedForNavigation}
+        onPointerLeave={collapseNavAfterPointerLeave}
         style={{ viewTransitionName: "persistent-nav" }}
         className={`group/nav fixed z-[55] overflow-hidden border-black/15 bg-[#C2E6EC] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-y-0" : "translate-y-[calc(100%+16px)]"} inset-x-0 bottom-0 max-h-[min(520px,88dvh)] w-full rounded-t-[1.35rem] border border-b-0 shadow-[0_-12px_40px_rgba(0,0,0,0.14)] dark:shadow-[0_-16px_48px_rgba(0,0,0,0.45)] lg:inset-x-auto lg:bottom-auto lg:left-0 lg:top-0 lg:flex lg:h-dvh lg:max-h-dvh lg:w-fit lg:translate-x-0 lg:translate-y-0 lg:rounded-none lg:border lg:border-y-0 lg:border-l-0 lg:border-r lg:shadow-none`}
       >
@@ -435,7 +440,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                   href={link.href}
                   transitionTypes={isActive ? undefined : ["nav-lateral"]}
                   onClick={(event) => handleNavLinkClick(event, link.href, isActive)}
-                  className={`group/action m-2 flex min-h-8 items-center rounded-md ${isActive ? "bg-[#ffffff]/20" : ""}`}
+                  className={`group/action m-2 flex min-h-8 items-center rounded-md px-2 py-1 ${isActive ? "bg-[#ffffff]/20" : ""}`}
                 >
                   <div className="flex items-center cursor-pointer">
                     <div className="flex-shrink-0 flex items-center justify-center">
