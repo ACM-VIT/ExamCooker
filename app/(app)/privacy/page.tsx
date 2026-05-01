@@ -6,8 +6,6 @@ const UPDATED_AT = "May 1, 2026";
 
 export const metadata: Metadata = {
     title: "Privacy Policy",
-    description:
-        "Privacy Policy governing ExamCooker's collection, use, disclosure, and retention of personal data.",
     alternates: { canonical: "/privacy" },
     robots: { index: true, follow: true },
 };
@@ -126,7 +124,6 @@ export default function PrivacyPage() {
     return (
         <LegalPage
             title="Privacy Policy"
-            description="This Privacy Policy governs the collection, use, disclosure, and retention of personal data in connection with ExamCooker."
             updatedAt={UPDATED_AT}
             sections={sections}
         />
