@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { addTransitionType, startTransition, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 
@@ -20,7 +20,15 @@ export default function NativeIosTabSync() {
       if (!(event instanceof CustomEvent)) return;
       const path = event.detail?.path;
       if (typeof path !== "string" || !path.startsWith("/")) return;
-      router.push(path);
+      document.documentElement.style.setProperty("--nav-vt-x", "50vw");
+      document.documentElement.style.setProperty(
+        "--nav-vt-y",
+        "calc(100vh - max(2.125rem, env(safe-area-inset-bottom)))",
+      );
+      startTransition(() => {
+        addTransitionType("nav-lateral");
+        router.push(path);
+      });
     };
 
     window.addEventListener("examcooker:native-tab-route", handleRoute);

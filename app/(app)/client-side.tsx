@@ -155,7 +155,12 @@ function NavBarFallback({
                         }
                     >
                         {APP_NAV_LINKS.map((link) => (
-                            <Link key={link.href} href={link.href} className="m-2 text-sm font-medium">
+                            <Link
+                                key={link.href}
+                                href={link.href}
+                                transitionTypes={["nav-lateral"]}
+                                className="m-2 text-sm font-medium"
+                            >
                                 {link.label}
                             </Link>
                         ))}

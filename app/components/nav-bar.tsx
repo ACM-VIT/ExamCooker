@@ -1,9 +1,9 @@
 "use client";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { addTransitionType, startTransition, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "@/app/components/common/app-image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import ThemeToggleSwitch from "@/app/components/common/theme-toggle";
 import { SignOut } from "@/app/components/sign-out";
 import VoiceAgentButton from "@/app/components/voice/voice-agent-button";
@@ -52,6 +52,7 @@ const VoiceAgentEntry = dynamic(
 
 const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const { isAuthed, requireAuth, openPrompt, session } = useGuestPrompt();
   const voiceAgentEnabled =
     usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? true;
@@ -157,13 +158,52 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     return () => window.clearTimeout(timeout);
   }, [keepNavExpanded, pathname]);
 
+  const setNavTransitionOrigin = (element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    document.documentElement.style.setProperty(
+      "--nav-vt-x",
+      `${rect.left + rect.width / 2}px`,
+    );
+    document.documentElement.style.setProperty(
+      "--nav-vt-y",
+      `${rect.top + rect.height / 2}px`,
+    );
+  };
+
   const keepExpandedForNavigation = (event: React.MouseEvent<HTMLElement>) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
-    if (!target.closest("a[href]")) return;
+    const link = target.closest("a[href]");
+    if (!link) return;
+    setNavTransitionOrigin(link as HTMLElement);
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
     keepNavExpandedFromPathRef.current = pathname;
     setKeepNavExpanded(true);
+  };
+
+  const handleNavLinkClick = (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    href: string,
+    isActive: boolean,
+  ) => {
+    if (
+      isActive ||
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    setNavTransitionOrigin(event.currentTarget);
+    startTransition(() => {
+      addTransitionType("nav-lateral");
+      router.push(href);
+    });
   };
 
   const handleVoiceClick = useCallback((entryPoint: VoiceAgentEntryPoint = "nav") => {
@@ -394,6 +434,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                   key={link.href}
                   href={link.href}
                   transitionTypes={isActive ? undefined : ["nav-lateral"]}
+                  onClick={(event) => handleNavLinkClick(event, link.href, isActive)}
                   className={`group/action m-2 flex min-h-8 items-center rounded-md ${isActive ? "bg-[#ffffff]/20" : ""}`}
                 >
                   <div className="flex items-center cursor-pointer">
