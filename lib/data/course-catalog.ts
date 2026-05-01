@@ -390,7 +390,7 @@ export async function getCourseDetailByCode(code: string): Promise<CourseDetail 
 
 export async function getUpcomingExamsCourseGrid(): Promise<CourseGridItem[]> {
     "use cache";
-    cacheTag("courses", "notes", "past_papers");
+    cacheTag("courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     const targetCodes = [
