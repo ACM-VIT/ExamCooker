@@ -368,15 +368,6 @@ export default function CliAuthScreen() {
               signInHref={signInHref}
             />
           ) : null}
-
-          {state === "approved" ? (
-            <>
-              <StateIcon tone="ok" />
-              <Link href="/" className={GHOST_BTN}>
-                Back to ExamCooker
-              </Link>
-            </>
-          ) : null}
         </div>
       </div>
     </main>
