@@ -8,10 +8,8 @@ export default function PwaServiceWorker() {
       return;
     }
 
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
-        // PWA support should not block the app if registration is unavailable.
-      });
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // PWA support should not block the app if registration is unavailable.
     });
   }, []);
 
