@@ -67,6 +67,9 @@ export async function GET(
             { loc: `${baseUrl}/past_papers` },
             { loc: `${baseUrl}/resources` },
             { loc: `${baseUrl}/syllabus` },
+            { loc: `${baseUrl}/privacy` },
+            { loc: `${baseUrl}/terms` },
+            { loc: `${baseUrl}/delete` },
         ];
     } else if (collectionName === "notes") {
         const notes = await db

@@ -175,6 +175,14 @@ async function CourseExamContent({
                         paperCount={course.paperCount}
                         noteCount={course.noteCount}
                         syllabusId={syllabus?.id ?? null}
+                        breadcrumbItems={[
+                            { label: "Past papers", href: "/past_papers" },
+                            {
+                                label: course.code,
+                                href: getCoursePastPapersPath(course.code),
+                            },
+                            { label },
+                        ]}
                     />
 
                 <section className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]">

@@ -1,60 +1,120 @@
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
+import type { BreadcrumbNavItem } from "@/lib/breadcrumb-nav";
 
-type BreadcrumbItem = {
-    label: string;
-    href?: string;
-};
+const linkClass =
+    "shrink-0 text-sm font-medium text-black/55 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#D5D5D5]";
+const mutedClass = "text-sm font-medium text-black/55 dark:text-[#D5D5D5]/70";
+const currentClass = "text-sm font-semibold text-black dark:text-[#D5D5D5]";
+const compactLinkClass =
+    "shrink-0 text-xs font-semibold text-black/55 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#D5D5D5]";
+const compactMutedClass = "text-xs font-semibold text-black/45 dark:text-[#D5D5D5]/55";
+const compactCurrentClass = "text-xs font-semibold text-black/75 dark:text-[#D5D5D5]/85";
 
 type Props = {
-    items: BreadcrumbItem[];
+    items: BreadcrumbNavItem[];
     className?: string;
+    variant?: "fixed" | "inline";
 };
 
-export default function TopBreadcrumbBar({ items, className }: Props) {
+export function BreadcrumbOrderedList({
+    items,
+    leadingChevron = false,
+}: {
+    items: BreadcrumbNavItem[];
+    /** First link shows a back chevron (PDF / detail views) */
+    leadingChevron?: boolean;
+}) {
+    const compactItems =
+        leadingChevron ? items.slice(0, 1)
+        : items.length > 2 ? [items[0], items[items.length - 1]]
+        : items;
+
+    const renderItems = (sourceItems: BreadcrumbNavItem[], compact: boolean) =>
+        sourceItems.map((item, index) => {
+            const isLast = index === sourceItems.length - 1;
+            const showAsLink = Boolean(item.href);
+            const itemKey = item.href ?? `${item.label}-${isLast ? "current" : "crumb"}`;
+            const itemLinkClass = compact ? compactLinkClass : linkClass;
+            const itemMutedClass = compact ? compactMutedClass : mutedClass;
+            const itemCurrentClass = compact ? compactCurrentClass : currentClass;
+            const labelClass =
+                compact ?
+                    "min-w-0 max-w-[min(46vw,12rem)] truncate"
+                :   "min-w-0 truncate";
+
+            return (
+                <li key={itemKey} className="flex min-w-0 items-center gap-1.5">
+                    {showAsLink ? (
+                        <Link
+                            href={item.href!}
+                            transitionTypes={["nav-back"]}
+                            aria-label={
+                                leadingChevron && index === 0 ?
+                                    `Back to ${item.label}`
+                                :   undefined
+                            }
+                            className={`${itemLinkClass} inline-flex max-w-full min-w-0 items-center gap-1 ${
+                                leadingChevron && index === 0 ? "group" : ""
+                            }`}
+                        >
+                            {leadingChevron && index === 0 ?
+                                <ChevronLeft
+                                    className={`${compact ? "h-3.5 w-3.5" : "h-4 w-4"} shrink-0 transition-transform group-hover:-translate-x-0.5`}
+                                    strokeWidth={2.5}
+                                    aria-hidden
+                                />
+                            : null}
+                            {leadingChevron && index === 0 ?
+                                <>
+                                    <span className="hidden lg:inline">Back to </span>
+                                    <span className={labelClass}>{item.label}</span>
+                                </>
+                            :   <span className={labelClass}>{item.label}</span>}
+                        </Link>
+                    ) : (
+                        <span
+                            className={`${labelClass} ${
+                                isLast ? itemCurrentClass : itemMutedClass
+                            }`}
+                        >
+                            {item.label}
+                        </span>
+                    )}
+
+                    {!isLast && (
+                        <span
+                            aria-hidden="true"
+                            className={`${compact ? "text-xs" : "text-sm"} shrink-0 font-medium text-black/30 dark:text-[#D5D5D5]/35`}
+                        >
+                            ›
+                        </span>
+                    )}
+                </li>
+            );
+        });
+
     return (
-        <nav
-            aria-label="Breadcrumb"
-            className={`fixed left-16 right-3 top-3 z-[55] flex h-11 min-w-0 items-center rounded-xl border border-black/10 bg-white/90 px-3 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 lg:static lg:h-auto lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none lg:dark:bg-transparent ${className ?? ""}`}
-        >
-            <ol className="flex min-w-0 items-center gap-1.5 text-sm">
-                {items.map((item, index) => {
-                    const isLast = index === items.length - 1;
-                    const itemKey = item.href ?? `${item.label}-${isLast ? "current" : "crumb"}`;
-
-                    return (
-                        <li key={itemKey} className="flex min-w-0 items-center gap-1.5">
-                            {item.href && !isLast ? (
-                                <Link
-                                    href={item.href}
-                                    transitionTypes={["nav-back"]}
-                                    className="shrink-0 text-black/55 transition-colors hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
-                                >
-                                    {item.label}
-                                </Link>
-                            ) : (
-                                <span
-                                    className={`min-w-0 truncate ${
-                                        isLast
-                                            ? "font-semibold text-black dark:text-[#D5D5D5]"
-                                            : "text-black/55 dark:text-[#D5D5D5]/55"
-                                    }`}
-                                >
-                                    {item.label}
-                                </span>
-                            )}
-
-                            {!isLast && (
-                                <span
-                                    aria-hidden="true"
-                                    className="shrink-0 text-black/30 dark:text-[#D5D5D5]/30"
-                                >
-                                    ›
-                                </span>
-                            )}
-                        </li>
-                    );
-                })}
+        <>
+            <ol className="flex min-w-0 items-center gap-1 overflow-hidden sm:hidden">
+                {renderItems(compactItems, true)}
             </ol>
+            <ol className="hidden min-w-0 items-center gap-1.5 overflow-hidden sm:flex">
+                {renderItems(items, false)}
+            </ol>
+        </>
+    );
+}
+
+export default function TopBreadcrumbBar({ items, className, variant = "fixed" }: Props) {
+    const navClass =
+        variant === "fixed" ?
+            `fixed left-[max(0.75rem,env(safe-area-inset-left))] right-[calc(max(0.75rem,env(safe-area-inset-right))+3.25rem)] top-[env(safe-area-inset-top)] z-[59] flex h-11 min-w-0 items-center rounded-xl border border-black/10 bg-white/90 px-3 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 lg:static lg:h-auto lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none lg:dark:bg-transparent ${className ?? ""}`
+        : `flex min-w-0 items-center ${className ?? ""}`;
+
+    return (
+        <nav aria-label="Breadcrumb" className={navClass}>
+            <BreadcrumbOrderedList items={items} />
         </nav>
     );
 }

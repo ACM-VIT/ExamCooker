@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from "next/link";
 import Image from "@/app/components/common/app-image";
 import { faInstagram } from '@fortawesome/free-brands-svg-icons';
 import { faLinkedinIn } from '@fortawesome/free-brands-svg-icons';
@@ -42,7 +43,26 @@ function HomeFooter() {
                     className="rounded-full hidden sm:block"
                 />
             </div>
-            <ExamCookerLogo />
+            <div className="flex flex-col items-center gap-3">
+                <ExamCookerLogo />
+                <nav
+                    aria-label="Legal"
+                    className="flex items-center gap-4 text-sm font-semibold text-black/55 dark:text-[#D5D5D5]/55"
+                >
+                    <Link
+                        href="/privacy"
+                        className="transition hover:text-black dark:hover:text-[#3BF4C7]"
+                    >
+                        Privacy
+                    </Link>
+                    <Link
+                        href="/terms"
+                        className="transition hover:text-black dark:hover:text-[#3BF4C7]"
+                    >
+                        Terms
+                    </Link>
+                </nav>
+            </div>
             <div className="flex items-center gap-3 sm:gap-4">
                 <p className="text-lg sm:text-xl font-semibold text-black dark:text-[#D5D5D5]">Find us:</p>
                 <div className="flex items-center gap-2 sm:gap-3">

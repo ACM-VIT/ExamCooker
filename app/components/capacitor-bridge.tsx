@@ -56,7 +56,11 @@ export default function CapacitorBridge() {
             const route = info.tab.route ?? "/";
             const nextPath = route.startsWith("/") ? route : `/${route}`;
             if (nextPath !== window.location.pathname) {
-              window.location.assign(nextPath);
+              window.dispatchEvent(
+                new CustomEvent("examcooker:native-tab-route", {
+                  detail: { path: nextPath },
+                }),
+              );
             }
           });
           await NativeTabs.showTabBar().catch(() => undefined);

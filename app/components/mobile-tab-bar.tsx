@@ -24,6 +24,8 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
         return;
       }
 
+      setMode("hidden");
+
       const failOpen = () => {
         if (!cancelled) setMode("web");
       };

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import ModuleDropdown from "@/app/components/module-dropdown";
 import VinCoursePage from "@/app/components/resources/vin-course-page";
 import DirectionalTransition from "@/app/components/common/directional-transition";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import ViewTracker from "@/app/components/view-tracker";
 import StructuredData from "@/app/components/seo/structured-data";
 import { getCourseByCodeAny } from "@/lib/data/courses";
@@ -252,23 +253,13 @@ async function CourseResourcesContent({
                         />
 
                         <header className="mx-auto flex max-w-6xl flex-col gap-4">
-                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                                <Link
-                                    href="/resources"
-                                    transitionTypes={["nav-back"]}
-                                    className="hover:text-black dark:hover:text-[#D5D5D5]"
-                                >
-                                    Resources
-                                </Link>
-                                <span aria-hidden="true">›</span>
-                                <Link
-                                    href={getCoursePath(context.code)}
-                                    transitionTypes={["nav-back"]}
-                                    className="hover:text-black dark:hover:text-[#D5D5D5]"
-                                >
-                                    {context.code}
-                                </Link>
-                            </div>
+                            <PageBreadcrumbRow
+                                items={[
+                                    { href: "/resources", label: "Resources" },
+                                    { href: getCoursePath(context.code), label: context.code },
+                                    { label: `${context.code} resources` },
+                                ]}
+                            />
 
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                                 <div className="max-w-4xl">
