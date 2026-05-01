@@ -17,3 +17,18 @@ index 0444f0df7b14c166be15e614bfc6f86bce2f068f..cb7ea17d13017375331d5b8e303c5afa
      ],
      targets: [
          .target(
+diff --git a/ios/Sources/NativeTabsPlugin/TabViewController.swift b/ios/Sources/NativeTabsPlugin/TabViewController.swift
+index 518699fda3d8908ae70f20a3242384654e99a380..27fcf28d313111d2df8866895e9771d42cfc7e5e 100644
+--- a/ios/Sources/NativeTabsPlugin/TabViewController.swift
++++ b/ios/Sources/NativeTabsPlugin/TabViewController.swift
+@@ -212,8 +212,8 @@ final class NativeTabBarController: NSObject, UITabBarDelegate {
+ 
+         webView.scrollView.contentInset = content
+         webView.scrollView.verticalScrollIndicatorInsets = indicators
+-        webView.scrollView.isScrollEnabled = false
+-        webView.scrollView.bounces = false
++        webView.scrollView.isScrollEnabled = true
++        webView.scrollView.bounces = true
+     }
+ 
+     private func removeWebViewInsets() {

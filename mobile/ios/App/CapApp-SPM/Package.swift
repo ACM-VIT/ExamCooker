@@ -18,7 +18,7 @@ let package = Package(
         .package(name: "CapacitorShare", path: "../../../../node_modules/.pnpm/@capacitor+share@8.0.1_@capacitor+core@8.3.1/node_modules/@capacitor/share"),
         .package(name: "CapacitorSplashScreen", path: "../../../../node_modules/.pnpm/@capacitor+splash-screen@8.0.1_@capacitor+core@8.3.1/node_modules/@capacitor/splash-screen"),
         .package(name: "CapacitorStatusBar", path: "../../../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.3.1/node_modules/@capacitor/status-bar"),
-        .package(name: "CapacitorNativeTabs", path: "../../../../node_modules/.pnpm/capacitor-native-tabs@1.0.3_patch_hash=d2efac502c5e8ad2b44142a24585ff561ebf7a7aef40d73c_8dd27d971d59e5cb247db99f4955fb57/node_modules/capacitor-native-tabs")
+        .package(name: "CapacitorNativeTabs", path: "../../../../node_modules/.pnpm/capacitor-native-tabs@1.0.3_patch_hash=98e8da69d03d3b736aea6edf5373ca56beefb720e076f708_142b7d474f0c839a2abaeaab29433c3e/node_modules/capacitor-native-tabs")
     ],
     targets: [
         .target(
