@@ -10,6 +10,10 @@ import {
     captureCourseSearchSubmitted,
     type CourseSearchInteraction,
 } from "@/lib/posthog/client";
+import {
+    canUseNativeCourseSearch,
+    presentNativeCourseSearch,
+} from "@/lib/native-course-search";
 
 export type SearchableCourse = {
     id: string;
@@ -44,6 +48,7 @@ export default function PastPapersCourseSearch({
     const [query, setQuery] = useState(initialQueryRef.current);
     const [isOpen, setIsOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const [nativeSearchAvailable, setNativeSearchAvailable] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const deferredQuery = useDeferredValue(query);
@@ -91,6 +96,10 @@ export default function PastPapersCourseSearch({
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        setNativeSearchAvailable(canUseNativeCourseSearch());
     }, []);
 
     const navigate = (
@@ -172,24 +181,105 @@ export default function PastPapersCourseSearch({
         inputRef.current?.focus();
     };
 
+    const handleNativeSearch = async () => {
+        try {
+            const result = await presentNativeCourseSearch({
+                title: "Past Papers",
+                placeholder: "Search course or code",
+                initialQuery: query,
+                courses,
+            });
+
+            if (result.action === "cancel") return;
+
+            if (result.action === "select") {
+                const course = courses.find((item) => item.code === result.courseCode);
+                if (!course) return;
+                captureCourseSearchSelection({
+                    context: "past_papers",
+                    interaction: "mobile_tap",
+                    courseCode: course.code,
+                    resultCount: result.resultCount,
+                    resultIndex: result.resultIndex,
+                    paperCount: course.paperCount,
+                    noteCount: course.noteCount,
+                    hasSyllabus: false,
+                });
+                startTransition(() => {
+                    addTransitionType("nav-forward");
+                    router.push(`/past_papers/${encodeURIComponent(course.code)}`);
+                });
+                return;
+            }
+
+            const trimmed = result.query.trim();
+            if (!trimmed) return;
+            const exact = result.exactCourseCode
+                ? courses.find((course) => course.code === result.exactCourseCode)
+                : undefined;
+            captureCourseSearchSubmitted({
+                context: "past_papers",
+                query: trimmed,
+                resultCount: result.resultCount,
+                exactMatchFound: Boolean(exact),
+            });
+            if (exact) {
+                captureCourseSearchSelection({
+                    context: "past_papers",
+                    interaction: "submit_exact_match",
+                    courseCode: exact.code,
+                    resultCount: result.resultCount,
+                    paperCount: exact.paperCount,
+                    noteCount: exact.noteCount,
+                    hasSyllabus: false,
+                });
+                startTransition(() => {
+                    addTransitionType("nav-forward");
+                    router.push(`/past_papers/${encodeURIComponent(exact.code)}`);
+                });
+                return;
+            }
+            startTransition(() => {
+                router.push(`/past_papers?search=${encodeURIComponent(trimmed)}`);
+            });
+        } catch {
+            setNativeSearchAvailable(false);
+            inputRef.current?.focus();
+        }
+    };
+
     return (
         <div className="relative w-full text-left">
             <div className="relative flex h-12 w-full items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]">
                 <Image src={SearchIcon} alt="search" className="dark:invert-[.835]" />
-                <input
-                    ref={inputRef}
-                    type="text"
-                    className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 outline-none focus:outline-none focus-visible:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
-                    placeholder="Search course or code..."
-                    value={query}
-                    onChange={(e) => {
-                        setQuery(e.target.value);
-                        setIsOpen(e.target.value.trim().length > 0);
-                        setHighlightedIndex(-1);
-                    }}
-                    onFocus={() => query.trim() && setIsOpen(true)}
-                    onKeyDown={handleKeyDown}
-                />
+                {nativeSearchAvailable ? (
+                    <button
+                        type="button"
+                        onClick={handleNativeSearch}
+                        className={`h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-left text-sm outline-none focus:outline-none focus-visible:outline-none sm:text-base ${
+                            query
+                                ? "text-black dark:text-[#D5D5D5]"
+                                : "text-black/50 dark:text-[#D5D5D5]/60"
+                        }`}
+                    >
+                        {query || "Search course or code..."}
+                    </button>
+                ) : (
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 outline-none focus:outline-none focus-visible:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
+                        placeholder="Search course or code..."
+                        value={query}
+                        onChange={(e) => {
+                            setQuery(e.target.value);
+                            setIsOpen(e.target.value.trim().length > 0);
+                            setHighlightedIndex(-1);
+                        }}
+                        onFocus={() => query.trim() && setIsOpen(true)}
+                        onKeyDown={handleKeyDown}
+                    />
+                )}
                 {query && (
                     <button
                         onClick={clear}
@@ -212,7 +302,7 @@ export default function PastPapersCourseSearch({
                 )}
             </div>
 
-            {isOpen && filtered.length > 0 && (
+            {!nativeSearchAvailable && isOpen && filtered.length > 0 && (
                 <div
                     ref={dropdownRef}
                     className="absolute z-50 mt-2 max-h-80 w-full overflow-y-auto border border-black/15 bg-white shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]"
@@ -260,7 +350,7 @@ export default function PastPapersCourseSearch({
                 </div>
             )}
 
-            {isOpen && query.trim() && filtered.length === 0 && (
+            {!nativeSearchAvailable && isOpen && query.trim() && filtered.length === 0 && (
                 <div
                     ref={dropdownRef}
                     className="absolute z-50 mt-2 w-full border border-black/15 bg-white px-4 py-4 text-center text-sm text-black/60 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/60"

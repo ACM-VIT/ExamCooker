@@ -1,9 +1,9 @@
-import React from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileLines, faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import TopBreadcrumbBar from "@/app/components/common/top-breadcrumb-bar";
+import CourseBreadcrumbRail from "@/app/components/past_papers/course-breadcrumb-rail";
 import { getCourseNotesPath, getCourseSyllabusPath } from "@/lib/seo";
+import type { BreadcrumbNavItem } from "@/lib/breadcrumb-nav";
 
 type Props = {
     code: string;
@@ -11,6 +11,7 @@ type Props = {
     paperCount: number;
     noteCount: number;
     syllabusId: string | null;
+    breadcrumbItems?: BreadcrumbNavItem[];
 };
 
 export default function CourseHeader({
@@ -19,15 +20,17 @@ export default function CourseHeader({
     paperCount,
     noteCount,
     syllabusId,
+    breadcrumbItems,
 }: Props) {
+    const items: BreadcrumbNavItem[] =
+        breadcrumbItems ?? [
+            { label: "Past papers", href: "/past_papers" },
+            { label: code },
+        ];
+
     return (
         <header className="flex flex-col gap-4">
-            <TopBreadcrumbBar
-                items={[
-                    { label: "Past papers", href: "/past_papers" },
-                    { label: code },
-                ]}
-            />
+            <CourseBreadcrumbRail items={items} />
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0 sm:flex-1">
                     <h1 className="min-w-0 text-pretty text-[1.08rem] font-bold leading-[1.08] text-black dark:text-[#D5D5D5] min-[360px]:text-[1.18rem] min-[400px]:text-[1.28rem] sm:text-3xl lg:text-4xl">

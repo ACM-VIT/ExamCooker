@@ -9,6 +9,7 @@ import ExamCookerLogoIcon from "@/public/assets/logo-icon.svg";
 import { markRenderedRoutePath } from "@/app/components/voice/voice-navigation";
 import MobileTabBar from "@/app/components/mobile-tab-bar";
 import NativeIosTabSync from "@/app/components/native-ios-tab-sync";
+import { NavFromProvider } from "@/app/components/common/nav-from-provider";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 import { MoreHorizontal, X } from "lucide-react";
 
@@ -41,15 +42,17 @@ function MobileLogoLink() {
     const isHome = pathSegments.length === 0;
     const hasPastPapersBreadcrumbBar =
         pathSegments[0] === "past_papers" &&
-        pathSegments[1] !== undefined &&
-        pathSegments[1] !== "create" &&
-        (pathSegments.length === 2 ||
-            (pathSegments.length === 3 && pathSegments[2] !== "paper"));
+        pathSegments.length >= 2 &&
+        pathSegments[1] !== "create";
     const hasSyllabusBreadcrumbBar =
-        pathSegments[0] === "syllabus" &&
-        pathSegments[1] === "course" &&
-        pathSegments[2] !== undefined;
-    const hasBreadcrumbBar = hasPastPapersBreadcrumbBar || hasSyllabusBreadcrumbBar;
+        pathSegments[0] === "syllabus" && pathSegments.length >= 2;
+    const hasNoteOrPaperBar =
+        (pathSegments[0] === "notes" && pathSegments[1] !== undefined) ||
+        (pathSegments[0] === "resources" && pathSegments.length >= 2);
+    const hasBreadcrumbBar =
+        hasPastPapersBreadcrumbBar ||
+        hasSyllabusBreadcrumbBar ||
+        hasNoteOrPaperBar;
     const showMobileLogo = !hasBreadcrumbBar && !isHome;
 
     if (!showMobileLogo) return null;
@@ -173,28 +176,32 @@ function ClientShell({
     toggleNavbar: () => void;
 }) {
     return (
-        <div className="relative flex">
-            <MobileChromeHeader isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
-            <Suspense
-                fallback={
-                    <NavBarFallback
-                        isNavOn={isNavOn}
-                        toggleNavbar={toggleNavbar}
-                    />
-                }
-            >
-                <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
-            </Suspense>
-            <main className="ec-app-main min-w-0 flex-1 pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+3.25rem)] lg:pb-0 lg:pl-14 lg:pt-0">
-                {children}
-            </main>
-            <Suspense fallback={null}>
-                <MobileTabBar toolsSheetOpen={isNavOn} />
-            </Suspense>
-            <Suspense fallback={null}>
-                <NativeIosTabSync />
-            </Suspense>
-        </div>
+        <Suspense fallback={<div className="relative flex" />}>
+            <NavFromProvider>
+                <div className="relative flex">
+                    <MobileChromeHeader isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
+                    <Suspense
+                        fallback={
+                            <NavBarFallback
+                                isNavOn={isNavOn}
+                                toggleNavbar={toggleNavbar}
+                            />
+                        }
+                    >
+                        <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
+                    </Suspense>
+                    <main className="ec-app-main min-w-0 flex-1 pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+3.25rem)] lg:pb-0 lg:pl-14 lg:pt-0">
+                        {children}
+                    </main>
+                    <Suspense fallback={null}>
+                        <MobileTabBar toolsSheetOpen={isNavOn} />
+                    </Suspense>
+                    <Suspense fallback={null}>
+                        <NativeIosTabSync />
+                    </Suspense>
+                </div>
+            </NavFromProvider>
+        </Suspense>
     );
 }
 

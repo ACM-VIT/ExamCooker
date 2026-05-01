@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import DirectionalTransition from "@/app/components/common/directional-transition";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import CourseNotesGrid from "@/app/components/notes/course-notes-grid";
 import Pagination from "@/app/components/pagination";
 import StructuredData from "@/app/components/seo/structured-data";
@@ -224,23 +225,13 @@ async function CourseNotesContent({
 
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
                 <header className="flex flex-col gap-4">
-                    <div className="flex flex-wrap items-center gap-1.5 text-sm text-black/50 dark:text-[#D5D5D5]/50">
-                        <Link
-                            href="/notes"
-                            transitionTypes={["nav-back"]}
-                            className="hover:text-black dark:hover:text-[#D5D5D5]"
-                        >
-                            Notes
-                        </Link>
-                        <span aria-hidden="true">/</span>
-                        <Link
-                            href={getCoursePath(course.code)}
-                            transitionTypes={["nav-back"]}
-                            className="hover:text-black dark:hover:text-[#D5D5D5]"
-                        >
-                            {course.code}
-                        </Link>
-                    </div>
+                    <PageBreadcrumbRow
+                        items={[
+                            { href: "/notes", label: "Notes" },
+                            { href: getCoursePath(course.code), label: course.code },
+                            { label: `${course.code} notes` },
+                        ]}
+                    />
 
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                         <div className="max-w-4xl">

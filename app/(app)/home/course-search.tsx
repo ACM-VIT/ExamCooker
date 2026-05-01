@@ -11,6 +11,7 @@ import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     captureCourseSearchDestinationClicked,
     captureCourseSearchSelection,
+    captureCourseSearchSubmitted,
     type CourseSearchInteraction,
     type VoiceAgentEntryPoint,
 } from "@/lib/posthog/client";
@@ -21,6 +22,10 @@ import {
     getCoursePastPapersPath,
     getCourseSyllabusPath,
 } from "@/lib/seo";
+import {
+    canUseNativeCourseSearch,
+    presentNativeCourseSearch,
+} from "@/lib/native-course-search";
 
 export type CourseResult = {
     code: string;
@@ -48,6 +53,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedCourse, setSelectedCourse] = useState<CourseResult | null>(null);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const [nativeSearchAvailable, setNativeSearchAvailable] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const deferredQuery = useDeferredValue(query);
@@ -98,6 +104,10 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        setNativeSearchAvailable(canUseNativeCourseSearch());
     }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -194,21 +204,94 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
         );
     };
 
+    const handleNativeSearch = async () => {
+        try {
+            const result = await presentNativeCourseSearch({
+                title: "Search Courses",
+                placeholder: "Search course or code",
+                initialQuery: query,
+                courses,
+            });
+
+            if (result.action === "cancel") return;
+
+            if (result.action === "select") {
+                const course = courses.find((item) => item.code === result.courseCode);
+                if (!course) return;
+                captureCourseSearchSelection({
+                    context: "home",
+                    interaction: "mobile_tap",
+                    courseCode: course.code,
+                    resultCount: result.resultCount,
+                    resultIndex: result.resultIndex,
+                    paperCount: course.paperCount,
+                    noteCount: course.noteCount,
+                    hasSyllabus: Boolean(course.syllabusId),
+                });
+                router.push(getCoursePastPapersPath(course.code));
+                return;
+            }
+
+            const trimmed = result.query.trim();
+            if (!trimmed) return;
+            const exact = result.exactCourseCode
+                ? courses.find((course) => course.code === result.exactCourseCode)
+                : undefined;
+            captureCourseSearchSubmitted({
+                context: "home",
+                query: trimmed,
+                resultCount: result.resultCount,
+                exactMatchFound: Boolean(exact),
+            });
+            if (exact) {
+                captureCourseSearchSelection({
+                    context: "home",
+                    interaction: "submit_exact_match",
+                    courseCode: exact.code,
+                    resultCount: result.resultCount,
+                    paperCount: exact.paperCount,
+                    noteCount: exact.noteCount,
+                    hasSyllabus: Boolean(exact.syllabusId),
+                });
+                router.push(getCoursePastPapersPath(exact.code));
+                return;
+            }
+            router.push(`/past_papers?search=${encodeURIComponent(trimmed)}`);
+        } catch {
+            setNativeSearchAvailable(false);
+            inputRef.current?.focus();
+        }
+    };
+
     return (
         <div className="mx-auto w-full min-w-0 text-left">
             <div className="relative">
                 <div className="relative flex h-12 sm:h-14 lg:h-16 w-full min-w-0 items-center overflow-hidden bg-white pl-4 pr-2 dark:bg-[#3D414E] border border-black/25 dark:border-[#D5D5D5]/30">
                     <Image src={SearchIcon} alt="search" className="dark:invert-[.835] h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        className="h-full min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap bg-transparent px-3 text-sm text-black focus:outline-none placeholder:text-black/50 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60 sm:px-4 sm:text-base lg:text-lg"
-                        placeholder="Search for a course..."
-                        value={query}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                        onFocus={() => query.trim() && setIsOpen(true)}
-                    />
+                    {nativeSearchAvailable ? (
+                        <button
+                            type="button"
+                            onClick={handleNativeSearch}
+                            className={`h-full min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap bg-transparent px-3 text-left text-sm focus:outline-none sm:px-4 sm:text-base lg:text-lg ${
+                                query
+                                    ? "text-black dark:text-[#D5D5D5]"
+                                    : "text-black/50 dark:text-[#D5D5D5]/60"
+                            }`}
+                        >
+                            {query || "Search for a course..."}
+                        </button>
+                    ) : (
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            className="h-full min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap bg-transparent px-3 text-sm text-black focus:outline-none placeholder:text-black/50 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60 sm:px-4 sm:text-base lg:text-lg"
+                            placeholder="Search for a course..."
+                            value={query}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            onFocus={() => query.trim() && setIsOpen(true)}
+                        />
+                    )}
                     <button
                         onClick={clearSelection}
                         className={`inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] ${query ? "visible" : "invisible pointer-events-none w-0 overflow-hidden"
@@ -242,7 +325,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                     ) : null}
                 </div>
 
-                {isOpen && filteredCourses.length > 0 && (
+                {!nativeSearchAvailable && isOpen && filteredCourses.length > 0 && (
                     <div
                         ref={dropdownRef}
                         className="absolute z-50 w-full mt-2 bg-white dark:bg-[#0C1222] border border-black/15 dark:border-[#D5D5D5]/15 shadow-lg max-h-80 overflow-y-auto"
@@ -286,7 +369,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                     </div>
                 )}
 
-                {isOpen && query.trim() && filteredCourses.length === 0 && (
+                {!nativeSearchAvailable && isOpen && query.trim() && filteredCourses.length === 0 && (
                     <div
                         ref={dropdownRef}
                         className="absolute z-50 w-full mt-2 bg-white dark:bg-[#0C1222] border border-black/15 dark:border-[#D5D5D5]/15 shadow-lg px-4 py-6 text-center text-sm text-black/60 dark:text-[#D5D5D5]/60"

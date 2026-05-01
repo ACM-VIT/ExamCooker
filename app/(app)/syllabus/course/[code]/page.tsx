@@ -1,6 +1,5 @@
 import { Suspense } from "react";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import PDFViewerClient from "@/app/components/pdf-viewer-client";
@@ -148,14 +147,12 @@ async function CourseSyllabusContent({
                 />
 
                 <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
-                    <Link
-                        href="/syllabus"
-                        transitionTypes={["nav-back"]}
-                        className="group inline-flex w-fit items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-black/55 hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
-                    >
-                        <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} />
-                        <span>Back to syllabus</span>
-                    </Link>
+                    <PageBreadcrumbRow
+                        items={[
+                            { label: "Syllabus", href: "/syllabus" },
+                            { label: context.title },
+                        ]}
+                    />
 
                     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                         <div className="min-w-0 flex-1">
