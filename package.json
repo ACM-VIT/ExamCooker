@@ -7,6 +7,10 @@
     "dev": "node scripts/sync-vin-together.js && next dev",
     "build": "node scripts/sync-vin-together.js && next build",
     "start": "next start",
+    "cap:sync": "capacitor sync",
+    "cap:copy": "capacitor copy",
+    "cap:open:ios": "capacitor open ios",
+    "cap:open:android": "capacitor open android",
     "cli:build": "pnpm --filter examcooker build",
     "cli:dev": "pnpm --filter examcooker dev",
     "lint": "next lint",
@@ -30,6 +34,9 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
     "@azure/storage-blob": "^12.31.0",
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/core": "^8.3.1",
+    "@capacitor/ios": "^8.3.1",
     "@embedpdf/core": "^2.14.1",
     "@embedpdf/engines": "^2.14.1",
     "@embedpdf/pdfium": "^2.14.1",
@@ -75,6 +82,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.1",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "25.1.0",
     "@types/pg": "^8.20.0",

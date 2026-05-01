@@ -1,45 +1,54 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
     type Upsell,
-    type UpsellAccent,
     UPSELL_SHOW_DELAY_MS,
     markUpsellDismissed,
     pickNextUpsell,
 } from "@/lib/upsells";
 
 const ENTER_MS = 260;
+const UPSELL_AUTO_HIDE_MS = 10_000;
 
-const accentStyles: Record<
-    UpsellAccent,
-    { cta: string; ctaDark: string; eyebrow: string }
-> = {
-    mint: {
-        cta: "bg-[#3BF4C7] text-black hover:bg-[#3BF4C7]/85",
-        ctaDark: "dark:bg-[#3BF4C7] dark:text-[#0C1222] dark:hover:bg-[#3BF4C7]/85",
-        eyebrow: "text-[#1b8d6e] dark:text-[#3BF4C7]/80",
-    },
-    blue: {
-        cta: "bg-[#5FC4E7] text-black hover:bg-[#5FC4E7]/85",
-        ctaDark: "dark:bg-[#5FC4E7] dark:text-[#0C1222] dark:hover:bg-[#5FC4E7]/85",
-        eyebrow: "text-[#1b6f8f] dark:text-[#5FC4E7]/80",
-    },
-    peach: {
-        cta: "bg-[#FFB38A] text-black hover:bg-[#FFB38A]/85",
-        ctaDark: "dark:bg-[#FFB38A] dark:text-[#0C1222] dark:hover:bg-[#FFB38A]/85",
-        eyebrow: "text-[#a55d2d] dark:text-[#FFB38A]/80",
-    },
-};
+const ctaClassName =
+    "relative inline-flex h-11 w-full cursor-pointer items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-0.5 dark:group-hover:-translate-y-0.5";
 
 const UpsellToast = () => {
     const pathname = usePathname();
     const [upsell, setUpsell] = useState<Upsell | null>(null);
     const [mounted, setMounted] = useState(false);
     const [visible, setVisible] = useState(false);
+    const upsellRef = useRef<Upsell | null>(null);
+    const unmountAfterEnterRef = useRef<number | null>(null);
+
+    upsellRef.current = upsell;
 
     const isCliPage = pathname === "/cli";
+
+    const hideToast = useCallback(() => {
+        const current = upsellRef.current;
+        if (current) {
+            markUpsellDismissed(current.id);
+        }
+        setVisible(false);
+        if (unmountAfterEnterRef.current !== null) {
+            clearTimeout(unmountAfterEnterRef.current);
+        }
+        unmountAfterEnterRef.current = window.setTimeout(() => {
+            setMounted(false);
+            unmountAfterEnterRef.current = null;
+        }, ENTER_MS);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (unmountAfterEnterRef.current !== null) {
+                clearTimeout(unmountAfterEnterRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (isCliPage) return;
@@ -67,24 +76,26 @@ const UpsellToast = () => {
         setUpsell(null);
     }, [isCliPage]);
 
-    const accent = useMemo<UpsellAccent>(
-        () => upsell?.accent ?? "mint",
-        [upsell]
-    );
+    useEffect(() => {
+        if (!visible || !upsell) return;
+        const timer = window.setTimeout(hideToast, UPSELL_AUTO_HIDE_MS);
+        return () => window.clearTimeout(timer);
+    }, [visible, upsell?.id, hideToast]);
 
     if (isCliPage || !mounted || !upsell) return null;
 
-    const handleDismiss = () => {
-        markUpsellDismissed(upsell.id);
-        setVisible(false);
-        window.setTimeout(() => setMounted(false), ENTER_MS);
-    };
-
-    const handleCtaClick = () => {
+    const handleLinkCtaClick = () => {
         markUpsellDismissed(upsell.id);
     };
 
-    const styles = accentStyles[accent];
+    const handleCopyCta = async () => {
+        try {
+            await navigator.clipboard.writeText(upsell.cta.label);
+        } catch {
+            /* expected: permission / insecure context */
+        }
+        hideToast();
+    };
 
     return (
         <div
@@ -100,7 +111,7 @@ const UpsellToast = () => {
             >
                 <button
                     type="button"
-                    onClick={handleDismiss}
+                    onClick={hideToast}
                     aria-label="Dismiss"
                     className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center text-black/40 transition-colors hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/40 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                 >
@@ -118,9 +129,7 @@ const UpsellToast = () => {
                 </button>
                 <div className="px-4 pb-4 pt-4 sm:px-5 sm:pb-5 sm:pt-5">
                     {upsell.eyebrow && (
-                        <p
-                            className={`text-[11px] font-bold sm:text-xs ${styles.eyebrow}`}
-                        >
+                        <p className="text-[11px] font-bold text-[#1b6f8f] sm:text-xs dark:text-[#5FC4E7]/80">
                             {upsell.eyebrow}
                         </p>
                     )}
@@ -134,15 +143,30 @@ const UpsellToast = () => {
                         <div className="absolute inset-0 dark:bg-[#3BF4C7]" />
                         <div className="absolute inset-0 bg-[#3BF4C7] blur-[60px] opacity-0 transition duration-200 group-hover:opacity-20 dark:hidden" />
                         <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
-                        <a
-                            href={upsell.cta.href}
-                            target={upsell.cta.external ? "_blank" : undefined}
-                            rel={upsell.cta.external ? "noopener noreferrer" : undefined}
-                            onClick={handleCtaClick}
-                            className="relative inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-0.5 dark:group-hover:-translate-y-0.5"
-                        >
-                            {upsell.cta.label}
-                        </a>
+                        {upsell.cta.href ? (
+                            <a
+                                href={upsell.cta.href}
+                                target={upsell.cta.external ? "_blank" : undefined}
+                                rel={
+                                    upsell.cta.external
+                                        ? "noopener noreferrer"
+                                        : undefined
+                                }
+                                onClick={handleLinkCtaClick}
+                                className={ctaClassName}
+                            >
+                                {upsell.cta.label}
+                            </a>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleCopyCta}
+                                className={`${ctaClassName} font-mono`}
+                                aria-label={`Copy command: ${upsell.cta.label}`}
+                            >
+                                {upsell.cta.label}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
