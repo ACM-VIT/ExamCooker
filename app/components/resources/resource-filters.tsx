@@ -122,22 +122,13 @@ function ResourceFilters({
                 </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-                <button
-                    type="button"
-                    onClick={() => handleYearSelect("")}
-                    className={`inline-flex h-9 items-center border-2 px-3 text-sm font-semibold transition ${
-                        !initialYear ? activeYearClass : inactiveYearClass
-                    }`}
-                >
-                    All years
-                </button>
+            <div className="flex flex-nowrap items-center gap-1 overflow-x-auto sm:flex-wrap sm:gap-2">
                 {years.map((year) => (
                     <button
                         key={year}
                         type="button"
                         onClick={() => handleYearSelect(year)}
-                        className={`inline-flex h-9 items-center border-2 px-3 text-sm font-semibold transition ${
+                        className={`inline-flex h-8 shrink-0 items-center border-2 px-2 text-xs font-semibold transition min-[380px]:h-9 min-[380px]:px-3 min-[380px]:text-sm ${
                             initialYear === year ? activeYearClass : inactiveYearClass
                         }`}
                     >

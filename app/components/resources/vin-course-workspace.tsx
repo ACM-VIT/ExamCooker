@@ -13,7 +13,7 @@ import {
     X,
 } from "lucide-react";
 import AppImage from "@/app/components/common/app-image";
-import InlineYouTubePlayer from "@/app/components/resources/inline-you-tube-player";
+import InlineYouTubePlayer from "@/app/components/resources/inline-youtube-player";
 import { cn } from "@/lib/utils";
 import type {
     VinCourse,
@@ -459,15 +459,20 @@ export default function VinCourseWorkspace({
                         onClick={() => setDrawerOpen(false)}
                         aria-hidden="true"
                     />
-                    <div className="absolute inset-y-0 left-0 flex w-[88%] max-w-sm flex-col border-r border-black/10 bg-white dark:border-[#ffffff]/10 dark:bg-[#0C1222]">
-                        <button
-                            type="button"
-                            onClick={() => setDrawerOpen(false)}
-                            aria-label="Close topics"
-                            className="absolute right-2 top-2 z-10 inline-flex h-8 w-8 items-center justify-center text-black/60 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:text-[#D5D5D5]"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
+                    <div className="absolute left-3 right-3 top-[calc(env(safe-area-inset-top)_+_4.25rem)] bottom-[calc(5.75rem_+_env(safe-area-inset-bottom))] flex flex-col overflow-hidden border border-black/10 bg-white shadow-2xl dark:border-[#ffffff]/10 dark:bg-[#0C1222]">
+                        <div className="flex h-11 shrink-0 items-center justify-between border-b border-black/10 px-3 dark:border-[#D5D5D5]/10">
+                            <span className="truncate text-sm font-bold text-black dark:text-[#D5D5D5]">
+                                Topics
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setDrawerOpen(false)}
+                                aria-label="Close topics"
+                                className="inline-flex h-8 w-8 items-center justify-center text-black/60 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:text-[#D5D5D5]"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
                         <div className="flex-1 overflow-hidden">
                             <SidebarBody
                                 filteredModules={filteredModules}

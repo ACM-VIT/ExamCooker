@@ -5,6 +5,10 @@ import {
     ensurePdfFileName,
     ensureZipFileName,
 } from "@/lib/downloads/resource-names";
+import {
+    canUseNativeFileDownload,
+    shareBlobWithNativeDownloads,
+} from "@/lib/native-downloads";
 
 export type DownloadablePdf = {
     fileUrl: string;
@@ -155,7 +159,12 @@ async function fetchPdfBlob(fileUrl: string) {
     return response.blob();
 }
 
-function saveBlob(blob: Blob, fileName: string) {
+async function saveBlob(blob: Blob, fileName: string) {
+    if (canUseNativeFileDownload()) {
+        await shareBlobWithNativeDownloads(blob, fileName);
+        return;
+    }
+
     const objectUrl = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
 
@@ -220,7 +229,7 @@ async function createZipBlob(entries: ZipEntry[]) {
 export async function downloadPdfFile({ fileUrl, fileName }: DownloadablePdf) {
     try {
         const blob = await fetchPdfBlob(fileUrl);
-        saveBlob(blob, ensurePdfFileName(fileName));
+        await saveBlob(blob, ensurePdfFileName(fileName));
     } catch {
         const fallbackLink = document.createElement("a");
         fallbackLink.href = fileUrl;
@@ -247,5 +256,5 @@ export async function downloadPdfZip(input: {
     );
 
     const zipBlob = await createZipBlob(entries);
-    saveBlob(zipBlob, ensureZipFileName(input.zipFileName));
+    await saveBlob(zipBlob, ensureZipFileName(input.zipFileName));
 }

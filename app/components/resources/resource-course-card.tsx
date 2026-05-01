@@ -7,7 +7,7 @@ import type { VinCourse } from "@/lib/data/vin-together";
 type ResourceCourseCardProps = {
     course: Pick<
         VinCourse,
-        "id" | "slug" | "displayName" | "shortName" | "year" | "image" | "counts"
+        "id" | "slug" | "displayName" | "year" | "image" | "counts"
     >;
 };
 
@@ -29,11 +29,6 @@ function ResourceCourseCard({ course }: ResourceCourseCardProps) {
                     <span className="inline-flex items-center bg-black/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-black/60 dark:bg-[#D5D5D5]/10 dark:text-[#D5D5D5]/60">
                         {course.year}
                     </span>
-                    {course.shortName && (
-                        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-black/55 dark:text-[#D5D5D5]/55">
-                            {course.shortName}
-                        </span>
-                    )}
                 </div>
 
                 <h3 className="line-clamp-3 text-base font-bold leading-snug text-black dark:text-[#D5D5D5]">

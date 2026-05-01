@@ -211,7 +211,7 @@ async function PaperViewerContent({
         <>
             <ViewTracker id={paper.id} type="pastpaper" title={displayTitle} />
 
-                <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 pb-10 pt-0 sm:gap-5 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
+                <div className="mx-auto -mt-8 flex w-full max-w-5xl flex-col gap-3 px-4 pb-10 pt-0 sm:mt-0 sm:gap-5 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
                     <PageBreadcrumbRow
                         items={[{ href: courseHref, label: backLabel }]}
                     />

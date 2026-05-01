@@ -101,7 +101,7 @@ const UpsellToast = () => {
         <div
             role="status"
             aria-live="polite"
-            className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-3 sm:inset-x-auto sm:right-4 sm:justify-end sm:pb-4 sm:pr-0"
+            className="pointer-events-none fixed inset-x-0 bottom-[calc(4.75rem_+_env(safe-area-inset-bottom))] z-50 flex justify-center px-3 pb-3 sm:inset-x-auto sm:bottom-0 sm:right-4 sm:justify-end sm:pb-4 sm:pr-0"
         >
             <div
                 className={`pointer-events-auto relative w-full max-w-[22rem] border-2 border-[#5FC4E7] bg-white text-black shadow-[4px_4px_0_0_rgba(0,0,0,0.15)] transition-all ease-out dark:border-[#ffffff]/20 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[4px_4px_0_0_rgba(255,255,255,0.05)] sm:max-w-sm ${
