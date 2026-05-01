@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { asc, count, ilike, or } from "drizzle-orm";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { db, syllabi } from "@/db";
 
 function buildSearchTerms(search: string) {

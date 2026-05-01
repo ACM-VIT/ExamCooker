@@ -1,17 +1,16 @@
 import { Suspense } from "react";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import PDFViewerClient from "@/app/components/PDFViewerClient";
-import ViewTracker from "@/app/components/ViewTracker";
-import StructuredData from "@/app/components/seo/StructuredData";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import PDFViewerClient from "@/app/components/pdf-viewer-client";
+import ViewTracker from "@/app/components/view-tracker";
+import StructuredData from "@/app/components/seo/structured-data";
+import DirectionalTransition from "@/app/components/common/directional-transition";
 import { getCourseByCodeAny } from "@/lib/data/courses";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
 import { getSyllabusDetailByCourseCode } from "@/lib/data/syllabus";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     absoluteUrl,
     buildCourseKeywordSet,
@@ -19,12 +18,12 @@ import {
     getCoursePath,
     getCourseSyllabusPath,
 } from "@/lib/seo";
-import { buildSyllabusPdfFileName } from "@/lib/downloads/resourceNames";
+import { buildSyllabusPdfFileName } from "@/lib/downloads/resource-names";
 import {
     buildBreadcrumbList,
     buildCourseStructuredData,
     buildFaqPage,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 async function loadCourseSyllabusContext(rawCode: string) {
     const normalized = normalizeCourseCode(rawCode);
@@ -60,7 +59,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { code } = await params;
     const context = await loadCourseSyllabusContext(code);
-    if (!context) return {};
+    if (!context) return { robots: { index: false, follow: true } };
 
     const title = `${context.code} syllabus | ${context.title}`;
     const description = `View the ${context.code} syllabus PDF for ${context.title} on ExamCooker.`;
@@ -147,17 +146,15 @@ async function CourseSyllabusContent({
                     title={`${context.title} syllabus`}
                 />
 
-                <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
-                    <Link
-                        href="/syllabus"
-                        transitionTypes={["nav-back"]}
-                        className="group inline-flex w-fit items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-black/55 hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
-                    >
-                        <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} />
-                        <span>Back to syllabus</span>
-                    </Link>
+                <div className="mx-auto -mt-8 flex w-full max-w-5xl flex-col gap-3 px-4 pb-10 pt-0 sm:mt-0 sm:gap-5 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
+                    <PageBreadcrumbRow
+                        items={[
+                            { label: "Syllabus", href: "/syllabus" },
+                            { label: context.title },
+                        ]}
+                    />
 
-                    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                    <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                         <div className="min-w-0 flex-1">
                             <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
                                 {context.title}

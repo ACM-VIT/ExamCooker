@@ -1,8 +1,8 @@
 import { getCourseByCodeAny } from "@/lib/data/courses";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
 import { getSyllabusDetailByCourseCode } from "@/lib/data/syllabus";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import { formatCountChip, OG_ALT, OG_CONTENT_TYPE, OG_IMAGE_SIZE, renderExamCookerOgImage } from "@/lib/og";
 import { formatSyllabusDisplayName } from "@/lib/seo";
 

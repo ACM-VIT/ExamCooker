@@ -1,4 +1,4 @@
-import { getNoteDetail } from "@/lib/data/noteDetail";
+import { getNoteDetail } from "@/lib/data/note-detail";
 import {
     OG_ALT,
     OG_CONTENT_TYPE,

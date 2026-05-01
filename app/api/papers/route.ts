@@ -1,9 +1,9 @@
 import { unstable_rethrow } from 'next/navigation'
 import { NextRequest, NextResponse } from 'next/server'
 import { and, count, desc, eq, exists, ilike, inArray, or } from 'drizzle-orm'
-import { normalizeGcsUrl } from '@/lib/normalizeGcsUrl'
+import { normalizeGcsUrl } from '@/lib/normalize-gcs-url'
 import { getPastPaperDetailPath } from '@/lib/seo'
-import { examTypeLabel } from '@/lib/examSlug'
+import { examTypeLabel } from '@/lib/exam-slug'
 import { course, db, pastPaper, pastPaperToTag, tag } from '@/db'
 
 const DEFAULT_LIMIT = 40

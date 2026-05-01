@@ -1,18 +1,17 @@
 import React, { Suspense } from 'react';
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
-import PDFViewerClient from '@/app/components/PDFViewerClient';
+import PDFViewerClient from '@/app/components/pdf-viewer-client';
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import {notFound} from "next/navigation";
 import {Metadata} from "next";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import StructuredData from "@/app/components/seo/StructuredData";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import StructuredData from "@/app/components/seo/structured-data";
 
-import ShareLink from '@/app/components/ShareLink';
-import ViewTracker from "@/app/components/ViewTracker";
-import ItemActions from "@/app/components/ItemActions";
-import { getNoteDetail } from "@/lib/data/noteDetail";
+import ShareLink from '@/app/components/share-link';
+import ViewTracker from "@/app/components/view-tracker";
+import ItemActions from "@/app/components/item-actions";
+import { getNoteDetail } from "@/lib/data/note-detail";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getCourseNotesPath } from "@/lib/seo";
-import { buildNotePdfFileName } from "@/lib/downloads/resourceNames";
+import { buildNotePdfFileName } from "@/lib/downloads/resource-names";
 import { stripPdfExtension } from "@/lib/pdf";
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
@@ -136,17 +135,12 @@ async function NoteViewerContent({
                 title={title}
             />
 
-                <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
-                    <Link
-                        href={backHref}
-                        transitionTypes={["nav-back"]}
-                        className="group inline-flex w-fit items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-black/55 hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
-                    >
-                        <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} />
-                        <span>Back to {backLabel}</span>
-                    </Link>
+                <div className="mx-auto -mt-8 flex w-full max-w-5xl flex-col gap-3 px-4 pb-10 pt-0 sm:mt-0 sm:gap-5 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
+                    <PageBreadcrumbRow
+                        items={[{ href: backHref, label: backLabel }]}
+                    />
 
-                    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                    <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                         <div className="min-w-0 flex-1">
                             <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
                                 {title}
@@ -179,7 +173,11 @@ async function NoteViewerContent({
                                 authorId={note.author?.id}
                                 activeTab="notes"
                             />
-                            <ShareLink fileType="these Notes" />
+                            <ShareLink
+                                fileType="these Notes"
+                                resourceTitle={title}
+                                resourceKind="notes"
+                            />
                         </div>
                     </header>
 

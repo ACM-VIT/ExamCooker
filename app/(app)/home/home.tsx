@@ -1,15 +1,15 @@
 import React, { Suspense } from "react";
 import { auth } from "@/app/auth";
 import { GradientText } from "@/app/components/landing_page/landing";
-import ExamCookerLogo from "@/app/components/common/ExamCookerLogo";
-import ExamsMarquee from "./ExamsMarquee";
-import { getSearchableCourses } from "@/lib/data/courseCatalog";
-import { getUpcomingExams } from "@/lib/data/upcomingExams";
-import CourseSearch from "./CourseSearch";
-import HomeMarketingSections from "./HomeMarketingSections";
-import WelcomeBackSubtitle from "./WelcomeBackSubtitle";
-import HeroFrame from "./HeroFrame";
-import { getDisplayUserName } from "./displayName";
+import ExamCookerLogo from "@/app/components/common/exam-cooker-logo";
+import ExamsMarquee from "./exams-marquee";
+import { getSearchableCourses } from "@/lib/data/course-catalog";
+import { getUpcomingExams } from "@/lib/data/upcoming-exams";
+import CourseSearch from "./course-search";
+import HomeMarketingSections from "./home-marketing-sections";
+import WelcomeBackSubtitle from "./welcome-back-subtitle";
+import HeroFrame from "./hero-frame";
+import { getDisplayUserName } from "./display-name";
 
 const HOME_SUBTITLE = "Your one-stop solution to cram before exams.";
 

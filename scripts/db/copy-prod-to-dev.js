@@ -4,7 +4,7 @@ const { createScriptDb, queryRows } = require('../lib/db.ts');
 const {
   ensureTagNames,
   loadTagIdMapByName,
-} = require('../lib/pastPapers.ts');
+} = require('../lib/past-papers.ts');
 const { loadScriptEnv } = require('../lib/env.ts');
 
 loadScriptEnv();

@@ -2,14 +2,15 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import PastPaperCard from "@/app/components/PastPaperCard";
-import StructuredData from "@/app/components/seo/StructuredData";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import PastPaperCard from "@/app/components/past-paper-card";
+import StructuredData from "@/app/components/seo/structured-data";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import {
     getExamHubPageData,
     getExamHubSummaries,
-} from "@/lib/data/courseExams";
-import { examSlugToType } from "@/lib/examSlug";
+} from "@/lib/data/course-exams";
+import { examSlugToType } from "@/lib/exam-slug";
 import {
     buildExamHubKeywordSet,
     getCourseExamPath,
@@ -22,7 +23,7 @@ import {
     buildCollectionPage,
     buildFaqPage,
     buildItemList,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 export async function generateMetadata({
     params,
@@ -31,10 +32,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { exam } = await params;
     const examType = examSlugToType(exam);
-    if (!examType) return {};
+    if (!examType) return { robots: { index: false, follow: true } };
 
     const data = await getExamHubPageData(examType);
-    if (!data) return {};
+    if (!data) return { robots: { index: false, follow: true } };
 
     const title = `${data.label} past papers | VIT previous year question papers`;
     const description = `Browse ${data.totalPapers} ${data.label} past papers across ${data.courseCount} VIT courses on ExamCooker.`;
@@ -151,20 +152,15 @@ async function ExamHubContent({
                         buildFaqPage(faq),
                     ]}
                 />
-
+                
                 <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
                     <header className="flex flex-col gap-4">
-                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                            <Link
-                                href="/past_papers"
-                                transitionTypes={["nav-back"]}
-                                className="hover:text-black dark:hover:text-[#D5D5D5]"
-                            >
-                                Past papers
-                            </Link>
-                            <span aria-hidden="true">›</span>
-                            <span>{data.label}</span>
-                        </div>
+                        <PageBreadcrumbRow
+                            items={[
+                                { href: "/past_papers", label: "Past papers" },
+                                { label: data.label },
+                            ]}
+                        />
 
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                         <div className="max-w-4xl">

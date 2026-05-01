@@ -2,17 +2,18 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ModuleDropdown from "@/app/components/ModuleDropdown";
-import VinCoursePage from "@/app/components/resources/VinCoursePage";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import ViewTracker from "@/app/components/ViewTracker";
-import StructuredData from "@/app/components/seo/StructuredData";
+import ModuleDropdown from "@/app/components/module-dropdown";
+import VinCoursePage from "@/app/components/resources/vin-course-page";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
+import ViewTracker from "@/app/components/view-tracker";
+import StructuredData from "@/app/components/seo/structured-data";
 import { getCourseByCodeAny } from "@/lib/data/courses";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
-import { findVinCourseByNames, type VinCourse } from "@/lib/data/vinTogether";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
+import { findVinCourseByNames, type VinCourse } from "@/lib/data/vin-together";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     buildCourseKeywordSet,
     getCourseNotesPath,
@@ -27,7 +28,7 @@ import {
     buildCollectionPage,
     buildCourseStructuredData,
     buildFaqPage,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 type CourseResourceContext = {
     code: string;
@@ -106,7 +107,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { code } = await params;
     const context = await loadCourseResourceContext(code);
-    if (!context) return {};
+    if (!context) return { robots: { index: false, follow: true } };
 
     const title = `${context.code} resources | ${context.title}`;
     const description = buildDescription(context);
@@ -252,23 +253,13 @@ async function CourseResourcesContent({
                         />
 
                         <header className="mx-auto flex max-w-6xl flex-col gap-4">
-                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                                <Link
-                                    href="/resources"
-                                    transitionTypes={["nav-back"]}
-                                    className="hover:text-black dark:hover:text-[#D5D5D5]"
-                                >
-                                    Resources
-                                </Link>
-                                <span aria-hidden="true">›</span>
-                                <Link
-                                    href={getCoursePath(context.code)}
-                                    transitionTypes={["nav-back"]}
-                                    className="hover:text-black dark:hover:text-[#D5D5D5]"
-                                >
-                                    {context.code}
-                                </Link>
-                            </div>
+                            <PageBreadcrumbRow
+                                items={[
+                                    { href: "/resources", label: "Resources" },
+                                    { href: getCoursePath(context.code), label: context.code },
+                                    { label: `${context.code} resources` },
+                                ]}
+                            />
 
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                                 <div className="max-w-4xl">

@@ -1,11 +1,10 @@
 import React, { Suspense } from 'react';
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
-import PDFViewerClient from '@/app/components/PDFViewerClient';
+import PDFViewerClient from '@/app/components/pdf-viewer-client';
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import { notFound, permanentRedirect } from "next/navigation";
-import ViewTracker from "@/app/components/ViewTracker";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import { getSyllabusDetail } from "@/lib/data/syllabusDetail";
+import ViewTracker from "@/app/components/view-tracker";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import { getSyllabusDetail } from "@/lib/data/syllabus-detail";
 import type { Metadata } from "next";
 import {
     buildKeywords,
@@ -14,7 +13,7 @@ import {
     getCourseSyllabusPath,
     parseSyllabusName,
 } from "@/lib/seo";
-import { buildSyllabusPdfFileName } from "@/lib/downloads/resourceNames";
+import { buildSyllabusPdfFileName } from "@/lib/downloads/resource-names";
 
 export async function generateMetadata({
     params,
@@ -23,7 +22,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { id } = await params;
     const syllabus = await getSyllabusDetail(id);
-    if (!syllabus) return {};
+    if (!syllabus) return { robots: { index: false, follow: true } };
     const parsed = parseSyllabusName(syllabus.name);
     const title = parsed.displayName;
     const description = `View ${title} syllabus on ExamCooker.`;
@@ -45,6 +44,7 @@ export async function generateMetadata({
             description,
             url: canonical,
         },
+        robots: { index: true, follow: true },
     };
 }
 
@@ -111,17 +111,12 @@ async function SyllabusViewerContent({
                 title={title}
             />
 
-                <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
-                    <Link
-                        href={backHref}
-                        transitionTypes={["nav-back"]}
-                        className="group inline-flex w-fit items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-black/55 hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
-                    >
-                        <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} />
-                        <span>Back to {backLabel}</span>
-                    </Link>
+                <div className="mx-auto -mt-8 flex w-full max-w-5xl flex-col gap-3 px-4 pb-10 pt-0 sm:mt-0 sm:gap-5 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
+                    <PageBreadcrumbRow
+                        items={[{ href: backHref, label: backLabel }]}
+                    />
 
-                    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                    <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                         <div className="min-w-0 flex-1">
                             <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
                                 {title}

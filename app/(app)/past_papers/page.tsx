@@ -1,15 +1,15 @@
 import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import UploadButtonPaper from "@/app/components/uploadButtonPaper";
-import StructuredData from "@/app/components/seo/StructuredData";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import UploadButtonPaper from "@/app/components/upload-button-paper";
+import StructuredData from "@/app/components/seo/structured-data";
+import DirectionalTransition from "@/app/components/common/directional-transition";
 import { GradientText } from "@/app/components/landing_page/landing";
-import SmartCourseGrid from "@/app/components/past_papers/SmartCourseGrid";
-import CoursePagination from "@/app/components/past_papers/CoursePagination";
-import RecentPaperStrip from "@/app/components/past_papers/RecentPaperStrip";
-import PastPapersCourseSearch from "@/app/components/past_papers/PastPapersCourseSearch";
-import UpcomingExamsStrip from "@/app/components/past_papers/UpcomingExamsStrip";
+import SmartCourseGrid from "@/app/components/past_papers/smart-course-grid";
+import CoursePagination from "@/app/components/past_papers/course-pagination";
+import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
+import PastPapersCourseSearch from "@/app/components/past_papers/past-papers-course-search";
+import UpcomingExamsStrip from "@/app/components/past_papers/upcoming-exams-strip";
 import {
     getCatalogStats,
     getCourseSearchRecords,
@@ -19,8 +19,8 @@ import {
     getUpcomingExamsCourseGrid,
     searchCourseGrid,
     type CourseGridItem,
-} from "@/lib/data/courseCatalog";
-import { getUpcomingExams } from "@/lib/data/upcomingExams";
+} from "@/lib/data/course-catalog";
+import { getUpcomingExams } from "@/lib/data/upcoming-exams";
 import {
     buildKeywords,
     DEFAULT_KEYWORDS,
@@ -28,7 +28,7 @@ import {
 import {
     buildCollectionPage,
     buildFaqPage,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 const PAGE_SIZE = 24;
 const POPULAR_LIMIT = 12;

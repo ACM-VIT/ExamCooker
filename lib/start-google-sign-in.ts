@@ -1,6 +1,9 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { captureSignInStarted } from "@/lib/posthog/client";
+
+type AuthProvider = "apple" | "google";
 
 function getDefaultCallbackUrl() {
     if (typeof window === "undefined") {
@@ -10,11 +13,39 @@ function getDefaultCallbackUrl() {
     return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
-export function startGoogleSignIn(callbackUrl?: string) {
+function startProviderSignIn(
+    provider: AuthProvider,
+    callbackUrl?: string,
+    options?: {
+        source?: string;
+    },
+) {
     const redirectTarget =
         typeof callbackUrl === "string" && callbackUrl.trim().length > 0
             ? callbackUrl
             : getDefaultCallbackUrl();
 
-    void signIn("google", { callbackUrl: redirectTarget });
+    captureSignInStarted({
+        source: options?.source ?? "unknown",
+        callbackPath: redirectTarget,
+    });
+    void signIn(provider, { callbackUrl: redirectTarget });
+}
+
+export function startGoogleSignIn(
+    callbackUrl?: string,
+    options?: {
+        source?: string;
+    },
+) {
+    startProviderSignIn("google", callbackUrl, options);
+}
+
+export function startAppleSignIn(
+    callbackUrl?: string,
+    options?: {
+        source?: string;
+    },
+) {
+    startProviderSignIn("apple", callbackUrl, options);
 }

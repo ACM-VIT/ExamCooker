@@ -1,12 +1,12 @@
 import React from "react";
-import Image from "@/app/components/common/AppImage";
-import PastPaper from "@/public/LandingPage/LandingPagePastPapers.svg";
-import Forum from "@/public/LandingPage/LandingPageForum.svg";
-import Notes from "@/public/LandingPage/LandingPageNotes.svg";
-import Resources from "@/public/LandingPage/LandingPageResourceRepo.svg";
-import ArrowRight from "@/public/LandingPage/ArrowRight.svg";
-import GradientHeart from "@/public/LandingPage/GradientHeart.svg";
-import GradientACMLogo from "@/public/assets/ACM logo.svg";
+import Image from "@/app/components/common/app-image";
+import PastPaper from "@/public/LandingPage/landing-page-past-papers.svg";
+import Forum from "@/public/LandingPage/landing-page-forum.svg";
+import Notes from "@/public/LandingPage/landing-page-notes.svg";
+import Resources from "@/public/LandingPage/landing-page-resource-repo.svg";
+import ArrowRight from "@/public/LandingPage/arrow-right.svg";
+import GradientHeart from "@/public/LandingPage/gradient-heart.svg";
+import GradientACMLogo from "@/public/assets/acm-logo.svg";
 import { SignIn } from "../sign-in";
 import Link from "next/link";
 import BookAndBoy from "@/public/assets/bookandboy.svg";
@@ -21,9 +21,9 @@ export function GradientText({ children }: { children: React.ReactNode }) {
 
 export function WordBetweenLine({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex items-center justify-between">
+    <div className="relative flex items-center justify-between gap-3 md:gap-6">
       <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-      <span className="text-center text-3xl md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl [@media(max-height:720px)]:lg:text-4xl [@media(max-height:560px)]:lg:text-3xl font-extrabold flex-shrink text-black dark:text-[#D5D5D5]">
+      <span className="text-center text-3xl md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl [@media(max-height:720px)]:lg:text-4xl [@media(max-height:560px)]:lg:text-3xl font-extrabold flex-shrink min-w-0 text-black dark:text-[#D5D5D5]">
         {children}
       </span>
       <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
@@ -51,21 +51,23 @@ export function LandingPageCard({
       <div className="hidden lg:block absolute right-0 bottom-0 w-[150px] h-[150px] rounded-full transition duration-1000 group-hover:duration-200 md:bg-none md:group-hover:bg-[#82BEE9]"></div>
       <div className="block lg:hidden absolute right-0 bottom-0 w-[100px] h-[100px] rounded-full bg-[#82BEE9]"></div>
 
-      <div className="relative flex flex-col justify-between w-full h-full bg-[#5FC4E7]/20 dark:bg-[#7D7467]/20 backdrop-blur-[100px] border-[#5FC4E7]/20 dark:border-[#7D7467]/20 border p-2 md:p-4">
-        <div className="flex items-center w-full h-[110px] md:h-[160px] lg:h-[200px] xl:h-[220px] [@media(max-height:720px)]:lg:h-[140px] [@media(max-height:560px)]:lg:h-[110px] justify-between gap-4">
+      <div className="relative flex h-full w-full flex-col justify-between border border-[#5FC4E7]/20 bg-[#5FC4E7]/20 p-4 backdrop-blur-[100px] dark:border-[#7D7467]/20 dark:bg-[#7D7467]/20 md:p-5">
+        <div className="flex min-h-[260px] w-full flex-col items-center justify-center gap-5 text-center sm:min-h-[220px] sm:flex-row sm:items-center sm:justify-between sm:text-left lg:h-[200px] lg:min-h-0 xl:h-[220px] [@media(max-height:720px)]:lg:h-[140px] [@media(max-height:560px)]:lg:h-[110px]">
           <Image
             src={imagePath}
             alt={altOfImage}
-            className="h-[78%] shrink-0 dark:invert-[.835] dark:hue-rotate-180"
+            className="h-24 w-auto shrink-0 dark:invert-[.835] dark:hue-rotate-180 sm:h-28 md:h-32 lg:h-[78%]"
           />
-          <div className="flex-col gap-3 min-w-0">
-            <span className="text-lg md:text-2xl lg:text-2xl xl:text-3xl font-extrabold">{title}</span>
-            <br />
-            <span className="text-xs md:text-sm lg:text-sm xl:text-base">{content}</span>
+          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:max-w-[18rem] md:max-w-none">
+            <span className="text-lg font-extrabold leading-tight md:text-2xl lg:text-2xl xl:text-3xl">
+              {title}
+            </span>
+            <span className="text-sm leading-relaxed md:text-sm xl:text-base">
+              {content}
+            </span>
           </div>
         </div>
-        <div className="flex justify-between">
-          <div />
+        <div className="flex justify-end pt-4">
           <Image
             src={ArrowRight}
             alt="ArrowRight"

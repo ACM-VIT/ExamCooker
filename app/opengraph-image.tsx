@@ -5,7 +5,7 @@ import {
     OG_IMAGE_SIZE,
     renderExamCookerOgImage,
 } from "@/lib/og";
-import { getCatalogStats } from "@/lib/data/courseCatalog";
+import { getCatalogStats } from "@/lib/data/course-catalog";
 
 export const runtime = "nodejs";
 export const alt = OG_ALT;

@@ -1,5 +1,11 @@
 import React from "react";
+import type { Metadata } from "next";
 import "@/app/globals.css";
+
+export const metadata: Metadata = {
+    title: "Access blocked",
+    robots: { index: false, follow: false },
+};
 
 export default function page() {
     return (

@@ -15,11 +15,11 @@ import {
 import {
     getCourseGrid,
     getCourseSearchRecords,
-} from "@/lib/data/courseCatalog";
+} from "@/lib/data/course-catalog";
 import {
     getCourseExamCombos,
     getExamHubSummaries,
-} from "@/lib/data/courseExams";
+} from "@/lib/data/course-exams";
 import { course, db, note, pastPaper, subject, syllabi } from "@/db";
 
 const PAGE_SIZE = 40000;
@@ -67,6 +67,9 @@ export async function GET(
             { loc: `${baseUrl}/past_papers` },
             { loc: `${baseUrl}/resources` },
             { loc: `${baseUrl}/syllabus` },
+            { loc: `${baseUrl}/privacy` },
+            { loc: `${baseUrl}/terms` },
+            { loc: `${baseUrl}/delete` },
         ];
     } else if (collectionName === "notes") {
         const notes = await db

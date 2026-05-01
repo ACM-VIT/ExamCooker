@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import ResourceBrowser from "@/app/components/resources/ResourceBrowser";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import ResourceBrowser from "@/app/components/resources/resource-browser";
 import { GradientText } from "@/app/components/landing_page/landing";
 import { DEFAULT_KEYWORDS } from "@/lib/seo";
-import { getVinCatalogMeta, getVinCourses, getVinYears } from "@/lib/data/vinTogether";
+import { getVinCatalogMeta, getVinCourses, getVinYears } from "@/lib/data/vin-together";
 
 type ResourcesSearchParams = { search?: string; year?: string };
 
@@ -56,11 +56,11 @@ function ResourceBrowserShell() {
             <div className="flex items-stretch gap-2 sm:gap-3">
                 <div className="h-12 min-w-0 flex-1 border border-black/25 bg-white dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]" />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-                {Array.from({ length: 5 }).map((_, index) => (
+            <div className="flex flex-nowrap items-center gap-1 overflow-hidden sm:flex-wrap sm:gap-2">
+                {Array.from({ length: 4 }).map((_, index) => (
                     <span
                         key={index}
-                        className="inline-flex h-9 w-16 border-2 border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]"
+                        className="inline-flex h-8 w-16 shrink-0 border-2 border-black/15 bg-white min-[380px]:h-9 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]"
                     />
                 ))}
             </div>

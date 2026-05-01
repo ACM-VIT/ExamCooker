@@ -2,17 +2,18 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import CourseNotesGrid from "@/app/components/notes/CourseNotesGrid";
-import Pagination from "@/app/components/Pagination";
-import StructuredData from "@/app/components/seo/StructuredData";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
+import CourseNotesGrid from "@/app/components/notes/course-notes-grid";
+import Pagination from "@/app/components/pagination";
+import StructuredData from "@/app/components/seo/structured-data";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import {
     getCourseNotesCount,
     getCourseNotesPage,
 } from "@/lib/data/notes";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     buildCourseKeywordSet,
     getCourseNotesPath,
@@ -25,7 +26,7 @@ import {
     buildCourseStructuredData,
     buildFaqPage,
     buildItemList,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 const PAGE_SIZE = 12;
 
@@ -57,12 +58,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const [{ code }, rawSearchParams] = await Promise.all([params, searchParams]);
     const course = await loadCourseContext(code);
-    if (!course) return {};
+    if (!course) return { robots: { index: false, follow: true } };
 
     const page = Number.parseInt(rawSearchParams?.page || "1", 10) || 1;
     const noteCount = await getCourseNotesCount({ courseId: course.courseId });
 
-    if (!noteCount) return {};
+    if (!noteCount) return { robots: { index: false, follow: true } };
 
     const title = `${course.code} notes | ${course.title}`;
     const description = `Download ${course.code} notes, lecture notes, revision material, and study PDFs for ${course.title} on ExamCooker.`;
@@ -224,23 +225,13 @@ async function CourseNotesContent({
 
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
                 <header className="flex flex-col gap-4">
-                    <div className="flex flex-wrap items-center gap-1.5 text-sm text-black/50 dark:text-[#D5D5D5]/50">
-                        <Link
-                            href="/notes"
-                            transitionTypes={["nav-back"]}
-                            className="hover:text-black dark:hover:text-[#D5D5D5]"
-                        >
-                            Notes
-                        </Link>
-                        <span aria-hidden="true">/</span>
-                        <Link
-                            href={getCoursePath(course.code)}
-                            transitionTypes={["nav-back"]}
-                            className="hover:text-black dark:hover:text-[#D5D5D5]"
-                        >
-                            {course.code}
-                        </Link>
-                    </div>
+                    <PageBreadcrumbRow
+                        items={[
+                            { href: "/notes", label: "Notes" },
+                            { href: getCoursePath(course.code), label: course.code },
+                            { label: `${course.code} notes` },
+                        ]}
+                    />
 
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                         <div className="max-w-4xl">
