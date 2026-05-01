@@ -341,6 +341,7 @@ export type RecentPaper = {
     courseCode: string | null;
     courseTitle: string | null;
     examType: string | null;
+    slot: string | null;
     year: number | null;
 };
 
@@ -355,6 +356,7 @@ export async function getRecentPapers(limit = 10): Promise<RecentPaper[]> {
             title: pastPaper.title,
             thumbNailUrl: pastPaper.thumbNailUrl,
             examType: pastPaper.examType,
+            slot: pastPaper.slot,
             year: pastPaper.year,
             courseCode: course.code,
             courseTitle: course.title,
@@ -372,6 +374,7 @@ export async function getRecentPapers(limit = 10): Promise<RecentPaper[]> {
         courseCode: p.courseCode ?? null,
         courseTitle: p.courseTitle ?? null,
         examType: p.examType,
+        slot: p.slot,
         year: p.year,
     }));
 }

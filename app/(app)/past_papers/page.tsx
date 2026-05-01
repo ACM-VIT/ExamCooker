@@ -208,19 +208,20 @@ function RecentSectionShell() {
                 {Array.from({ length: 6 }).map((_, index) => (
                     <div
                         key={index}
-                        className="flex w-40 shrink-0 flex-col overflow-hidden rounded-md border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222] sm:w-44"
+                        className="flex w-40 shrink-0 flex-col overflow-hidden border-2 border-[#5FC4E7] bg-[#5FC4E7] dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] sm:w-44"
                     >
-                        <div className="aspect-[4/5] w-full bg-black/5 dark:bg-white/5" />
-                        <div className="flex flex-col gap-2 p-2.5">
-                            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-black/70 dark:text-[#3BF4C7]/80">
+                        <div className="aspect-[4/5] w-full bg-[#d9d9d9] dark:bg-white/5" />
+                        <div className="flex min-h-[5.75rem] flex-1 flex-col gap-2 p-2.5">
+                            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-black/70 dark:text-[#D5D5D5]/70">
                                 <span className="block h-[1em] w-14 bg-black/10 dark:bg-white/10" />
                             </span>
                             <p className="line-clamp-2 text-xs font-semibold">
                                 <span className="block h-[1em] w-full bg-black/10 dark:bg-white/10" />
                                 <span className="mt-1 block h-[1em] w-2/3 bg-black/10 dark:bg-white/10" />
                             </p>
-                            <div className="flex items-center gap-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-black/60 dark:text-[#D5D5D5]/60">
+                            <div className="mt-auto flex items-center gap-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-black/60 dark:text-[#D5D5D5]/60">
                                 <span className="block h-[1em] w-8 bg-black/10 dark:bg-white/10" />
+                                <span className="block h-[1em] w-6 bg-black/10 dark:bg-white/10" />
                                 <span className="block h-[1em] w-8 bg-black/10 dark:bg-white/10" />
                             </div>
                         </div>
