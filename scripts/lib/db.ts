@@ -1,13 +1,8 @@
 import { drizzle } from "drizzle-orm/node-postgres";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import type { QueryResultRow } from "pg";
-import * as schema from "../../db/schema";
 import { loadScriptEnv } from "./env";
 
-export type ScriptDatabase = NodePgDatabase<typeof schema> & {
-  $client: Pool;
-};
 export type Queryable = Pick<Pool, "query">;
 
 function readPositiveInt(name: string, fallback: number) {
@@ -49,14 +44,19 @@ export function requireConnectionString(
   return value;
 }
 
+function createTypedScriptDb(pool: Pool) {
+  return drizzle({
+    client: pool,
+    logger: process.env.NODE_ENV === "development",
+  });
+}
+
+export type ScriptDatabase = ReturnType<typeof createTypedScriptDb>;
+
 export function createScriptDb(connectionString?: string | null) {
   const url = requireConnectionString(connectionString);
   const pool = createPool(url);
-  const db = drizzle({
-    client: pool,
-    schema,
-    logger: process.env.NODE_ENV === "development",
-  }) as ScriptDatabase;
+  const db = createTypedScriptDb(pool);
 
   return {
     db,
@@ -76,4 +76,4 @@ export async function queryRows<T extends QueryResultRow = QueryResultRow>(
   return result.rows;
 }
 
-export { schema };
+export * as schema from "../../db/schema";
