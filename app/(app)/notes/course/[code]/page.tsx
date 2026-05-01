@@ -1,18 +1,19 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { ViewTransition } from "react";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import NotesCard from "@/app/components/NotesCard";
-import Pagination from "@/app/components/Pagination";
-import StructuredData from "@/app/components/seo/StructuredData";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
+import CourseNotesGrid from "@/app/components/notes/course-notes-grid";
+import Pagination from "@/app/components/pagination";
+import StructuredData from "@/app/components/seo/structured-data";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import {
     getCourseNotesCount,
     getCourseNotesPage,
 } from "@/lib/data/notes";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     buildCourseKeywordSet,
     getCourseNotesPath,
@@ -25,7 +26,7 @@ import {
     buildCourseStructuredData,
     buildFaqPage,
     buildItemList,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 const PAGE_SIZE = 12;
 
@@ -57,12 +58,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const [{ code }, rawSearchParams] = await Promise.all([params, searchParams]);
     const course = await loadCourseContext(code);
-    if (!course) return {};
+    if (!course) return { robots: { index: false, follow: true } };
 
     const page = Number.parseInt(rawSearchParams?.page || "1", 10) || 1;
     const noteCount = await getCourseNotesCount({ courseId: course.courseId });
 
-    if (!noteCount) return {};
+    if (!noteCount) return { robots: { index: false, follow: true } };
 
     const title = `${course.code} notes | ${course.title}`;
     const description = `Download ${course.code} notes, lecture notes, revision material, and study PDFs for ${course.title} on ExamCooker.`;
@@ -98,14 +99,39 @@ export async function generateMetadata({
     };
 }
 
-export default async function CourseNotesPage({
-    params,
-    searchParams,
+function CourseNotesShell() {
+    return (
+        <div
+            className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 lg:px-10 lg:py-10"
+            aria-hidden="true"
+        >
+            <header className="flex flex-col gap-4">
+                <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+            </header>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="h-40 border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+async function CourseNotesContent({
+    paramsPromise,
+    searchParamsPromise,
 }: {
-    params: Promise<{ code: string }>;
-    searchParams?: Promise<{ page?: string }>;
+    paramsPromise: Promise<{ code: string }>;
+    searchParamsPromise: Promise<{ page?: string }> | undefined;
 }) {
-    const [{ code }, rawSearchParams] = await Promise.all([params, searchParams]);
+    const [{ code }, rawSearchParams] = await Promise.all([
+        paramsPromise,
+        searchParamsPromise,
+    ]);
     const course = await loadCourseContext(code);
     if (!course) return notFound();
 
@@ -163,60 +189,49 @@ export default async function CourseNotesPage({
     ];
 
     return (
-        <DirectionalTransition>
-            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-                <StructuredData
-                    data={[
-                        buildBreadcrumbList([
-                            { name: "Notes", path: "/notes" },
-                            { name: course.title, path: getCoursePath(course.code) },
-                            {
-                                name: `${course.code} notes`,
-                                path: getCourseNotesPath(course.code),
-                            },
-                        ]),
-                        buildCollectionPage({
+        <>
+            <StructuredData
+                data={[
+                    buildBreadcrumbList([
+                        { name: "Notes", path: "/notes" },
+                        { name: course.title, path: getCoursePath(course.code) },
+                        {
                             name: `${course.code} notes`,
-                            description,
                             path: getCourseNotesPath(course.code),
-                            keywords,
-                            about: course.title,
-                        }),
-                        buildCourseStructuredData({
-                            code: course.code,
-                            title: course.title,
-                            description: `Course overview page for ${course.title}.`,
-                            path: getCoursePath(course.code),
-                        }),
-                        buildItemList(
-                            notes.map((note) => ({
-                                name: stripPdfExtension(note.title),
-                                path: `/notes/${note.id}`,
-                            })),
-                        ),
-                        buildFaqPage(faq),
-                    ]}
-                />
+                        },
+                    ]),
+                    buildCollectionPage({
+                        name: `${course.code} notes`,
+                        description,
+                        path: getCourseNotesPath(course.code),
+                        keywords,
+                        about: course.title,
+                    }),
+                    buildCourseStructuredData({
+                        code: course.code,
+                        title: course.title,
+                        description: `Course overview page for ${course.title}.`,
+                        path: getCoursePath(course.code),
+                    }),
+                    buildItemList(
+                        notes.map((note) => ({
+                            name: stripPdfExtension(note.title),
+                            path: `/notes/${note.id}`,
+                        })),
+                    ),
+                    buildFaqPage(faq),
+                ]}
+            />
 
-                <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
-                    <header className="flex flex-col gap-4">
-                        <div className="flex flex-wrap items-center gap-1.5 text-sm text-black/50 dark:text-[#D5D5D5]/50">
-                            <Link
-                                href="/notes"
-                                transitionTypes={["nav-back"]}
-                                className="hover:text-black dark:hover:text-[#D5D5D5]"
-                            >
-                                Notes
-                            </Link>
-                            <span aria-hidden="true">/</span>
-                            <Link
-                                href={getCoursePath(course.code)}
-                                transitionTypes={["nav-back"]}
-                                className="hover:text-black dark:hover:text-[#D5D5D5]"
-                            >
-                                {course.code}
-                            </Link>
-                        </div>
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
+                <header className="flex flex-col gap-4">
+                    <PageBreadcrumbRow
+                        items={[
+                            { href: "/notes", label: "Notes" },
+                            { href: getCoursePath(course.code), label: course.code },
+                            { label: `${course.code} notes` },
+                        ]}
+                    />
 
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                         <div className="max-w-4xl">
@@ -245,13 +260,11 @@ export default async function CourseNotesPage({
                     </div>
                 </header>
 
-                <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {notes.map((note, index) => (
-                        <ViewTransition key={note.id}>
-                            <NotesCard note={note} index={index} />
-                        </ViewTransition>
-                    ))}
-                </section>
+                <CourseNotesGrid
+                    notes={notes}
+                    courseCode={course.code}
+                    courseTitle={course.title}
+                />
 
                 {totalPages > 1 && (
                     <Pagination
@@ -274,7 +287,27 @@ export default async function CourseNotesPage({
                         </article>
                     ))}
                 </section>
-                </div>
+            </div>
+        </>
+    );
+}
+
+export default function CourseNotesPage({
+    params,
+    searchParams,
+}: {
+    params: Promise<{ code: string }>;
+    searchParams?: Promise<{ page?: string }>;
+}) {
+    return (
+        <DirectionalTransition>
+            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <Suspense fallback={<CourseNotesShell />}>
+                    <CourseNotesContent
+                        paramsPromise={params}
+                        searchParamsPromise={searchParams}
+                    />
+                </Suspense>
             </div>
         </DirectionalTransition>
     );

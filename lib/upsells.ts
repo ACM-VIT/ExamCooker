@@ -1,5 +1,3 @@
-export type UpsellAccent = "mint" | "blue" | "peach";
-
 export type Upsell = {
     id: string;
     eyebrow?: string;
@@ -7,10 +5,9 @@ export type Upsell = {
     description: string;
     cta: {
         label: string;
-        href: string;
+        href?: string;
         external?: boolean;
     };
-    accent?: UpsellAccent;
 };
 
 export const UPSELLS: Upsell[] = [
@@ -25,7 +22,6 @@ export const UPSELLS: Upsell[] = [
             href: "https://www.instagram.com/acmvit/",
             external: true,
         },
-        accent: "mint",
     },
     {
         id: "examcooker-github-v1",
@@ -38,7 +34,6 @@ export const UPSELLS: Upsell[] = [
             href: "https://github.com/ACM-VIT/ExamCooker-2024",
             external: true,
         },
-        accent: "blue",
     },
     {
         id: "resource-repo-launch-v1",
@@ -50,8 +45,16 @@ export const UPSELLS: Upsell[] = [
             label: "Explore resources",
             href: "/resources",
         },
-        accent: "mint",
-    }
+    },
+    {
+        id: "examcooker-cli-v1",
+        eyebrow: "CLI",
+        title: "ExamCooker in your terminal",
+        description: "",
+        cta: {
+            label: "npx examcooker",
+        },
+    },
 ];
 
 export const UPSELL_COOLDOWN_MS = 24 * 60 * 60 * 1000;

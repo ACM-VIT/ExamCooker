@@ -1,28 +1,12 @@
 const fs = require("fs");
 const path = require("path");
-const dotenv = require("dotenv");
+const { eq } = require("drizzle-orm");
+const { course } = require("../db/schema.ts");
+const { createScriptDb, queryRows } = require("./lib/db.ts");
+const { loadScriptEnv } = require("./lib/env.ts");
 const REPORT_DIR = path.resolve(__dirname, "reports");
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true, quiet: true });
-
-let prismaPromise;
-function getPrisma() {
-  prismaPromise ??= (async () => {
-    const [{ default: prismaClient }, { PrismaPg }] = await Promise.all([
-      import("../prisma/generated/client.ts"),
-      import("@prisma/adapter-pg"),
-    ]);
-    const { PrismaClient } = prismaClient;
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL is not set.");
-    }
-    return new PrismaClient({
-      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
-    });
-  })();
-  return prismaPromise;
-}
+loadScriptEnv();
 
 // Inlined from lib/courseTags.ts — keep in sync if that regex changes.
 const COURSE_TAG_REGEX = /^(.*?)\s*\[([A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3})\]\s*$/i;
@@ -175,179 +159,194 @@ function writeReport({ dryRun, summary, rows, conflicts, ignoredTags }) {
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
-  const prisma = await getPrisma();
+  const { db, pool, close } = createScriptDb();
 
-  console.log(`Running course seed (${dryRun ? "dry-run" : "apply"} mode)...`);
+  try {
+    console.log(`Running course seed (${dryRun ? "dry-run" : "apply"} mode)...`);
 
-  const acronyms = loadCourseAcronyms();
-  // Invert: { CODE: [aliasString, ...] }
-  const aliasesByCode = new Map();
-  for (const [alias, codes] of Object.entries(acronyms)) {
-    for (const rawCode of codes) {
-      const code = normalizeCourseCode(rawCode);
-      if (!aliasesByCode.has(code)) aliasesByCode.set(code, new Set());
-      aliasesByCode.get(code).add(alias);
+    const acronyms = loadCourseAcronyms();
+    // Invert: { CODE: [aliasString, ...] }
+    const aliasesByCode = new Map();
+    for (const [alias, codes] of Object.entries(acronyms)) {
+      for (const rawCode of codes) {
+        const code = normalizeCourseCode(rawCode);
+        if (!aliasesByCode.has(code)) aliasesByCode.set(code, new Set());
+        aliasesByCode.get(code).add(alias);
+      }
     }
-  }
 
-  const tags = await prisma.tag.findMany({
-    select: {
-      id: true,
-      name: true,
-      _count: {
-        select: {
-          notes: true,
-          pastPapers: true,
-          forumPosts: true,
-        },
-      },
-    },
-  });
+    const tags = await queryRows(
+      pool,
+      `
+        SELECT
+          t.id,
+          t.name,
+          COUNT(DISTINCT ntt."A")::INT AS notes,
+          COUNT(DISTINCT ppt."A")::INT AS "pastPapers",
+          COUNT(DISTINCT fpt."A")::INT AS "forumPosts"
+        FROM "Tag" t
+        LEFT JOIN "_NoteToTag" ntt ON ntt."B" = t.id
+        LEFT JOIN "_PastPaperToTag" ppt ON ppt."B" = t.id
+        LEFT JOIN "_ForumPostToTag" fpt ON fpt."B" = t.id
+        GROUP BY t.id, t.name
+      `,
+    );
 
-  // Group by normalized code.
-  // groups: Map<code, { candidates: Map<title, { usage, tagNames: Set<string> }>, aliasTagNames: Set<string> }>
-  const groups = new Map();
-  const ignoredTags = [];
+    // Group by normalized code.
+    // groups: Map<code, { candidates: Map<title, { usage, tagNames: Set<string> }>, aliasTagNames: Set<string> }>
+    const groups = new Map();
+    const ignoredTags = [];
 
-  for (const tag of tags) {
-    const info = extractCourseFromTag(tag.name);
-    const usage = tag._count.notes + tag._count.pastPapers + tag._count.forumPosts;
-    if (!info) {
-      ignoredTags.push({ name: tag.name, usage });
-      continue;
+    for (const tagRow of tags) {
+      const info = extractCourseFromTag(tagRow.name);
+      const usage =
+        Number(tagRow.notes || 0) +
+        Number(tagRow.pastPapers || 0) +
+        Number(tagRow.forumPosts || 0);
+      if (!info) {
+        ignoredTags.push({ name: tagRow.name, usage });
+        continue;
+      }
+      const code = info.code;
+      if (!groups.has(code)) {
+        groups.set(code, {
+          candidates: new Map(),
+          aliasTagNames: new Set(),
+        });
+      }
+      const group = groups.get(code);
+      const existing = group.candidates.get(info.title) || {
+        usage: 0,
+        tagNames: new Set(),
+      };
+      existing.usage += usage;
+      existing.tagNames.add(tagRow.name);
+      group.candidates.set(info.title, existing);
+      group.aliasTagNames.add(tagRow.name);
     }
-    const code = info.code;
-    if (!groups.has(code)) {
-      groups.set(code, {
-        candidates: new Map(),
-        aliasTagNames: new Set(),
+
+    // Build rows + conflicts.
+    const rows = [];
+    const conflicts = [];
+
+    // Pull existing courses so we can detect skips.
+    const existing = await db
+      .select({
+        id: course.id,
+        code: course.code,
+        title: course.title,
+        aliases: course.aliases,
+      })
+      .from(course);
+    const existingByCode = new Map(existing.map((c) => [c.code, c]));
+
+    const sortedCodes = Array.from(groups.keys()).sort();
+    for (const code of sortedCodes) {
+      const group = groups.get(code);
+      // Rank candidate titles by usage (desc), then alphabetical for stability.
+      const candidateEntries = Array.from(group.candidates.entries())
+        .map(([title, data]) => ({
+          title,
+          usage: data.usage,
+          tagNames: Array.from(data.tagNames).sort(),
+        }))
+        .sort((a, b) => {
+          if (b.usage !== a.usage) return b.usage - a.usage;
+          return a.title.localeCompare(b.title);
+        });
+
+      const chosen = candidateEntries[0];
+      const chosenTitle = chosen.title;
+
+      // Aliases = all tag names for this code (the `"Title [CODE]"` strings)
+      // + any COURSE_ACRONYMS entries that map to this code.
+      const aliasSet = new Set();
+      for (const tagName of group.aliasTagNames) aliasSet.add(tagName);
+      for (const acronym of aliasesByCode.get(code) || []) aliasSet.add(acronym);
+      // Don't include the chosen title itself as an alias (it's already `course.title`).
+      aliasSet.delete(chosenTitle);
+      const aliases = Array.from(aliasSet).sort();
+
+      // Title conflict: more than one distinct title, and the runner-up has non-trivial usage.
+      const distinctTitles = candidateEntries.filter((c) => c.title !== chosenTitle);
+      if (distinctTitles.length > 0) {
+        const significant = distinctTitles.some(
+          (c) => c.usage > 0 && c.title.toLowerCase() !== chosenTitle.toLowerCase(),
+        );
+        if (significant) {
+          conflicts.push({
+            code,
+            chosenTitle,
+            candidates: candidateEntries.map((c) => ({
+              title: c.title,
+              usage: c.usage,
+              tagNames: c.tagNames,
+            })),
+          });
+        }
+      }
+
+      const totalUsage = candidateEntries.reduce((sum, c) => sum + c.usage, 0);
+      const existingRow = existingByCode.get(code);
+
+      rows.push({
+        status: existingRow ? "skip" : "create",
+        code,
+        title: chosenTitle,
+        aliases,
+        usage: totalUsage,
+        tagNames: Array.from(group.aliasTagNames).sort(),
       });
     }
-    const group = groups.get(code);
-    const existing = group.candidates.get(info.title) || {
-      usage: 0,
-      tagNames: new Set(),
+
+    const summary = {
+      totalCodes: rows.length,
+      toCreate: rows.filter((r) => r.status === "create").length,
+      toSkip: rows.filter((r) => r.status === "skip").length,
     };
-    existing.usage += usage;
-    existing.tagNames.add(tag.name);
-    group.candidates.set(info.title, existing);
-    group.aliasTagNames.add(tag.name);
-  }
 
-  // Build rows + conflicts.
-  const rows = [];
-  const conflicts = [];
-
-  // Pull existing courses so we can detect skips.
-  const existing = await prisma.course.findMany({
-    select: { id: true, code: true, title: true, aliases: true },
-  });
-  const existingByCode = new Map(existing.map((c) => [c.code, c]));
-
-  const sortedCodes = Array.from(groups.keys()).sort();
-  for (const code of sortedCodes) {
-    const group = groups.get(code);
-    // Rank candidate titles by usage (desc), then alphabetical for stability.
-    const candidateEntries = Array.from(group.candidates.entries())
-      .map(([title, data]) => ({
-        title,
-        usage: data.usage,
-        tagNames: Array.from(data.tagNames).sort(),
-      }))
-      .sort((a, b) => {
-        if (b.usage !== a.usage) return b.usage - a.usage;
-        return a.title.localeCompare(b.title);
-      });
-
-    const chosen = candidateEntries[0];
-    const chosenTitle = chosen.title;
-
-    // Aliases = all tag names for this code (the `"Title [CODE]"` strings)
-    // + any COURSE_ACRONYMS entries that map to this code.
-    const aliasSet = new Set();
-    for (const tagName of group.aliasTagNames) aliasSet.add(tagName);
-    for (const acronym of aliasesByCode.get(code) || []) aliasSet.add(acronym);
-    // Don't include the chosen title itself as an alias (it's already `course.title`).
-    aliasSet.delete(chosenTitle);
-    const aliases = Array.from(aliasSet).sort();
-
-    // Title conflict: more than one distinct title, and the runner-up has non-trivial usage.
-    const distinctTitles = candidateEntries.filter((c) => c.title !== chosenTitle);
-    if (distinctTitles.length > 0) {
-      const significant = distinctTitles.some(
-        (c) => c.usage > 0 && c.title.toLowerCase() !== chosenTitle.toLowerCase(),
-      );
-      if (significant) {
-        conflicts.push({
-          code,
-          chosenTitle,
-          candidates: candidateEntries.map((c) => ({
-            title: c.title,
-            usage: c.usage,
-            tagNames: c.tagNames,
-          })),
-        });
+    if (!dryRun) {
+      console.log(`\nUpserting ${summary.toCreate} new courses, touching ${summary.toSkip} existing...`);
+      let i = 0;
+      for (const row of rows) {
+        if (row.status === "create") {
+          await db.insert(course).values({
+            code: row.code,
+            title: row.title,
+            aliases: row.aliases,
+          });
+        } else {
+          // Merge aliases into the existing row; do not overwrite a human-edited title.
+          const existingRow = existingByCode.get(row.code);
+          const merged = Array.from(
+            new Set([...(existingRow.aliases || []), ...row.aliases]),
+          ).sort();
+          await db
+            .update(course)
+            .set({ aliases: merged })
+            .where(eq(course.id, existingRow.id));
+        }
+        i++;
+        if (i % 50 === 0) console.log(`  ${i}/${rows.length}`);
       }
+      console.log(`Done.`);
     }
 
-    const totalUsage = candidateEntries.reduce((sum, c) => sum + c.usage, 0);
-    const existingRow = existingByCode.get(code);
+    writeReport({ dryRun, summary, rows, conflicts, ignoredTags });
 
-    rows.push({
-      status: existingRow ? "skip" : "create",
-      code,
-      title: chosenTitle,
-      aliases,
-      usage: totalUsage,
-      tagNames: Array.from(group.aliasTagNames).sort(),
-    });
+    console.log(`\nSummary:`);
+    console.log(`  Total codes:     ${summary.totalCodes}`);
+    console.log(`  To create:       ${summary.toCreate}`);
+    console.log(`  To skip:         ${summary.toSkip}`);
+    console.log(`  Title conflicts: ${conflicts.length}`);
+    console.log(`  Ignored tags:    ${ignoredTags.length}`);
+  } finally {
+    await close();
   }
-
-  const summary = {
-    totalCodes: rows.length,
-    toCreate: rows.filter((r) => r.status === "create").length,
-    toSkip: rows.filter((r) => r.status === "skip").length,
-  };
-
-  if (!dryRun) {
-    console.log(`\nUpserting ${summary.toCreate} new courses, touching ${summary.toSkip} existing...`);
-    let i = 0;
-    for (const row of rows) {
-      if (row.status === "create") {
-        await prisma.course.create({
-          data: { code: row.code, title: row.title, aliases: row.aliases },
-        });
-      } else {
-        // Merge aliases into the existing row; do not overwrite a human-edited title.
-        const existing = existingByCode.get(row.code);
-        const merged = Array.from(new Set([...(existing.aliases || []), ...row.aliases])).sort();
-        await prisma.course.update({
-          where: { id: existing.id },
-          data: { aliases: merged },
-        });
-      }
-      i++;
-      if (i % 50 === 0) console.log(`  ${i}/${rows.length}`);
-    }
-    console.log(`Done.`);
-  }
-
-  writeReport({ dryRun, summary, rows, conflicts, ignoredTags });
-
-  console.log(`\nSummary:`);
-  console.log(`  Total codes:     ${summary.totalCodes}`);
-  console.log(`  To create:       ${summary.toCreate}`);
-  console.log(`  To skip:         ${summary.toSkip}`);
-  console.log(`  Title conflicts: ${conflicts.length}`);
-  console.log(`  Ignored tags:    ${ignoredTags.length}`);
 }
 
 main()
   .catch((err) => {
     console.error("Seed failed:", err);
     process.exitCode = 1;
-  })
-  .finally(async () => {
-    const prisma = await getPrisma();
-    await prisma.$disconnect();
   });

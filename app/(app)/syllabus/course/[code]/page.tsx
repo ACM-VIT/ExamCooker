@@ -1,16 +1,16 @@
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { Suspense } from "react";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import PDFViewerClient from "@/app/components/PDFViewerClient";
-import ViewTracker from "@/app/components/ViewTracker";
-import StructuredData from "@/app/components/seo/StructuredData";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import PDFViewerClient from "@/app/components/pdf-viewer-client";
+import ViewTracker from "@/app/components/view-tracker";
+import StructuredData from "@/app/components/seo/structured-data";
+import DirectionalTransition from "@/app/components/common/directional-transition";
 import { getCourseByCodeAny } from "@/lib/data/courses";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
 import { getSyllabusDetailByCourseCode } from "@/lib/data/syllabus";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     absoluteUrl,
     buildCourseKeywordSet,
@@ -18,11 +18,12 @@ import {
     getCoursePath,
     getCourseSyllabusPath,
 } from "@/lib/seo";
+import { buildSyllabusPdfFileName } from "@/lib/downloads/resource-names";
 import {
     buildBreadcrumbList,
     buildCourseStructuredData,
     buildFaqPage,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 async function loadCourseSyllabusContext(rawCode: string) {
     const normalized = normalizeCourseCode(rawCode);
@@ -58,7 +59,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { code } = await params;
     const context = await loadCourseSyllabusContext(code);
-    if (!context) return {};
+    if (!context) return { robots: { index: false, follow: true } };
 
     const title = `${context.code} syllabus | ${context.title}`;
     const description = `View the ${context.code} syllabus PDF for ${context.title} on ExamCooker.`;
@@ -79,21 +80,37 @@ export async function generateMetadata({
     };
 }
 
-export default async function CourseSyllabusPage({
-    params,
+function CourseSyllabusShell() {
+    return (
+        <div
+            className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10"
+            aria-hidden="true"
+        >
+            <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
+            <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+            <div className="h-[70dvh] border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]" />
+        </div>
+    );
+}
+
+async function CourseSyllabusContent({
+    paramsPromise,
 }: {
-    params: Promise<{ code: string }>;
+    paramsPromise: Promise<{ code: string }>;
 }) {
-    const { code } = await params;
+    const { code } = await paramsPromise;
     const context = await loadCourseSyllabusContext(code);
     if (!context) return notFound();
 
     const description = `View the ${context.code} syllabus PDF for ${context.title} on ExamCooker.`;
+    const downloadFileName = buildSyllabusPdfFileName({
+        courseCode: context.code,
+        courseTitle: context.title,
+    });
 
     return (
-        <DirectionalTransition>
-            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-                <StructuredData
+        <>
+            <StructuredData
                     data={[
                         buildBreadcrumbList([
                             { name: "Syllabus", path: "/syllabus" },
@@ -129,17 +146,15 @@ export default async function CourseSyllabusPage({
                     title={`${context.title} syllabus`}
                 />
 
-                <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
-                    <Link
-                        href="/syllabus"
-                        transitionTypes={["nav-back"]}
-                        className="group inline-flex w-fit items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-black/55 hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
-                    >
-                        <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} />
-                        <span>Back to syllabus</span>
-                    </Link>
+                <div className="mx-auto -mt-8 flex w-full max-w-5xl flex-col gap-3 px-4 pb-10 pt-0 sm:mt-0 sm:gap-5 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
+                    <PageBreadcrumbRow
+                        items={[
+                            { label: "Syllabus", href: "/syllabus" },
+                            { label: context.title },
+                        ]}
+                    />
 
-                    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                    <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                         <div className="min-w-0 flex-1">
                             <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
                                 {context.title}
@@ -163,10 +178,28 @@ export default async function CourseSyllabusPage({
 
                     <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
                         <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
-                            <PDFViewerClient fileUrl={context.syllabus.fileUrl} />
+                            <PDFViewerClient
+                                fileUrl={context.syllabus.fileUrl}
+                                fileName={downloadFileName}
+                            />
                         </div>
                     </div>
                 </div>
+        </>
+    );
+}
+
+export default function CourseSyllabusPage({
+    params,
+}: {
+    params: Promise<{ code: string }>;
+}) {
+    return (
+        <DirectionalTransition>
+            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <Suspense fallback={<CourseSyllabusShell />}>
+                    <CourseSyllabusContent paramsPromise={params} />
+                </Suspense>
             </div>
         </DirectionalTransition>
     );

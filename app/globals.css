@@ -314,3 +314,9 @@
         animation-delay: 0s !important;
     }
 }
+
+@media (max-width: 1023px) {
+    html[data-native-ios-tabs="true"] .ec-app-main {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+}

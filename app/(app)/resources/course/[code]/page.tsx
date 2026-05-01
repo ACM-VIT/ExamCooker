@@ -1,17 +1,19 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ModuleDropdown from "@/app/components/ModuleDropdown";
-import VinCoursePage from "@/app/components/resources/VinCoursePage";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import ViewTracker from "@/app/components/ViewTracker";
-import StructuredData from "@/app/components/seo/StructuredData";
+import ModuleDropdown from "@/app/components/module-dropdown";
+import VinCoursePage from "@/app/components/resources/vin-course-page";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
+import ViewTracker from "@/app/components/view-tracker";
+import StructuredData from "@/app/components/seo/structured-data";
 import { getCourseByCodeAny } from "@/lib/data/courses";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
-import { findVinCourseByNames, type VinCourse } from "@/lib/data/vinTogether";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
+import { findVinCourseByNames, type VinCourse } from "@/lib/data/vin-together";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     buildCourseKeywordSet,
     getCourseNotesPath,
@@ -26,7 +28,7 @@ import {
     buildCollectionPage,
     buildCourseStructuredData,
     buildFaqPage,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 type CourseResourceContext = {
     code: string;
@@ -105,7 +107,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { code } = await params;
     const context = await loadCourseResourceContext(code);
-    if (!context) return {};
+    if (!context) return { robots: { index: false, follow: true } };
 
     const title = `${context.code} resources | ${context.title}`;
     const description = buildDescription(context);
@@ -144,12 +146,45 @@ export async function generateMetadata({
     };
 }
 
-export default async function CourseResourcesPage({
-    params,
+function CourseResourcesShell() {
+    return (
+        <div
+            className="container mx-auto px-3 py-6 sm:px-5 lg:px-8 lg:py-10"
+            aria-hidden="true"
+        >
+            <div className="mx-auto flex max-w-6xl flex-col gap-4">
+                <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+            </div>
+            <div className="mx-auto mt-6 grid max-w-6xl grid-cols-2 gap-3 md:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="rounded-md border border-black/10 bg-white px-4 py-3 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                    >
+                        <span className="block h-3 w-16 bg-black/10 dark:bg-white/10" />
+                        <span className="mt-2 block h-6 w-12 bg-black/10 dark:bg-white/10" />
+                    </div>
+                ))}
+            </div>
+            <div className="mx-auto mt-8 max-w-6xl space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="h-14 rounded-md border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+async function CourseResourcesContent({
+    paramsPromise,
 }: {
-    params: Promise<{ code: string }>;
+    paramsPromise: Promise<{ code: string }>;
 }) {
-    const { code } = await params;
+    const { code } = await paramsPromise;
     const context = await loadCourseResourceContext(code);
     if (!context) return notFound();
 
@@ -169,7 +204,7 @@ export default async function CourseResourcesPage({
     ];
 
     return (
-        <DirectionalTransition>
+        <>
             <StructuredData
                 data={[
                     buildBreadcrumbList([
@@ -218,23 +253,13 @@ export default async function CourseResourcesPage({
                         />
 
                         <header className="mx-auto flex max-w-6xl flex-col gap-4">
-                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                                <Link
-                                    href="/resources"
-                                    transitionTypes={["nav-back"]}
-                                    className="hover:text-black dark:hover:text-[#D5D5D5]"
-                                >
-                                    Resources
-                                </Link>
-                                <span aria-hidden="true">›</span>
-                                <Link
-                                    href={getCoursePath(context.code)}
-                                    transitionTypes={["nav-back"]}
-                                    className="hover:text-black dark:hover:text-[#D5D5D5]"
-                                >
-                                    {context.code}
-                                </Link>
-                            </div>
+                            <PageBreadcrumbRow
+                                items={[
+                                    { href: "/resources", label: "Resources" },
+                                    { href: getCoursePath(context.code), label: context.code },
+                                    { label: `${context.code} resources` },
+                                ]}
+                            />
 
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                                 <div className="max-w-4xl">
@@ -308,6 +333,20 @@ export default async function CourseResourcesPage({
                     </div>
                 </div>
             ) : null}
+        </>
+    );
+}
+
+export default function CourseResourcesPage({
+    params,
+}: {
+    params: Promise<{ code: string }>;
+}) {
+    return (
+        <DirectionalTransition>
+            <Suspense fallback={<CourseResourcesShell />}>
+                <CourseResourcesContent paramsPromise={params} />
+            </Suspense>
         </DirectionalTransition>
     );
 }

@@ -680,7 +680,7 @@ export function recognizeCourseInText(
   }> = []
 
   const courseCodePattern = /\b[A-Z]{3,6}[0-9]{3,4}[A-Z]?\b/g
-  const codeMatches = text.match(courseCodePattern) || []
+  const codeMatches: string[] = text.match(courseCodePattern) || []
 
   codeMatches.forEach(match => {
     const upperMatch = match.toUpperCase()

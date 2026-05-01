@@ -1,15 +1,19 @@
 import path from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
-import dotenv from "dotenv";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { createScriptDb, queryRows } from "../lib/db";
+import { loadScriptEnv } from "../lib/env";
+import {
+  ensureTagNames,
+  getPaperTagNames,
+  loadCourseRows,
+  loadPastPaperRows,
+  loadTagNameRows,
+  setPastPaperTags,
+  upsertCourseByCode,
+} from "../lib/past-papers";
 
-import * as prismaClient from "../../prisma/generated/client";
-
-const { PrismaClient } = prismaClient;
-
-dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true, quiet: true });
+loadScriptEnv();
 
 type CourseRow = {
   id: string;
@@ -312,9 +316,7 @@ function parseArgs(argv: string[]): Options {
 }
 
 function createClient(connectionString: string) {
-  return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
-  });
+  return createScriptDb(connectionString);
 }
 
 function normalizeCode(code: string | null | undefined) {
@@ -516,114 +518,24 @@ async function main() {
     const filterCourseCodes = new Set(options.courseCodes.map((code) => code.toUpperCase()));
 
     const [sourcePapers, targetPapers, targetCourses, targetTags] = await Promise.all([
-      source.pastPaper.findMany({
-        where: {
-          isClear: true,
-          courseId: { not: null },
-          examType: { not: null },
-          slot: { not: null },
-          year: { not: null },
-          ...(filterCourseCodes.size > 0
-            ? {
-                course: {
-                  is: {
-                    code: {
-                      in: [...filterCourseCodes],
-                    },
-                  },
-                },
-              }
-            : {}),
-          ...(options.createdAfter ? { createdAt: { gt: options.createdAfter } } : {}),
-        },
-        select: {
-          id: true,
-          title: true,
-          fileUrl: true,
-          thumbNailUrl: true,
-          isClear: true,
-          examType: true,
-          slot: true,
-          year: true,
-          semester: true,
-          campus: true,
-          hasAnswerKey: true,
-          questionPaperId: true,
-          createdAt: true,
-          course: {
-            select: {
-              id: true,
-              code: true,
-              title: true,
-              aliases: true,
-            },
-          },
-          tags: {
-            select: {
-              name: true,
-            },
-          },
-        },
-        orderBy: [
-          { year: "asc" },
-          { title: "asc" },
-        ],
-        ...(options.limit ? { take: options.limit } : {}),
+      loadPastPaperRows(source.pool, {
+        requireStructured: true,
+        courseCodes: filterCourseCodes.size > 0 ? [...filterCourseCodes] : undefined,
+        createdAfter: options.createdAfter,
+        limit: options.limit,
       }),
-      target.pastPaper.findMany({
-        select: {
-          id: true,
-          title: true,
-          fileUrl: true,
-          thumbNailUrl: true,
-          isClear: true,
-          examType: true,
-          slot: true,
-          year: true,
-          semester: true,
-          campus: true,
-          hasAnswerKey: true,
-          questionPaperId: true,
-          createdAt: true,
-          course: {
-            select: {
-              id: true,
-              code: true,
-              title: true,
-              aliases: true,
-            },
-          },
-          tags: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      }),
-      target.course.findMany({
-        select: {
-          id: true,
-          code: true,
-          title: true,
-          aliases: true,
-        },
-      }),
-      target.tag.findMany({
-        select: {
-          name: true,
-        },
-      }),
+      loadPastPaperRows(target.pool),
+      loadCourseRows(target.pool),
+      loadTagNameRows(target.pool),
     ]);
 
     const mappedSourcePapers: PaperRow[] = sourcePapers.map((paper) => ({
       ...paper,
-      course: paper.course,
-      tags: paper.tags.map((tag) => tag.name),
+      tags: getPaperTagNames(paper),
     }));
     const mappedTargetPapers: PaperRow[] = targetPapers.map((paper) => ({
       ...paper,
-      course: paper.course,
-      tags: paper.tags.map((tag) => tag.name),
+      tags: getPaperTagNames(paper),
     }));
 
     const targetPapersByKey = new Map<string, PaperRow[]>();
@@ -661,18 +573,25 @@ async function main() {
 
     const importUser = options.dryRun
       ? { id: "dry-run-import-user" }
-      : await target.user.upsert({
-          where: { email: options.importUserEmail },
-          update: {
-            name: options.importUserName,
-            role: "MODERATOR",
-          },
-          create: {
-            email: options.importUserEmail,
-            name: options.importUserName,
-            role: "MODERATOR",
-          },
-          select: { id: true },
+      : await queryRows<{ id: string }>(
+          target.pool,
+          `
+            INSERT INTO "User" (id, email, name, role, "createdAt", "updatedAt")
+            VALUES (gen_random_uuid()::text, $1, $2, 'MODERATOR', NOW(), NOW())
+            ON CONFLICT (email)
+            DO UPDATE SET
+              name = EXCLUDED.name,
+              role = EXCLUDED.role,
+              "updatedAt" = NOW()
+            RETURNING id
+          `,
+          [options.importUserEmail, options.importUserName],
+        ).then((rows) => {
+          const [user] = rows;
+          if (!user) {
+            throw new Error(`Failed to upsert import user ${options.importUserEmail}`);
+          }
+          return user;
         });
 
     for (const sourcePaper of mappedSourcePapers) {
@@ -753,22 +672,10 @@ async function main() {
       ]);
 
       if (!options.dryRun) {
-        targetCourse = await target.course.upsert({
-          where: { code: courseCode },
-          update: {
-            aliases: mergedAliases,
-          },
-          create: {
-            code: courseCode,
-            title: sourcePaper.course.title,
-            aliases: mergedAliases,
-          },
-          select: {
-            id: true,
-            code: true,
-            title: true,
-            aliases: true,
-          },
+        targetCourse = await upsertCourseByCode(target.pool, {
+          code: courseCode,
+          title: sourcePaper.course.title,
+          aliases: mergedAliases,
         });
         targetCourseByCode.set(courseCode, targetCourse);
       } else if (!targetCourse) {
@@ -783,38 +690,74 @@ async function main() {
 
       const tagNames = buildPaperTagNames(sourcePaper);
       if (!options.dryRun) {
-        for (const tagName of tagNames) {
-          if (targetTagNames.has(tagName)) continue;
-          await target.tag.upsert({
-            where: { name: tagName },
-            update: {},
-            create: { name: tagName, aliases: [] },
-          });
-          targetTagNames.add(tagName);
+        const missingTagNames = tagNames.filter((tagName) => !targetTagNames.has(tagName));
+        if (missingTagNames.length > 0) {
+          await ensureTagNames(target.pool, missingTagNames);
+          for (const tagName of missingTagNames) {
+            targetTagNames.add(tagName);
+          }
         }
       }
       if (!existing) {
         if (!options.dryRun) {
-          const createdPaper = await target.pastPaper.create({
-            data: {
-              title: sourcePaper.title,
-              fileUrl: sourcePaper.fileUrl,
-              thumbNailUrl: sourcePaper.thumbNailUrl,
-              isClear: sourcePaper.isClear,
-              authorId: importUser.id,
-              courseId: targetCourse?.id ?? null,
-              examType: sourcePaper.examType as never,
-              slot: sourcePaper.slot,
-              year: sourcePaper.year,
-              semester: sourcePaper.semester as never,
-              campus: sourcePaper.campus as never,
-              hasAnswerKey: sourcePaper.hasAnswerKey,
-              tags: {
-                connect: tagNames.map((name) => ({ name })),
-              },
-            },
-            select: { id: true },
-          });
+          const [createdPaper] = await queryRows<{ id: string }>(
+            target.pool,
+            `
+              INSERT INTO "PastPaper" (
+                id,
+                title,
+                "fileUrl",
+                "thumbNailUrl",
+                "authorId",
+                "isClear",
+                "createdAt",
+                "updatedAt",
+                "courseId",
+                "examType",
+                slot,
+                year,
+                semester,
+                campus,
+                "hasAnswerKey"
+              )
+              VALUES (
+                gen_random_uuid()::text,
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                NOW(),
+                NOW(),
+                $6,
+                $7,
+                $8,
+                $9,
+                $10,
+                $11,
+                $12
+              )
+              RETURNING id
+            `,
+            [
+              sourcePaper.title,
+              sourcePaper.fileUrl,
+              sourcePaper.thumbNailUrl,
+              importUser.id,
+              sourcePaper.isClear,
+              targetCourse?.id ?? null,
+              sourcePaper.examType,
+              sourcePaper.slot,
+              sourcePaper.year,
+              sourcePaper.semester,
+              sourcePaper.campus,
+              sourcePaper.hasAnswerKey,
+            ],
+          );
+          if (!createdPaper) {
+            throw new Error(`Failed to create target paper for source ${sourcePaper.id}`);
+          }
+          await setPastPaperTags(target.pool, createdPaper.id, tagNames);
           sourceToTargetIds.set(sourcePaper.id, createdPaper.id);
           targetPapersByKey.set(key, [{
             ...sourcePaper,
@@ -895,25 +838,39 @@ async function main() {
       }
 
       if (!options.dryRun) {
-        await target.pastPaper.update({
-          where: { id: existing.id },
-          data: {
-            title: sourcePaper.title,
-            isClear: sourcePaper.isClear,
-            courseId: targetCourse?.id ?? null,
-            examType: sourcePaper.examType as never,
-            slot: sourcePaper.slot,
-            year: sourcePaper.year,
-            semester: sourcePaper.semester as never,
-            campus: sourcePaper.campus as never,
-            hasAnswerKey: sourcePaper.hasAnswerKey,
-            fileUrl: nextFileUrl,
-            thumbNailUrl: nextThumbNailUrl,
-            tags: {
-              set: tagNames.map((name) => ({ name })),
-            },
-          },
-        });
+        await target.pool.query(
+          `
+            UPDATE "PastPaper"
+            SET title = $2,
+                "isClear" = $3,
+                "courseId" = $4,
+                "examType" = $5,
+                slot = $6,
+                year = $7,
+                semester = $8,
+                campus = $9,
+                "hasAnswerKey" = $10,
+                "fileUrl" = $11,
+                "thumbNailUrl" = $12,
+                "updatedAt" = NOW()
+            WHERE id = $1
+          `,
+          [
+            existing.id,
+            sourcePaper.title,
+            sourcePaper.isClear,
+            targetCourse?.id ?? null,
+            sourcePaper.examType,
+            sourcePaper.slot,
+            sourcePaper.year,
+            sourcePaper.semester,
+            sourcePaper.campus,
+            sourcePaper.hasAnswerKey,
+            nextFileUrl,
+            nextThumbNailUrl,
+          ],
+        );
+        await setPastPaperTags(target.pool, existing.id, tagNames);
         touchedPapers.push({
           sourcePaperId: sourcePaper.id,
           targetPaperId: existing.id,
@@ -962,16 +919,17 @@ async function main() {
         continue;
       }
 
-      const currentTargetAnswerKey = await target.pastPaper.findUnique({
-        where: { id: targetAnswerKeyId },
-        select: { questionPaperId: true },
-      });
+      const [currentTargetAnswerKey] = await queryRows<{ questionPaperId: string | null }>(
+        target.pool,
+        'SELECT "questionPaperId" FROM "PastPaper" WHERE id = $1',
+        [targetAnswerKeyId],
+      );
       if (currentTargetAnswerKey?.questionPaperId === targetQuestionPaperId) continue;
 
-      await target.pastPaper.update({
-        where: { id: targetAnswerKeyId },
-        data: { questionPaperId: targetQuestionPaperId },
-      });
+      await target.pool.query(
+        'UPDATE "PastPaper" SET "questionPaperId" = $2, "updatedAt" = NOW() WHERE id = $1',
+        [targetAnswerKeyId, targetQuestionPaperId],
+      );
       linkedAnswerKeys += 1;
     }
 
@@ -1031,7 +989,7 @@ async function main() {
       ),
     );
   } finally {
-    await Promise.allSettled([source.$disconnect(), target.$disconnect()]);
+    await Promise.allSettled([source.close(), target.close()]);
   }
 }
 

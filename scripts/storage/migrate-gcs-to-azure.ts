@@ -4,16 +4,12 @@ import { createHash } from "node:crypto";
 import { Readable, Transform } from "node:stream";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 
-import dotenv from "dotenv";
 import { BlobServiceClient, type ContainerClient } from "@azure/storage-blob";
-import { PrismaPg } from "@prisma/adapter-pg";
+import type { PoolClient } from "pg";
+import { createScriptDb, queryRows } from "../lib/db";
+import { loadScriptEnv } from "../lib/env";
 
-import * as prismaClient from "../../prisma/generated/client";
-
-const { PrismaClient, Prisma } = prismaClient;
-
-dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true, quiet: true });
+loadScriptEnv();
 
 type ModelName = "Note" | "PastPaper" | "syllabi";
 type FieldName = "fileUrl" | "thumbNailUrl";
@@ -697,38 +693,26 @@ async function persistState(filePath: string, state: MigrationState) {
     await nextPersist;
 }
 
-function buildPrismaClient(databaseUrl: string) {
-    return new PrismaClient({
-        adapter: new PrismaPg({ connectionString: databaseUrl }),
-    });
-}
+type StorageDatabase = ReturnType<typeof createScriptDb>;
 
 async function loadReferences(
-    prisma: InstanceType<typeof PrismaClient>,
+    connection: StorageDatabase,
     destinationBaseUrl: string,
     pathPrefixMode: Exclude<PathPrefixMode, "auto">,
 ) {
     const [notes, papers, syllabiRows] = await Promise.all([
-        prisma.note.findMany({
-            select: {
-                id: true,
-                fileUrl: true,
-                thumbNailUrl: true,
-            },
-        }),
-        prisma.pastPaper.findMany({
-            select: {
-                id: true,
-                fileUrl: true,
-                thumbNailUrl: true,
-            },
-        }),
-        prisma.syllabi.findMany({
-            select: {
-                id: true,
-                fileUrl: true,
-            },
-        }),
+        queryRows<{ id: string; fileUrl: string; thumbNailUrl: string | null }>(
+            connection.pool,
+            'SELECT id, "fileUrl", "thumbNailUrl" FROM "Note"',
+        ),
+        queryRows<{ id: string; fileUrl: string; thumbNailUrl: string | null }>(
+            connection.pool,
+            'SELECT id, "fileUrl", "thumbNailUrl" FROM "PastPaper"',
+        ),
+        queryRows<{ id: string; fileUrl: string }>(
+            connection.pool,
+            'SELECT id, "fileUrl" FROM "syllabi"',
+        ),
     ]);
 
     const references: UrlReference[] = [];
@@ -1186,90 +1170,95 @@ function chunk<T>(items: T[], size: number) {
 }
 
 async function executeBulkUrlUpdate(
-    tx: prismaClient.Prisma.TransactionClient,
+    client: PoolClient,
     group: BulkUpdateGroup,
     batchSize: number,
 ) {
-    const tableName = Prisma.raw(TABLE_NAMES[group.model]);
-    const columnName = Prisma.raw(COLUMN_NAMES[group.field]);
-    const targetColumn = Prisma.raw(`target.${COLUMN_NAMES[group.field]}`);
+    const tableName = TABLE_NAMES[group.model];
+    const columnName = COLUMN_NAMES[group.field];
 
     let updatedRows = 0;
 
     for (const batch of chunk(group.rows, batchSize)) {
-        const typedValueRows = batch.map((row) => Prisma.sql`
-            (
-                CAST(${row.id} AS TEXT),
-                CAST(${row.currentUrl} AS TEXT),
-                CAST(${row.nextUrl} AS TEXT)
-            )
-        `);
+        const params: string[] = [];
+        const valueRows = batch
+            .map((row, index) => {
+                const offset = index * 3;
+                params.push(row.id, row.currentUrl, row.nextUrl);
+                return `($${offset + 1}::text, $${offset + 2}::text, $${offset + 3}::text)`;
+            })
+            .join(", ");
 
-        const result = await tx.$executeRaw(
-            Prisma.sql`
+        const result = await client.query(
+            `
                 WITH data("id", "oldUrl", "newUrl") AS (
-                    VALUES ${Prisma.join(typedValueRows)}
+                    VALUES ${valueRows}
                 )
                 UPDATE ${tableName} AS target
                 SET ${columnName} = data."newUrl"
                 FROM data
                 WHERE target."id" = data."id"
-                  AND ${targetColumn} = data."oldUrl"
+                  AND target.${columnName} = data."oldUrl"
             `,
+            params,
         );
 
-        if (result !== batch.length) {
+        const affectedRows = result.rowCount ?? 0;
+        if (affectedRows !== batch.length) {
             throw new Error(
-                `Expected to update ${batch.length} ${group.model}.${group.field} rows, but updated ${result}. The database changed during migration; no rows were committed.`,
+                `Expected to update ${batch.length} ${group.model}.${group.field} rows, but updated ${affectedRows}. The database changed during migration; no rows were committed.`,
             );
         }
 
-        updatedRows += result;
+        updatedRows += affectedRows;
     }
 
     return updatedRows;
 }
 
 async function rewriteDatabaseUrls(
-    prisma: InstanceType<typeof PrismaClient>,
+    connection: StorageDatabase,
     groups: BulkUpdateGroup[],
     batchSize: number,
 ) {
-    return prisma.$transaction(async (tx) => {
+    const client = await connection.pool.connect();
+    try {
+        await client.query("BEGIN");
         let totalUpdatedRows = 0;
 
         for (const group of groups) {
-            const updated = await executeBulkUrlUpdate(tx, group, batchSize);
+            const updated = await executeBulkUrlUpdate(client, group, batchSize);
             console.log(`Updated ${updated} ${group.model}.${group.field} row(s).`);
             totalUpdatedRows += updated;
         }
 
+        await client.query("COMMIT");
         return totalUpdatedRows;
-    });
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 async function countRemainingExternalReferences(
-    prisma: InstanceType<typeof PrismaClient>,
+    connection: StorageDatabase,
     destinationBaseUrl: string,
 ) {
     const [notes, papers, syllabiRows] = await Promise.all([
-        prisma.note.findMany({
-            select: {
-                fileUrl: true,
-                thumbNailUrl: true,
-            },
-        }),
-        prisma.pastPaper.findMany({
-            select: {
-                fileUrl: true,
-                thumbNailUrl: true,
-            },
-        }),
-        prisma.syllabi.findMany({
-            select: {
-                fileUrl: true,
-            },
-        }),
+        queryRows<{ fileUrl: string; thumbNailUrl: string | null }>(
+            connection.pool,
+            'SELECT "fileUrl", "thumbNailUrl" FROM "Note"',
+        ),
+        queryRows<{ fileUrl: string; thumbNailUrl: string | null }>(
+            connection.pool,
+            'SELECT "fileUrl", "thumbNailUrl" FROM "PastPaper"',
+        ),
+        queryRows<{ fileUrl: string }>(
+            connection.pool,
+            'SELECT "fileUrl" FROM "syllabi"',
+        ),
     ]);
 
     const counts = {
@@ -1327,25 +1316,20 @@ async function countRemainingExternalReferences(
     return counts;
 }
 
-async function countSkippedSourceReferences(prisma: InstanceType<typeof PrismaClient>) {
+async function countSkippedSourceReferences(connection: StorageDatabase) {
     const [notes, papers, syllabiRows] = await Promise.all([
-        prisma.note.findMany({
-            select: {
-                fileUrl: true,
-                thumbNailUrl: true,
-            },
-        }),
-        prisma.pastPaper.findMany({
-            select: {
-                fileUrl: true,
-                thumbNailUrl: true,
-            },
-        }),
-        prisma.syllabi.findMany({
-            select: {
-                fileUrl: true,
-            },
-        }),
+        queryRows<{ fileUrl: string; thumbNailUrl: string | null }>(
+            connection.pool,
+            'SELECT "fileUrl", "thumbNailUrl" FROM "Note"',
+        ),
+        queryRows<{ fileUrl: string; thumbNailUrl: string | null }>(
+            connection.pool,
+            'SELECT "fileUrl", "thumbNailUrl" FROM "PastPaper"',
+        ),
+        queryRows<{ fileUrl: string }>(
+            connection.pool,
+            'SELECT "fileUrl" FROM "syllabi"',
+        ),
     ]);
 
     const counts = {
@@ -1395,30 +1379,22 @@ async function main() {
         : null;
 
     const publicBaseUrl = normalizeBaseUrl(options.publicBaseUrl || containerClient!.url);
-    const prisma = buildPrismaClient(options.databaseUrl);
+    const connection = createScriptDb(options.databaseUrl);
 
     try {
         const bootstrap = await Promise.all([
-            prisma.note.findMany({
-                select: {
-                    id: true,
-                    fileUrl: true,
-                    thumbNailUrl: true,
-                },
-            }),
-            prisma.pastPaper.findMany({
-                select: {
-                    id: true,
-                    fileUrl: true,
-                    thumbNailUrl: true,
-                },
-            }),
-            prisma.syllabi.findMany({
-                select: {
-                    id: true,
-                    fileUrl: true,
-                },
-            }),
+            queryRows<{ id: string; fileUrl: string; thumbNailUrl: string | null }>(
+                connection.pool,
+                'SELECT id, "fileUrl", "thumbNailUrl" FROM "Note"',
+            ),
+            queryRows<{ id: string; fileUrl: string; thumbNailUrl: string | null }>(
+                connection.pool,
+                'SELECT id, "fileUrl", "thumbNailUrl" FROM "PastPaper"',
+            ),
+            queryRows<{ id: string; fileUrl: string }>(
+                connection.pool,
+                'SELECT id, "fileUrl" FROM "syllabi"',
+            ),
         ]).then(([notes, papers, syllabiRows]) => ({ notes, papers, syllabiRows }));
 
         const persistedPathPrefixMode =
@@ -1474,7 +1450,7 @@ async function main() {
         }
 
         const { references, alreadyTarget, unsupported, skipped, sourceBuckets, totalRows } =
-            await loadReferences(prisma, publicBaseUrl, pathPrefixMode);
+            await loadReferences(connection, publicBaseUrl, pathPrefixMode);
 
         if (unsupported.length > 0) {
             const samples = unsupported
@@ -1593,7 +1569,7 @@ async function main() {
             const rowsToUpdate = updateGroups.reduce((count, group) => count + group.rows.length, 0);
 
             console.log(`Rewriting ${rowsToUpdate} database URL reference(s) inside a transaction...`);
-            const updatedRows = await rewriteDatabaseUrls(prisma, updateGroups, options.dbBatchSize);
+            const updatedRows = await rewriteDatabaseUrls(connection, updateGroups, options.dbBatchSize);
 
             state.dbRewrite = {
                 completedAt: new Date().toISOString(),
@@ -1606,17 +1582,17 @@ async function main() {
             console.log("Skipping database rewrite step.");
         }
 
-        const remainingExternal = await countRemainingExternalReferences(prisma, publicBaseUrl);
+        const remainingExternal = await countRemainingExternalReferences(connection, publicBaseUrl);
         console.log("Remaining non-Azure URL references in Note/PastPaper/syllabi:");
         console.table(remainingExternal);
 
-        const skippedRemaining = await countSkippedSourceReferences(prisma);
+        const skippedRemaining = await countSkippedSourceReferences(connection);
         console.log("Skipped configured-host references left unchanged:");
         console.table(skippedRemaining);
 
         console.log("Azure migration complete.");
     } finally {
-        await prisma.$disconnect();
+        await connection.close();
     }
 }
 

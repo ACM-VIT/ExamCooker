@@ -8,14 +8,13 @@ import React, {
     useTransition,
 } from "react";
 import Link from "next/link";
-import { createForumPost } from "../actions/CreateForumPost";
+import { createForumPost } from "../actions/create-forum-post";
 import { useRouter } from "next/navigation";
 import Fuse from "fuse.js";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faSquareXmark } from "@fortawesome/free-solid-svg-icons";
-import { useToast } from "@/components/ui/use-toast";
-import Loading from "@/app/(app)/loading";
-import { useGuestPrompt } from "@/app/components/GuestPromptProvider";
+import { useToast } from "@/app/components/ui/use-toast";
+import { useGuestPrompt } from "@/app/components/guest-prompt-provider";
 
 const years = ["2020", "2021", "2022", "2023", "2024"];
 const slots = [
@@ -105,17 +104,16 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
                 router.push("/forum");
             } else {
                 toast({
-                    title: "Error: Could not post.",
+                    title: result.error ?? "Could not create forum post.",
                     variant: "destructive",
                 });
-                console.error("Error: ", result.error);
             }
         });
     };
 
     const handleTagSelect = (tag: string) => {
         if (!selectedTags.includes(tag)) {
-            setSelectedTags([...selectedTags, tag]);
+            setSelectedTags((prev) => [...prev, tag]);
         }
         setTagInput("");
         setShowDropdown(false);
@@ -130,7 +128,7 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
     };
 
     const handleRemoveTag = (tag: string) => {
-        setSelectedTags(selectedTags.filter((t) => t !== tag));
+        setSelectedTags((prev) => prev.filter((value) => value !== tag));
     };
 
     useEffect(() => {
@@ -151,7 +149,6 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
 
     return (
         <div className="flex justify-center items-center min-h-screen text-black dark:text-[#D5D5D5]">
-            {pending && <Loading />}
             <div className="bg-white dark:bg-[#0C1222] p-6 shadow-lg w-full max-w-md border-dashed border-2 border-[#D5D5D5]">
                 <div className="flex justify-between items-center mb-4">
                     <Link href={"/forum"}>
@@ -166,9 +163,10 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
                         <button
                             type="submit"
                             onClick={handleSubmit}
+                            disabled={pending}
                             className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150"
                         >
-                            Post
+                            {pending ? "Posting..." : "Post"}
                         </button>
                     </div>
                 </div>
@@ -180,6 +178,7 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
                             className={`p-2 border-2 border-dashed dark:bg-[#0C1222] border-gray-300 w-full text-black dark:text-[#D5D5D5] text-lg font-bold`}
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
+                            disabled={pending}
                             required
                         />
                     </div>
@@ -189,6 +188,7 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
                                 className="p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85"
                                 value={year}
                                 onChange={(e) => setYear(e.target.value)}
+                                disabled={pending}
                                 required
                             >
                                 <option value="">Year</option>
@@ -204,6 +204,7 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
                                 className="p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85"
                                 value={slot}
                                 onChange={(e) => setSlot(e.target.value)}
+                                disabled={pending}
                                 required
                             >
                                 <option value="">Slot</option>
@@ -221,6 +222,7 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
                             className={`p-2 border-2 border-dashed border-gray-300 bg-white dark:bg-[#0C1222] w-full text-sm min-h-[150px]`}
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
+                            disabled={pending}
                             required
                         />
                     </div>
@@ -246,11 +248,12 @@ const CreateForum = ({ allTags }: { allTags: string[] }) => {
                                     type="text"
                                     placeholder="Add tag"
                                     className={`p-2 border-2 border-dashed border-gray-300 w-full dark:bg-[#0C1222] text-lg font-bold`}
-                                    value={tagInput}
-                                    onChange={handleTagInputChange}
-                                    onKeyDown={handleKeyDown}
-                                    onFocus={() => setShowDropdown(true)}
-                                />
+                                value={tagInput}
+                                onChange={handleTagInputChange}
+                                onKeyDown={handleKeyDown}
+                                onFocus={() => setShowDropdown(true)}
+                                disabled={pending}
+                            />
                                 {showDropdown && (
                                     <div
                                         ref={dropdownRef}

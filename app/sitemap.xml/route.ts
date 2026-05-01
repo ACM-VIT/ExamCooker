@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { and, count, eq, isNotNull } from "drizzle-orm";
 import { getBaseUrl } from "@/lib/seo";
-import { getCourseGrid, getSearchableCourses } from "@/lib/data/courseCatalog";
-import { getCourseExamCombos } from "@/lib/data/courseExams";
-import { getExamHubSummaries } from "@/lib/data/courseExams";
+import { getCourseGrid, getCourseSearchRecords } from "@/lib/data/course-catalog";
+import { getCourseExamCombos } from "@/lib/data/course-exams";
+import { getExamHubSummaries } from "@/lib/data/course-exams";
+import { db, note, pastPaper, subject, syllabi } from "@/db";
 
 const PAGE_SIZE = 40000;
 
@@ -27,13 +28,27 @@ export async function GET() {
         examHubs,
     ] =
         await Promise.all([
-            prisma.note.count({ where: { isClear: true } }),
-            prisma.pastPaper.count({ where: { isClear: true } }),
-            prisma.subject.count(),
-            prisma.syllabi.count(),
+            db
+                .select({ total: count() })
+                .from(note)
+                .where(eq(note.isClear, true))
+                .then((rows) => rows[0]?.total ?? 0),
+            db
+                .select({ total: count() })
+                .from(pastPaper)
+                .where(eq(pastPaper.isClear, true))
+                .then((rows) => rows[0]?.total ?? 0),
+            db
+                .select({ total: count() })
+                .from(subject)
+                .then((rows) => rows[0]?.total ?? 0),
+            db
+                .select({ total: count() })
+                .from(syllabi)
+                .then((rows) => rows[0]?.total ?? 0),
             getCourseGrid(),
             getCourseExamCombos(),
-            getSearchableCourses(),
+            getCourseSearchRecords(),
             getExamHubSummaries(),
         ]);
 

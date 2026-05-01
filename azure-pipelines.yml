@@ -10,12 +10,13 @@ pr:
 
 variables:
   nodeVersion: "24.x"
-  pnpmVersion: "10.33.0"
   artifactName: "webapp"
+  buildDir: "$(Agent.TempDirectory)/appservice-build"
   packageDir: "$(Build.ArtifactStagingDirectory)/package"
   packageZip: "$(Build.ArtifactStagingDirectory)/webapp.zip"
   azureServiceConnection: "azure-rm-examcooker-prod"
   appServiceName: "examcooker-2024"
+  nextPublicMicroserviceUrl: "https://upload.examcooker.acmvit.in"
 
 stages:
   - stage: Build
@@ -36,33 +37,87 @@ stages:
 
           - script: |
               set -eux
-              corepack enable
-              corepack prepare "pnpm@$(pnpmVersion)" --activate
-              pnpm install --frozen-lockfile
-            displayName: Install dependencies
+              rm -rf "$(buildDir)"
+              mkdir -p "$(buildDir)"
+              rsync -a \
+                --delete \
+                --exclude .git \
+                --exclude node_modules \
+                --exclude .next \
+                --exclude .turbo \
+                --exclude .DS_Store \
+                ./ "$(buildDir)/"
+            displayName: Prepare build workspace
 
-          - script: pnpm build
+          - script: |
+              set -eux
+              cd "$(buildDir)"
+              npm install --no-fund --no-audit
+            displayName: Install dependencies
+            env:
+              NEXT_PUBLIC_MICROSERVICE_URL: $(nextPublicMicroserviceUrl)
+              NEXT_PUBLIC_POSTHOG_KEY: $(NEXT_PUBLIC_POSTHOG_KEY)
+              NEXT_PUBLIC_POSTHOG_HOST: $(NEXT_PUBLIC_POSTHOG_HOST)
+              NEXT_PUBLIC_POSTHOG_PROXY_PATH: $(NEXT_PUBLIC_POSTHOG_PROXY_PATH)
+
+          - script: |
+              set -eu
+              cd "$(buildDir)"
+              if [ -z "${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}" ] || [ "${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}" = '$''(NEXT_SERVER_ACTIONS_ENCRYPTION_KEY)' ]; then
+                echo "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY must be set as an Azure Pipelines secret variable for production builds." >&2
+                exit 1
+              fi
+              node - <<'NODE'
+              const key = process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY || "";
+              const bytes = Buffer.from(key, "base64");
+              const normalized = bytes.toString("base64").replace(/=+$/, "");
+              if (![16, 24, 32].includes(bytes.length) || normalized !== key.replace(/=+$/, "")) {
+                console.error("NEXT_SERVER_ACTIONS_ENCRYPTION_KEY must be base64 for a 16, 24, or 32 byte AES key.");
+                process.exit(1);
+              }
+              NODE
+              npm run build
             displayName: Build app
+            condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+            env:
+              NEXT_PUBLIC_MICROSERVICE_URL: $(nextPublicMicroserviceUrl)
+              NEXT_PUBLIC_POSTHOG_KEY: $(NEXT_PUBLIC_POSTHOG_KEY)
+              NEXT_PUBLIC_POSTHOG_HOST: $(NEXT_PUBLIC_POSTHOG_HOST)
+              NEXT_PUBLIC_POSTHOG_PROXY_PATH: $(NEXT_PUBLIC_POSTHOG_PROXY_PATH)
+              NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: $(NEXT_SERVER_ACTIONS_ENCRYPTION_KEY)
+
+          - script: |
+              set -eux
+              cd "$(buildDir)"
+              npm run build
+            displayName: Build app (non-production)
+            condition: ne(variables['Build.SourceBranch'], 'refs/heads/main')
+            env:
+              NEXT_PUBLIC_MICROSERVICE_URL: $(nextPublicMicroserviceUrl)
+              NEXT_PUBLIC_POSTHOG_KEY: $(NEXT_PUBLIC_POSTHOG_KEY)
+              NEXT_PUBLIC_POSTHOG_HOST: $(NEXT_PUBLIC_POSTHOG_HOST)
+              NEXT_PUBLIC_POSTHOG_PROXY_PATH: $(NEXT_PUBLIC_POSTHOG_PROXY_PATH)
 
           - script: |
               set -eux
               rm -rf "$(packageDir)"
               mkdir -p "$(packageDir)"
 
-              rsync -a .next/standalone/ "$(packageDir)/"
+              rsync -a "$(buildDir)/.next/standalone/" "$(packageDir)/"
 
               mkdir -p "$(packageDir)/.next"
-              rsync -a .next/static/ "$(packageDir)/.next/static/"
+              rsync -a "$(buildDir)/.next/static/" "$(packageDir)/.next/static/"
 
-              mkdir -p "$(packageDir)/prisma"
-              if [ -d prisma/generated ]; then
-                rsync -a prisma/generated/ "$(packageDir)/prisma/generated/"
-              fi
-              if [ -f prisma/schema.prisma ]; then
-                cp prisma/schema.prisma "$(packageDir)/prisma/schema.prisma"
+              if [ -d "$(buildDir)/lib/generated" ]; then
+                mkdir -p "$(packageDir)/lib/generated"
+                rsync -a "$(buildDir)/lib/generated/" "$(packageDir)/lib/generated/"
               fi
 
-              cp startup.sh "$(packageDir)/startup.sh"
+              if [ -d "$(buildDir)/public" ]; then
+                rsync -a "$(buildDir)/public/" "$(packageDir)/public/"
+              fi
+
+              cp "$(buildDir)/startup.sh" "$(packageDir)/startup.sh"
             displayName: Package deployment payload
 
           - task: ArchiveFiles@2

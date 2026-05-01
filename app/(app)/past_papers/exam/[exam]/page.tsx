@@ -1,14 +1,16 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import PastPaperCard from "@/app/components/PastPaperCard";
-import StructuredData from "@/app/components/seo/StructuredData";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import PastPaperCard from "@/app/components/past-paper-card";
+import StructuredData from "@/app/components/seo/structured-data";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import {
     getExamHubPageData,
     getExamHubSummaries,
-} from "@/lib/data/courseExams";
-import { examSlugToType } from "@/lib/examSlug";
+} from "@/lib/data/course-exams";
+import { examSlugToType } from "@/lib/exam-slug";
 import {
     buildExamHubKeywordSet,
     getCourseExamPath,
@@ -21,7 +23,7 @@ import {
     buildCollectionPage,
     buildFaqPage,
     buildItemList,
-} from "@/lib/structuredData";
+} from "@/lib/structured-data";
 
 export async function generateMetadata({
     params,
@@ -30,10 +32,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { exam } = await params;
     const examType = examSlugToType(exam);
-    if (!examType) return {};
+    if (!examType) return { robots: { index: false, follow: true } };
 
     const data = await getExamHubPageData(examType);
-    if (!data) return {};
+    if (!data) return { robots: { index: false, follow: true } };
 
     const title = `${data.label} past papers | VIT previous year question papers`;
     const description = `Browse ${data.totalPapers} ${data.label} past papers across ${data.courseCount} VIT courses on ExamCooker.`;
@@ -53,12 +55,49 @@ export async function generateMetadata({
     };
 }
 
-export default async function ExamHubPage({
-    params,
+function ExamHubShell() {
+    return (
+        <div
+            className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 lg:px-10 lg:py-10"
+            aria-hidden="true"
+        >
+            <header className="flex flex-col gap-4">
+                <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="h-8 w-3/4 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+            </header>
+            <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="rounded-md border border-black/10 bg-white px-4 py-3 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                    >
+                        <span className="block h-3 w-16 bg-black/10 dark:bg-white/10" />
+                        <span className="mt-2 block h-6 w-12 bg-black/10 dark:bg-white/10" />
+                    </div>
+                ))}
+            </section>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                    >
+                        <span className="block h-3 w-20 bg-black/10 dark:bg-white/10" />
+                        <span className="mt-2 block h-5 w-full bg-black/10 dark:bg-white/10" />
+                        <span className="mt-2 block h-3 w-2/3 bg-black/10 dark:bg-white/10" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+async function ExamHubContent({
+    paramsPromise,
 }: {
-    params: Promise<{ exam: string }>;
+    paramsPromise: Promise<{ exam: string }>;
 }) {
-    const { exam } = await params;
+    const { exam } = await paramsPromise;
     const examType = examSlugToType(exam);
     if (!examType) return notFound();
 
@@ -87,17 +126,16 @@ export default async function ExamHubPage({
     ];
 
     return (
-        <DirectionalTransition>
-            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-                <StructuredData
-                    data={[
-                        buildBreadcrumbList([
-                            { name: "Past papers", path: "/past_papers" },
-                            {
-                                name: `${data.label} past papers`,
-                                path: getExamHubPath(data.slug),
-                            },
-                        ]),
+        <>
+            <StructuredData
+                data={[
+                    buildBreadcrumbList([
+                        { name: "Past papers", path: "/past_papers" },
+                        {
+                            name: `${data.label} past papers`,
+                            path: getExamHubPath(data.slug),
+                        },
+                    ]),
                         buildCollectionPage({
                             name: `${data.label} past papers`,
                             description,
@@ -114,20 +152,15 @@ export default async function ExamHubPage({
                         buildFaqPage(faq),
                     ]}
                 />
-
+                
                 <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 lg:px-10 lg:py-10">
                     <header className="flex flex-col gap-4">
-                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                            <Link
-                                href="/past_papers"
-                                transitionTypes={["nav-back"]}
-                                className="hover:text-black dark:hover:text-[#D5D5D5]"
-                            >
-                                Past papers
-                            </Link>
-                            <span aria-hidden="true">›</span>
-                            <span>{data.label}</span>
-                        </div>
+                        <PageBreadcrumbRow
+                            items={[
+                                { href: "/past_papers", label: "Past papers" },
+                                { label: data.label },
+                            ]}
+                        />
 
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                         <div className="max-w-4xl">
@@ -290,7 +323,22 @@ export default async function ExamHubPage({
                         </article>
                     ))}
                 </section>
-                </div>
+            </div>
+        </>
+    );
+}
+
+export default function ExamHubPage({
+    params,
+}: {
+    params: Promise<{ exam: string }>;
+}) {
+    return (
+        <DirectionalTransition>
+            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <Suspense fallback={<ExamHubShell />}>
+                    <ExamHubContent paramsPromise={params} />
+                </Suspense>
             </div>
         </DirectionalTransition>
     );

@@ -1,8 +1,8 @@
 import React from "react";
 import type { Metadata } from "next";
 import { GradientText } from "@/app/components/landing_page/landing";
-import SyllabusGrid from "@/app/components/syllabus/SyllabusGrid";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
+import SyllabusGrid from "@/app/components/syllabus/syllabus-grid";
+import DirectionalTransition from "@/app/components/common/directional-transition";
 import { getAllSyllabi } from "@/lib/data/syllabus";
 import { DEFAULT_KEYWORDS } from "@/lib/seo";
 

@@ -159,6 +159,10 @@ const nextConfig: NextConfig = {
                 destination: `${assetsHost}/static/:path*`,
             },
             {
+                source: `${normalizedProxyPath}/array/:path*`,
+                destination: `${assetsHost}/array/:path*`,
+            },
+            {
                 source: `${normalizedProxyPath}/:path*`,
                 destination: `${normalizedPosthogHost}/:path*`,
             },

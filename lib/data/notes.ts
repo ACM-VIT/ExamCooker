@@ -1,40 +1,72 @@
 import { cacheLife, cacheTag } from "next/cache";
-import prisma from "@/lib/prisma";
-import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
-import type { Prisma } from "@/prisma/generated/client";
+import {
+    and,
+    count,
+    desc,
+    eq,
+    exists,
+    ilike,
+    inArray,
+    isNotNull,
+    or,
+} from "drizzle-orm";
+import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
+import {
+    getCourseSearchRecords,
+    type CourseSearchRecord,
+} from "@/lib/data/course-catalog";
+import {
+    course,
+    db,
+    note,
+    noteToTag,
+    tag,
+} from "@/db";
 
-function buildWhere(search: string, tags: string[]): Prisma.NoteWhereInput {
-    return {
-        isClear: true,
-        ...(tags.length > 0
-            ? {
-                tags: {
-                    some: {
-                        name: {
-                            in: tags,
-                        },
-                    },
-                },
-            }
-            : {}),
-        ...(search
-            ? {
-                OR: [
-                    { title: { contains: search, mode: "insensitive" } },
-                    {
-                        tags: {
-                            some: {
-                                name: {
-                                    contains: search,
-                                    mode: "insensitive",
-                                },
-                            },
-                        },
-                    },
-                ],
-            }
-            : {}),
-    };
+function buildWhere(search: string, tags: string[]) {
+    const filters = [eq(note.isClear, true)];
+
+    if (tags.length > 0) {
+        filters.push(
+            exists(
+                db
+                    .select({ id: noteToTag.a })
+                    .from(noteToTag)
+                    .innerJoin(tag, eq(noteToTag.b, tag.id))
+                    .where(
+                        and(
+                            eq(noteToTag.a, note.id),
+                            inArray(tag.name, tags),
+                        ),
+                    ),
+            ),
+        );
+    }
+
+    if (search) {
+        const pattern = `%${search}%`;
+        const searchFilter = or(
+            ilike(note.title, pattern),
+            exists(
+                db
+                    .select({ id: noteToTag.a })
+                    .from(noteToTag)
+                    .innerJoin(tag, eq(noteToTag.b, tag.id))
+                    .where(
+                        and(
+                            eq(noteToTag.a, note.id),
+                            ilike(tag.name, pattern),
+                        ),
+                    ),
+            ),
+        );
+
+        if (searchFilter) {
+            filters.push(searchFilter);
+        }
+    }
+
+    return and(...filters);
 }
 
 export async function getNotesCount(input: { search: string; tags: string[] }) {
@@ -43,7 +75,12 @@ export async function getNotesCount(input: { search: string; tags: string[] }) {
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     const where = buildWhere(input.search, input.tags);
-    return prisma.note.count({ where });
+    const rows = await db
+        .select({ total: count() })
+        .from(note)
+        .where(where);
+
+    return rows[0]?.total ?? 0;
 }
 
 export async function getNotesPage(input: {
@@ -59,17 +96,17 @@ export async function getNotesPage(input: {
     const where = buildWhere(input.search, input.tags);
     const skip = (input.page - 1) * input.pageSize;
 
-    const items = await prisma.note.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: input.pageSize,
-        select: {
-            id: true,
-            title: true,
-            thumbNailUrl: true,
-        },
-    });
+    const items = await db
+        .select({
+            id: note.id,
+            title: note.title,
+            thumbNailUrl: note.thumbNailUrl,
+        })
+        .from(note)
+        .where(where)
+        .orderBy(desc(note.createdAt))
+        .offset(skip)
+        .limit(input.pageSize);
 
     return items.map((item) => ({
         ...item,
@@ -77,16 +114,10 @@ export async function getNotesPage(input: {
     }));
 }
 
-function buildCourseWhere(input: {
-    courseId?: string | null;
-}): Prisma.NoteWhereInput {
-    if (!input.courseId) return { id: "__missing-course-context__" };
-    return { isClear: true, courseId: input.courseId };
-}
-
 export type CourseNoteListItem = {
     id: string;
     title: string;
+    fileUrl: string;
     thumbNailUrl: string | null;
     updatedAt: Date;
     course: { code: string; title: string } | null;
@@ -99,8 +130,14 @@ export async function getCourseNotesCount(input: {
     cacheTag("notes");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const where = buildCourseWhere(input);
-    return prisma.note.count({ where });
+    if (!input.courseId) return 0;
+
+    const rows = await db
+        .select({ total: count() })
+        .from(note)
+        .where(and(eq(note.isClear, true), eq(note.courseId, input.courseId)));
+
+    return rows[0]?.total ?? 0;
 }
 
 export async function getCourseNotesPage(input: {
@@ -112,27 +149,51 @@ export async function getCourseNotesPage(input: {
     cacheTag("notes");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const where = buildCourseWhere(input);
+    if (!input.courseId) return [];
+
     const skip = Math.max(0, (input.page - 1) * input.pageSize);
 
-    const items = await prisma.note.findMany({
-        where,
-        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-        skip,
-        take: input.pageSize,
-        select: {
-            id: true,
-            title: true,
-            thumbNailUrl: true,
-            updatedAt: true,
-            course: { select: { code: true, title: true } },
-        },
-    });
+    const items = await db
+        .select({
+            id: note.id,
+            title: note.title,
+            fileUrl: note.fileUrl,
+            thumbNailUrl: note.thumbNailUrl,
+            updatedAt: note.updatedAt,
+            courseCode: course.code,
+            courseTitle: course.title,
+        })
+        .from(note)
+        .leftJoin(course, eq(note.courseId, course.id))
+        .where(and(eq(note.isClear, true), eq(note.courseId, input.courseId)))
+        .orderBy(desc(note.updatedAt), desc(note.createdAt))
+        .offset(skip)
+        .limit(input.pageSize);
 
     return items.map((item) => ({
-        ...item,
+        id: item.id,
+        title: item.title,
+        fileUrl: normalizeGcsUrl(item.fileUrl) ?? item.fileUrl,
         thumbNailUrl: normalizeGcsUrl(item.thumbNailUrl) ?? item.thumbNailUrl,
+        updatedAt: item.updatedAt,
+        course:
+            item.courseCode && item.courseTitle
+                ? {
+                    code: item.courseCode,
+                    title: item.courseTitle,
+                }
+                : null,
     }));
+}
+
+async function getNoteCourseRecords(): Promise<CourseSearchRecord[]> {
+    "use cache";
+    cacheTag("courses", "notes", "past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    return (await getCourseSearchRecords())
+        .filter((courseRow) => courseRow.noteCount > 0)
+        .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base" }));
 }
 
 /* ─── Notes course grid (mirrors courseCatalog pattern) ─── */
@@ -147,31 +208,17 @@ export type NotesCourseGridItem = {
 
 export async function getNotesCourseGrid(): Promise<NotesCourseGridItem[]> {
     "use cache";
-    cacheTag("notes", "courses");
+    cacheTag("notes", "courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await prisma.course.findMany({
-        where: { notes: { some: { isClear: true } } },
-        select: {
-            id: true,
-            code: true,
-            title: true,
-            _count: {
-                select: {
-                    notes: { where: { isClear: true } },
-                    papers: { where: { isClear: true } },
-                },
-            },
-        },
-        orderBy: { title: "asc" },
-    });
+    const courses = await getNoteCourseRecords();
 
     return courses.map((c) => ({
         id: c.id,
         code: c.code,
         title: c.title,
-        noteCount: c._count.notes,
-        paperCount: c._count.papers,
+        noteCount: c.noteCount,
+        paperCount: c.paperCount,
     }));
 }
 
@@ -220,15 +267,13 @@ export type NotesStats = {
 
 export async function getNotesStats(): Promise<NotesStats> {
     "use cache";
-    cacheTag("notes");
+    cacheTag("notes", "courses");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const [noteCount, courseCount] = await Promise.all([
-        prisma.note.count({ where: { isClear: true } }),
-        prisma.course.count({
-            where: { notes: { some: { isClear: true } } },
-        }),
-    ]);
+    const courses = await getNoteCourseRecords();
+    const noteCount = courses.reduce((sum, courseRow) => sum + courseRow.noteCount, 0);
+    const courseCount = courses.length;
+
     return { noteCount, courseCount };
 }
 
@@ -245,32 +290,19 @@ export async function getSearchableNoteCourses(): Promise<
     SearchableNoteCourse[]
 > {
     "use cache";
-    cacheTag("notes", "courses");
+    cacheTag("notes", "courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await prisma.course.findMany({
-        where: { notes: { some: { isClear: true } } },
-        select: {
-            id: true,
-            code: true,
-            title: true,
-            aliases: true,
-            _count: {
-                select: {
-                    notes: { where: { isClear: true } },
-                    papers: { where: { isClear: true } },
-                },
-            },
-        },
-    });
+    const courses = await getNoteCourseRecords();
+
     return courses
         .map((c) => ({
             id: c.id,
             code: c.code,
             title: c.title,
             aliases: c.aliases,
-            noteCount: c._count.notes,
-            paperCount: c._count.papers,
+            noteCount: c.noteCount,
+            paperCount: c.paperCount,
         }))
         .sort((a, b) => b.noteCount - a.noteCount);
 }
@@ -288,22 +320,25 @@ export async function getRecentNotes(limit = 10): Promise<RecentNote[]> {
     cacheTag("notes");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const notes = await prisma.note.findMany({
-        where: { isClear: true, courseId: { not: null } },
-        orderBy: { createdAt: "desc" },
-        take: limit,
-        select: {
-            id: true,
-            title: true,
-            thumbNailUrl: true,
-            course: { select: { code: true, title: true } },
-        },
-    });
+    const notes = await db
+        .select({
+            id: note.id,
+            title: note.title,
+            thumbNailUrl: note.thumbNailUrl,
+            courseCode: course.code,
+            courseTitle: course.title,
+        })
+        .from(note)
+        .innerJoin(course, eq(note.courseId, course.id))
+        .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
+        .orderBy(desc(note.createdAt))
+        .limit(limit);
+
     return notes.map((n) => ({
         id: n.id,
         title: n.title,
         thumbNailUrl: normalizeGcsUrl(n.thumbNailUrl) ?? null,
-        courseCode: n.course?.code ?? null,
-        courseTitle: n.course?.title ?? null,
+        courseCode: n.courseCode ?? null,
+        courseTitle: n.courseTitle ?? null,
     }));
 }

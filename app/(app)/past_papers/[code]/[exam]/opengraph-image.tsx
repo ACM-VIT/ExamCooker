@@ -1,7 +1,7 @@
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { examSlugToType, examTypeLabel } from "@/lib/examSlug";
-import { getCourseDetailByCode } from "@/lib/data/courseCatalog";
-import { getCoursePapers } from "@/lib/data/coursePapers";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { examSlugToType, examTypeLabel } from "@/lib/exam-slug";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
+import { getCoursePapers } from "@/lib/data/course-papers";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
 import { formatCountChip, OG_ALT, OG_CONTENT_TYPE, OG_IMAGE_SIZE, renderExamCookerOgImage } from "@/lib/og";
 

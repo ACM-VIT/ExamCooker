@@ -1,28 +1,27 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import PDFViewerClient from '@/app/components/PDFViewerClient';
-import { TimeHandler } from '@/app/components/forumpost/CommentHelpers';
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
+import PDFViewerClient from '@/app/components/pdf-viewer-client';
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import DirectionalTransition from "@/app/components/common/DirectionalTransition";
-import RecentPaperStrip from "@/app/components/past_papers/RecentPaperStrip";
-import ShareLink from '@/app/components/ShareLink';
-import ViewTracker from "@/app/components/ViewTracker";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
+import ShareLink from '@/app/components/share-link';
+import ViewTracker from "@/app/components/view-tracker";
 import {
     getAdjacentPapersInCourse,
     getPastPaperDetail,
     getSiblingPastPaper,
     getRelatedPapersForCourse,
-} from "@/lib/data/pastPaperDetail";
-import ItemActions from "@/app/components/ItemActions";
-// import PastPaperTagEditor from "@/app/components/PastPaperTagEditor";
+} from "@/lib/data/past-paper-detail";
+import ItemActions from "@/app/components/item-actions";
+// import PastPaperTagEditor from "@/app/components/past-paper-tag-editor";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } from "@/lib/seo";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { examTypeLabel } from "@/lib/examSlug";
-import type { ExamType } from "@/prisma/generated/client";
-import prisma from "@/lib/prisma";
-import { auth } from "@/app/auth";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { examTypeLabel } from "@/lib/exam-slug";
+import { buildPastPaperPdfFileName } from "@/lib/downloads/resource-names";
+import type { ExamType } from "@/db";
 
 //todo refactor to utility function and move to lib
 const ACRONYM_SKIP_WORDS = new Set([
@@ -116,8 +115,25 @@ function PaperNavButton({
     );
 }
 
-async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: string }> }) {
-    const { code, id } = await params;
+function PaperViewerShell() {
+    return (
+        <div
+            className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10"
+            aria-hidden="true"
+        >
+            <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
+            <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+            <div className="h-[70dvh] border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]" />
+        </div>
+    );
+}
+
+async function PaperViewerContent({
+    paramsPromise,
+}: {
+    paramsPromise: Promise<{ code: string; id: string }>;
+}) {
+    const { code, id } = await paramsPromise;
 
     const paper = await getPastPaperDetail(id);
     if (!paper) return notFound();
@@ -128,23 +144,20 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
         permanentRedirect(getPastPaperDetailPath(paper.id, canonicalCode));
     }
 
-    const session = await auth();
-    const isModerator = (session?.user as { role?: string } | undefined)?.role === "MODERATOR";
-    let allTags: Array<{ name: string }> = [];
-    if (isModerator) {
-        try {
-            allTags = await prisma.tag.findMany({ select: { name: true } });
-        } catch (error) {
-            console.error("Error fetching tags:", error);
-        }
-    }
-
-    const postTime = paper.createdAt.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
     const displayTitle = paper.course?.title ?? paper.title.replace(/\.pdf$/i, "");
     const headingTitle = paper.course?.title ? getHeadingTitle(paper.course.title) : displayTitle;
     const displaySlot = paper.slot ?? undefined;
     const displayYear = paper.year?.toString() ?? undefined;
     const displayExam = paper.examType ? examTypeLabel(paper.examType) : undefined;
+    const downloadFileName = buildPastPaperPdfFileName({
+        courseCode: paper.course?.code ?? canonicalCode,
+        courseTitle: paper.course?.title,
+        title: paper.title,
+        examLabel: displayExam,
+        slot: paper.slot,
+        year: paper.year,
+        hasAnswerKey: paper.hasAnswerKey,
+    });
 
     const [relatedPapers, adjacent, siblingPaper] = paper.courseId
         ? await Promise.all([
@@ -182,10 +195,6 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
         year: item.year,
     }));
 
-    const postedTime = TimeHandler(postTime);
-    const postedAtLine = `${postedTime.hours}:${postedTime.minutes}${postedTime.amOrPm} · ${postedTime.day}-${postedTime.month}-${postedTime.year}`;
-    const authorName = paper.author?.name?.slice(0, -10) || "Unknown";
-
     const metaPills: Array<{ label: string; value: string }> = [];
     if (displayExam) metaPills.push({ label: "Exam", value: displayExam });
     if (displaySlot) metaPills.push({ label: "Slot", value: displaySlot });
@@ -199,21 +208,15 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
     ) => `/past_papers/${item.course?.code ?? canonicalCode}/paper/${item.id}`;
 
     return (
-        <DirectionalTransition>
-            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-                <ViewTracker id={paper.id} type="pastpaper" title={displayTitle} />
+        <>
+            <ViewTracker id={paper.id} type="pastpaper" title={displayTitle} />
 
-                <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
-                    <Link
-                        href={courseHref}
-                        transitionTypes={["nav-back"]}
-                        className="group inline-flex w-fit items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-black/55 hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
-                    >
-                        <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} />
-                        <span>Back to {backLabel}</span>
-                    </Link>
+                <div className="mx-auto -mt-8 flex w-full max-w-5xl flex-col gap-3 px-4 pb-10 pt-0 sm:mt-0 sm:gap-5 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
+                    <PageBreadcrumbRow
+                        items={[{ href: courseHref, label: backLabel }]}
+                    />
 
-                    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                    <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                         <div className="min-w-0 flex-1">
                             <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
                                 {headingTitle}
@@ -233,11 +236,11 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
                                     ))}
                                 </div>
                             )}
-                            <p className="mt-3 text-xs text-black/55 dark:text-[#D5D5D5]/55">
+                            {/* <p className="mt-3 text-xs text-black/55 dark:text-[#D5D5D5]/55">
                                 Posted by <span className="font-semibold text-black/75 dark:text-[#D5D5D5]/75">{authorName}</span>
                                 <span className="mx-1.5" aria-hidden>·</span>
                                 {postedAtLine}
-                            </p>
+                            </p> */}
                         </div>
                         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:pt-1">
                             {siblingPaper ? (
@@ -255,7 +258,11 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
                                 authorId={paper.author?.id}
                                 activeTab="pastPaper"
                             />
-                            <ShareLink fileType="this Past Paper" />
+                            <ShareLink
+                                fileType="this Past Paper"
+                                resourceTitle={displayTitle}
+                                resourceKind="paper"
+                            />
                         </div>
                     </header>
 
@@ -280,7 +287,10 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
                         )}
                         <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
                             <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
-                                <PDFViewerClient fileUrl={paper.fileUrl} />
+                                <PDFViewerClient
+                                    fileUrl={paper.fileUrl}
+                                    fileName={downloadFileName}
+                                />
                             </div>
                         </div>
                     </div>
@@ -289,6 +299,17 @@ async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: s
                         <RecentPaperStrip items={relatedItems} title="Related papers" />
                     )}
                 </div>
+        </>
+    );
+}
+
+function PdfViewerPage({ params }: { params: Promise<{ code: string; id: string }> }) {
+    return (
+        <DirectionalTransition>
+            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <Suspense fallback={<PaperViewerShell />}>
+                    <PaperViewerContent paramsPromise={params} />
+                </Suspense>
             </div>
         </DirectionalTransition>
     );
@@ -303,7 +324,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { id } = await params;
     const paper = await getPastPaperDetail(id);
-    if (!paper) return {};
+    if (!paper) return { robots: { index: false, follow: true } };
 
     const canonicalCode = paper.course?.code ?? "unassigned";
     const displayTitle = paper.course?.title ?? paper.title.replace(/\.pdf$/i, "");

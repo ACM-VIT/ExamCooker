@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { startGoogleSignIn } from "@/lib/start-google-sign-in";
 
 export function SignIn({ displayText }: { displayText: string }) {
     return (
@@ -10,11 +10,15 @@ export function SignIn({ displayText }: { displayText: string }) {
             <button
                 type="button"
                 title="Login With Google"
-                onClick={() => signIn("google", { callbackUrl: "/" })}
+                onClick={() =>
+                    startGoogleSignIn("/", {
+                        source: "landing_cta",
+                    })
+                }
                 className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150"
             >
                 {displayText}
             </button>
         </div>
-    )
-} 
+    );
+}

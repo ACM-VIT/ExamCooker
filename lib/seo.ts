@@ -1,6 +1,6 @@
-import { examTypeLabel } from "@/lib/examSlug";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import type { ExamType } from "@/prisma/generated/client";
+import { examTypeLabel } from "@/lib/exam-slug";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import type { ExamType } from "@/db";
 
 const PRODUCTION_BASE_URL = "https://examcooker.acmvit.in";
 const BETA_BASE_URL = "https://beta.examcooker.acmvit.in";

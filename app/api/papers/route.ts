@@ -1,10 +1,10 @@
 import { unstable_rethrow } from 'next/navigation'
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
-import { normalizeGcsUrl } from '@/lib/normalizeGcsUrl'
-import type { Prisma, PastPaper } from '@/prisma/generated/client'
+import { and, count, desc, eq, exists, ilike, inArray, or } from 'drizzle-orm'
+import { normalizeGcsUrl } from '@/lib/normalize-gcs-url'
 import { getPastPaperDetailPath } from '@/lib/seo'
-import { examTypeLabel } from '@/lib/examSlug'
+import { examTypeLabel } from '@/lib/exam-slug'
+import { course, db, pastPaper, pastPaperToTag, tag } from '@/db'
 
 const DEFAULT_LIMIT = 40
 const MAX_LIMIT = 200
@@ -12,9 +12,17 @@ const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || 'https://examcooker.acmvit
 const SOURCE_HOST = safeHostname(BASE_URL)
 const API_KEYS = loadApiKeys()
 
-type PastPaperWithTags = PastPaper & {
+type PastPaperWithTags = {
+  id: string
+  title: string
+  thumbNailUrl: string | null
+  examType: typeof pastPaper.$inferSelect.examType
+  slot: string | null
+  year: number | null
+  createdAt: Date
+  updatedAt: Date
   tags: { name: string }[]
-  course?: { code: string; title: string } | null
+  course: { code: string; title: string } | null
 }
 
 interface ApiPaper {
@@ -65,34 +73,97 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, clampNumber(params.get('page'), 1, Number.MAX_SAFE_INTEGER))
     const includeDrafts = params.get('includeDrafts') === '1'
 
-    const where: Prisma.PastPaperWhereInput = {
-      ...(includeDrafts ? {} : { isClear: true }),
-      ...(subjectQuery
-        ? {
-          OR: [
-            { title: { contains: subjectQuery, mode: 'insensitive' } },
-            { tags: { some: { name: { equals: subjectQuery, mode: 'insensitive' } } } },
-          ],
-        }
-        : {}),
+    const filters = []
+    if (!includeDrafts) {
+      filters.push(eq(pastPaper.isClear, true))
     }
+    if (subjectQuery) {
+      filters.push(
+        or(
+          ilike(pastPaper.title, `%${subjectQuery}%`),
+          exists(
+            db
+              .select({ id: pastPaperToTag.a })
+              .from(pastPaperToTag)
+              .innerJoin(tag, eq(pastPaperToTag.b, tag.id))
+              .where(
+                and(
+                  eq(pastPaperToTag.a, pastPaper.id),
+                  ilike(tag.name, subjectQuery),
+                ),
+              ),
+          ),
+        ),
+      )
+    }
+
+    const where = filters.length > 0 ? and(...filters) : undefined
 
     const skip = (page - 1) * limit
 
-    const [records, total] = await Promise.all([
-      prisma.pastPaper.findMany({
-        where,
-        include: {
-          tags: { select: { name: true } },
-          course: { select: { code: true, title: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.pastPaper.count({ where }),
+    const [recordRows, totalRows] = await Promise.all([
+      db
+        .select({
+          id: pastPaper.id,
+          title: pastPaper.title,
+          thumbNailUrl: pastPaper.thumbNailUrl,
+          examType: pastPaper.examType,
+          slot: pastPaper.slot,
+          year: pastPaper.year,
+          createdAt: pastPaper.createdAt,
+          updatedAt: pastPaper.updatedAt,
+          courseCode: course.code,
+          courseTitle: course.title,
+        })
+        .from(pastPaper)
+        .leftJoin(course, eq(pastPaper.courseId, course.id))
+        .where(where)
+        .orderBy(desc(pastPaper.createdAt))
+        .offset(skip)
+        .limit(limit),
+      db
+        .select({ total: count() })
+        .from(pastPaper)
+        .where(where),
     ])
 
+    const recordIds = recordRows.map((record) => record.id)
+    const tagRows =
+      recordIds.length > 0
+        ? await db
+            .select({
+              paperId: pastPaperToTag.a,
+              name: tag.name,
+            })
+            .from(pastPaperToTag)
+            .innerJoin(tag, eq(pastPaperToTag.b, tag.id))
+            .where(inArray(pastPaperToTag.a, recordIds))
+        : []
+
+    const tagsByPaperId = new Map<string, Array<{ name: string }>>()
+    for (const tagRow of tagRows) {
+      const existing = tagsByPaperId.get(tagRow.paperId) ?? []
+      existing.push({ name: tagRow.name })
+      tagsByPaperId.set(tagRow.paperId, existing)
+    }
+
+    const records = recordRows.map<PastPaperWithTags>(record => ({
+      id: record.id,
+      title: record.title,
+      thumbNailUrl: record.thumbNailUrl,
+      examType: record.examType,
+      slot: record.slot,
+      year: record.year,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      tags: tagsByPaperId.get(record.id) ?? [],
+      course:
+        record.courseCode && record.courseTitle
+          ? { code: record.courseCode, title: record.courseTitle }
+          : null,
+    }))
+
+    const total = totalRows[0]?.total ?? 0
     const papers = records.map<ApiPaper>(paper => normalizePaper(paper))
 
     return NextResponse.json({

@@ -1,651 +1,762 @@
 "use client";
 
-import React, {
-  startTransition,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { Document, Page, pdfjs } from "react-pdf";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { createPluginRegistration } from "@embedpdf/core";
+import { EmbedPDF, useDocumentState } from "@embedpdf/core/react";
 import {
-  faChevronLeft,
-  faChevronRight,
-  faDownload,
-  faExpand,
-  faMinus,
-  faPlus,
-} from "@fortawesome/free-solid-svg-icons";
+  DocumentContent,
+  DocumentManagerPluginPackage,
+} from "@embedpdf/plugin-document-manager/react";
+import {
+  RenderPluginPackage,
+  useRenderCapability,
+} from "@embedpdf/plugin-render/react";
+import {
+  Scroller,
+  ScrollPluginPackage,
+  ScrollStrategy,
+  useScroll,
+} from "@embedpdf/plugin-scroll/react";
+import { Viewport, ViewportPluginPackage } from "@embedpdf/plugin-viewport/react";
+import {
+  ZoomMode,
+  ZoomPluginPackage,
+  useZoom,
+} from "@embedpdf/plugin-zoom/react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Maximize2,
+  Minimize2,
+  Moon,
+  Minus,
+  Plus,
+  Sun,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import posthog from "posthog-js";
+import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
+import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
+import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
+import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
+import {
+  clearActivePdfSnapshot,
+  setActivePdfSnapshot,
+} from "@/app/components/voice/pdf-voice-context";
 
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
+const TOOLBAR_BUTTON_CLASS =
+  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500";
+const PAGE_INPUT_CLASS =
+  "h-8 w-12 rounded border border-gray-300 bg-white px-1 text-center text-sm tabular-nums text-gray-700 outline-none transition focus:border-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 sm:w-14";
+const MIN_ZOOM = 0.2;
+const MAX_ZOOM = 3;
+const SLOW_LOAD_NOTICE_MS = 3500;
+const PDF_DARK_MODE_FILTER =
+  "invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95)";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+type PdfBufferState =
+  | { status: "loading"; progress: number | null }
+  | { status: "loaded"; buffer: ArrayBuffer }
+  | { status: "error"; message: string };
 
-const buttonClass =
-  "inline-flex h-7 w-7 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-9";
-const inputClass =
-  "w-10 rounded border border-gray-300 bg-white px-1 py-1 text-center text-sm text-gray-700 outline-none transition focus:border-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 sm:w-14 sm:px-2";
-const MIN_SCALE = 0.6;
-const MAX_SCALE = 2.4;
-const SCALE_STEP = 0.2;
-const DEFAULT_SCALE = 1;
-const RENDER_WINDOW = 2;
-const PDF_OPTIONS = {
-  disableAutoFetch: true,
-  disableRange: true,
-  disableStream: true,
-};
-
-type PdfViewerBoundaryProps = {
-  viewerKey: string;
-  fileUrl: string;
-  children: (disableEnhancementsFallback: boolean) => React.ReactNode;
-};
-
-type PdfViewerBoundaryState = {
-  displayMode: "full" | "safe" | "native";
-  hasFatalError: boolean;
-};
-
-function createViewerBoundaryState(): PdfViewerBoundaryState {
-  return {
-    displayMode: "full",
-    hasFatalError: false,
-  };
-}
-
-function isPdfTransportRaceError(error: unknown) {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  return /sendWith(Stream|Promise)|messageHandler/i.test(error.message);
-}
-
-class PdfViewerBoundary extends React.Component<
-  PdfViewerBoundaryProps,
-  PdfViewerBoundaryState
-> {
-  private lastStableDisplayMode: PdfViewerBoundaryState["displayMode"] = "full";
-
-  state = createViewerBoundaryState();
-
-  static getDerivedStateFromError(error: unknown): PdfViewerBoundaryState {
-    if (isPdfTransportRaceError(error)) {
-      return {
-        displayMode: "safe",
-        hasFatalError: false,
-      };
-    }
-
-    return {
-      displayMode: "full",
-      hasFatalError: true,
-    };
-  }
-
-  componentDidUpdate(prevProps: Readonly<PdfViewerBoundaryProps>) {
-    if (
-      prevProps.viewerKey !== this.props.viewerKey &&
-      (this.state.displayMode !== "full" || this.state.hasFatalError)
-    ) {
-      this.setState(createViewerBoundaryState());
-    }
-  }
-
-  componentDidCatch(error: unknown) {
-    if (!isPdfTransportRaceError(error)) {
-      console.error("PDF viewer failed to render.", error);
-      return;
-    }
-
-    if (this.lastStableDisplayMode === "safe") {
-      console.warn(
-        "PDF viewer still hit a pdf.js transport race in safe mode, falling back to the native viewer.",
-        error
-      );
-      this.setState({
-        displayMode: "native",
-        hasFatalError: false,
-      });
-      return;
-    }
-
-    console.warn(
-      "PDF viewer hit a pdf.js transport race, retrying without text and annotation layers.",
-      error
-    );
-  }
-
-  render() {
-    if (this.state.hasFatalError) {
-      return (
-        <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-red-500">
-          Failed to load PDF.
-        </div>
-      );
-    }
-
-    if (this.state.displayMode === "native") {
-      return (
-        <iframe
-          key={this.props.fileUrl}
-          src={this.props.fileUrl}
-          title="PDF preview"
-          className="h-full w-full border-0 bg-white dark:bg-gray-900"
-        />
-      );
-    }
-
-    this.lastStableDisplayMode = this.state.displayMode;
-    return this.props.children(this.state.displayMode === "safe");
-  }
-}
-
-function clampPage(pageNumber: number, numPages: number) {
-  return Math.min(Math.max(pageNumber, 1), Math.max(numPages, 1));
-}
-
-function clampScale(scale: number) {
-  return Math.min(Math.max(scale, MIN_SCALE), MAX_SCALE);
-}
-
-function getDownloadFileName(url: string) {
-  try {
-    const { pathname } = new URL(url);
-    const name = pathname.split("/").pop();
-    if (!name) return "document.pdf";
-    const decoded = decodeURIComponent(name);
-    return decoded.toLowerCase().endsWith(".pdf")
-      ? decoded
-      : `${decoded}.pdf`;
-  } catch {
-    return "document.pdf";
-  }
-}
-
-function PDFViewerContent({
+function LoadingState({
+  label,
   fileUrl,
-  disableEnhancementsFallback,
+  progress,
+  showFallback = false,
+  onRetry,
+}: {
+  label: string;
+  fileUrl?: string;
+  progress?: number | null;
+  showFallback?: boolean;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="flex h-full min-h-[320px] items-center justify-center bg-gray-100 px-4 text-center text-sm text-gray-500 dark:bg-gray-950 dark:text-gray-300">
+      <div className="flex w-full max-w-sm flex-col items-center gap-3">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
+          <div
+            className="h-full w-1/3 animate-pulse rounded-full bg-gray-900 dark:bg-gray-100"
+            style={
+              typeof progress === "number"
+                ? { width: `${Math.min(Math.max(progress, 3), 100)}%` }
+                : undefined
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <p className="font-semibold text-gray-700 dark:text-gray-100">{label}</p>
+          {showFallback ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Taking longer than usual. Open the original PDF, or retry the
+              viewer.
+            </p>
+          ) : null}
+        </div>
+        {showFallback && fileUrl ? (
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {onRetry ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="rounded border border-black/15 bg-white px-3 py-1.5 font-semibold text-black transition hover:border-black/30 dark:border-white/15 dark:bg-gray-900 dark:text-gray-100 dark:hover:border-white/30"
+              >
+                Retry
+              </button>
+            ) : null}
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded bg-black px-3 py-1.5 font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+            >
+              Open original
+            </a>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ErrorState({
+  fileUrl,
+  message = "PDF viewer failed to load.",
+  onRetry,
 }: {
   fileUrl: string;
-  disableEnhancementsFallback: boolean;
+  message?: string;
+  onRetry?: () => void;
 }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const pageRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const currentPageRef = useRef(1);
-  const loadProgressRef = useRef<number | null>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageInput, setPageInput] = useState("1");
-  const [scale, setScale] = useState(DEFAULT_SCALE);
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [loadProgress, setLoadProgress] = useState<number | null>(null);
-  const [pagesInView, setPagesInView] = useState<Set<number>>(() => new Set([1]));
-  const horizontalPadding = containerWidth < 640 ? 16 : 32;
-  const pageWidth =
-    containerWidth > 0 ? Math.max(containerWidth - horizontalPadding, 240) : 0;
-  const currentPage = numPages ? clampPage(pageNumber, numPages) : pageNumber;
-  const canGoPrevious = currentPage > 1;
-  const canGoNext = numPages ? currentPage < numPages : false;
-  const estimatedPageHeight = Math.max(
-    Math.round(pageWidth * scale * 1.4142),
-    320
+  return (
+    <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 bg-gray-100 px-4 text-center text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
+      <p>{message}</p>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded border border-black/15 bg-white px-3 py-1.5 font-semibold text-black transition hover:border-black/30 dark:border-white/15 dark:bg-gray-900 dark:text-gray-100 dark:hover:border-white/30"
+          >
+            Retry viewer
+          </button>
+        ) : null}
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded bg-black px-3 py-1.5 font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+        >
+          Open original
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function PageRenderLayer({
+  documentId,
+  isPdfDarkMode,
+  pageIndex,
+}: {
+  documentId: string;
+  isPdfDarkMode: boolean;
+  pageIndex: number;
+}) {
+  const { provides: renderProvides } = useRenderCapability();
+  const documentState = useDocumentState(documentId);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const imageUrlRef = useRef<string | null>(null);
+  const refreshVersion = documentState?.pageRefreshVersions[pageIndex] ?? 0;
+
+  useEffect(() => {
+    if (!renderProvides || documentState?.status !== "loaded") return;
+
+    let isCurrentRender = true;
+    const task = renderProvides.forDocument(documentId).renderPage({
+      pageIndex,
+      options: {
+        scaleFactor: documentState.scale || 1,
+        rotation: documentState.rotation,
+        dpr: Math.min(window.devicePixelRatio || 1, 1.5),
+      },
+    });
+
+    task
+      .toPromise()
+      .then((blob) => {
+        if (!isCurrentRender) return;
+
+        const nextImageUrl = URL.createObjectURL(blob);
+        if (imageUrlRef.current) {
+          URL.revokeObjectURL(imageUrlRef.current);
+        }
+        imageUrlRef.current = nextImageUrl;
+        setImageUrl(nextImageUrl);
+      })
+      .catch((renderError) => {
+        if (!isCurrentRender) return;
+        console.error("[PDFViewer] Page render failed", {
+          documentId,
+          pageIndex,
+          renderError,
+        });
+      });
+
+    return () => {
+      isCurrentRender = false;
+    };
+  }, [
+    documentId,
+    documentState?.rotation,
+    documentState?.scale,
+    documentState?.status,
+    pageIndex,
+    refreshVersion,
+    renderProvides,
+    imageUrlRef,
+  ]);
+
+  useEffect(
+    () => () => {
+      if (imageUrlRef.current) {
+        URL.revokeObjectURL(imageUrlRef.current);
+        imageUrlRef.current = null;
+      }
+    },
+    [imageUrlRef]
   );
 
-  const updateCurrentPage = useCallback((nextPage: number) => {
-    if (currentPageRef.current === nextPage) return;
+  if (!imageUrl) return null;
 
-    currentPageRef.current = nextPage;
-    startTransition(() => {
-      setPageNumber(nextPage);
-    });
-  }, []);
+  return (
+    <img
+      src={imageUrl}
+      alt=""
+      className="absolute inset-0 h-full w-full select-none object-fill"
+      draggable={false}
+      style={isPdfDarkMode ? { filter: PDF_DARK_MODE_FILTER } : undefined}
+    />
+  );
+}
 
-  useEffect(() => {
-    pageRefs.current = [];
-    currentPageRef.current = 1;
-    loadProgressRef.current = null;
-    setNumPages(null);
-    setPageNumber(1);
-    setPageInput("1");
-    setScale(DEFAULT_SCALE);
-    setLoadProgress(null);
-    setPagesInView(new Set([1]));
-  }, [fileUrl]);
-
-  useEffect(() => {
-    const nextInput = String(pageNumber);
-    currentPageRef.current = pageNumber;
-    setPageInput((currentValue) =>
-      currentValue === nextInput ? currentValue : nextInput
-    );
-  }, [pageNumber]);
-
-  useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
-
-    const updateWidth = () => {
-      const nextWidth = Math.floor(element.clientWidth);
-      setContainerWidth((currentWidth) =>
-        currentWidth === nextWidth ? currentWidth : nextWidth
-      );
-    };
-
-    updateWidth();
-
-    const observer = new ResizeObserver(() => {
-      updateWidth();
-    });
-
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
+function ViewerToolbar({
+  documentId,
+  fileUrl,
+  fileName,
+  isFullScreen,
+  isPdfDarkMode,
+  onTogglePdfDarkMode,
+  onToggleFullScreen,
+}: {
+  documentId: string;
+  fileUrl: string;
+  fileName: string;
+  isFullScreen: boolean;
+  isPdfDarkMode: boolean;
+  onTogglePdfDarkMode: () => void;
+  onToggleFullScreen: () => void;
+}) {
+  const [pageInput, setPageInput] = useState("1");
+  const [isDownloading, setIsDownloading] = useState(false);
+  const { provides: scrollControls, state: scrollState } = useScroll(documentId);
+  const { provides: zoomControls, state: zoomState } = useZoom(documentId);
+  const currentPage = scrollState.currentPage || 1;
+  const totalPages = Math.max(scrollState.totalPages || 1, 1);
+  const zoomPercent = Math.round((zoomState.currentZoomLevel || 1) * 100);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !numPages || pageWidth <= 0) return;
+    setPageInput(String(currentPage));
+  }, [currentPage]);
 
-    let frameId = 0;
+  const scrollToPage = useCallback(
+    (pageNumber: number) => {
+      scrollControls?.scrollToPage({
+        pageNumber: Math.min(Math.max(pageNumber, 1), totalPages),
+        behavior: "smooth",
+        alignX: 50,
+        alignY: 0,
+      });
+    },
+    [scrollControls, totalPages]
+  );
 
-    const syncPageNumberFromScroll = () => {
-      frameId = 0;
+  const commitPageInput = useCallback(() => {
+    const parsedPage = Number.parseInt(pageInput, 10);
 
-      const containerRect = container.getBoundingClientRect();
-      const containerCenter = container.scrollTop + container.clientHeight / 2;
-      let closestPage = 1;
-      let closestDistance = Number.POSITIVE_INFINITY;
-
-      for (let index = 0; index < numPages; index += 1) {
-        const pageElement = pageRefs.current[index];
-        if (!pageElement) continue;
-
-        const pageRect = pageElement.getBoundingClientRect();
-        const pageCenter =
-          pageRect.top -
-          containerRect.top +
-          container.scrollTop +
-          pageRect.height / 2;
-        const distance = Math.abs(pageCenter - containerCenter);
-
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestPage = index + 1;
-        }
-      }
-
-      updateCurrentPage(closestPage);
-    };
-
-    const handleScroll = () => {
-      if (frameId) return;
-      frameId = window.requestAnimationFrame(syncPageNumberFromScroll);
-    };
-
-    handleScroll();
-    container.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-      if (frameId) {
-        window.cancelAnimationFrame(frameId);
-      }
-    };
-  }, [numPages, pageWidth, updateCurrentPage]);
-
-  useEffect(() => {
-    if (!numPages) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        setPagesInView((currentValue) => {
-          const nextValue = new Set(currentValue);
-          let hasChanged = false;
-
-          for (const entry of entries) {
-            const pageAttribute = entry.target.getAttribute("data-page-number");
-            const page = pageAttribute ? Number.parseInt(pageAttribute, 10) : NaN;
-            if (!Number.isFinite(page)) continue;
-
-            if (entry.isIntersecting) {
-              if (!nextValue.has(page)) {
-                nextValue.add(page);
-                hasChanged = true;
-              }
-            } else if (nextValue.delete(page)) {
-              hasChanged = true;
-            }
-          }
-
-          return hasChanged ? nextValue : currentValue;
-        });
-      },
-      {
-        root: containerRef.current,
-        rootMargin: "200% 0px",
-        threshold: 0,
-      }
-    );
-
-    for (let index = 0; index < numPages; index += 1) {
-      const pageElement = pageRefs.current[index];
-      if (pageElement) {
-        observer.observe(pageElement);
-      }
-    }
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [estimatedPageHeight, numPages, pageWidth, scale]);
-
-  const documentLoading = useMemo(() => {
-    const percentage = loadProgress === null ? null : Math.round(loadProgress);
-    return (
-      <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-gray-500 dark:text-gray-300">
-        Loading PDF{percentage === null ? "…" : `… ${percentage}%`}
-      </div>
-    );
-  }, [loadProgress]);
-
-  const scrollToPage = (requestedPage: number) => {
-    if (!numPages) return;
-
-    const nextPage = clampPage(requestedPage, numPages);
-    const pageElement = pageRefs.current[nextPage - 1];
-
-    updateCurrentPage(nextPage);
-
-    if (pageElement) {
-      pageElement.scrollIntoView({ block: "start" });
-    }
-  };
-
-  const commitPageNumber = (rawValue: string) => {
-    if (!numPages) {
-      setPageInput("1");
-      return;
-    }
-
-    const parsedPage = Number.parseInt(rawValue, 10);
     if (!Number.isFinite(parsedPage)) {
       setPageInput(String(currentPage));
       return;
     }
 
     scrollToPage(parsedPage);
-  };
+  }, [currentPage, pageInput, scrollToPage]);
 
-  const adjustScale = (delta: number) => {
-    startTransition(() => {
-      setScale((currentScale) =>
-        clampScale(Number((currentScale + delta).toFixed(2)))
-      );
-    });
-  };
-
-  const downloadFileName = useMemo(
-    () => getDownloadFileName(fileUrl),
-    [fileUrl]
-  );
-
-  const renderedPages = useMemo(() => {
-    if (pageWidth <= 0 || !numPages) return null;
-
-    return Array.from({ length: numPages }, (_, index) => {
-      const renderedPageNumber = index + 1;
-      const shouldRenderPage =
-        Math.abs(renderedPageNumber - currentPage) <= RENDER_WINDOW ||
-        pagesInView.has(renderedPageNumber);
-
-      return (
-        <div
-          key={renderedPageNumber}
-          ref={(node) => {
-            pageRefs.current[index] = node;
-          }}
-          data-page-number={renderedPageNumber}
-          className="w-full max-w-full"
-          style={{ minHeight: estimatedPageHeight }}
-        >
-          {shouldRenderPage ? (
-            <Page
-              pageNumber={renderedPageNumber}
-              width={pageWidth}
-              scale={scale}
-              renderAnnotationLayer={!disableEnhancementsFallback}
-              renderTextLayer={!disableEnhancementsFallback}
-              loading={
-                <div className="flex h-[320px] items-center justify-center text-sm text-gray-500 dark:text-gray-300">
-                  Loading page…
-                </div>
-              }
-              error={
-                <div className="flex h-[320px] items-center justify-center text-sm text-red-500">
-                  Failed to render page.
-                </div>
-              }
-            />
-          ) : (
-            <div className="flex h-full min-h-[320px] items-center justify-center rounded bg-white/70 text-sm text-gray-400 dark:bg-gray-900/40 dark:text-gray-500">
-              Page {renderedPageNumber}
-            </div>
-          )}
-        </div>
-      );
-    });
-  }, [
-    currentPage,
-    disableEnhancementsFallback,
-    estimatedPageHeight,
-    numPages,
-    pageWidth,
-    pagesInView,
-    scale,
-  ]);
-
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     if (isDownloading) return;
+
     setIsDownloading(true);
-
-    let objectUrl: string | null = null;
-
+    posthog.capture("pdf_downloaded", { file_name: fileName, file_url: fileUrl });
     try {
-      const response = await fetch(fileUrl, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error("Failed to fetch PDF for download");
-      }
-
-      const blob = await response.blob();
-      objectUrl = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = downloadFileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch {
-      const fallbackLink = document.createElement("a");
-      fallbackLink.href = fileUrl;
-      fallbackLink.target = "_blank";
-      fallbackLink.rel = "noopener noreferrer";
-      document.body.appendChild(fallbackLink);
-      fallbackLink.click();
-      fallbackLink.remove();
+      await downloadPdfFile({ fileUrl, fileName });
     } finally {
-      if (objectUrl) {
-        const urlToRevoke = objectUrl;
-        window.setTimeout(() => window.URL.revokeObjectURL(urlToRevoke), 1000);
-      }
-
       setIsDownloading(false);
     }
-  };
+  }, [fileName, fileUrl, isDownloading]);
 
   return (
-    <div
-      className={`flex h-full w-full flex-col ${
-        isFullScreen ? "fixed inset-0 z-50 bg-white dark:bg-gray-900" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between gap-0.5 bg-white p-2 dark:bg-gray-800 sm:gap-2">
-        <div className="flex items-center gap-0.5 sm:gap-2">
-          <button
-            onClick={() => scrollToPage(currentPage - 1)}
-            disabled={!canGoPrevious}
-            className={buttonClass}
-            aria-label="Previous page"
-            title="Previous page"
-          >
-            <FontAwesomeIcon icon={faChevronLeft} />
-          </button>
-          <input
-            type="number"
-            min={1}
-            max={numPages ?? undefined}
-            value={pageInput}
-            onChange={(event) => setPageInput(event.target.value)}
-            onBlur={(event) => commitPageNumber(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                commitPageNumber(pageInput);
-              }
-            }}
-            disabled={!numPages}
-            className={inputClass}
-            aria-label="Current page"
-          />
-          <span className="whitespace-nowrap text-sm tabular-nums text-gray-600 dark:text-gray-300">
-            / {numPages ?? "—"}
-          </span>
-          <button
-            onClick={() => scrollToPage(currentPage + 1)}
-            disabled={!canGoNext}
-            className={buttonClass}
-            aria-label="Next page"
-            title="Next page"
-          >
-            <FontAwesomeIcon icon={faChevronRight} />
-          </button>
-        </div>
-        <div className="flex items-center gap-0.5 sm:gap-2">
-          <button
-            onClick={() => adjustScale(-SCALE_STEP)}
-            disabled={scale <= MIN_SCALE}
-            className={buttonClass}
-            aria-label="Zoom out"
-            title="Zoom out"
-          >
-            <FontAwesomeIcon icon={faMinus} />
-          </button>
-          <span className="min-w-10 text-center text-sm text-gray-600 dark:text-gray-300 sm:min-w-14">
-            {Math.round(scale * 100)}%
-          </span>
-          <button
-            onClick={() => adjustScale(SCALE_STEP)}
-            disabled={scale >= MAX_SCALE}
-            className={buttonClass}
-            aria-label="Zoom in"
-            title="Zoom in"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-          </button>
-          <button
-            onClick={() => setIsFullScreen((currentValue) => !currentValue)}
-            className={buttonClass}
-            aria-label="Toggle fullscreen"
-            title="Toggle fullscreen"
-          >
-            <FontAwesomeIcon icon={faExpand} />
-          </button>
-          <button
-            onClick={handleDownload}
-            className={buttonClass}
-            aria-label="Download PDF"
-            title="Download PDF"
-            disabled={isDownloading}
-          >
-            <FontAwesomeIcon icon={faDownload} />
-          </button>
-        </div>
+    <div className="flex h-12 shrink-0 items-center justify-between gap-1 border-b border-black/10 bg-white px-2 dark:border-white/10 dark:bg-gray-800 sm:gap-2 sm:px-3">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+        <button
+          type="button"
+          onClick={handleDownload}
+          className={TOOLBAR_BUTTON_CLASS}
+          aria-label="Download PDF"
+          title="Download PDF"
+          disabled={isDownloading}
+        >
+          <Download className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollToPage(currentPage - 1)}
+          className={TOOLBAR_BUTTON_CLASS}
+          aria-label="Previous page"
+          title="Previous page"
+          disabled={currentPage <= 1}
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <input
+          type="number"
+          min={1}
+          max={totalPages}
+          value={pageInput}
+          onChange={(event) => setPageInput(event.target.value)}
+          onFocus={() => setPageInput(String(currentPage))}
+          onBlur={commitPageInput}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              commitPageInput();
+            }
+          }}
+          className={PAGE_INPUT_CLASS}
+          aria-label="Current page"
+        />
+        <span className="whitespace-nowrap text-sm tabular-nums text-gray-600 dark:text-gray-300">
+          / {totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={() => scrollToPage(currentPage + 1)}
+          className={TOOLBAR_BUTTON_CLASS}
+          aria-label="Next page"
+          title="Next page"
+          disabled={currentPage >= totalPages}
+        >
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </button>
       </div>
 
-      <div
-        ref={containerRef}
-        className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950"
-        style={{ scrollbarGutter: "stable" }}
-      >
-        <Document
-          file={fileUrl}
-          options={PDF_OPTIONS}
-          onItemClick={({ pageNumber: nextPageNumber }) => {
-            if (typeof nextPageNumber === "number") {
-              scrollToPage(nextPageNumber);
-            }
-          }}
-          onLoadSuccess={({ numPages: nextNumPages }) => {
-            setNumPages(nextNumPages);
-            loadProgressRef.current = 100;
-            setLoadProgress((currentValue) =>
-              currentValue === 100 ? currentValue : 100
-            );
-
-            const nextPage = clampPage(currentPageRef.current, nextNumPages);
-            updateCurrentPage(nextPage);
-          }}
-          onLoadProgress={({ loaded, total }) => {
-            if (typeof total === "number" && total > 0) {
-              const nextProgress = Math.round((loaded / total) * 100);
-              if (loadProgressRef.current === nextProgress) return;
-
-              loadProgressRef.current = nextProgress;
-              setLoadProgress(nextProgress);
-            }
-          }}
-          onLoadError={() => {
-            loadProgressRef.current = null;
-            setLoadProgress(null);
-          }}
-          loading={documentLoading}
-          error={
-            <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-red-500">
-              Failed to load PDF.
-            </div>
-          }
-          noData={
-            <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-gray-500 dark:text-gray-300">
-              No PDF file specified.
-            </div>
-          }
-          className="flex min-h-full flex-col items-center gap-3 p-2 sm:gap-4 sm:p-4"
+      <div className="flex items-center gap-1 sm:gap-2">
+        <button
+          type="button"
+          onClick={() => zoomControls?.zoomOut()}
+          className={TOOLBAR_BUTTON_CLASS}
+          aria-label="Zoom out"
+          title="Zoom out"
+          disabled={!zoomControls || zoomState.currentZoomLevel <= MIN_ZOOM}
         >
-          {renderedPages}
-        </Document>
+          <Minus className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={() => zoomControls?.requestZoom(ZoomMode.FitWidth)}
+          className="hidden h-8 min-w-14 shrink-0 rounded px-2 text-center text-sm tabular-nums text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500 sm:inline-flex sm:items-center sm:justify-center"
+          aria-label="Fit width"
+          title="Fit width"
+          disabled={!zoomControls}
+        >
+          {zoomPercent}%
+        </button>
+        <button
+          type="button"
+          onClick={() => zoomControls?.zoomIn()}
+          className={TOOLBAR_BUTTON_CLASS}
+          aria-label="Zoom in"
+          title="Zoom in"
+          disabled={!zoomControls || zoomState.currentZoomLevel >= MAX_ZOOM}
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={onTogglePdfDarkMode}
+          className={TOOLBAR_BUTTON_CLASS}
+          aria-label={
+            isPdfDarkMode
+              ? "Render PDF in light mode"
+              : "Render PDF in dark mode"
+          }
+          aria-pressed={isPdfDarkMode}
+          title={
+            isPdfDarkMode
+              ? "Render PDF in light mode"
+              : "Render PDF in dark mode"
+          }
+        >
+          {isPdfDarkMode ? (
+            <Sun className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Moon className="h-4 w-4" aria-hidden="true" />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onToggleFullScreen}
+          className={TOOLBAR_BUTTON_CLASS}
+          aria-label={isFullScreen ? "Exit fullscreen" : "Enter fullscreen"}
+          title={isFullScreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullScreen ? (
+            <Minimize2 className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Maximize2 className="h-4 w-4" aria-hidden="true" />
+          )}
+        </button>
       </div>
     </div>
   );
 }
 
-export default function PDFViewer({ fileUrl }: { fileUrl: string }) {
+function PdfVoiceBridge({
+  documentId,
+  fileName,
+  fileUrl,
+}: {
+  documentId: string;
+  fileName: string;
+  fileUrl: string;
+}) {
+  const viewerIdRef = useRef(`pdf_${Math.random().toString(36).slice(2, 10)}`);
+  const { provides: scrollControls, state: scrollState } = useScroll(documentId);
+  const currentPage = Math.max(scrollState.currentPage || 1, 1);
+  const totalPages = Math.max(scrollState.totalPages || 1, 1);
+
+  const navigateToPage = useCallback(
+    (pageNumber: number) => {
+      scrollControls?.scrollToPage({
+        pageNumber: Math.min(Math.max(Math.round(pageNumber), 1), totalPages),
+        behavior: "smooth",
+        alignX: 50,
+        alignY: 0,
+      });
+    },
+    [scrollControls, totalPages],
+  );
+
+  useEffect(() => {
+    setActivePdfSnapshot({
+      currentPage,
+      fileName,
+      fileUrl,
+      navigateToPage,
+      title: document.title,
+      totalPages,
+      viewerId: viewerIdRef.current,
+    });
+  }, [currentPage, fileName, fileUrl, navigateToPage, totalPages]);
+
+  useEffect(
+    () => () => {
+      clearActivePdfSnapshot(viewerIdRef.current);
+    },
+    [],
+  );
+
+  return null;
+}
+
+function DocumentViewport({
+  documentId,
+  fileUrl,
+  fileName,
+  isFullScreen,
+  isPdfDarkMode,
+  onTogglePdfDarkMode,
+  onToggleFullScreen,
+}: {
+  documentId: string;
+  fileUrl: string;
+  fileName: string;
+  isFullScreen: boolean;
+  isPdfDarkMode: boolean;
+  onTogglePdfDarkMode: () => void;
+  onToggleFullScreen: () => void;
+}) {
   return (
-    <PdfViewerBoundary viewerKey={fileUrl} fileUrl={fileUrl}>
-      {(disableEnhancementsFallback) => (
-        <PDFViewerContent
-          key={`${fileUrl}:${disableEnhancementsFallback ? "safe" : "full"}`}
-          fileUrl={fileUrl}
-          disableEnhancementsFallback={disableEnhancementsFallback}
-        />
-      )}
-    </PdfViewerBoundary>
+    <DocumentContent documentId={documentId}>
+      {({ documentState, isError, isLoaded, isLoading }) => {
+        if (isError) {
+          return <ErrorState fileUrl={fileUrl} />;
+        }
+
+        if (isLoading || !isLoaded) {
+          const progress =
+            typeof documentState.loadingProgress === "number"
+              ? ` ${Math.round(documentState.loadingProgress)}%`
+              : "";
+
+          return <LoadingState label={`Loading PDF${progress}`} />;
+        }
+
+        return (
+          <div className="flex h-full min-h-0 w-full flex-col">
+            <PdfVoiceBridge
+              documentId={documentId}
+              fileName={fileName}
+              fileUrl={fileUrl}
+            />
+            <ViewerToolbar
+              documentId={documentId}
+              fileUrl={fileUrl}
+              fileName={fileName}
+              isFullScreen={isFullScreen}
+              isPdfDarkMode={isPdfDarkMode}
+              onTogglePdfDarkMode={onTogglePdfDarkMode}
+              onToggleFullScreen={onToggleFullScreen}
+            />
+            <Viewport
+              documentId={documentId}
+              className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950"
+              style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
+            >
+              <Scroller
+                documentId={documentId}
+                className="py-3 sm:py-4"
+                renderPage={({ pageIndex, rotatedHeight, rotatedWidth }) => (
+                  <div
+                    className={`relative overflow-hidden shadow-[0_3px_18px_-10px_rgba(0,0,0,0.45)] ${
+                      isPdfDarkMode ? "bg-black" : "bg-white"
+                    }`}
+                    style={{
+                      width: rotatedWidth,
+                      height: rotatedHeight,
+                    }}
+                  >
+                    <PageRenderLayer
+                      documentId={documentId}
+                      isPdfDarkMode={isPdfDarkMode}
+                      pageIndex={pageIndex}
+                    />
+                  </div>
+                )}
+              />
+            </Viewport>
+          </div>
+        );
+      }}
+    </DocumentContent>
+  );
+}
+
+export default function PDFViewer({
+  fileUrl,
+  fileName,
+}: {
+  fileUrl: string;
+  fileName?: string;
+}) {
+  const downloadFileName = useMemo(
+    () => fileName ?? getFallbackPdfFileName(fileUrl),
+    [fileName, fileUrl]
+  );
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isPdfDarkMode, setIsPdfDarkMode] = useState(false);
+  const [bufferState, setBufferState] = useState<PdfBufferState>({
+    status: "loading",
+    progress: null,
+  });
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [showSlowLoadFallback, setShowSlowLoadFallback] = useState(false);
+  const engineState = usePreloadedPdfiumEngine(retryNonce);
+
+  const retryViewerLoad = useCallback(() => {
+    setShowSlowLoadFallback(false);
+    setRetryNonce((currentValue) => currentValue + 1);
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    setShowSlowLoadFallback(false);
+    setBufferState({ status: "loading", progress: null });
+
+    if (retryNonce > 0) {
+      invalidatePdfBuffer(fileUrl);
+    }
+
+    const { promise, unsubscribe } = loadPdfBuffer(fileUrl, (progress) => {
+      if (!isActive) return;
+      setBufferState({ status: "loading", progress });
+    });
+
+    promise
+      .then((buffer) => {
+        if (!isActive) return;
+        setBufferState({ status: "loaded", buffer });
+      })
+      .catch((loadError) => {
+        if (!isActive) return;
+        setBufferState({
+          status: "error",
+          message:
+            loadError instanceof Error
+              ? loadError.message
+              : "Failed to download PDF",
+        });
+      });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
+  }, [fileUrl, retryNonce]);
+
+  useEffect(() => {
+    if (engineState.status !== "loading" && bufferState.status !== "loading") {
+      setShowSlowLoadFallback(false);
+      return;
+    }
+
+    const slowLoadTimer = window.setTimeout(() => {
+      setShowSlowLoadFallback(true);
+    }, SLOW_LOAD_NOTICE_MS);
+
+    return () => window.clearTimeout(slowLoadTimer);
+  }, [bufferState.status, engineState.status, retryNonce]);
+
+  const plugins = useMemo(
+    () => [
+      createPluginRegistration(DocumentManagerPluginPackage, {
+        initialDocuments: [
+          {
+            buffer:
+              bufferState.status === "loaded"
+                ? bufferState.buffer
+                : new ArrayBuffer(0),
+            name: downloadFileName,
+            autoActivate: true,
+          },
+        ],
+      }),
+      createPluginRegistration(ViewportPluginPackage, {
+        viewportGap: 0,
+        scrollEndDelay: 80,
+      }),
+      createPluginRegistration(ScrollPluginPackage, {
+        defaultStrategy: ScrollStrategy.Vertical,
+        defaultPageGap: 16,
+        defaultBufferSize: 1,
+      }),
+      createPluginRegistration(RenderPluginPackage, {
+        withForms: false,
+        withAnnotations: false,
+      }),
+      createPluginRegistration(ZoomPluginPackage, {
+        defaultZoomLevel: ZoomMode.FitWidth,
+        minZoom: MIN_ZOOM,
+        maxZoom: MAX_ZOOM,
+        zoomStep: 0.1,
+      }),
+    ],
+    [bufferState, downloadFileName]
+  );
+
+  const toggleFullScreen = useCallback(() => {
+    setIsFullScreen((currentValue) => !currentValue);
+  }, []);
+
+  const togglePdfDarkMode = useCallback(() => {
+    setIsPdfDarkMode((currentValue) => !currentValue);
+  }, []);
+
+  if (engineState.status === "error") {
+    return (
+      <ErrorState
+        fileUrl={fileUrl}
+        message="The fast PDF engine could not start."
+        onRetry={retryViewerLoad}
+      />
+    );
+  }
+
+  if (engineState.status === "loading") {
+    return (
+      <LoadingState
+        label="Loading PDF engine"
+        fileUrl={fileUrl}
+        showFallback={showSlowLoadFallback}
+        onRetry={retryViewerLoad}
+      />
+    );
+  }
+
+  if (bufferState.status === "error") {
+    return (
+      <ErrorState
+        fileUrl={fileUrl}
+        message={bufferState.message}
+        onRetry={retryViewerLoad}
+      />
+    );
+  }
+
+  if (bufferState.status === "loading") {
+    const progress =
+      typeof bufferState.progress === "number"
+        ? ` ${Math.round(bufferState.progress)}%`
+        : "";
+
+    return (
+      <LoadingState
+        label={`Downloading PDF${progress}`}
+        fileUrl={fileUrl}
+        progress={bufferState.progress}
+        showFallback={showSlowLoadFallback}
+        onRetry={retryViewerLoad}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`flex h-full w-full flex-col overflow-hidden ${
+        isFullScreen ? "fixed inset-0 z-50 bg-white dark:bg-gray-900" : ""
+      }`}
+    >
+      <EmbedPDF
+        key={fileUrl}
+        engine={engineState.engine}
+        plugins={plugins}
+        autoMountDomElements={false}
+      >
+        {({ activeDocumentId }) =>
+          activeDocumentId ? (
+            <DocumentViewport
+              documentId={activeDocumentId}
+              fileUrl={fileUrl}
+              fileName={downloadFileName}
+              isFullScreen={isFullScreen}
+              isPdfDarkMode={isPdfDarkMode}
+              onTogglePdfDarkMode={togglePdfDarkMode}
+              onToggleFullScreen={toggleFullScreen}
+            />
+          ) : (
+            <LoadingState label="Opening PDF" />
+          )
+        }
+      </EmbedPDF>
+    </div>
   );
 }

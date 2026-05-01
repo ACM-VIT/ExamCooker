@@ -4,15 +4,10 @@ import { access } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { spawn } from "node:child_process";
 
-import dotenv from "dotenv";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { createScriptDb, queryRows } from "../lib/db";
+import { loadScriptEnv } from "../lib/env";
 
-import * as prismaClient from "../../prisma/generated/client";
-
-const { PrismaClient, Prisma } = prismaClient;
-
-dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true, quiet: true });
+loadScriptEnv();
 
 type Options = {
     targetBucket: string;
@@ -313,29 +308,22 @@ async function loadReferences() {
         throw new Error("Missing DEV_DATABASE or DATABASE_URL in the environment.");
     }
 
-    const prisma = new PrismaClient({
-        adapter: new PrismaPg({ connectionString }),
-    });
+    const database = createScriptDb(connectionString);
 
     try {
         const [notes, papers, syllabiRows] = await Promise.all([
-            prisma.note.findMany({
-                select: {
-                    fileUrl: true,
-                    thumbNailUrl: true,
-                },
-            }),
-            prisma.pastPaper.findMany({
-                select: {
-                    fileUrl: true,
-                    thumbNailUrl: true,
-                },
-            }),
-            prisma.syllabi.findMany({
-                select: {
-                    fileUrl: true,
-                },
-            }),
+            queryRows<{ fileUrl: string; thumbNailUrl: string | null }>(
+                database.pool,
+                'SELECT "fileUrl", "thumbNailUrl" FROM "Note"',
+            ),
+            queryRows<{ fileUrl: string; thumbNailUrl: string | null }>(
+                database.pool,
+                'SELECT "fileUrl", "thumbNailUrl" FROM "PastPaper"',
+            ),
+            queryRows<{ fileUrl: string }>(
+                database.pool,
+                'SELECT "fileUrl" FROM "syllabi"',
+            ),
         ]);
 
         const references: UrlReference[] = [];
@@ -378,12 +366,14 @@ async function loadReferences() {
             });
         }
 
-        return { prisma, references };
+        return { ...database, references };
     } catch (error) {
-        await prisma.$disconnect();
+        await database.close();
         throw error;
     }
 }
+
+type DevBucketConnection = Awaited<ReturnType<typeof loadReferences>>;
 
 function summarizeReferences(references: UrlReference[]) {
     const bucketCounts = new Map<string, number>();
@@ -502,7 +492,7 @@ async function copyReferencedObjects(
 }
 
 async function rewriteDatabaseUrls(
-    prisma: InstanceType<typeof PrismaClient>,
+    connection: DevBucketConnection,
     sourceBucket: string,
     targetBucket: string,
     options: Options,
@@ -517,43 +507,79 @@ async function rewriteDatabaseUrls(
     const oldLike = `${oldPrefix}%`;
 
     const countsBefore = {
-        noteFileUrls: await prisma.note.count({
-            where: { fileUrl: { startsWith: oldPrefix } },
-        }),
-        noteThumbUrls: await prisma.note.count({
-            where: { thumbNailUrl: { startsWith: oldPrefix } },
-        }),
-        paperFileUrls: await prisma.pastPaper.count({
-            where: { fileUrl: { startsWith: oldPrefix } },
-        }),
-        paperThumbUrls: await prisma.pastPaper.count({
-            where: { thumbNailUrl: { startsWith: oldPrefix } },
-        }),
-        syllabiFileUrls: await prisma.syllabi.count({
-            where: { fileUrl: { startsWith: oldPrefix } },
-        }),
+        noteFileUrls: Number((await queryRows<{ count: number }>(
+            connection.pool,
+            'SELECT COUNT(*)::INT AS count FROM "Note" WHERE "fileUrl" LIKE $1',
+            [oldLike],
+        ))[0]?.count ?? 0),
+        noteThumbUrls: Number((await queryRows<{ count: number }>(
+            connection.pool,
+            'SELECT COUNT(*)::INT AS count FROM "Note" WHERE "thumbNailUrl" LIKE $1',
+            [oldLike],
+        ))[0]?.count ?? 0),
+        paperFileUrls: Number((await queryRows<{ count: number }>(
+            connection.pool,
+            'SELECT COUNT(*)::INT AS count FROM "PastPaper" WHERE "fileUrl" LIKE $1',
+            [oldLike],
+        ))[0]?.count ?? 0),
+        paperThumbUrls: Number((await queryRows<{ count: number }>(
+            connection.pool,
+            'SELECT COUNT(*)::INT AS count FROM "PastPaper" WHERE "thumbNailUrl" LIKE $1',
+            [oldLike],
+        ))[0]?.count ?? 0),
+        syllabiFileUrls: Number((await queryRows<{ count: number }>(
+            connection.pool,
+            'SELECT COUNT(*)::INT AS count FROM "syllabi" WHERE "fileUrl" LIKE $1',
+            [oldLike],
+        ))[0]?.count ?? 0),
     };
 
     console.log("DB rows matched for URL rewrite:");
     console.table(countsBefore);
 
-    const results = await prisma.$transaction([
-        prisma.$executeRaw(
-            Prisma.sql`UPDATE "Note" SET "fileUrl" = replace("fileUrl", ${oldPrefix}, ${newPrefix}) WHERE "fileUrl" LIKE ${oldLike}`,
-        ),
-        prisma.$executeRaw(
-            Prisma.sql`UPDATE "Note" SET "thumbNailUrl" = replace("thumbNailUrl", ${oldPrefix}, ${newPrefix}) WHERE "thumbNailUrl" LIKE ${oldLike}`,
-        ),
-        prisma.$executeRaw(
-            Prisma.sql`UPDATE "PastPaper" SET "fileUrl" = replace("fileUrl", ${oldPrefix}, ${newPrefix}) WHERE "fileUrl" LIKE ${oldLike}`,
-        ),
-        prisma.$executeRaw(
-            Prisma.sql`UPDATE "PastPaper" SET "thumbNailUrl" = replace("thumbNailUrl", ${oldPrefix}, ${newPrefix}) WHERE "thumbNailUrl" LIKE ${oldLike}`,
-        ),
-        prisma.$executeRaw(
-            Prisma.sql`UPDATE "syllabi" SET "fileUrl" = replace("fileUrl", ${oldPrefix}, ${newPrefix}) WHERE "fileUrl" LIKE ${oldLike}`,
-        ),
-    ]);
+    const client = await connection.pool.connect();
+    let results: number[] = [];
+    try {
+        await client.query("BEGIN");
+        results = [
+            (
+                await client.query(
+                    'UPDATE "Note" SET "fileUrl" = replace("fileUrl", $1, $2) WHERE "fileUrl" LIKE $3',
+                    [oldPrefix, newPrefix, oldLike],
+                )
+            ).rowCount ?? 0,
+            (
+                await client.query(
+                    'UPDATE "Note" SET "thumbNailUrl" = replace("thumbNailUrl", $1, $2) WHERE "thumbNailUrl" LIKE $3',
+                    [oldPrefix, newPrefix, oldLike],
+                )
+            ).rowCount ?? 0,
+            (
+                await client.query(
+                    'UPDATE "PastPaper" SET "fileUrl" = replace("fileUrl", $1, $2) WHERE "fileUrl" LIKE $3',
+                    [oldPrefix, newPrefix, oldLike],
+                )
+            ).rowCount ?? 0,
+            (
+                await client.query(
+                    'UPDATE "PastPaper" SET "thumbNailUrl" = replace("thumbNailUrl", $1, $2) WHERE "thumbNailUrl" LIKE $3',
+                    [oldPrefix, newPrefix, oldLike],
+                )
+            ).rowCount ?? 0,
+            (
+                await client.query(
+                    'UPDATE "syllabi" SET "fileUrl" = replace("fileUrl", $1, $2) WHERE "fileUrl" LIKE $3',
+                    [oldPrefix, newPrefix, oldLike],
+                )
+            ).rowCount ?? 0,
+        ];
+        await client.query("COMMIT");
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
 
     console.log("DB rows updated:");
     console.table({
@@ -565,21 +591,31 @@ async function rewriteDatabaseUrls(
     });
 
     const countsAfter = {
-        noteFileUrls: await prisma.note.count({
-            where: { fileUrl: { startsWith: newPrefix } },
-        }),
-        noteThumbUrls: await prisma.note.count({
-            where: { thumbNailUrl: { startsWith: newPrefix } },
-        }),
-        paperFileUrls: await prisma.pastPaper.count({
-            where: { fileUrl: { startsWith: newPrefix } },
-        }),
-        paperThumbUrls: await prisma.pastPaper.count({
-            where: { thumbNailUrl: { startsWith: newPrefix } },
-        }),
-        syllabiFileUrls: await prisma.syllabi.count({
-            where: { fileUrl: { startsWith: newPrefix } },
-        }),
+        noteFileUrls: Number((await queryRows<{ count: number }>(
+            connection.pool,
+            'SELECT COUNT(*)::INT AS count FROM "Note" WHERE "fileUrl" LIKE $1',
+            [`${newPrefix}%`],
+        ))[0]?.count ?? 0),
+        noteThumbUrls: Number((await queryRows<{ count: number }>(
+            connection.pool,
+            'SELECT COUNT(*)::INT AS count FROM "Note" WHERE "thumbNailUrl" LIKE $1',
+            [`${newPrefix}%`],
+        ))[0]?.count ?? 0),
+        paperFileUrls: Number((await queryRows<{ count: number }>(
+            connection.pool,
+            'SELECT COUNT(*)::INT AS count FROM "PastPaper" WHERE "fileUrl" LIKE $1',
+            [`${newPrefix}%`],
+        ))[0]?.count ?? 0),
+        paperThumbUrls: Number((await queryRows<{ count: number }>(
+            connection.pool,
+            'SELECT COUNT(*)::INT AS count FROM "PastPaper" WHERE "thumbNailUrl" LIKE $1',
+            [`${newPrefix}%`],
+        ))[0]?.count ?? 0),
+        syllabiFileUrls: Number((await queryRows<{ count: number }>(
+            connection.pool,
+            'SELECT COUNT(*)::INT AS count FROM "syllabi" WHERE "fileUrl" LIKE $1',
+            [`${newPrefix}%`],
+        ))[0]?.count ?? 0),
     };
 
     console.log("DB rows now pointing at the target bucket:");
@@ -589,7 +625,8 @@ async function rewriteDatabaseUrls(
 async function main() {
     const options = parseArgs(process.argv.slice(2));
     const gcloudBin = await resolveGcloudBinary(options.gcloudBin);
-    const { prisma, references } = await loadReferences();
+    const connection = await loadReferences();
+    const { references } = connection;
 
     try {
         if (references.length === 0) {
@@ -656,11 +693,11 @@ async function main() {
             options.targetBucket,
             filteredSummary.directories,
         );
-        await rewriteDatabaseUrls(prisma, sourceBucket, options.targetBucket, options);
+        await rewriteDatabaseUrls(connection, sourceBucket, options.targetBucket, options);
 
         console.log("Migration complete.");
     } finally {
-        await prisma.$disconnect();
+        await connection.close();
     }
 }
 

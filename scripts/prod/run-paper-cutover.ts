@@ -325,8 +325,8 @@ async function main() {
       name: options.dryRun ? "schema-validate" : "schema-migrate",
       skip: options.skipSchema,
       command: options.dryRun
-        ? ["pnpm", "exec", "prisma", "validate", "--schema", "prisma/schema.prisma"]
-        : ["pnpm", "exec", "prisma", "migrate", "deploy", "--schema", "prisma/schema.prisma"],
+        ? ["pnpm", "exec", "drizzle-kit", "introspect", "--config", "drizzle.config.ts"]
+        : ["pnpm", "exec", "drizzle-kit", "push", "--config", "drizzle.config.ts"],
       env: commonTargetEnv,
     },
     {
