@@ -388,6 +388,7 @@ export async function getCourseDetailByCode(code: string): Promise<CourseDetail 
     return loadCourseDetailByCode(normalized);
 }
 
+//todo: we need build a way to get upcoming exams reliably and with least maintenance overhead
 export async function getUpcomingExamsCourseGrid(): Promise<CourseGridItem[]> {
     "use cache";
     cacheTag("courses", "past_papers");
