@@ -21,4 +21,4 @@ include ':capacitor-status-bar'
 project(':capacitor-status-bar').projectDir = new File('../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.3.1/node_modules/@capacitor/status-bar/android')
 
 include ':capacitor-native-tabs'
-project(':capacitor-native-tabs').projectDir = new File('../../node_modules/.pnpm/capacitor-native-tabs@1.0.3_@capacitor+core@8.3.1/node_modules/capacitor-native-tabs/android')
+project(':capacitor-native-tabs').projectDir = new File('../../node_modules/.pnpm/capacitor-native-tabs@1.0.3_patch_hash=d2efac502c5e8ad2b44142a24585ff561ebf7a7aef40d73c_8dd27d971d59e5cb247db99f4955fb57/node_modules/capacitor-native-tabs/android')
