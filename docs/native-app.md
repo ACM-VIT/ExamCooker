@@ -9,7 +9,9 @@ Capacitor plugins, splash/icon assets, or native platform code changes.
 
 ## Configuration
 
-The Capacitor config lives in `capacitor.config.ts`.
+Native shells and Xcode / Gradle projects live under `mobile/`. The Capacitor
+config stays at the repo root (`capacitor.config.ts`) so the CLI runs next to
+`package.json`; it references `mobile/` for `webDir`, iOS, and Android paths.
 
 - Default app URL: `https://examcooker.acmvit.in`
 - Override for local or beta testing: `EXAMCOOKER_APP_URL`
@@ -31,7 +33,7 @@ pnpm cap:open:android
 ```
 
 Use `pnpm cap:sync` after changing `capacitor.config.ts`, native icons, native
-plugins, or the local fallback shell.
+plugins, or the local fallback shell under `mobile/native-shell`.
 
 ## App Review Notes
 

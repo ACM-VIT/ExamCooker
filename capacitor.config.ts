@@ -16,7 +16,13 @@ const allowedHosts = Array.from(
 const config: CapacitorConfig = {
   appId: "in.acmvit.examcooker",
   appName: "ExamCooker",
-  webDir: "native-shell",
+  webDir: "mobile/native-shell",
+  android: {
+    path: "mobile/android",
+  },
+  ios: {
+    path: "mobile/ios",
+  },
   server: {
     url: appUrl,
     cleartext: appUrl.startsWith("http://"),
