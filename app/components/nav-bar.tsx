@@ -1,9 +1,9 @@
 "use client";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { addTransitionType, startTransition, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "@/app/components/common/app-image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import ThemeToggleSwitch from "@/app/components/common/theme-toggle";
 import { SignOut } from "@/app/components/sign-out";
 import VoiceAgentButton from "@/app/components/voice/voice-agent-button";
@@ -52,6 +52,7 @@ const VoiceAgentEntry = dynamic(
 
 const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const { isAuthed, requireAuth, openPrompt, session } = useGuestPrompt();
   const voiceAgentEnabled =
     usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? true;
@@ -71,7 +72,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const navLabelClassName = `${navActionLabelBaseClassName} ${
     keepNavExpanded
       ? "lg:ml-3 lg:max-w-[150px] lg:opacity-100"
-      : "lg:max-w-0 lg:opacity-0 lg:group-hover/nav:ml-3 lg:group-hover/nav:max-w-[150px] lg:group-hover/nav:opacity-100 lg:group-focus-within/nav:ml-3 lg:group-focus-within/nav:max-w-[150px] lg:group-focus-within/nav:opacity-100"
+      : "lg:max-w-0 lg:opacity-0 lg:group-hover/nav:ml-3 lg:group-hover/nav:max-w-[150px] lg:group-hover/nav:opacity-100"
   }`;
 
   useEffect(() => {
@@ -157,13 +158,56 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     return () => window.clearTimeout(timeout);
   }, [keepNavExpanded, pathname]);
 
+  const setNavTransitionOrigin = (element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    document.documentElement.style.setProperty(
+      "--nav-vt-x",
+      `${rect.left + rect.width / 2}px`,
+    );
+    document.documentElement.style.setProperty(
+      "--nav-vt-y",
+      `${rect.top + rect.height / 2}px`,
+    );
+  };
+
   const keepExpandedForNavigation = (event: React.MouseEvent<HTMLElement>) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
-    if (!target.closest("a[href]")) return;
+    const link = target.closest("a[href]");
+    if (!link) return;
+    setNavTransitionOrigin(link as HTMLElement);
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
     keepNavExpandedFromPathRef.current = pathname;
     setKeepNavExpanded(true);
+  };
+
+  const collapseNavAfterPointerLeave = () => {
+    setKeepNavExpanded(false);
+  };
+
+  const handleNavLinkClick = (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    href: string,
+    isActive: boolean,
+  ) => {
+    if (
+      isActive ||
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    setNavTransitionOrigin(event.currentTarget);
+    startTransition(() => {
+      addTransitionType("nav-lateral");
+      router.push(href);
+    });
   };
 
   const handleVoiceClick = useCallback((entryPoint: VoiceAgentEntryPoint = "nav") => {
@@ -232,6 +276,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
       <nav
         aria-label="Tools and navigation"
         onClickCapture={keepExpandedForNavigation}
+        onPointerLeave={collapseNavAfterPointerLeave}
         style={{ viewTransitionName: "persistent-nav" }}
         className={`group/nav fixed z-[55] overflow-hidden border-black/15 bg-[#C2E6EC] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-y-0" : "translate-y-[calc(100%+16px)]"} inset-x-0 bottom-0 max-h-[min(520px,88dvh)] w-full rounded-t-[1.35rem] border border-b-0 shadow-[0_-12px_40px_rgba(0,0,0,0.14)] dark:shadow-[0_-16px_48px_rgba(0,0,0,0.45)] lg:inset-x-auto lg:bottom-auto lg:left-0 lg:top-0 lg:flex lg:h-dvh lg:max-h-dvh lg:w-fit lg:translate-x-0 lg:translate-y-0 lg:rounded-none lg:border lg:border-y-0 lg:border-l-0 lg:border-r lg:shadow-none`}
       >
@@ -394,7 +439,8 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                   key={link.href}
                   href={link.href}
                   transitionTypes={isActive ? undefined : ["nav-lateral"]}
-                  className={`group/action m-2 flex min-h-8 items-center rounded-md ${isActive ? "bg-[#ffffff]/20" : ""}`}
+                  onClick={(event) => handleNavLinkClick(event, link.href, isActive)}
+                  className={`group/action m-2 flex min-h-8 items-center rounded-md px-2 py-1 ${isActive ? "bg-[#ffffff]/20" : ""}`}
                 >
                   <div className="flex items-center cursor-pointer">
                     <div className="flex-shrink-0 flex items-center justify-center">
