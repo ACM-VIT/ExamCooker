@@ -15,22 +15,28 @@ import {
 } from "@/lib/posthog/client";
 import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
+import HomeIcon from "@/public/assets/home.svg";
+import PastPapersIcon from "@/public/assets/past-papers-icon.svg";
+import NotesIcon from "@/public/assets/notes-icon.svg";
+import SyllabusIcon from "@/public/assets/syllabus-logo.svg";
+import ResourcesIcon from "@/public/assets/book-icon.svg";
+import QuizIcon from "@/public/assets/quiz-icon.svg";
 
 type MenuLink = {
   href: string;
-  svgSource: string;
+  svgSource: string | { src: string; width?: number; height?: number };
   alt: string;
   matches?: (pathname: string | null) => boolean;
 };
 
 const LINKS: MenuLink[] = [
-  { href: "/", svgSource: "/assets/home.svg", alt: "Home" },
-  { href: "/past_papers", svgSource: "/assets/past-papers-icon.svg", alt: "Papers" },
-  { href: "/notes", svgSource: "/assets/notes-icon.svg", alt: "Notes" },
-  { href: "/syllabus", svgSource: "/assets/syllabus-logo.svg", alt: "Syllabus" },
+  { href: "/", svgSource: HomeIcon, alt: "Home" },
+  { href: "/past_papers", svgSource: PastPapersIcon, alt: "Papers" },
+  { href: "/notes", svgSource: NotesIcon, alt: "Notes" },
+  { href: "/syllabus", svgSource: SyllabusIcon, alt: "Syllabus" },
   // { href: "/forum", svgSource: "/assets/forum-icon.svg", alt: "Forum" },
-  { href: "/resources", svgSource: "/assets/book-icon.svg", alt: "Resources" },
-  { href: "/quiz", svgSource: "/assets/quiz-icon.svg", alt: "Quiz" },
+  { href: "/resources", svgSource: ResourcesIcon, alt: "Resources" },
+  { href: "/quiz", svgSource: QuizIcon, alt: "Quiz" },
 ];
 
 type Props = {
