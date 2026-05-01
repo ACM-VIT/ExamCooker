@@ -51,6 +51,21 @@ type CourseCatalogRow = {
     noteCount: number;
 };
 
+const UPCOMING_EXAMS_COURSE_CODES = [
+    "BMAT201L",
+    "BCSE304L",
+    "BMAT101L",
+    "BGER101L",
+    "BCSE355L",
+    "BCSE202L",
+    "BCSE303L",
+    "BCSE102L",
+    "BPHY101L",
+    "BCSE204L",
+    "BMEE209L",
+    "BMAT102L",
+];
+
 export type CourseSearchRecord = {
     id: string;
     code: string;
@@ -394,24 +409,9 @@ export async function getUpcomingExamsCourseGrid(): Promise<CourseGridItem[]> {
     cacheTag("courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const targetCodes = [
-        "BMAT201L",
-        "BCSE304L",
-        "BMAT101L",
-        "BGER101L",
-        "BCSE355L",
-        "BCSE202L",
-        "BCSE303L",
-        "BCSE102L",
-        "BPHY101L",
-        "BCSE204L",
-        "BMEE209L",
-        "BMAT102L"
-    ];
-
     const courses = await getCourseCatalogRows();
     const gridItems = courses
-        .filter(c => targetCodes.includes(c.code))
+        .filter((courseRow) => UPCOMING_EXAMS_COURSE_CODES.includes(courseRow.code))
         .map(c => ({
             id: c.id,
             code: c.code,
@@ -421,5 +421,20 @@ export async function getUpcomingExamsCourseGrid(): Promise<CourseGridItem[]> {
             viewCount: 0,
         }));
 
-    return gridItems.sort((a, b) => targetCodes.indexOf(a.code) - targetCodes.indexOf(b.code));
+    return gridItems.sort(
+        (a, b) =>
+            UPCOMING_EXAMS_COURSE_CODES.indexOf(a.code) -
+            UPCOMING_EXAMS_COURSE_CODES.indexOf(b.code),
+    );
+}
+
+export async function getUpcomingExamsCourseGridCount(): Promise<number> {
+    "use cache";
+    cacheTag("courses", "notes", "past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const courses = await getCourseCatalogRows();
+    return courses.filter((courseRow) =>
+        UPCOMING_EXAMS_COURSE_CODES.includes(courseRow.code),
+    ).length;
 }
