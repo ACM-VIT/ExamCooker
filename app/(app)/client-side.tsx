@@ -2,7 +2,6 @@
 import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import NavBar from "@/app/components/nav-bar";
-import GuestPromptProvider from "@/app/components/guest-prompt-provider";
 import { usePathname, useSearchParams } from "next/navigation";
 import AppImage from "@/app/components/common/app-image";
 import ExamCookerLogoIcon from "@/public/assets/logo-icon.svg";
@@ -236,16 +235,14 @@ export default function ClientSide({
     const toggleNavbar = () => setIsNavOn((v) => !v);
 
     return (
-        <GuestPromptProvider>
-            <ClientShell isNavOn={isNavOn} toggleNavbar={toggleNavbar}>
-                <Suspense fallback={null}>
-                    <RouteEffects onPathChange={handlePathChange} />
-                </Suspense>
-                {children}
-                <Suspense fallback={null}>
-                    <RenderedRouteBeacon />
-                </Suspense>
-            </ClientShell>
-        </GuestPromptProvider>
+        <ClientShell isNavOn={isNavOn} toggleNavbar={toggleNavbar}>
+            <Suspense fallback={null}>
+                <RouteEffects onPathChange={handlePathChange} />
+            </Suspense>
+            {children}
+            <Suspense fallback={null}>
+                <RenderedRouteBeacon />
+            </Suspense>
+        </ClientShell>
     );
 }

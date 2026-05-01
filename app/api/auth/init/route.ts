@@ -7,16 +7,16 @@ import {
 export async function GET(req: NextRequest) {
     const callbackUrl = req.nextUrl.searchParams.get("redirect") || "/";
     const publicOrigin = getPublicAuthOrigin(req);
-    const signInUrl = new URL(
-        "/api/auth/signin/google",
+    const authUrl = new URL(
+        "/auth",
         publicOrigin?.origin ||
             process.env.NEXTAUTH_URL ||
             process.env.NEXT_PUBLIC_BASE_URL ||
             req.url,
     );
-    signInUrl.searchParams.set("callbackUrl", callbackUrl);
+    authUrl.searchParams.set("callbackUrl", callbackUrl);
 
-    const response = NextResponse.redirect(signInUrl);
+    const response = NextResponse.redirect(authUrl);
     if (publicOrigin) {
         const cookie = getAuthOriginCookieConfig(publicOrigin);
         response.cookies.set(cookie.name, cookie.value, cookie.options);

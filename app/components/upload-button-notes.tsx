@@ -3,7 +3,7 @@ import React, { useCallback } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { useGuestPrompt } from "@/app/components/guest-prompt-provider";
+import { useGuestPrompt } from "@/app/components/auth-gate";
 import { captureUploadClick } from "@/lib/posthog/client";
 
 const UploadButtonNotes: React.FC = () => {
