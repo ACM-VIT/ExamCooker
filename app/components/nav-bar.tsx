@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import ThemeToggleSwitch from "@/app/components/common/theme-toggle";
 import { SignOut } from "@/app/components/sign-out";
 import VoiceAgentButton from "@/app/components/voice/voice-agent-button";
-import { startGoogleSignIn } from "@/lib/start-google-sign-in";
 import { useGuestPrompt } from "@/app/components/guest-prompt-provider";
 import {
   captureVoiceAgentRequested,
@@ -44,7 +43,7 @@ const VoiceAgentEntry = dynamic(
 
 const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const pathname = usePathname();
-  const { isAuthed, requireAuth, session } = useGuestPrompt();
+  const { isAuthed, requireAuth, openPrompt, session } = useGuestPrompt();
   const voiceAgentEnabled =
     usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? true;
   const [showProfile, setShowProfile] = useState(false);
@@ -343,11 +342,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                     type="button"
                     title="Sign in"
                     aria-label="Sign in"
-                    onClick={() =>
-                      startGoogleSignIn(pathname ?? "/", {
-                        source: "navbar",
-                      })
-                    }
+                    onClick={() => openPrompt("continue")}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-full text-black/70 transition-colors duration-200 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
                   >
                     <svg

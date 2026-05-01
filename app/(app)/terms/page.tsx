@@ -22,7 +22,7 @@ const sections: LegalSection[] = [
         id: "accounts",
         title: "Accounts",
         body: [
-            "Some features require Google sign-in. You are responsible for the activity on your account and for keeping access to your Google account and CLI tokens secure.",
+            "Some features require Google or Apple sign-in. You are responsible for the activity on your account and for keeping access to your sign-in account and CLI tokens secure.",
             "Moderators may receive additional permissions to review, approve, rename, tag, or remove submitted content.",
         ],
     },
