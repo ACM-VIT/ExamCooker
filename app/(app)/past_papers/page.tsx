@@ -14,9 +14,9 @@ import {
     getCatalogStats,
     getCourseSearchRecords,
     getCourseGrid,
-    getPopularCourseGrid,
     getRecentPapers,
     getUpcomingExamsCourseGrid,
+    getUpcomingExamsCourseGridCount,
     searchCourseGrid,
     type CourseGridItem,
 } from "@/lib/data/course-catalog";
@@ -31,7 +31,6 @@ import {
 } from "@/lib/structured-data";
 
 const PAGE_SIZE = 24;
-const POPULAR_LIMIT = 12;
 const COURSE_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
 type PastPapersSearchParams = { search?: string; page?: string };
 
@@ -146,7 +145,9 @@ function CourseCardsShell({ count }: { count: number }) {
     );
 }
 
-function PopularCoursesShell() {
+function PopularCoursesShell({ count }: { count: number }) {
+    if (count === 0) return null;
+
     return (
         <section className="flex flex-col gap-4">
             <header className="flex items-end justify-between">
@@ -154,7 +155,7 @@ function PopularCoursesShell() {
                     Upcoming exams
                 </h2>
             </header>
-            <CourseCardsShell count={POPULAR_LIMIT} />
+            <CourseCardsShell count={count} />
         </section>
     );
 }
@@ -247,7 +248,7 @@ async function PopularCoursesSection() {
                 courses={popular}
                 className={COURSE_GRID_CLASS}
                 page={1}
-                pageSize={POPULAR_LIMIT}
+                pageSize={popular.length}
                 rankCourses={false}
             />
         </section>
@@ -373,11 +374,11 @@ function SearchControlsShell() {
     );
 }
 
-function DynamicHomeSectionsShell() {
+function DynamicHomeSectionsShell({ popularCount }: { popularCount: number }) {
     return (
         <>
             <SearchControlsShell />
-            <PopularCoursesShell />
+            <PopularCoursesShell count={popularCount} />
             <RecentSectionShell />
         </>
     );
@@ -386,9 +387,11 @@ function DynamicHomeSectionsShell() {
 async function DynamicHomeSections({
     searchParamsPromise,
     searchable,
+    popularCount,
 }: {
     searchParamsPromise: Promise<PastPapersSearchParams> | undefined;
     searchable: Awaited<ReturnType<typeof getCourseSearchRecords>>;
+    popularCount: number;
 }) {
     const params = (await searchParamsPromise) ?? {};
     const search = params.search?.trim() || "";
@@ -398,7 +401,7 @@ async function DynamicHomeSections({
             <SearchControls search={search} searchable={searchable} />
 
             {!search && (
-                <Suspense fallback={<PopularCoursesShell />}>
+                <Suspense fallback={<PopularCoursesShell count={popularCount} />}>
                     <PopularCoursesSection />
                 </Suspense>
             )}
@@ -423,9 +426,10 @@ export default async function PastPapersPage({
 }: {
     searchParams?: Promise<PastPapersSearchParams>;
 }) {
-    const [stats, searchable] = await Promise.all([
+    const [stats, searchable, popularCount] = await Promise.all([
         getCatalogStats(),
         getCourseSearchRecords(),
+        getUpcomingExamsCourseGridCount(),
     ]);
     const faq = [
         {
@@ -464,10 +468,11 @@ export default async function PastPapersPage({
                         <HeroStats stats={stats} />
                     </section>
 
-                    <Suspense fallback={<DynamicHomeSectionsShell />}>
+                    <Suspense fallback={<DynamicHomeSectionsShell popularCount={popularCount} />}>
                         <DynamicHomeSections
                             searchParamsPromise={searchParams}
                             searchable={searchable}
+                            popularCount={popularCount}
                         />
                     </Suspense>
 
