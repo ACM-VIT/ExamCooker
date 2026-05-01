@@ -46,8 +46,8 @@ const sections: LegalSection[] = [
         id: "study-material",
         title: "Study Material",
         body: [
-            "Study material, exam papers, syllabi, notes, course names, marks schemes, and related academic content remain the property of their respective authors, educators, publishers, institutions, or other rights holders.",
-            "ExamCooker makes study material freely accessible for education, reference, preservation, and exam preparation under fair-use principles where applicable. If you believe material should not be hosted, contact the maintainers through the official channels linked in the site footer.",
+            "Study material, exam papers, syllabi, notes, course names, marking schemes, and related academic content remain the property of their respective authors, educators, publishers, institutions, or other rights holders.",
+            "ExamCooker makes certain study material available without charge for educational, reference, preservation, and exam-preparation purposes to the extent permitted by applicable law, including fair use or similar exceptions where applicable. If you believe material should not be hosted, contact the maintainers through the official channels linked in the site footer.",
             "ExamCooker is independent and is not affiliated with, endorsed by, sponsored by, or officially connected to any institution, department, faculty, publisher, examination authority, or rights holder whose material may appear on the service.",
             "ExamCooker tries to make study resources easier to find, but it does not guarantee that any paper, note, syllabus, solution, schedule, tag, title, or metadata is complete, current, or correct.",
             "Always verify important academic information with official course, faculty, or university sources before relying on it.",

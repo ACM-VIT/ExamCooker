@@ -15,7 +15,7 @@ const sections: LegalSection[] = [
         id: "overview",
         title: "Overview",
         body: [
-            "This Privacy Policy describes the categories of personal data and account-linked information that ExamCooker may collect, process, store, disclose, and retain in connection with operation of the service.",
+            "This Privacy Policy describes the categories of personal data and account-linked information that ExamCooker may collect, process, store, disclose, and retain in connection with the operation of the service.",
             "Access to most public study material does not require authentication. Certain features, including uploads, forum actions, saved activity, CLI access, and voice or AI-assisted functionality, require an account.",
         ],
     },
@@ -25,11 +25,11 @@ const sections: LegalSection[] = [
         body: [
             {
                 label: "Account data.",
-                text: "When you sign in with Google, ExamCooker stores account records such as your user ID, email, name, profile image, email verification time, role, provider account ID, and authentication fields needed by NextAuth.",
+                text: "When you sign in with Google, ExamCooker stores account records such as your user ID, email, name, profile image, email verification time, role, provider account ID, and authentication fields needed to operate sign-in.",
             },
             {
                 label: "Sessions and access.",
-                text: "The app uses signed session cookies or tokens to keep you signed in. CLI access stores device authorization requests, device names when supplied, user codes, hashed device codes, token labels, status, last-used times, expiry, and revocation times.",
+                text: "ExamCooker uses signed session cookies or tokens to keep you signed in. CLI access stores device authorization requests, device names when supplied, user codes, hashed device codes, token labels, status, last-used times, expiry, and revocation times.",
             },
             {
                 label: "Contributions.",
@@ -107,7 +107,7 @@ const sections: LegalSection[] = [
         id: "security-retention",
         title: "Security and Retention",
         body: [
-            "ExamCooker limits write access to authenticated users and moderators where the feature requires it. Secrets and production credentials should not be committed to the repository.",
+            "ExamCooker limits write access to authenticated users and moderators where the feature requires it and uses access controls intended to protect account-linked records.",
             "Data is kept for as long as needed to operate the service, preserve public study resources, handle moderation, maintain security, and satisfy operational backup needs.",
         ],
     },
@@ -115,7 +115,7 @@ const sections: LegalSection[] = [
         id: "changes",
         title: "Changes",
         body: [
-            "This policy may change as ExamCooker adds or removes features. The updated date at the top of this page will change when the policy is revised.",
+            "This policy may change as ExamCooker adds or removes features. The updated date will change when the policy is revised.",
         ],
     },
 ];
