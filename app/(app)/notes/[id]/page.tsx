@@ -173,7 +173,11 @@ async function NoteViewerContent({
                                 authorId={note.author?.id}
                                 activeTab="notes"
                             />
-                            <ShareLink fileType="these Notes" />
+                            <ShareLink
+                                fileType="these Notes"
+                                resourceTitle={title}
+                                resourceKind="notes"
+                            />
                         </div>
                     </header>
 

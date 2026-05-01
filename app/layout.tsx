@@ -93,7 +93,7 @@ export default function RootLayout({
                     ]}
                 />
                 <Script id="theme-init" strategy="beforeInteractive">
-                    {"(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.remove('dark');else document.documentElement.classList.add('dark');}catch(e){document.documentElement.classList.add('dark');}})();"}
+                    {"(function(){var r=document.documentElement;function m(q){return window.matchMedia&&window.matchMedia(q).matches;}function a(d){r.classList.toggle('dark',d);r.dataset.theme=d?'dark':'light';r.style.colorScheme=d?'dark':'light';}try{var t=localStorage.getItem('theme');var mobile=m('(max-width: 767px), (pointer: coarse)');var d=t==='dark'||(t!=='light'&&(mobile?m('(prefers-color-scheme: dark)'):true));a(d);}catch(e){a(true);}})();"}
                 </Script>
             </head>
             <body

@@ -37,8 +37,7 @@ const NativeDownloads = registerPlugin<NativeDownloadsPlugin>("NativeDownloads",
 export function canUseNativeFileDownload() {
   return (
     typeof window !== "undefined" &&
-    Capacitor.isNativePlatform() &&
-    Capacitor.getPlatform() === "ios"
+    Capacitor.isNativePlatform()
   );
 }
 

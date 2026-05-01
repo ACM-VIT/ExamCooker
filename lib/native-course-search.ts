@@ -78,10 +78,17 @@ export function canUseNativeCourseSearch() {
 }
 
 export function presentNativeCourseSearch(options: NativeCourseSearchOptions) {
+  const root = document.documentElement;
+  const explicitTheme = root.dataset.theme;
+  const inferredDarkMode =
+    explicitTheme === "dark" ||
+    (explicitTheme !== "light" &&
+      (root.classList.contains("dark") ||
+        root.style.colorScheme.includes("dark") ||
+        window.matchMedia("(prefers-color-scheme: dark)").matches));
+
   return NativeCourseSearch.present({
     ...options,
-    darkMode:
-      options.darkMode ??
-      document.documentElement.classList.contains("dark"),
+    darkMode: options.darkMode ?? inferredDarkMode,
   });
 }

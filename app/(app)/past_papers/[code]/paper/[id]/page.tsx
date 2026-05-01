@@ -258,7 +258,11 @@ async function PaperViewerContent({
                                 authorId={paper.author?.id}
                                 activeTab="pastPaper"
                             />
-                            <ShareLink fileType="this Past Paper" />
+                            <ShareLink
+                                fileType="this Past Paper"
+                                resourceTitle={displayTitle}
+                                resourceKind="paper"
+                            />
                         </div>
                     </header>
 
