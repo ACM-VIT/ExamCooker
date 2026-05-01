@@ -8,6 +8,7 @@ import { cache } from "react";
 import NextAuth from "next-auth";
 import type { Session } from "next-auth";
 import { getServerSession } from "next-auth/next";
+import Apple from "next-auth/providers/apple";
 import Google from "next-auth/providers/google";
 import { eq } from "drizzle-orm";
 import { createAuthAdapter } from "@/db/auth-adapter";
@@ -44,6 +45,38 @@ function requiredEnv(name: "AUTH_GOOGLE_ID" | "AUTH_GOOGLE_SECRET") {
   }
 
   return value;
+}
+
+function optionalEnv(name: "AUTH_APPLE_ID" | "AUTH_APPLE_SECRET") {
+  const value = process.env[name]?.trim();
+  return value ? value : null;
+}
+
+function buildProviders() {
+  const appleClientId = optionalEnv("AUTH_APPLE_ID");
+  const appleClientSecret = optionalEnv("AUTH_APPLE_SECRET");
+
+  return [
+    Google({
+      clientId: requiredEnv("AUTH_GOOGLE_ID"),
+      clientSecret: requiredEnv("AUTH_GOOGLE_SECRET"),
+      authorization: {
+        params: {
+          prompt: "select_account",
+          access_type: "offline",
+          response_type: "code",
+        },
+      },
+    }),
+    ...(appleClientId && appleClientSecret
+      ? [
+          Apple({
+            clientId: appleClientId,
+            clientSecret: appleClientSecret,
+          }),
+        ]
+      : []),
+  ];
 }
 
 function isStaleSessionCookieError(code: string, metadata: unknown) {
@@ -86,19 +119,7 @@ export const authConfig = {
   adapter,
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" as const },
-  providers: [
-    Google({
-      clientId: requiredEnv("AUTH_GOOGLE_ID"),
-      clientSecret: requiredEnv("AUTH_GOOGLE_SECRET"),
-      authorization: {
-        params: {
-          prompt: "select_account",
-          access_type: "offline",
-          response_type: "code",
-        },
-      },
-    }),
-  ],
+  providers: buildProviders(),
   callbacks: {
     async jwt({ token, user }: JwtCallbackParams) {
       const now = Math.floor(Date.now() / 1000);

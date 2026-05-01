@@ -25,7 +25,7 @@ const sections: LegalSection[] = [
         body: [
             {
                 label: "Account data.",
-                text: "When you sign in with Google, ExamCooker stores account records such as your user ID, email, name, profile image, email verification time, role, provider account ID, and authentication fields needed to operate sign-in.",
+                text: "When you sign in with Google or Apple, ExamCooker stores account records such as your user ID, email, name, profile image when provided, email verification time, role, provider account ID, and authentication fields needed to operate sign-in.",
             },
             {
                 label: "Sessions and access.",
@@ -62,8 +62,8 @@ const sections: LegalSection[] = [
         title: "Third Parties",
         body: [
             {
-                label: "Google.",
-                text: "Google OAuth is used for sign-in.",
+                label: "Google and Apple.",
+                text: "Google OAuth and Sign in with Apple are used for sign-in.",
             },
             {
                 label: "Hosting, database, and storage providers.",

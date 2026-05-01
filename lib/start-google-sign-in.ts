@@ -3,6 +3,8 @@
 import { signIn } from "next-auth/react";
 import { captureSignInStarted } from "@/lib/posthog/client";
 
+type AuthProvider = "apple" | "google";
+
 function getDefaultCallbackUrl() {
     if (typeof window === "undefined") {
         return "/";
@@ -11,7 +13,8 @@ function getDefaultCallbackUrl() {
     return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
-export function startGoogleSignIn(
+function startProviderSignIn(
+    provider: AuthProvider,
     callbackUrl?: string,
     options?: {
         source?: string;
@@ -26,5 +29,23 @@ export function startGoogleSignIn(
         source: options?.source ?? "unknown",
         callbackPath: redirectTarget,
     });
-    void signIn("google", { callbackUrl: redirectTarget });
+    void signIn(provider, { callbackUrl: redirectTarget });
+}
+
+export function startGoogleSignIn(
+    callbackUrl?: string,
+    options?: {
+        source?: string;
+    },
+) {
+    startProviderSignIn("google", callbackUrl, options);
+}
+
+export function startAppleSignIn(
+    callbackUrl?: string,
+    options?: {
+        source?: string;
+    },
+) {
+    startProviderSignIn("apple", callbackUrl, options);
 }

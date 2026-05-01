@@ -3,8 +3,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Session } from "next-auth";
 import { getSession } from "next-auth/react";
-import { startGoogleSignIn } from "@/lib/start-google-sign-in";
+import { startAppleSignIn, startGoogleSignIn } from "@/lib/start-google-sign-in";
 import { captureAuthPromptOpened } from "@/lib/posthog/client";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faApple } from "@fortawesome/free-brands-svg-icons";
 
 type GuestPromptContextType = {
     isAuthed: boolean;
@@ -49,6 +51,7 @@ export default function GuestPromptProvider({
     const isAuthed = Boolean(session?.user);
     const [prompt, setPrompt] = useState<PromptState>({});
     const [phase, setPhase] = useState<"closed" | "entering" | "open" | "leaving">("closed");
+    const [showAppleSignIn, setShowAppleSignIn] = useState(false);
     const openRafRef = useRef<number | null>(null);
     const closeTimerRef = useRef<number | null>(null);
 
@@ -141,11 +144,59 @@ export default function GuestPromptProvider({
         };
     }, [clearPhaseTimers]);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        async function checkAppleSignInAvailability() {
+            const isBrowserIos =
+                /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+            let isNativeIos = false;
+
+            try {
+                const { Capacitor } = await import("@capacitor/core");
+                isNativeIos =
+                    Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
+            } catch {
+                isNativeIos = false;
+            }
+
+            if (cancelled || (!isNativeIos && !isBrowserIos)) {
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/auth/providers", {
+                    headers: { Accept: "application/json" },
+                });
+                const providers = (await response.json()) as Record<string, unknown>;
+                if (!cancelled) {
+                    setShowAppleSignIn(Boolean(providers.apple));
+                }
+            } catch {
+                if (!cancelled) {
+                    setShowAppleSignIn(false);
+                }
+            }
+        }
+
+        void checkAppleSignInAvailability();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     const actionLabel = prompt.action ? `to ${prompt.action}` : "to continue";
     const visible = phase === "open";
     const mounted = phase !== "closed";
     const handleSignIn = useCallback(() => {
         startGoogleSignIn(prompt.redirect ?? "/", {
+            source: "guest_prompt",
+        });
+    }, [prompt.redirect]);
+    const handleAppleSignIn = useCallback(() => {
+        startAppleSignIn(prompt.redirect ?? "/", {
             source: "guest_prompt",
         });
     }, [prompt.redirect]);
@@ -156,7 +207,7 @@ export default function GuestPromptProvider({
         >
             {children}
             {mounted && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-5 sm:p-4">
                     <button
                         type="button"
                         onClick={closePrompt}
@@ -170,7 +221,7 @@ export default function GuestPromptProvider({
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="guest-prompt-title"
-                        className={`relative w-full max-w-sm border-2 border-black bg-white text-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-[opacity,transform] ease-out dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)] ${
+                        className={`relative w-full max-w-[19.5rem] border border-black/70 bg-white text-black shadow-[2px_2px_0_0_rgba(0,0,0,0.75)] transition-[opacity,transform] ease-out dark:border-[#D5D5D5]/70 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[2px_2px_0_0_rgba(59,244,199,0.25)] sm:max-w-sm sm:border-2 sm:border-black sm:shadow-[4px_4px_0_0_rgba(0,0,0,1)] sm:dark:border-[#D5D5D5] sm:dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)] ${
                             visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
                         }`}
                         style={{ transitionDuration: `${PROMPT_ANIMATION_MS}ms` }}
@@ -179,7 +230,7 @@ export default function GuestPromptProvider({
                             type="button"
                             onClick={closePrompt}
                             aria-label="Close"
-                            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center text-black/50 transition-colors hover:text-black dark:text-[#D5D5D5]/60 dark:hover:text-[#3BF4C7]"
+                            className="absolute right-2.5 top-2.5 inline-flex h-8 w-8 items-center justify-center text-black/50 transition-colors hover:text-black dark:text-[#D5D5D5]/60 dark:hover:text-[#3BF4C7] sm:right-3 sm:top-3"
                         >
                             <svg
                                 viewBox="0 0 14 14"
@@ -193,24 +244,34 @@ export default function GuestPromptProvider({
                                 <path d="M1 1L13 13M13 1L1 13" />
                             </svg>
                         </button>
-                        <div className="px-6 pb-6 pt-8">
+                        <div className="px-4.5 pb-5 pt-7 sm:px-6 sm:pb-6 sm:pt-8">
                             <h3
                                 id="guest-prompt-title"
-                                className="pr-8 text-xl font-bold leading-tight"
+                                className="pr-8 text-lg font-bold leading-tight sm:text-xl"
                             >
                                 Sign in {actionLabel}
                             </h3>
-                            <p className="mt-2 text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                            <p className="mt-2 text-[13px] text-black/60 dark:text-[#D5D5D5]/60 sm:text-sm">
                                 A quick sign-in is all it takes.
                             </p>
-                            <div className="group relative mt-5 inline-flex w-full items-stretch">
+                            {showAppleSignIn ? (
+                                <button
+                                    type="button"
+                                    onClick={handleAppleSignIn}
+                                    className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 border border-black bg-black text-sm font-bold text-white transition duration-150 hover:bg-black/85 dark:border-[#D5D5D5] dark:bg-[#D5D5D5] dark:text-black dark:hover:bg-white sm:h-11 sm:text-base"
+                                >
+                                    <FontAwesomeIcon icon={faApple} className="h-4 w-4" />
+                                    Sign in with Apple
+                                </button>
+                            ) : null}
+                            <div className={`group relative inline-flex w-full items-stretch ${showAppleSignIn ? "mt-3" : "mt-5"}`}>
                                 <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
                                 <div className="absolute inset-0 bg-[#3BF4C7] blur-[60px] opacity-0 transition duration-200 group-hover:opacity-20 dark:hidden" />
                                 <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
                                 <button
                                     type="button"
                                     onClick={handleSignIn}
-                                    className="relative inline-flex h-11 w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-base font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]"
+                                    className="relative inline-flex h-10 w-full items-center justify-center border border-black/75 bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 dark:border-[#D5D5D5]/75 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] sm:h-11 sm:border-2 sm:border-black sm:text-base sm:group-hover:-translate-x-1 sm:group-hover:-translate-y-1 sm:dark:border-[#D5D5D5]"
                                 >
                                     Sign in with Google
                                 </button>

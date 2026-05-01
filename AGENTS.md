@@ -38,6 +38,7 @@ The app requires the following in `.env` to start:
 - `DATABASE_URL` – PostgreSQL connection string
 - `AUTH_SECRET` / `NEXTAUTH_SECRET` – any random string for JWT signing
 - `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` – Google OAuth credentials (placeholder values allow the app to start but authentication won't work)
+- `AUTH_APPLE_ID` and `AUTH_APPLE_SECRET` – optional Sign in with Apple client ID and generated client-secret JWT for iOS sign-in
 - `NEXTAUTH_URL` / `NEXT_PUBLIC_BASE_URL` – set to `http://localhost:3000`
 
 ### Linting
