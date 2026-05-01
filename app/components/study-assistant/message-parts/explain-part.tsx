@@ -18,6 +18,7 @@ interface ExplainPartProps {
     input?: { concept?: string; selectionText?: string; level?: string };
     output?: ExplainOutput | unknown;
     errorText?: string;
+    isGlobalStreaming?: boolean;
 }
 
 export const ExplainPart = memo(function ExplainPart({
@@ -25,9 +26,10 @@ export const ExplainPart = memo(function ExplainPart({
     input,
     output,
     errorText,
+    isGlobalStreaming,
 }: ExplainPartProps) {
     if (state === "input-streaming" || state === "input-available") {
-        return <ToolLoading label="Thinking it through" />;
+        return <ToolLoading label="Thinking it through" active={Boolean(isGlobalStreaming)} />;
     }
 
     const data = (output as ExplainOutput | null) ?? null;

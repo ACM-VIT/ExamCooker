@@ -29,15 +29,17 @@ interface CourseOverviewPartProps {
     state: ToolState;
     output?: CourseOverviewOutput | unknown;
     errorText?: string;
+    isGlobalStreaming?: boolean;
 }
 
 export const CourseOverviewPart = memo(function CourseOverviewPart({
     state,
     output,
     errorText,
+    isGlobalStreaming,
 }: CourseOverviewPartProps) {
     if (state === "input-streaming" || state === "input-available") {
-        return <ToolLoading label="Pulling course info" />;
+        return <ToolLoading label="Pulling course info" active={Boolean(isGlobalStreaming)} />;
     }
 
     const data = (output as CourseOverviewOutput | null) ?? null;

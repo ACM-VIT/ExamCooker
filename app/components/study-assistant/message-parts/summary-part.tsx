@@ -17,15 +17,17 @@ interface SummaryPartProps {
     state: ToolState;
     output?: SummaryOutput | unknown;
     errorText?: string;
+    isGlobalStreaming?: boolean;
 }
 
 export const SummaryPart = memo(function SummaryPart({
     state,
     output,
     errorText,
+    isGlobalStreaming,
 }: SummaryPartProps) {
     if (state === "input-streaming" || state === "input-available") {
-        return <ToolLoading label="Reading the document" />;
+        return <ToolLoading label="Reading the document" active={Boolean(isGlobalStreaming)} />;
     }
 
     const data = (output as SummaryOutput | null) ?? null;

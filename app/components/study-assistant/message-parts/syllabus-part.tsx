@@ -28,15 +28,17 @@ interface SyllabusPartProps {
     state: ToolState;
     output?: SyllabusOutput | unknown;
     errorText?: string;
+    isGlobalStreaming?: boolean;
 }
 
 export const SyllabusPart = memo(function SyllabusPart({
     state,
     output,
     errorText,
+    isGlobalStreaming,
 }: SyllabusPartProps) {
     if (state === "input-streaming" || state === "input-available") {
-        return <ToolLoading label="Finding the syllabus" />;
+        return <ToolLoading label="Finding the syllabus" active={Boolean(isGlobalStreaming)} />;
     }
 
     const data = (output as SyllabusOutput | null) ?? null;

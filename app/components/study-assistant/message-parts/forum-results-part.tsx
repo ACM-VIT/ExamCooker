@@ -28,6 +28,7 @@ interface ForumResultsPartProps {
     state: ToolState;
     output?: ForumResultsOutput | unknown;
     errorText?: string;
+    isGlobalStreaming?: boolean;
 }
 
 function formatRelative(iso: string) {
@@ -49,9 +50,10 @@ export const ForumResultsPart = memo(function ForumResultsPart({
     state,
     output,
     errorText,
+    isGlobalStreaming,
 }: ForumResultsPartProps) {
     if (state === "input-streaming" || state === "input-available") {
-        return <ToolLoading label="Searching the forum" />;
+        return <ToolLoading label="Searching the forum" active={Boolean(isGlobalStreaming)} />;
     }
 
     const payload = (output as ForumResultsOutput | null) ?? null;

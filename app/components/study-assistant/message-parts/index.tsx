@@ -20,14 +20,18 @@ interface MessagePartRendererProps {
     part: StudyMessagePart;
     messageId: string;
     partIndex: number;
+    isResponseTail?: boolean;
     isStreaming?: boolean;
+    isGlobalStreaming?: boolean;
 }
 
 export function MessagePartRenderer({
     part,
     messageId,
     partIndex,
+    isResponseTail,
     isStreaming,
+    isGlobalStreaming,
 }: MessagePartRendererProps) {
     const partId = `${messageId}-${partIndex}`;
 
@@ -36,6 +40,7 @@ export function MessagePartRenderer({
             <TextPart
                 id={partId}
                 text={(part as { text?: string }).text ?? ""}
+                isResponseTail={isResponseTail}
                 isStreaming={isStreaming}
             />
         );
@@ -60,11 +65,32 @@ export function MessagePartRenderer({
 
         switch (toolName) {
             case "image_generation":
-                return <ImageGenerationPart state={state} output={output} errorText={errorText} />;
+                return (
+                    <ImageGenerationPart
+                        state={state}
+                        output={output}
+                        errorText={errorText}
+                        isGlobalStreaming={isGlobalStreaming}
+                    />
+                );
             case "summarize_document":
-                return <SummaryPart state={state} output={output} errorText={errorText} />;
+                return (
+                    <SummaryPart
+                        state={state}
+                        output={output}
+                        errorText={errorText}
+                        isGlobalStreaming={isGlobalStreaming}
+                    />
+                );
             case "quiz_me":
-                return <QuizPart state={state} output={output} errorText={errorText} />;
+                return (
+                    <QuizPart
+                        state={state}
+                        output={output}
+                        errorText={errorText}
+                        isGlobalStreaming={isGlobalStreaming}
+                    />
+                );
             case "explain_concept":
                 return (
                     <ExplainPart
@@ -72,6 +98,7 @@ export function MessagePartRenderer({
                         input={input as { selectionText?: string; level?: string }}
                         output={output}
                         errorText={errorText}
+                        isGlobalStreaming={isGlobalStreaming}
                     />
                 );
             case "search_past_papers":
@@ -82,14 +109,36 @@ export function MessagePartRenderer({
                         state={state}
                         output={output}
                         errorText={errorText}
+                        isGlobalStreaming={isGlobalStreaming}
                     />
                 );
             case "search_forum":
-                return <ForumResultsPart state={state} output={output} errorText={errorText} />;
+                return (
+                    <ForumResultsPart
+                        state={state}
+                        output={output}
+                        errorText={errorText}
+                        isGlobalStreaming={isGlobalStreaming}
+                    />
+                );
             case "get_course_overview":
-                return <CourseOverviewPart state={state} output={output} errorText={errorText} />;
+                return (
+                    <CourseOverviewPart
+                        state={state}
+                        output={output}
+                        errorText={errorText}
+                        isGlobalStreaming={isGlobalStreaming}
+                    />
+                );
             case "get_syllabus":
-                return <SyllabusPart state={state} output={output} errorText={errorText} />;
+                return (
+                    <SyllabusPart
+                        state={state}
+                        output={output}
+                        errorText={errorText}
+                        isGlobalStreaming={isGlobalStreaming}
+                    />
+                );
             default:
                 return (
                     <ToolShell

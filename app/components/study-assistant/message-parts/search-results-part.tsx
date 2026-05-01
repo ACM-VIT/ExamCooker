@@ -32,6 +32,7 @@ interface SearchResultsPartProps {
     state: ToolState;
     output?: SearchResultsOutput | unknown;
     errorText?: string;
+    isGlobalStreaming?: boolean;
 }
 
 export const SearchResultsPart = memo(function SearchResultsPart({
@@ -39,13 +40,17 @@ export const SearchResultsPart = memo(function SearchResultsPart({
     state,
     output,
     errorText,
+    isGlobalStreaming,
 }: SearchResultsPartProps) {
     const isPapers = toolName === "search_past_papers";
     const defaultLabel = isPapers ? "past papers" : "notes";
 
     if (state === "input-streaming" || state === "input-available") {
         return (
-            <ToolLoading label={`Searching ${defaultLabel}`} />
+            <ToolLoading
+                label={`Searching ${defaultLabel}`}
+                active={Boolean(isGlobalStreaming)}
+            />
         );
     }
 

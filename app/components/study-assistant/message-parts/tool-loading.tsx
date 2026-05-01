@@ -1,36 +1,97 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface ToolLoadingProps {
     label: string;
+    active?: boolean;
 }
 
-export function ToolLoading({ label }: ToolLoadingProps) {
-    const barWidths = useMemo(
-        () =>
-            [0, 1, 2].map(() => `${Math.round(Math.random() * 40 + 30)}px`),
-        []
-    );
+export function ToolLoading({ label, active = true }: ToolLoadingProps) {
+    if (!active) return null;
+
+    const canvasRef = useRef<HTMLDivElement | null>(null);
+    const [cursorState, setCursorState] = useState({ x: 12, y: 12, rotate: -4 });
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        let interval = 0;
+        let timeout = 0;
+        let disposed = false;
+
+        const cursorWidth = 14;
+        const cursorHeight = 18;
+
+        const moveCursor = () => {
+            if (disposed) return;
+            const rect = canvas.getBoundingClientRect();
+            const maxX = Math.max(12, rect.width - cursorWidth - 12);
+            const maxY = Math.max(12, rect.height - cursorHeight - 12);
+
+            setCursorState((prev) => {
+                let nextX = prev.x;
+                let nextY = prev.y;
+                let attempts = 0;
+
+                while (attempts < 8) {
+                    nextX = Math.round(Math.random() * maxX);
+                    nextY = Math.round(Math.random() * maxY);
+                    const dx = nextX - prev.x;
+                    const dy = nextY - prev.y;
+                    if (Math.hypot(dx, dy) > 48) break;
+                    attempts++;
+                }
+
+                return {
+                    x: nextX,
+                    y: nextY,
+                    rotate: Math.round((Math.random() * 12 - 6) * 10) / 10,
+                };
+            });
+        };
+
+        timeout = window.setTimeout(() => {
+            moveCursor();
+            interval = window.setInterval(moveCursor, 500);
+        }, 120);
+
+        return () => {
+            disposed = true;
+            window.clearTimeout(timeout);
+            window.clearInterval(interval);
+        };
+    }, []);
 
     return (
         <div
-            className="border-trail-wrapper relative my-2 h-[100px] w-full overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-white/5"
-            style={{ "--trail-color": "#4db3d6" } as React.CSSProperties}
+            className="study-tool-loader my-2"
+            role="status"
+            aria-live="polite"
+            aria-label={label}
         >
-            <div className="flex h-full items-center gap-3 px-5">
-                <div className="space-y-2">
-                    <div className="text-shimmer text-[15px] font-medium">{label}</div>
-                    <div className="flex gap-2">
-                        {barWidths.map((w, i) => (
-                            <div
-                                key={i}
-                                className="h-1.5 animate-pulse rounded-full bg-black/10 dark:bg-white/15"
-                                style={{ width: w, animationDelay: `${i * 0.2}s` }}
-                            />
-                        ))}
-                    </div>
+            <div className="study-tool-loader__surface">
+                <div ref={canvasRef} className="study-tool-loader__canvas" aria-hidden="true">
+                    <div
+                        className="study-tool-loader__cursor"
+                        style={
+                            {
+                                ["--study-tool-cursor-x" as string]: `${cursorState.x}px`,
+                                ["--study-tool-cursor-y" as string]: `${cursorState.y}px`,
+                                ["--study-tool-cursor-rotate" as string]: `${cursorState.rotate}deg`,
+                            } as React.CSSProperties
+                        }
+                    />
                 </div>
+                <p className="study-tool-loader__status">
+                    Generating
+                    <span className="study-tool-loader__dots" aria-hidden="true">
+                        <span className="study-tool-loader__dot" />
+                        <span className="study-tool-loader__dot" />
+                        <span className="study-tool-loader__dot" />
+                    </span>
+                </p>
             </div>
         </div>
     );

@@ -228,9 +228,9 @@ function categoriesFor(scope: StudyScope | null): Category[] {
 }
 
 function scopeKind(type: StudyScope["type"]) {
-    if (type === "NOTE") return { label: "note", Icon: BookOpen };
-    if (type === "PAST_PAPER") return { label: "past paper", Icon: FileText };
-    return { label: "course", Icon: GraduationCap };
+    if (type === "NOTE") return { label: "Note", Icon: BookOpen };
+    if (type === "PAST_PAPER") return { label: "Past paper", Icon: FileText };
+    return { label: "Course", Icon: GraduationCap };
 }
 
 export const StudyLanding = memo(function StudyLanding({
@@ -290,13 +290,13 @@ export const StudyLanding = memo(function StudyLanding({
             )}
 
             <div>
-                <h1 className="text-3xl font-light tracking-tighter text-black sm:text-4xl dark:text-[#D5D5D5]">
-                    {scope ? "what do you want to know?" : "what should we study?"}
+                <h1 className="text-3xl font-semibold tracking-tight text-black sm:text-4xl dark:text-[#D5D5D5]">
+                    {scope ? "What do you want to know?" : "What should we study?"}
                 </h1>
-                <p className="mt-2 text-[13px] text-black/55 dark:text-[#D5D5D5]/55">
+                <p className="mt-2 text-[13.5px] text-black/60 dark:text-[#D5D5D5]/60">
                     {scope
-                        ? "ask anything. the document is loaded in context."
-                        : "ask anything about your VIT coursework, papers, notes, concepts."}
+                        ? "Ask anything — the document is loaded in context."
+                        : "Ask about your coursework, past papers, notes, or any concept."}
                 </p>
             </div>
 

@@ -22,12 +22,14 @@ interface QuizPartProps {
     state: ToolState;
     output?: QuizOutput | unknown;
     errorText?: string;
+    isGlobalStreaming?: boolean;
 }
 
 export const QuizPart = memo(function QuizPart({
     state,
     output,
     errorText,
+    isGlobalStreaming,
 }: QuizPartProps) {
     const quiz = (output as QuizOutput | null) ?? null;
     const questions = useMemo(
@@ -40,7 +42,7 @@ export const QuizPart = memo(function QuizPart({
     const [revealed, setRevealed] = useState<Record<string, boolean>>({});
 
     if (state === "input-streaming" || state === "input-available") {
-        return <ToolLoading label="Drafting questions" />;
+        return <ToolLoading label="Drafting questions" active={Boolean(isGlobalStreaming)} />;
     }
 
     const score = questions.filter((q) => picks[q.id] === q.correctOptionId).length;

@@ -19,6 +19,30 @@ import { getStudyChatRatelimit } from "@/lib/study/rate-limit";
 import { fetchPdfAsBuffer } from "@/lib/study/tools/pdf-fetch";
 
 export const maxDuration = 60;
+const STUDY_STREAM_DELAY_MS = 60;
+const STUDY_STREAM_MIN_WORD_GROUP_CHARS = 12;
+
+function detectStudyStreamChunk(buffer: string) {
+    const lineMatch = buffer.match(/^[\s\S]*?\n+/);
+    if (lineMatch) {
+        return lineMatch[0];
+    }
+
+    const sentenceMatch = buffer.match(/^[\s\S]*?[.!?](?=\s|$)/);
+    if (sentenceMatch) {
+        return sentenceMatch[0];
+    }
+
+    const wordGroupMatch = buffer.match(/^(?:\S+\s+){1,4}/);
+    if (
+        wordGroupMatch &&
+        wordGroupMatch[0].length >= STUDY_STREAM_MIN_WORD_GROUP_CHARS
+    ) {
+        return wordGroupMatch[0];
+    }
+
+    return null;
+}
 
 const scopeSchema = z.union([
     z.object({ type: z.literal("NOTE"), id: z.string().min(1) }),
@@ -135,7 +159,10 @@ export async function POST(req: Request) {
                 tools,
                 stopWhen: stepCountIs(5),
                 providerOptions: STUDY_PROVIDER_OPTIONS,
-                experimental_transform: smoothStream({ chunking: "word" }),
+                experimental_transform: smoothStream({
+                    chunking: detectStudyStreamChunk,
+                    delayInMs: STUDY_STREAM_DELAY_MS,
+                }),
                 experimental_download: async (requests) =>
                     Promise.all(
                         requests.map(async ({ url, isUrlSupportedByModel }) => {

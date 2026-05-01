@@ -8,8 +8,10 @@ import { useNavbarOffset } from "./useNavbarOffset";
 import type { StudyScope } from "@/lib/study/scope";
 import {
     deleteStudyChatAction,
+    getStudyChatMessagesAction,
     listStudyChatsAction,
     renameStudyChatAction,
+    type StudyChatMessageDTO,
 } from "@/app/actions/studyChats";
 
 interface StudyAppProps {
@@ -32,6 +34,8 @@ export interface StudyChatSummary {
         title?: string | null;
     };
 }
+
+type CachedStudyMessage = Pick<StudyChatMessageDTO, "id" | "role" | "parts">;
 
 function cryptoRandomId(): string {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -67,12 +71,36 @@ export function StudyApp({
     );
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [isMobileViewport, setIsMobileViewport] = useState(() =>
+        typeof window !== "undefined" ? window.innerWidth < 768 : false
+    );
     const [renameTarget, setRenameTarget] = useState<StudyChatSummary | null>(null);
     const [renameValue, setRenameValue] = useState("");
     const [deleteTarget, setDeleteTarget] = useState<StudyChatSummary | null>(null);
+    const [chatMessageCache, setChatMessageCache] = useState<
+        Record<string, CachedStudyMessage[]>
+    >({});
     const navOffset = useNavbarOffset();
     const incomingScopeKey = useMemo(() => scopeKey(initialScope), [initialScope]);
     const lastAppliedIncomingScopeKeyRef = useRef<string | null>(null);
+    const chatMessageCacheRef = useRef<Record<string, CachedStudyMessage[]>>({});
+    const inFlightChatLoadsRef = useRef<
+        Partial<Record<string, Promise<CachedStudyMessage[]>>>
+    >({});
+
+    const cacheChatMessages = useCallback(
+        (chatId: string, messages: CachedStudyMessage[]) => {
+            chatMessageCacheRef.current = {
+                ...chatMessageCacheRef.current,
+                [chatId]: messages,
+            };
+            setChatMessageCache((prev) => ({
+                ...prev,
+                [chatId]: messages,
+            }));
+        },
+        []
+    );
 
     const refetchChats = useCallback(async () => {
         try {
@@ -86,6 +114,60 @@ export function StudyApp({
     useEffect(() => {
         void refetchChats();
     }, [refetchChats]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const media = window.matchMedia("(max-width: 767px)");
+        const sync = () => {
+            setIsMobileViewport(media.matches);
+            if (!media.matches) {
+                setMobileSidebarOpen(false);
+            }
+        };
+        sync();
+        media.addEventListener("change", sync);
+        return () => {
+            media.removeEventListener("change", sync);
+        };
+    }, []);
+
+    const prefetchChatMessages = useCallback(
+        async (chatId: string) => {
+            if (!chatId) return [];
+            const cached = chatMessageCacheRef.current[chatId];
+            if (cached) return cached;
+            if (inFlightChatLoadsRef.current[chatId]) {
+                return inFlightChatLoadsRef.current[chatId];
+            }
+
+            const promise = getStudyChatMessagesAction(chatId)
+                .then((list) =>
+                    list.map((message) => ({
+                        id: message.id,
+                        role: message.role,
+                        parts: Array.isArray(message.parts) ? message.parts : [],
+                    }))
+                )
+                .then((messages) => {
+                    cacheChatMessages(chatId, messages);
+                    return messages;
+                })
+                .catch(() => [])
+                .finally(() => {
+                    delete inFlightChatLoadsRef.current[chatId];
+                });
+
+            inFlightChatLoadsRef.current[chatId] = promise;
+            return promise;
+        },
+        [cacheChatMessages]
+    );
+
+    useEffect(() => {
+        chats.slice(0, 4).forEach((chat) => {
+            void prefetchChatMessages(chat.id);
+        });
+    }, [chats, prefetchChatMessages]);
 
     useEffect(() => {
         if (!syncUrlRef.current || !activeChatId) return;
@@ -126,6 +208,7 @@ export function StudyApp({
     ]);
 
     const handleSelectChat = useCallback((summary: StudyChatSummary) => {
+        void prefetchChatMessages(summary.id);
         syncUrlRef.current = true;
         setActiveChatId(summary.id);
         const nextScope: StudyScope | null =
@@ -147,7 +230,7 @@ export function StudyApp({
                     : "course"
         );
         setMobileSidebarOpen(false);
-    }, []);
+    }, [prefetchChatMessages]);
 
     const handleNewChat = useCallback(() => {
         syncUrlRef.current = false;
@@ -306,55 +389,67 @@ export function StudyApp({
         ]
     );
 
+    const chatPane = (
+        <main className="flex h-full flex-1 flex-col overflow-hidden">
+            <StudyChat
+                chatId={activeChatId}
+                scope={scope}
+                scopeLabel={scopeLabel}
+                scopeSubtitle={scopeSubtitle}
+                onToggleSidebar={() => setMobileSidebarOpen((p) => !p)}
+                onClearScope={handleClearScope}
+                onChatUpdated={onChatUpdated}
+                cachedMessages={chatMessageCache[activeChatId]}
+                onMessagesSnapshot={cacheChatMessages}
+            />
+        </main>
+    );
+
     return (
         <div
             data-study-chat
             style={{ paddingLeft: navOffset }}
             className="flex h-[calc(100svh-56px)] w-full overflow-hidden bg-[#C2E6EC] text-black transition-[padding] duration-200 dark:bg-[#0C1222] dark:text-[#D5D5D5]"
         >
-            <aside
-                className={[
-                    "hidden shrink-0 border-r border-black/10 transition-[width] duration-200 dark:border-white/10 md:block",
-                    sidebarCollapsed ? "w-14" : "w-64",
-                ].join(" ")}
-            >
-                {sidebar}
-            </aside>
-
-            {mobileSidebarOpen && (
-                <div className="fixed inset-0 z-40 md:hidden">
+            {isMobileViewport ? (
+                <div className="relative h-full w-full overflow-hidden md:hidden">
                     <div
-                        aria-hidden
-                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-                        onClick={() => setMobileSidebarOpen(false)}
-                    />
-                    <aside className="absolute inset-y-0 left-0 w-72 border-r border-black/10 dark:border-white/10">
-                        <StudySidebar
-                            chats={chats}
-                            activeChatId={activeChatId}
-                            onSelect={handleSelectChat}
-                            onNewChat={handleNewChat}
-                            onToggleCollapse={() => setMobileSidebarOpen(false)}
-                            collapsed={false}
-                            isMobile
-                            onRenameChat={handleRenameChat}
-                            onDeleteChat={handleDeleteChat}
-                        />
-                    </aside>
+                        className="flex h-full w-[200%] transition-transform duration-300 ease-out"
+                        style={{
+                            transform: mobileSidebarOpen
+                                ? "translate3d(0, 0, 0)"
+                                : "translate3d(-50%, 0, 0)",
+                        }}
+                    >
+                        <aside className="h-full w-1/2 shrink-0 border-r border-black/10 dark:border-white/10">
+                            <StudySidebar
+                                chats={chats}
+                                activeChatId={activeChatId}
+                                onSelect={handleSelectChat}
+                                onNewChat={handleNewChat}
+                                onToggleCollapse={() => setMobileSidebarOpen(false)}
+                                collapsed={false}
+                                isMobile
+                                onRenameChat={handleRenameChat}
+                                onDeleteChat={handleDeleteChat}
+                            />
+                        </aside>
+                        <div className="h-full w-1/2 shrink-0">{chatPane}</div>
+                    </div>
                 </div>
+            ) : (
+                <>
+                    <aside
+                        className={[
+                            "hidden shrink-0 border-r border-black/10 transition-[width] duration-200 dark:border-white/10 md:block",
+                            sidebarCollapsed ? "w-14" : "w-64",
+                        ].join(" ")}
+                    >
+                        {sidebar}
+                    </aside>
+                    {chatPane}
+                </>
             )}
-
-            <main className="flex h-full flex-1 flex-col overflow-hidden">
-                <StudyChat
-                    chatId={activeChatId}
-                    scope={scope}
-                    scopeLabel={scopeLabel}
-                    scopeSubtitle={scopeSubtitle}
-                    onToggleSidebar={() => setMobileSidebarOpen((p) => !p)}
-                    onClearScope={handleClearScope}
-                    onChatUpdated={onChatUpdated}
-                />
-            </main>
 
             {renameTarget && (
                 <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-4">

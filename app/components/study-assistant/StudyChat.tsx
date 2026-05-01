@@ -2,19 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import type { StudyScope } from "@/lib/study/scope";
 import { StudyHeader } from "./StudyHeader";
 import { StudyLanding } from "./StudyLanding";
 import { StudyMessages } from "./StudyMessages";
 import { StudyComposer } from "./StudyComposer";
-import { getStudyChatMessagesAction } from "@/app/actions/studyChats";
-
-function hasUserMessage(
-    list: { role: string }[] | undefined
-): boolean {
-    return Boolean(list?.some((m) => m.role === "user"));
-}
+import {
+    getStudyChatMessagesAction,
+    type StudyChatMessageDTO,
+} from "@/app/actions/studyChats";
+import { StudyChatLoader } from "./StudyChatLoader";
 
 interface StudyChatProps {
     chatId: string;
@@ -24,6 +22,11 @@ interface StudyChatProps {
     onToggleSidebar: () => void;
     onClearScope: () => void;
     onChatUpdated: (info: { chatId: string; title?: string | null }) => void;
+    cachedMessages?: Pick<StudyChatMessageDTO, "id" | "role" | "parts">[];
+    onMessagesSnapshot?: (
+        chatId: string,
+        messages: Pick<StudyChatMessageDTO, "id" | "role" | "parts">[]
+    ) => void;
 }
 
 export function StudyChat({
@@ -34,10 +37,13 @@ export function StudyChat({
     onToggleSidebar,
     onClearScope,
     onChatUpdated,
+    cachedMessages,
+    onMessagesSnapshot,
 }: StudyChatProps) {
     const [input, setInput] = useState("");
-    const [isTransitioning, setIsTransitioning] = useState(false);
-    const [pendingUserText, setPendingUserText] = useState<string | null>(null);
+    const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+    const [stopRequested, setStopRequested] = useState(false);
+    const [isHydratingChat, setIsHydratingChat] = useState(true);
 
     const transport = useMemo(
         () =>
@@ -69,42 +75,39 @@ export function StudyChat({
         transport,
         onFinish: ({ message }) => {
             const text = extractUserText(message);
-            onChatUpdated({ chatId, title: text?.slice(0, 60) ?? null });
+            if (text) {
+                onChatUpdated({ chatId, title: text.slice(0, 60) });
+            }
         },
     });
 
     const isStreaming = status === "streaming" || status === "submitted";
-    const isEmpty =
-        messages.length === 0 &&
-        !isTransitioning &&
-        status === "ready";
-
-    useEffect(() => {
-        if (hasUserMessage(messages)) {
-            setPendingUserText(null);
-        }
-    }, [messages]);
-
-    useEffect(() => {
-        if (error) {
-            setIsTransitioning(false);
-            setPendingUserText(null);
-        }
-    }, [error]);
-
-    useEffect(() => {
-        const last = messages[messages.length - 1];
-        if (last?.role === "assistant") {
-            setIsTransitioning(false);
-        }
-    }, [messages]);
+    const showStreamingIndicators = isStreaming && !stopRequested;
+    const isEmpty = messages.length === 0 && status === "ready";
+    const showLanding = !isHydratingChat && isEmpty;
 
     const hydratedChatIdRef = useRef<string | null>(null);
     useEffect(() => {
         if (hydratedChatIdRef.current === chatId) return;
         hydratedChatIdRef.current = chatId;
+        const normalizedCachedMessages = Array.isArray(cachedMessages)
+            ? cachedMessages.map((message) => ({
+                  id: message.id,
+                  role: message.role,
+                  parts: Array.isArray(message.parts) ? message.parts : [],
+              }))
+            : null;
+        setIsHydratingChat(!normalizedCachedMessages);
         setMessages([]);
         setInput("");
+        setEditingMessageId(null);
+        setStopRequested(false);
+
+        if (normalizedCachedMessages) {
+            setMessages(normalizedCachedMessages);
+            return;
+        }
+
         let cancelled = false;
         void getStudyChatMessagesAction(chatId)
             .then((list) => {
@@ -119,24 +122,73 @@ export function StudyChat({
                     );
                 }
             })
-            .catch(() => { });
+            .catch(() => { })
+            .finally(() => {
+                if (!cancelled) {
+                    setIsHydratingChat(false);
+                }
+            });
         return () => {
             cancelled = true;
         };
-    }, [chatId, setMessages]);
+    }, [cachedMessages, chatId, setMessages]);
+
+    useEffect(() => {
+        if (status === "ready") {
+            setStopRequested(false);
+        }
+    }, [status]);
+
+    useEffect(() => {
+        onMessagesSnapshot?.(
+            chatId,
+            messages.map((message) => ({
+                id: message.id,
+                role: message.role as "user" | "assistant",
+                parts: Array.isArray(message.parts) ? message.parts : [],
+            }))
+        );
+    }, [chatId, messages, onMessagesSnapshot]);
 
     const handleSend = useCallback(
         (text: string) => {
             const trimmed = text.trim();
             if (!trimmed) return;
-            setIsTransitioning(true);
-            setPendingUserText(trimmed);
+            setEditingMessageId(null);
+            setStopRequested(false);
             clearError?.();
+            setMessages((current) => pruneStoppedAssistantDrafts(current));
             void sendMessage({ text: trimmed });
+            onChatUpdated({ chatId, title: trimmed.slice(0, 60) });
             setInput("");
         },
-        [clearError, sendMessage]
+        [chatId, clearError, onChatUpdated, sendMessage, setMessages]
     );
+
+    const handleBeginEdit = useCallback((messageId: string, text: string) => {
+        setEditingMessageId(messageId);
+        setInput(text);
+    }, []);
+
+    const handleCancelEdit = useCallback(() => {
+        setEditingMessageId(null);
+        setInput("");
+    }, []);
+
+    const handleSubmit = useCallback(() => {
+        if (editingMessageId) {
+            setEditingMessageId(null);
+            handleSend(input);
+            return;
+        }
+        handleSend(input);
+    }, [editingMessageId, handleSend, input]);
+
+    const handleStop = useCallback(() => {
+        setStopRequested(true);
+        setMessages((current) => pruneStoppedAssistantDrafts(current));
+        void stop();
+    }, [setMessages, stop]);
 
     return (
         <div className="relative flex h-full min-h-0 flex-col">
@@ -146,10 +198,14 @@ export function StudyChat({
                 scopeSubtitle={scopeSubtitle}
                 onToggleSidebar={onToggleSidebar}
                 onClearScope={onClearScope}
-                compact={isEmpty}
+                compact={showLanding}
             />
 
-            {isEmpty ? (
+            {isHydratingChat ? (
+                <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
+                    <StudyChatLoader centered />
+                </div>
+            ) : showLanding ? (
                 <div className="no-scrollbar relative flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-6 sm:px-6">
                     <div className="mx-auto w-full max-w-2xl">
                         <StudyLanding
@@ -160,9 +216,12 @@ export function StudyChat({
                                 <StudyComposer
                                     value={input}
                                     onChange={setInput}
-                                    onSend={() => handleSend(input)}
-                                    onStop={() => stop()}
-                                    isStreaming={isStreaming}
+                                    onSend={handleSubmit}
+                                    onStop={handleStop}
+                                    isStreaming={showStreamingIndicators}
+                                    isEditing={Boolean(editingMessageId)}
+                                    onCancelEdit={handleCancelEdit}
+                                    disabled={stopRequested && isStreaming}
                                     placeholder={placeholderFor(scope)}
                                     variant="inline"
                                 />
@@ -171,7 +230,7 @@ export function StudyChat({
 
                         {error && (
                             <div className="mx-auto mt-4 max-w-lg rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-[12px] text-destructive">
-                                {error.message || "something went wrong. please try again."}
+                                {error.message || "Something went wrong. Please try again."}
                             </div>
                         )}
                     </div>
@@ -182,14 +241,15 @@ export function StudyChat({
                         messages={messages}
                         status={status}
                         isStreaming={isStreaming}
-                        isTransitioning={isTransitioning}
-                        pendingUserText={pendingUserText}
+                        showStreamingIndicators={showStreamingIndicators}
+                        onPause={handleStop}
+                        onEditLatestPrompt={handleBeginEdit}
                     />
 
                     {error && (
                         <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
                             <div className="mb-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-[12px] text-destructive">
-                                {error.message || "something went wrong. please try again."}
+                                {error.message || "Something went wrong. Please try again."}
                             </div>
                         </div>
                     )}
@@ -197,9 +257,12 @@ export function StudyChat({
                     <StudyComposer
                         value={input}
                         onChange={setInput}
-                        onSend={() => handleSend(input)}
-                        onStop={() => stop()}
-                        isStreaming={isStreaming}
+                        onSend={handleSubmit}
+                        onStop={handleStop}
+                        isStreaming={showStreamingIndicators}
+                        isEditing={Boolean(editingMessageId)}
+                        onCancelEdit={handleCancelEdit}
+                        disabled={stopRequested && isStreaming}
                         placeholder={placeholderFor(scope)}
                         variant="sticky"
                     />
@@ -210,10 +273,10 @@ export function StudyChat({
 }
 
 function placeholderFor(scope: StudyScope | null): string {
-    if (!scope) return "ask anything about your coursework…";
-    if (scope.type === "NOTE") return "ask about this note…";
-    if (scope.type === "PAST_PAPER") return "ask about this paper…";
-    return "ask about this course…";
+    if (!scope) return "Ask anything about your coursework…";
+    if (scope.type === "NOTE") return "Ask about this note…";
+    if (scope.type === "PAST_PAPER") return "Ask about this paper…";
+    return "Ask about this course…";
 }
 
 function extractUserText(message: {
@@ -224,4 +287,34 @@ function extractUserText(message: {
         if (p?.type === "text" && p.text) return p.text;
     }
     return null;
+}
+
+function pruneStoppedAssistantDrafts(messages: UIMessage[]): UIMessage[] {
+    return messages.flatMap((message) => {
+        if (message.role !== "assistant") {
+            return [message];
+        }
+
+        const parts = Array.isArray(message.parts) ? message.parts : [];
+        const sanitizedParts = parts.filter((part) => !isIncompleteToolPart(part));
+
+        if (sanitizedParts.length === 0) {
+            return [];
+        }
+
+        if (sanitizedParts.length === parts.length) {
+            return [message];
+        }
+
+        return [{ ...message, parts: sanitizedParts }];
+    });
+}
+
+function isIncompleteToolPart(part: unknown) {
+    if (!part || typeof part !== "object") return false;
+    const typedPart = part as { type?: string; state?: string };
+    if (!typedPart.type?.startsWith("tool-")) return false;
+    return ["input-streaming", "input-available"].includes(
+        typedPart.state ?? "input-available"
+    );
 }
