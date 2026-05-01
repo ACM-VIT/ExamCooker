@@ -26,8 +26,8 @@ const navActionButtonClassName =
   "text-black hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:hover:bg-transparent lg:dark:bg-transparent lg:dark:hover:bg-transparent";
 const navActionIconClassName =
   "h-6 w-6 transform-gpu transition-all can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110";
-const navActionLabelClassName =
-  "hidden overflow-hidden whitespace-nowrap text-sm font-medium text-black opacity-0 transition-all duration-300 lg:block lg:max-w-0 lg:group-hover/nav:ml-3 lg:group-hover/nav:max-w-[150px] lg:group-hover/nav:opacity-100 lg:group-hover/action:text-[#0D5875] lg:dark:text-[#D5D5D5] lg:dark:group-hover/action:text-[#3BF4C7]";
+const navActionLabelBaseClassName =
+  "hidden overflow-hidden whitespace-nowrap text-sm font-medium text-black transition-all duration-300 lg:block lg:group-hover/action:text-[#0D5875] lg:dark:text-[#D5D5D5] lg:dark:group-hover/action:text-[#3BF4C7]";
 
 const VoiceAgentEntry = dynamic(
   () => import("@/app/components/voice/voice-agent-entry"),
@@ -56,6 +56,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const voiceAgentEnabled =
     usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? true;
   const [showProfile, setShowProfile] = useState(false);
+  const [keepNavExpanded, setKeepNavExpanded] = useState(false);
   const [profileMenuPosition, setProfileMenuPosition] = useState<{
     top: number;
     left: number;
@@ -66,6 +67,12 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const profileRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const keepNavExpandedFromPathRef = useRef(pathname);
+  const navLabelClassName = `${navActionLabelBaseClassName} ${
+    keepNavExpanded
+      ? "lg:ml-3 lg:max-w-[150px] lg:opacity-100"
+      : "lg:max-w-0 lg:opacity-0 lg:group-hover/nav:ml-3 lg:group-hover/nav:max-w-[150px] lg:group-hover/nav:opacity-100 lg:group-focus-within/nav:ml-3 lg:group-focus-within/nav:max-w-[150px] lg:group-focus-within/nav:opacity-100"
+  }`;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -140,6 +147,25 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     };
   }, [showProfile, updateProfileMenuPosition]);
 
+  useEffect(() => {
+    if (!keepNavExpanded) return;
+    const routeChanged = pathname !== keepNavExpandedFromPathRef.current;
+    const timeout = window.setTimeout(
+      () => setKeepNavExpanded(false),
+      routeChanged ? 450 : 1200,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [keepNavExpanded, pathname]);
+
+  const keepExpandedForNavigation = (event: React.MouseEvent<HTMLElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.closest("a[href]")) return;
+    if (!window.matchMedia("(min-width: 1024px)").matches) return;
+    keepNavExpandedFromPathRef.current = pathname;
+    setKeepNavExpanded(true);
+  };
+
   const handleVoiceClick = useCallback((entryPoint: VoiceAgentEntryPoint = "nav") => {
     captureVoiceAgentRequested({
       entryPoint,
@@ -205,6 +231,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
 
       <nav
         aria-label="Tools and navigation"
+        onClickCapture={keepExpandedForNavigation}
         style={{ viewTransitionName: "persistent-nav" }}
         className={`group/nav fixed z-[55] overflow-hidden border-black/15 bg-[#C2E6EC] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-y-0" : "translate-y-[calc(100%+16px)]"} inset-x-0 bottom-0 max-h-[min(520px,88dvh)] w-full rounded-t-[1.35rem] border border-b-0 shadow-[0_-12px_40px_rgba(0,0,0,0.14)] dark:shadow-[0_-16px_48px_rgba(0,0,0,0.45)] lg:inset-x-auto lg:bottom-auto lg:left-0 lg:top-0 lg:flex lg:h-dvh lg:max-h-dvh lg:w-fit lg:translate-x-0 lg:translate-y-0 lg:rounded-none lg:border lg:border-y-0 lg:border-l-0 lg:border-r lg:shadow-none`}
       >
@@ -251,7 +278,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                           muted: false,
                         }}
                       >
-                        <span className={navActionLabelClassName}>Voice</span>
+                        <span className={navLabelClassName}>Voice</span>
                       </VoiceAgentButton>
                     )}
                   </div>
@@ -268,7 +295,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                   className={navActionButtonClassName}
                   iconClassName={navActionIconClassName}
                 >
-                  <span className={navActionLabelClassName}>Theme</span>
+                  <span className={navLabelClassName}>Theme</span>
                 </ThemeToggleSwitch>
               </div>
               <span className="text-[11px] font-semibold text-black/48 dark:text-[#D5D5D5]/55 lg:hidden">
@@ -291,7 +318,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                       <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-200 can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110">
                         {(session?.user?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
                       </span>
-                      <span className={navActionLabelClassName}>Account</span>
+                      <span className={navLabelClassName}>Account</span>
                     </button>
                     {showProfile && (
                       <div
@@ -347,7 +374,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                       <polyline points="10 17 15 12 10 7" />
                       <line x1="15" y1="12" x2="3" y2="12" />
                     </svg>
-                    <span className={navActionLabelClassName}>Account</span>
+                    <span className={navLabelClassName}>Account</span>
                   </button>
                 )}
               </div>
@@ -382,7 +409,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                           }`}
                       />
                     </div>
-                    <span className="overflow-hidden whitespace-nowrap text-sm font-medium text-black opacity-0 transition-all duration-300 max-w-0 group-hover/nav:ml-3 group-hover/nav:max-w-[150px] group-hover/nav:opacity-100 group-hover/action:text-[#0D5875] dark:text-[#D5D5D5] dark:group-hover/action:text-[#3BF4C7]">
+                    <span className={navLabelClassName}>
                       {link.alt}
                     </span>
                   </div>

@@ -62,3 +62,5 @@ packages/cli/dist
 packages/cli/node_modules
 .env.local
 .asc
+mobile/android/keystore.properties
+mobile/android/keystores/examcooker-upload.jks
