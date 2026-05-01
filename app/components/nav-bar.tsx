@@ -16,12 +16,11 @@ import {
 import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
-import { MoreHorizontal, X } from "lucide-react";
+import { X } from "lucide-react";
 
 type Props = {
   isNavOn: boolean;
   toggleNavbar: () => void;
-  hideMobilePrimaryLinks?: boolean;
 };
 
 const VoiceAgentEntry = dynamic(
@@ -43,11 +42,7 @@ const VoiceAgentEntry = dynamic(
   },
 );
 
-const NavBar: React.FC<Props> = ({
-  isNavOn,
-  toggleNavbar,
-  hideMobilePrimaryLinks = false,
-}) => {
+const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const pathname = usePathname();
   const { isAuthed, requireAuth, session } = useGuestPrompt();
   const voiceAgentEnabled =
@@ -202,23 +197,35 @@ const NavBar: React.FC<Props> = ({
     return () => window.removeEventListener("examcooker:voice-agent-start", handler);
   }, [handleVoiceClick]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (cancelled || Capacitor.getPlatform() !== "ios") return;
+        const { NativeTabs } = await import("capacitor-native-tabs");
+        if (isNavOn) {
+          await NativeTabs.hideTabBar().catch(() => undefined);
+        } else {
+          await NativeTabs.showTabBar().catch(() => undefined);
+        }
+      } catch {
+        // Plugin unavailable outside Capacitor iOS shell
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isNavOn]);
+
   return (
     <>
-      <button
-        type="button"
-        onClick={toggleNavbar}
-        aria-label={isNavOn ? "Close tools menu" : "Open tools menu"}
-        aria-expanded={isNavOn}
-        style={{ viewTransitionName: "persistent-menu-button" }}
-        className={`fixed right-[max(0.75rem,env(safe-area-inset-right))] z-[60] flex h-11 w-11 items-center justify-center rounded-lg text-black/65 transition-colors active:bg-black/[0.08] dark:text-[#D5D5D5]/85 dark:active:bg-white/[0.07] lg:hidden ${isNavOn ? "pointer-events-none opacity-0" : "opacity-100"} top-[max(0.75rem,env(safe-area-inset-top))]`}
-      >
-        <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-      </button>
-
       <div
         onClick={toggleNavbar}
         aria-hidden="true"
-        className={`fixed inset-0 z-[54] bg-black/45 backdrop-blur-[2px] transition-opacity duration-200 lg:hidden ${isNavOn ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        className={`fixed inset-0 z-[54] bg-black/65 backdrop-blur-[3px] transition-opacity duration-200 lg:hidden ${isNavOn ? "opacity-100" : "pointer-events-none opacity-0"}`}
       />
 
       <nav
@@ -226,7 +233,7 @@ const NavBar: React.FC<Props> = ({
         style={{ viewTransitionName: "persistent-nav" }}
         className={`fixed z-[55] overflow-hidden border-black/15 bg-[#C2E6EC] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] ${isNavOn ? "translate-y-0" : "translate-y-[calc(100%+16px)]"} inset-x-0 bottom-0 max-h-[min(520px,88dvh)] w-full rounded-t-[1.35rem] border border-b-0 shadow-[0_-12px_40px_rgba(0,0,0,0.14)] dark:shadow-[0_-16px_48px_rgba(0,0,0,0.45)] lg:inset-x-auto lg:bottom-auto lg:left-0 lg:top-0 lg:flex lg:h-dvh lg:max-h-dvh lg:w-fit lg:translate-x-0 lg:translate-y-0 lg:rounded-none lg:border lg:border-y-0 lg:border-l-0 lg:border-r lg:shadow-none`}
       >
-        <div className="flex max-h-[min(520px,88dvh)] min-h-0 w-full flex-col overflow-y-auto overscroll-contain lg:h-full lg:max-h-dvh lg:w-fit lg:pb-[calc(env(safe-area-inset-bottom)+0.5rem)] lg:pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <div className="flex max-h-[min(520px,88dvh)] min-h-0 w-full flex-col overflow-y-auto overscroll-contain pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:h-full lg:max-h-dvh lg:w-fit lg:pb-[calc(env(safe-area-inset-bottom)+0.5rem)] lg:pt-[max(0.5rem,env(safe-area-inset-top))]">
           <div className="order-1 shrink-0 lg:order-1">
             <div className="border-b border-black/10 px-4 pb-3 pt-3 dark:border-white/10 lg:hidden">
               <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-black/12 dark:bg-white/18" aria-hidden />
@@ -366,13 +373,7 @@ const NavBar: React.FC<Props> = ({
             </div>
           </div>
 
-          <div
-            className={
-              hideMobilePrimaryLinks
-                ? "order-3 hidden min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 py-2 lg:order-2 lg:flex lg:justify-center lg:overflow-visible lg:px-1 lg:py-2"
-                : "order-3 flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 py-3 lg:order-2 lg:justify-center lg:overflow-visible lg:px-1 lg:py-2"
-            }
-          >
+          <div className="order-3 hidden min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 py-2 lg:order-2 lg:flex lg:justify-center lg:overflow-visible lg:px-1 lg:py-2">
             {APP_NAV_LINKS.map((link) => {
               const isActive = link.matches
                 ? link.matches(pathname)

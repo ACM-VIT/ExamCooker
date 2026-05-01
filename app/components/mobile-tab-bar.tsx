@@ -6,7 +6,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 
-export default function MobileTabBar() {
+type Props = {
+  toolsSheetOpen?: boolean;
+};
+
+export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
   const pathname = usePathname();
   const [mode, setMode] = useState<"unknown" | "web" | "hidden">("unknown");
 
@@ -56,6 +60,10 @@ export default function MobileTabBar() {
     return null;
   }
 
+  if (toolsSheetOpen) {
+    return null;
+  }
+
   if (mode !== "web") {
     return (
       <div
@@ -89,9 +97,7 @@ export default function MobileTabBar() {
               >
                 <span
                   className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
-                    isActive
-                      ? "bg-white/90 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:bg-white/[0.08] dark:shadow-none"
-                      : ""
+                    isActive ? "bg-black/[0.06] dark:bg-white/[0.07]" : ""
                   }`}
                 >
                   <Image
