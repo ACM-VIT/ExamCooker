@@ -192,6 +192,7 @@ async function PaperViewerContent({
         courseCode: item.course?.code ?? null,
         courseTitle: item.course?.title ?? null,
         examType: item.examType,
+        slot: item.slot,
         year: item.year,
     }));
 

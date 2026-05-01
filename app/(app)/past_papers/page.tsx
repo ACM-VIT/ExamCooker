@@ -16,6 +16,7 @@ import {
     getCourseGrid,
     getPopularCourseGrid,
     getRecentPapers,
+    getUpcomingExamsCourseGrid,
     searchCourseGrid,
     type CourseGridItem,
 } from "@/lib/data/course-catalog";
@@ -30,7 +31,7 @@ import {
 } from "@/lib/structured-data";
 
 const PAGE_SIZE = 24;
-const POPULAR_LIMIT = 6;
+const POPULAR_LIMIT = 12;
 const COURSE_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
 type PastPapersSearchParams = { search?: string; page?: string };
 
@@ -104,7 +105,7 @@ function HeroStats({
                     {idx < items.length - 1 && (
                         <span
                             aria-hidden="true"
-                            className="ml-3 hidden text-black/30 dark:text-[#D5D5D5]/25 sm:inline"
+                            className="ml-3 hidden text-black dark:text-white sm:inline"
                         >
                             ·
                         </span>
@@ -150,7 +151,7 @@ function PopularCoursesShell() {
         <section className="flex flex-col gap-4">
             <header className="flex items-end justify-between">
                 <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
-                    Popular courses
+                    Upcoming exams
                 </h2>
             </header>
             <CourseCardsShell count={POPULAR_LIMIT} />
@@ -202,24 +203,25 @@ function RecentSectionShell() {
             </header>
             <div
                 aria-hidden="true"
-                className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-hidden px-3 pb-2 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10"
+                className="flex snap-x snap-mandatory gap-3 overflow-hidden pb-2"
             >
                 {Array.from({ length: 6 }).map((_, index) => (
                     <div
                         key={index}
-                        className="flex w-40 shrink-0 flex-col overflow-hidden rounded-md border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222] sm:w-44"
+                        className="flex w-40 shrink-0 flex-col overflow-hidden border-2 border-[#5FC4E7] bg-[#5FC4E7] dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] sm:w-44"
                     >
-                        <div className="aspect-[4/5] w-full bg-black/5 dark:bg-white/5" />
-                        <div className="flex flex-col gap-2 p-2.5">
-                            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-black/70 dark:text-[#3BF4C7]/80">
+                        <div className="aspect-[4/5] w-full bg-[#d9d9d9] dark:bg-white/5" />
+                        <div className="flex min-h-[5.75rem] flex-1 flex-col gap-2 p-2.5">
+                            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-black/70 dark:text-[#D5D5D5]/70">
                                 <span className="block h-[1em] w-14 bg-black/10 dark:bg-white/10" />
                             </span>
                             <p className="line-clamp-2 text-xs font-semibold">
                                 <span className="block h-[1em] w-full bg-black/10 dark:bg-white/10" />
                                 <span className="mt-1 block h-[1em] w-2/3 bg-black/10 dark:bg-white/10" />
                             </p>
-                            <div className="flex items-center gap-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-black/60 dark:text-[#D5D5D5]/60">
+                            <div className="mt-auto flex items-center gap-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-black/60 dark:text-[#D5D5D5]/60">
                                 <span className="block h-[1em] w-8 bg-black/10 dark:bg-white/10" />
+                                <span className="block h-[1em] w-6 bg-black/10 dark:bg-white/10" />
                                 <span className="block h-[1em] w-8 bg-black/10 dark:bg-white/10" />
                             </div>
                         </div>
@@ -231,14 +233,14 @@ function RecentSectionShell() {
 }
 
 async function PopularCoursesSection() {
-    const popular = await getPopularCourseGrid(POPULAR_LIMIT);
+    const popular = await getUpcomingExamsCourseGrid();
     if (popular.length === 0) return null;
 
     return (
         <section className="flex flex-col gap-4">
             <header className="flex items-end justify-between">
                 <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
-                    Popular courses
+                    Upcoming exams
                 </h2>
             </header>
             <SmartCourseGrid
@@ -376,7 +378,6 @@ function DynamicHomeSectionsShell() {
         <>
             <SearchControlsShell />
             <PopularCoursesShell />
-            <CourseGridSectionShell search="" />
             <RecentSectionShell />
         </>
     );
@@ -402,9 +403,11 @@ async function DynamicHomeSections({
                 </Suspense>
             )}
 
-            <Suspense fallback={<CourseGridSectionShell search={search} />}>
-                <CourseGridSection searchParamsPromise={searchParamsPromise} />
-            </Suspense>
+            {search && (
+                <Suspense fallback={<CourseGridSectionShell search={search} />}>
+                    <CourseGridSection searchParamsPromise={searchParamsPromise} />
+                </Suspense>
+            )}
 
             {!search && (
                 <Suspense fallback={<RecentSectionShell />}>

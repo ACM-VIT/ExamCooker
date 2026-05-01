@@ -13,6 +13,7 @@ type RecentItem = {
     courseCode: string | null;
     courseTitle: string | null;
     examType: ExamType | string | null;
+    slot: string | null;
     year: number | null;
 };
 
@@ -31,7 +32,7 @@ export default function RecentPaperStrip({
                     {title}
                 </h2>
             </header>
-            <div className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
                 {items.map((item, i) => {
                     const href = getPastPaperDetailPath(item.id, item.courseCode);
                     const thumb = normalizeGcsUrl(item.thumbNailUrl);
@@ -41,9 +42,9 @@ export default function RecentPaperStrip({
                             href={href}
                             prefetch={i < 3}
                             transitionTypes={["nav-forward"]}
-                            className="group relative flex w-40 shrink-0 snap-start flex-col overflow-hidden rounded-md border border-black/10 bg-white transition-all duration-200 hover:border-black/30 hover:shadow-md dark:border-[#D5D5D5]/10 dark:bg-[#0C1222] dark:hover:border-[#D5D5D5]/35 dark:hover:shadow-[0_4px_18px_rgba(59,244,199,0.08)] sm:w-44"
+                            className="group relative flex w-40 shrink-0 snap-start flex-col overflow-hidden border-2 border-[#5FC4E7] bg-[#5FC4E7] text-black transition duration-200 hover:scale-[1.02] hover:border-b-white hover:shadow-xl dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 sm:w-44"
                         >
-                            <div className="relative aspect-[4/5] w-full overflow-hidden bg-black/5 dark:bg-white/5">
+                            <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#d9d9d9] dark:bg-white/5">
                                 <Image
                                     src={thumb || "/assets/exam-cooker.png"}
                                     alt={item.title}
@@ -53,20 +54,31 @@ export default function RecentPaperStrip({
                                     priority={i < 3}
                                 />
                             </div>
-                            <div className="flex flex-col gap-1 p-2.5 text-black dark:text-[#D5D5D5]">
+                            <div className="flex min-h-[5.75rem] flex-1 flex-col gap-1 p-2.5 text-black dark:text-[#D5D5D5]">
                                 {item.courseCode && (
-                                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-black/70 dark:text-[#3BF4C7]/80">
+                                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-black/70 dark:text-[#D5D5D5]/70">
                                         {item.courseCode}
                                     </span>
                                 )}
                                 <p className="line-clamp-2 text-xs font-semibold">
                                     {item.courseTitle ?? item.title}
                                 </p>
-                                <div className="flex items-center gap-2 pt-1 text-[10px] font-semibold uppercase tracking-wider text-black/60 dark:text-[#D5D5D5]/60">
+                                <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-black/70 dark:text-[#D5D5D5]/70">
                                     {item.examType && (
-                                        <span>{examTypeLabel(item.examType as ExamType)}</span>
+                                        <span className="bg-black/10 px-1.5 py-0.5 text-black/80 dark:bg-[#D5D5D5]/15 dark:text-[#D5D5D5]/90">
+                                            {examTypeLabel(item.examType as ExamType)}
+                                        </span>
                                     )}
-                                    {item.year !== null && <span>{item.year}</span>}
+                                    {item.slot && (
+                                        <span className="bg-black/10 px-1.5 py-0.5 text-black/80 dark:bg-[#D5D5D5]/15 dark:text-[#D5D5D5]/90">
+                                            {item.slot}
+                                        </span>
+                                    )}
+                                    {item.year !== null && (
+                                        <span className="bg-black/10 px-1.5 py-0.5 text-black/80 dark:bg-[#D5D5D5]/15 dark:text-[#D5D5D5]/90">
+                                            {item.year}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </Link>
