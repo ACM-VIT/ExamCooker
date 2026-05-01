@@ -57,12 +57,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const [{ code }, rawSearchParams] = await Promise.all([params, searchParams]);
     const course = await loadCourseContext(code);
-    if (!course) return {};
+    if (!course) return { robots: { index: false, follow: true } };
 
     const page = Number.parseInt(rawSearchParams?.page || "1", 10) || 1;
     const noteCount = await getCourseNotesCount({ courseId: course.courseId });
 
-    if (!noteCount) return {};
+    if (!noteCount) return { robots: { index: false, follow: true } };
 
     const title = `${course.code} notes | ${course.title}`;
     const description = `Download ${course.code} notes, lecture notes, revision material, and study PDFs for ${course.title} on ExamCooker.`;

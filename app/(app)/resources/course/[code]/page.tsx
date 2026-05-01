@@ -106,7 +106,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { code } = await params;
     const context = await loadCourseResourceContext(code);
-    if (!context) return {};
+    if (!context) return { robots: { index: false, follow: true } };
 
     const title = `${context.code} resources | ${context.title}`;
     const description = buildDescription(context);

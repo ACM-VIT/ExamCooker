@@ -12,7 +12,6 @@ import { course, db, pastPaper } from "@/db";
 
 export const metadata = {
     title: "Paper metadata review · Mod",
-    robots: { index: false, follow: false },
 };
 
 function PaperReviewShell() {

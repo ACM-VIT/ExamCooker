@@ -117,7 +117,7 @@ export async function generateMetadata({
     }
 
     const subject = await fetchLegacySubject(id);
-    if (!subject) return {};
+    if (!subject) return { robots: { index: false, follow: true } };
 
     const { courseCode, courseName } = parseSubjectName(subject.name);
     const canonical = courseCode
@@ -137,6 +137,7 @@ export async function generateMetadata({
             description: `Browse ${courseName} resources and modules on ExamCooker.`,
             url: canonical,
         },
+        robots: { index: true, follow: true },
     };
 }
 

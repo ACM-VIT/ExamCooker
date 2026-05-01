@@ -11,7 +11,6 @@ import { course, db, note } from "@/db";
 
 export const metadata = {
     title: "Note metadata review · Mod",
-    robots: { index: false, follow: false },
 };
 
 function NoteReviewShell() {

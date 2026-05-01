@@ -1,8 +1,6 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import * as schema from "@/db/schema";
 
 function readPositiveInt(name: string, fallback: number) {
   const value = Number.parseInt(process.env[name] ?? "", 10);
@@ -282,8 +280,6 @@ function createPool() {
   return pool;
 }
 
-type Database = NodePgDatabase<typeof schema> & { $client: Pool };
-
 declare global {
   // eslint-disable-next-line no-var
   var __examCookerDb: Database | undefined;
@@ -291,14 +287,15 @@ declare global {
   var __examCookerDbBeforeExitHookRegistered: boolean | undefined;
 }
 
-function createDb(): Database {
+function createDb() {
   const client = createPool();
-  return drizzle<typeof schema>({
+  return drizzle({
     client,
-    schema,
     logger: process.env.NODE_ENV === "development",
-  }) as Database;
+  });
 }
+
+type Database = ReturnType<typeof createDb>;
 
 export function getDb() {
   if (!globalThis.__examCookerDb) {

@@ -150,11 +150,12 @@ export async function generateMetadata({
     searchParams?: Promise<SearchParamsRaw>;
 }): Promise<Metadata> {
     const { code } = await params;
-    if (CUID_REGEX.test(code)) return { robots: { index: false, follow: false } };
+    if (CUID_REGEX.test(code))
+        return { robots: { index: false, follow: true } };
 
     const normalized = normalizeCourseCode(code);
     const course = await getCourseDetailByCode(normalized);
-    if (!course) return {};
+    if (!course) return { robots: { index: false, follow: true } };
 
     const raw = (await searchParams) ?? {};
     const filters = parseSearchParams(raw);

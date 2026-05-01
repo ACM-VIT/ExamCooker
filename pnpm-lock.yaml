@@ -91,8 +91,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       drizzle-orm:
-        specifier: ^0.45.2
-        version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.36.1)(pg@8.20.0)
+        specifier: 1.0.0-rc.1
+        version: 1.0.0-rc.1(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.36.1)(pg@8.20.0)(zod@4.3.6)
       fuse.js:
         specifier: ^7.1.0
         version: 7.1.0
@@ -167,8 +167,8 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0
       drizzle-kit:
-        specifier: 1.0.0-beta.22
-        version: 1.0.0-beta.22
+        specifier: 1.0.0-rc.1
+        version: 1.0.0-rc.1
       postcss:
         specifier: 8.5.13
         version: 8.5.13
@@ -1648,12 +1648,12 @@ packages:
     resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
     engines: {node: '>=12'}
 
-  drizzle-kit@1.0.0-beta.22:
+  drizzle-kit@1.0.0-rc.1:
     resolution: {integrity: sha512-9HTZuQRljQKTgCx4UhiGn8KYYfHGk4+B/bRR1714W67kz0qgJvdrG527i8rQD8uUyET9UTGR1u8syySJD4znGw==}
     hasBin: true
 
-  drizzle-orm@0.45.2:
-    resolution: {integrity: sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==}
+  drizzle-orm@1.0.0-rc.1:
+    resolution: {integrity: sha512-jGCqAgxpz+OSHP2jQGooUHBxnFMTYl0TTRSfULBl52VNf7CtyNRnazUi+VdbSxvJrDP2lnIsmUh5O+HhKeSJCg==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -3807,7 +3807,7 @@ snapshots:
 
   dotenv@17.2.3: {}
 
-  drizzle-kit@1.0.0-beta.22:
+  drizzle-kit@1.0.0-rc.1:
     dependencies:
       '@drizzle-team/brocli': 0.11.0
       '@js-temporal/polyfill': 0.5.1
@@ -3815,12 +3815,13 @@ snapshots:
       get-tsconfig: 4.14.0
       jiti: 2.6.1
 
-  drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.36.1)(pg@8.20.0):
+  drizzle-orm@1.0.0-rc.1(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.36.1)(pg@8.20.0)(zod@4.3.6):
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
       '@types/pg': 8.20.0
       '@upstash/redis': 1.36.1
       pg: 8.20.0
+      zod: 4.3.6
 
   dunder-proto@1.0.1:
     dependencies:
