@@ -73,6 +73,7 @@ function buildProviders() {
           Apple({
             clientId: appleClientId,
             clientSecret: appleClientSecret,
+            allowDangerousEmailAccountLinking: true,
           }),
         ]
       : []),
