@@ -58,7 +58,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const deferredQuery = useDeferredValue(query);
     const voiceAgentEnabled =
-        usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? true;
+        usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? false;
 
     const searchableCourses = useMemo(
         () =>
