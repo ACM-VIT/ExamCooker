@@ -8,11 +8,13 @@ import {
 
 const DEFAULT_PDF_QA_MODEL =
   process.env.OPENAI_PDF_QA_MODEL?.trim() || "gpt-5.4-mini";
+const MAX_INLINE_PDF_BYTES = 18 * 1024 * 1024;
 const PDF_ANSWER_SYSTEM_PROMPT =
   "You answer questions about an ExamCooker PDF. Ground every answer in the document. " +
   "Mention page numbers when they are helpful or when the user asks about a specific page. " +
+  "If the user says this question, that question, or this page, focus on the current page context. " +
   "If the answer is not in the PDF, say so briefly instead of guessing. " +
-  "Keep answers concise for spoken delivery unless the user explicitly asks for detail.";
+  "Keep answers concise for spoken delivery: 1-3 short sentences unless the user explicitly asks for detail.";
 
 const PdfQuestionRequestSchema = z.object({
   currentPage: z.number().int().min(1).max(10000).optional(),
@@ -46,6 +48,13 @@ type ResponsesApiPayload = {
     input_tokens?: number;
     output_tokens?: number;
   } | null;
+};
+
+type PdfFileInput = {
+  file_data?: string;
+  file_url?: string;
+  filename?: string;
+  type: "input_file";
 };
 
 type AllowedPdfSource = {
@@ -146,6 +155,9 @@ function buildPdfQuestionPrompt(input: z.infer<typeof PdfQuestionRequestSchema>)
       : input.currentPage
         ? `The user is currently looking at page ${input.currentPage}.`
         : null,
+    input.currentPage
+      ? "When the question uses words like this, that, current, or here, interpret it as referring to the visible/current page."
+      : null,
   ].filter(Boolean);
 
   return [...contextParts, `User question: ${input.question}`].join(" ");
@@ -167,6 +179,53 @@ function extractOutputText(payload: ResponsesApiPayload) {
     .join("\n\n");
 
   return text || null;
+}
+
+function getSafePdfFileName(fileName: string) {
+  const trimmed = fileName.trim().replace(/[^\w .()[\]-]+/g, "_");
+  if (!trimmed) return "document.pdf";
+  return /\.pdf$/i.test(trimmed) ? trimmed : `${trimmed}.pdf`;
+}
+
+async function buildPdfFileInput(fileUrl: URL, fileName: string): Promise<PdfFileInput> {
+  const fallback = {
+    type: "input_file" as const,
+    file_url: fileUrl.toString(),
+  };
+
+  try {
+    const response = await fetch(fileUrl, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (!response.ok) {
+      return fallback;
+    }
+
+    const contentLength = Number(response.headers.get("content-length") ?? 0);
+    if (contentLength > MAX_INLINE_PDF_BYTES) {
+      return fallback;
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType && !contentType.toLowerCase().includes("pdf")) {
+      return fallback;
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.byteLength === 0 || buffer.byteLength > MAX_INLINE_PDF_BYTES) {
+      return fallback;
+    }
+
+    return {
+      type: "input_file",
+      filename: getSafePdfFileName(fileName),
+      file_data: buffer.toString("base64"),
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 function schedulePdfAnswerCapture(input: {
@@ -294,6 +353,7 @@ export async function POST(request: NextRequest) {
   }
 
   const inputPrompt = buildPdfQuestionPrompt(parsedBody);
+  const pdfFileInput = await buildPdfFileInput(fileUrl, parsedBody.fileName);
   const llmStartedAt = Date.now();
 
   const upstreamResponse = await fetch("https://api.openai.com/v1/responses", {
@@ -304,6 +364,7 @@ export async function POST(request: NextRequest) {
     },
     body: JSON.stringify({
       model: DEFAULT_PDF_QA_MODEL,
+      max_output_tokens: 180,
       store: false,
       input: [
         {
@@ -322,10 +383,7 @@ export async function POST(request: NextRequest) {
               type: "input_text",
               text: inputPrompt,
             },
-            {
-              type: "input_file",
-              file_url: parsedBody.fileUrl,
-            },
+            pdfFileInput,
           ],
         },
       ],

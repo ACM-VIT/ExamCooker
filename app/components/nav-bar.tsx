@@ -45,6 +45,7 @@ const VoiceAgentEntry = dynamic(
           connected: false,
           muted: false,
         }}
+        variant="nav"
       />
     ),
   },
@@ -308,9 +309,13 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                   <div className="flex lg:w-full">
                     {voiceRuntimeRequested ? (
                       <VoiceAgentEntry
+                        className={navActionButtonClassName}
                         entryPoint={voiceEntryPoint}
+                        iconClassName={navActionIconClassName}
                         startToken={voiceStartToken}
-                      />
+                      >
+                        <span className={navLabelClassName}>Voice</span>
+                      </VoiceAgentEntry>
                     ) : (
                       <VoiceAgentButton
                         buttonLabel="Start the voice guide"
@@ -322,6 +327,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                           connected: false,
                           muted: false,
                         }}
+                        variant="nav"
                       >
                         <span className={navLabelClassName}>Voice</span>
                       </VoiceAgentButton>

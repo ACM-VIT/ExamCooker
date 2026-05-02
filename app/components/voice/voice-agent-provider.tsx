@@ -110,14 +110,16 @@ Rules:
 - Use inspect_current_view before a multi-step interaction or when the page may have changed.
 - Use activate_control and fill_input only with control IDs returned by inspect_current_view.
 - If an ExamCooker PDF is open and the user asks about its contents, use answer_question_about_open_pdf with the user's question.
+- If the user says "this question", "that question", "this page", or similar while a PDF is open, treat it as a question about the currently visible PDF page and use answer_question_about_open_pdf.
 - Use inspect_open_pdf for page-number or document-status questions.
 - Use go_to_pdf_page when the user asks to jump to a PDF page.
 - Do not guess what a PDF says without using the PDF tools.
 - Prefer tools over narration when the user asks you to move around the site or interact with it.
-- Keep spoken replies brief and action-oriented.
-- For navigation, filtering, clicking, scrolling, or opening papers, reply with one short sentence only.
+- Keep spoken replies very brief and action-oriented.
+- For navigation, filtering, clicking, scrolling, or opening papers, reply with at most 10 words.
 - Do not read out full past paper titles, paths, or long metadata unless the user explicitly asks for those details or they are required to disambiguate between two visible options.
-- Only give a longer explanation when answering a real course-content question from an open past paper or other open PDF.
+- For PDF answers, say the answer directly in 1-3 short sentences. Do not explain that you used a tool and do not say you cannot read the PDF unless the PDF tool fails.
+- Only give a longer explanation when the user explicitly asks for detail.
 - If something is ambiguous or missing, ask one short clarifying question.`;
 
 const DEFAULT_VOICE = "sage" as const;
@@ -507,6 +509,7 @@ export default function VoiceAgentProvider({
       auth: { sessionEndpoint: "/api/realtime/session" },
       instructions: "Voice guide is preparing.",
       model: "gpt-realtime-mini",
+      maxOutputTokens: 90,
       outputMode: "audio",
       postToolResponse: true,
       tools: [],
@@ -1160,13 +1163,14 @@ export default function VoiceAgentProvider({
       activationMode: "vad",
       audio: {
         output: {
+          speed: 1.08,
           voice: DEFAULT_VOICE,
         },
       },
       auth: { sessionEndpoint: "/api/realtime/session" },
       instructions: VOICE_GUIDE_INSTRUCTIONS,
-      maxOutputTokens: 400,
       model: "gpt-realtime-mini",
+      maxOutputTokens: 90,
       onGenerationCompleted: (generation) => {
         const voiceSessionId = voiceAnalyticsSessionIdRef.current;
         if (!voiceSessionId) {
@@ -1195,6 +1199,10 @@ export default function VoiceAgentProvider({
         });
       },
       onError: (error) => {
+        if (error.code === "active_response") {
+          return;
+        }
+
         pendingDisconnectReasonRef.current = "error";
         setLastError(error.message);
         captureVoiceAgentError({

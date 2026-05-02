@@ -17,6 +17,7 @@ type VoiceAgentButtonProps = {
   iconClassName?: string;
   onClick: () => void;
   runtime: VoiceAgentButtonRuntime;
+  variant?: "default" | "nav";
 };
 
 export default function VoiceAgentButton({
@@ -27,6 +28,7 @@ export default function VoiceAgentButton({
   iconClassName,
   onClick,
   runtime,
+  variant = "default",
 }: VoiceAgentButtonProps) {
   const Icon =
     runtime.connected
@@ -52,12 +54,14 @@ export default function VoiceAgentButton({
         "relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent bg-transparent text-black/70 transition-colors duration-200 hover:bg-black/5 hover:text-black disabled:cursor-wait disabled:opacity-70 dark:text-[#D5D5D5]/70 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]",
         className,
         runtime.connected &&
-          "text-[#0D5875] dark:border-[#3BF4C7]/25 dark:bg-[#0F2431] dark:text-[#3BF4C7]",
+          (variant === "nav"
+            ? "text-[#0D5875] dark:text-[#3BF4C7]"
+            : "text-[#0D5875] dark:border-[#3BF4C7]/25 dark:bg-[#0F2431] dark:text-[#3BF4C7]"),
         runtime.activity === "error" &&
           "text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300",
       )}
     >
-      {runtime.connected ? (
+      {runtime.connected && variant !== "nav" ? (
         <span className="absolute inset-0 rounded-full border border-[#4DB3D6]/40 dark:border-[#3BF4C7]/35" />
       ) : null}
       <Icon

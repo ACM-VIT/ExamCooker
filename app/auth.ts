@@ -18,6 +18,18 @@ import { createPostHogServer } from "@/lib/posthog-server";
 
 const adapter = createAuthAdapter();
 const ROLE_REFRESH_INTERVAL_SECONDS = 5 * 60;
+const useSecureAuthCookies =
+  (process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "").startsWith(
+    "https://",
+  ) || process.env.NODE_ENV === "production";
+const secureCookiePrefix = useSecureAuthCookies ? "__Secure-" : "";
+const crossSiteOAuthCookieOptions = {
+  httpOnly: true,
+  sameSite: useSecureAuthCookies ? "none" : "lax",
+  path: "/",
+  secure: useSecureAuthCookies,
+  maxAge: 60 * 15,
+} as const;
 let warnedAboutStaleSessionCookie = false;
 type AppRole = "USER" | "MODERATOR";
 type AuthToken = {
@@ -120,6 +132,20 @@ export const authConfig = {
   adapter,
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" as const },
+  cookies: {
+    pkceCodeVerifier: {
+      name: `${secureCookiePrefix}next-auth.pkce.code_verifier`,
+      options: crossSiteOAuthCookieOptions,
+    },
+    state: {
+      name: `${secureCookiePrefix}next-auth.state`,
+      options: crossSiteOAuthCookieOptions,
+    },
+    nonce: {
+      name: `${secureCookiePrefix}next-auth.nonce`,
+      options: crossSiteOAuthCookieOptions,
+    },
+  },
   pages: {
     signIn: "/auth",
   },
