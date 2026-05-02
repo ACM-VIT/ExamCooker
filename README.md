@@ -213,8 +213,8 @@ ExamCooker uses scalable tech stacks to ensure optimal performance and ease of m
       </a>
     </td>
     <td align="center">
-      <a href="https://github.com/adityasingh789m">
-        <img src="https://github.com/adityasingh789m.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+      <a href="https://github.com/adii2ma">
+        <img src="https://github.com/adii2ma.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
         <br>
         <sub><b>Aditya Singh</b></sub>
       </a>
@@ -243,22 +243,22 @@ ExamCooker uses scalable tech stacks to ensure optimal performance and ease of m
       </a>
     </td>
     <td align="center">
-      <a href="https://github.com/jjoshiprakhar">
-        <img src="https://github.com/jjoshiprakhar.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+      <a href="https://github.com/pj4real">
+        <img src="https://github.com/pj4real.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
         <br>
         <sub><b>Prakhar Joshi</b></sub>
       </a>
     </td>
     <td align="center">
-      <a href="https://github.com/ant1v3n0m">
-        <img src="https://github.com/ant1v3n0m.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+      <a href="https://github.com/harshitnarang28">
+        <img src="https://github.com/harshitnarang28.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
         <br>
         <sub><b>Harshit Narang</b></sub>
       </a>
     </td>
     <td align="center">
-      <a href="https://github.com/passiveuser369">
-        <img src="https://github.com/passiveuser369.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+      <a href="https://github.com/Passive-Coder">
+        <img src="https://github.com/Passive-Coder.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
         <br>
         <sub><b>Sree Raj Muthaiya A L</b></sub>
       </a>
