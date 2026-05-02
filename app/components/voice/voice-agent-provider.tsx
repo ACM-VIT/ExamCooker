@@ -1163,14 +1163,13 @@ export default function VoiceAgentProvider({
       activationMode: "vad",
       audio: {
         output: {
-          speed: 1.08,
           voice: DEFAULT_VOICE,
         },
       },
       auth: { sessionEndpoint: "/api/realtime/session" },
       instructions: VOICE_GUIDE_INSTRUCTIONS,
+      maxOutputTokens: 400,
       model: "gpt-realtime-mini",
-      maxOutputTokens: 90,
       onGenerationCompleted: (generation) => {
         const voiceSessionId = voiceAnalyticsSessionIdRef.current;
         if (!voiceSessionId) {
