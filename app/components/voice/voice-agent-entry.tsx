@@ -7,8 +7,14 @@ import VoiceAgentButton from "./voice-agent-button";
 import VoiceAgentProvider, { useVoiceAgent } from "./voice-agent-provider";
 
 function ConnectedVoiceAgentButton({
+  children,
+  className,
+  iconClassName,
   startToken,
 }: {
+  children?: React.ReactNode;
+  className?: string;
+  iconClassName?: string;
   startToken: number;
 }) {
   const { isAuthed, requireAuth } = useGuestPrompt();
@@ -44,22 +50,39 @@ function ConnectedVoiceAgentButton({
   return (
     <VoiceAgentButton
       buttonLabel={buttonLabel}
+      className={className}
+      iconClassName={iconClassName}
       runtime={runtime}
       onClick={handleClick}
-    />
+      variant="nav"
+    >
+      {children}
+    </VoiceAgentButton>
   );
 }
 
 export default function VoiceAgentEntry({
+  children,
+  className,
   entryPoint,
+  iconClassName,
   startToken,
 }: {
+  children?: React.ReactNode;
+  className?: string;
   entryPoint: VoiceAgentEntryPoint;
+  iconClassName?: string;
   startToken: number;
 }) {
   return (
     <VoiceAgentProvider entryPoint={entryPoint}>
-      <ConnectedVoiceAgentButton startToken={startToken} />
+      <ConnectedVoiceAgentButton
+        className={className}
+        iconClassName={iconClassName}
+        startToken={startToken}
+      >
+        {children}
+      </ConnectedVoiceAgentButton>
     </VoiceAgentProvider>
   );
 }

@@ -120,6 +120,11 @@ const nextConfig: NextConfig = {
             },
             {
                 protocol: "https",
+                hostname: "i.ytimg.com",
+                pathname: "/vi/**",
+            },
+            {
+                protocol: "https",
                 hostname: "www.everything-assistant.com",
                 pathname: "/onboarding-artwork/**",
             },

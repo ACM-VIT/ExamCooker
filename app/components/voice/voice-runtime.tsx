@@ -43,6 +43,7 @@ export type RealtimeClientEvent = {
 
 type ToolCallStatus = "running" | "success" | "error" | "skipped";
 type VoiceControlErrorCode =
+  | "active_response"
   | "aborted"
   | "device_unavailable"
   | "invalid_tool_input"
@@ -411,9 +412,7 @@ function defaultTurnDetection(
   return {
     type: "server_vad",
     createResponse: true,
-    ...(session.outputMode === "audio" || session.outputMode === "text+audio"
-      ? {}
-      : { interruptResponse: false }),
+    interruptResponse: true,
     prefixPaddingMs: 300,
     silenceDurationMs: 200,
     threshold: 0.5,
@@ -660,6 +659,11 @@ function normalizeError(error: unknown): VoiceControlError {
       (message.includes("unexpected token") && message.includes("json"))
     ) {
       code = "invalid_tool_input";
+    } else if (
+      message.includes("conversation already has an active response") ||
+      message.includes("active response in progress")
+    ) {
+      code = "active_response";
     } else if (error.name === "NotAllowedError") {
       code = message.includes("secure context") ? "insecure_context" : "permission_denied";
     } else if (
@@ -703,8 +707,13 @@ function normalizeError(error: unknown): VoiceControlError {
   }
 
   if (typeof error === "string") {
+    const message = error.toLowerCase();
     return {
-      code: "unknown",
+      code:
+        message.includes("conversation already has an active response") ||
+        message.includes("active response in progress")
+          ? "active_response"
+          : "unknown",
       message: error,
     };
   }
@@ -1084,6 +1093,10 @@ class VoiceControlControllerImpl implements VoiceControlController {
 
   requestResponse = () => {
     if (this.destroyed || !this.connected || !this.session) {
+      return;
+    }
+
+    if (this.responseInFlight) {
       return;
     }
 
@@ -1585,6 +1598,11 @@ class VoiceControlControllerImpl implements VoiceControlController {
 
   private emitError(error: unknown, disconnect: boolean) {
     const normalized = normalizeError(error);
+
+    if (!disconnect && normalized.code === "active_response") {
+      this.setActivity(this.responseInFlight ? "processing" : this.restingActivity());
+      return;
+    }
 
     if (!disconnect && normalized.code === "invalid_tool_input") {
       this.recoverFromInvalidToolInput();
