@@ -1,4 +1,8 @@
 import type { CaptureOptions } from "posthog-js";
+import {
+    getPostHogClientConfig,
+    getPostHogProjectKey,
+} from "@/lib/posthog/shared";
 
 export type VoiceAgentEntryPoint = "nav" | "home_search";
 export type CourseSearchContext = "home" | "notes" | "past_papers";
@@ -37,21 +41,31 @@ type PostHogClient = typeof import("posthog-js").default & {
 let posthogClientPromise: Promise<PostHogClient | null> | null = null;
 let loadedPostHogClient: PostHogClient | null = null;
 
-async function loadClient() {
+export async function initializePostHogClient() {
     if (typeof window === "undefined") {
         return null;
+    }
+
+    const posthogKey = getPostHogProjectKey();
+    if (!posthogKey) {
+        return null;
+    }
+
+    if (loadedPostHogClient?.__loaded) {
+        return loadedPostHogClient;
     }
 
     if (!posthogClientPromise) {
         posthogClientPromise = import("posthog-js")
             .then((module) => {
                 const client = module.default as PostHogClient;
-                if (client.__loaded) {
-                    loadedPostHogClient = client;
-                    return client;
+
+                if (!client.__loaded) {
+                    client.init(posthogKey, getPostHogClientConfig());
                 }
-                posthogClientPromise = null;
-                return null;
+
+                loadedPostHogClient = client;
+                return client;
             })
             .catch(() => {
                 posthogClientPromise = null;
@@ -84,7 +98,7 @@ function capturePostHogEvent(
     properties?: AnalyticsProperties,
     options?: CaptureOptions,
 ) {
-    void loadClient()
+    void initializePostHogClient()
         .then((client) => {
             client?.capture(event, properties, options);
         })
@@ -121,7 +135,7 @@ export function identifyPostHogUser(user: {
         role: user.role ?? undefined,
     };
 
-    void loadClient()
+    void initializePostHogClient()
         .then((client) => {
             client?.identify(user.id, properties);
             client?.setPersonPropertiesForFlags(properties);
@@ -130,7 +144,7 @@ export function identifyPostHogUser(user: {
 }
 
 export function resetPostHogUser() {
-    void loadClient()
+    void initializePostHogClient()
         .then((client) => {
             client?.reset();
         })

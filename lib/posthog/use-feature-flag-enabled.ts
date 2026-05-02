@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { initializePostHogClient } from "@/lib/posthog/client";
 
 export function usePostHogFeatureFlagEnabled(flag: string) {
     const [enabled, setEnabled] = useState<boolean | undefined>(undefined);
@@ -11,13 +12,18 @@ export function usePostHogFeatureFlagEnabled(flag: string) {
         let cancelled = false;
         let unsubscribe: (() => void) | undefined;
 
-        void import("posthog-js")
-            .then((module) => {
+        void initializePostHogClient()
+            .then((posthog) => {
                 if (cancelled) return;
-                const posthog = module.default;
-                setEnabled(posthog.isFeatureEnabled(flag, { send_event: false }));
+
+                if (!posthog) {
+                    setEnabled(false);
+                    return;
+                }
+
+                setEnabled(posthog.isFeatureEnabled(flag, { send_event: false }) === true);
                 unsubscribe = posthog.onFeatureFlags(() => {
-                    setEnabled(posthog.isFeatureEnabled(flag, { send_event: false }));
+                    setEnabled(posthog.isFeatureEnabled(flag, { send_event: false }) === true);
                 });
             })
             .catch(() => undefined);
