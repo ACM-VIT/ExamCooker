@@ -7,8 +7,6 @@ export function usePostHogFeatureFlagEnabled(flag: string) {
     const [enabled, setEnabled] = useState<boolean | undefined>(undefined);
 
     useEffect(() => {
-        if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
-
         let cancelled = false;
         let unsubscribe: (() => void) | undefined;
 

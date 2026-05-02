@@ -12,7 +12,10 @@ export const POSTHOG_FEATURE_FLAGS = {
 } as const;
 
 export function getPostHogProjectKey() {
-    return readEnv(process.env.NEXT_PUBLIC_POSTHOG_KEY);
+    return (
+        readEnv(process.env.NEXT_PUBLIC_POSTHOG_TOKEN) ??
+        readEnv(process.env.NEXT_PUBLIC_POSTHOG_KEY)
+    );
 }
 
 export function getPostHogHost() {
@@ -54,7 +57,7 @@ export function getPostHogClientConfig(): Partial<PostHogConfig> {
     return {
         api_host: apiHost,
         ...(uiHost ? { ui_host: uiHost } : {}),
-        defaults: "2025-11-30",
+        defaults: "2026-01-30",
         capture_exceptions: true,
         capture_pageleave: true,
         capture_pageview: "history_change",
