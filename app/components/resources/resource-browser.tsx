@@ -193,10 +193,10 @@ function ResourceBrowser({
                     <div className="relative flex h-12 min-w-0 flex-1 items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]">
                         <Image src={SearchIcon} alt="search" className="dark:invert-[.835]" />
                         <input
-                            type="search"
+                            type="text"
                             value={query}
                             onChange={(event) => handleQueryChange(event.target.value)}
-                            placeholder="Search courses, modules, or topics..."
+                            placeholder="Search resources"
                             className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 focus:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
                         />
                         {query ? (
