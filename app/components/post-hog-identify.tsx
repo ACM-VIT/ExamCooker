@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { getSession } from "next-auth/react";
 import {
     identifyPostHogUser,
     resetPostHogUser,
 } from "@/lib/posthog/client";
+import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 
 export default function PostHogIdentify() {
     const lastIdentifiedUserId = useRef<string | null>(null);
@@ -15,9 +15,11 @@ export default function PostHogIdentify() {
         if (!posthogKey) return;
 
         let cancelled = false;
+        let cancelInitialSync: (() => void) | null = null;
 
         async function syncIdentity() {
             try {
+                const { getSession } = await import("next-auth/react");
                 const session = await getSession();
                 if (cancelled) return;
 
@@ -41,11 +43,17 @@ export default function PostHogIdentify() {
             }
         }
 
-        void syncIdentity();
+        cancelInitialSync = scheduleIdleWork(
+            () => {
+                void syncIdentity();
+            },
+            { fallbackDelayMs: 2500, timeoutMs: 3500 },
+        );
         window.addEventListener("focus", syncIdentity);
 
         return () => {
             cancelled = true;
+            cancelInitialSync?.();
             window.removeEventListener("focus", syncIdentity);
         };
     }, [posthogKey]);

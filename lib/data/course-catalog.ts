@@ -104,30 +104,32 @@ async function getCourseCatalogRows(): Promise<CourseCatalogRow[]> {
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await db
-        .select({
-            id: course.id,
-            code: course.code,
-            title: course.title,
-            aliases: course.aliases,
-        })
-        .from(course);
-    const noteCounts = await db
-        .select({
-            courseId: note.courseId,
-            noteCount: count(),
-        })
-        .from(note)
-        .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
-        .groupBy(note.courseId);
-    const paperCounts = await db
-        .select({
-            courseId: pastPaper.courseId,
-            paperCount: count(),
-        })
-        .from(pastPaper)
-        .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
-        .groupBy(pastPaper.courseId);
+    const [courses, noteCounts, paperCounts] = await Promise.all([
+        db
+            .select({
+                id: course.id,
+                code: course.code,
+                title: course.title,
+                aliases: course.aliases,
+            })
+            .from(course),
+        db
+            .select({
+                courseId: note.courseId,
+                noteCount: count(),
+            })
+            .from(note)
+            .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
+            .groupBy(note.courseId),
+        db
+            .select({
+                courseId: pastPaper.courseId,
+                paperCount: count(),
+            })
+            .from(pastPaper)
+            .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
+            .groupBy(pastPaper.courseId),
+    ]);
 
     const noteCountByCourseId = new Map(
         noteCounts
@@ -228,16 +230,18 @@ export async function getPopularCourseGrid(limit = 6): Promise<CourseGridItem[]>
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await getCourseCatalogRows();
-    const viewCounts = await db
-        .select({
-            courseId: pastPaper.courseId,
-            viewCount: sql<number>`coalesce(sum(${viewHistory.count}), 0)`,
-        })
-        .from(viewHistory)
-        .innerJoin(pastPaper, eq(viewHistory.pastPaperId, pastPaper.id))
-        .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
-        .groupBy(pastPaper.courseId);
+    const [courses, viewCounts] = await Promise.all([
+        getCourseCatalogRows(),
+        db
+            .select({
+                courseId: pastPaper.courseId,
+                viewCount: sql<number>`coalesce(sum(${viewHistory.count}), 0)`,
+            })
+            .from(viewHistory)
+            .innerJoin(pastPaper, eq(viewHistory.pastPaperId, pastPaper.id))
+            .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
+            .groupBy(pastPaper.courseId),
+    ]);
 
     const viewCountByCourseId = new Map(
         viewCounts
@@ -324,8 +328,10 @@ export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> 
     cacheTag("courses", "notes", "past_papers", "syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await getCourseSearchRecords();
-    const syllabusIdByCode = await getSyllabusIdByCourseCode();
+    const [courses, syllabusIdByCode] = await Promise.all([
+        getCourseSearchRecords(),
+        getSyllabusIdByCourseCode(),
+    ]);
 
     return courses
         .map((c) => ({

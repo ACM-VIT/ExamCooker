@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import { captureSignInStarted } from "@/lib/posthog/client";
+import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
 
 type Provider = {
     id: string;
@@ -115,7 +116,10 @@ export default function AuthClient({
             source: "auth_page",
             callbackPath: callbackUrl,
         });
-        void signIn(provider.id, { callbackUrl });
+        invalidateAuthSessionCache();
+        void signIn(provider.id, { callbackUrl }).finally(() => {
+            invalidateAuthSessionCache();
+        });
     };
 
     return (

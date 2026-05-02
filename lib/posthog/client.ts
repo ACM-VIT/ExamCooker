@@ -1,4 +1,3 @@
-import posthog from "posthog-js";
 import type { CaptureOptions } from "posthog-js";
 
 export type VoiceAgentEntryPoint = "nav" | "home_search";
@@ -31,16 +30,48 @@ type AnalyticsProperties = Record<
     string | number | boolean | null | undefined
 >;
 
-type PostHogClient = typeof posthog & {
+type PostHogClient = typeof import("posthog-js").default & {
     __loaded?: boolean;
 };
 
-function getClient() {
+let posthogClientPromise: Promise<PostHogClient | null> | null = null;
+let loadedPostHogClient: PostHogClient | null = null;
+
+async function loadClient() {
     if (typeof window === "undefined") {
         return null;
     }
 
-    const client = posthog as PostHogClient;
+    if (!posthogClientPromise) {
+        posthogClientPromise = import("posthog-js")
+            .then((module) => {
+                const client = module.default as PostHogClient;
+                if (client.__loaded) {
+                    loadedPostHogClient = client;
+                    return client;
+                }
+                posthogClientPromise = null;
+                return null;
+            })
+            .catch(() => {
+                posthogClientPromise = null;
+                return null;
+            });
+    }
+
+    return posthogClientPromise;
+}
+
+function getLoadedClient() {
+    if (typeof window === "undefined") {
+        return null;
+    }
+
+    const client = loadedPostHogClient;
+    if (!client) {
+        return null;
+    }
+
     if (!client.__loaded) {
         return null;
     }
@@ -53,12 +84,11 @@ function capturePostHogEvent(
     properties?: AnalyticsProperties,
     options?: CaptureOptions,
 ) {
-    const client = getClient();
-    if (!client) {
-        return;
-    }
-
-    client.capture(event, properties, options);
+    void loadClient()
+        .then((client) => {
+            client?.capture(event, properties, options);
+        })
+        .catch(() => undefined);
 }
 
 function getQueryMetrics(query: string) {
@@ -85,32 +115,30 @@ export function identifyPostHogUser(user: {
     name?: string | null;
     role?: string | null;
 }) {
-    const client = getClient();
-    if (!client) {
-        return;
-    }
-
     const properties = {
         email: user.email ?? undefined,
         name: user.name ?? undefined,
         role: user.role ?? undefined,
     };
 
-    client.identify(user.id, properties);
-    client.setPersonPropertiesForFlags(properties);
+    void loadClient()
+        .then((client) => {
+            client?.identify(user.id, properties);
+            client?.setPersonPropertiesForFlags(properties);
+        })
+        .catch(() => undefined);
 }
 
 export function resetPostHogUser() {
-    const client = getClient();
-    if (!client) {
-        return;
-    }
-
-    client.reset();
+    void loadClient()
+        .then((client) => {
+            client?.reset();
+        })
+        .catch(() => undefined);
 }
 
 export function getPostHogSessionId() {
-    return getClient()?.get_session_id() ?? null;
+    return getLoadedClient()?.get_session_id() ?? null;
 }
 
 export function captureCourseSearchSubmitted(input: {
@@ -303,5 +331,41 @@ export function captureVoiceAgentLlmGeneration(
         keepalive: true,
     }).catch(() => {
         // Analytics should never block the voice runtime.
+    });
+}
+
+export function captureQuizStarted(input: {
+    courseCode: string;
+    courseName: string;
+}) {
+    capturePostHogEvent("quiz_started", {
+        course_code: input.courseCode,
+        course_name: input.courseName,
+    });
+}
+
+export function captureQuizSubmitted(input: {
+    courseCode: string;
+    score: number;
+    totalQuestions: number;
+}) {
+    capturePostHogEvent("quiz_submitted", {
+        course_code: input.courseCode,
+        score: input.score,
+        total_questions: input.totalQuestions,
+        percentage:
+            input.totalQuestions > 0
+                ? Math.round((input.score / input.totalQuestions) * 100)
+                : 0,
+    });
+}
+
+export function capturePdfDownloaded(input: {
+    fileName: string;
+    fileUrl: string;
+}) {
+    capturePostHogEvent("pdf_downloaded", {
+        file_name: input.fileName,
+        file_url: input.fileUrl,
     });
 }

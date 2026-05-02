@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
-export default async function SignInRedirect({
+async function SignInRedirectContent({
     searchParams,
 }: {
     searchParams?: Promise<{ callbackUrl?: string; error?: string }>;
@@ -15,4 +16,17 @@ export default async function SignInRedirect({
     }
     const query = params.toString();
     redirect(`/auth${query ? `?${query}` : ""}`);
+    return null;
+}
+
+export default function SignInRedirect({
+    searchParams,
+}: {
+    searchParams?: Promise<{ callbackUrl?: string; error?: string }>;
+}) {
+    return (
+        <Suspense fallback={null}>
+            <SignInRedirectContent searchParams={searchParams} />
+        </Suspense>
+    );
 }

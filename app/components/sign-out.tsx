@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { signOut } from "next-auth/react";
+import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
 import { captureUserSignedOut } from "@/lib/posthog/client";
 
 export function SignOut({
@@ -11,7 +11,12 @@ export function SignOut({
 }>) {
     const handleSignOut = () => {
         captureUserSignedOut();
-        void signOut({ callbackUrl: "/" });
+        invalidateAuthSessionCache();
+        void import("next-auth/react").then(({ signOut }) => {
+            void signOut({ callbackUrl: "/" }).finally(() => {
+                invalidateAuthSessionCache();
+            });
+        });
     };
 
     return (

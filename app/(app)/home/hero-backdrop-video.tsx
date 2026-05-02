@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 
-const VIDEOS = ["/night.webm", "/rainy.webm", "/midnight.webm", "/night-city.webm"] as const;
+const VIDEOS = ["/rainy.webm", "/midnight.webm", "/night.webm", "/night-city.webm"] as const;
 
 interface Props {
     onReady?: () => void;
@@ -14,7 +15,26 @@ export default function HeroBackdropVideo({ onReady }: Props) {
     useEffect(() => {
         if (typeof window === "undefined") return;
         if (!window.matchMedia("(min-width: 768px)").matches) return;
-        setSrc(VIDEOS[Math.floor(Math.random() * VIDEOS.length)]);
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+        const connection = (navigator as Navigator & {
+            connection?: { saveData?: boolean; effectiveType?: string };
+        }).connection;
+        if (connection?.saveData || connection?.effectiveType === "2g") return;
+
+        let cancelled = false;
+        const cleanup = scheduleIdleWork(
+            () => {
+                if (cancelled) return;
+                setSrc(VIDEOS[Math.floor(Math.random() * VIDEOS.length)]);
+            },
+            { fallbackDelayMs: 1800, timeoutMs: 2500 },
+        );
+
+        return () => {
+            cancelled = true;
+            cleanup();
+        };
     }, []);
 
     if (!src) return null;
@@ -25,7 +45,7 @@ export default function HeroBackdropVideo({ onReady }: Props) {
             loop
             muted
             playsInline
-            preload="auto"
+            preload="metadata"
             disablePictureInPicture
             disableRemotePlayback
             onCanPlay={onReady}

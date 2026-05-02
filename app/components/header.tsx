@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import Image from "@/app/components/common/app-image";
 import profile from "@/public/assets/profile.svg";
 import { SignOut } from "./sign-out";
 import ThemeToggleSwitch from "./common/theme-toggle";
 import { startGoogleSignIn } from "@/lib/start-google-sign-in";
+import { useGuestPrompt } from "@/app/components/auth-gate";
 
 interface HeaderProps {
   toggleTheme: () => void;
@@ -16,7 +16,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ toggleNavbar, isNavOn }) => {
-  const { data: session } = useSession();
+  const { session } = useGuestPrompt();
   const isAuthed = Boolean(session?.user);
   const [showOverlay, setShowOverlay] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);

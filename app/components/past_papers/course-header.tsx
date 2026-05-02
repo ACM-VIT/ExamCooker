@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileLines, faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import { BookOpen, FileText } from "lucide-react";
 import CourseBreadcrumbRail from "@/app/components/past_papers/course-breadcrumb-rail";
 import { getCourseNotesPath, getCourseSyllabusPath } from "@/lib/seo";
 import type { BreadcrumbNavItem } from "@/lib/breadcrumb-nav";
@@ -60,7 +59,7 @@ export default function CourseHeader({
                             href={getCourseNotesPath(code)}
                             className="inline-flex h-9 items-center justify-center gap-1.5 border border-black/15 px-3 font-semibold text-black transition-colors hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 dark:hover:bg-white/5 sm:h-8"
                         >
-                            <FontAwesomeIcon icon={faFileLines} className="h-3 w-3" />
+                            <FileText className="h-3.5 w-3.5" aria-hidden />
                             Notes
                         </Link>
                     )}
@@ -69,7 +68,7 @@ export default function CourseHeader({
                             href={getCourseSyllabusPath(code)}
                             className="inline-flex h-9 items-center justify-center gap-1.5 border border-black/15 px-3 font-semibold text-black transition-colors hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 dark:hover:bg-white/5 sm:h-8"
                         >
-                            <FontAwesomeIcon icon={faBookOpen} className="h-3 w-3" />
+                            <BookOpen className="h-3.5 w-3.5" aria-hidden />
                             Syllabus
                         </Link>
                     )}

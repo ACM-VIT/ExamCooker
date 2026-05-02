@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import posthog from "posthog-js";
 import {
     ChevronRight,
     Clock,
@@ -17,6 +16,7 @@ import { WildlifeJSON } from "@/public/assets/quiz-json";
 import { ForestJSON } from "@/public/assets/quiz-json";
 import { spokenenglishJSON } from "@/public/assets/quiz-json";
 import { conservationEconomicsJSON } from "@/public/assets/quiz-json";
+import { captureQuizSubmitted } from "@/lib/posthog/client";
 
 interface Question {
     question: string;
@@ -171,13 +171,10 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
         }).length;
         setScore(correctAnswersCount);
         setQuizSubmitted(true);
-        posthog.capture("quiz_submitted", {
-            course_code: quizMetaRef.current.courseCode,
+        captureQuizSubmitted({
+            courseCode: quizMetaRef.current.courseCode,
             score: correctAnswersCount,
-            total_questions: quizMetaRef.current.totalQuestions,
-            percentage: quizMetaRef.current.totalQuestions > 0
-                ? Math.round((correctAnswersCount / quizMetaRef.current.totalQuestions) * 100)
-                : 0,
+            totalQuestions: quizMetaRef.current.totalQuestions,
         });
     };
 
