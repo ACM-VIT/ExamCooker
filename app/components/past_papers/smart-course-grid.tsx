@@ -8,6 +8,10 @@ import {
     subscribeToCourseVisitChanges,
     type CourseVisitRecord,
 } from "./course-visit-ranking";
+import {
+    usePersonalSchedule,
+    isExamUpcoming,
+} from "./personal-schedule";
 
 type Props = {
     courses: CourseGridItem[];
@@ -45,12 +49,16 @@ export default function SmartCourseGrid({
     rankCourses = true,
 }: Props) {
     const [records, setRecords] = useState<Record<string, CourseVisitRecord> | null>(null);
+    const personalSchedule = usePersonalSchedule();
 
     useEffect(() => {
         setRecords(loadCourseVisitRecords());
-        return subscribeToCourseVisitChanges(() => {
+
+        const unsubVisits = subscribeToCourseVisitChanges(() => {
             setRecords(loadCourseVisitRecords());
         });
+
+        return unsubVisits;
     }, []);
 
     const sortedCourses = useMemo(() => {
@@ -58,8 +66,19 @@ export default function SmartCourseGrid({
 
         const currentRecords = records ?? {};
         const usePersonalSignal = records !== null && hasUsefulPersonalSignal(currentRecords);
-
+        const currentSchedule = personalSchedule ?? {};
         return [...courses].sort((a, b) => {
+            const schedA = currentSchedule[a.code]?.scheduledAt;
+            const schedB = currentSchedule[b.code]?.scheduledAt;
+            const isUpcomingA = schedA !== undefined && isExamUpcoming(schedA);
+            const isUpcomingB = schedB !== undefined && isExamUpcoming(schedB);
+
+            if (isUpcomingA && !isUpcomingB) return -1;
+            if (!isUpcomingA && isUpcomingB) return 1;
+            if (isUpcomingA && isUpcomingB) {
+                return schedA - schedB;
+            }
+
             if (usePersonalSignal) {
                 const personalDelta =
                     personalScore(currentRecords[b.code]) - personalScore(currentRecords[a.code]);
@@ -73,7 +92,7 @@ export default function SmartCourseGrid({
                 a.title.localeCompare(b.title)
             );
         });
-    }, [courses, rankCourses, records]);
+    }, [courses, rankCourses, records, personalSchedule]);
 
     const start = (page - 1) * pageSize;
     const visibleCourses = sortedCourses.slice(start, start + pageSize);

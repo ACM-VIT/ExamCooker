@@ -10,6 +10,8 @@ import CoursePagination from "@/app/components/past_papers/course-pagination";
 import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
 import PastPapersCourseSearch from "@/app/components/past_papers/past-papers-course-search";
 import UpcomingExamsStrip from "@/app/components/past_papers/upcoming-exams-strip";
+import PersonalSchedulePrompt from "@/app/components/past_papers/personal-schedule-prompt";
+import PersonalizedUpcomingExamsGrid from "@/app/components/past_papers/personalized-upcoming-exams-grid";
 import {
     getCatalogStats,
     getCourseSearchRecords,
@@ -233,23 +235,26 @@ function RecentSectionShell() {
     );
 }
 
-async function PopularCoursesSection() {
+async function PopularCoursesSection({
+    searchable,
+}: {
+    searchable: Awaited<ReturnType<typeof getCourseSearchRecords>>;
+}) {
     const popular = await getUpcomingExamsCourseGrid();
     if (popular.length === 0) return null;
 
     return (
         <section className="flex flex-col gap-4">
-            <header className="flex items-end justify-between">
+            <header className="flex items-center gap-3">
                 <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
                     Upcoming exams
                 </h2>
+                <PersonalSchedulePrompt />
             </header>
-            <SmartCourseGrid
-                courses={popular}
+            <PersonalizedUpcomingExamsGrid
+                fallbackCourses={popular}
+                allCourses={searchable}
                 className={COURSE_GRID_CLASS}
-                page={1}
-                pageSize={popular.length}
-                rankCourses={false}
             />
         </section>
     );
@@ -355,7 +360,7 @@ function SearchControls({
                     initialQuery={search}
                 />
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 flex items-center gap-2 sm:gap-3">
                 <UploadButtonPaper />
             </div>
         </div>
@@ -369,7 +374,10 @@ function SearchControlsShell() {
             aria-hidden="true"
         >
             <div className="h-12 min-w-0 flex-1 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11" />
-            <div className="h-12 w-12 shrink-0 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11 sm:w-11" />
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                <div className="h-12 w-32 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11" />
+                <div className="h-12 w-12 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11 sm:w-11" />
+            </div>
         </div>
     );
 }
@@ -402,7 +410,7 @@ async function DynamicHomeSections({
 
             {!search && (
                 <Suspense fallback={<PopularCoursesShell count={popularCount} />}>
-                    <PopularCoursesSection />
+                    <PopularCoursesSection searchable={searchable} />
                 </Suspense>
             )}
 
