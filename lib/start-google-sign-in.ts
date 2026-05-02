@@ -1,6 +1,7 @@
 "use client";
 
 import { captureSignInStarted } from "@/lib/posthog/client";
+import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
 
 type AuthProvider = "apple" | "google";
 
@@ -28,6 +29,7 @@ function startProviderSignIn(
         source: options?.source ?? "unknown",
         callbackPath: redirectTarget,
     });
+    invalidateAuthSessionCache();
 
     const params = new URLSearchParams({
         callbackUrl: redirectTarget,

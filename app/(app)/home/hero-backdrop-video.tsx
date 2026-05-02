@@ -1,21 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 
 const VIDEOS = ["/rainy.webm", "/midnight.webm", "/night.webm", "/night-city.webm"] as const;
 
 interface Props {
     onReady?: () => void;
-}
-
-function scheduleIdleWork(callback: () => void) {
-    if ("requestIdleCallback" in window) {
-        const id = window.requestIdleCallback(callback, { timeout: 2500 });
-        return () => window.cancelIdleCallback(id);
-    }
-
-    const id = globalThis.setTimeout(callback, 1800);
-    return () => globalThis.clearTimeout(id);
 }
 
 export default function HeroBackdropVideo({ onReady }: Props) {
@@ -32,10 +23,13 @@ export default function HeroBackdropVideo({ onReady }: Props) {
         if (connection?.saveData || connection?.effectiveType === "2g") return;
 
         let cancelled = false;
-        const cleanup = scheduleIdleWork(() => {
-            if (cancelled) return;
-            setSrc(VIDEOS[Math.floor(Math.random() * VIDEOS.length)]);
-        });
+        const cleanup = scheduleIdleWork(
+            () => {
+                if (cancelled) return;
+                setSrc(VIDEOS[Math.floor(Math.random() * VIDEOS.length)]);
+            },
+            { fallbackDelayMs: 1800, timeoutMs: 2500 },
+        );
 
         return () => {
             cancelled = true;

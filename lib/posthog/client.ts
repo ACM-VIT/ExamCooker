@@ -43,14 +43,20 @@ async function loadClient() {
     }
 
     if (!posthogClientPromise) {
-        posthogClientPromise = import("posthog-js").then((module) => {
-            const client = module.default as PostHogClient;
-            if (client.__loaded) {
-                loadedPostHogClient = client;
-                return client;
-            }
-            return null;
-        });
+        posthogClientPromise = import("posthog-js")
+            .then((module) => {
+                const client = module.default as PostHogClient;
+                if (client.__loaded) {
+                    loadedPostHogClient = client;
+                    return client;
+                }
+                posthogClientPromise = null;
+                return null;
+            })
+            .catch(() => {
+                posthogClientPromise = null;
+                return null;
+            });
     }
 
     return posthogClientPromise;

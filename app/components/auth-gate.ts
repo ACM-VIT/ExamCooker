@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "next-auth";
 import { captureAuthPromptOpened } from "@/lib/posthog/client";
+import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 
 type AuthGate = {
     isAuthed: boolean;
@@ -15,6 +16,16 @@ type AuthGate = {
 
 let sessionPromise: Promise<Session | null> | null = null;
 let cachedSession: Session | null | undefined;
+
+const AUTH_SESSION_CACHE_INVALIDATED = "auth-session-cache-invalidated";
+
+export function invalidateAuthSessionCache() {
+    sessionPromise = null;
+    cachedSession = undefined;
+    if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(AUTH_SESSION_CACHE_INVALIDATED));
+    }
+}
 
 function readSessionPayload(payload: unknown): Session | null {
     if (!payload || typeof payload !== "object") return null;
@@ -46,16 +57,6 @@ function loadSession() {
     return sessionPromise;
 }
 
-function scheduleIdleWork(callback: () => void) {
-    if ("requestIdleCallback" in window) {
-        const id = window.requestIdleCallback(callback, { timeout: 2500 });
-        return () => window.cancelIdleCallback(id);
-    }
-
-    const id = globalThis.setTimeout(callback, 1200);
-    return () => globalThis.clearTimeout(id);
-}
-
 function getCurrentRedirect() {
     if (typeof window === "undefined") return "/";
     return `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -82,20 +83,40 @@ export function useGuestPrompt(): AuthGate {
     const isAuthed = Boolean(session?.user);
 
     useEffect(() => {
-        if (cachedSession !== undefined) return;
-
         let cancelled = false;
-        const cancel = scheduleIdleWork(() => {
+
+        function syncSession() {
+            setSession(cachedSession === undefined ? null : cachedSession);
+            setStatus(
+                cachedSession === undefined
+                    ? "loading"
+                    : cachedSession
+                        ? "authenticated"
+                        : "unauthenticated",
+            );
+
+            if (cachedSession !== undefined) return;
+
             void loadSession().then((nextSession) => {
                 if (cancelled) return;
                 setSession(nextSession);
                 setStatus(nextSession ? "authenticated" : "unauthenticated");
             });
-        });
+        }
+
+        const cancelInitialSync = cachedSession === undefined
+            ? scheduleIdleWork(
+                syncSession,
+                { fallbackDelayMs: 1200, timeoutMs: 2500 },
+            )
+            : null;
+
+        window.addEventListener(AUTH_SESSION_CACHE_INVALIDATED, syncSession);
 
         return () => {
             cancelled = true;
-            cancel();
+            cancelInitialSync?.();
+            window.removeEventListener(AUTH_SESSION_CACHE_INVALIDATED, syncSession);
         };
     }, []);
 

@@ -5,16 +5,7 @@ import {
     identifyPostHogUser,
     resetPostHogUser,
 } from "@/lib/posthog/client";
-
-function scheduleIdleWork(callback: () => void) {
-    if ("requestIdleCallback" in window) {
-        const id = window.requestIdleCallback(callback, { timeout: 3500 });
-        return () => window.cancelIdleCallback(id);
-    }
-
-    const id = globalThis.setTimeout(callback, 2500);
-    return () => globalThis.clearTimeout(id);
-}
+import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 
 export default function PostHogIdentify() {
     const lastIdentifiedUserId = useRef<string | null>(null);
@@ -52,9 +43,12 @@ export default function PostHogIdentify() {
             }
         }
 
-        cancelInitialSync = scheduleIdleWork(() => {
-            void syncIdentity();
-        });
+        cancelInitialSync = scheduleIdleWork(
+            () => {
+                void syncIdentity();
+            },
+            { fallbackDelayMs: 2500, timeoutMs: 3500 },
+        );
         window.addEventListener("focus", syncIdentity);
 
         return () => {
