@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { signOut } from "next-auth/react";
 import { captureUserSignedOut } from "@/lib/posthog/client";
 
 export function SignOut({
@@ -11,7 +10,9 @@ export function SignOut({
 }>) {
     const handleSignOut = () => {
         captureUserSignedOut();
-        void signOut({ callbackUrl: "/" });
+        void import("next-auth/react").then(({ signOut }) => {
+            void signOut({ callbackUrl: "/" });
+        });
     };
 
     return (

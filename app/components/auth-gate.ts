@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Session } from "next-auth";
-import { useSession } from "next-auth/react";
 import { captureAuthPromptOpened } from "@/lib/posthog/client";
 
 type AuthGate = {
@@ -13,6 +12,49 @@ type AuthGate = {
     openPrompt: (action?: string) => void;
     closePrompt: () => void;
 };
+
+let sessionPromise: Promise<Session | null> | null = null;
+let cachedSession: Session | null | undefined;
+
+function readSessionPayload(payload: unknown): Session | null {
+    if (!payload || typeof payload !== "object") return null;
+    if (!("user" in payload) || !(payload as { user?: unknown }).user) return null;
+    return payload as Session;
+}
+
+function loadSession() {
+    if (cachedSession !== undefined) {
+        return Promise.resolve(cachedSession);
+    }
+
+    if (!sessionPromise) {
+        sessionPromise = fetch("/api/auth/session", {
+            credentials: "same-origin",
+            cache: "no-store",
+        })
+            .then((response) => (response.ok ? response.json() : null))
+            .then((payload) => {
+                cachedSession = readSessionPayload(payload);
+                return cachedSession;
+            })
+            .catch(() => {
+                cachedSession = null;
+                return null;
+            });
+    }
+
+    return sessionPromise;
+}
+
+function scheduleIdleWork(callback: () => void) {
+    if ("requestIdleCallback" in window) {
+        const id = window.requestIdleCallback(callback, { timeout: 2500 });
+        return () => window.cancelIdleCallback(id);
+    }
+
+    const id = globalThis.setTimeout(callback, 1200);
+    return () => globalThis.clearTimeout(id);
+}
 
 function getCurrentRedirect() {
     if (typeof window === "undefined") return "/";
@@ -27,8 +69,35 @@ function redirectToAuth(action?: string) {
 }
 
 export function useGuestPrompt(): AuthGate {
-    const { data: session, status } = useSession();
+    const [session, setSession] = useState<Session | null>(
+        cachedSession === undefined ? null : cachedSession,
+    );
+    const [status, setStatus] = useState<AuthGate["status"]>(
+        cachedSession === undefined
+            ? "loading"
+            : cachedSession
+                ? "authenticated"
+                : "unauthenticated",
+    );
     const isAuthed = Boolean(session?.user);
+
+    useEffect(() => {
+        if (cachedSession !== undefined) return;
+
+        let cancelled = false;
+        const cancel = scheduleIdleWork(() => {
+            void loadSession().then((nextSession) => {
+                if (cancelled) return;
+                setSession(nextSession);
+                setStatus(nextSession ? "authenticated" : "unauthenticated");
+            });
+        });
+
+        return () => {
+            cancelled = true;
+            cancel();
+        };
+    }, []);
 
     const openPrompt = useCallback((action?: string) => {
         redirectToAuth(action);

@@ -1,8 +1,7 @@
 "use client";
 import React, { useCallback } from "react";
 import Link from "next/link";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { Plus } from "lucide-react";
 import { useGuestPrompt } from "@/app/components/auth-gate";
 import { captureUploadClick } from "@/lib/posthog/client";
 
@@ -32,7 +31,7 @@ const UploadButtonPaper: React.FC = () => {
                 aria-label="Upload new past paper"
                 className="relative inline-flex h-full w-full items-center justify-center gap-2 border-2 border-black bg-[#3BF4C7] px-0 text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] sm:px-4"
             >
-                <FontAwesomeIcon icon={faPlus} className="text-sm" />
+                <Plus className="h-4 w-4" aria-hidden />
                 <span className="hidden leading-none sm:inline">New</span>
             </Link>
         </div>

@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { useSession } from "next-auth/react";
 import EditButton from "@/app/components/edit-button";
 import DeleteButton from "@/app/components/delete-button";
+import { useGuestPrompt } from "@/app/components/auth-gate";
 
 type ItemActionsProps = {
     itemId: string;
@@ -13,7 +13,7 @@ type ItemActionsProps = {
 };
 
 export default function ItemActions({ itemId, title, authorId, activeTab }: ItemActionsProps) {
-    const { data: session } = useSession();
+    const { session } = useGuestPrompt();
     const userId = session?.user?.id;
     const role = session?.user?.role;
 
