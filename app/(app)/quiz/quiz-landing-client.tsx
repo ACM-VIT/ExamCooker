@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 // import { X } from "lucide-react";
 import QuizModalContent from "@/app/components/quiz-modal-component";
-import posthog from "posthog-js";
+import { captureQuizStarted } from "@/lib/posthog/client";
 
 interface Course {
   courseCode: string;
@@ -72,9 +72,9 @@ const QuizPage = () => {
   const handleCardClick = (course: Course) => {
     setSelectedCourse(course);
     setIsModalOpen(true);
-    posthog.capture("quiz_started", {
-        course_code: course.courseCode,
-        course_name: course.courseName,
+    captureQuizStarted({
+        courseCode: course.courseCode,
+        courseName: course.courseName,
     });
   };
 

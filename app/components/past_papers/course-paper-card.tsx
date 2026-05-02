@@ -3,13 +3,12 @@
 import React, { memo, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/app-image";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-    faDownload,
-    faKey,
-    faCheck,
-    faArrowUpRightFromSquare,
-} from "@fortawesome/free-solid-svg-icons";
+    Check,
+    Download,
+    ExternalLink,
+    KeyRound,
+} from "lucide-react";
 import { examTypeLabel } from "@/lib/exam-slug";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { buildPastPaperPdfFileName } from "@/lib/downloads/resource-names";
@@ -143,7 +142,7 @@ function CoursePaperCard({
                 title="Open paper in new tab"
                 className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded text-black/60 transition hover:bg-black/10 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/10 dark:hover:text-[#D5D5D5]"
             >
-                <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="h-3 w-3" />
+                <ExternalLink className="h-3 w-3" aria-hidden />
             </button>
 
             {/* Thumbnail below */}
@@ -166,14 +165,14 @@ function CoursePaperCard({
                             : "bg-white/80 text-transparent backdrop-blur hover:bg-white hover:text-black/40 dark:bg-[#0C1222]/60 dark:hover:bg-[#0C1222]"
                         }`}
                 >
-                    <FontAwesomeIcon icon={faCheck} className="h-2 w-2" />
+                    <Check className="h-2.5 w-2.5" aria-hidden />
                 </button>
                 {paper.hasAnswerKey && (
                     <span
                         title="Answer key included"
                         className="absolute left-1/2 top-1.5 inline-flex h-5 -translate-x-1/2 items-center gap-1 rounded bg-white/85 px-1.5 text-[9px] font-semibold uppercase tracking-wider text-black backdrop-blur dark:bg-[#0C1222]/80 dark:text-[#3BF4C7]"
                     >
-                        <FontAwesomeIcon icon={faKey} className="h-2 w-2" />
+                        <KeyRound className="h-2.5 w-2.5" aria-hidden />
                         Key
                     </span>
                 )}
@@ -183,7 +182,7 @@ function CoursePaperCard({
                     aria-label="Download paper"
                     className="absolute right-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur transition hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
                 >
-                    <FontAwesomeIcon icon={faDownload} className="h-2.5 w-2.5" />
+                    <Download className="h-2.5 w-2.5" aria-hidden />
                 </button>
             </div>
         </Link>

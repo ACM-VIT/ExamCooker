@@ -1,20 +1,21 @@
+import NextImage, {
+  type ImageProps as NextImageProps,
+  type StaticImageData,
+} from "next/image";
 import type { ImgHTMLAttributes } from "react";
 
-type StaticImageLike = {
+type StaticImageLike = StaticImageData | {
   src: string;
   width?: number;
   height?: number;
 };
 
-type NativeImageProps = ImgHTMLAttributes<HTMLImageElement>;
-
-type AppImageProps = Omit<NativeImageProps, "src" | "width" | "height"> & {
+type AppImageProps = Omit<NextImageProps, "src" | "alt" | "width" | "height"> & {
   src: string | StaticImageLike;
   alt: string;
-  width?: NativeImageProps["width"];
-  height?: NativeImageProps["height"];
+  width?: NextImageProps["width"];
+  height?: NextImageProps["height"];
   fill?: boolean;
-  priority?: boolean;
 };
 
 function resolveImageSource(source: AppImageProps["src"]) {
@@ -27,6 +28,19 @@ function resolveImageSource(source: AppImageProps["src"]) {
     width: source.width,
     height: source.height,
   };
+}
+
+function shouldBypassNextOptimizer(src: string) {
+  if (src.endsWith(".svg")) {
+    return true;
+  }
+
+  try {
+    const url = new URL(src);
+    return url.hostname.endsWith(".blob.core.windows.net");
+  } catch {
+    return false;
+  }
 }
 
 export default function AppImage({
@@ -49,17 +63,44 @@ export default function AppImage({
     ? ["absolute inset-0 h-full w-full", className].filter(Boolean).join(" ")
     : className;
 
+  if (!fill && (resolvedWidth === undefined || resolvedHeight === undefined)) {
+    const nativeProps = rest as Omit<
+      ImgHTMLAttributes<HTMLImageElement>,
+      "src" | "alt" | "width" | "height"
+    >;
+
+    return (
+      <img
+        {...nativeProps}
+        src={resolvedSource.src}
+        alt={alt}
+        width={resolvedWidth}
+        height={resolvedHeight}
+        className={resolvedClassName}
+        loading={priority ? "eager" : loading ?? "lazy"}
+        decoding={decoding ?? "async"}
+        fetchPriority={priority ? "high" : fetchPriority}
+      />
+    );
+  }
+
   return (
-    <img
+    <NextImage
       {...rest}
       src={resolvedSource.src}
       alt={alt}
       width={resolvedWidth}
       height={resolvedHeight}
+      fill={fill}
       className={resolvedClassName}
-      loading={priority ? "eager" : loading ?? "lazy"}
       decoding={decoding ?? "async"}
-      fetchPriority={priority ? "high" : fetchPriority}
+      loading={priority ? undefined : loading}
+      priority={priority}
+      fetchPriority={fetchPriority}
+      unoptimized={
+        typeof resolvedSource.src === "string" &&
+        shouldBypassNextOptimizer(resolvedSource.src)
+      }
     />
   );
 }

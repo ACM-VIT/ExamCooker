@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { Download, X } from "lucide-react";
 import { useToast } from "@/app/components/ui/use-toast";
 import CoursePaperCard from "./course-paper-card";
 import type { CoursePaperListItem } from "@/lib/data/course-papers";
@@ -126,7 +125,7 @@ export default function CoursePaperGrid({
                             disabled={isDownloading}
                             className="inline-flex h-8 items-center gap-1.5 rounded border border-black/20 bg-[#5FC4E7]/90 px-3 text-xs font-semibold text-black transition hover:bg-[#5FC4E7] dark:border-[#3BF4C7]/40 dark:bg-[#3BF4C7]/20 dark:text-[#3BF4C7] dark:hover:bg-[#3BF4C7]/30 sm:text-sm"
                         >
-                            <FontAwesomeIcon icon={faDownload} className="h-3 w-3" />
+                            <Download className="h-3.5 w-3.5" aria-hidden />
                             {isDownloading ? "Zipping..." : "Download"}
                         </button>
                         <button
@@ -135,7 +134,7 @@ export default function CoursePaperGrid({
                             aria-label="Clear selection"
                             className="inline-flex h-8 w-8 items-center justify-center rounded text-black/50 transition hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/50 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                         >
-                            <FontAwesomeIcon icon={faXmark} className="h-3.5 w-3.5" />
+                            <X className="h-3.5 w-3.5" aria-hidden />
                         </button>
                     </div>
                 </div>

@@ -34,11 +34,11 @@ import {
   Sun,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import posthog from "posthog-js";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
+import { capturePdfDownloaded } from "@/lib/posthog/client";
 import {
   clearActivePdfSnapshot,
   setActivePdfSnapshot,
@@ -297,7 +297,7 @@ function ViewerToolbar({
     if (isDownloading) return;
 
     setIsDownloading(true);
-    posthog.capture("pdf_downloaded", { file_name: fileName, file_url: fileUrl });
+    capturePdfDownloaded({ fileName, fileUrl });
     try {
       await downloadPdfFile({ fileUrl, fileName });
     } finally {

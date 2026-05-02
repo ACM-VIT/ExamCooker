@@ -2,8 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faAngleLeft, faAngleRight } from "@fortawesome/free-solid-svg-icons";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
     basePath: string;
@@ -57,7 +56,7 @@ export default function CoursePagination({ basePath, currentPage, totalPages, se
                 aria-label="Previous page"
                 className={`${base} ${inactive} ${currentPage <= 1 ? disabled : ""}`}
             >
-                <FontAwesomeIcon icon={faAngleLeft} />
+                <ChevronLeft className="h-4 w-4" aria-hidden />
             </Link>
 
             {startPage > 1 && (
@@ -111,7 +110,7 @@ export default function CoursePagination({ basePath, currentPage, totalPages, se
                 aria-label="Next page"
                 className={`${base} ${inactive} ${currentPage >= totalPages ? disabled : ""}`}
             >
-                <FontAwesomeIcon icon={faAngleRight} />
+                <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
         </nav>
     );

@@ -2,8 +2,7 @@
 
 import React, { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faKey } from "@fortawesome/free-solid-svg-icons";
+import { KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -42,7 +41,7 @@ export default function AnswerKeyButton({ basePath, count, searchString }: Props
                     : "border-black/15 bg-white text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]",
             )}
         >
-            <FontAwesomeIcon icon={faKey} className="h-3.5 w-3.5" />
+            <KeyRound className="h-3.5 w-3.5" aria-hidden />
             <span>Key</span>
         </button>
     );
