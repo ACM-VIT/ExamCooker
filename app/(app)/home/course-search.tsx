@@ -146,17 +146,17 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
             hasSyllabus: Boolean(course.syllabusId),
         });
 
-        if (isMobile) {
-            setIsOpen(false);
-            setHighlightedIndex(-1);
-            router.push(getCoursePastPapersPath(course.code));
-            return;
-        }
+        setIsOpen(false);
+        setHighlightedIndex(-1);
+        router.push(getCoursePastPapersPath(course.code));
+        return;
 
+        /*
         setSelectedCourse(course);
         setQuery(`${course.title} (${course.code})`);
         setIsOpen(false);
         setHighlightedIndex(-1);
+        */
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
