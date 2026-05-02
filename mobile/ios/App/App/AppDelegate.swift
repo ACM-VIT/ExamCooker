@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,7 +8,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        DispatchQueue.main.async { [weak self] in
+            self?.configureWebViewChrome()
+        }
         return true
     }
 
@@ -26,7 +29,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        configureWebViewChrome()
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
@@ -46,4 +49,32 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+}
+
+private extension AppDelegate {
+    func configureWebViewChrome() {
+        let backgroundColor = UIColor(red: 0.047, green: 0.071, blue: 0.133, alpha: 1)
+        window?.backgroundColor = backgroundColor
+        window?.rootViewController?.view.backgroundColor = backgroundColor
+
+        guard let rootView = window?.rootViewController?.view else { return }
+        for webView in rootView.findSubviews(ofType: WKWebView.self) {
+            webView.backgroundColor = backgroundColor
+            webView.isOpaque = false
+            webView.scrollView.backgroundColor = backgroundColor
+            webView.scrollView.bounces = false
+            webView.scrollView.alwaysBounceVertical = false
+            webView.scrollView.alwaysBounceHorizontal = false
+        }
+    }
+}
+
+private extension UIView {
+    func findSubviews<T: UIView>(ofType type: T.Type) -> [T] {
+        var matches = subviews.compactMap { $0 as? T }
+        for subview in subviews {
+            matches.append(contentsOf: subview.findSubviews(ofType: type))
+        }
+        return matches
+    }
 }
