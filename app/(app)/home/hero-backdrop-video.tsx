@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const VIDEOS = ["/rainy.webm", "/midnight.webm", "/night-city.webm"] as const;
+const VIDEOS = ["/rainy.webm", "/midnight.webm", "/night.webm", "/night-city.webm"] as const;
 
 interface Props {
     onReady?: () => void;
