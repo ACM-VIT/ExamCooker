@@ -7,6 +7,7 @@ import UpsellToast from "@/app/components/ui/upsell-toast";
 import UpsellModal from "@/app/components/ui/upsell-modal";
 import PwaServiceWorker from "@/app/components/pwa-service-worker";
 import CapacitorBridge from "@/app/components/capacitor-bridge";
+import PostHogBootstrap from "@/app/components/post-hog-bootstrap";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
@@ -100,6 +101,7 @@ export default function RootLayout({
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
                 style={{ margin: "0" }}
             >
+                <PostHogBootstrap />
                 {children}
                 <Toaster />
                 <Suspense fallback={null}>
