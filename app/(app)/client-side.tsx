@@ -10,6 +10,7 @@ import MobileTabBar from "@/app/components/mobile-tab-bar";
 import NativeIosTabSync from "@/app/components/native-ios-tab-sync";
 import { NavFromProvider } from "@/app/components/common/nav-from-provider";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
+import { canUseNativeChrome, setNativeChromeLogoVisible } from "@/lib/native-chrome";
 import { MoreHorizontal, X } from "lucide-react";
 
 function RouteEffects({ onPathChange }: { onPathChange: () => void }) {
@@ -35,8 +36,7 @@ function RenderedRouteBeacon() {
     return null;
 }
 
-function MobileLogoLink() {
-    const pathname = usePathname();
+function shouldShowMobileLogo(pathname: string | null) {
     const pathSegments = (pathname ?? "").split("/").filter(Boolean);
     const isHome = pathSegments.length === 0;
     const hasPastPapersBreadcrumbBar =
@@ -52,7 +52,66 @@ function MobileLogoLink() {
         hasPastPapersBreadcrumbBar ||
         hasSyllabusBreadcrumbBar ||
         hasNoteOrPaperBar;
-    const showMobileLogo = !hasBreadcrumbBar && !isHome;
+
+    return !hasBreadcrumbBar && !isHome;
+}
+
+function isDarkTheme() {
+    const root = document.documentElement;
+    if (root.dataset.theme === "dark") return true;
+    if (root.dataset.theme === "light") return false;
+    return root.classList.contains("dark");
+}
+
+function NativeChromeSync() {
+    const pathname = usePathname();
+    const showMobileLogo = shouldShowMobileLogo(pathname);
+
+    useEffect(() => {
+        if (!canUseNativeChrome()) return;
+
+        let cancelled = false;
+        let cleanupThemeListeners: (() => void) | undefined;
+        document.documentElement.setAttribute("data-native-ios-chrome", "true");
+
+        const sync = () => {
+            void setNativeChromeLogoVisible({
+                visible: showMobileLogo,
+                darkMode: isDarkTheme(),
+            }).catch(() => undefined);
+        };
+
+        sync();
+
+        const themeObserver = new MutationObserver(() => {
+            if (!cancelled) sync();
+        });
+        themeObserver.observe(document.documentElement, {
+            attributeFilter: ["class", "data-theme", "style"],
+        });
+
+        const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const handleColorSchemeChange = () => {
+            if (!cancelled) sync();
+        };
+        colorSchemeQuery.addEventListener("change", handleColorSchemeChange);
+        cleanupThemeListeners = () => {
+            themeObserver.disconnect();
+            colorSchemeQuery.removeEventListener("change", handleColorSchemeChange);
+        };
+
+        return () => {
+            cancelled = true;
+            cleanupThemeListeners?.();
+        };
+    }, [showMobileLogo]);
+
+    return null;
+}
+
+function MobileLogoLink() {
+    const pathname = usePathname();
+    const showMobileLogo = shouldShowMobileLogo(pathname);
 
     if (!showMobileLogo) return null;
 
@@ -61,7 +120,7 @@ function MobileLogoLink() {
             href="/"
             aria-label="ExamCooker home"
             style={{ viewTransitionName: "persistent-mobile-logo" }}
-            className="pointer-events-auto relative flex h-11 max-w-full min-w-0 items-center gap-2.5 rounded-xl border border-black/10 bg-white/90 px-3 text-[15px] font-semibold leading-none text-black shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur transition-colors hover:border-black/25 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50"
+            className="ec-web-mobile-logo pointer-events-auto relative flex h-11 max-w-full min-w-0 items-center gap-2.5 rounded-xl border border-black/10 bg-white/90 px-3 text-[15px] font-semibold leading-none text-black shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur transition-colors hover:border-black/25 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50"
         >
             <AppImage
                 src={ExamCookerLogoIcon}
@@ -202,6 +261,9 @@ function ClientShell({
                     </Suspense>
                     <Suspense fallback={null}>
                         <NativeIosTabSync />
+                    </Suspense>
+                    <Suspense fallback={null}>
+                        <NativeChromeSync />
                     </Suspense>
                 </div>
             </NavFromProvider>

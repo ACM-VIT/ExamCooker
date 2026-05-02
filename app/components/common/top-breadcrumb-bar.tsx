@@ -109,7 +109,7 @@ export function BreadcrumbOrderedList({
 export default function TopBreadcrumbBar({ items, className, variant = "fixed" }: Props) {
     const navClass =
         variant === "fixed" ?
-            `fixed left-[max(0.75rem,env(safe-area-inset-left))] right-[calc(max(0.75rem,env(safe-area-inset-right))+3.25rem)] top-[env(safe-area-inset-top)] z-[59] flex h-11 min-w-0 items-center rounded-xl border border-black/10 bg-white/90 px-3 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 lg:static lg:h-auto lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none lg:dark:bg-transparent ${className ?? ""}`
+            `ec-mobile-breadcrumb-chrome fixed left-[max(0.75rem,env(safe-area-inset-left))] right-[calc(max(0.75rem,env(safe-area-inset-right))+3.25rem)] top-[env(safe-area-inset-top)] z-[59] flex h-11 min-w-0 items-center px-3 lg:static lg:h-auto lg:px-0 ${className ?? ""}`
         : `flex min-w-0 items-center ${className ?? ""}`;
 
     return (

@@ -14,6 +14,7 @@
 		7A13C2142C00000300EC2024 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7A13C2132C00000300EC2024 /* PrivacyInfo.xcprivacy */; };
 		7A13C2102C00000100EC2024 /* NativeCourseSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A13C20F2C00000100EC2024 /* NativeCourseSearch.swift */; };
 		7A13C2122C00000200EC2024 /* NativeDownloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A13C2112C00000200EC2024 /* NativeDownloads.swift */; };
+		7A13C2162C00000400EC2024 /* NativeChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A13C2152C00000400EC2024 /* NativeChrome.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
@@ -28,6 +29,7 @@
 		7A13C2132C00000300EC2024 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		7A13C20F2C00000100EC2024 /* NativeCourseSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCourseSearch.swift; sourceTree = "<group>"; };
 		7A13C2112C00000200EC2024 /* NativeDownloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeDownloads.swift; sourceTree = "<group>"; };
+		7A13C2152C00000400EC2024 /* NativeChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeChrome.swift; sourceTree = "<group>"; };
 		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -73,6 +75,7 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				7A13C20F2C00000100EC2024 /* NativeCourseSearch.swift */,
 				7A13C2112C00000200EC2024 /* NativeDownloads.swift */,
+				7A13C2152C00000400EC2024 /* NativeChrome.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -170,6 +173,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				7A13C2102C00000100EC2024 /* NativeCourseSearch.swift in Sources */,
 				7A13C2122C00000200EC2024 /* NativeDownloads.swift in Sources */,
+				7A13C2162C00000400EC2024 /* NativeChrome.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
