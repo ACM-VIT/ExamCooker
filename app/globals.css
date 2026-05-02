@@ -28,6 +28,20 @@
 @layer base {
     html {
         @apply scroll-smooth;
+        min-height: 100%;
+        background-color: #C2E6EC;
+        overscroll-behavior-y: none;
+    }
+    html.dark {
+        background-color: #0C1222;
+    }
+    body {
+        min-height: 100%;
+        background-color: #C2E6EC;
+        overscroll-behavior-y: none;
+    }
+    html.dark body {
+        background-color: #0C1222;
     }
     h1 {
         @apply sm:text-5xl font-extrabold text-4xl;

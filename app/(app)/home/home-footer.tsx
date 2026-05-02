@@ -63,6 +63,12 @@ function HomeFooter() {
                     >
                         Terms
                     </Link>
+                    <Link
+                        href="/delete"
+                        className="transition hover:text-black dark:hover:text-[#3BF4C7]"
+                    >
+                        Delete
+                    </Link>
                 </nav>
             </div>
             <div className="flex items-center gap-3 sm:gap-4">
