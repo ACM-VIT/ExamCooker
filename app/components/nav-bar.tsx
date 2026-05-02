@@ -55,7 +55,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const router = useRouter();
   const { isAuthed, requireAuth, openPrompt, session } = useGuestPrompt();
   const voiceAgentEnabled =
-    usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? false;
+    usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? true;
   const [showProfile, setShowProfile] = useState(false);
   const [keepNavExpanded, setKeepNavExpanded] = useState(false);
   const [profileMenuPosition, setProfileMenuPosition] = useState<{
