@@ -75,6 +75,18 @@
     display: none; /* Chrome, Safari, Opera */
 }
 
+html[data-native-ios-chrome="true"] .ec-web-mobile-logo {
+    display: none;
+}
+
+.ec-mobile-breadcrumb-chrome {
+    text-shadow: 0 1px 14px rgba(12, 18, 34, 0.45);
+}
+
+html:not(.dark) .ec-mobile-breadcrumb-chrome {
+    text-shadow: none;
+}
+
 @keyframes marquee-scroll {
     from { transform: translate3d(0, 0, 0); }
     to   { transform: translate3d(-50%, 0, 0); }
