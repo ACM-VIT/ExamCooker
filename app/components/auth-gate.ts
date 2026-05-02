@@ -127,10 +127,20 @@ export function useGuestPrompt(): AuthGate {
     const requireAuth = useCallback(
         (action?: string) => {
             if (isAuthed) return true;
+            if (status === "loading") {
+                void loadSession().then((nextSession) => {
+                    setSession(nextSession);
+                    setStatus(nextSession ? "authenticated" : "unauthenticated");
+                    if (!nextSession?.user) {
+                        redirectToAuth(action);
+                    }
+                });
+                return false;
+            }
             redirectToAuth(action);
             return false;
         },
-        [isAuthed],
+        [isAuthed, status],
     );
 
     return {
