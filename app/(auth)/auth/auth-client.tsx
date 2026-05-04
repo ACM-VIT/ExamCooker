@@ -1,7 +1,7 @@
 "use client";
 
 import { type SyntheticEvent, useEffect, useMemo, useState } from "react";
-import { getCsrfToken, signIn } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { captureSignInStarted } from "@/lib/posthog/client";
 import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
 
@@ -61,28 +61,6 @@ function getErrorMessage(error?: string | null) {
         return "An account with this email already exists. Sign in with the provider you used before.";
     }
     return "Authentication could not be completed. Try again.";
-}
-
-async function getOAuthAuthorizationUrl(providerId: string, callbackUrl: string) {
-    const csrfToken = await getCsrfToken();
-    const response = await fetch(`/api/auth/signin/${providerId}`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-            csrfToken: csrfToken ?? "",
-            callbackUrl,
-            json: "true",
-        }),
-    });
-    const payload = (await response.json()) as { url?: string };
-
-    if (!response.ok || !payload.url) {
-        throw new Error("OAuth authorization URL was not returned.");
-    }
-
-    return payload.url;
 }
 
 export default function AuthClient({
@@ -154,13 +132,12 @@ export default function AuthClient({
                 Capacitor.isNativePlatform() &&
                 ["apple", "google"].includes(provider.id)
             ) {
-                const authorizationUrl = await getOAuthAuthorizationUrl(
-                    provider.id,
-                    callbackUrl,
-                );
+                const startUrl = `/native-auth/start/${provider.id}?${new URLSearchParams({
+                    returnTo: callbackUrl,
+                }).toString()}`;
                 const { Browser } = await import("@capacitor/browser");
                 await Browser.open({
-                    url: authorizationUrl,
+                    url: new URL(startUrl, window.location.origin).toString(),
                     presentationStyle: "fullscreen",
                     toolbarColor: "#0C1222",
                 });
