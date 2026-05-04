@@ -7,7 +7,6 @@ import AppImage from "@/app/components/common/app-image";
 import ExamCookerLogoIcon from "@/public/assets/logo-icon.svg";
 import { markRenderedRoutePath } from "@/app/components/voice/voice-navigation";
 import MobileTabBar from "@/app/components/mobile-tab-bar";
-import NativeIosTabSync from "@/app/components/native-ios-tab-sync";
 import { NavFromProvider } from "@/app/components/common/nav-from-provider";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 import { MoreHorizontal, X } from "lucide-react";
@@ -199,9 +198,6 @@ function ClientShell({
                     </main>
                     <Suspense fallback={null}>
                         <MobileTabBar toolsSheetOpen={isNavOn} />
-                    </Suspense>
-                    <Suspense fallback={null}>
-                        <NativeIosTabSync />
                     </Suspense>
                 </div>
             </NavFromProvider>
