@@ -60,6 +60,9 @@ function getErrorMessage(error?: string | null) {
     if (error === "OAuthAccountNotLinked") {
         return "An account with this email already exists. Sign in with the provider you used before.";
     }
+    if (error === "OAuthCallback") {
+        return "OAuth sign-in could not be completed. Try again or use username/password.";
+    }
     return "Authentication could not be completed. Try again.";
 }
 
@@ -130,7 +133,38 @@ export default function AuthClient({
             const { Capacitor } = await import("@capacitor/core");
             if (
                 Capacitor.isNativePlatform() &&
-                ["apple", "google"].includes(provider.id)
+                Capacitor.getPlatform() === "ios" &&
+                provider.id === "apple"
+            ) {
+                const { NativeAppleSignIn } = await import(
+                    "@/lib/native-apple-sign-in"
+                );
+                const result = await NativeAppleSignIn.authorize({
+                    scopes: "email name",
+                });
+
+                const signInResult = await signIn("native-apple", {
+                    authorizationCode: result.response.authorizationCode,
+                    email: result.response.email ?? undefined,
+                    familyName: result.response.familyName ?? undefined,
+                    givenName: result.response.givenName ?? undefined,
+                    identityToken: result.response.identityToken,
+                    callbackUrl,
+                    redirect: false,
+                });
+
+                if (signInResult?.ok) {
+                    window.location.assign(signInResult.url ?? callbackUrl);
+                    return;
+                }
+
+                window.location.assign("/auth?error=OAuthCallback");
+                return;
+            }
+
+            if (
+                Capacitor.isNativePlatform() &&
+                provider.id === "google"
             ) {
                 const startUrl = `/native-auth/start/${provider.id}?${new URLSearchParams({
                     returnTo: callbackUrl,
