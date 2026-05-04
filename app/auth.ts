@@ -12,10 +12,11 @@ import { getServerSession } from "next-auth/next";
 import Apple from "next-auth/providers/apple";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { createAuthAdapter } from "@/db/auth-adapter";
 import { db } from "@/db";
-import { user as userTable } from "@/db/schema";
+import { accounts, user as userTable } from "@/db/schema";
+import { verifyAppleIdentityToken } from "@/lib/apple-identity-token";
 import { verifyNativeAuthToken } from "@/lib/native-auth-token";
 import { createPostHogServer } from "@/lib/posthog-server";
 
@@ -165,6 +166,81 @@ async function findOrCreateReviewUser(input: {
   return raced[0] ?? null;
 }
 
+async function findOrCreateAppleUser(input: {
+  authorizationCode?: string | null;
+  email: string;
+  emailVerified: boolean;
+  familyName?: string | null;
+  givenName?: string | null;
+  identityToken: string;
+  subject: string;
+}) {
+  const accountRows = await db
+    .select({ user: userTable })
+    .from(accounts)
+    .innerJoin(userTable, eq(accounts.userId, userTable.id))
+    .where(
+      and(
+        eq(accounts.provider, "apple"),
+        eq(accounts.providerAccountId, input.subject),
+      ),
+    );
+  const accountUser = accountRows[0]?.user ?? null;
+  if (accountUser) {
+    return accountUser;
+  }
+
+  const existingUsers = await db
+    .select()
+    .from(userTable)
+    .where(eq(userTable.email, input.email));
+
+  let appleUser = existingUsers[0] ?? null;
+  if (!appleUser) {
+    const name = [input.givenName, input.familyName].filter(Boolean).join(" ");
+    const [createdUser] = await db
+      .insert(userTable)
+      .values({
+        email: input.email,
+        emailVerified: input.emailVerified ? new Date() : null,
+        name: name || null,
+        role: "USER",
+      })
+      .onConflictDoNothing()
+      .returning();
+
+    appleUser = createdUser ?? null;
+  }
+
+  if (!appleUser) {
+    const racedUsers = await db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.email, input.email));
+    appleUser = racedUsers[0] ?? null;
+  }
+
+  if (!appleUser) {
+    return null;
+  }
+
+  await db
+    .insert(accounts)
+    .values({
+      userId: appleUser.id,
+      type: "oauth",
+      provider: "apple",
+      providerAccountId: input.subject,
+      idToken: input.identityToken,
+      accessToken: input.authorizationCode ?? undefined,
+      tokenType: "bearer",
+      scope: "email name",
+    })
+    .onConflictDoNothing();
+
+  return appleUser;
+}
+
 function buildProviders() {
   const appleClientId = optionalEnv("AUTH_APPLE_ID");
   const appleClientSecret = optionalEnv("AUTH_APPLE_SECRET");
@@ -240,6 +316,50 @@ function buildProviders() {
           name: nativeUser.name,
           image: nativeUser.image,
           role: nativeUser.role,
+        };
+      },
+    }),
+    Credentials({
+      id: "native-apple",
+      name: "Native Apple",
+      credentials: {
+        authorizationCode: { label: "Authorization Code", type: "text" },
+        email: { label: "Email", type: "email" },
+        familyName: { label: "Family Name", type: "text" },
+        givenName: { label: "Given Name", type: "text" },
+        identityToken: { label: "Identity Token", type: "text" },
+      },
+      async authorize(credentials) {
+        const identityToken = credentials?.identityToken?.trim();
+        if (!identityToken) {
+          return null;
+        }
+
+        const verifiedToken = await verifyAppleIdentityToken(identityToken);
+        if (!verifiedToken) {
+          return null;
+        }
+
+        const nativeAppleUser = await findOrCreateAppleUser({
+          authorizationCode: credentials?.authorizationCode,
+          email: verifiedToken.email,
+          emailVerified: verifiedToken.emailVerified,
+          familyName: credentials?.familyName,
+          givenName: credentials?.givenName,
+          identityToken,
+          subject: verifiedToken.subject,
+        });
+
+        if (!nativeAppleUser) {
+          return null;
+        }
+
+        return {
+          id: nativeAppleUser.id,
+          email: nativeAppleUser.email,
+          name: nativeAppleUser.name,
+          image: nativeAppleUser.image,
+          role: nativeAppleUser.role,
         };
       },
     }),
