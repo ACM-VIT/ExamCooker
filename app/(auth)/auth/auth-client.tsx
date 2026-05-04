@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type SyntheticEvent, useEffect, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import { captureSignInStarted } from "@/lib/posthog/client";
 import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
@@ -72,6 +72,11 @@ export default function AuthClient({
 }) {
     const [providers, setProviders] = useState<Provider[]>([]);
     const [loading, setLoading] = useState(true);
+    const [reviewEmail, setReviewEmail] = useState("");
+    const [reviewPassword, setReviewPassword] = useState("");
+    const [reviewSubmitting, setReviewSubmitting] = useState(false);
+    const [reviewError, setReviewError] = useState<string | null>(null);
+    const [showReviewForm, setShowReviewForm] = useState(false);
     const errorMessage = getErrorMessage(error);
 
     useEffect(() => {
@@ -87,7 +92,7 @@ export default function AuthClient({
 
                 setProviders(
                     Object.values(payload).filter((provider) =>
-                        ["apple", "google"].includes(provider.id),
+                        ["apple", "google", "app-review"].includes(provider.id),
                     ),
                 );
             } catch {
@@ -106,20 +111,83 @@ export default function AuthClient({
 
     const visibleProviders = useMemo(() => {
         const ordered = ["google", "apple"];
-        return [...providers].sort(
-            (a, b) => ordered.indexOf(a.id) - ordered.indexOf(b.id),
-        );
+        return providers
+            .filter((provider) => ordered.includes(provider.id))
+            .sort((a, b) => ordered.indexOf(a.id) - ordered.indexOf(b.id));
     }, [providers]);
+    const reviewProvider = providers.find(
+        (provider) => provider.id === "app-review",
+    );
 
-    const handleSignIn = (provider: Provider) => {
+    const handleSignIn = async (provider: Provider) => {
         captureSignInStarted({
             source: "auth_page",
             callbackPath: callbackUrl,
         });
         invalidateAuthSessionCache();
+
+        try {
+            const { Capacitor } = await import("@capacitor/core");
+            if (
+                Capacitor.isNativePlatform() &&
+                ["apple", "google"].includes(provider.id)
+            ) {
+                const result = await signIn(provider.id, {
+                    callbackUrl,
+                    redirect: false,
+                });
+
+                if (result?.url) {
+                    const { Browser } = await import("@capacitor/browser");
+                    await Browser.open({
+                        url: result.url,
+                        presentationStyle: "fullscreen",
+                        toolbarColor: "#0C1222",
+                    });
+                    return;
+                }
+            }
+        } catch {
+            // Fall through to the standard web redirect.
+        }
+
         void signIn(provider.id, { callbackUrl }).finally(() => {
             invalidateAuthSessionCache();
         });
+    };
+
+    const handleReviewSignIn = async (event: SyntheticEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!reviewProvider || reviewSubmitting) return;
+
+        setReviewSubmitting(true);
+        setReviewError(null);
+        captureSignInStarted({
+            source: "app_review_auth_page",
+            callbackPath: callbackUrl,
+        });
+        invalidateAuthSessionCache();
+
+        try {
+            const result = await signIn(reviewProvider.id, {
+                email: reviewEmail,
+                password: reviewPassword,
+                callbackUrl,
+                redirect: false,
+            });
+
+            if (result?.ok && result.url) {
+                window.location.assign(result.url);
+                return;
+            }
+
+            setReviewError("The reviewer email or password is incorrect.");
+        } catch {
+            setReviewError("Authentication could not be completed. Try again.");
+        } finally {
+            setReviewSubmitting(false);
+            invalidateAuthSessionCache();
+        }
     };
 
     return (
@@ -132,18 +200,83 @@ export default function AuthClient({
 
             {loading ? (
                 <div className="h-11 rounded-lg border border-black/15 bg-white/60 dark:border-white/15 dark:bg-white/[0.05]" />
-            ) : visibleProviders.length > 0 ? (
-                visibleProviders.map((provider) => (
-                    <button
-                        key={provider.id}
-                        type="button"
-                        onClick={() => handleSignIn(provider)}
-                        className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-black hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
-                    >
-                        <ProviderIcon providerId={provider.id} />
-                        {providerLabels[provider.id] ?? `Continue with ${provider.name}`}
-                    </button>
-                ))
+            ) : reviewProvider || visibleProviders.length > 0 ? (
+                <>
+                    {showReviewForm && reviewProvider ? (
+                        <form
+                            onSubmit={handleReviewSignIn}
+                            className="flex flex-col gap-3 rounded-lg border border-black/15 bg-white/70 p-4 text-left dark:border-white/15 dark:bg-white/[0.05]"
+                        >
+                            <div>
+                                <p className="text-sm font-bold text-black dark:text-[#D5D5D5]">
+                                    Continue with username/password
+                                </p>
+                            </div>
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-black/70 dark:text-[#D5D5D5]/70">
+                                    Email
+                                </span>
+                                <input
+                                    type="email"
+                                    value={reviewEmail}
+                                    onChange={(event) => setReviewEmail(event.target.value)}
+                                    autoComplete="username"
+                                    required
+                                    className="h-11 rounded-md border border-black/15 bg-white px-3 text-sm text-black outline-none transition focus:border-black dark:border-white/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:focus:border-[#3BF4C7]"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-black/70 dark:text-[#D5D5D5]/70">
+                                    Password
+                                </span>
+                                <input
+                                    type="password"
+                                    value={reviewPassword}
+                                    onChange={(event) => setReviewPassword(event.target.value)}
+                                    autoComplete="current-password"
+                                    required
+                                    className="h-11 rounded-md border border-black/15 bg-white px-3 text-sm text-black outline-none transition focus:border-black dark:border-white/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:focus:border-[#3BF4C7]"
+                                />
+                            </label>
+                            {reviewError && (
+                                <p className="text-xs leading-5 text-red-700 dark:text-red-200">
+                                    {reviewError}
+                                </p>
+                            )}
+                            <button
+                                type="submit"
+                                disabled={reviewSubmitting}
+                                className="inline-flex h-11 items-center justify-center rounded-md border border-black bg-black px-4 text-sm font-bold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:bg-white/10 dark:text-[#D5D5D5] dark:hover:bg-white/15"
+                            >
+                                {reviewSubmitting ? "Signing in..." : "Sign in"}
+                            </button>
+                        </form>
+                    ) : (
+                        <>
+                            {reviewProvider && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowReviewForm(true)}
+                                    className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-black hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
+                                >
+                                    Continue with username/password
+                                </button>
+                            )}
+
+                            {visibleProviders.map((provider) => (
+                                <button
+                                    key={provider.id}
+                                    type="button"
+                                    onClick={() => handleSignIn(provider)}
+                                    className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-black hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
+                                >
+                                    <ProviderIcon providerId={provider.id} />
+                                    {providerLabels[provider.id] ?? `Continue with ${provider.name}`}
+                                </button>
+                            ))}
+                        </>
+                    )}
+                </>
             ) : (
                 <p className="rounded-lg border border-black/15 bg-white/60 px-4 py-3 text-sm leading-6 text-black/70 dark:border-white/15 dark:bg-white/[0.05] dark:text-[#D5D5D5]/70">
                     Authentication is not available right now.

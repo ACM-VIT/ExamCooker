@@ -5,10 +5,12 @@ import type {
 } from "next";
 import { after } from "next/server";
 import { cache } from "react";
+import { createHash, timingSafeEqual } from "node:crypto";
 import NextAuth from "next-auth";
 import type { Session } from "next-auth";
 import { getServerSession } from "next-auth/next";
 import Apple from "next-auth/providers/apple";
+import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { eq } from "drizzle-orm";
 import { createAuthAdapter } from "@/db/auth-adapter";
@@ -64,11 +66,151 @@ function optionalEnv(name: "AUTH_APPLE_ID" | "AUTH_APPLE_SECRET") {
   return value ? value : null;
 }
 
+function optionalReviewEnv(
+  name:
+    | "APP_REVIEW_EMAIL"
+    | "APP_REVIEW_PASSWORD"
+    | "APP_REVIEW_NAME"
+    | "APP_REVIEW_ROLE"
+    | "EXAMCOOKER_REVIEW_EMAIL"
+    | "EXAMCOOKER_REVIEW_PASSWORD"
+    | "EXAMCOOKER_REVIEW_NAME"
+    | "EXAMCOOKER_REVIEW_ROLE",
+) {
+  const value = process.env[name]?.trim();
+  return value ? value : null;
+}
+
+function getReviewRole(): AppRole {
+  const role =
+    optionalReviewEnv("APP_REVIEW_ROLE") ??
+    optionalReviewEnv("EXAMCOOKER_REVIEW_ROLE");
+
+  return role === "MODERATOR" ? "MODERATOR" : "USER";
+}
+
+function getReviewCredentials() {
+  const email =
+    optionalReviewEnv("APP_REVIEW_EMAIL") ??
+    optionalReviewEnv("EXAMCOOKER_REVIEW_EMAIL");
+  const password =
+    optionalReviewEnv("APP_REVIEW_PASSWORD") ??
+    optionalReviewEnv("EXAMCOOKER_REVIEW_PASSWORD");
+
+  if (!email || !password) {
+    return null;
+  }
+
+  return {
+    email: email.toLowerCase(),
+    password,
+    name:
+      optionalReviewEnv("APP_REVIEW_NAME") ??
+      optionalReviewEnv("EXAMCOOKER_REVIEW_NAME") ??
+      "App Review",
+    role: getReviewRole(),
+  };
+}
+
+function secureCompare(left: string, right: string) {
+  const leftHash = createHash("sha256").update(left).digest();
+  const rightHash = createHash("sha256").update(right).digest();
+  return timingSafeEqual(leftHash, rightHash);
+}
+
+async function findOrCreateReviewUser(input: {
+  email: string;
+  name: string;
+  role: AppRole;
+}) {
+  const existing = await db
+    .select()
+    .from(userTable)
+    .where(eq(userTable.email, input.email));
+  const existingUser = existing[0] ?? null;
+
+  if (existingUser) {
+    const [updatedUser] = await db
+      .update(userTable)
+      .set({
+        name: input.name,
+        role: input.role,
+        emailVerified: existingUser.emailVerified ?? new Date(),
+      })
+      .where(eq(userTable.id, existingUser.id))
+      .returning();
+    return updatedUser ?? existingUser;
+  }
+
+  const [createdUser] = await db
+    .insert(userTable)
+    .values({
+      email: input.email,
+      name: input.name,
+      emailVerified: new Date(),
+      role: input.role,
+    })
+    .onConflictDoNothing()
+    .returning();
+
+  if (createdUser) {
+    return createdUser;
+  }
+
+  const raced = await db
+    .select()
+    .from(userTable)
+    .where(eq(userTable.email, input.email));
+  return raced[0] ?? null;
+}
+
 function buildProviders() {
   const appleClientId = optionalEnv("AUTH_APPLE_ID");
   const appleClientSecret = optionalEnv("AUTH_APPLE_SECRET");
 
   return [
+    Credentials({
+      id: "app-review",
+      name: "Username and Password",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const reviewCredentials = getReviewCredentials();
+        if (!reviewCredentials) {
+          return null;
+        }
+
+        const email = credentials?.email?.trim().toLowerCase() ?? "";
+        const password = credentials?.password ?? "";
+
+        if (
+          !secureCompare(email, reviewCredentials.email) ||
+          !secureCompare(password, reviewCredentials.password)
+        ) {
+          return null;
+        }
+
+        const reviewUser = await findOrCreateReviewUser({
+          email: reviewCredentials.email,
+          name: reviewCredentials.name,
+          role: reviewCredentials.role,
+        });
+
+        if (!reviewUser) {
+          return null;
+        }
+
+        return {
+          id: reviewUser.id,
+          email: reviewUser.email,
+          name: reviewUser.name,
+          image: reviewUser.image,
+          role: reviewUser.role,
+        };
+      },
+    }),
     Google({
       clientId: requiredEnv("AUTH_GOOGLE_ID"),
       clientSecret: requiredEnv("AUTH_GOOGLE_SECRET"),
