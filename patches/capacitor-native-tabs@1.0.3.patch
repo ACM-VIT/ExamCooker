@@ -31,4 +31,451 @@ index 518699fda3d8908ae70f20a3242384654e99a380..27fcf28d313111d2df8866895e9771d4
 +        webView.scrollView.bounces = true
      }
  
-     private func removeWebViewInsets() {
+    private func removeWebViewInsets() {
+diff --git a/android/build.gradle b/android/build.gradle
+index 11e66c55a241537a3efec00adcb80ac1f8c43678..cc498e5f666dba424d66c9941dff8d048f4887e2 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -53,6 +53,7 @@ dependencies {
+     implementation fileTree(dir: 'libs', include: ['*.jar'])
+     implementation project(':capacitor-android')
+     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
++    implementation 'com.google.android.material:material:1.12.0'
+     testImplementation 'junit:junit:4.13.2'
+     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+diff --git a/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabsPlugin.java b/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabsPlugin.java
+index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce21bbefeba 100644
+--- a/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabsPlugin.java
++++ b/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabsPlugin.java
+@@ -1,64 +1,408 @@
+ package com.smallcloud.capacitornativetabs;
+ 
++import android.content.res.ColorStateList;
++import android.content.res.Configuration;
++import android.graphics.Color;
++import android.util.TypedValue;
++import android.view.Gravity;
++import android.view.Menu;
++import android.view.View;
++import android.view.ViewGroup;
++import android.view.ViewGroup.MarginLayoutParams;
++import android.webkit.WebView;
++import android.widget.FrameLayout;
++import androidx.core.graphics.Insets;
++import androidx.core.view.ViewCompat;
++import androidx.core.view.WindowInsetsCompat;
++import androidx.coordinatorlayout.widget.CoordinatorLayout;
++import com.getcapacitor.JSArray;
++import com.getcapacitor.JSObject;
+ import com.getcapacitor.Plugin;
+ import com.getcapacitor.PluginCall;
+ import com.getcapacitor.PluginMethod;
+ import com.getcapacitor.annotation.CapacitorPlugin;
++import com.google.android.material.bottomnavigation.BottomNavigationView;
++import com.google.android.material.navigation.NavigationBarView;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Locale;
++import org.json.JSONException;
+ 
+ @CapacitorPlugin(name = "NativeTabs")
+ public class NativeTabsPlugin extends Plugin {
++    private BottomNavigationView tabBar;
++    private final List<JSObject> tabs = new ArrayList<>();
++    private int selectedIndex = -1;
++    private boolean requestedVisible = true;
++    private boolean keyboardVisible = false;
++    private boolean suppressSelectionCallback = false;
+ 
+     @PluginMethod
+     public void initialize(PluginCall call) {
+-        // Android implementation not available - iOS only
+-        call.resolve();
++        JSArray tabsArray = call.getArray("tabs");
++        if (tabsArray == null || tabsArray.length() == 0) {
++            call.reject("tabs are required");
++            return;
++        }
++
++        List<JSObject> parsedTabs;
++        try {
++            parsedTabs = parseTabs(tabsArray);
++        } catch (JSONException exception) {
++            call.reject("invalid tabs payload", exception);
++            return;
++        }
++
++        int nextSelectedIndex = normalizeIndex(call.getInt("selectedIndex", 0), parsedTabs.size());
++        getBridge().executeOnMainThread(() -> {
++            tabs.clear();
++            tabs.addAll(parsedTabs);
++            selectedIndex = nextSelectedIndex;
++            requestedVisible = true;
++            ensureTabBar();
++            populateMenu();
++            selectTabInternal(selectedIndex, false);
++            applyTabBarVisibility();
++            call.resolve();
++        });
+     }
+ 
+     @PluginMethod
+     public void updateTabs(PluginCall call) {
+-        // Android implementation not available - iOS only
+-        call.resolve();
++        JSArray tabsArray = call.getArray("tabs");
++        if (tabsArray == null || tabsArray.length() == 0) {
++            call.reject("tabs are required");
++            return;
++        }
++
++        List<JSObject> parsedTabs;
++        try {
++            parsedTabs = parseTabs(tabsArray);
++        } catch (JSONException exception) {
++            call.reject("invalid tabs payload", exception);
++            return;
++        }
++
++        getBridge().executeOnMainThread(() -> {
++            tabs.clear();
++            tabs.addAll(parsedTabs);
++            selectedIndex = normalizeIndex(selectedIndex, parsedTabs.size());
++            ensureTabBar();
++            populateMenu();
++            selectTabInternal(selectedIndex, false);
++            applyTabBarVisibility();
++            call.resolve();
++        });
+     }
+ 
+     @PluginMethod
+     public void setSelectedTab(PluginCall call) {
+-        // Android implementation not available - iOS only
+-        call.resolve();
++        Integer index = call.getInt("index");
++        if (index == null) {
++            call.reject("index is required");
++            return;
++        }
++
++        getBridge().executeOnMainThread(() -> {
++            selectTabInternal(index, false);
++            JSObject result = new JSObject();
++            result.put("index", selectedIndex);
++            call.resolve(result);
++        });
+     }
+ 
+     @PluginMethod
+     public void deselectAll(PluginCall call) {
+-        // Android implementation not available - iOS only
+-        call.resolve();
++        getBridge().executeOnMainThread(() -> {
++            selectedIndex = -1;
++            if (tabBar != null) {
++                Menu menu = tabBar.getMenu();
++                menu.setGroupCheckable(Menu.NONE, true, false);
++                for (int index = 0; index < menu.size(); index++) {
++                    menu.getItem(index).setChecked(false);
++                }
++                menu.setGroupCheckable(Menu.NONE, true, true);
++            }
++            updateWebViewBottomInset();
++            JSObject result = new JSObject();
++            result.put("index", selectedIndex);
++            call.resolve(result);
++        });
+     }
+ 
+     @PluginMethod
+     public void getSelectedTab(PluginCall call) {
+-        // Android implementation not available - iOS only
+-        call.resolve();
++        JSObject result = new JSObject();
++        result.put("index", selectedIndex);
++        call.resolve(result);
+     }
+ 
+     @PluginMethod
+     public void hideTabBar(PluginCall call) {
+-        // Android implementation not available - iOS only
+-        call.resolve();
++        getBridge().executeOnMainThread(() -> {
++            requestedVisible = false;
++            applyTabBarVisibility();
++            call.resolve();
++        });
+     }
+ 
+     @PluginMethod
+     public void showTabBar(PluginCall call) {
+-        // Android implementation not available - iOS only
+-        call.resolve();
++        getBridge().executeOnMainThread(() -> {
++            requestedVisible = true;
++            applyTabBarVisibility();
++            call.resolve();
++        });
+     }
+ 
+-    @PluginMethod
+-    public void addListener(PluginCall call) {
+-        // Android implementation not available - iOS only
+-        call.resolve();
++    @Override
++    protected void handleOnConfigurationChanged(Configuration newConfig) {
++        super.handleOnConfigurationChanged(newConfig);
++        getBridge().executeOnMainThread(() -> {
++            if (tabBar == null) {
++                return;
++            }
++            applyColorPalette();
++            updateWebViewBottomInset();
++        });
+     }
+ 
+-    @PluginMethod
+-    public void removeAllListeners(PluginCall call) {
+-        // Android implementation not available - iOS only
+-        call.resolve();
++    private List<JSObject> parseTabs(JSArray tabsArray) throws JSONException {
++        List<JSObject> parsedTabs = new ArrayList<>();
++        for (int index = 0; index < tabsArray.length(); index++) {
++            parsedTabs.add(JSObject.fromJSONObject(tabsArray.getJSONObject(index)));
++        }
++        return parsedTabs;
+     }
++
++    private void ensureTabBar() {
++        if (tabBar != null) {
++            return;
++        }
++
++        WebView webView = getBridge().getWebView();
++        ViewGroup parent = (ViewGroup) webView.getParent();
++        BottomNavigationView nativeTabBar = new BottomNavigationView(getContext());
++        nativeTabBar.setId(View.generateViewId());
++        nativeTabBar.setLabelVisibilityMode(NavigationBarView.LABEL_VISIBILITY_LABELED);
++        nativeTabBar.setItemIconSize(dp(24));
++        nativeTabBar.setItemPaddingTop(dp(10));
++        nativeTabBar.setItemPaddingBottom(dp(10));
++        nativeTabBar.setItemActiveIndicatorEnabled(true);
++        nativeTabBar.setElevation(dp(14));
++
++        applyColorPalette(nativeTabBar);
++
++        ViewGroup.LayoutParams layoutParams;
++        if (parent instanceof CoordinatorLayout) {
++            CoordinatorLayout.LayoutParams coordinatorLayoutParams = new CoordinatorLayout.LayoutParams(
++                ViewGroup.LayoutParams.MATCH_PARENT,
++                ViewGroup.LayoutParams.WRAP_CONTENT
++            );
++            coordinatorLayoutParams.gravity = Gravity.BOTTOM;
++            layoutParams = coordinatorLayoutParams;
++        } else {
++            FrameLayout.LayoutParams frameLayoutParams = new FrameLayout.LayoutParams(
++                ViewGroup.LayoutParams.MATCH_PARENT,
++                ViewGroup.LayoutParams.WRAP_CONTENT
++            );
++            frameLayoutParams.gravity = Gravity.BOTTOM;
++            layoutParams = frameLayoutParams;
++        }
++
++        nativeTabBar.setLayoutParams(layoutParams);
++
++        nativeTabBar.setOnItemSelectedListener(item -> {
++            int index = item.getItemId();
++            selectedIndex = index;
++            updateWebViewBottomInset();
++
++            if (!suppressSelectionCallback && index >= 0 && index < tabs.size()) {
++                JSObject payload = new JSObject();
++                payload.put("index", index);
++                payload.put("tab", tabs.get(index));
++                notifyListeners("tabSelected", payload);
++            }
++
++            return true;
++        });
++
++        ViewCompat.setOnApplyWindowInsetsListener(nativeTabBar, (view, windowInsets) -> {
++            Insets systemBarsInsets = windowInsets.getInsets(
++                WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
++            );
++            view.setPadding(
++                systemBarsInsets.left,
++                view.getPaddingTop(),
++                systemBarsInsets.right,
++                systemBarsInsets.bottom
++            );
++
++            boolean nextKeyboardVisible = windowInsets.isVisible(WindowInsetsCompat.Type.ime());
++            if (keyboardVisible != nextKeyboardVisible) {
++                keyboardVisible = nextKeyboardVisible;
++                applyTabBarVisibility();
++            } else {
++                updateWebViewBottomInset();
++            }
++
++            return windowInsets;
++        });
++
++        nativeTabBar.addOnLayoutChangeListener((view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
++            if (bottom - top != oldBottom - oldTop) {
++                updateWebViewBottomInset();
++            }
++        });
++
++        parent.addView(nativeTabBar);
++        tabBar = nativeTabBar;
++        parent.requestApplyInsets();
++    }
++
++    private void populateMenu() {
++        if (tabBar == null) {
++            return;
++        }
++
++        Menu menu = tabBar.getMenu();
++        menu.clear();
++
++        for (int index = 0; index < tabs.size(); index++) {
++            JSObject tab = tabs.get(index);
++            String title = tab.getString("title", "Tab");
++            menu.add(Menu.NONE, index, Menu.NONE, title).setIcon(resolveIcon(tab, index));
++        }
++    }
++
++    private void selectTabInternal(int index, boolean emitSelection) {
++        if (tabBar == null || tabs.isEmpty()) {
++            selectedIndex = -1;
++            return;
++        }
++
++        int normalizedIndex = normalizeIndex(index, tabs.size());
++        selectedIndex = normalizedIndex;
++
++        if (tabBar.getSelectedItemId() != normalizedIndex) {
++            suppressSelectionCallback = !emitSelection;
++            tabBar.setSelectedItemId(normalizedIndex);
++            suppressSelectionCallback = false;
++        } else if (emitSelection) {
++            JSObject payload = new JSObject();
++            payload.put("index", normalizedIndex);
++            payload.put("tab", tabs.get(normalizedIndex));
++            notifyListeners("tabSelected", payload);
++        }
++
++        updateWebViewBottomInset();
++    }
++
++    private void applyTabBarVisibility() {
++        if (tabBar == null) {
++            return;
++        }
++
++        boolean shouldShow = requestedVisible && !tabs.isEmpty() && !keyboardVisible;
++        tabBar.setVisibility(shouldShow ? View.VISIBLE : View.GONE);
++        updateWebViewBottomInset();
++    }
++
++    private void updateWebViewBottomInset() {
++        if (getBridge() == null || getBridge().getWebView() == null) {
++            return;
++        }
++
++        WebView webView = getBridge().getWebView();
++        ViewGroup.LayoutParams existingLayoutParams = webView.getLayoutParams();
++        if (!(existingLayoutParams instanceof MarginLayoutParams)) {
++            return;
++        }
++
++        MarginLayoutParams marginLayoutParams = (MarginLayoutParams) existingLayoutParams;
++        int targetBottomMargin = tabBar != null && tabBar.getVisibility() == View.VISIBLE ? tabBar.getHeight() : 0;
++        if (marginLayoutParams.bottomMargin == targetBottomMargin) {
++            return;
++        }
++
++        marginLayoutParams.bottomMargin = targetBottomMargin;
++        webView.setLayoutParams(marginLayoutParams);
++        webView.requestLayout();
++    }
++
++    private void applyColorPalette() {
++        if (tabBar != null) {
++            applyColorPalette(tabBar);
++        }
++    }
++
++    private void applyColorPalette(BottomNavigationView nativeTabBar) {
++        boolean dark = isDarkTheme();
++        int background = dark ? Color.parseColor("#09101E") : Color.parseColor("#FFFFFF");
++        int selected = dark ? Color.parseColor("#3BF4C7") : Color.parseColor("#0D5875");
++        int unselected = dark ? Color.parseColor("#8F9BAA") : Color.parseColor("#5F6B7A");
++        int indicator = dark ? Color.parseColor("#15384A") : Color.parseColor("#D6EEF5");
++        int[][] states = new int[][] {
++            new int[] { android.R.attr.state_checked },
++            new int[] {}
++        };
++        int[] colors = new int[] { selected, unselected };
++
++        nativeTabBar.setBackgroundColor(background);
++        nativeTabBar.setItemTextColor(new ColorStateList(states, colors));
++        nativeTabBar.setItemIconTintList(new ColorStateList(states, colors));
++        nativeTabBar.setItemActiveIndicatorColor(ColorStateList.valueOf(indicator));
++    }
++
++    private boolean isDarkTheme() {
++        int nightModeFlags = getContext().getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
++        return nightModeFlags == Configuration.UI_MODE_NIGHT_YES;
++    }
++
++    private int normalizeIndex(Integer maybeIndex, int size) {
++        if (size <= 0) {
++            return -1;
++        }
++        if (maybeIndex == null || maybeIndex < 0 || maybeIndex >= size) {
++            return 0;
++        }
++        return maybeIndex;
++    }
++
++    private int resolveIcon(JSObject tab, int index) {
++        String route = tab.getString("route", "").toLowerCase(Locale.US);
++        String title = tab.getString("title", "").toLowerCase(Locale.US);
++
++        if (route.equals("/") || title.contains("home")) {
++            return android.R.drawable.ic_menu_view;
++        }
++        if (route.contains("paper") || title.contains("paper")) {
++            return android.R.drawable.ic_menu_agenda;
++        }
++        if (route.contains("note") || title.contains("note")) {
++            return android.R.drawable.ic_menu_edit;
++        }
++        if (route.contains("syllabus") || title.contains("syllabus")) {
++            return android.R.drawable.ic_menu_sort_by_size;
++        }
++        if (route.contains("resource") || title.contains("resource")) {
++            return android.R.drawable.ic_menu_info_details;
++        }
++
++        return switch (index) {
++            case 0 -> android.R.drawable.ic_menu_view;
++            case 1 -> android.R.drawable.ic_menu_agenda;
++            case 2 -> android.R.drawable.ic_menu_edit;
++            case 3 -> android.R.drawable.ic_menu_sort_by_size;
++            default -> android.R.drawable.ic_menu_info_details;
++        };
++    }
++
++    private int dp(int value) {
++        return (int) TypedValue.applyDimension(
++            TypedValue.COMPLEX_UNIT_DIP,
++            value,
++            getContext().getResources().getDisplayMetrics()
++        );
++    }
+ }
