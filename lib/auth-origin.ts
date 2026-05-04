@@ -47,6 +47,35 @@ function isAllowedAuthHost(hostname: string) {
     return PUBLIC_AUTH_HOSTS.has(hostname) || (canUseLocalAuthHost() && LOCAL_AUTH_HOSTS.has(hostname));
 }
 
+export function normalizeAuthCallbackPath(
+    value: string | string[] | undefined,
+    fallback = "/",
+) {
+    const raw = Array.isArray(value) ? value[0] : value;
+    const trimmed = raw?.trim() ?? "";
+
+    if (!trimmed) return fallback;
+
+    if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+        return trimmed;
+    }
+
+    try {
+        const url = new URL(trimmed);
+        if (
+            (url.protocol !== "http:" && url.protocol !== "https:") ||
+            !isAllowedAuthHost(url.hostname)
+        ) {
+            return fallback;
+        }
+
+        const path = `${url.pathname}${url.search}${url.hash}`;
+        return path.startsWith("/") && !path.startsWith("//") ? path : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
 function splitHeaderCandidates(value: string | null) {
     if (!value) return [];
     return value

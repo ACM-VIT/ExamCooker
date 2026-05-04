@@ -1,17 +1,10 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
 import NativeAuthStartClient from "./native-auth-start-client";
 
 const PROVIDERS = new Set(["apple", "google"]);
-
-function getSafeReturnTo(value: string | string[] | undefined) {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return "/";
-  }
-  return raw;
-}
 
 async function NativeAuthStartContent({
   params,
@@ -26,7 +19,7 @@ async function NativeAuthStartContent({
     notFound();
   }
 
-  const returnTo = getSafeReturnTo(query.returnTo);
+  const returnTo = normalizeAuthCallbackPath(query.returnTo);
   const callbackUrl = `/native-auth/browser-complete?${new URLSearchParams({
     returnTo,
   }).toString()}`;

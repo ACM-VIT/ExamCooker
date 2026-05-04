@@ -1,14 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
 import NativeAuthCompleteClient from "./native-auth-complete-client";
-
-function getSafeReturnTo(value: string | string[] | undefined) {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return "/";
-  }
-  return raw;
-}
 
 async function NativeAuthCompleteContent({
   searchParams,
@@ -25,7 +18,7 @@ async function NativeAuthCompleteContent({
   return (
     <NativeAuthCompleteClient
       token={token ?? ""}
-      returnTo={getSafeReturnTo(query.returnTo)}
+      returnTo={normalizeAuthCallbackPath(query.returnTo)}
     />
   );
 }
