@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { createAuthAdapter } from "@/db/auth-adapter";
 import { db } from "@/db";
 import { user as userTable } from "@/db/schema";
+import { verifyNativeAuthToken } from "@/lib/native-auth-token";
 import { createPostHogServer } from "@/lib/posthog-server";
 
 const adapter = createAuthAdapter();
@@ -208,6 +209,37 @@ function buildProviders() {
           name: reviewUser.name,
           image: reviewUser.image,
           role: reviewUser.role,
+        };
+      },
+    }),
+    Credentials({
+      id: "native-handoff",
+      name: "Native Handoff",
+      credentials: {
+        token: { label: "Token", type: "text" },
+      },
+      async authorize(credentials) {
+        const token = credentials?.token ?? "";
+        const payload = verifyNativeAuthToken(token);
+        if (!payload) {
+          return null;
+        }
+
+        const [nativeUser] = await db
+          .select()
+          .from(userTable)
+          .where(eq(userTable.id, payload.userId));
+
+        if (!nativeUser) {
+          return null;
+        }
+
+        return {
+          id: nativeUser.id,
+          email: nativeUser.email,
+          name: nativeUser.name,
+          image: nativeUser.image,
+          role: nativeUser.role,
         };
       },
     }),
