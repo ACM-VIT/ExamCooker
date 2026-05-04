@@ -47,9 +47,10 @@ const UpsellModal = () => {
     const [phase, setPhase] = useState<"idle" | "entering" | "open" | "leaving" | "closed">("idle");
 
     const isCliPage = pathname === "/cli";
+    const isAuthPage = pathname === "/auth";
 
     useEffect(() => {
-        if (isCliPage) {
+        if (isCliPage || isAuthPage) {
             setPhase("closed");
             return;
         }
@@ -59,7 +60,7 @@ const UpsellModal = () => {
         }
         const timer = window.setTimeout(() => setPhase("entering"), MODAL_SHOW_DELAY_MS);
         return () => window.clearTimeout(timer);
-    }, [isCliPage]);
+    }, [isAuthPage, isCliPage]);
 
     useEffect(() => {
         if (phase === "entering") {
@@ -79,7 +80,7 @@ const UpsellModal = () => {
     const isVisible = phase === "open";
     const isRendered = phase !== "idle" && phase !== "closed";
 
-    if (isCliPage || !isRendered) return null;
+    if (isCliPage || isAuthPage || !isRendered) return null;
 
     return (
         <div

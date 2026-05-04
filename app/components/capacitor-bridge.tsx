@@ -7,11 +7,22 @@ import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 function navigateFromDeepLink(rawUrl: string) {
   try {
     const parsed = new URL(rawUrl);
+    if (parsed.protocol === "examcooker:") {
+      const path = `/${parsed.hostname}${parsed.pathname}${parsed.search}${parsed.hash}`;
+      if (
+        path &&
+        path !== window.location.pathname + window.location.search + window.location.hash
+      ) {
+        window.location.assign(path);
+      }
+      return;
+    }
+
     const hostOk =
       parsed.hostname === "examcooker.acmvit.in" ||
       parsed.hostname === "beta.examcooker.acmvit.in" ||
       parsed.hostname.endsWith(".azurewebsites.net");
-    if (!hostOk && parsed.protocol !== "examcooker:") {
+    if (!hostOk) {
       return;
     }
     const path = `${parsed.pathname}${parsed.search}${parsed.hash}`;
@@ -106,6 +117,11 @@ export default function CapacitorBridge() {
       }
 
       void App.addListener("appUrlOpen", (event) => {
+        if (event.url.startsWith("examcooker://native-auth/")) {
+          void import("@capacitor/browser").then(({ Browser }) =>
+            Browser.close().catch(() => undefined),
+          );
+        }
         navigateFromDeepLink(event.url);
       });
 
