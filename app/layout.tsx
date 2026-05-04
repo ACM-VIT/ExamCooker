@@ -7,6 +7,7 @@ import UpsellToast from "@/app/components/ui/upsell-toast";
 import UpsellModal from "@/app/components/ui/upsell-modal";
 import PwaServiceWorker from "@/app/components/pwa-service-worker";
 import CapacitorBridge from "@/app/components/capacitor-bridge";
+import NativeIosTabSync from "@/app/components/native-ios-tab-sync";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
@@ -110,6 +111,9 @@ export default function RootLayout({
                 </Suspense>
                 <PwaServiceWorker />
                 <CapacitorBridge />
+                <Suspense fallback={null}>
+                    <NativeIosTabSync />
+                </Suspense>
                 {process.env.GA_ID && (
                     <GoogleAnalytics gaId={process.env.GA_ID} />
                 )}

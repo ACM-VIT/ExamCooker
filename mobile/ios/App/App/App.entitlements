@@ -7,5 +7,9 @@
 		<string>applinks:examcooker.acmvit.in</string>
 		<string>applinks:beta.examcooker.acmvit.in</string>
 	</array>
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>
