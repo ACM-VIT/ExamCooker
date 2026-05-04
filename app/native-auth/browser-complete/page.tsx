@@ -3,7 +3,10 @@ import { Suspense, type ReactNode } from "react";
 import { connection } from "next/server";
 import { auth } from "@/app/auth";
 import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
-import { createNativeAuthToken } from "@/lib/native-auth-token";
+import {
+  createNativeAuthHandoffCode,
+  normalizeNativeAuthHandoffChallenge,
+} from "@/lib/native-auth-token";
 import NativeAuthBrowserCompleteClient from "./native-auth-browser-complete-client";
 
 function NativeAuthMessage({ children }: { children: ReactNode }) {
@@ -17,13 +20,19 @@ function NativeAuthMessage({ children }: { children: ReactNode }) {
 async function NativeAuthBrowserCompleteContent({
   searchParams,
 }: {
-  searchParams: Promise<{ returnTo?: string | string[] }>;
+  searchParams: Promise<{
+    handoffChallenge?: string | string[];
+    returnTo?: string | string[];
+  }>;
 }) {
   await connection();
   const [session, query] = await Promise.all([auth(), searchParams]);
   const userId = session?.user?.id;
+  const handoffChallenge = normalizeNativeAuthHandoffChallenge(
+    query.handoffChallenge,
+  );
 
-  if (!userId) {
+  if (!userId || !handoffChallenge) {
     return (
       <NativeAuthMessage>
         <div className="max-w-sm">
@@ -43,7 +52,8 @@ async function NativeAuthBrowserCompleteContent({
 
   return (
     <NativeAuthBrowserCompleteClient
-      token={createNativeAuthToken(userId)}
+      code={await createNativeAuthHandoffCode({ handoffChallenge, userId })}
+      handoffChallenge={handoffChallenge}
       returnTo={normalizeAuthCallbackPath(query.returnTo)}
     />
   );
@@ -52,7 +62,10 @@ async function NativeAuthBrowserCompleteContent({
 export default function NativeAuthBrowserCompletePage({
   searchParams,
 }: {
-  searchParams: Promise<{ returnTo?: string | string[] }>;
+  searchParams: Promise<{
+    handoffChallenge?: string | string[];
+    returnTo?: string | string[];
+  }>;
 }) {
   return (
     <Suspense
