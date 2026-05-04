@@ -2,7 +2,11 @@ import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { connection } from "next/server";
 import { auth } from "@/app/auth";
-import { createNativeAuthToken } from "@/lib/native-auth-token";
+import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
+import {
+  createNativeAuthHandoffCode,
+  normalizeNativeAuthHandoffChallenge,
+} from "@/lib/native-auth-token";
 import NativeAuthBrowserCompleteClient from "./native-auth-browser-complete-client";
 
 function NativeAuthMessage({ children }: { children: ReactNode }) {
@@ -13,24 +17,22 @@ function NativeAuthMessage({ children }: { children: ReactNode }) {
   );
 }
 
-function getSafeReturnTo(value: string | string[] | undefined) {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return "/";
-  }
-  return raw;
-}
-
 async function NativeAuthBrowserCompleteContent({
   searchParams,
 }: {
-  searchParams: Promise<{ returnTo?: string | string[] }>;
+  searchParams: Promise<{
+    handoffChallenge?: string | string[];
+    returnTo?: string | string[];
+  }>;
 }) {
   await connection();
   const [session, query] = await Promise.all([auth(), searchParams]);
   const userId = session?.user?.id;
+  const handoffChallenge = normalizeNativeAuthHandoffChallenge(
+    query.handoffChallenge,
+  );
 
-  if (!userId) {
+  if (!userId || !handoffChallenge) {
     return (
       <NativeAuthMessage>
         <div className="max-w-sm">
@@ -50,8 +52,9 @@ async function NativeAuthBrowserCompleteContent({
 
   return (
     <NativeAuthBrowserCompleteClient
-      token={createNativeAuthToken(userId)}
-      returnTo={getSafeReturnTo(query.returnTo)}
+      code={await createNativeAuthHandoffCode({ handoffChallenge, userId })}
+      handoffChallenge={handoffChallenge}
+      returnTo={normalizeAuthCallbackPath(query.returnTo)}
     />
   );
 }
@@ -59,7 +62,10 @@ async function NativeAuthBrowserCompleteContent({
 export default function NativeAuthBrowserCompletePage({
   searchParams,
 }: {
-  searchParams: Promise<{ returnTo?: string | string[] }>;
+  searchParams: Promise<{
+    handoffChallenge?: string | string[];
+    returnTo?: string | string[];
+  }>;
 }) {
   return (
     <Suspense

@@ -138,6 +138,32 @@ export const sessions = cockroachTable(
   ],
 );
 
+export const nativeAuthHandoff = cockroachTable(
+  "NativeAuthHandoff",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    userId: string()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    codeHash: string().notNull(),
+    verifierChallenge: string().notNull(),
+    consumedAt: timestamp({ mode: "date", precision: 3 }),
+    expiresAt: timestamp({ mode: "date", precision: 3 }).notNull(),
+    createdAt: createdAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("NativeAuthHandoff_codeHash_key").using(
+      "btree",
+      table.codeHash.asc(),
+    ),
+    index("NativeAuthHandoff_expiresAt_idx").using(
+      "btree",
+      table.expiresAt.asc(),
+    ),
+    index("NativeAuthHandoff_userId_idx").using("btree", table.userId.asc()),
+  ],
+);
+
 export const cliAccessToken = cockroachTable(
   "CliAccessToken",
   {

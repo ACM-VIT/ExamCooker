@@ -6,6 +6,7 @@ import {
   accounts,
   cliAccessToken,
   cliDeviceAuthRequest,
+  nativeAuthHandoff,
   sessions,
   studyChat,
   user,
@@ -41,10 +42,16 @@ export async function POST() {
   }
 
   const deletedEmail = `deleted-${userId}@deleted.examcooker.local`;
-  const [hasCliAccessToken, hasCliDeviceAuthRequest, hasStudyChat] =
+  const [
+    hasCliAccessToken,
+    hasCliDeviceAuthRequest,
+    hasNativeAuthHandoff,
+    hasStudyChat,
+  ] =
     await Promise.all([
       tableExists("CliAccessToken"),
       tableExists("CliDeviceAuthRequest"),
+      tableExists("NativeAuthHandoff"),
       tableExists("StudyChat"),
     ]);
 
@@ -55,6 +62,9 @@ export async function POST() {
       hasCliAccessToken,
       hasCliDeviceAuthRequest,
     });
+    if (hasNativeAuthHandoff) {
+      await tx.delete(nativeAuthHandoff).where(eq(nativeAuthHandoff.userId, userId));
+    }
     if (hasStudyChat) {
       await tx.delete(studyChat).where(eq(studyChat.userId, userId));
     }

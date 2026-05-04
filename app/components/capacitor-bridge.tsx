@@ -51,6 +51,7 @@ export default function CapacitorBridge() {
   useEffect(() => {
     let cancelled = false;
     let cleanupStatusBar: (() => void) | undefined;
+    let cleanupNativeBridge: (() => void) | undefined;
 
     void (async () => {
       const { Capacitor } = await import("@capacitor/core");
@@ -62,6 +63,12 @@ export default function CapacitorBridge() {
         import("@capacitor/app"),
       ]);
       if (cancelled) return;
+
+      const platform = Capacitor.getPlatform();
+      const root = document.documentElement;
+      root.dataset.nativePlatform = platform;
+      root.toggleAttribute("data-native-android", platform === "android");
+      root.toggleAttribute("data-native-ios", platform === "ios");
 
       await StatusBar.setOverlaysWebView({ overlay: true }).catch(() => undefined);
       const applyStatusBarAppearance = () => {
@@ -87,7 +94,7 @@ export default function CapacitorBridge() {
         colorSchemeQuery.removeEventListener("change", applyStatusBarAppearance);
       };
 
-      if (Capacitor.getPlatform() === "ios") {
+      if (platform === "ios" || platform === "android") {
         try {
           const { NativeTabs } = await import("capacitor-native-tabs");
           const tabs = buildIosNativeTabConfigs();
@@ -97,7 +104,11 @@ export default function CapacitorBridge() {
           );
           const selectedIndex = idx >= 0 ? idx : 0;
           await NativeTabs.initialize({ tabs, selectedIndex });
-          document.documentElement.setAttribute("data-native-ios-tabs", "true");
+          document.documentElement.setAttribute("data-native-tabs", "true");
+          document.documentElement.setAttribute(
+            platform === "ios" ? "data-native-ios-tabs" : "data-native-android-tabs",
+            "true",
+          );
           await NativeTabs.addListener("tabSelected", (info) => {
             const route = info.tab.route ?? "/";
             const nextPath = route.startsWith("/") ? route : `/${route}`;
@@ -111,9 +122,16 @@ export default function CapacitorBridge() {
           });
           await NativeTabs.showTabBar().catch(() => undefined);
         } catch {
+          document.documentElement.removeAttribute("data-native-tabs");
           document.documentElement.removeAttribute("data-native-ios-tabs");
+          document.documentElement.removeAttribute("data-native-android-tabs");
           window.dispatchEvent(new Event("examcooker:use-web-tab-bar"));
         }
+      }
+
+      const launchUrl = await App.getLaunchUrl().catch(() => ({ url: "" }));
+      if (launchUrl?.url) {
+        navigateFromDeepLink(launchUrl.url);
       }
 
       void App.addListener("appUrlOpen", (event) => {
@@ -124,6 +142,30 @@ export default function CapacitorBridge() {
         }
         navigateFromDeepLink(event.url);
       });
+
+      if (platform === "android") {
+        const backButtonListener = await App.addListener("backButton", async ({ canGoBack }) => {
+          const backEvent = new CustomEvent("examcooker:native-back", {
+            bubbles: true,
+            cancelable: true,
+          });
+          const handled = !window.dispatchEvent(backEvent);
+          if (handled) {
+            return;
+          }
+
+          if (canGoBack && window.history.length > 1) {
+            window.history.back();
+            return;
+          }
+
+          await App.minimizeApp().catch(() => App.exitApp().catch(() => undefined));
+        });
+
+        cleanupNativeBridge = () => {
+          void backButtonListener.remove();
+        };
+      }
 
       const hideSplash = () => {
         void SplashScreen.hide({ fadeOutDuration: 220 }).catch(() => undefined);
@@ -162,6 +204,14 @@ export default function CapacitorBridge() {
     return () => {
       cancelled = true;
       cleanupStatusBar?.();
+      cleanupNativeBridge?.();
+      const root = document.documentElement;
+      delete root.dataset.nativePlatform;
+      root.removeAttribute("data-native-tabs");
+      root.removeAttribute("data-native-android");
+      root.removeAttribute("data-native-ios");
+      root.removeAttribute("data-native-ios-tabs");
+      root.removeAttribute("data-native-android-tabs");
     };
   }, []);
 

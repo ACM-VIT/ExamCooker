@@ -1,31 +1,29 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
+import { normalizeNativeAuthHandoffChallenge } from "@/lib/native-auth-token";
 import NativeAuthCompleteClient from "./native-auth-complete-client";
-
-function getSafeReturnTo(value: string | string[] | undefined) {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return "/";
-  }
-  return raw;
-}
 
 async function NativeAuthCompleteContent({
   searchParams,
 }: {
   searchParams: Promise<{
+    code?: string | string[];
+    handoffChallenge?: string | string[];
     returnTo?: string | string[];
-    token?: string | string[];
   }>;
 }) {
   await connection();
   const query = await searchParams;
-  const token = Array.isArray(query.token) ? query.token[0] : query.token;
+  const code = Array.isArray(query.code) ? query.code[0] : query.code;
 
   return (
     <NativeAuthCompleteClient
-      token={token ?? ""}
-      returnTo={getSafeReturnTo(query.returnTo)}
+      code={code ?? ""}
+      handoffChallenge={
+        normalizeNativeAuthHandoffChallenge(query.handoffChallenge) ?? ""
+      }
+      returnTo={normalizeAuthCallbackPath(query.returnTo)}
     />
   );
 }
@@ -34,8 +32,9 @@ export default function NativeAuthCompletePage({
   searchParams,
 }: {
   searchParams: Promise<{
+    code?: string | string[];
+    handoffChallenge?: string | string[];
     returnTo?: string | string[];
-    token?: string | string[];
   }>;
 }) {
   return (
