@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import Image from "@/app/components/common/app-image";
 import profile from "@/public/assets/profile.svg";
 import { SignOut } from "./sign-out";
@@ -105,6 +106,13 @@ const Header: React.FC<HeaderProps> = ({ toggleNavbar, isNavOn }) => {
                     Email:
                     <br /> {session?.user?.email}
                   </p>
+                  <Link
+                    href="/delete"
+                    className="mb-2 block text-red-500 hover:underline dark:text-red-400"
+                    onClick={() => setShowOverlay(false)}
+                  >
+                    Delete account
+                  </Link>
                   <SignOut>
                     <span className="text-red-500 hover:underline dark:text-red-400">
                       Logout

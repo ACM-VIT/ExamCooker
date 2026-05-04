@@ -50,6 +50,13 @@ const sections: LegalSection[] = [
         ],
     },
     {
+        id: "payments",
+        title: "Payments",
+        body: [
+            "ExamCooker does not currently sell paid digital content, subscriptions, premium features, physical goods, or bundled physical and digital purchases in the app.",
+        ],
+    },
+    {
         id: "how-we-use-data",
         title: "How We Use Data",
         body: [
@@ -87,17 +94,16 @@ const sections: LegalSection[] = [
             {
                 text: (
                     <>
-                        To request deletion of account-linked data, use the{" "}
+                        To delete account-linked data, use the{" "}
                         <Link
                             href="/delete"
                             className="font-semibold text-black underline decoration-black/30 underline-offset-4 transition hover:decoration-black dark:text-[#D5D5D5] dark:decoration-[#D5D5D5]/30 dark:hover:text-[#3BF4C7] dark:hover:decoration-[#3BF4C7]"
                         >
-                            account deletion request page
+                            account deletion page
                         </Link>{" "}
-                        or contact the maintainers through the official channels linked
-                        in the site footer. Some public contributions may need to remain
-                        available or be retained in moderation and backup records where
-                        required to operate the service.
+                        in the app. Some public contributions may remain available
+                        without your personal account details or be retained in backup
+                        records where required to operate the service.
                     </>
                 ),
             },

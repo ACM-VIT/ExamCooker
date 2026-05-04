@@ -2,6 +2,7 @@
 import React, { addTransitionType, startTransition, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import Image from "@/app/components/common/app-image";
 import { usePathname, useRouter } from "next/navigation";
 import ThemeToggleSwitch from "@/app/components/common/theme-toggle";
@@ -66,6 +67,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   const [voiceRuntimeRequested, setVoiceRuntimeRequested] = useState(false);
   const [voiceStartToken, setVoiceStartToken] = useState(0);
   const [voiceEntryPoint, setVoiceEntryPoint] = useState<VoiceAgentEntryPoint>("nav");
+  const [portalReady, setPortalReady] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -78,15 +80,21 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
       if (
         profileRef.current &&
-        !profileRef.current.contains(event.target as Node)
+        !profileRef.current.contains(target) &&
+        !profileMenuRef.current?.contains(target)
       ) {
         setShowProfile(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setPortalReady(true);
   }, []);
 
   const updateProfileMenuPosition = useCallback(() => {
@@ -266,6 +274,46 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     };
   }, [isNavOn]);
 
+  const profileMenu =
+    showProfile && isAuthed ? (
+      <div
+        ref={profileMenuRef}
+        className="fixed z-[90] w-56 rounded-md border border-black/10 bg-white p-3 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#121B31]"
+        style={
+          profileMenuPosition
+            ? {
+                top: profileMenuPosition.top,
+                left: profileMenuPosition.left,
+                maxHeight: "calc(100dvh - 1.5rem)",
+              }
+            : {
+                top: 12,
+                left: 12,
+                visibility: "hidden",
+              }
+        }
+      >
+        <p className="mb-1 text-sm font-semibold text-black dark:text-[#D5D5D5]">
+          {session?.user?.name}
+        </p>
+        <p className="mb-3 break-words text-xs text-black/60 dark:text-[#D5D5D5]/60">
+          {session?.user?.email}
+        </p>
+        <Link
+          href="/delete"
+          className="mb-2 block text-xs font-semibold text-red-500 hover:underline dark:text-red-400"
+          onClick={() => setShowProfile(false)}
+        >
+          Delete account
+        </Link>
+        <SignOut>
+          <span className="text-xs font-semibold text-red-500 hover:underline dark:text-red-400">
+            Sign out
+          </span>
+        </SignOut>
+      </div>
+    ) : null;
+
   return (
     <>
       <div
@@ -371,37 +419,6 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                       </span>
                       <span className={navLabelClassName}>Account</span>
                     </button>
-                    {showProfile && (
-                      <div
-                        ref={profileMenuRef}
-                        className="fixed z-[90] w-56 rounded-md border border-black/10 bg-white p-3 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#121B31]"
-                        style={
-                          profileMenuPosition
-                            ? {
-                                top: profileMenuPosition.top,
-                                left: profileMenuPosition.left,
-                                maxHeight: "calc(100dvh - 1.5rem)",
-                              }
-                            : {
-                                top: 12,
-                                left: 12,
-                                visibility: "hidden",
-                              }
-                        }
-                      >
-                        <p className="mb-1 text-sm font-semibold text-black dark:text-[#D5D5D5]">
-                          {session?.user?.name}
-                        </p>
-                        <p className="mb-3 break-words text-xs text-black/60 dark:text-[#D5D5D5]/60">
-                          {session?.user?.email}
-                        </p>
-                        <SignOut>
-                          <span className="text-xs font-semibold text-red-500 hover:underline dark:text-red-400">
-                            Sign out
-                          </span>
-                        </SignOut>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <button
@@ -471,6 +488,9 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
           </div>
         </div>
       </nav>
+      {portalReady && profileMenu
+        ? createPortal(profileMenu, document.body)
+        : null}
     </>
   );
 };
