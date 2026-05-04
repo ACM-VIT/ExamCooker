@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { connection } from "next/server";
 import { auth } from "@/app/auth";
+import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
 import { createNativeAuthToken } from "@/lib/native-auth-token";
 import NativeAuthBrowserCompleteClient from "./native-auth-browser-complete-client";
 
@@ -11,14 +12,6 @@ function NativeAuthMessage({ children }: { children: ReactNode }) {
       {children}
     </main>
   );
-}
-
-function getSafeReturnTo(value: string | string[] | undefined) {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return "/";
-  }
-  return raw;
 }
 
 async function NativeAuthBrowserCompleteContent({
@@ -51,7 +44,7 @@ async function NativeAuthBrowserCompleteContent({
   return (
     <NativeAuthBrowserCompleteClient
       token={createNativeAuthToken(userId)}
-      returnTo={getSafeReturnTo(query.returnTo)}
+      returnTo={normalizeAuthCallbackPath(query.returnTo)}
     />
   );
 }
