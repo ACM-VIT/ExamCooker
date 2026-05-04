@@ -26,6 +26,7 @@ const UpsellToast = () => {
     upsellRef.current = upsell;
 
     const isCliPage = pathname === "/cli";
+    const isAuthPage = pathname === "/auth";
 
     const hideToast = useCallback(() => {
         const current = upsellRef.current;
@@ -51,7 +52,7 @@ const UpsellToast = () => {
     }, []);
 
     useEffect(() => {
-        if (isCliPage) return;
+        if (isCliPage || isAuthPage) return;
         const next = pickNextUpsell();
         if (!next) return;
         const timer = window.setTimeout(() => {
@@ -59,7 +60,7 @@ const UpsellToast = () => {
             setMounted(true);
         }, UPSELL_SHOW_DELAY_MS);
         return () => window.clearTimeout(timer);
-    }, [isCliPage]);
+    }, [isAuthPage, isCliPage]);
 
     useEffect(() => {
         if (!mounted) return;
@@ -70,11 +71,11 @@ const UpsellToast = () => {
     }, [mounted]);
 
     useEffect(() => {
-        if (!isCliPage) return;
+        if (!isCliPage && !isAuthPage) return;
         setVisible(false);
         setMounted(false);
         setUpsell(null);
-    }, [isCliPage]);
+    }, [isAuthPage, isCliPage]);
 
     useEffect(() => {
         if (!visible || !upsell) return;
@@ -82,7 +83,7 @@ const UpsellToast = () => {
         return () => window.clearTimeout(timer);
     }, [visible, upsell?.id, hideToast]);
 
-    if (isCliPage || !mounted || !upsell) return null;
+    if (isCliPage || isAuthPage || !mounted || !upsell) return null;
 
     const handleLinkCtaClick = () => {
         markUpsellDismissed(upsell.id);
