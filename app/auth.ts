@@ -17,7 +17,7 @@ import { createAuthAdapter } from "@/db/auth-adapter";
 import { db } from "@/db";
 import { accounts, user as userTable } from "@/db/schema";
 import { verifyAppleIdentityToken } from "@/lib/apple-identity-token";
-import { verifyNativeAuthToken } from "@/lib/native-auth-token";
+import { consumeNativeAuthHandoffCode } from "@/lib/native-auth-token";
 import { createPostHogServer } from "@/lib/posthog-server";
 
 const adapter = createAuthAdapter();
@@ -292,19 +292,14 @@ function buildProviders() {
       id: "native-handoff",
       name: "Native Handoff",
       credentials: {
-        token: { label: "Token", type: "text" },
+        code: { label: "Code", type: "text" },
+        verifier: { label: "Verifier", type: "text" },
       },
       async authorize(credentials) {
-        const token = credentials?.token ?? "";
-        const payload = verifyNativeAuthToken(token);
-        if (!payload) {
-          return null;
-        }
-
-        const [nativeUser] = await db
-          .select()
-          .from(userTable)
-          .where(eq(userTable.id, payload.userId));
+        const nativeUser = await consumeNativeAuthHandoffCode({
+          code: credentials?.code ?? "",
+          verifier: credentials?.verifier ?? "",
+        });
 
         if (!nativeUser) {
           return null;

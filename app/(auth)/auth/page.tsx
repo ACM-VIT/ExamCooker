@@ -7,6 +7,7 @@ import { auth } from "@/app/auth";
 import AppImage from "@/app/components/common/app-image";
 import ThemeToggle from "@/app/components/common/theme-toggle";
 import AuthClient from "@/app/(auth)/auth/auth-client";
+import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
 import AcmLogo from "@/public/assets/acm-logo.svg";
 import ExamCookerLogoIcon from "@/public/assets/logo-icon.svg";
 
@@ -20,19 +21,6 @@ export const metadata: Metadata = {
 function getStringParam(value: string | string[] | undefined) {
     if (Array.isArray(value)) return value[0] ?? "";
     return value ?? "";
-}
-
-function normalizeCallbackUrl(value: string) {
-    const trimmed = value.trim();
-    if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
-        return trimmed;
-    }
-    try {
-        const url = new URL(trimmed);
-        return `${url.pathname}${url.search}${url.hash}` || "/";
-    } catch {
-        return "/";
-    }
 }
 
 function AuthShell({ children }: { children: React.ReactNode }) {
@@ -101,8 +89,7 @@ async function AuthContent({
 }) {
     const session = await auth();
     const params = (await searchParams) ?? {};
-    const rawCallbackUrl = getStringParam(params.callbackUrl).trim() || "/";
-    const redirectCallbackUrl = normalizeCallbackUrl(rawCallbackUrl);
+    const redirectCallbackUrl = normalizeAuthCallbackPath(params.callbackUrl);
 
     if (session?.user) {
         redirect(redirectCallbackUrl);
@@ -110,7 +97,7 @@ async function AuthContent({
 
     return (
         <AuthClient
-            callbackUrl={rawCallbackUrl}
+            callbackUrl={redirectCallbackUrl}
             error={getStringParam(params.error)}
         />
     );

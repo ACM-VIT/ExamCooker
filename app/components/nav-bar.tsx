@@ -257,7 +257,9 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     void (async () => {
       try {
         const { Capacitor } = await import("@capacitor/core");
-        if (cancelled || Capacitor.getPlatform() !== "ios") return;
+        if (cancelled) return;
+        const platform = Capacitor.getPlatform();
+        if (platform !== "ios" && platform !== "android") return;
         const { NativeTabs } = await import("capacitor-native-tabs");
         if (isNavOn) {
           await NativeTabs.hideTabBar().catch(() => undefined);
@@ -265,7 +267,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
           await NativeTabs.showTabBar().catch(() => undefined);
         }
       } catch {
-        // Plugin unavailable outside Capacitor iOS shell
+        // Plugin unavailable outside Capacitor native shells
       }
     })();
 

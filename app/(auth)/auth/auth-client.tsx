@@ -15,7 +15,37 @@ const providerLabels: Record<string, string> = {
     google: "Continue with Google",
 };
 
+const handoffStoragePrefix = "examcooker.nativeAuthHandoff.";
 const nativeAppleCancelledCode = "NATIVE_APPLE_CANCELLED";
+
+function encodeBase64Url(bytes: Uint8Array) {
+    let binary = "";
+    for (const byte of bytes) {
+        binary += String.fromCharCode(byte);
+    }
+
+    return window
+        .btoa(binary)
+        .replaceAll("+", "-")
+        .replaceAll("/", "_")
+        .replaceAll("=", "");
+}
+
+async function createNativeAuthHandoffChallenge() {
+    const verifierBytes = new Uint8Array(32);
+    window.crypto.getRandomValues(verifierBytes);
+    const verifier = encodeBase64Url(verifierBytes);
+    const challengeBytes = new Uint8Array(
+        await window.crypto.subtle.digest(
+            "SHA-256",
+            new TextEncoder().encode(verifier),
+        ),
+    );
+    const challenge = encodeBase64Url(challengeBytes);
+
+    window.sessionStorage.setItem(`${handoffStoragePrefix}${challenge}`, verifier);
+    return challenge;
+}
 
 function GoogleIcon() {
     return (
@@ -107,7 +137,9 @@ async function signInWithNativeApple(callbackUrl: string) {
 }
 
 async function openNativeOAuthBrowser(providerId: string, callbackUrl: string) {
+    const handoffChallenge = await createNativeAuthHandoffChallenge();
     const startUrl = `/native-auth/start/${providerId}?${new URLSearchParams({
+        handoffChallenge,
         returnTo: callbackUrl,
     }).toString()}`;
     const { Browser } = await import("@capacitor/browser");

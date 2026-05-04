@@ -24,6 +24,9 @@ const config: CapacitorConfig = {
     path: "mobile/ios",
   },
   plugins: {
+    App: {
+      disableBackButtonHandler: true,
+    },
     SplashScreen: {
       launchAutoHide: true,
       backgroundColor: "#0C1222",
