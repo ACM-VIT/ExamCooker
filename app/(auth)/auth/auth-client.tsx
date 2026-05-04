@@ -15,6 +15,8 @@ const providerLabels: Record<string, string> = {
     google: "Continue with Google",
 };
 
+const nativeAppleCancelledCode = "NATIVE_APPLE_CANCELLED";
+
 function GoogleIcon() {
     return (
         <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -64,6 +66,73 @@ function getErrorMessage(error?: string | null) {
         return "OAuth sign-in could not be completed. Try again or use username/password.";
     }
     return "Authentication could not be completed. Try again.";
+}
+
+function isNativeAppleCancel(error: unknown) {
+    if (!error || typeof error !== "object") return false;
+
+    const maybeCapacitorError = error as { code?: unknown; message?: unknown };
+    return (
+        maybeCapacitorError.code === nativeAppleCancelledCode ||
+        (typeof maybeCapacitorError.message === "string" &&
+            maybeCapacitorError.message.toLowerCase().includes("cancel"))
+    );
+}
+
+async function signInWithNativeApple(callbackUrl: string) {
+    const { NativeAppleSignIn } = await import("@/lib/native-apple-sign-in");
+    const { response } = await NativeAppleSignIn.authorize({
+        scopes: "email name",
+    });
+
+    if (!response.identityToken) {
+        throw new Error("Native Apple sign-in did not return an identity token");
+    }
+
+    const result = await signIn("native-apple", {
+        authorizationCode: response.authorizationCode,
+        email: response.email ?? undefined,
+        familyName: response.familyName ?? undefined,
+        givenName: response.givenName ?? undefined,
+        identityToken: response.identityToken,
+        callbackUrl,
+        redirect: false,
+    });
+
+    if (!result?.ok) {
+        throw new Error(result?.error ?? "Native Apple sign-in failed");
+    }
+
+    window.location.assign(result.url ?? callbackUrl);
+}
+
+async function openNativeOAuthBrowser(providerId: string, callbackUrl: string) {
+    const startUrl = `/native-auth/start/${providerId}?${new URLSearchParams({
+        returnTo: callbackUrl,
+    }).toString()}`;
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.open({
+        url: new URL(startUrl, window.location.origin).toString(),
+        presentationStyle: "fullscreen",
+        toolbarColor: "#0C1222",
+    });
+}
+
+async function handleNativeSignIn(provider: Provider, callbackUrl: string) {
+    const { Capacitor } = await import("@capacitor/core");
+    if (!Capacitor.isNativePlatform()) return false;
+
+    if (provider.id === "apple" && Capacitor.getPlatform() === "ios") {
+        await signInWithNativeApple(callbackUrl);
+        return true;
+    }
+
+    if (provider.id === "google") {
+        await openNativeOAuthBrowser(provider.id, callbackUrl);
+        return true;
+    }
+
+    return false;
 }
 
 export default function AuthClient({
@@ -130,55 +199,17 @@ export default function AuthClient({
         invalidateAuthSessionCache();
 
         try {
-            const { Capacitor } = await import("@capacitor/core");
-            if (
-                Capacitor.isNativePlatform() &&
-                Capacitor.getPlatform() === "ios" &&
-                provider.id === "apple"
-            ) {
-                const { NativeAppleSignIn } = await import(
-                    "@/lib/native-apple-sign-in"
-                );
-                const result = await NativeAppleSignIn.authorize({
-                    scopes: "email name",
-                });
-
-                const signInResult = await signIn("native-apple", {
-                    authorizationCode: result.response.authorizationCode,
-                    email: result.response.email ?? undefined,
-                    familyName: result.response.familyName ?? undefined,
-                    givenName: result.response.givenName ?? undefined,
-                    identityToken: result.response.identityToken,
-                    callbackUrl,
-                    redirect: false,
-                });
-
-                if (signInResult?.ok) {
-                    window.location.assign(signInResult.url ?? callbackUrl);
-                    return;
-                }
-
-                window.location.assign("/auth?error=OAuthCallback");
+            if (await handleNativeSignIn(provider, callbackUrl)) {
+                return;
+            }
+        } catch (error) {
+            if (isNativeAppleCancel(error)) {
                 return;
             }
 
-            if (
-                Capacitor.isNativePlatform() &&
-                provider.id === "google"
-            ) {
-                const startUrl = `/native-auth/start/${provider.id}?${new URLSearchParams({
-                    returnTo: callbackUrl,
-                }).toString()}`;
-                const { Browser } = await import("@capacitor/browser");
-                await Browser.open({
-                    url: new URL(startUrl, window.location.origin).toString(),
-                    presentationStyle: "fullscreen",
-                    toolbarColor: "#0C1222",
-                });
-                return;
-            }
-        } catch {
-            // Fall through to the standard web redirect.
+            console.error("[auth] native sign-in failed", error);
+            window.location.assign("/auth?error=OAuthCallback");
+            return;
         }
 
         void signIn(provider.id, { callbackUrl }).finally(() => {

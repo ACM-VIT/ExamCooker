@@ -6,10 +6,11 @@ import WebKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    private var didRegisterLocalPlugins = false
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         DispatchQueue.main.async { [weak self] in
-            self?.configureWebViewChrome()
+            self?.configureAppShell()
         }
         return true
     }
@@ -29,7 +30,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        configureWebViewChrome()
+        configureAppShell()
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
@@ -52,6 +53,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 private extension AppDelegate {
+    func configureAppShell() {
+        configureWebViewChrome()
+        registerLocalPluginsIfNeeded()
+    }
+
     func configureWebViewChrome() {
         let backgroundColor = UIColor(red: 0.047, green: 0.071, blue: 0.133, alpha: 1)
         window?.backgroundColor = backgroundColor
@@ -66,6 +72,24 @@ private extension AppDelegate {
             webView.scrollView.alwaysBounceVertical = false
             webView.scrollView.alwaysBounceHorizontal = false
         }
+    }
+
+    func registerLocalPluginsIfNeeded() {
+        guard !didRegisterLocalPlugins else { return }
+        guard let bridgeViewController = window?.rootViewController as? CAPBridgeViewController else { return }
+        guard let bridge = bridgeViewController.bridge else { return }
+
+        let plugins: [CAPPlugin & CAPBridgedPlugin] = [
+            NativeAppleSignIn(),
+            NativeDownloads(),
+            NativeCourseSearch()
+        ]
+
+        for plugin in plugins where bridge.plugin(withName: plugin.jsName) == nil {
+            bridge.registerPluginInstance(plugin)
+        }
+
+        didRegisterLocalPlugins = true
     }
 }
 

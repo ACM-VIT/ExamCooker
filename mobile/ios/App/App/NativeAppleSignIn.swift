@@ -12,6 +12,7 @@ public final class NativeAppleSignIn: CAPPlugin, CAPBridgedPlugin {
 
     private var activeCall: CAPPluginCall?
     private var activeController: ASAuthorizationController?
+    private let cancelledCode = "NATIVE_APPLE_CANCELLED"
 
     @objc func authorize(_ call: CAPPluginCall) {
         guard activeCall == nil else {
@@ -113,7 +114,15 @@ extension NativeAppleSignIn: ASAuthorizationControllerDelegate {
             return
         }
 
-        call.reject(error.localizedDescription)
+        let nsError = error as NSError
+        if nsError.domain == ASAuthorizationError.errorDomain &&
+            nsError.code == ASAuthorizationError.Code.canceled.rawValue {
+            call.reject("Apple sign-in was cancelled", cancelledCode, error)
+            clearActiveRequest()
+            return
+        }
+
+        call.reject(error.localizedDescription, nil, error)
         clearActiveRequest()
     }
 }
