@@ -64,3 +64,4 @@ packages/cli/node_modules
 .asc
 mobile/android/keystore.properties
 mobile/android/keystores/examcooker-upload.jks
+.deepsec

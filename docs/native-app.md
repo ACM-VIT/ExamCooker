@@ -41,3 +41,18 @@ The app should keep native value beyond a plain WebView wrapper. Good native
 additions for ExamCooker include push reminders, deep links into courses and
 papers, native sharing, saved/recent study state, and offline-friendly recent
 content.
+
+For App Store review builds, configure the hosted app with an env-backed demo
+login so reviewers can access the app without Google or Apple account handoff:
+
+```bash
+APP_REVIEW_EMAIL=reviewer@example.com
+APP_REVIEW_PASSWORD=replace-with-a-strong-temporary-password
+APP_REVIEW_NAME="App Review"
+APP_REVIEW_ROLE=MODERATOR
+```
+
+When these variables are present, `/auth` shows an App Review sign-in form in
+addition to Google and Apple OAuth. Remove or rotate the password after review.
+Use `APP_REVIEW_ROLE=MODERATOR` only when the reviewer needs access to
+moderation-only surfaces.
