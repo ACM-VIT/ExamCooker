@@ -258,10 +258,14 @@ index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce2
 +        BottomNavigationView nativeTabBar = new BottomNavigationView(getContext());
 +        nativeTabBar.setId(View.generateViewId());
 +        nativeTabBar.setLabelVisibilityMode(NavigationBarView.LABEL_VISIBILITY_LABELED);
-+        nativeTabBar.setItemIconSize(dp(24));
-+        nativeTabBar.setItemPaddingTop(dp(10));
-+        nativeTabBar.setItemPaddingBottom(dp(10));
++        nativeTabBar.setItemHorizontalTranslationEnabled(false);
++        nativeTabBar.setItemIconSize(dp(22));
++        nativeTabBar.setItemPaddingTop(dp(8));
++        nativeTabBar.setItemPaddingBottom(dp(8));
 +        nativeTabBar.setItemActiveIndicatorEnabled(true);
++        nativeTabBar.setItemActiveIndicatorWidth(dp(56));
++        nativeTabBar.setItemActiveIndicatorHeight(dp(32));
++        nativeTabBar.setItemActiveIndicatorMarginHorizontal(dp(4));
 +        nativeTabBar.setElevation(dp(14));
 +
 +        applyColorPalette(nativeTabBar);
@@ -443,32 +447,52 @@ index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce2
 +    }
 +
 +    private int resolveIcon(JSObject tab, int index) {
++        int explicitIcon = resolveAppDrawable(tab.getString("androidIcon", ""));
++        if (explicitIcon != 0) {
++            return explicitIcon;
++        }
++
 +        String route = tab.getString("route", "").toLowerCase(Locale.US);
 +        String title = tab.getString("title", "").toLowerCase(Locale.US);
 +
 +        if (route.equals("/") || title.contains("home")) {
-+            return android.R.drawable.ic_menu_view;
++            return resolveAppDrawable("ec_tab_home", android.R.drawable.ic_menu_view);
 +        }
 +        if (route.contains("paper") || title.contains("paper")) {
-+            return android.R.drawable.ic_menu_agenda;
++            return resolveAppDrawable("ec_tab_papers", android.R.drawable.ic_menu_agenda);
 +        }
 +        if (route.contains("note") || title.contains("note")) {
-+            return android.R.drawable.ic_menu_edit;
++            return resolveAppDrawable("ec_tab_notes", android.R.drawable.ic_menu_edit);
 +        }
 +        if (route.contains("syllabus") || title.contains("syllabus")) {
-+            return android.R.drawable.ic_menu_sort_by_size;
++            return resolveAppDrawable("ec_tab_syllabus", android.R.drawable.ic_menu_sort_by_size);
 +        }
 +        if (route.contains("resource") || title.contains("resource")) {
-+            return android.R.drawable.ic_menu_info_details;
++            return resolveAppDrawable("ec_tab_resources", android.R.drawable.ic_menu_info_details);
 +        }
 +
 +        return switch (index) {
-+            case 0 -> android.R.drawable.ic_menu_view;
-+            case 1 -> android.R.drawable.ic_menu_agenda;
-+            case 2 -> android.R.drawable.ic_menu_edit;
-+            case 3 -> android.R.drawable.ic_menu_sort_by_size;
-+            default -> android.R.drawable.ic_menu_info_details;
++            case 0 -> resolveAppDrawable("ec_tab_home", android.R.drawable.ic_menu_view);
++            case 1 -> resolveAppDrawable("ec_tab_papers", android.R.drawable.ic_menu_agenda);
++            case 2 -> resolveAppDrawable("ec_tab_notes", android.R.drawable.ic_menu_edit);
++            case 3 -> resolveAppDrawable("ec_tab_syllabus", android.R.drawable.ic_menu_sort_by_size);
++            default -> resolveAppDrawable("ec_tab_resources", android.R.drawable.ic_menu_info_details);
 +        };
++    }
++
++    private int resolveAppDrawable(String resourceName) {
++        return resolveAppDrawable(resourceName, 0);
++    }
++
++    private int resolveAppDrawable(String resourceName, int fallbackResourceId) {
++        if (resourceName == null || resourceName.isEmpty()) {
++            return fallbackResourceId;
++        }
++
++        int resourceId = getContext()
++            .getResources()
++            .getIdentifier(resourceName, "drawable", getContext().getPackageName());
++        return resourceId != 0 ? resourceId : fallbackResourceId;
 +    }
 +
 +    private int dp(int value) {

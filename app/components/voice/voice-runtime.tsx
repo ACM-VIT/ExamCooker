@@ -109,6 +109,10 @@ export type RealtimeTurnDetection =
 export type RealtimeAudioConfig = {
   input?: {
     format?: RealtimeAudioFormat;
+    capture?: MediaTrackConstraints;
+    noiseReduction?: {
+      type: "near_field" | "far_field" | (string & {});
+    } | null;
     turnDetection?: RealtimeTurnDetection | null;
   };
   output?: {
@@ -431,6 +435,9 @@ function buildAudioConfig(session: VoiceControlResolvedSessionConfig) {
     input || turnDetection !== null
       ? {
           ...(input?.format !== undefined ? { format: input.format } : {}),
+          ...(input?.noiseReduction !== undefined
+            ? { noiseReduction: input.noiseReduction }
+            : {}),
           ...(turnDetection !== null ? { turnDetection } : {}),
         }
       : undefined;
@@ -916,6 +923,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
   private session: RealtimeSession<unknown> | null = null;
   private sessionAbortController: AbortController | null = null;
   private sessionDisposers: Array<() => void> = [];
+  private inputMediaStream: MediaStream | null = null;
   private snapshot: VoiceControlSnapshot;
   private toolCallOrder: string[] = [];
   private toolCallRecords = new Map<string, VoiceToolCallRecord>();
@@ -1014,6 +1022,9 @@ class VoiceControlControllerImpl implements VoiceControlController {
     this.clearToolCalls();
     this.resetResponseState();
 
+    const inputMediaStream = await this.getOrCreateInputMediaStream(connectSignal);
+    throwIfAborted(connectSignal);
+
     const session = this.createSession();
     this.attachSession(session);
 
@@ -1031,6 +1042,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
       });
 
       if (this.destroyed || attemptId !== this.connectAttempt || this.session !== session) {
+        this.releaseInputMediaStream(inputMediaStream);
         session.close();
         return;
       }
@@ -1133,9 +1145,13 @@ class VoiceControlControllerImpl implements VoiceControlController {
   };
 
   private createSession() {
+    const inputMediaStream = this.inputMediaStream ?? undefined;
+
     return new RealtimeSession(this.createSessionAgent(), {
       model: this.sessionConfig.model,
-      transport: "webrtc",
+      transport: new OpenAIRealtimeWebRTC(
+        inputMediaStream ? { mediaStream: inputMediaStream } : undefined,
+      ),
       config: buildRealtimeSessionConfig(this.sessionConfig),
     });
   }
@@ -1290,6 +1306,41 @@ class VoiceControlControllerImpl implements VoiceControlController {
     this.session = null;
     this.clearSessionDisposers();
     session?.close();
+    this.releaseInputMediaStream();
+  }
+
+  private async getOrCreateInputMediaStream(signal: AbortSignal) {
+    const existingTrack = this.inputMediaStream?.getAudioTracks()[0];
+    if (this.inputMediaStream && existingTrack?.readyState === "live") {
+      return this.inputMediaStream;
+    }
+
+    const captureConstraints = this.sessionConfig.audio?.input?.capture;
+    const mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: captureConstraints ?? true,
+    });
+
+    if (signal.aborted) {
+      this.releaseInputMediaStream(mediaStream);
+      throw new DOMException("Voice guide startup was cancelled.", "AbortError");
+    }
+
+    this.inputMediaStream = mediaStream;
+    return mediaStream;
+  }
+
+  private releaseInputMediaStream(stream: MediaStream | null = this.inputMediaStream) {
+    if (!stream) {
+      return;
+    }
+
+    for (const track of stream.getTracks()) {
+      track.stop();
+    }
+
+    if (this.inputMediaStream === stream) {
+      this.inputMediaStream = null;
+    }
   }
 
   private syncConnectedStateFromTransport(event?: RealtimeServerEvent) {
