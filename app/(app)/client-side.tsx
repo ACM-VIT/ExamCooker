@@ -1,5 +1,5 @@
 "use client";
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import NavBar from "@/app/components/nav-bar";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -263,14 +263,14 @@ export default function ClientSide({
         return () => window.removeEventListener("examcooker:native-back", handleNativeBack);
     }, [isNavOn]);
 
-    const handlePathChange = () => {
+    const handlePathChange = useCallback(() => {
         if (typeof window === "undefined") return;
         if (!window.matchMedia("(min-width: 1024px)").matches) {
             setIsNavOn(false);
         }
-    };
+    }, []);
 
-    const toggleNavbar = () => setIsNavOn((v) => !v);
+    const toggleNavbar = useCallback(() => setIsNavOn((v) => !v), []);
 
     return (
         <ClientShell
