@@ -433,13 +433,13 @@ function buildAudioConfig(session: VoiceControlResolvedSessionConfig) {
 
   const inputConfig =
     input || turnDetection !== null
-        ? {
-            ...(input?.format !== undefined ? { format: input.format } : {}),
-            ...(input?.noiseReduction !== undefined
-              ? { noiseReduction: input.noiseReduction }
-              : {}),
-            ...(turnDetection !== null ? { turnDetection } : {}),
-          }
+      ? {
+          ...(input?.format !== undefined ? { format: input.format } : {}),
+          ...(input?.noiseReduction !== undefined
+            ? { noiseReduction: input.noiseReduction }
+            : {}),
+          ...(turnDetection !== null ? { turnDetection } : {}),
+        }
       : undefined;
 
   const outputConfig = output
