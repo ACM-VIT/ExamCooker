@@ -82,20 +82,14 @@ function MobileLogoLink() {
 function MobileChromeHeader({
     isNavOn,
     toggleNavbar,
-    nativeAndroid,
 }: {
     isNavOn: boolean;
     toggleNavbar: () => void;
-    nativeAndroid: boolean;
 }) {
     return (
         <header className="pointer-events-none fixed inset-x-0 top-0 z-[60] lg:hidden">
             <div
-                className={`pointer-events-none flex items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] ${
-                    nativeAndroid
-                        ? "border-b border-black/8 bg-white/88 pb-2 pt-[calc(env(safe-area-inset-top)+0.4rem)] shadow-[0_1px_0_rgba(15,23,42,0.06)] backdrop-blur-xl dark:border-[#D5D5D5]/10 dark:bg-[#09101E]/82"
-                        : "pb-2 pt-[env(safe-area-inset-top)]"
-                }`}
+                className="pointer-events-none flex items-center gap-2 pb-2 pt-[env(safe-area-inset-top)] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
             >
                 <div className="flex min-h-11 min-w-0 flex-1 items-center justify-start">
                     <Suspense fallback={null}>
@@ -108,11 +102,7 @@ function MobileChromeHeader({
                     aria-label={isNavOn ? "Close tools menu" : "Open tools menu"}
                     aria-expanded={isNavOn}
                     style={{ viewTransitionName: "persistent-menu-button" }}
-                    className={`pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:bg-black/[0.08] dark:text-[#D5D5D5]/85 dark:active:bg-white/[0.07] ${
-                        nativeAndroid
-                            ? "rounded-full border border-black/8 bg-white/82 text-black/75 shadow-sm dark:border-[#D5D5D5]/10 dark:bg-[#132038]"
-                            : "rounded-lg text-black/65"
-                    } ${isNavOn ? "pointer-events-none opacity-0" : "opacity-100"}`}
+                    className={`pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-black/65 transition-colors active:bg-black/[0.08] dark:text-[#D5D5D5]/85 dark:active:bg-white/[0.07] ${isNavOn ? "pointer-events-none opacity-0" : "opacity-100"}`}
                 >
                     <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} aria-hidden />
                 </button>
@@ -182,22 +172,16 @@ function ClientShell({
     children,
     isNavOn,
     toggleNavbar,
-    nativeAndroid,
 }: {
     children: React.ReactNode;
     isNavOn: boolean;
     toggleNavbar: () => void;
-    nativeAndroid: boolean;
 }) {
     return (
         <Suspense fallback={<div className="relative flex" />}>
             <NavFromProvider>
                 <div className="relative flex">
-                    <MobileChromeHeader
-                        isNavOn={isNavOn}
-                        toggleNavbar={toggleNavbar}
-                        nativeAndroid={nativeAndroid}
-                    />
+                    <MobileChromeHeader isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
                     <Suspense
                         fallback={
                             <NavBarFallback
@@ -226,7 +210,6 @@ export default function ClientSide({
     children: React.ReactNode;
 }) {
     const [isNavOn, setIsNavOn] = useState(false);
-    const [nativeAndroid, setNativeAndroid] = useState(false);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -235,21 +218,6 @@ export default function ClientSide({
         sync();
         desktop.addEventListener("change", sync);
         return () => desktop.removeEventListener("change", sync);
-    }, []);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        void import("@capacitor/core").then(({ Capacitor }) => {
-            if (cancelled) return;
-            setNativeAndroid(
-                Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android",
-            );
-        });
-
-        return () => {
-            cancelled = true;
-        };
     }, []);
 
     useEffect(() => {
@@ -276,7 +244,6 @@ export default function ClientSide({
         <ClientShell
             isNavOn={isNavOn}
             toggleNavbar={toggleNavbar}
-            nativeAndroid={nativeAndroid}
         >
             <Suspense fallback={null}>
                 <RouteEffects onPathChange={handlePathChange} />

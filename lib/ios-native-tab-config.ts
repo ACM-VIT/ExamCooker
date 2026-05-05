@@ -1,6 +1,10 @@
 import type { TabConfig } from "capacitor-native-tabs";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 
+type ExamCookerTabConfig = TabConfig & {
+  androidIcon?: string;
+};
+
 const TAB_SYSTEM_IMAGES = [
   "house.fill",
   "doc.text.fill",
@@ -9,8 +13,17 @@ const TAB_SYSTEM_IMAGES = [
   "books.vertical.fill",
 ] as const;
 
-export function buildIosNativeTabConfigs(): TabConfig[] {
+const TAB_ANDROID_ICONS = [
+  "ec_tab_home",
+  "ec_tab_papers",
+  "ec_tab_notes",
+  "ec_tab_syllabus",
+  "ec_tab_resources",
+] as const;
+
+export function buildIosNativeTabConfigs(): ExamCookerTabConfig[] {
   return APP_NAV_LINKS.map((link, index) => ({
+    androidIcon: TAB_ANDROID_ICONS[index],
     title: link.label,
     systemImage: TAB_SYSTEM_IMAGES[index] ?? "circle.fill",
     route: link.href,
