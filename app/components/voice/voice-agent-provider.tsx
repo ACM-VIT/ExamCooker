@@ -1162,6 +1162,15 @@ export default function VoiceAgentProvider({
     () => ({
       activationMode: "vad",
       audio: {
+        input: {
+          capture: {
+            autoGainControl: { ideal: true },
+            channelCount: { ideal: 1 },
+            echoCancellation: { ideal: true },
+            noiseSuppression: { ideal: true },
+          },
+          noiseReduction: { type: "near_field" },
+        },
         output: {
           voice: DEFAULT_VOICE,
         },
