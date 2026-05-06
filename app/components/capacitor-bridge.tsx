@@ -123,6 +123,9 @@ export default function CapacitorBridge() {
             platform === "ios" ? "data-native-ios-tabs" : "data-native-android-tabs",
             "true",
           );
+          document.documentElement.removeAttribute("data-native-tabs-pending");
+          document.documentElement.removeAttribute("data-native-ios-tabs-pending");
+          document.documentElement.removeAttribute("data-native-android-tabs-pending");
           const tabSelectionListener = await NativeTabs.addListener("tabSelected", (info) => {
             const route = info.tab.route ?? "/";
             const nextPath = route.startsWith("/") ? route : `/${route}`;
@@ -137,6 +140,9 @@ export default function CapacitorBridge() {
           document.documentElement.removeAttribute("data-native-tabs");
           document.documentElement.removeAttribute("data-native-ios-tabs");
           document.documentElement.removeAttribute("data-native-android-tabs");
+          document.documentElement.removeAttribute("data-native-tabs-pending");
+          document.documentElement.removeAttribute("data-native-ios-tabs-pending");
+          document.documentElement.removeAttribute("data-native-android-tabs-pending");
           window.dispatchEvent(new Event("examcooker:use-web-tab-bar"));
         }
       }
@@ -225,6 +231,9 @@ export default function CapacitorBridge() {
       root.removeAttribute("data-native-ios");
       root.removeAttribute("data-native-ios-tabs");
       root.removeAttribute("data-native-android-tabs");
+      root.removeAttribute("data-native-tabs-pending");
+      root.removeAttribute("data-native-ios-tabs-pending");
+      root.removeAttribute("data-native-android-tabs-pending");
     };
   }, [router]);
 

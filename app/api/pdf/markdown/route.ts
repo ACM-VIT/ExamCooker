@@ -6,6 +6,7 @@ import {
   PdfPaperDocumentSchema,
   PdfPaperQuestionSchema,
   buildPdfPaperMarkdown,
+  getPdfMarkdownLanguageModel,
   getPdfMarkdownModel,
 } from "@/lib/ai/pdf-markdown";
 import type { PdfPaperQuestion } from "@/lib/ai/pdf-markdown";
@@ -183,6 +184,19 @@ function getSafePdfFileName(fileName: string) {
   return /\.pdf$/i.test(trimmed) ? trimmed : `${trimmed}.pdf`;
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error || "");
+}
+
+function getStreamErrorMessage(error: unknown, streamError: unknown) {
+  const fallbackMessage = getErrorMessage(error);
+  if (streamError) {
+    return getErrorMessage(streamError) || fallbackMessage;
+  }
+
+  return fallbackMessage || "Failed to convert this PDF to Markdown.";
+}
+
 async function fetchPdfBuffer(fileUrl: URL) {
   const response = await fetch(fileUrl, {
     cache: "no-store",
@@ -287,9 +301,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const model = getPdfMarkdownModel();
+  const model = getPdfMarkdownLanguageModel();
+  const modelId = getPdfMarkdownModel();
 
   try {
+    let streamError: unknown = null;
     const result = streamText({
       model,
       system: PDF_MARKDOWN_SYSTEM_PROMPT,
@@ -319,10 +335,18 @@ export async function POST(request: NextRequest) {
           "A faithful ordered list of only question numbers, question text, and marks.",
       }),
       abortSignal: request.signal,
-      temperature: 0,
       maxOutputTokens: 12000,
       experimental_include: {
         requestBody: false,
+      },
+      onError: ({ error }) => {
+        streamError = error;
+        console.error("[pdf-markdown] stream error", error);
+      },
+      providerOptions: {
+        openai: {
+          store: false,
+        },
       },
     });
 
@@ -357,15 +381,12 @@ export async function POST(request: NextRequest) {
             type: "done",
             paper,
             markdown: buildPdfPaperMarkdown(paper),
-            model,
+            model: modelId,
           });
         } catch (error) {
           enqueue({
             type: "error",
-            error:
-              error instanceof Error
-                ? error.message
-                : "Failed to convert this PDF to Markdown.",
+            error: getStreamErrorMessage(error, streamError),
           });
         } finally {
           controller.close();
@@ -381,7 +402,7 @@ export async function POST(request: NextRequest) {
         "Cache-Control": "no-store",
         "Content-Type": "application/x-ndjson; charset=utf-8",
         "X-Accel-Buffering": "no",
-        "X-ExamCooker-AI-Model": model,
+        "X-ExamCooker-AI-Model": modelId,
       },
     });
   } catch (error) {

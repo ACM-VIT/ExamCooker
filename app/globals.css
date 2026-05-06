@@ -197,6 +197,11 @@
     animation-play-state: paused;
 }
 
+html[data-native-tabs="true"] .ec-mobile-tab-bar,
+html[data-native-tabs-pending="true"] .ec-mobile-tab-bar {
+    display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .animate-marquee,
     .animate-marquee-reverse {
@@ -458,17 +463,20 @@
 }
 
 @media (max-width: 1023px) {
-    html:not([data-native-tabs="true"]) .ec-home-marquee-offset {
+    html:not([data-native-tabs="true"]):not([data-native-tabs-pending="true"]) .ec-home-marquee-offset {
         position: relative;
         top: calc(-4.75rem - env(safe-area-inset-bottom));
     }
 
     html[data-native-ios-tabs="true"] .ec-app-main,
-    html[data-native-android-tabs="true"] .ec-app-main {
+    html[data-native-android-tabs="true"] .ec-app-main,
+    html[data-native-ios-tabs-pending="true"] .ec-app-main,
+    html[data-native-android-tabs-pending="true"] .ec-app-main {
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
     }
 
-    html[data-native-ios-tabs="true"] {
+    html[data-native-ios-tabs="true"],
+    html[data-native-ios-tabs-pending="true"] {
         --ec-voice-agent-bottom-offset: 3.0625rem;
     }
 }
