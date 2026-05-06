@@ -16,6 +16,14 @@ export default function manifest(): MetadataRoute.Manifest {
         theme_color: "#5FC4E7",
         orientation: "portrait-primary",
         categories: ["education", "books", "productivity"],
+        related_applications: [
+            {
+                platform: "play",
+                url: "https://play.google.com/store/apps/details?id=in.acmvit.examcooker",
+                id: "in.acmvit.examcooker",
+            },
+        ],
+        prefer_related_applications: false,
         icons: [
             {
                 src: "/assets/logo-icon.svg",
