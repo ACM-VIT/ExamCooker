@@ -256,7 +256,11 @@ function PaperSplitPanel({
             </header>
 
             <div className="min-h-0 flex-1 overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
-                <PDFViewerClient fileUrl={paper.fileUrl} fileName={paper.fileName} />
+                <PDFViewerClient
+                    enableQuestionMarkdown
+                    fileUrl={paper.fileUrl}
+                    fileName={paper.fileName}
+                />
             </div>
         </aside>
     );
