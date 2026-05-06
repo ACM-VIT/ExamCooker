@@ -13,15 +13,21 @@ import type { PdfPaperQuestion } from "@/lib/ai/pdf-markdown";
 
 const MAX_PDF_MARKDOWN_BYTES = 24 * 1024 * 1024;
 const PDF_MARKDOWN_SYSTEM_PROMPT = [
-  "You extract only the exam questions from ExamCooker question-paper PDFs.",
-  "Ignore and discard all cover-page metadata, institution/course details, course code, course name, slot, registration fields, faculty names, course outcomes, general instructions, page separators, CO columns, and Bloom taxonomy columns.",
+  "You are a careful transcription engine for ExamCooker question-paper PDFs.",
+  "Extract only the exam questions. Ignore cover-page metadata, institution/course details, course code, course name, slot, registration fields, faculty names, course outcomes, page separators, general instructions, CO columns, and Bloom taxonomy columns.",
+  "Use only text that is visibly present in the PDF pages. Do not use the filename, course title, subject knowledge, expected exam patterns, or surrounding context to fill missing words, marks, formulas, or question numbers.",
   "Your output must contain only question number, question text, and marks.",
+  "Read every page in visual order: top-to-bottom and left-to-right, following table rows and continuation lines carefully. Preserve the source order exactly.",
   "If the source has a table with columns like Q. No, Question, M, CO, and BL, keep Q. No as number, Question as text, M as marks, and drop CO/BL.",
-  "Do not solve, summarize, explain, reword, or add content that is not present in the PDF.",
-  "Preserve questions in reading order. Merge continuation lines or rows into the same question when a question spans pages.",
-  "Preserve subparts, options, formulas, equations, and tables that are part of the question text. Use Markdown for math, lists, tables, and code where helpful.",
+  "Keep question numbers and subpart labels exactly as shown, including forms like 1(a), 1. a), 2(i), or OR alternatives. Do not merge separate alternatives into one question unless the PDF clearly shows them as a single question block.",
+  "Merge continuation lines or page-spanning rows only when they are clearly part of the same question. Do not merge unrelated rows, headings, instructions, or the next question into the current question.",
+  "Transcribe the question text faithfully. Do not solve, summarize, explain, simplify, reword, correct grammar, normalize spelling, or add content that is not present in the PDF.",
+  "Preserve symbols, variable names, numbers, options, units, punctuation, code, tables, formulas, and equations that are part of the question text. Use Markdown only to represent the visible structure more clearly.",
+  "Pay special attention to visually similar characters in math, code, and identifiers, such as x/z, y/v, O/0, I/l/1, S/5, and Greek/Latin lookalikes. If a character is ambiguous, use `[illegible]` for that character or span instead of substituting the most likely one.",
   "For math, use valid LaTeX delimiters: `$...$` for inline math and `$$...$$` for display math. Do not escape the dollar delimiters and do not double-escape LaTeX backslashes.",
-  "Use [illegible] only for characters or words that are truly unreadable. Do not guess missing marks.",
+  "For marks, copy exactly the value shown in the marks or M column. If marks are missing, cropped, ambiguous, or only inferable from totals, use null. Never guess missing marks.",
+  "If any word, number, symbol, formula, or mark is hard to read, write `[illegible]` for only that unreadable span instead of guessing. Prefer a small `[illegible]` marker over a confident but possibly wrong transcription.",
+  "Before finishing, verify that the output contains no metadata, no instructions-only text, no CO/BL values, no solutions, no invented text, and no reordered questions.",
 ].join("\n");
 
 const PdfMarkdownRequestSchema = z.object({
