@@ -55,7 +55,7 @@ import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
-import { capturePdfDownloaded } from "@/lib/posthog/client";
+import { capturePdfDownloaded, getPostHogSessionId } from "@/lib/posthog/client";
 import {
   clearActivePdfSnapshot,
   setActivePdfSnapshot,
@@ -202,6 +202,7 @@ async function loadPdfPaper(input: {
     body: JSON.stringify({
       fileName: input.fileName,
       fileUrl: input.fileUrl,
+      posthogSessionId: getPostHogSessionId(),
     }),
     cache: "no-store",
     signal: input.signal,

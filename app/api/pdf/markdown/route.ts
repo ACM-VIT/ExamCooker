@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { Output, streamText } from "ai";
 import { z } from "zod";
 import { auth } from "@/app/auth";
@@ -10,8 +10,14 @@ import {
   getPdfMarkdownModel,
 } from "@/lib/ai/pdf-markdown";
 import type { PdfPaperQuestion } from "@/lib/ai/pdf-markdown";
+import {
+  capturePostHogAiGeneration,
+  createAiTextMessage,
+} from "@/lib/posthog/llm";
 
 const MAX_PDF_MARKDOWN_BYTES = 24 * 1024 * 1024;
+const PDF_MARKDOWN_MAX_OUTPUT_TOKENS = 12000;
+const POSTHOG_AI_TEXT_LIMIT = 8000;
 const PDF_MARKDOWN_SYSTEM_PROMPT = [
   "You are a careful transcription engine for ExamCooker question-paper PDFs.",
   "Extract only the exam questions. Ignore cover-page metadata, institution/course details, course code, course name, slot, registration fields, faculty names, course outcomes, page separators, general instructions, CO columns, and Bloom taxonomy columns.",
@@ -33,11 +39,45 @@ const PDF_MARKDOWN_SYSTEM_PROMPT = [
 const PdfMarkdownRequestSchema = z.object({
   fileName: z.string().trim().min(1).max(240),
   fileUrl: z.string().trim().url(),
+  posthogSessionId: z.string().trim().min(1).max(200).nullable().optional(),
 });
 
 type AllowedPdfSource = {
   origin: string;
   pathPrefix: string;
+};
+
+type AiUsageSummary = {
+  inputTokens?: number;
+  outputTokens?: number;
+};
+
+type AiResponseSummary = {
+  id?: string;
+};
+
+type PdfMarkdownAiCaptureEvent = {
+  distinctId: string;
+  error?: unknown;
+  fileBytes: number;
+  fileName: string;
+  fileUrl: string;
+  finishReason?: PromiseLike<string | undefined> | null;
+  httpStatus: number;
+  isError: boolean;
+  latencySeconds: number;
+  markdown?: string;
+  modelId: string;
+  outputWasTruncated?: boolean;
+  provider: string;
+  questionCount?: number;
+  response?: PromiseLike<AiResponseSummary> | null;
+  sessionId?: string;
+  spanId: string;
+  timeToFirstQuestionSeconds?: number;
+  traceId: string;
+  usage?: PromiseLike<AiUsageSummary> | null;
+  userPrompt: string;
 };
 
 function getAzureBaseUrlFromEnv() {
@@ -203,6 +243,107 @@ function getStreamErrorMessage(error: unknown, streamError: unknown) {
   return fallbackMessage || "Failed to convert this PDF to Markdown.";
 }
 
+function getAiProviderFromModel(modelId: string) {
+  const [provider] = modelId.split("/");
+  return provider && provider !== modelId ? provider : "openai";
+}
+
+function truncateForPostHogAiText(text: string) {
+  if (text.length <= POSTHOG_AI_TEXT_LIMIT) {
+    return {
+      text,
+      wasTruncated: false,
+    };
+  }
+
+  return {
+    text: text.slice(0, POSTHOG_AI_TEXT_LIMIT),
+    wasTruncated: true,
+  };
+}
+
+async function safeAwait<T>(promise: PromiseLike<T> | null | undefined) {
+  if (!promise) {
+    return null;
+  }
+
+  try {
+    return await promise;
+  } catch {
+    return null;
+  }
+}
+
+function schedulePdfMarkdownAiCapture(
+  captureEventPromise: Promise<PdfMarkdownAiCaptureEvent | null>,
+) {
+  after(async () => {
+    const captureEvent = await captureEventPromise.catch(() => null);
+    if (!captureEvent) {
+      return;
+    }
+
+    const usage = await safeAwait(captureEvent.usage);
+    const response = await safeAwait(captureEvent.response);
+    const finishReason = await safeAwait(captureEvent.finishReason);
+    const outputText = captureEvent.markdown
+      ? truncateForPostHogAiText(captureEvent.markdown)
+      : null;
+
+    await capturePostHogAiGeneration({
+      distinctId: captureEvent.distinctId,
+      traceId: captureEvent.traceId,
+      sessionId: captureEvent.sessionId,
+      spanId: response?.id ?? captureEvent.spanId,
+      spanName: "pdf_markdown_extraction",
+      model: captureEvent.modelId,
+      provider: captureEvent.provider,
+      input: [
+        createAiTextMessage("system", PDF_MARKDOWN_SYSTEM_PROMPT),
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: captureEvent.userPrompt,
+            },
+            {
+              type: "file",
+              mediaType: "application/pdf",
+              filename: getSafePdfFileName(captureEvent.fileName),
+              bytes: captureEvent.fileBytes,
+            },
+          ],
+        },
+      ],
+      inputTokens: usage?.inputTokens,
+      outputChoices: outputText
+        ? [createAiTextMessage("assistant", outputText.text)]
+        : undefined,
+      outputTokens: usage?.outputTokens,
+      latencySeconds: captureEvent.latencySeconds,
+      httpStatus: captureEvent.httpStatus,
+      isError: captureEvent.isError,
+      error: captureEvent.error,
+      stopReason:
+        finishReason ?? (captureEvent.isError ? "error" : undefined),
+      stream: true,
+      maxTokens: PDF_MARKDOWN_MAX_OUTPUT_TOKENS,
+      extraProperties: {
+        ai_surface: "pdf_markdown",
+        pdf_markdown_file_bytes: captureEvent.fileBytes,
+        pdf_markdown_file_name: captureEvent.fileName,
+        pdf_markdown_file_url: captureEvent.fileUrl,
+        pdf_markdown_output_truncated:
+          captureEvent.outputWasTruncated ?? outputText?.wasTruncated,
+        pdf_markdown_question_count: captureEvent.questionCount,
+        pdf_markdown_time_to_first_question:
+          captureEvent.timeToFirstQuestionSeconds,
+      },
+    });
+  });
+}
+
 async function fetchPdfBuffer(fileUrl: URL) {
   const response = await fetch(fileUrl, {
     cache: "no-store",
@@ -237,7 +378,8 @@ async function fetchPdfBuffer(fileUrl: URL) {
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.email) {
+  const distinctId = session?.user?.id ?? session?.user?.email ?? null;
+  if (!distinctId) {
     return NextResponse.json(
       {
         error: "You must be signed in to convert PDFs to Markdown.",
@@ -309,9 +451,36 @@ export async function POST(request: NextRequest) {
 
   const model = getPdfMarkdownLanguageModel();
   const modelId = getPdfMarkdownModel();
+  const provider = getAiProviderFromModel(modelId);
+  const traceId = crypto.randomUUID();
+  const spanId = crypto.randomUUID();
+  const userPrompt =
+    `Extract only the questions from ${parsedBody.fileName}. ` +
+    "Return no metadata and no instructions.";
 
   try {
     let streamError: unknown = null;
+    const llmStartedAt = Date.now();
+    let firstQuestionAt: number | null = null;
+    let resolveCaptureEvent:
+      | ((event: PdfMarkdownAiCaptureEvent | null) => void)
+      | null = null;
+    const captureEventPromise = new Promise<PdfMarkdownAiCaptureEvent | null>(
+      (resolve) => {
+        resolveCaptureEvent = resolve;
+      },
+    );
+    const resolveCaptureEventOnce = (
+      event: PdfMarkdownAiCaptureEvent | null,
+    ) => {
+      if (!resolveCaptureEvent) {
+        return;
+      }
+
+      resolveCaptureEvent(event);
+      resolveCaptureEvent = null;
+    };
+
     const result = streamText({
       model,
       system: PDF_MARKDOWN_SYSTEM_PROMPT,
@@ -321,9 +490,7 @@ export async function POST(request: NextRequest) {
           content: [
             {
               type: "text",
-              text:
-                `Extract only the questions from ${parsedBody.fileName}. ` +
-                "Return no metadata and no instructions.",
+              text: userPrompt,
             },
             {
               type: "file",
@@ -341,7 +508,7 @@ export async function POST(request: NextRequest) {
           "A faithful ordered list of only question numbers, question text, and marks.",
       }),
       abortSignal: request.signal,
-      maxOutputTokens: 12000,
+      maxOutputTokens: PDF_MARKDOWN_MAX_OUTPUT_TOKENS,
       experimental_include: {
         requestBody: false,
       },
@@ -356,6 +523,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    schedulePdfMarkdownAiCapture(captureEventPromise);
+
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream<Uint8Array>({
@@ -368,6 +537,10 @@ export async function POST(request: NextRequest) {
           const streamedQuestions: PdfPaperQuestion[] = [];
 
           for await (const question of result.elementStream) {
+            if (firstQuestionAt === null) {
+              firstQuestionAt = Date.now();
+            }
+
             streamedQuestions.push(question);
             enqueue({
               type: "partial",
@@ -383,23 +556,89 @@ export async function POST(request: NextRequest) {
             schemaVersion: "exam-questions-v1",
             questions,
           });
+          const markdown = buildPdfPaperMarkdown(paper);
           enqueue({
             type: "done",
             paper,
-            markdown: buildPdfPaperMarkdown(paper),
+            markdown,
             model: modelId,
           });
+          resolveCaptureEventOnce({
+            distinctId,
+            fileBytes: pdfBuffer.byteLength,
+            fileName: parsedBody.fileName,
+            fileUrl: fileUrl.href,
+            finishReason: result.finishReason,
+            httpStatus: 200,
+            isError: false,
+            latencySeconds: Math.max(Date.now() - llmStartedAt, 0) / 1000,
+            markdown,
+            modelId,
+            provider,
+            questionCount: paper.questions.length,
+            response: result.response,
+            sessionId: parsedBody.posthogSessionId ?? undefined,
+            spanId,
+            timeToFirstQuestionSeconds:
+              firstQuestionAt === null
+                ? undefined
+                : Math.max(firstQuestionAt - llmStartedAt, 0) / 1000,
+            traceId,
+            usage: result.totalUsage,
+            userPrompt,
+          });
         } catch (error) {
+          const errorMessage = getStreamErrorMessage(error, streamError);
           enqueue({
             type: "error",
-            error: getStreamErrorMessage(error, streamError),
+            error: errorMessage,
+          });
+          resolveCaptureEventOnce({
+            distinctId,
+            error: errorMessage,
+            fileBytes: pdfBuffer.byteLength,
+            fileName: parsedBody.fileName,
+            fileUrl: fileUrl.href,
+            httpStatus: request.signal.aborted ? 499 : 500,
+            isError: true,
+            latencySeconds: Math.max(Date.now() - llmStartedAt, 0) / 1000,
+            modelId,
+            provider,
+            sessionId: parsedBody.posthogSessionId ?? undefined,
+            spanId,
+            timeToFirstQuestionSeconds:
+              firstQuestionAt === null
+                ? undefined
+                : Math.max(firstQuestionAt - llmStartedAt, 0) / 1000,
+            traceId,
+            userPrompt,
           });
         } finally {
+          resolveCaptureEventOnce(null);
           controller.close();
         }
       },
       cancel() {
-        request.signal.throwIfAborted();
+        resolveCaptureEventOnce({
+          distinctId,
+          error: "PDF Markdown conversion was cancelled.",
+          fileBytes: pdfBuffer.byteLength,
+          fileName: parsedBody.fileName,
+          fileUrl: fileUrl.href,
+          httpStatus: 499,
+          isError: true,
+          latencySeconds: Math.max(Date.now() - llmStartedAt, 0) / 1000,
+          modelId,
+          provider,
+          sessionId: parsedBody.posthogSessionId ?? undefined,
+          spanId,
+          timeToFirstQuestionSeconds:
+            firstQuestionAt === null
+              ? undefined
+              : Math.max(firstQuestionAt - llmStartedAt, 0) / 1000,
+          traceId,
+          userPrompt,
+        });
       },
     });
 
