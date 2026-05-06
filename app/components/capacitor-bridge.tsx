@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { buildIosNativeTabConfigs } from "@/lib/ios-native-tab-config";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 
@@ -47,11 +48,23 @@ function isDarkTheme() {
   );
 }
 
+function currentLocationPath() {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
+function normalizeNativeTabRoute(route: unknown) {
+  if (typeof route !== "string" || route.length === 0) return "/";
+  return route.startsWith("/") ? route : `/${route}`;
+}
+
 export default function CapacitorBridge() {
+  const router = useRouter();
+
   useEffect(() => {
     let cancelled = false;
     let cleanupStatusBar: (() => void) | undefined;
     let cleanupNativeBridge: (() => void) | undefined;
+    let cleanupNativeTabs: (() => void) | undefined;
 
     void (async () => {
       const { Capacitor } = await import("@capacitor/core");
@@ -98,6 +111,7 @@ export default function CapacitorBridge() {
         try {
           const { NativeTabs } = await import("capacitor-native-tabs");
           const tabs = buildIosNativeTabConfigs();
+          tabs.forEach((tab) => router.prefetch(normalizeNativeTabRoute(tab.route)));
           const pathname = window.location.pathname;
           const idx = APP_NAV_LINKS.findIndex((link) =>
             link.matches ? link.matches(pathname) : pathname === link.href,
@@ -109,17 +123,15 @@ export default function CapacitorBridge() {
             platform === "ios" ? "data-native-ios-tabs" : "data-native-android-tabs",
             "true",
           );
-          await NativeTabs.addListener("tabSelected", (info) => {
+          const tabSelectionListener = await NativeTabs.addListener("tabSelected", (info) => {
             const route = info.tab.route ?? "/";
             const nextPath = route.startsWith("/") ? route : `/${route}`;
-            if (nextPath !== window.location.pathname) {
-              window.dispatchEvent(
-                new CustomEvent("examcooker:native-tab-route", {
-                  detail: { path: nextPath },
-                }),
-              );
-            }
+            if (nextPath === currentLocationPath()) return;
+            router.push(nextPath);
           });
+          cleanupNativeTabs = () => {
+            void tabSelectionListener.remove();
+          };
           await NativeTabs.showTabBar().catch(() => undefined);
         } catch {
           document.documentElement.removeAttribute("data-native-tabs");
@@ -205,6 +217,7 @@ export default function CapacitorBridge() {
       cancelled = true;
       cleanupStatusBar?.();
       cleanupNativeBridge?.();
+      cleanupNativeTabs?.();
       const root = document.documentElement;
       delete root.dataset.nativePlatform;
       root.removeAttribute("data-native-tabs");
@@ -213,7 +226,7 @@ export default function CapacitorBridge() {
       root.removeAttribute("data-native-ios-tabs");
       root.removeAttribute("data-native-android-tabs");
     };
-  }, []);
+  }, [router]);
 
   return null;
 }

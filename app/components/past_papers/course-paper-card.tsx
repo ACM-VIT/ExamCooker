@@ -34,6 +34,11 @@ type Props = {
     index: number;
     selected: boolean;
     onToggleSelect: (id: string) => void;
+    splitDragEnabled?: boolean;
+    onSplitDragStart?: (paper: Paper, point: { x: number; y: number }) => void;
+    onSplitDragMove?: (point: { x: number; y: number }) => void;
+    onSplitDragEnd?: (point: { x: number; y: number }) => void;
+    onSplitDragCancel?: () => void;
 };
 
 function CoursePaperCard({
@@ -43,9 +48,21 @@ function CoursePaperCard({
     index,
     selected,
     onToggleSelect,
+    splitDragEnabled = false,
+    onSplitDragStart,
+    onSplitDragMove,
+    onSplitDragEnd,
+    onSplitDragCancel,
 }: Props) {
     const href = `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`;
     const hasWarmedPdf = useRef(false);
+    const splitDragRef = useRef<{
+        pointerId: number;
+        startX: number;
+        startY: number;
+        dragging: boolean;
+    } | null>(null);
+    const suppressNextClick = useRef(false);
     const linkAriaLabel = [
         "Open",
         paper.examType ? examTypeLabel(paper.examType) : null,
@@ -97,17 +114,110 @@ function CoursePaperCard({
         window.open(paper.fileUrl, "_blank", "noopener,noreferrer");
     }, [paper.fileUrl]);
 
+    const resetSuppressedClick = useCallback(() => {
+        window.setTimeout(() => {
+            suppressNextClick.current = false;
+        }, 0);
+    }, []);
+
+    const handleSplitPointerDown = useCallback((e: React.PointerEvent<HTMLAnchorElement>) => {
+        if (!splitDragEnabled || e.button !== 0) return;
+        const target = e.target;
+        if (target instanceof HTMLElement && target.closest("button")) return;
+
+        splitDragRef.current = {
+            pointerId: e.pointerId,
+            startX: e.clientX,
+            startY: e.clientY,
+            dragging: false,
+        };
+    }, [splitDragEnabled]);
+
+    const handleSplitPointerMove = useCallback((e: React.PointerEvent<HTMLAnchorElement>) => {
+        const current = splitDragRef.current;
+        if (!current || current.pointerId !== e.pointerId) return;
+
+        const deltaX = e.clientX - current.startX;
+        const deltaY = e.clientY - current.startY;
+        const absoluteX = Math.abs(deltaX);
+        const absoluteY = Math.abs(deltaY);
+
+        if (!current.dragging) {
+            if (absoluteX < 14 && absoluteY < 14) return;
+            if (absoluteX < absoluteY * 1.15) {
+                splitDragRef.current = null;
+                return;
+            }
+
+            current.dragging = true;
+            suppressNextClick.current = true;
+            handleWarmPdf();
+            e.currentTarget.setPointerCapture(e.pointerId);
+            onSplitDragStart?.(paper, { x: e.clientX, y: e.clientY });
+        }
+
+        e.preventDefault();
+        onSplitDragMove?.({ x: e.clientX, y: e.clientY });
+    }, [handleWarmPdf, onSplitDragMove, onSplitDragStart, paper]);
+
+    const handleSplitPointerUp = useCallback((e: React.PointerEvent<HTMLAnchorElement>) => {
+        const current = splitDragRef.current;
+        if (!current || current.pointerId !== e.pointerId) return;
+
+        splitDragRef.current = null;
+        if (!current.dragging) return;
+
+        e.preventDefault();
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+            // Pointer capture may already be released after a browser gesture.
+        }
+        onSplitDragEnd?.({ x: e.clientX, y: e.clientY });
+        resetSuppressedClick();
+    }, [onSplitDragEnd, resetSuppressedClick]);
+
+    const handleSplitPointerCancel = useCallback((e: React.PointerEvent<HTMLAnchorElement>) => {
+        const current = splitDragRef.current;
+        if (!current || current.pointerId !== e.pointerId) return;
+
+        splitDragRef.current = null;
+        if (!current.dragging) return;
+
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+            // Pointer capture may already be released after a browser gesture.
+        }
+        onSplitDragCancel?.();
+        resetSuppressedClick();
+    }, [onSplitDragCancel, resetSuppressedClick]);
+
+    const handleClickCapture = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
+        if (!suppressNextClick.current) return;
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
     return (
         <Link
             href={href}
+            draggable={false}
             prefetch={index < 3}
             transitionTypes={["nav-forward"]}
             aria-label={linkAriaLabel}
+            onClickCapture={handleClickCapture}
             onFocus={handleWarmPdf}
             onMouseDown={handleWarmPdf}
+            onPointerDown={handleSplitPointerDown}
+            onPointerMove={handleSplitPointerMove}
+            onPointerUp={handleSplitPointerUp}
+            onPointerCancel={handleSplitPointerCancel}
             onPointerEnter={handleWarmPdf}
             onTouchStart={handleWarmPdf}
-            className={`group relative flex h-full flex-col border-2 p-3 text-black transition duration-200 hover:scale-[1.02] hover:shadow-xl dark:text-[#D5D5D5] ${selected
+            className={`group relative flex h-full flex-col border-2 p-3 text-black transition duration-200 hover:scale-[1.02] hover:shadow-xl dark:text-[#D5D5D5] ${
+                splitDragEnabled ? "[touch-action:pan-y]" : ""
+            } ${selected
                     ? "border-black bg-[#5FC4E7] shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:border-[#3BF4C7] dark:bg-[#0C1222] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)]"
                     : "border-[#5FC4E7] bg-[#5FC4E7] hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
                 }`}

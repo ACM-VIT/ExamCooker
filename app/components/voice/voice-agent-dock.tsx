@@ -306,7 +306,8 @@ export default function VoiceAgentDock({
           entered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
         )}
         style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)",
+          paddingBottom:
+            "calc(var(--ec-voice-agent-bottom-offset, 0px) + env(safe-area-inset-bottom) + 1rem)",
         }}
       >
         <StatusCaption text={captionText} tone={captionTone} />

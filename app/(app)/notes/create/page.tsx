@@ -2,7 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import UploadFile from "@/app/components/upload-file";
 import DirectionalTransition from "@/app/components/common/directional-transition";
-import { getCourseSearchRecords } from "@/lib/data/course-catalog";
+import { getCoursePickerRecords } from "@/lib/data/course-catalog";
 
 export const metadata: Metadata = {
     title: "Upload notes",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 async function NewNotePage() {
-    const courses = await getCourseSearchRecords();
+    const courses = await getCoursePickerRecords();
     return (
         <DirectionalTransition>
             <div className="create-notes">

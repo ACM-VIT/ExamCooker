@@ -12,5 +12,5 @@ type Props = {
 export default function CourseBreadcrumbRail({ items, className }: Props) {
     const merged = useMergedBreadcrumbItems(items);
 
-    return <TopBreadcrumbBar items={merged} className={className} />;
+    return <TopBreadcrumbBar items={merged} className={className} variant="inline" />;
 }
