@@ -10,13 +10,18 @@ function GradientText({ children }: { children: React.ReactNode }) {
 }
 
 export default function ExamCookerLogo() {
-    return <div className="flex flex-row items-center">
+    return <div className="inline-flex flex-row items-center gap-2 border-0 bg-transparent p-0 shadow-none">
         <Image
             src={ExamCookerLogoIcon}
             alt='ExamCooker Logo Icon'
+            className="h-9 w-9 sm:h-11 sm:w-11"
         />
-        <h2>Exam</h2>
-        <GradientText><h2>Cooker</h2></GradientText>
+        <h2 className="text-3xl font-extrabold leading-none sm:text-4xl">Exam</h2>
+        <GradientText>
+            <h2 className="text-3xl font-extrabold leading-none sm:text-4xl">
+                Cooker
+            </h2>
+        </GradientText>
     </div>
 
 }
