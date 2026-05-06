@@ -91,28 +91,6 @@ const sections: LegalSection[] = [
         ],
     },
     {
-        id: "third-parties",
-        title: "Third Parties",
-        body: [
-            {
-                label: "Google and Apple.",
-                text: "Google OAuth and Sign in with Apple are used for sign-in. Google user data received through Google sign-in is handled as described in the Google User Data section.",
-            },
-            {
-                label: "Hosting, database, and storage providers.",
-                text: "ExamCooker uses Microsoft Azure for hosting and Azure Blob Storage for object storage. ExamCooker may also store or serve some public PDFs and generated file assets from Google Cloud Storage. Account and application records are stored in CockroachDB.",
-            },
-            {
-                label: "OpenAI.",
-                text: "AI title generation, voice guide sessions, and PDF question-answering can send relevant prompts, document context, and file URLs to OpenAI.",
-            },
-            {
-                label: "PostHog and Google Analytics.",
-                text: "When configured, these services collect product analytics, page views, feature events, errors, and AI usage telemetry.",
-            },
-        ],
-    },
-    {
         id: "third-party-processors",
         title: "Third-Party Processors",
         body: [
