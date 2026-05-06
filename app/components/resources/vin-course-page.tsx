@@ -64,7 +64,7 @@ export default function VinCoursePage({
 
     return (
         <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-            <div className="mx-auto -mt-10 flex w-full max-w-7xl flex-col gap-4 px-3 pt-0 sm:mt-0 sm:gap-8 sm:px-6 sm:pt-8 lg:px-10 lg:pt-10">
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 pb-4 pt-4 sm:gap-8 sm:px-6 sm:pt-8 lg:px-10 lg:pt-10">
                 {breadcrumbs?.length ? (
                     <VinCourseBreadcrumbs breadcrumbs={breadcrumbs} />
                 ) : null}
