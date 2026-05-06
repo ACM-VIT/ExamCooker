@@ -9,12 +9,12 @@ export default function HeroFrame({ children }: { children: ReactNode }) {
     return (
         <div
             className={`relative transition-colors duration-500 ${
-                videoReady ? "md:text-white dark:md:text-white" : ""
+                videoReady ? "min-[600px]:text-white dark:min-[600px]:text-white" : ""
             }`}
         >
             <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 z-0 hidden overflow-hidden md:block"
+                className="pointer-events-none absolute inset-0 z-0 hidden overflow-hidden min-[600px]:block"
             >
                 <HeroBackdropVideo onReady={() => setVideoReady(true)} />
                 <div className="absolute inset-0 bg-[#C2E6EC]/10 dark:bg-[hsl(224,48%,9%)]/45" />

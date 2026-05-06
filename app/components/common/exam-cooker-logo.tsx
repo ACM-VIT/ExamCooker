@@ -16,12 +16,10 @@ export default function ExamCookerLogo() {
             alt='ExamCooker Logo Icon'
             className="h-9 w-9 sm:h-11 sm:w-11"
         />
-        <h2 className="text-3xl font-extrabold leading-none sm:text-4xl">Exam</h2>
-        <GradientText>
-            <h2 className="text-3xl font-extrabold leading-none sm:text-4xl">
-                Cooker
-            </h2>
-        </GradientText>
+        <h2 className="text-3xl font-extrabold leading-none sm:text-4xl">
+            Exam
+            <GradientText>Cooker</GradientText>
+        </h2>
     </div>
 
 }

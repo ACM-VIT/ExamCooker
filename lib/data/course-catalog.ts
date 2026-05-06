@@ -171,6 +171,25 @@ export async function getCourseSearchRecords(): Promise<CourseSearchRecord[]> {
         }));
 }
 
+export async function getCoursePickerRecords(): Promise<CourseSearchRecord[]> {
+    "use cache";
+    cacheTag("courses", "notes", "past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const courses = await getCourseCatalogRows();
+
+    return courses
+        .map((courseRow) => ({
+            id: courseRow.id,
+            code: courseRow.code,
+            title: courseRow.title,
+            paperCount: courseRow.paperCount,
+            noteCount: courseRow.noteCount,
+            aliases: courseRow.aliases,
+        }))
+        .sort((a, b) => a.code.localeCompare(b.code));
+}
+
 const getCourseSearchIndex = cache(async () => {
     const records = await getCourseSearchRecords();
 

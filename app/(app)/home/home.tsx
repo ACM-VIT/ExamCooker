@@ -81,7 +81,7 @@ const Home = () => {
                             <HomeSearchSection />
                         </div>
 
-                        <div className="pb-4 md:pb-6">
+                        <div className="relative pb-4 max-lg:-top-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-6 lg:pb-8">
                             <Suspense fallback={null}>
                                 <HomeMarqueeSection />
                             </Suspense>
