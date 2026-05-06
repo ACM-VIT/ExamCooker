@@ -42,8 +42,9 @@ import {
   Plus,
   Sparkles,
   Sun,
+  X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Streamdown,
   type Components as StreamdownComponents,
@@ -54,7 +55,7 @@ import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
-import { capturePdfDownloaded } from "@/lib/posthog/client";
+import { capturePdfDownloaded, getPostHogSessionId } from "@/lib/posthog/client";
 import {
   clearActivePdfSnapshot,
   setActivePdfSnapshot,
@@ -201,6 +202,7 @@ async function loadPdfPaper(input: {
     body: JSON.stringify({
       fileName: input.fileName,
       fileUrl: input.fileUrl,
+      posthogSessionId: getPostHogSessionId(),
     }),
     cache: "no-store",
     signal: input.signal,
@@ -728,6 +730,7 @@ function PageRenderLayer({
 
 function ViewerToolbar({
   documentId,
+  enableQuestionMarkdown,
   fileUrl,
   fileName,
   isFullScreen,
@@ -742,6 +745,7 @@ function ViewerToolbar({
   onViewMarkdown,
 }: {
   documentId: string;
+  enableQuestionMarkdown: boolean;
   fileUrl: string;
   fileName: string;
   isFullScreen: boolean;
@@ -758,6 +762,8 @@ function ViewerToolbar({
   const [pageInput, setPageInput] = useState("1");
   const [isDownloading, setIsDownloading] = useState(false);
   const [isMarkdownMenuOpen, setIsMarkdownMenuOpen] = useState(false);
+  const [isMarkdownTooltipVisible, setIsMarkdownTooltipVisible] = useState(true);
+  const markdownTooltipId = useId();
   const markdownMenuRef = useRef<HTMLDivElement>(null);
   const { provides: scrollControls, state: scrollState } = useScroll(documentId);
   const { provides: zoomControls, state: zoomState } = useZoom(documentId);
@@ -784,6 +790,22 @@ function ViewerToolbar({
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [isMarkdownMenuOpen]);
+
+  useEffect(() => {
+    if (
+      !enableQuestionMarkdown ||
+      !isMarkdownTooltipVisible ||
+      isMarkdownMenuOpen
+    ) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsMarkdownTooltipVisible(false);
+    }, 6500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [enableQuestionMarkdown, isMarkdownMenuOpen, isMarkdownTooltipVisible]);
 
   const scrollToPage = useCallback(
     (pageNumber: number) => {
@@ -846,53 +868,85 @@ function ViewerToolbar({
           >
             <Download className="h-4 w-4" aria-hidden="true" />
           </button>
-          <div ref={markdownMenuRef} className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setIsMarkdownMenuOpen((currentValue) => !currentValue)
-              }
-              className={TOOLBAR_BUTTON_CLASS}
-              aria-label="AI Markdown actions"
-              aria-expanded={isMarkdownMenuOpen}
-              title="AI Markdown actions"
-            >
-              {isMarkdownBusy ? (
-                <Sparkles className="h-4 w-4 animate-pulse" aria-hidden="true" />
-              ) : copyStatus === "copied" ? (
-                <Check className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-              )}
-            </button>
-            {isMarkdownMenuOpen ? (
-              <div className="absolute left-0 top-10 z-30 w-52 overflow-hidden border border-black/10 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-gray-900">
-                <button
-                  type="button"
-                  onClick={handleViewMarkdown}
-                  className={MARKDOWN_ACTION_BUTTON_CLASS}
+          {enableQuestionMarkdown ? (
+            <div ref={markdownMenuRef} className="group/markdown relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMarkdownTooltipVisible(false);
+                  setIsMarkdownMenuOpen((currentValue) => !currentValue);
+                }}
+                className={TOOLBAR_BUTTON_CLASS}
+                aria-label="AI Markdown actions"
+                aria-describedby={
+                  isMarkdownTooltipVisible ? markdownTooltipId : undefined
+                }
+                aria-expanded={isMarkdownMenuOpen}
+              >
+                {isMarkdownBusy ? (
+                  <Sparkles className="h-4 w-4 animate-pulse" aria-hidden="true" />
+                ) : copyStatus === "copied" ? (
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+              {!isMarkdownMenuOpen && isMarkdownTooltipVisible ? (
+                <div
+                  id={markdownTooltipId}
+                  role="tooltip"
+                  className="absolute left-0 top-10 z-20 hidden w-64 translate-y-0 border border-black/10 bg-white/95 p-3 pr-9 text-left opacity-100 shadow-xl backdrop-blur dark:border-white/10 dark:bg-gray-900/95 sm:block"
                 >
-                  <Eye className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span>View as Markdown</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopyMarkdown}
-                  className={MARKDOWN_ACTION_BUTTON_CLASS}
-                  disabled={isMarkdownBusy || copyStatus === "copying"}
-                >
-                  {copyStatus === "copied" ? (
-                    <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  ) : (
-                    <Clipboard className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  )}
-                  <span>
-                    {copyStatus === "copied" ? "Copied Markdown" : "Copy as Markdown"}
-                  </span>
-                </button>
-              </div>
-            ) : null}
-          </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMarkdownTooltipVisible(false)}
+                    className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded text-gray-400 transition hover:bg-black/5 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-gray-200 dark:focus-visible:ring-gray-500"
+                    aria-label="Dismiss Markdown tip"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="rounded-sm bg-[#253EE0]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#253EE0] dark:bg-[#3BF4C7]/10 dark:text-[#3BF4C7]">
+                      New
+                    </span>
+                    <span className="text-xs font-semibold text-gray-950 dark:text-gray-50">
+                      Question Markdown
+                    </span>
+                  </div>
+                  <p className="text-xs leading-5 text-gray-600 dark:text-gray-300">
+                    Turn this paper into a clean question list, then view it or copy it.
+                  </p>
+                </div>
+              ) : null}
+              {isMarkdownMenuOpen ? (
+                <div className="absolute left-0 top-10 z-30 w-52 overflow-hidden border border-black/10 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-gray-900">
+                  <button
+                    type="button"
+                    onClick={handleViewMarkdown}
+                    className={MARKDOWN_ACTION_BUTTON_CLASS}
+                  >
+                    <Eye className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span>View as Markdown</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyMarkdown}
+                    className={MARKDOWN_ACTION_BUTTON_CLASS}
+                    disabled={isMarkdownBusy || copyStatus === "copying"}
+                  >
+                    {copyStatus === "copied" ? (
+                      <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    ) : (
+                      <Clipboard className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    )}
+                    <span>
+                      {copyStatus === "copied" ? "Copied Markdown" : "Copy as Markdown"}
+                    </span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {!isPdfMode ? (
             <button
               type="button"
@@ -1076,6 +1130,7 @@ function PdfVoiceBridge({
 
 function LoadedDocumentSurface({
   documentId,
+  enableQuestionMarkdown,
   fileUrl,
   fileName,
   isFullScreen,
@@ -1084,6 +1139,7 @@ function LoadedDocumentSurface({
   onToggleFullScreen,
 }: {
   documentId: string;
+  enableQuestionMarkdown: boolean;
   fileUrl: string;
   fileName: string;
   isFullScreen: boolean;
@@ -1164,6 +1220,10 @@ function LoadedDocumentSurface({
       force?: boolean;
       showPaper?: boolean;
     } = {}) => {
+      if (!enableQuestionMarkdown) {
+        return;
+      }
+
       if (showPaper) {
         setViewMode("paper");
       }
@@ -1232,7 +1292,14 @@ function LoadedDocumentSurface({
         }
       }
     },
-    [copyMarkdownText, fileName, fileUrl, paperMarkdown, paperStatus],
+    [
+      copyMarkdownText,
+      enableQuestionMarkdown,
+      fileName,
+      fileUrl,
+      paperMarkdown,
+      paperStatus,
+    ],
   );
 
   const handleViewMarkdown = useCallback(() => {
@@ -1256,6 +1323,7 @@ function LoadedDocumentSurface({
       />
       <ViewerToolbar
         documentId={documentId}
+        enableQuestionMarkdown={enableQuestionMarkdown}
         fileUrl={fileUrl}
         fileName={fileName}
         isFullScreen={isFullScreen}
@@ -1312,6 +1380,7 @@ function LoadedDocumentSurface({
 
 function DocumentViewport({
   documentId,
+  enableQuestionMarkdown,
   fileUrl,
   fileName,
   isFullScreen,
@@ -1320,6 +1389,7 @@ function DocumentViewport({
   onToggleFullScreen,
 }: {
   documentId: string;
+  enableQuestionMarkdown: boolean;
   fileUrl: string;
   fileName: string;
   isFullScreen: boolean;
@@ -1346,6 +1416,7 @@ function DocumentViewport({
         return (
           <LoadedDocumentSurface
             documentId={documentId}
+            enableQuestionMarkdown={enableQuestionMarkdown}
             fileUrl={fileUrl}
             fileName={fileName}
             isFullScreen={isFullScreen}
@@ -1360,9 +1431,11 @@ function DocumentViewport({
 }
 
 export default function PDFViewer({
+  enableQuestionMarkdown = false,
   fileUrl,
   fileName,
 }: {
+  enableQuestionMarkdown?: boolean;
   fileUrl: string;
   fileName?: string;
 }) {
@@ -1543,6 +1616,7 @@ export default function PDFViewer({
           activeDocumentId ? (
             <DocumentViewport
               documentId={activeDocumentId}
+              enableQuestionMarkdown={enableQuestionMarkdown}
               fileUrl={fileUrl}
               fileName={downloadFileName}
               isFullScreen={isFullScreen}

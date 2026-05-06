@@ -1,7 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
-const DEFAULT_PDF_MARKDOWN_MODEL = "gpt-5.4-nano";
+const DEFAULT_PDF_MARKDOWN_MODEL = "gpt-5.4-mini";
 
 function normalizeOpenAiModelId(modelId: string) {
   return modelId.replace(/^openai\//, "");

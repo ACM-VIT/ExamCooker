@@ -21,9 +21,11 @@ function getRemoteOrigin(url: string) {
 }
 
 export default function PDFViewerClient({
+  enableQuestionMarkdown = false,
   fileUrl,
   fileName,
 }: {
+  enableQuestionMarkdown?: boolean;
   fileUrl: string;
   fileName?: string;
 }) {
@@ -32,5 +34,12 @@ export default function PDFViewerClient({
     preconnect(remoteOrigin, { crossOrigin: "anonymous" });
   }
 
-  return <PDFViewer key={fileUrl} fileUrl={fileUrl} fileName={fileName} />;
+  return (
+    <PDFViewer
+      key={fileUrl}
+      enableQuestionMarkdown={enableQuestionMarkdown}
+      fileUrl={fileUrl}
+      fileName={fileName}
+    />
+  );
 }
