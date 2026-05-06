@@ -19,9 +19,12 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
 
     const applyTheme = (next: boolean) => {
         const root = document.documentElement;
+        const background = next ? "#0C1222" : "#C2E6EC";
         root.classList.toggle("dark", next);
         root.dataset.theme = next ? "dark" : "light";
         root.style.colorScheme = next ? "dark" : "light";
+        root.style.setProperty("--ec-app-bg", background);
+        root.style.backgroundColor = background;
         localStorage.setItem("theme", next ? "dark" : "light");
         setDarkMode(next);
     };
