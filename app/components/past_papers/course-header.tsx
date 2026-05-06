@@ -28,7 +28,7 @@ export default function CourseHeader({
         ];
 
     return (
-        <header className="flex flex-col gap-4">
+        <header className="flex flex-col gap-3">
             <CourseBreadcrumbRail items={items} />
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0 sm:flex-1">
