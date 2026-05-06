@@ -34,8 +34,7 @@ function RenderedRouteBeacon() {
     return null;
 }
 
-function MobileLogoLink() {
-    const pathname = usePathname();
+function shouldShowMobileLogo(pathname: string | null) {
     const pathSegments = (pathname ?? "").split("/").filter(Boolean);
     const isHome = pathSegments.length === 0;
     const hasPastPapersBreadcrumbBar =
@@ -47,35 +46,37 @@ function MobileLogoLink() {
     const hasNoteOrPaperBar =
         (pathSegments[0] === "notes" && pathSegments[1] !== undefined) ||
         (pathSegments[0] === "resources" && pathSegments.length >= 2);
-    const hasBreadcrumbBar =
-        hasPastPapersBreadcrumbBar ||
-        hasSyllabusBreadcrumbBar ||
-        hasNoteOrPaperBar;
-    const showMobileLogo = !hasBreadcrumbBar && !isHome;
 
-    if (!showMobileLogo) return null;
+    return !isHome && !hasPastPapersBreadcrumbBar && !hasSyllabusBreadcrumbBar && !hasNoteOrPaperBar;
+}
+
+function MobileStaticLogo() {
+    const pathname = usePathname();
+
+    if (!shouldShowMobileLogo(pathname)) return null;
 
     return (
-        <Link
-            href="/"
-            aria-label="ExamCooker home"
-            style={{ viewTransitionName: "persistent-mobile-logo" }}
-            className="pointer-events-auto relative flex h-11 max-w-full min-w-0 items-center gap-2.5 rounded-xl border border-black/10 bg-white/90 px-3 text-[15px] font-semibold leading-none text-black shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur transition-colors hover:border-black/25 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]/90 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50"
-        >
-            <AppImage
-                src={ExamCookerLogoIcon}
-                alt="ExamCooker"
-                width={20}
-                height={20}
-                className="h-5 w-5 shrink-0"
-            />
-            <span className="truncate pt-px">
-                Exam
-                <span className="bg-gradient-to-tr from-[#253EE0] to-[#27BAEC] bg-clip-text text-transparent">
-                    Cooker
+        <div className="mx-auto flex w-full max-w-7xl px-3 lg:hidden">
+            <Link
+                href="/"
+                aria-label="ExamCooker home"
+                className="inline-flex h-11 max-w-full min-w-0 items-center gap-2 bg-transparent text-[15px] font-semibold leading-none text-black shadow-none dark:text-[#D5D5D5]"
+            >
+                <AppImage
+                    src={ExamCookerLogoIcon}
+                    alt="ExamCooker"
+                    width={20}
+                    height={20}
+                    className="h-5 w-5 shrink-0"
+                />
+                <span className="truncate pt-px">
+                    Exam
+                    <span className="bg-gradient-to-tr from-[#253EE0] to-[#27BAEC] bg-clip-text text-transparent">
+                        Cooker
+                    </span>
                 </span>
-            </span>
-        </Link>
+            </Link>
+        </div>
     );
 }
 
@@ -87,15 +88,11 @@ function MobileChromeHeader({
     toggleNavbar: () => void;
 }) {
     return (
-        <header className="pointer-events-none fixed inset-x-0 top-0 z-[60] lg:hidden">
+        <header className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] translate-y-0 transform-none lg:hidden">
             <div
-                className="pointer-events-none flex items-center gap-2 pb-2 pt-[env(safe-area-inset-top)] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
+                className="pointer-events-none flex h-full items-start gap-2 pt-[env(safe-area-inset-top)] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
             >
-                <div className="flex min-h-11 min-w-0 flex-1 items-center justify-start">
-                    <Suspense fallback={null}>
-                        <MobileLogoLink />
-                    </Suspense>
-                </div>
+                <div className="min-h-11 min-w-0 flex-1" aria-hidden />
                 <button
                     type="button"
                     onClick={toggleNavbar}
@@ -192,7 +189,10 @@ function ClientShell({
                     >
                         <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
                     </Suspense>
-                    <main className="ec-app-main min-w-0 flex-1 pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+3.25rem)] lg:pb-0 lg:pl-14 lg:pt-0">
+                    <main className="ec-app-main min-w-0 flex-1 pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] lg:pb-0 lg:pl-14 lg:pt-0">
+                        <Suspense fallback={null}>
+                            <MobileStaticLogo />
+                        </Suspense>
                         {children}
                     </main>
                     <Suspense fallback={null}>
