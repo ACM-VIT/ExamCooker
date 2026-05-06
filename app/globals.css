@@ -83,14 +83,30 @@
     width: var(--paper-split-width);
 }
 
+.paper-split-drop-zone {
+    width: var(--paper-split-width);
+}
+
+.paper-split-drop-zone-left {
+    left: 0;
+}
+
+.paper-split-drop-zone-right {
+    right: 0;
+}
+
 .paper-split-panel[data-paper-split-side="left"] {
     left: 0;
+    right: auto;
     border-right-width: 1px;
+    border-left-width: 0;
 }
 
 .paper-split-panel[data-paper-split-side="right"] {
+    left: auto;
     right: 0;
     border-left-width: 1px;
+    border-right-width: 0;
 }
 
 @media (min-width: 768px) {
@@ -101,10 +117,23 @@
     .paper-split-shell[data-paper-split-side="right"] {
         padding-right: var(--paper-split-width);
     }
+
+    .paper-split-shell[data-paper-split-side] .course-paper-grid {
+        justify-content: flex-start;
+    }
+
+    .paper-split-shell[data-paper-split-side] .course-paper-grid-item {
+        flex: 0 0 calc((100% - 0.75rem) / 2);
+        max-width: calc((100% - 0.75rem) / 2);
+    }
 }
 
 @media (min-width: 1024px) {
     .paper-split-panel[data-paper-split-side="left"] {
+        left: 3.5rem;
+    }
+
+    .paper-split-drop-zone-left {
         left: 3.5rem;
     }
 }

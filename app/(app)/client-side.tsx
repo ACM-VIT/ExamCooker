@@ -10,6 +10,7 @@ import MobileTabBar from "@/app/components/mobile-tab-bar";
 import { NavFromProvider } from "@/app/components/common/nav-from-provider";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 import { MoreHorizontal, X } from "lucide-react";
+import { PaperSplitViewProvider } from "@/app/components/past_papers/paper-split-view";
 
 function RouteEffects({ onPathChange }: { onPathChange: () => void }) {
     const pathname = usePathname();
@@ -190,10 +191,12 @@ function ClientShell({
                         <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
                     </Suspense>
                     <main className="ec-app-main min-w-0 flex-1 pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] lg:pb-0 lg:pl-14 lg:pt-0">
-                        <Suspense fallback={null}>
-                            <MobileStaticLogo />
-                        </Suspense>
-                        {children}
+                        <PaperSplitViewProvider>
+                            <Suspense fallback={null}>
+                                <MobileStaticLogo />
+                            </Suspense>
+                            {children}
+                        </PaperSplitViewProvider>
                     </main>
                     <Suspense fallback={null}>
                         <MobileTabBar toolsSheetOpen={isNavOn} />
