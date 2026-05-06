@@ -8,6 +8,7 @@ import UpsellModal from "@/app/components/ui/upsell-modal";
 import PwaServiceWorker from "@/app/components/pwa-service-worker";
 import CapacitorBridge from "@/app/components/capacitor-bridge";
 import NativeIosTabSync from "@/app/components/native-ios-tab-sync";
+import AndroidInstallBanner from "@/app/components/android-install-banner";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
@@ -108,6 +109,9 @@ export default function RootLayout({
                 </Suspense>
                 <Suspense fallback={null}>
                     <UpsellModal />
+                </Suspense>
+                <Suspense fallback={null}>
+                    <AndroidInstallBanner />
                 </Suspense>
                 <PwaServiceWorker />
                 <CapacitorBridge />
