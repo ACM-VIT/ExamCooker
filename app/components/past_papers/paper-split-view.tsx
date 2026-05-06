@@ -342,7 +342,9 @@ export function PaperSplitViewProvider({ children }: { children: ReactNode }) {
                 data-paper-split-side={activePaper && isSupported ? side : undefined}
                 style={{ "--paper-split-width": `${width}px` } as CSSProperties}
             >
-                {children}
+                <div className="paper-split-content-frame min-w-0">
+                    {children}
+                </div>
             </div>
             {activePaper && isSupported ? (
                 <PaperSplitPanel
