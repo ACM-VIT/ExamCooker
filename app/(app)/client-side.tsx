@@ -10,7 +10,10 @@ import MobileTabBar from "@/app/components/mobile-tab-bar";
 import { NavFromProvider } from "@/app/components/common/nav-from-provider";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 import { MoreHorizontal, X } from "lucide-react";
-import { PaperSplitViewProvider } from "@/app/components/past_papers/paper-split-view";
+import {
+    PaperSplitViewProvider,
+    usePaperSplitView,
+} from "@/app/components/past_papers/paper-split-view";
 
 function RouteEffects({ onPathChange }: { onPathChange: () => void }) {
     const pathname = usePathname();
@@ -53,11 +56,12 @@ function shouldShowMobileLogo(pathname: string | null) {
 
 function MobileStaticLogo() {
     const pathname = usePathname();
+    const { activePaper, isSupported } = usePaperSplitView();
 
-    if (!shouldShowMobileLogo(pathname)) return null;
+    if ((activePaper && isSupported) || !shouldShowMobileLogo(pathname)) return null;
 
     return (
-        <div className="mx-auto flex w-full max-w-7xl px-3 lg:hidden">
+        <div className="mobile-static-logo mx-auto flex w-full max-w-7xl px-3 lg:hidden">
             <Link
                 href="/"
                 aria-label="ExamCooker home"

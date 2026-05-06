@@ -31,7 +31,8 @@ import {
 } from "@/lib/structured-data";
 
 const PAGE_SIZE = 24;
-const COURSE_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
+const COURSE_GRID_CLASS =
+    "past-papers-course-grid grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
 type PastPapersSearchParams = { search?: string; page?: string };
 
 function buildSearchString(params: PastPapersSearchParams) {
@@ -89,7 +90,7 @@ function HeroStats({
         { label: "notes", value: stats.noteCount },
     ];
     return (
-        <div className="grid grid-cols-3 gap-2 text-black/70 dark:text-[#D5D5D5]/70 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-5 sm:gap-y-1">
+        <div className="past-papers-hero-stats grid grid-cols-3 gap-2 text-black/70 dark:text-[#D5D5D5]/70 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-5 sm:gap-y-1">
             {items.map((item, idx) => (
                 <div
                     key={item.label}
@@ -348,7 +349,7 @@ function SearchControls({
     searchable: Awaited<ReturnType<typeof getCourseSearchRecords>>;
 }) {
     return (
-        <div className="flex w-full items-stretch gap-2 sm:gap-3">
+        <div className="past-papers-search-controls flex w-full items-stretch gap-2 sm:gap-3">
             <div className="min-w-0 flex-1">
                 <PastPapersCourseSearch
                     courses={searchable}
@@ -365,7 +366,7 @@ function SearchControls({
 function SearchControlsShell() {
     return (
         <div
-            className="flex w-full items-stretch gap-2 sm:gap-3"
+            className="past-papers-search-controls flex w-full items-stretch gap-2 sm:gap-3"
             aria-hidden="true"
         >
             <div className="h-12 min-w-0 flex-1 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11" />
@@ -458,9 +459,9 @@ export default async function PastPapersPage({
                         buildFaqPage(faq),
                     ]}
                 />
-                <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
+                <div className="past-papers-home-shell mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
                     <section className="flex flex-col gap-5">
-                        <h1 className="whitespace-nowrap text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
+                        <h1 className="past-papers-home-title text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
                             Every paper.{" "}
                             <GradientText>Every course.</GradientText>
                         </h1>
