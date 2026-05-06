@@ -1,6 +1,11 @@
+import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
-const DEFAULT_PDF_MARKDOWN_MODEL = "openai/gpt-5.4-nano";
+const DEFAULT_PDF_MARKDOWN_MODEL = "gpt-5.4-nano";
+
+function normalizeOpenAiModelId(modelId: string) {
+  return modelId.replace(/^openai\//, "");
+}
 
 const NullableTextSchema = z.string().trim().nullable();
 
@@ -27,6 +32,21 @@ export type PdfPaperDocument = z.infer<typeof PdfPaperDocumentSchema>;
 
 export function getPdfMarkdownModel() {
   return process.env.AI_PDF_MARKDOWN_MODEL?.trim() || DEFAULT_PDF_MARKDOWN_MODEL;
+}
+
+export function getPdfMarkdownLanguageModel() {
+  const modelId = getPdfMarkdownModel();
+
+  const isOpenAiModel = !modelId.includes("/") || modelId.startsWith("openai/");
+  if (isOpenAiModel && process.env.OPENAI_API_KEY?.trim()) {
+    return openai.responses(normalizeOpenAiModelId(modelId));
+  }
+
+  if (process.env.AI_GATEWAY_API_KEY?.trim()) {
+    return modelId.includes("/") ? modelId : `openai/${modelId}`;
+  }
+
+  return openai.responses(normalizeOpenAiModelId(modelId));
 }
 
 export function buildPdfPaperMarkdown(paper: PdfPaperDocument) {
