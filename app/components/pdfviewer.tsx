@@ -22,18 +22,34 @@ import {
   ZoomPluginPackage,
   useZoom,
 } from "@embedpdf/plugin-zoom/react";
+import { cjk } from "@streamdown/cjk";
+import { code } from "@streamdown/code";
+import { createMathPlugin } from "@streamdown/math";
+import { mermaid } from "@streamdown/mermaid";
 import {
+  AlertCircle,
+  Check,
   ChevronLeft,
   ChevronRight,
+  Clipboard,
   Download,
+  Eye,
+  FileText,
   Maximize2,
   Minimize2,
   Moon,
   Minus,
   Plus,
+  Sparkles,
   Sun,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Streamdown,
+  type Components as StreamdownComponents,
+  type PluginConfig as StreamdownPluginConfig,
+} from "streamdown";
+import type { PdfPaperDocument } from "@/lib/ai/pdf-markdown";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
@@ -53,11 +69,289 @@ const MAX_ZOOM = 3;
 const SLOW_LOAD_NOTICE_MS = 3500;
 const PDF_DARK_MODE_FILTER =
   "invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95)";
+const PDF_MARKDOWN_ENDPOINT = "/api/pdf/markdown";
+const MARKDOWN_ACTION_BUTTON_CLASS =
+  "flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-800";
+const STREAMDOWN_MATH_PLUGIN = createMathPlugin({
+  singleDollarTextMath: true,
+});
+const STREAMDOWN_PLUGINS = {
+  cjk,
+  code,
+  math: STREAMDOWN_MATH_PLUGIN,
+  mermaid,
+} satisfies StreamdownPluginConfig;
+
+type PaperViewMode = "pdf" | "paper";
+type PaperStatus = "idle" | "loading" | "ready" | "error";
+type CopyStatus = "idle" | "copying" | "copied";
+
+type PdfPaperResponse = {
+  paper: PdfPaperDocument;
+  markdown: string;
+  model?: string;
+};
+
+type PdfPaperStreamEvent =
+  | { type: "partial"; paper?: unknown }
+  | { type: "done"; paper: PdfPaperDocument; markdown: string; model?: string }
+  | { type: "error"; error?: string };
 
 type PdfBufferState =
   | { status: "loading"; progress: number | null }
   | { status: "loaded"; buffer: ArrayBuffer }
   | { status: "error"; message: string };
+
+const MARKDOWN_COMPONENTS: StreamdownComponents = {
+  h1: ({ children }) => (
+    <h1 className="mt-0 border-b border-black/10 pb-2 text-xl font-bold leading-tight text-gray-950 dark:border-white/10 dark:text-gray-50">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="mt-7 text-lg font-bold leading-snug text-gray-950 dark:text-gray-50">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="mt-5 text-base font-bold leading-snug text-gray-950 dark:text-gray-50">
+      {children}
+    </h3>
+  ),
+  h4: ({ children }) => (
+    <h4 className="mt-4 text-sm font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200">
+      {children}
+    </h4>
+  ),
+  p: ({ children }) => (
+    <p className="my-3 text-sm leading-7 text-gray-800 dark:text-gray-200">
+      {children}
+    </p>
+  ),
+  ul: ({ children }) => (
+    <ul className="my-3 list-disc space-y-1 pl-5 text-sm leading-7 text-gray-800 dark:text-gray-200">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="my-3 list-decimal space-y-1 pl-5 text-sm leading-7 text-gray-800 dark:text-gray-200">
+      {children}
+    </ol>
+  ),
+  li: ({ children }) => <li className="pl-1">{children}</li>,
+  blockquote: ({ children }) => (
+    <blockquote className="my-4 border-l-2 border-gray-300 pl-4 text-sm text-gray-700 dark:border-gray-600 dark:text-gray-300">
+      {children}
+    </blockquote>
+  ),
+  table: ({ children }) => (
+    <div className="my-4 overflow-x-auto border border-black/10 dark:border-white/10">
+      <table className="w-full min-w-[480px] border-collapse text-sm">
+        {children}
+      </table>
+    </div>
+  ),
+  th: ({ children }) => (
+    <th className="border-b border-r border-black/10 bg-gray-100 px-3 py-2 text-left font-semibold text-gray-900 last:border-r-0 dark:border-white/10 dark:bg-gray-800 dark:text-gray-100">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border-b border-r border-black/10 px-3 py-2 align-top text-gray-800 last:border-r-0 dark:border-white/10 dark:text-gray-200">
+      {children}
+    </td>
+  ),
+  pre: ({ children }) => (
+    <pre className="my-4 overflow-x-auto bg-gray-950 p-4 text-xs leading-6 text-gray-100">
+      {children}
+    </pre>
+  ),
+  inlineCode: ({ children }) => (
+    <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[0.85em] font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-100">
+      {children}
+    </code>
+  ),
+};
+
+async function getJsonResponseErrorMessage(response: Response) {
+  try {
+    const payload = (await response.json()) as { error?: unknown };
+    if (typeof payload.error === "string" && payload.error.trim()) {
+      return payload.error;
+    }
+  } catch {
+    // Fall back to plain text below.
+  }
+
+  const text = await response.text().catch(() => "");
+  return text.trim() || "Failed to convert this PDF to Markdown.";
+}
+
+async function loadPdfPaper(input: {
+  fileName: string;
+  fileUrl: string;
+  onPartial?: (paper: PdfPaperDocument) => void;
+  signal: AbortSignal;
+}): Promise<PdfPaperResponse> {
+  const response = await fetch(PDF_MARKDOWN_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fileName: input.fileName,
+      fileUrl: input.fileUrl,
+    }),
+    cache: "no-store",
+    signal: input.signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(await getJsonResponseErrorMessage(response));
+  }
+
+  if (!response.body) {
+    throw new Error("The Markdown conversion stream did not start.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bufferedText = "";
+  let finalPayload: PdfPaperResponse | null = null;
+
+  const handleEvent = (event: PdfPaperStreamEvent) => {
+    if (event.type === "partial") {
+      const partialPaper = normalizePartialPaper(event.paper);
+      if (partialPaper) {
+        input.onPartial?.(partialPaper);
+      }
+      return;
+    }
+
+    if (event.type === "error") {
+      throw new Error(event.error || "Failed to convert this PDF to Markdown.");
+    }
+
+    if (event.type === "done") {
+      finalPayload = {
+        markdown: event.markdown,
+        model: event.model,
+        paper: event.paper,
+      };
+    }
+  };
+
+  const flushLine = (line: string) => {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) {
+      return;
+    }
+
+    handleEvent(JSON.parse(trimmedLine) as PdfPaperStreamEvent);
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+
+    bufferedText += decoder.decode(value, { stream: true });
+
+    let newlineIndex = bufferedText.indexOf("\n");
+    while (newlineIndex !== -1) {
+      flushLine(bufferedText.slice(0, newlineIndex));
+      bufferedText = bufferedText.slice(newlineIndex + 1);
+      newlineIndex = bufferedText.indexOf("\n");
+    }
+  }
+
+  bufferedText += decoder.decode();
+  flushLine(bufferedText);
+
+  if (!finalPayload) {
+    throw new Error("The Markdown conversion ended before returning a paper.");
+  }
+
+  return finalPayload;
+}
+
+function normalizePartialPaper(value: unknown): PdfPaperDocument | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const questions = (value as { questions?: unknown }).questions;
+  if (!Array.isArray(questions)) {
+    return null;
+  }
+
+  const normalizedQuestions = questions
+    .map((question, index) => {
+      if (!question || typeof question !== "object") {
+        return null;
+      }
+
+      const record = question as {
+        marks?: unknown;
+        number?: unknown;
+        text?: unknown;
+      };
+      const number =
+        typeof record.number === "string" && record.number.trim()
+          ? record.number
+          : String(index + 1);
+      const text = typeof record.text === "string" ? record.text : "";
+      const marks =
+        typeof record.marks === "string"
+          ? record.marks
+          : record.marks === null
+            ? null
+            : null;
+
+      if (!text.trim() && !number.trim()) {
+        return null;
+      }
+
+      return {
+        marks,
+        number,
+        text,
+      };
+    })
+    .filter((question): question is PdfPaperDocument["questions"][number] =>
+      Boolean(question),
+    );
+
+  if (!normalizedQuestions.length) {
+    return null;
+  }
+
+  return {
+    questions: normalizedQuestions,
+    schemaVersion: "exam-questions-v1",
+  };
+}
+
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  try {
+    document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
 
 function LoadingState({
   label,
@@ -155,6 +449,197 @@ function ErrorState({
   );
 }
 
+const PAPER_TEXT_COMPONENTS: StreamdownComponents = {
+  ...MARKDOWN_COMPONENTS,
+  h1: ({ children }) => (
+    <h3 className="my-2 text-xl font-semibold leading-snug text-inherit">
+      {children}
+    </h3>
+  ),
+  h2: ({ children }) => (
+    <h4 className="my-2 text-lg font-semibold leading-snug text-inherit">
+      {children}
+    </h4>
+  ),
+  h3: ({ children }) => (
+    <h5 className="my-2 text-base font-semibold leading-snug text-inherit">
+      {children}
+    </h5>
+  ),
+  p: ({ children }) => (
+    <p className="my-2 text-[17px] leading-8 text-inherit">
+      {children}
+    </p>
+  ),
+  ul: ({ children }) => (
+    <ul className="my-2 list-disc space-y-1 pl-5 text-[17px] leading-8 text-inherit">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="my-2 list-decimal space-y-1 pl-5 text-[17px] leading-8 text-inherit">
+      {children}
+    </ol>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="my-4 border-l-2 border-current/20 pl-4 text-[16px] leading-7 text-inherit">
+      {children}
+    </blockquote>
+  ),
+  table: ({ children }) => (
+    <div className="my-4 overflow-x-auto border border-current/15">
+      <table className="w-full min-w-[480px] border-collapse text-[15px]">
+        {children}
+      </table>
+    </div>
+  ),
+  th: ({ children }) => (
+    <th className="border-b border-r border-current/15 bg-current/5 px-3 py-2 text-left font-semibold text-inherit last:border-r-0">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border-b border-r border-current/15 px-3 py-2 align-top text-inherit last:border-r-0">
+      {children}
+    </td>
+  ),
+  pre: ({ children }) => (
+    <pre className="my-4 overflow-x-auto border border-current/15 bg-current/5 p-4 font-mono text-xs leading-6 text-inherit">
+      {children}
+    </pre>
+  ),
+  inlineCode: ({ children }) => (
+    <code className="border border-current/15 bg-current/5 px-1 py-0.5 font-mono text-[0.85em] text-inherit">
+      {children}
+    </code>
+  ),
+};
+
+function AiPaperLoadingState() {
+  return (
+    <div className="flex min-h-[420px] items-center justify-center px-4">
+      <div className="w-full max-w-md space-y-4">
+        <div className="h-1.5 overflow-hidden bg-gray-200 dark:bg-gray-800">
+          <div className="h-full w-1/3 animate-pulse bg-gray-950 dark:bg-gray-100" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-8 w-3/4 animate-pulse bg-gray-200 dark:bg-gray-800" />
+          <div className="h-4 w-full animate-pulse bg-gray-200 dark:bg-gray-800" />
+          <div className="h-4 w-2/3 animate-pulse bg-gray-200 dark:bg-gray-800" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AiPaperErrorState({
+  errorMessage,
+  onRetry,
+}: {
+  errorMessage: string | null;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 px-4 text-center">
+      <AlertCircle className="h-7 w-7 text-red-500" aria-hidden="true" />
+      <p className="max-w-lg text-sm font-medium text-gray-800 dark:text-gray-200">
+        {errorMessage ?? "Markdown conversion failed."}
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="bg-gray-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function AiPaperView({
+  errorMessage,
+  isDarkMode,
+  paper,
+  status,
+  onRetry,
+}: {
+  errorMessage: string | null;
+  isDarkMode: boolean;
+  paper: PdfPaperDocument | null;
+  status: PaperStatus;
+  onRetry: () => void;
+}) {
+  const hasQuestions = Boolean(paper?.questions.length);
+
+  if ((status === "loading" || status === "idle") && !hasQuestions) {
+    return (
+      <div className="min-h-0 flex-1 overflow-auto bg-gray-50 dark:bg-gray-950">
+        <AiPaperLoadingState />
+      </div>
+    );
+  }
+
+  if (status === "error" || !paper) {
+    return (
+      <div className="min-h-0 flex-1 overflow-auto bg-gray-50 dark:bg-gray-950">
+        <AiPaperErrorState errorMessage={errorMessage} onRetry={onRetry} />
+      </div>
+    );
+  }
+
+  const pageShellClass = isDarkMode
+    ? "bg-gray-950 text-gray-100"
+    : "bg-gray-100 text-gray-950";
+  const pageClass = isDarkMode
+    ? "border-white/10 bg-[#111318] text-gray-100 shadow-2xl"
+    : "border-black/10 bg-white text-gray-950 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.35)]";
+  const ruleClass = isDarkMode ? "border-white/10" : "border-black/10";
+  const mutedTextClass = isDarkMode ? "text-gray-400" : "text-gray-500";
+
+  return (
+    <div className={`min-h-0 flex-1 overflow-auto px-3 py-5 sm:px-6 ${pageShellClass}`}>
+      <article
+        className={`mx-auto min-h-full w-full max-w-[900px] border px-6 py-8 sm:px-10 lg:px-14 ${pageClass}`}
+      >
+        <header className={`border-b pb-7 text-center ${ruleClass}`}>
+          <h1 className="font-serif text-3xl font-semibold leading-tight">
+            Questions
+          </h1>
+        </header>
+
+        <div className={`divide-y ${ruleClass}`}>
+          {paper.questions.map((question) => (
+            <section
+              key={`${question.number}-${question.text}`}
+              className="grid gap-3 py-7 sm:grid-cols-[3.25rem_minmax(0,1fr)_5.5rem]"
+            >
+              <div className="pt-1 font-serif text-lg font-semibold tabular-nums">
+                {question.number}
+              </div>
+              <div className="min-w-0 font-serif text-[17px] leading-8">
+                <Streamdown
+                  components={PAPER_TEXT_COMPONENTS}
+                  controls
+                  mode="static"
+                  plugins={STREAMDOWN_PLUGINS}
+                >
+                  {question.text}
+                </Streamdown>
+              </div>
+              <div className={`pt-2 font-serif text-sm italic sm:text-right ${mutedTextClass}`}>
+                {question.marks?.trim() ? (
+                  <span>({question.marks} marks)</span>
+                ) : null}
+              </div>
+            </section>
+          ))}
+        </div>
+      </article>
+    </div>
+  );
+
+}
+
 function PageRenderLayer({
   documentId,
   isPdfDarkMode,
@@ -247,19 +732,33 @@ function ViewerToolbar({
   fileName,
   isFullScreen,
   isPdfDarkMode,
+  viewMode,
+  paperStatus,
+  copyStatus,
+  onCopyMarkdown,
+  onShowPdf,
   onTogglePdfDarkMode,
   onToggleFullScreen,
+  onViewMarkdown,
 }: {
   documentId: string;
   fileUrl: string;
   fileName: string;
   isFullScreen: boolean;
   isPdfDarkMode: boolean;
+  viewMode: PaperViewMode;
+  paperStatus: PaperStatus;
+  copyStatus: CopyStatus;
+  onCopyMarkdown: () => void;
+  onShowPdf: () => void;
   onTogglePdfDarkMode: () => void;
   onToggleFullScreen: () => void;
+  onViewMarkdown: () => void;
 }) {
   const [pageInput, setPageInput] = useState("1");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isMarkdownMenuOpen, setIsMarkdownMenuOpen] = useState(false);
+  const markdownMenuRef = useRef<HTMLDivElement>(null);
   const { provides: scrollControls, state: scrollState } = useScroll(documentId);
   const { provides: zoomControls, state: zoomState } = useZoom(documentId);
   const currentPage = scrollState.currentPage || 1;
@@ -269,6 +768,22 @@ function ViewerToolbar({
   useEffect(() => {
     setPageInput(String(currentPage));
   }, [currentPage]);
+
+  useEffect(() => {
+    if (!isMarkdownMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        markdownMenuRef.current &&
+        !markdownMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsMarkdownMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [isMarkdownMenuOpen]);
 
   const scrollToPage = useCallback(
     (pageNumber: number) => {
@@ -305,128 +820,209 @@ function ViewerToolbar({
     }
   }, [fileName, fileUrl, isDownloading]);
 
-  return (
-    <div className="flex h-12 shrink-0 items-center justify-between gap-1 border-b border-black/10 bg-white px-2 dark:border-white/10 dark:bg-gray-800 sm:gap-2 sm:px-3">
-      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-        <button
-          type="button"
-          onClick={handleDownload}
-          className={TOOLBAR_BUTTON_CLASS}
-          aria-label="Download PDF"
-          title="Download PDF"
-          disabled={isDownloading}
-        >
-          <Download className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={() => scrollToPage(currentPage - 1)}
-          className={TOOLBAR_BUTTON_CLASS}
-          aria-label="Previous page"
-          title="Previous page"
-          disabled={currentPage <= 1}
-        >
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <input
-          type="number"
-          min={1}
-          max={totalPages}
-          value={pageInput}
-          onChange={(event) => setPageInput(event.target.value)}
-          onFocus={() => setPageInput(String(currentPage))}
-          onBlur={commitPageInput}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              commitPageInput();
-            }
-          }}
-          className={PAGE_INPUT_CLASS}
-          aria-label="Current page"
-        />
-        <span className="whitespace-nowrap text-sm tabular-nums text-gray-600 dark:text-gray-300">
-          / {totalPages}
-        </span>
-        <button
-          type="button"
-          onClick={() => scrollToPage(currentPage + 1)}
-          className={TOOLBAR_BUTTON_CLASS}
-          aria-label="Next page"
-          title="Next page"
-          disabled={currentPage >= totalPages}
-        >
-          <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </div>
+  const handleViewMarkdown = useCallback(() => {
+    setIsMarkdownMenuOpen(false);
+    onViewMarkdown();
+  }, [onViewMarkdown]);
 
-      <div className="flex items-center gap-1 sm:gap-2">
-        <button
-          type="button"
-          onClick={() => zoomControls?.zoomOut()}
-          className={TOOLBAR_BUTTON_CLASS}
-          aria-label="Zoom out"
-          title="Zoom out"
-          disabled={!zoomControls || zoomState.currentZoomLevel <= MIN_ZOOM}
-        >
-          <Minus className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={() => zoomControls?.requestZoom(ZoomMode.FitWidth)}
-          className="hidden h-8 min-w-14 shrink-0 rounded px-2 text-center text-sm tabular-nums text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500 sm:inline-flex sm:items-center sm:justify-center"
-          aria-label="Fit width"
-          title="Fit width"
-          disabled={!zoomControls}
-        >
-          {zoomPercent}%
-        </button>
-        <button
-          type="button"
-          onClick={() => zoomControls?.zoomIn()}
-          className={TOOLBAR_BUTTON_CLASS}
-          aria-label="Zoom in"
-          title="Zoom in"
-          disabled={!zoomControls || zoomState.currentZoomLevel >= MAX_ZOOM}
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={onTogglePdfDarkMode}
-          className={TOOLBAR_BUTTON_CLASS}
-          aria-label={
-            isPdfDarkMode
-              ? "Render PDF in light mode"
-              : "Render PDF in dark mode"
-          }
-          aria-pressed={isPdfDarkMode}
-          title={
-            isPdfDarkMode
-              ? "Render PDF in light mode"
-              : "Render PDF in dark mode"
-          }
-        >
-          {isPdfDarkMode ? (
-            <Sun className="h-4 w-4" aria-hidden="true" />
+  const handleCopyMarkdown = useCallback(() => {
+    setIsMarkdownMenuOpen(false);
+    onCopyMarkdown();
+  }, [onCopyMarkdown]);
+
+  const isMarkdownBusy = paperStatus === "loading";
+  const isPdfMode = viewMode === "pdf";
+
+  return (
+      <div className="flex h-12 shrink-0 items-center justify-between gap-1 border-b border-black/10 bg-white px-2 dark:border-white/10 dark:bg-gray-800 sm:gap-2 sm:px-3">
+        <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+          <button
+            type="button"
+            onClick={handleDownload}
+            className={TOOLBAR_BUTTON_CLASS}
+            aria-label="Download PDF"
+            title="Download PDF"
+            disabled={isDownloading}
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <div ref={markdownMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() =>
+                setIsMarkdownMenuOpen((currentValue) => !currentValue)
+              }
+              className={TOOLBAR_BUTTON_CLASS}
+              aria-label="AI Markdown actions"
+              aria-expanded={isMarkdownMenuOpen}
+              title="AI Markdown actions"
+            >
+              {isMarkdownBusy ? (
+                <Sparkles className="h-4 w-4 animate-pulse" aria-hidden="true" />
+              ) : copyStatus === "copied" ? (
+                <Check className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+            {isMarkdownMenuOpen ? (
+              <div className="absolute left-0 top-10 z-30 w-52 overflow-hidden border border-black/10 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-gray-900">
+                <button
+                  type="button"
+                  onClick={handleViewMarkdown}
+                  className={MARKDOWN_ACTION_BUTTON_CLASS}
+                >
+                  <Eye className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>View as Markdown</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyMarkdown}
+                  className={MARKDOWN_ACTION_BUTTON_CLASS}
+                  disabled={isMarkdownBusy || copyStatus === "copying"}
+                >
+                  {copyStatus === "copied" ? (
+                    <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  ) : (
+                    <Clipboard className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  )}
+                  <span>
+                    {copyStatus === "copied" ? "Copied Markdown" : "Copy as Markdown"}
+                  </span>
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {!isPdfMode ? (
+            <button
+              type="button"
+              onClick={onShowPdf}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500"
+              aria-label="View PDF"
+              title="View PDF"
+            >
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              <span>PDF</span>
+            </button>
           ) : (
-            <Moon className="h-4 w-4" aria-hidden="true" />
+            <>
+          <button
+            type="button"
+            onClick={() => scrollToPage(currentPage - 1)}
+            className={TOOLBAR_BUTTON_CLASS}
+            aria-label="Previous page"
+            title="Previous page"
+            disabled={currentPage <= 1}
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            value={pageInput}
+            onChange={(event) => setPageInput(event.target.value)}
+            onFocus={() => setPageInput(String(currentPage))}
+            onBlur={commitPageInput}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                commitPageInput();
+              }
+            }}
+            className={PAGE_INPUT_CLASS}
+            aria-label="Current page"
+          />
+          <span className="whitespace-nowrap text-sm tabular-nums text-gray-600 dark:text-gray-300">
+            / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => scrollToPage(currentPage + 1)}
+            className={TOOLBAR_BUTTON_CLASS}
+            aria-label="Next page"
+            title="Next page"
+            disabled={currentPage >= totalPages}
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+            </>
           )}
-        </button>
-        <button
-          type="button"
-          onClick={onToggleFullScreen}
-          className={TOOLBAR_BUTTON_CLASS}
-          aria-label={isFullScreen ? "Exit fullscreen" : "Enter fullscreen"}
-          title={isFullScreen ? "Exit fullscreen" : "Enter fullscreen"}
-        >
-          {isFullScreen ? (
-            <Minimize2 className="h-4 w-4" aria-hidden="true" />
+        </div>
+
+        <div className="flex items-center gap-1 sm:gap-2">
+          {isPdfMode ? (
+            <>
+          <button
+            type="button"
+            onClick={() => zoomControls?.zoomOut()}
+            className={TOOLBAR_BUTTON_CLASS}
+            aria-label="Zoom out"
+            title="Zoom out"
+            disabled={!zoomControls || zoomState.currentZoomLevel <= MIN_ZOOM}
+          >
+            <Minus className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomControls?.requestZoom(ZoomMode.FitWidth)}
+            className="hidden h-8 min-w-14 shrink-0 rounded px-2 text-center text-sm tabular-nums text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500 sm:inline-flex sm:items-center sm:justify-center"
+            aria-label="Fit width"
+            title="Fit width"
+            disabled={!zoomControls}
+          >
+            {zoomPercent}%
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomControls?.zoomIn()}
+            className={TOOLBAR_BUTTON_CLASS}
+            aria-label="Zoom in"
+            title="Zoom in"
+            disabled={!zoomControls || zoomState.currentZoomLevel >= MAX_ZOOM}
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+          </button>
+            </>
           ) : (
-            <Maximize2 className="h-4 w-4" aria-hidden="true" />
+            null
           )}
-        </button>
+          <button
+            type="button"
+            onClick={onTogglePdfDarkMode}
+            className={TOOLBAR_BUTTON_CLASS}
+            aria-label={
+              isPdfDarkMode
+                ? "Render page in light mode"
+                : "Render page in dark mode"
+            }
+            aria-pressed={isPdfDarkMode}
+            title={
+              isPdfDarkMode
+                ? "Render page in light mode"
+                : "Render page in dark mode"
+            }
+          >
+            {isPdfDarkMode ? (
+              <Sun className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Moon className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onToggleFullScreen}
+            className={TOOLBAR_BUTTON_CLASS}
+            aria-label={isFullScreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={isFullScreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullScreen ? (
+              <Minimize2 className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Maximize2 className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        </div>
       </div>
-    </div>
   );
 }
 
@@ -478,6 +1074,242 @@ function PdfVoiceBridge({
   return null;
 }
 
+function LoadedDocumentSurface({
+  documentId,
+  fileUrl,
+  fileName,
+  isFullScreen,
+  isPdfDarkMode,
+  onTogglePdfDarkMode,
+  onToggleFullScreen,
+}: {
+  documentId: string;
+  fileUrl: string;
+  fileName: string;
+  isFullScreen: boolean;
+  isPdfDarkMode: boolean;
+  onTogglePdfDarkMode: () => void;
+  onToggleFullScreen: () => void;
+}) {
+  const [viewMode, setViewMode] = useState<PaperViewMode>("pdf");
+  const [paper, setPaper] = useState<PdfPaperDocument | null>(null);
+  const [paperMarkdown, setPaperMarkdown] = useState("");
+  const [paperStatus, setPaperStatus] = useState<PaperStatus>("idle");
+  const [paperError, setPaperError] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+  const paperAbortRef = useRef<AbortController | null>(null);
+  const copyResetTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setViewMode("pdf");
+    setPaper(null);
+    setPaperMarkdown("");
+    setPaperStatus("idle");
+    setPaperError(null);
+    setCopyStatus("idle");
+    paperAbortRef.current?.abort();
+    paperAbortRef.current = null;
+  }, [fileName, fileUrl]);
+
+  useEffect(
+    () => () => {
+      paperAbortRef.current?.abort();
+      if (copyResetTimerRef.current) {
+        window.clearTimeout(copyResetTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const markCopied = useCallback(() => {
+    setCopyStatus("copied");
+    if (copyResetTimerRef.current) {
+      window.clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = window.setTimeout(() => {
+      setCopyStatus("idle");
+      copyResetTimerRef.current = null;
+    }, 1800);
+  }, []);
+
+  const copyMarkdownText = useCallback(
+    async (markdown: string) => {
+      if (!markdown.trim()) {
+        return;
+      }
+
+      setCopyStatus("copying");
+      try {
+        await copyTextToClipboard(markdown);
+        markCopied();
+      } catch (error) {
+        setCopyStatus("idle");
+        setPaperError(
+          error instanceof Error ? error.message : "Failed to copy Markdown.",
+        );
+        setPaperStatus("error");
+        setViewMode("paper");
+      }
+    },
+    [markCopied],
+  );
+
+  const loadPaper = useCallback(
+    async ({
+      copyAfter = false,
+      force = false,
+      showPaper = false,
+    }: {
+      copyAfter?: boolean;
+      force?: boolean;
+      showPaper?: boolean;
+    } = {}) => {
+      if (showPaper) {
+        setViewMode("paper");
+      }
+
+      if (!force && paperStatus === "loading") {
+        return;
+      }
+
+      if (!force && paperStatus === "ready" && paperMarkdown.trim()) {
+        if (copyAfter) {
+          await copyMarkdownText(paperMarkdown);
+        }
+        return;
+      }
+
+      const controller = new AbortController();
+      paperAbortRef.current?.abort();
+      paperAbortRef.current = controller;
+
+      setPaperError(null);
+      if (force) {
+        setPaper(null);
+        setPaperMarkdown("");
+      }
+      setPaperStatus("loading");
+
+      try {
+        const response = await loadPdfPaper({
+          fileName,
+          fileUrl,
+          onPartial: (partialPaper) => {
+            if (controller.signal.aborted) {
+              return;
+            }
+
+            setPaper(partialPaper);
+          },
+          signal: controller.signal,
+        });
+
+        setPaper(response.paper);
+        setPaperMarkdown(response.markdown);
+        setPaperStatus("ready");
+
+        if (copyAfter) {
+          await copyMarkdownText(response.markdown);
+        }
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setPaperStatus("error");
+        setPaperError(
+          error instanceof Error
+            ? error.message
+            : "Failed to convert this PDF to Markdown.",
+        );
+
+        if (copyAfter) {
+          setViewMode("paper");
+        }
+      } finally {
+        if (paperAbortRef.current === controller) {
+          paperAbortRef.current = null;
+        }
+      }
+    },
+    [copyMarkdownText, fileName, fileUrl, paperMarkdown, paperStatus],
+  );
+
+  const handleViewMarkdown = useCallback(() => {
+    void loadPaper({ showPaper: true });
+  }, [loadPaper]);
+
+  const handleCopyMarkdown = useCallback(() => {
+    void loadPaper({ copyAfter: true });
+  }, [loadPaper]);
+
+  const handleRetryMarkdown = useCallback(() => {
+    void loadPaper({ force: true, showPaper: true });
+  }, [loadPaper]);
+
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <PdfVoiceBridge
+        documentId={documentId}
+        fileName={fileName}
+        fileUrl={fileUrl}
+      />
+      <ViewerToolbar
+        documentId={documentId}
+        fileUrl={fileUrl}
+        fileName={fileName}
+        isFullScreen={isFullScreen}
+        isPdfDarkMode={isPdfDarkMode}
+        viewMode={viewMode}
+        paperStatus={paperStatus}
+        copyStatus={copyStatus}
+        onCopyMarkdown={handleCopyMarkdown}
+        onShowPdf={() => setViewMode("pdf")}
+        onTogglePdfDarkMode={onTogglePdfDarkMode}
+        onToggleFullScreen={onToggleFullScreen}
+        onViewMarkdown={handleViewMarkdown}
+      />
+      {viewMode === "paper" ? (
+        <AiPaperView
+          errorMessage={paperError}
+          isDarkMode={isPdfDarkMode}
+          paper={paper}
+          status={paperStatus}
+          onRetry={handleRetryMarkdown}
+        />
+      ) : (
+        <Viewport
+          documentId={documentId}
+          className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950"
+          style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
+        >
+          <Scroller
+            documentId={documentId}
+            className="py-3 sm:py-4"
+            renderPage={({ pageIndex, rotatedHeight, rotatedWidth }) => (
+              <div
+                className={`relative overflow-hidden shadow-[0_3px_18px_-10px_rgba(0,0,0,0.45)] ${
+                  isPdfDarkMode ? "bg-black" : "bg-white"
+                }`}
+                style={{
+                  width: rotatedWidth,
+                  height: rotatedHeight,
+                }}
+              >
+                <PageRenderLayer
+                  documentId={documentId}
+                  isPdfDarkMode={isPdfDarkMode}
+                  pageIndex={pageIndex}
+                />
+              </div>
+            )}
+          />
+        </Viewport>
+      )}
+    </div>
+  );
+}
+
 function DocumentViewport({
   documentId,
   fileUrl,
@@ -512,49 +1344,15 @@ function DocumentViewport({
         }
 
         return (
-          <div className="flex h-full min-h-0 w-full flex-col">
-            <PdfVoiceBridge
-              documentId={documentId}
-              fileName={fileName}
-              fileUrl={fileUrl}
-            />
-            <ViewerToolbar
-              documentId={documentId}
-              fileUrl={fileUrl}
-              fileName={fileName}
-              isFullScreen={isFullScreen}
-              isPdfDarkMode={isPdfDarkMode}
-              onTogglePdfDarkMode={onTogglePdfDarkMode}
-              onToggleFullScreen={onToggleFullScreen}
-            />
-            <Viewport
-              documentId={documentId}
-              className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950"
-              style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
-            >
-              <Scroller
-                documentId={documentId}
-                className="py-3 sm:py-4"
-                renderPage={({ pageIndex, rotatedHeight, rotatedWidth }) => (
-                  <div
-                    className={`relative overflow-hidden shadow-[0_3px_18px_-10px_rgba(0,0,0,0.45)] ${
-                      isPdfDarkMode ? "bg-black" : "bg-white"
-                    }`}
-                    style={{
-                      width: rotatedWidth,
-                      height: rotatedHeight,
-                    }}
-                  >
-                    <PageRenderLayer
-                      documentId={documentId}
-                      isPdfDarkMode={isPdfDarkMode}
-                      pageIndex={pageIndex}
-                    />
-                  </div>
-                )}
-              />
-            </Viewport>
-          </div>
+          <LoadedDocumentSurface
+            documentId={documentId}
+            fileUrl={fileUrl}
+            fileName={fileName}
+            isFullScreen={isFullScreen}
+            isPdfDarkMode={isPdfDarkMode}
+            onTogglePdfDarkMode={onTogglePdfDarkMode}
+            onToggleFullScreen={onToggleFullScreen}
+          />
         );
       }}
     </DocumentContent>

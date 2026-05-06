@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "streamdown/styles.css";
+@import "katex/dist/katex.min.css";
 @source "../node_modules/streamdown/dist/*.js";
+@source "../node_modules/@streamdown/cjk/dist/*.js";
+@source "../node_modules/@streamdown/code/dist/*.js";
+@source "../node_modules/@streamdown/math/dist/*.js";
+@source "../node_modules/@streamdown/mermaid/dist/*.js";
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant can-hover (@media (hover: hover) and (pointer: fine));
   
