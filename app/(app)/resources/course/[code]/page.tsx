@@ -245,7 +245,7 @@ async function CourseResourcesContent({
 
             {!context.remoteCourse && context.legacySubject ? (
                 <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-                    <div className="container mx-auto px-3 py-6 sm:px-5 lg:px-8 lg:py-10">
+                    <div className="container mx-auto px-3 pb-6 pt-4 sm:px-5 sm:py-6 lg:px-8 lg:py-10">
                         <ViewTracker
                             id={context.legacySubject.id}
                             type="subject"
