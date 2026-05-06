@@ -146,7 +146,7 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
     <nav
       aria-label="Primary"
       style={{ viewTransitionName: "persistent-mobile-tab-bar" }}
-      className={`fixed inset-x-0 bottom-0 z-[48] pb-[max(env(safe-area-inset-bottom),0px)] backdrop-blur-md transition-transform duration-200 lg:hidden ${
+      className={`ec-mobile-tab-bar fixed inset-x-0 bottom-0 z-[48] pb-[max(env(safe-area-inset-bottom),0px)] backdrop-blur-md transition-transform duration-200 lg:hidden ${
         nativeAndroid
           ? `border-t border-black/8 bg-white/96 shadow-[0_-10px_24px_rgba(15,23,42,0.10)] supports-[backdrop-filter]:bg-white/90 dark:border-[#D5D5D5]/10 dark:bg-[#09101E]/96 dark:shadow-[0_-16px_32px_rgba(0,0,0,0.45)] dark:supports-[backdrop-filter]:bg-[#09101E]/90 ${
               keyboardOpen ? "translate-y-[calc(100%+env(safe-area-inset-bottom)+12px)]" : "translate-y-0"

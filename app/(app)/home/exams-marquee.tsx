@@ -2,6 +2,9 @@ import React from "react";
 import Link from "next/link";
 import type { UpcomingExamItem } from "@/lib/data/upcoming-exams";
 
+const marqueeShellClassName =
+    "relative left-1/2 min-h-[5.875rem] w-screen -translate-x-1/2 border-y border-black/10 py-4 md:min-h-[7rem] md:py-5 dark:border-[#D5D5D5]/10 md:border-white/15 dark:md:border-white/15";
+
 function MarqueeItem({
     item,
     prefetch,
@@ -72,7 +75,7 @@ export default async function ExamsMarquee({ items }: { items: UpcomingExamItem[
         <div
             role="region"
             aria-label="Upcoming exams"
-            className="relative left-1/2 w-screen -translate-x-1/2 border-y border-black/10 py-4 md:py-5 dark:border-[#D5D5D5]/10 md:border-white/15 dark:md:border-white/15"
+            className={marqueeShellClassName}
         >
             <div
                 aria-hidden="true"
@@ -85,6 +88,17 @@ export default async function ExamsMarquee({ items }: { items: UpcomingExamItem[
             <div className="flex flex-col gap-3 md:gap-4">
                 <MarqueeRow items={rowA} prefetch />
                 <MarqueeRow items={rowB} reverse />
+            </div>
+        </div>
+    );
+}
+
+export function ExamsMarqueeFallback() {
+    return (
+        <div aria-hidden="true" className={marqueeShellClassName}>
+            <div className="flex flex-col gap-3 md:gap-4">
+                <div className="h-6 md:h-7" />
+                <div className="h-6 md:h-7" />
             </div>
         </div>
     );
