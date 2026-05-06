@@ -118,8 +118,11 @@ export default function AndroidInstallBanner() {
                     className="h-10 w-10 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-extrabold leading-tight">
-                        Install ExamCooker
+                    <p className="text-sm font-extrabold leading-tight">
+                        <span className="min-[380px]:hidden">Install</span>
+                        <span className="hidden min-[380px]:inline">
+                            Install ExamCooker
+                        </span>
                     </p>
                     <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-black/55 dark:text-[#D5D5D5]/55">
                         Get the Android app from Google Play.
