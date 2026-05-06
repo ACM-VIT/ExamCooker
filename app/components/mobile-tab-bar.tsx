@@ -13,7 +13,7 @@ type Props = {
 export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const [mode, setMode] = useState<"unknown" | "web" | "hidden">("unknown");
+  const [mode, setMode] = useState<"web" | "hidden">("web");
   const [nativeAndroid, setNativeAndroid] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
 
@@ -140,15 +140,6 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
 
   if (toolsSheetOpen) {
     return null;
-  }
-
-  if (mode !== "web") {
-    return (
-      <div
-        className="fixed inset-x-0 bottom-0 z-[48] min-h-[calc(4.25rem+env(safe-area-inset-bottom))] bg-transparent lg:hidden"
-        aria-hidden
-      />
-    );
   }
 
   return (
