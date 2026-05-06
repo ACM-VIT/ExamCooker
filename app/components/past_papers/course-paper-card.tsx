@@ -39,6 +39,7 @@ type Props = {
     onSplitDragMove?: (point: { x: number; y: number }) => void;
     onSplitDragEnd?: (point: { x: number; y: number }) => void;
     onSplitDragCancel?: () => void;
+    onContextMenuOpen?: (paper: Paper, point: { x: number; y: number }) => void;
 };
 
 function CoursePaperCard({
@@ -53,6 +54,7 @@ function CoursePaperCard({
     onSplitDragMove,
     onSplitDragEnd,
     onSplitDragCancel,
+    onContextMenuOpen,
 }: Props) {
     const href = `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`;
     const hasWarmedPdf = useRef(false);
@@ -125,6 +127,7 @@ function CoursePaperCard({
         const target = e.target;
         if (target instanceof HTMLElement && target.closest("button")) return;
 
+        e.currentTarget.setPointerCapture(e.pointerId);
         splitDragRef.current = {
             pointerId: e.pointerId,
             startX: e.clientX,
@@ -146,13 +149,17 @@ function CoursePaperCard({
             if (absoluteX < 14 && absoluteY < 14) return;
             if (absoluteX < absoluteY * 1.15) {
                 splitDragRef.current = null;
+                try {
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                } catch {
+                    // Pointer capture may already be released after a browser gesture.
+                }
                 return;
             }
 
             current.dragging = true;
             suppressNextClick.current = true;
             handleWarmPdf();
-            e.currentTarget.setPointerCapture(e.pointerId);
             onSplitDragStart?.(paper, { x: e.clientX, y: e.clientY });
         }
 
@@ -165,14 +172,15 @@ function CoursePaperCard({
         if (!current || current.pointerId !== e.pointerId) return;
 
         splitDragRef.current = null;
-        if (!current.dragging) return;
-
-        e.preventDefault();
         try {
             e.currentTarget.releasePointerCapture(e.pointerId);
         } catch {
             // Pointer capture may already be released after a browser gesture.
         }
+
+        if (!current.dragging) return;
+
+        e.preventDefault();
         onSplitDragEnd?.({ x: e.clientX, y: e.clientY });
         resetSuppressedClick();
     }, [onSplitDragEnd, resetSuppressedClick]);
@@ -182,13 +190,14 @@ function CoursePaperCard({
         if (!current || current.pointerId !== e.pointerId) return;
 
         splitDragRef.current = null;
-        if (!current.dragging) return;
-
         try {
             e.currentTarget.releasePointerCapture(e.pointerId);
         } catch {
             // Pointer capture may already be released after a browser gesture.
         }
+
+        if (!current.dragging) return;
+
         onSplitDragCancel?.();
         resetSuppressedClick();
     }, [onSplitDragCancel, resetSuppressedClick]);
@@ -199,6 +208,18 @@ function CoursePaperCard({
         e.stopPropagation();
     }, []);
 
+    const preventNativeDrag = useCallback((e: React.DragEvent<HTMLAnchorElement>) => {
+        if (!splitDragEnabled) return;
+        e.preventDefault();
+    }, [splitDragEnabled]);
+
+    const handleContextMenu = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
+        if (!onContextMenuOpen) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenuOpen(paper, { x: e.clientX, y: e.clientY });
+    }, [onContextMenuOpen, paper]);
+
     return (
         <Link
             href={href}
@@ -207,6 +228,8 @@ function CoursePaperCard({
             transitionTypes={["nav-forward"]}
             aria-label={linkAriaLabel}
             onClickCapture={handleClickCapture}
+            onContextMenu={handleContextMenu}
+            onDragStart={preventNativeDrag}
             onFocus={handleWarmPdf}
             onMouseDown={handleWarmPdf}
             onPointerDown={handleSplitPointerDown}
@@ -262,7 +285,8 @@ function CoursePaperCard({
                     alt={courseTitle}
                     fill
                     sizes="(min-width: 1280px) 220px, (min-width: 1024px) 25vw, (min-width: 640px) 32vw, 45vw"
-                    className="object-cover"
+                    className="pointer-events-none select-none object-cover"
+                    draggable={false}
                     priority={index < 3}
                 />
                 <button
