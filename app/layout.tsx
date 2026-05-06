@@ -86,6 +86,7 @@ export default function RootLayout({
             className="dark"
             suppressHydrationWarning
             data-scroll-behavior="smooth"
+            style={{ backgroundColor: "var(--ec-app-bg, #0C1222)" }}
         >
             <head>
                 <StructuredData
@@ -95,12 +96,15 @@ export default function RootLayout({
                     ]}
                 />
                 <Script id="theme-init" strategy="beforeInteractive">
-                    {"(function(){var r=document.documentElement;function m(q){return window.matchMedia&&window.matchMedia(q).matches;}function a(d){r.classList.toggle('dark',d);r.dataset.theme=d?'dark':'light';r.style.colorScheme=d?'dark':'light';}try{var t=localStorage.getItem('theme');var mobile=m('(max-width: 767px), (pointer: coarse)');var d=t==='dark'||(t!=='light'&&(mobile?m('(prefers-color-scheme: dark)'):true));a(d);}catch(e){a(true);}})();"}
+                    {"(function(){var r=document.documentElement;function m(q){return window.matchMedia&&window.matchMedia(q).matches;}function a(d){var bg=d?'#0C1222':'#C2E6EC';r.classList.toggle('dark',d);r.dataset.theme=d?'dark':'light';r.style.colorScheme=d?'dark':'light';r.style.setProperty('--ec-app-bg',bg);r.style.backgroundColor=bg;}try{var t=localStorage.getItem('theme');var mobile=m('(max-width: 767px), (pointer: coarse)');var d=t==='dark'||(t!=='light'&&(mobile?m('(prefers-color-scheme: dark)'):true));a(d);}catch(e){a(true);}})();"}
                 </Script>
             </head>
             <body
                 className={`${plus_jakarta_sans.className} antialiased bg-[#C2E6EC] dark:bg-[#0C1222]`}
-                style={{ margin: "0" }}
+                style={{
+                    margin: "0",
+                    backgroundColor: "var(--ec-app-bg, #0C1222)",
+                }}
             >
                 {children}
                 <Toaster />

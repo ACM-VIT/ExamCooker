@@ -1,7 +1,7 @@
 "use client";
 
-import { addTransitionType, startTransition, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 
 function activeTabIndex(pathname: string | null): number {
@@ -13,27 +13,6 @@ function activeTabIndex(pathname: string | null): number {
 
 export default function NativeIosTabSync() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  useEffect(() => {
-    const handleRoute = (event: Event) => {
-      if (!(event instanceof CustomEvent)) return;
-      const path = event.detail?.path;
-      if (typeof path !== "string" || !path.startsWith("/")) return;
-      document.documentElement.style.setProperty("--nav-vt-x", "50vw");
-      document.documentElement.style.setProperty(
-        "--nav-vt-y",
-        "calc(100vh - max(2.125rem, env(safe-area-inset-bottom)))",
-      );
-      startTransition(() => {
-        addTransitionType("nav-lateral");
-        router.push(path);
-      });
-    };
-
-    window.addEventListener("examcooker:native-tab-route", handleRoute);
-    return () => window.removeEventListener("examcooker:native-tab-route", handleRoute);
-  }, [router]);
 
   useEffect(() => {
     void (async () => {

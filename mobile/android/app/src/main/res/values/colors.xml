@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#0C1222</color>
+    <color name="colorPrimaryDark">#0C1222</color>
+    <color name="colorAccent">#3BF4C7</color>
+    <color name="examcooker_shell_background">#0C1222</color>
+</resources>
