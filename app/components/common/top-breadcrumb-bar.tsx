@@ -112,6 +112,17 @@ export default function TopBreadcrumbBar({ items, className, variant = "fixed" }
             `ec-mobile-breadcrumb-chrome fixed left-[max(0.75rem,env(safe-area-inset-left))] right-[calc(max(0.75rem,env(safe-area-inset-right))+3.25rem)] top-[env(safe-area-inset-top)] z-[59] flex h-11 min-w-0 items-center px-3 lg:static lg:h-auto lg:px-0 ${className ?? ""}`
         : `flex min-w-0 items-center ${className ?? ""}`;
 
+    if (variant === "fixed") {
+        return (
+            <>
+                <nav aria-label="Breadcrumb" className={navClass}>
+                    <BreadcrumbOrderedList items={items} />
+                </nav>
+                <div aria-hidden="true" className="h-11 lg:hidden" />
+            </>
+        );
+    }
+
     return (
         <nav aria-label="Breadcrumb" className={navClass}>
             <BreadcrumbOrderedList items={items} />
