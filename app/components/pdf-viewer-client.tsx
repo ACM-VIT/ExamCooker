@@ -1,11 +1,8 @@
 "use client";
 
-import { preconnect, preload } from "react-dom";
+import { preconnect } from "react-dom";
 
-import {
-  PDFIUM_WASM_URL,
-  preloadPdfiumEngine,
-} from "@/lib/pdf/pdfium-engine-cache";
+import { preloadPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
 import PDFViewer from "./pdfviewer";
 
 if (typeof window !== "undefined") {
@@ -30,12 +27,9 @@ export default function PDFViewerClient({
   fileUrl: string;
   fileName?: string;
 }) {
-  preload(PDFIUM_WASM_URL, { as: "fetch" });
-
   const remoteOrigin = getRemoteOrigin(fileUrl);
   if (remoteOrigin) {
     preconnect(remoteOrigin, { crossOrigin: "anonymous" });
-    preload(fileUrl, { as: "fetch", crossOrigin: "anonymous" });
   }
 
   return <PDFViewer key={fileUrl} fileUrl={fileUrl} fileName={fileName} />;
