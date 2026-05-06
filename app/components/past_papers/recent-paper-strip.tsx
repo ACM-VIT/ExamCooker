@@ -32,7 +32,7 @@ export default function RecentPaperStrip({
                     {title}
                 </h2>
             </header>
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
+            <div className="past-papers-recent-strip flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
                 {items.map((item, i) => {
                     const href = getPastPaperDetailPath(item.id, item.courseCode);
                     const thumb = normalizeGcsUrl(item.thumbNailUrl);
