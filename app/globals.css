@@ -804,6 +804,22 @@ html[data-native-tabs-pending="true"] .ec-mobile-tab-bar {
         top: calc(-4.75rem - env(safe-area-inset-bottom));
     }
 
+    html[data-native-ios] .ec-home-hero-stack,
+    html[data-native-android] .ec-home-hero-stack {
+        justify-content: flex-start;
+        padding-top: clamp(5.5rem, 14svh, 8.5rem);
+        padding-bottom: 1.25rem;
+    }
+
+    html[data-native-ios] .ec-home-hero-brand,
+    html[data-native-android] .ec-home-hero-brand {
+        margin-bottom: 1.75rem;
+    }
+
+    html[data-native-android] .ec-home-search-shell {
+        scroll-margin-top: calc(env(safe-area-inset-top) + 1.5rem);
+    }
+
     html[data-native-ios-tabs="true"] .ec-app-main,
     html[data-native-android-tabs="true"] .ec-app-main,
     html[data-native-ios-tabs-pending="true"] .ec-app-main,

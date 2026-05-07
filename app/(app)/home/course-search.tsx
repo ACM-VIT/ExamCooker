@@ -92,6 +92,22 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     const dropdownVisible =
         !nativeSearchAvailable && isOpen && (filteredCourses.length > 0 || query.trim().length > 0);
 
+    const alignSearchInputForNativeAndroid = () => {
+        if (
+            typeof window === "undefined" ||
+            !document.documentElement.hasAttribute("data-native-android")
+        ) {
+            return;
+        }
+
+        window.setTimeout(() => {
+            inputRef.current?.scrollIntoView({
+                block: "center",
+                behavior: "smooth",
+            });
+        }, 180);
+    };
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (
@@ -285,13 +301,24 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                     ) : (
                         <input
                             ref={inputRef}
-                            type="text"
+                            type="search"
+                            inputMode="search"
+                            enterKeyHint="search"
+                            autoCapitalize="off"
+                            autoCorrect="off"
+                            autoComplete="off"
+                            spellCheck={false}
                             className="h-full min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap bg-transparent px-3 text-sm text-black focus:outline-none placeholder:text-black/50 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60 sm:px-4 sm:text-base lg:text-lg"
                             placeholder="Search for a course..."
                             value={query}
                             onChange={handleInputChange}
                             onKeyDown={handleKeyDown}
-                            onFocus={() => query.trim() && setIsOpen(true)}
+                            onFocus={() => {
+                                if (query.trim()) {
+                                    setIsOpen(true);
+                                }
+                                alignSearchInputForNativeAndroid();
+                            }}
                         />
                     )}
                     <button
