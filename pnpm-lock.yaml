@@ -10,7 +10,7 @@ overrides:
 
 patchedDependencies:
   capacitor-native-tabs@1.0.3:
-    hash: 4b3e0b6420b5036dfe347484196b2b2b1648ef212f50d1956e494e14ebc3609c
+    hash: 55be62b149d5aa91b1301057485179376dcadc1cdc7708c0ebb130ba854eb810
     path: patches/capacitor-native-tabs@1.0.3.patch
 
 importers:
@@ -127,7 +127,7 @@ importers:
         version: 6.0.66(zod@4.3.6)
       capacitor-native-tabs:
         specifier: ^1.0.3
-        version: 1.0.3(patch_hash=4b3e0b6420b5036dfe347484196b2b2b1648ef212f50d1956e494e14ebc3609c)(@capacitor/core@8.3.1)
+        version: 1.0.3(patch_hash=55be62b149d5aa91b1301057485179376dcadc1cdc7708c0ebb130ba854eb810)(@capacitor/core@8.3.1)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -5506,7 +5506,7 @@ snapshots:
 
   caniuse-lite@1.0.30001766: {}
 
-  capacitor-native-tabs@1.0.3(patch_hash=4b3e0b6420b5036dfe347484196b2b2b1648ef212f50d1956e494e14ebc3609c)(@capacitor/core@8.3.1):
+  capacitor-native-tabs@1.0.3(patch_hash=55be62b149d5aa91b1301057485179376dcadc1cdc7708c0ebb130ba854eb810)(@capacitor/core@8.3.1):
     dependencies:
       '@capacitor/core': 8.3.1
 
