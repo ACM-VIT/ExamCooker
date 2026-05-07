@@ -48,6 +48,10 @@ function isDarkTheme() {
   );
 }
 
+function currentNativeTabTheme() {
+  return isDarkTheme() ? "dark" : "light";
+}
+
 function currentLocationPath() {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
@@ -110,7 +114,7 @@ export default function CapacitorBridge() {
       if (platform === "ios" || platform === "android") {
         try {
           const { NativeTabs } = await import("capacitor-native-tabs");
-          const tabs = buildIosNativeTabConfigs();
+          const tabs = buildIosNativeTabConfigs(currentNativeTabTheme());
           tabs.forEach((tab) => router.prefetch(normalizeNativeTabRoute(tab.route)));
           const pathname = window.location.pathname;
           const idx = APP_NAV_LINKS.findIndex((link) =>
@@ -134,6 +138,25 @@ export default function CapacitorBridge() {
           });
           cleanupNativeTabs = () => {
             void tabSelectionListener.remove();
+          };
+          const updateNativeTabsTheme = () => {
+            void NativeTabs.updateTabs({
+              tabs: buildIosNativeTabConfigs(currentNativeTabTheme()),
+              theme: currentNativeTabTheme(),
+            } as Parameters<typeof NativeTabs.updateTabs>[0] & { theme: "dark" | "light" }).catch(
+              () => undefined,
+            );
+          };
+          const nativeTabsThemeObserver = new MutationObserver(updateNativeTabsTheme);
+          nativeTabsThemeObserver.observe(document.documentElement, {
+            attributeFilter: ["class", "data-theme", "style"],
+          });
+          colorSchemeQuery.addEventListener("change", updateNativeTabsTheme);
+          const cleanupExistingNativeTabs = cleanupNativeTabs;
+          cleanupNativeTabs = () => {
+            cleanupExistingNativeTabs();
+            nativeTabsThemeObserver.disconnect();
+            colorSchemeQuery.removeEventListener("change", updateNativeTabsTheme);
           };
           await NativeTabs.showTabBar().catch(() => undefined);
         } catch {

@@ -94,7 +94,18 @@ const configuredRemotePatterns = Array.from(
 const nextConfig: NextConfig = {
     output: "standalone",
     cacheComponents: true,
+    compiler: {
+        removeConsole:
+            process.env.NODE_ENV === "production"
+                ? {
+                    exclude: ["error", "warn"],
+                }
+                : false,
+    },
     experimental: {
+        serverActions: {
+            bodySizeLimit: "10mb",
+        },
         viewTransition: true,
     },
     reactCompiler: true,

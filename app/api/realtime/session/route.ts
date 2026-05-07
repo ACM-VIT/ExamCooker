@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
+      console.warn("[voice-agent] realtime session denied: unauthenticated request");
       return NextResponse.json(
         {
           error: "You must be signed in to start the voice guide.",
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
+      console.error("[voice-agent] realtime session failed: missing OPENAI_API_KEY");
       return NextResponse.json(
         {
           error: "Missing OPENAI_API_KEY.",
@@ -44,6 +46,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.info("[voice-agent] creating realtime client secret", {
+      authenticated: true,
+      model: DEFAULT_REALTIME_MODEL,
+    });
     const upstreamResponse = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
@@ -63,6 +69,10 @@ export async function POST(request: NextRequest) {
     const responseText = await upstreamResponse.text();
 
     if (!upstreamResponse.ok) {
+      console.error("[voice-agent] realtime client secret request failed", {
+        status: upstreamResponse.status,
+        statusText: upstreamResponse.statusText,
+      });
       return new Response(responseText || "Failed to create a Realtime client secret.", {
         status: upstreamResponse.status,
         headers: {
@@ -99,6 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (typeof payload?.value !== "string" || !payload.value.trim()) {
+      console.error("[voice-agent] realtime client secret response missing value");
       return NextResponse.json(
         {
           error: "OpenAI did not return a Realtime client secret.",
@@ -112,6 +123,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.info("[voice-agent] realtime client secret created", {
+      authenticated: true,
+      model: DEFAULT_REALTIME_MODEL,
+    });
     return NextResponse.json(
       {
         clientSecret: payload.value,
@@ -125,6 +140,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     if (request.signal.aborted || isAbortLikeError(error)) {
+      console.warn("[voice-agent] realtime session request aborted");
       return NextResponse.json(
         {
           error: "Voice guide startup was cancelled.",
@@ -138,6 +154,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.error("[voice-agent] realtime session route failed", error);
     return NextResponse.json(
       {
         error: "Failed to create a Realtime client secret.",

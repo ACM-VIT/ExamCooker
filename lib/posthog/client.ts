@@ -3,6 +3,7 @@ import {
     getPostHogClientConfig,
     getPostHogProjectKey,
 } from "@/lib/posthog/shared";
+import { captureVoiceRealtimeAnalyticsAction } from "@/app/components/voice/voice-agent-actions";
 
 export type VoiceAgentEntryPoint = "nav" | "home_search";
 export type CourseSearchContext = "home" | "notes" | "past_papers";
@@ -335,15 +336,7 @@ export function captureVoiceAgentLlmGeneration(
         posthogSessionId: getPostHogSessionId(),
     };
 
-    void fetch("/api/realtime/analytics", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-        cache: "no-store",
-        keepalive: true,
-    }).catch(() => {
+    void captureVoiceRealtimeAnalyticsAction(payload).catch(() => {
         // Analytics should never block the voice runtime.
     });
 }

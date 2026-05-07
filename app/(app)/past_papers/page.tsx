@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import UploadButtonPaper from "@/app/components/upload-button-paper";
 import StructuredData from "@/app/components/seo/structured-data";
 import DirectionalTransition from "@/app/components/common/directional-transition";
-import { GradientText } from "@/app/components/landing_page/landing";
+import { GradientText } from "@/app/components/landing/landing";
 import SmartCourseGrid from "@/app/components/past_papers/smart-course-grid";
 import CoursePagination from "@/app/components/past_papers/course-pagination";
 import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
@@ -352,6 +352,7 @@ function SearchControls({
         <div className="past-papers-search-controls flex w-full items-stretch gap-2 sm:gap-3">
             <div className="min-w-0 flex-1">
                 <PastPapersCourseSearch
+                    key={search}
                     courses={searchable}
                     initialQuery={search}
                 />

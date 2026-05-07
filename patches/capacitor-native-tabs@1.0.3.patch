@@ -1,5 +1,5 @@
 diff --git a/Package.swift b/Package.swift
-index 0444f0df7b14c166be15e614bfc6f86bce2f068f..cb7ea17d13017375331d5b8e303c5afaa96b5f47 100644
+index 0444f0d..cb7ea17 100644
 --- a/Package.swift
 +++ b/Package.swift
 @@ -7,10 +7,13 @@ let package = Package(
@@ -17,22 +17,8 @@ index 0444f0df7b14c166be15e614bfc6f86bce2f068f..cb7ea17d13017375331d5b8e303c5afa
      ],
      targets: [
          .target(
-diff --git a/ios/Sources/NativeTabsPlugin/TabViewController.swift b/ios/Sources/NativeTabsPlugin/TabViewController.swift
-index 518699fda3d8908ae70f20a3242384654e99a380..27fcf28d313111d2df8866895e9771d42cfc7e5e 100644
---- a/ios/Sources/NativeTabsPlugin/TabViewController.swift
-+++ b/ios/Sources/NativeTabsPlugin/TabViewController.swift
-@@ -214,7 +214,7 @@ final class NativeTabBarController: NSObject, UITabBarDelegate {
-        webView.scrollView.contentInset = content
-        webView.scrollView.verticalScrollIndicatorInsets = indicators
--        webView.scrollView.isScrollEnabled = false
--        webView.scrollView.bounces = false
-+        webView.scrollView.isScrollEnabled = true
-+        webView.scrollView.bounces = true
-     }
- 
-    private func removeWebViewInsets() {
 diff --git a/android/build.gradle b/android/build.gradle
-index 11e66c55a241537a3efec00adcb80ac1f8c43678..cc498e5f666dba424d66c9941dff8d048f4887e2 100644
+index 9d787a7..ba2264e 100644
 --- a/android/build.gradle
 +++ b/android/build.gradle
 @@ -53,6 +53,7 @@ dependencies {
@@ -44,10 +30,10 @@ index 11e66c55a241537a3efec00adcb80ac1f8c43678..cc498e5f666dba424d66c9941dff8d04
      androidTestImplementation 'androidx.test.ext:junit:1.1.5'
      androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 diff --git a/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabsPlugin.java b/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabsPlugin.java
-index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce21bbefeba 100644
+index 7a11564..7e0008b 100644
 --- a/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabsPlugin.java
 +++ b/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabsPlugin.java
-@@ -1,64 +1,432 @@
+@@ -1,64 +1,451 @@
  package com.smallcloud.capacitornativetabs;
  
 +import android.content.res.ColorStateList;
@@ -86,6 +72,7 @@ index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce2
 +    private boolean requestedVisible = true;
 +    private boolean keyboardVisible = false;
 +    private boolean suppressSelectionCallback = false;
++    private Boolean themeOverrideDark = null;
  
      @PluginMethod
      public void initialize(PluginCall call) {
@@ -106,10 +93,12 @@ index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce2
 +        }
 +
 +        int nextSelectedIndex = normalizeIndex(call.getInt("selectedIndex", 0), parsedTabs.size());
++        Boolean nextThemeOverrideDark = readThemeOverride(call, parsedTabs);
 +        getBridge().executeOnMainThread(() -> {
 +            tabs.clear();
 +            tabs.addAll(parsedTabs);
 +            selectedIndex = nextSelectedIndex;
++            themeOverrideDark = nextThemeOverrideDark;
 +            requestedVisible = true;
 +            ensureTabBar();
 +            populateMenu();
@@ -140,6 +129,7 @@ index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce2
 +        getBridge().executeOnMainThread(() -> {
 +            tabs.clear();
 +            tabs.addAll(parsedTabs);
++            themeOverrideDark = readThemeOverride(call, parsedTabs);
 +            selectedIndex = normalizeIndex(selectedIndex, parsedTabs.size());
 +            ensureTabBar();
 +            populateMenu();
@@ -245,7 +235,7 @@ index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce2
 +            parsedTabs.add(JSObject.fromJSONObject(tabsArray.getJSONObject(index)));
 +        }
 +        return parsedTabs;
-     }
++    }
 +
 +    private void ensureTabBar() {
 +        if (tabBar != null) {
@@ -261,10 +251,11 @@ index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce2
 +        nativeTabBar.setItemIconSize(dp(22));
 +        nativeTabBar.setItemPaddingTop(dp(8));
 +        nativeTabBar.setItemPaddingBottom(dp(8));
-+        nativeTabBar.setItemActiveIndicatorEnabled(true);
++        nativeTabBar.setItemActiveIndicatorEnabled(false);
 +        nativeTabBar.setItemActiveIndicatorWidth(dp(56));
 +        nativeTabBar.setItemActiveIndicatorHeight(dp(32));
 +        nativeTabBar.setItemActiveIndicatorMarginHorizontal(dp(4));
++        nativeTabBar.setItemRippleColor(ColorStateList.valueOf(Color.TRANSPARENT));
 +        nativeTabBar.setElevation(dp(14));
 +
 +        applyColorPalette(nativeTabBar);
@@ -413,11 +404,10 @@ index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce2
 +    }
 +
 +    private void applyColorPalette(BottomNavigationView nativeTabBar) {
-+        boolean dark = isDarkTheme();
++        boolean dark = themeOverrideDark != null ? themeOverrideDark : isDarkTheme();
 +        int background = dark ? Color.parseColor("#09101E") : Color.parseColor("#FFFFFF");
 +        int selected = dark ? Color.parseColor("#3BF4C7") : Color.parseColor("#0D5875");
 +        int unselected = dark ? Color.parseColor("#8F9BAA") : Color.parseColor("#5F6B7A");
-+        int indicator = dark ? Color.parseColor("#15384A") : Color.parseColor("#D6EEF5");
 +        int[][] states = new int[][] {
 +            new int[] { android.R.attr.state_checked },
 +            new int[] {}
@@ -427,12 +417,27 @@ index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce2
 +        nativeTabBar.setBackgroundColor(background);
 +        nativeTabBar.setItemTextColor(new ColorStateList(states, colors));
 +        nativeTabBar.setItemIconTintList(new ColorStateList(states, colors));
-+        nativeTabBar.setItemActiveIndicatorColor(ColorStateList.valueOf(indicator));
++        nativeTabBar.setItemActiveIndicatorColor(ColorStateList.valueOf(Color.TRANSPARENT));
++        nativeTabBar.setItemRippleColor(ColorStateList.valueOf(Color.TRANSPARENT));
 +    }
 +
 +    private boolean isDarkTheme() {
 +        int nightModeFlags = getContext().getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
 +        return nightModeFlags == Configuration.UI_MODE_NIGHT_YES;
++    }
++
++    private Boolean readThemeOverride(PluginCall call, List<JSObject> parsedTabs) {
++        String theme = call.getString("theme");
++        if ((theme == null || theme.isEmpty()) && !parsedTabs.isEmpty()) {
++            theme = parsedTabs.get(0).getString("theme", "");
++        }
++        if ("dark".equalsIgnoreCase(theme)) {
++            return Boolean.TRUE;
++        }
++        if ("light".equalsIgnoreCase(theme)) {
++            return Boolean.FALSE;
++        }
++        return null;
 +    }
 +
 +    private int normalizeIndex(Integer maybeIndex, int size) {
@@ -500,5 +505,5 @@ index e46f4421ff146efdbaf7c0fd5cf0f39e02453b2b..ae87786237c2aa0db3e0e7491fb00ce2
 +            value,
 +            getContext().getResources().getDisplayMetrics()
 +        );
-+    }
+     }
  }
