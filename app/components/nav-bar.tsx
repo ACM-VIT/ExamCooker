@@ -353,7 +353,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
           </div>
 
           <div className="order-2 grid grid-cols-3 gap-3 border-b border-black/10 px-5 py-4 dark:border-white/10 lg:order-3 lg:mt-auto lg:flex lg:w-full lg:flex-col lg:items-stretch lg:gap-0 lg:border-b-0 lg:px-1 lg:py-2">
-            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0">
+            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
               <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
                 {voiceAgentEnabled ? (
                   <div className="flex lg:w-full">
@@ -390,7 +390,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
               </span>
             </div>
 
-            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0">
+            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
               <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
                 <ThemeToggleSwitch
                   className={navActionButtonClassName}
@@ -404,7 +404,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
               </span>
             </div>
 
-            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0">
+            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
               <div className="relative z-10 flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
                 {isAuthed ? (
                   <div className="lg:w-full" ref={profileRef}>
