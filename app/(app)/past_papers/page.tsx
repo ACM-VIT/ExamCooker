@@ -352,6 +352,7 @@ function SearchControls({
         <div className="past-papers-search-controls flex w-full items-stretch gap-2 sm:gap-3">
             <div className="min-w-0 flex-1">
                 <PastPapersCourseSearch
+                    key={search}
                     courses={searchable}
                     initialQuery={search}
                 />
