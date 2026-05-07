@@ -508,7 +508,7 @@ export default function VoiceAgentProvider({
       activationMode: "vad",
       auth: { sessionEndpoint: "/api/realtime/session" },
       instructions: "Voice guide is preparing.",
-      model: "gpt-realtime-mini",
+      model: "gpt-realtime-2",
       maxOutputTokens: 90,
       outputMode: "audio",
       postToolResponse: true,
@@ -1178,7 +1178,7 @@ export default function VoiceAgentProvider({
       auth: { sessionEndpoint: "/api/realtime/session" },
       instructions: VOICE_GUIDE_INSTRUCTIONS,
       maxOutputTokens: 400,
-      model: "gpt-realtime-mini",
+      model: "gpt-realtime-2",
       onGenerationCompleted: (generation) => {
         const voiceSessionId = voiceAnalyticsSessionIdRef.current;
         if (!voiceSessionId) {
