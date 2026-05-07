@@ -30,6 +30,7 @@ import {
   buildCourseExamFilterPath,
   buildCoursePastPapersPath,
   buildPageContextMessage,
+  captureCurrentVisualContext,
   getCoursePastPapersContext,
   getInternalPathFromHref,
   getOpenPdfView,
@@ -329,6 +330,30 @@ export default function VoiceAgentProvider({
           return {
             ok: true as const,
             openPdf,
+            currentView: getFreshSnapshot(),
+          };
+        },
+      }),
+      defineVoiceTool({
+        name: "attach_current_visual_context",
+        description:
+          "Attach an image of the currently visible PDF/page canvas to the voice session. Use this before answering questions about diagrams, screenshots, tables, images, or visual layout.",
+        parameters: z.object({}),
+        execute: async () => {
+          const visualContext = await captureCurrentVisualContext();
+          if (!visualContext) {
+            return buildToolFailure(
+              "I could not capture a visible page image. Use the PDF text tool or inspect the current view instead.",
+            );
+          }
+
+          controller.addImage(visualContext.image, { triggerResponse: false });
+          return {
+            ok: true as const,
+            source: visualContext.source,
+            width: visualContext.width,
+            height: visualContext.height,
+            openPdf: visualContext.openPdf,
             currentView: getFreshSnapshot(),
           };
         },
@@ -745,6 +770,7 @@ export default function VoiceAgentProvider({
     ],
     [
       buildToolFailure,
+      controller,
       getFreshSnapshot,
       requestOpenPdfAnswer,
       resolveRegistryEntry,
@@ -759,12 +785,18 @@ export default function VoiceAgentProvider({
       audio: {
         input: {
           capture: {
-            autoGainControl: { ideal: true },
+            autoGainControl: { ideal: false },
             channelCount: { ideal: 1 },
             echoCancellation: { ideal: true },
             noiseSuppression: { ideal: true },
           },
           noiseReduction: { type: "near_field" },
+          turnDetection: {
+            type: "semantic_vad",
+            createResponse: true,
+            interruptResponse: true,
+            eagerness: "low",
+          },
         },
         output: {
           voice: DEFAULT_VOICE,
@@ -821,6 +853,16 @@ export default function VoiceAgentProvider({
       },
       outputMode: "audio",
       postToolResponse: true,
+      trace: () => ({
+        workflowName: "ExamCooker Voice Guide",
+        groupId: voiceAnalyticsSessionIdRef.current ?? undefined,
+        metadata: {
+          browserPath: currentBrowserPath(),
+          entryPoint: sessionEntryPointRef.current,
+          posthogSessionId: getPostHogSessionId() ?? undefined,
+          surface: "voice_agent",
+        },
+      }),
       tools,
     }),
     [entryPoint, tools],
@@ -837,19 +879,7 @@ export default function VoiceAgentProvider({
 
     const timeout = window.setTimeout(() => {
       const snapshot = getFreshSnapshot();
-      controller.sendClientEvent({
-        type: "conversation.item.create",
-        item: {
-          type: "message",
-          role: "system",
-          content: [
-            {
-              type: "input_text",
-              text: buildPageContextMessage(snapshot),
-            },
-          ],
-        },
-      });
+      controller.sendContextMessage(buildPageContextMessage(snapshot));
     }, 220);
 
     return () => {

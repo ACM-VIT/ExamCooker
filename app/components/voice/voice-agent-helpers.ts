@@ -74,6 +74,7 @@ Rules:
 - Use activate_control and fill_input only with control IDs returned by inspect_current_view.
 - If an ExamCooker PDF is open and the user asks about its contents, use answer_question_about_open_pdf with the user's question.
 - If the user says "this question", "that question", "this page", or similar while a PDF is open, treat it as a question about the currently visible PDF page and use answer_question_about_open_pdf.
+- If the user asks about a visible diagram, image, table layout, or anything that needs visual context, use attach_current_visual_context before answering.
 - Use inspect_open_pdf for page-number or document-status questions.
 - Use go_to_pdf_page when the user asks to jump to a PDF page.
 - Do not guess what a PDF says without using the PDF tools.
@@ -92,6 +93,14 @@ export type VoiceOpenPdfView = {
 };
 
 export type VoiceGuideSnapshot = VoicePageSnapshot & {
+  openPdf: VoiceOpenPdfView | null;
+};
+
+export type CapturedVoiceVisualContext = {
+  image: string;
+  source: "canvas";
+  width: number;
+  height: number;
   openPdf: VoiceOpenPdfView | null;
 };
 
@@ -403,6 +412,97 @@ export function getOpenPdfView(): VoiceOpenPdfView | null {
     fileName: activePdf.fileName,
     totalPages: activePdf.totalPages,
   };
+}
+
+function getCanvasViewportIntersection(canvas: HTMLCanvasElement) {
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(
+    0,
+    Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0),
+  );
+  const height = Math.max(
+    0,
+    Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0),
+  );
+
+  return {
+    area: width * height,
+    height,
+    rect,
+    width,
+  };
+}
+
+function chooseVisibleCanvas() {
+  const candidates = Array.from(document.querySelectorAll("canvas"))
+    .filter((canvas): canvas is HTMLCanvasElement => {
+      if (!(canvas instanceof HTMLCanvasElement)) {
+        return false;
+      }
+
+      if (canvas.closest("[data-voice-agent-ignore='true']")) {
+        return false;
+      }
+
+      const style = window.getComputedStyle(canvas);
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        canvas.width > 0 &&
+        canvas.height > 0
+      );
+    })
+    .map((canvas) => ({
+      canvas,
+      intersection: getCanvasViewportIntersection(canvas),
+    }))
+    .filter((candidate) => candidate.intersection.area > 2500)
+    .sort((a, b) => b.intersection.area - a.intersection.area);
+
+  return candidates[0] ?? null;
+}
+
+function canvasToJpegDataUrl(canvas: HTMLCanvasElement, maxDimension = 1400) {
+  const scale = Math.min(1, maxDimension / Math.max(canvas.width, canvas.height));
+  const targetWidth = Math.max(1, Math.round(canvas.width * scale));
+  const targetHeight = Math.max(1, Math.round(canvas.height * scale));
+
+  const output = document.createElement("canvas");
+  output.width = targetWidth;
+  output.height = targetHeight;
+
+  const context = output.getContext("2d");
+  if (!context) {
+    return null;
+  }
+
+  context.drawImage(canvas, 0, 0, targetWidth, targetHeight);
+  return output.toDataURL("image/jpeg", 0.78);
+}
+
+export async function captureCurrentVisualContext(): Promise<CapturedVoiceVisualContext | null> {
+  await waitForAnimationFrame();
+  const selected = chooseVisibleCanvas();
+  if (!selected) {
+    return null;
+  }
+
+  try {
+    const image = canvasToJpegDataUrl(selected.canvas);
+    if (!image) {
+      return null;
+    }
+
+    return {
+      image,
+      source: "canvas",
+      width: selected.canvas.width,
+      height: selected.canvas.height,
+      openPdf: getOpenPdfView(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function buildPageContextMessage(snapshot: VoiceGuideSnapshot) {
