@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GradientText } from "@/app/components/landing_page/landing";
+import { GradientText } from "@/app/components/landing/landing";
 import { useIsMobile } from "@/app/components/ui/use-is-mobile";
 
 const MODAL_STORAGE_KEY = "examcooker.upsellModal.v1";

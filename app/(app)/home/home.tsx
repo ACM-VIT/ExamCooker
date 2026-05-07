@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import { auth } from "@/app/auth";
-import { GradientText } from "@/app/components/landing_page/landing";
+import { GradientText } from "@/app/components/landing/landing";
 import ExamCookerLogo from "@/app/components/common/exam-cooker-logo";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import ExamsMarquee, { ExamsMarqueeFallback } from "./exams-marquee";
@@ -18,7 +18,7 @@ async function HomeSearchSection() {
     const courses = await getSearchableCourses();
 
     return (
-        <div className="mx-auto w-full max-w-4xl px-4 sm:px-0">
+        <div className="ec-home-search-shell mx-auto w-full max-w-4xl px-4 sm:px-0">
             <CourseSearch courses={courses} />
         </div>
     );
@@ -62,9 +62,9 @@ const Home = () => {
         <DirectionalTransition>
             <div className="overflow-x-clip bg-[#C2E6EC] dark:bg-[hsl(224,48%,9%)] text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
                 <HeroFrame>
-                    <section className="relative z-10 container mx-auto px-4 max-w-7xl min-h-[100svh] flex flex-col">
-                        <div className="flex flex-1 flex-col justify-center text-center py-6 sm:py-8 md:py-10 lg:py-14">
-                            <div className="mb-6 sm:mb-8 lg:mb-12 flex flex-col items-center">
+                    <section className="ec-home-hero-shell relative z-10 container mx-auto px-4 max-w-7xl min-h-[100svh] flex flex-col">
+                        <div className="ec-home-hero-stack flex flex-1 flex-col justify-center text-center py-6 sm:py-8 md:py-10 lg:py-14">
+                            <div className="ec-home-hero-brand mb-6 sm:mb-8 lg:mb-12 flex flex-col items-center">
                                 <ExamCookerLogo />
                             </div>
 

@@ -519,17 +519,44 @@ const PAPER_TEXT_COMPONENTS: StreamdownComponents = {
 
 function AiPaperLoadingState() {
   return (
-    <div className="flex min-h-[420px] items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-4">
-        <div className="h-1.5 overflow-hidden bg-gray-200 dark:bg-gray-800">
-          <div className="h-full w-1/3 animate-pulse bg-gray-950 dark:bg-gray-100" />
+    <div className="flex min-h-full flex-1 bg-white text-black dark:bg-[#0C1222] dark:text-[#D5D5D5]">
+      <article className="ec-markdown-loading-shell flex min-h-full w-full flex-col bg-white dark:bg-[#0C1222]">
+        <div className="relative h-0.5 overflow-hidden bg-black/10 dark:bg-[#D5D5D5]/10">
+          <div className="ec-markdown-progress absolute inset-y-0 left-0 w-1/3 bg-[#5FC4E7] dark:bg-[#3BF4C7]" />
         </div>
-        <div className="space-y-2">
-          <div className="h-8 w-3/4 animate-pulse bg-gray-200 dark:bg-gray-800" />
-          <div className="h-4 w-full animate-pulse bg-gray-200 dark:bg-gray-800" />
-          <div className="h-4 w-2/3 animate-pulse bg-gray-200 dark:bg-gray-800" />
+
+        <header className="border-b border-black/10 px-6 py-4 dark:border-[#D5D5D5]/10 sm:px-10">
+          <p className="text-sm font-semibold">Preparing paper text</p>
+          <p className="mt-1 max-w-xl text-xs leading-5 text-black/55 dark:text-[#D5D5D5]/60">
+            Keeping layout, questions, and marks intact.
+          </p>
+        </header>
+
+        <div className="flex flex-1 justify-center overflow-hidden px-6 py-8 sm:px-10 lg:px-14">
+          <div className="w-full max-w-[900px]">
+            <div className="border-b border-black/10 pb-7 text-center dark:border-[#D5D5D5]/10">
+              <div className="ec-markdown-skeleton mx-auto h-8 w-36 bg-black/10 dark:bg-[#D5D5D5]/12" />
+            </div>
+
+            <div className="divide-y divide-black/10 dark:divide-[#D5D5D5]/10">
+              {[0, 1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="grid gap-3 py-7 sm:grid-cols-[3.25rem_minmax(0,1fr)_5.5rem]"
+                >
+                  <div className="ec-markdown-skeleton h-5 w-7 bg-black/15 dark:bg-[#D5D5D5]/15" />
+                  <div className="min-w-0 space-y-3">
+                    <div className="ec-markdown-skeleton h-3 w-full bg-black/10 dark:bg-[#D5D5D5]/10" />
+                    <div className="ec-markdown-skeleton h-3 w-11/12 bg-black/10 dark:bg-[#D5D5D5]/10" />
+                    <div className="ec-markdown-skeleton h-3 w-8/12 bg-black/10 dark:bg-[#D5D5D5]/10" />
+                  </div>
+                  <div className="ec-markdown-skeleton hidden h-3 w-14 justify-self-end bg-black/10 dark:bg-[#D5D5D5]/10 sm:block" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      </article>
     </div>
   );
 }
@@ -575,7 +602,7 @@ function AiPaperView({
 
   if ((status === "loading" || status === "idle") && !hasQuestions) {
     return (
-      <div className="min-h-0 flex-1 overflow-auto bg-gray-50 dark:bg-gray-950">
+      <div className="min-h-0 flex flex-1 overflow-auto bg-white dark:bg-[#0C1222]">
         <AiPaperLoadingState />
       </div>
     );
@@ -590,18 +617,18 @@ function AiPaperView({
   }
 
   const pageShellClass = isDarkMode
-    ? "bg-gray-950 text-gray-100"
-    : "bg-gray-100 text-gray-950";
+    ? "bg-[hsl(224,48%,9%)] text-[#D5D5D5]"
+    : "bg-[#C2E6EC] text-black";
   const pageClass = isDarkMode
-    ? "border-white/10 bg-[#111318] text-gray-100 shadow-2xl"
+    ? "border-[#D5D5D5]/15 bg-[#0C1222] text-[#D5D5D5] shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]"
     : "border-black/10 bg-white text-gray-950 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.35)]";
-  const ruleClass = isDarkMode ? "border-white/10" : "border-black/10";
-  const mutedTextClass = isDarkMode ? "text-gray-400" : "text-gray-500";
+  const ruleClass = isDarkMode ? "border-[#D5D5D5]/10" : "border-black/10";
+  const mutedTextClass = isDarkMode ? "text-[#D5D5D5]/60" : "text-black/55";
 
   return (
-    <div className={`min-h-0 flex-1 overflow-auto px-3 py-5 sm:px-6 ${pageShellClass}`}>
+    <div className={`ec-markdown-surface min-h-0 flex-1 overflow-auto px-3 py-5 sm:px-6 ${pageShellClass}`}>
       <article
-        className={`mx-auto min-h-full w-full max-w-[900px] border px-6 py-8 sm:px-10 lg:px-14 ${pageClass}`}
+        className={`ec-markdown-page mx-auto min-h-full w-full max-w-[900px] border px-6 py-8 sm:px-10 lg:px-14 ${pageClass}`}
       >
         <header className={`border-b pb-7 text-center ${ruleClass}`}>
           <h1 className="font-serif text-3xl font-semibold leading-tight">
@@ -610,10 +637,11 @@ function AiPaperView({
         </header>
 
         <div className={`divide-y ${ruleClass}`}>
-          {paper.questions.map((question) => (
+          {paper.questions.map((question, index) => (
             <section
               key={`${question.number}-${question.text}`}
-              className="grid gap-3 py-7 sm:grid-cols-[3.25rem_minmax(0,1fr)_5.5rem]"
+              className="ec-markdown-question grid gap-3 py-7 sm:grid-cols-[3.25rem_minmax(0,1fr)_5.5rem]"
+              style={{ animationDelay: `${Math.min(index, 8) * 35}ms` }}
             >
               <div className="pt-1 font-serif text-lg font-semibold tabular-nums">
                 {question.number}
@@ -666,7 +694,7 @@ function PageRenderLayer({
       options: {
         scaleFactor: documentState.scale || 1,
         rotation: documentState.rotation,
-        dpr: Math.min(window.devicePixelRatio || 1, 1.5),
+        dpr: Math.min(window.devicePixelRatio || 1, 2),
       },
     });
 
@@ -722,6 +750,9 @@ function PageRenderLayer({
       src={imageUrl}
       alt=""
       className="absolute inset-0 h-full w-full select-none object-fill"
+      data-ec-pdf-page-image="true"
+      data-ec-pdf-page-index={pageIndex}
+      data-ec-pdf-page-number={pageIndex + 1}
       draggable={false}
       style={isPdfDarkMode ? { filter: PDF_DARK_MODE_FILTER } : undefined}
     />

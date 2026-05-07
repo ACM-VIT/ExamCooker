@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Activity, useEffect, useMemo, useRef, useState } from "react";
 import { createCourse } from "@/app/actions/create-course";
 
 export type CourseOption = {
@@ -69,6 +69,7 @@ export default function CoursePicker({
             .slice(0, 10)
             .map((r) => r.course);
     }, [query, courses]);
+    const dropdownVisible = open && !currentCourse && (results.length > 0 || allowCreateCourse);
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
@@ -80,17 +81,17 @@ export default function CoursePicker({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    useEffect(() => setHighlight(0), [query]);
-
     const choose = (course: CourseOption) => {
         onChange(course.id);
         setQuery("");
+        setHighlight(0);
         setOpen(false);
     };
 
     const clear = () => {
         onChange(null);
         setQuery("");
+        setHighlight(0);
     };
 
     const startCreate = () => {
@@ -152,6 +153,7 @@ export default function CoursePicker({
                     value={query}
                     onChange={(e) => {
                         setQuery(e.target.value);
+                        setHighlight(0);
                         setOpen(true);
                     }}
                     onFocus={() => setOpen(true)}
@@ -175,29 +177,35 @@ export default function CoursePicker({
                 />
             )}
 
-            {open && !currentCourse && results.length > 0 && (
+            <Activity mode={dropdownVisible ? "visible" : "hidden"}>
                 <ul className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-auto border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] shadow-lg">
-                    {results.map((c, idx) => (
-                        <li
-                            key={c.id}
-                            onMouseDown={(e) => {
-                                e.preventDefault();
-                                choose(c);
-                            }}
-                            onMouseEnter={() => setHighlight(idx)}
-                            className={`cursor-pointer px-3 py-2 text-sm ${
-                                idx === highlight
-                                    ? "bg-[#5FC4E7]/40 dark:bg-[#3BF4C7]/10"
-                                    : ""
-                            }`}
-                        >
-                            <span className="font-mono text-xs text-black/60 dark:text-[#D5D5D5]/60">
-                                {c.code}
-                            </span>{" "}
-                            <span className="text-black dark:text-[#D5D5D5]">{c.title}</span>
+                    {results.length > 0 ? (
+                        results.map((c, idx) => (
+                            <li
+                                key={c.id}
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    choose(c);
+                                }}
+                                onMouseEnter={() => setHighlight(idx)}
+                                className={`cursor-pointer px-3 py-2 text-sm ${
+                                    idx === highlight
+                                        ? "bg-[#5FC4E7]/40 dark:bg-[#3BF4C7]/10"
+                                        : ""
+                                }`}
+                            >
+                                <span className="font-mono text-xs text-black/60 dark:text-[#D5D5D5]/60">
+                                    {c.code}
+                                </span>{" "}
+                                <span className="text-black dark:text-[#D5D5D5]">{c.title}</span>
+                            </li>
+                        ))
+                    ) : allowCreateCourse ? (
+                        <li className="px-3 py-2 text-xs text-black/60 dark:text-[#D5D5D5]/60">
+                            No matching course.
                         </li>
-                    ))}
-                    {allowCreateCourse && (
+                    ) : null}
+                    {allowCreateCourse ? (
                         <li className="border-t border-black/10 dark:border-[#D5D5D5]/20 p-2">
                             <button
                                 type="button"
@@ -210,27 +218,9 @@ export default function CoursePicker({
                                 Add missing course
                             </button>
                         </li>
-                    )}
+                    ) : null}
                 </ul>
-            )}
-
-            {allowCreateCourse && open && !currentCourse && results.length === 0 && (
-                <div className="absolute left-0 right-0 top-full z-20 mt-1 border border-black/30 bg-white p-2 shadow-lg dark:border-[#D5D5D5]/40 dark:bg-[#0C1222]">
-                    <p className="px-1 pb-2 text-xs text-black/60 dark:text-[#D5D5D5]/60">
-                        No matching course.
-                    </p>
-                    <button
-                        type="button"
-                        onMouseDown={(e) => {
-                            e.preventDefault();
-                            startCreate();
-                        }}
-                        className="w-full border border-black/30 px-3 py-2 text-left text-xs font-semibold text-black hover:bg-black/5 dark:border-[#D5D5D5]/40 dark:text-[#D5D5D5] dark:hover:bg-white/5"
-                    >
-                        Add missing course
-                    </button>
-                </div>
-            )}
+            </Activity>
 
             {allowCreateCourse && showCreate && !currentCourse && (
                 <div className="mt-2 border border-black/30 bg-white p-3 dark:border-[#D5D5D5]/40 dark:bg-[#0C1222]">

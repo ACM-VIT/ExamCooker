@@ -27,17 +27,11 @@ export default function Search({
 }: SearchProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const [query, setQuery] = useState('');
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
-    useEffect(() => {
-        const tags = new URLSearchParams(searchString).getAll('tags');
-        setSelectedTags(tags);
-    }, [searchString]);
-
-    useEffect(() => {
-        setQuery((currentQuery) => currentQuery === initialQuery ? currentQuery : initialQuery);
-    }, [initialQuery]);
+    const [query, setQuery] = useState(initialQuery);
+    const selectedTags = useMemo(
+        () => new URLSearchParams(searchString).getAll('tags'),
+        [searchString],
+    );
 
     const updateURL = useCallback((newQuery: string, newTags: string[]) => {
         const params = new URLSearchParams(searchString);
@@ -76,13 +70,10 @@ export default function Search({
     };
 
     const handleTagToggle = (tag: string) => {
-        setSelectedTags(prev => {
-            const newTags = prev.includes(tag)
-                ? prev.filter(t => t !== tag)
-                : [...prev, tag];
-            updateURL(query, newTags);
-            return newTags;
-        });
+        const newTags = selectedTags.includes(tag)
+            ? selectedTags.filter(t => t !== tag)
+            : [...selectedTags, tag];
+        updateURL(query, newTags);
     };
 
     const handleSubmit = (e: React.FormEvent) => {

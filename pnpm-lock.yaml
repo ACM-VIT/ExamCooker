@@ -10,7 +10,7 @@ overrides:
 
 patchedDependencies:
   capacitor-native-tabs@1.0.3:
-    hash: 9a41188ffaeb93149923167fae9f4eb984e77e978157d0e21ddc1e82010c2043
+    hash: 55be62b149d5aa91b1301057485179376dcadc1cdc7708c0ebb130ba854eb810
     path: patches/capacitor-native-tabs@1.0.3.patch
 
 importers:
@@ -88,7 +88,7 @@ importers:
         version: 3.1.1(@fortawesome/fontawesome-svg-core@7.1.0)(react@19.2.4)
       '@next/third-parties':
         specifier: 16.2.0
-        version: 16.2.0(next@16.2.4(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+        version: 16.2.0(next@16.2.6(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       '@openai/agents':
         specifier: ^0.8.5
         version: 0.8.5(ws@8.20.0)(zod@4.3.6)
@@ -127,7 +127,7 @@ importers:
         version: 6.0.66(zod@4.3.6)
       capacitor-native-tabs:
         specifier: ^1.0.3
-        version: 1.0.3(patch_hash=9a41188ffaeb93149923167fae9f4eb984e77e978157d0e21ddc1e82010c2043)(@capacitor/core@8.3.1)
+        version: 1.0.3(patch_hash=55be62b149d5aa91b1301057485179376dcadc1cdc7708c0ebb130ba854eb810)(@capacitor/core@8.3.1)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -156,11 +156,11 @@ importers:
         specifier: ^0.544.0
         version: 0.544.0(react@19.2.4)
       next:
-        specifier: 16.2.4
-        version: 16.2.4(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: 16.2.6
+        version: 16.2.6(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       next-auth:
         specifier: 4.24.14
-        version: 4.24.14(next@16.2.4(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 4.24.14(next@16.2.6(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       ogl:
         specifier: ^1.0.11
         version: 1.0.11
@@ -1120,57 +1120,57 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
-  '@next/env@16.2.4':
-    resolution: {integrity: sha512-dKkkOzOSwFYe5RX6y26fZgkSpVAlIOJKQHIiydQcrWH6y/97+RceSOAdjZ14Qa3zLduVUy0TXcn+EiM6t4rPgw==}
+  '@next/env@16.2.6':
+    resolution: {integrity: sha512-gd8HoHN4ufj73WmR3JmVolrpJR47ILK6LouP5xElPglaVxir6e1a7VzvTvDWkOoPXT9rkkTzyCxBu4yeZfZwcw==}
 
-  '@next/swc-darwin-arm64@16.2.4':
-    resolution: {integrity: sha512-OXTFFox5EKN1Ym08vfrz+OXxmCcEjT4SFMbNRsWZE99dMqt2Kcusl5MqPXcW232RYkMLQTy0hqgAMEsfEd/l2A==}
+  '@next/swc-darwin-arm64@16.2.6':
+    resolution: {integrity: sha512-ZJGkkcNfYgrrMkqOdZ7zoLa1TOy0qpcMfk/z4Mh/FKUz40gVO+HNQWqmLxf67Z5WB64DRp0dhEbyHfel+6sJUg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@next/swc-darwin-x64@16.2.4':
-    resolution: {integrity: sha512-XhpVnUfmYWvD3YrXu55XdcAkQtOnvaI6wtQa8fuF5fGoKoxIUZ0kWPtcOfqJEWngFF/lOS9l3+O9CcownhiQxQ==}
+  '@next/swc-darwin-x64@16.2.6':
+    resolution: {integrity: sha512-v/YLBHIY132Ced3puBJ7YJKw1lqsCrgcNo2aRJlCEyQrrCeRJlvGlnmxhPxNQI3KE3N1DN5r9TPNPvka3nq5RQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
 
-  '@next/swc-linux-arm64-gnu@16.2.4':
-    resolution: {integrity: sha512-Mx/tjlNA3G8kg14QvuGAJ4xBwPk1tUHq56JxZ8CXnZwz1Etz714soCEzGQQzVMz4bEnGPowzkV6Xrp6wAkEWOQ==}
+  '@next/swc-linux-arm64-gnu@16.2.6':
+    resolution: {integrity: sha512-RPOvqlYBbcQjkz9VQQDZ2T2bARIjXZV1KFlt+V2Mr6SW/e4I9fcKsaA0hdyf2FHoTlsV2xnBd5Y912rP/1Ce6w==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@next/swc-linux-arm64-musl@16.2.4':
-    resolution: {integrity: sha512-iVMMp14514u7Nup2umQS03nT/bN9HurK8ufylC3FZNykrwjtx7V1A7+4kvhbDSCeonTVqV3Txnv0Lu+m2oDXNg==}
+  '@next/swc-linux-arm64-musl@16.2.6':
+    resolution: {integrity: sha512-URUTu1+dMkxJsPFgm+OeEvq9wf5sujw0EvgYy80TDGHTSLTnIHeqb0Eu8A3sC95IRgjejQL+kC4mw+4yPxiAXA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@next/swc-linux-x64-gnu@16.2.4':
-    resolution: {integrity: sha512-EZOvm1aQWgnI/N/xcWOlnS3RQBk0VtVav5Zo7n4p0A7UKyTDx047k8opDbXgBpHl4CulRqRfbw3QrX2w5UOXMQ==}
+  '@next/swc-linux-x64-gnu@16.2.6':
+    resolution: {integrity: sha512-DOj182mPV8G3UkrayLoREM5YEYI+Dk5wv7Ox9xl1fFibAELEsFD0lDPfHIeILlutMMfdyhlzYPELG3peuKaurw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@next/swc-linux-x64-musl@16.2.4':
-    resolution: {integrity: sha512-h9FxsngCm9cTBf71AR4fGznDEDx1hS7+kSEiIRjq5kO1oXWm07DxVGZjCvk0SGx7TSjlUqhI8oOyz7NfwAdPoA==}
+  '@next/swc-linux-x64-musl@16.2.6':
+    resolution: {integrity: sha512-HKQ5SP/V/ub73UvF7n/zeJlxk2kLmtL7Wzrg4WfmkjmNos5onJ2tKu7yZOPdL18A6Svfn3max29ym+ry7NkK4g==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@next/swc-win32-arm64-msvc@16.2.4':
-    resolution: {integrity: sha512-3NdJV5OXMSOeJYijX+bjaLge3mJBlh4ybydbT4GFoB/2hAojWHtMhl3CYlYoMrjPuodp0nzFVi4Tj2+WaMg+Ow==}
+  '@next/swc-win32-arm64-msvc@16.2.6':
+    resolution: {integrity: sha512-LZXpTlPyS5v7HhSmnvsLGP3iIYgYOBnc8r8ArlT55sGHV89bR2HlDdBjWQ+PY6SJMmk8TuVGFuxalnP3k/0Dwg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [win32]
 
-  '@next/swc-win32-x64-msvc@16.2.4':
-    resolution: {integrity: sha512-kMVGgsqhO5YTYODD9IPGGhA6iprWidQckK3LmPeW08PIFENRmgfb4MjXHO+p//d+ts2rpjvK5gXWzXSMrPl9cw==}
+  '@next/swc-win32-x64-msvc@16.2.6':
+    resolution: {integrity: sha512-F0+4i0h9J6C4eE3EAPWsoCk7UW/dbzOjyzxY0qnDUOYFu6FFmdZ6l97/XdV3/Nz3VYyO7UWjyEJUXkGqcoXfMA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
@@ -3134,8 +3134,8 @@ packages:
       nodemailer:
         optional: true
 
-  next@16.2.4:
-    resolution: {integrity: sha512-kPvz56wF5frc+FxlHI5qnklCzbq53HTwORaWBGdT0vNoKh1Aya9XC8aPauH4NJxqtzbWsS5mAbctm4cr+EkQ2Q==}
+  next@16.2.6:
+    resolution: {integrity: sha512-qOVgKJg1+At15NpeUP+eJgCHvTCgXsogweq87Ri/Ix7PkqQHg4sdaXmSFqKlgaIXE4kW0g25LE68W87UANlHtw==}
     engines: {node: '>=20.9.0'}
     hasBin: true
     peerDependencies:
@@ -4659,35 +4659,35 @@ snapshots:
       - supports-color
     optional: true
 
-  '@next/env@16.2.4': {}
+  '@next/env@16.2.6': {}
 
-  '@next/swc-darwin-arm64@16.2.4':
+  '@next/swc-darwin-arm64@16.2.6':
     optional: true
 
-  '@next/swc-darwin-x64@16.2.4':
+  '@next/swc-darwin-x64@16.2.6':
     optional: true
 
-  '@next/swc-linux-arm64-gnu@16.2.4':
+  '@next/swc-linux-arm64-gnu@16.2.6':
     optional: true
 
-  '@next/swc-linux-arm64-musl@16.2.4':
+  '@next/swc-linux-arm64-musl@16.2.6':
     optional: true
 
-  '@next/swc-linux-x64-gnu@16.2.4':
+  '@next/swc-linux-x64-gnu@16.2.6':
     optional: true
 
-  '@next/swc-linux-x64-musl@16.2.4':
+  '@next/swc-linux-x64-musl@16.2.6':
     optional: true
 
-  '@next/swc-win32-arm64-msvc@16.2.4':
+  '@next/swc-win32-arm64-msvc@16.2.6':
     optional: true
 
-  '@next/swc-win32-x64-msvc@16.2.4':
+  '@next/swc-win32-x64-msvc@16.2.6':
     optional: true
 
-  '@next/third-parties@16.2.0(next@16.2.4(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
+  '@next/third-parties@16.2.0(next@16.2.6(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
     dependencies:
-      next: 16.2.4(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next: 16.2.6(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react: 19.2.4
       third-party-capital: 1.0.20
 
@@ -5506,7 +5506,7 @@ snapshots:
 
   caniuse-lite@1.0.30001766: {}
 
-  capacitor-native-tabs@1.0.3(patch_hash=9a41188ffaeb93149923167fae9f4eb984e77e978157d0e21ddc1e82010c2043)(@capacitor/core@8.3.1):
+  capacitor-native-tabs@1.0.3(patch_hash=55be62b149d5aa91b1301057485179376dcadc1cdc7708c0ebb130ba854eb810)(@capacitor/core@8.3.1):
     dependencies:
       '@capacitor/core': 8.3.1
 
@@ -6921,13 +6921,13 @@ snapshots:
   negotiator@1.0.0:
     optional: true
 
-  next-auth@4.24.14(next@16.2.4(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  next-auth@4.24.14(next@16.2.6(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
       '@babel/runtime': 7.29.2
       '@panva/hkdf': 1.2.1
       cookie: 0.7.2
       jose: 4.15.9
-      next: 16.2.4(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next: 16.2.6(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       oauth: 0.9.15
       openid-client: 5.7.1
       preact: 10.28.3
@@ -6936,9 +6936,9 @@ snapshots:
       react-dom: 19.2.4(react@19.2.4)
       uuid: 14.0.0
 
-  next@16.2.4(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  next@16.2.6(@opentelemetry/api@1.9.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
-      '@next/env': 16.2.4
+      '@next/env': 16.2.6
       '@swc/helpers': 0.5.15
       baseline-browser-mapping: 2.9.19
       caniuse-lite: 1.0.30001766
@@ -6947,14 +6947,14 @@ snapshots:
       react-dom: 19.2.4(react@19.2.4)
       styled-jsx: 5.1.6(react@19.2.4)
     optionalDependencies:
-      '@next/swc-darwin-arm64': 16.2.4
-      '@next/swc-darwin-x64': 16.2.4
-      '@next/swc-linux-arm64-gnu': 16.2.4
-      '@next/swc-linux-arm64-musl': 16.2.4
-      '@next/swc-linux-x64-gnu': 16.2.4
-      '@next/swc-linux-x64-musl': 16.2.4
-      '@next/swc-win32-arm64-msvc': 16.2.4
-      '@next/swc-win32-x64-msvc': 16.2.4
+      '@next/swc-darwin-arm64': 16.2.6
+      '@next/swc-darwin-x64': 16.2.6
+      '@next/swc-linux-arm64-gnu': 16.2.6
+      '@next/swc-linux-arm64-musl': 16.2.6
+      '@next/swc-linux-x64-gnu': 16.2.6
+      '@next/swc-linux-x64-musl': 16.2.6
+      '@next/swc-win32-arm64-msvc': 16.2.6
+      '@next/swc-win32-x64-msvc': 16.2.6
       '@opentelemetry/api': 1.9.1
       babel-plugin-react-compiler: 1.0.0
       sharp: 0.34.5

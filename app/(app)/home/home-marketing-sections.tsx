@@ -10,7 +10,7 @@ import {
     GradientText,
     LandingPageCard,
     WordBetweenLine,
-} from "@/app/components/landing_page/landing";
+} from "@/app/components/landing/landing";
 import { SignIn } from "@/app/components/sign-in";
 
 export default function HomeMarketingSections({ isAuthed }: { isAuthed: boolean }) {
