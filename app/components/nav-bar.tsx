@@ -303,6 +303,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
         </p>
         <Link
           href="/delete"
+          prefetch
           className="mb-2 block text-xs font-semibold text-red-500 hover:underline dark:text-red-400"
           onClick={() => setShowProfile(false)}
         >
@@ -463,6 +464,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                 <Link
                   key={link.href}
                   href={link.href}
+                  prefetch
                   transitionTypes={isActive ? undefined : ["nav-lateral"]}
                   onClick={(event) => handleNavLinkClick(event, link.href, isActive)}
                   className={`group/action m-2 flex min-h-8 items-center rounded-md px-2 py-1 ${isActive ? "bg-[#ffffff]/20" : ""}`}
