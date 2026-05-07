@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/app/auth";
 
-const DEFAULT_REALTIME_MODEL = "gpt-realtime-mini";
+const DEFAULT_REALTIME_MODEL = "gpt-realtime-2";
 
 function isAbortLikeError(error: unknown) {
   return (
