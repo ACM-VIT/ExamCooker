@@ -4,8 +4,8 @@ import React, { Activity, useDeferredValue, useEffect, useMemo, useRef, useState
 import Image from "@/app/components/common/app-image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mic } from "lucide-react";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
+import VoiceAgentButton from "@/app/components/voice/voice-agent-button";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import {
@@ -315,15 +315,19 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                         </svg>
                     </button>
                     {voiceAgentEnabled ? (
-                        <button
+                        <VoiceAgentButton
+                            buttonLabel="Talk to ExamCooker"
+                            className="h-9 w-9 shrink-0"
+                            iconClassName="h-4 w-4"
                             onClick={handleVoiceClick}
-                            type="button"
-                            aria-label="Talk to ExamCooker"
-                            title="Talk to ExamCooker"
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
+                            runtime={{
+                                activity: "idle",
+                                connected: false,
+                                muted: false,
+                            }}
+                            variant="nav"
                         >
-                            <Mic className="h-4 w-4" aria-hidden="true" />
-                        </button>
+                        </VoiceAgentButton>
                     ) : null}
                 </div>
 
