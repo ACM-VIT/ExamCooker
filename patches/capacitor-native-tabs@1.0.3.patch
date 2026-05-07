@@ -21,16 +21,16 @@ diff --git a/ios/Sources/NativeTabsPlugin/TabViewController.swift b/ios/Sources/
 index 518699fda3d8908ae70f20a3242384654e99a380..27fcf28d313111d2df8866895e9771d42cfc7e5e 100644
 --- a/ios/Sources/NativeTabsPlugin/TabViewController.swift
 +++ b/ios/Sources/NativeTabsPlugin/TabViewController.swift
-@@ -214,7 +214,7 @@ final class NativeTabBarController: NSObject, UITabBarDelegate {
-        webView.scrollView.contentInset = content
-        webView.scrollView.verticalScrollIndicatorInsets = indicators
+@@ -215,7 +215,7 @@ final class NativeTabBarController: NSObject, UITabBarDelegate {
+         webView.scrollView.contentInset = content
+         webView.scrollView.verticalScrollIndicatorInsets = indicators
 -        webView.scrollView.isScrollEnabled = false
 -        webView.scrollView.bounces = false
 +        webView.scrollView.isScrollEnabled = true
 +        webView.scrollView.bounces = true
      }
  
-    private func removeWebViewInsets() {
+     private func removeWebViewInsets() {
 diff --git a/android/build.gradle b/android/build.gradle
 index 11e66c55a241537a3efec00adcb80ac1f8c43678..cc498e5f666dba424d66c9941dff8d048f4887e2 100644
 --- a/android/build.gradle
