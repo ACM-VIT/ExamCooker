@@ -7,255 +7,54 @@ import {
   tool as createRealtimeTool,
   type RealtimeSessionConfig,
 } from "@openai/agents/realtime";
+import { useSyncExternalStore } from "react";
+import { toJSONSchema } from "zod";
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type CSSProperties,
-} from "react";
-import { toJSONSchema, type ZodType } from "zod";
+  shouldLogRealtimeEvent,
+  summarizeRealtimeEvent,
+} from "./voice-runtime-debug";
+import type {
+  JsonSchema,
+  OutputMode,
+  RealtimeClientEvent,
+  RealtimeServerEvent,
+  RealtimeTurnDetection,
+  ToolCallStatus,
+  UseVoiceControlOptions,
+  UseVoiceControlReturn,
+  VoiceControlActivity,
+  VoiceControlController,
+  VoiceControlError,
+  VoiceControlErrorCode,
+  VoiceControlResolvedSessionConfig,
+  VoiceControlSnapshot,
+  VoiceControlStatus,
+  VoiceTool,
+  VoiceToolCallRecord,
+  VoiceToolDefinition,
+} from "./voice-runtime-types";
 
-type JsonSchema = {
-  type?: string;
-  description?: string;
-  properties?: Record<string, JsonSchema>;
-  items?: JsonSchema | JsonSchema[];
-  required?: readonly string[];
-  enum?: readonly unknown[];
-  additionalProperties?: boolean | JsonSchema;
-  anyOf?: JsonSchema[];
-  oneOf?: JsonSchema[];
-  allOf?: JsonSchema[];
-  [key: string]: unknown;
-};
-
-type RealtimeServerEvent = {
-  type: string;
-  [key: string]: unknown;
-};
-
-export type RealtimeClientEvent = {
-  type: string;
-  [key: string]: unknown;
-};
-
-type ToolCallStatus = "running" | "success" | "error" | "skipped";
-type VoiceControlErrorCode =
-  | "active_response"
-  | "aborted"
-  | "device_unavailable"
-  | "invalid_tool_input"
-  | "insecure_context"
-  | "network_error"
-  | "permission_denied"
-  | "unknown"
-  | "unsupported_browser";
-
-export type VoiceControlError = {
-  code?: VoiceControlErrorCode;
-  message: string;
-  cause?: unknown;
-};
-
-export type VoiceControlActivity =
-  | "idle"
-  | "connecting"
-  | "listening"
-  | "processing"
-  | "executing"
-  | "error";
-
-export type VoiceControlStatus =
-  | "idle"
-  | "connecting"
-  | "listening"
-  | "processing"
-  | "error";
-
-export type ActivationMode = "push-to-talk" | "vad";
-export type OutputMode = "tool-only" | "text" | "audio" | "text+audio";
-export type RealtimeAudioFormat = "pcm16" | "g711_ulaw" | "g711_alaw";
-export type RealtimeVoice =
-  | "alloy"
-  | "ash"
-  | "ballad"
-  | "cedar"
-  | "coral"
-  | "echo"
-  | "marin"
-  | "sage"
-  | "shimmer"
-  | "verse"
-  | (string & {});
-
-export type RealtimeTurnDetection =
-  | {
-      type: "server_vad";
-      createResponse?: boolean;
-      interruptResponse?: boolean;
-      prefixPaddingMs?: number;
-      silenceDurationMs?: number;
-      threshold?: number;
-    }
-  | {
-      type: "semantic_vad";
-      createResponse?: boolean;
-      interruptResponse?: boolean;
-      eagerness?: "low" | "medium" | "high" | "auto";
-    };
-
-export type RealtimeAudioConfig = {
-  input?: {
-    format?: RealtimeAudioFormat;
-    capture?: MediaTrackConstraints;
-    noiseReduction?: {
-      type: "near_field" | "far_field" | (string & {});
-    } | null;
-    turnDetection?: RealtimeTurnDetection | null;
-  };
-  output?: {
-    format?: RealtimeAudioFormat;
-    speed?: number;
-    voice?: RealtimeVoice;
-  };
-};
-
-export type VoiceToolDefinition<TArgs = unknown> = {
-  name: string;
-  description: string;
-  parameters: ZodType<TArgs>;
-  execute: (args: TArgs) => Promise<unknown> | unknown;
-};
-
-type RealtimeFunctionTool = {
-  type: "function";
-  name: string;
-  description: string;
-  parameters: JsonSchema;
-};
-
-export type VoiceTool<TArgs = unknown> = VoiceToolDefinition<TArgs> & {
-  jsonSchema: JsonSchema;
-  realtimeTool: RealtimeFunctionTool;
-  parseArguments: (rawArgs: string) => TArgs;
-};
-
-export type VoiceToolCallRecord = {
-  id: string;
-  sequence: number;
-  name: string;
-  status: ToolCallStatus;
-  args?: unknown;
-  output?: unknown;
-  error?: VoiceControlError;
-  startedAt: number;
-  finishedAt?: number;
-  durationMs?: number;
-};
-
-type VoiceControlResolvedSessionConfig = {
-  model: string;
-  instructions: string;
-  tools: RealtimeFunctionTool[];
-  activationMode: ActivationMode;
-  outputMode: OutputMode;
-  audio?: RealtimeAudioConfig;
-  maxOutputTokens?: number | "inf";
-};
-
-export type UseVoiceControlOptions = {
-  auth: {
-    sessionEndpoint: string;
-    sessionRequestInit?: RequestInit;
-  };
-  tools: VoiceTool<any>[];
-  instructions?: string;
-  model?: string;
-  activationMode?: ActivationMode;
-  outputMode?: OutputMode;
-  audio?: RealtimeAudioConfig;
-  maxOutputTokens?: number | "inf";
-  postToolResponse?: boolean;
-  debug?: boolean;
-  onGenerationCompleted?: (generation: VoiceControlGeneration) => void;
-  onError?: (error: VoiceControlError) => void;
-};
-
-export type VoiceControlGeneration = {
-  conversationId?: string | null;
-  errorMessage?: string;
-  inputText: string;
-  inputTokens?: number;
-  latencyMs: number;
-  model: string;
-  outputText: string | null;
-  outputTokens?: number;
-  responseId?: string | null;
-  status: string;
-  stopReason?: string;
-  timeToFirstTokenMs?: number;
-};
-
-type VoiceControlSnapshot = {
-  status: VoiceControlStatus;
-  activity: VoiceControlActivity;
-  connected: boolean;
-  muted: boolean;
-  transcript: string;
-  toolCalls: VoiceToolCallRecord[];
-  latestToolCall: VoiceToolCallRecord | null;
-  sessionConfig: VoiceControlResolvedSessionConfig;
-};
-
-export type UseVoiceControlReturn = VoiceControlSnapshot & {
-  connect: () => Promise<void>;
-  disconnect: () => void;
-  setMuted: (muted: boolean) => void;
-  requestResponse: () => void;
-  sendClientEvent: (event: RealtimeClientEvent) => void;
-};
-
-export type VoiceControlController = UseVoiceControlReturn & {
-  configure: (options: UseVoiceControlOptions) => void;
-  destroy: () => void;
-  getPeerConnection: () => RTCPeerConnection | null;
-  getSnapshot: () => VoiceControlSnapshot;
-  subscribe: (listener: () => void) => () => void;
-};
-
-type GhostCursorPhase = "hidden" | "traveling" | "arrived";
-type GhostCursorState = {
-  visible: boolean;
-  phase: GhostCursorPhase;
-  x: number;
-  y: number;
-};
-
-type GhostCursorTarget = {
-  element?: HTMLElement | null;
-  point?: {
-    x: number;
-    y: number;
-  };
-  pulseElement?: HTMLElement | null;
-};
-
-type GhostCursorMotionOptions = {
-  easing?: "smooth" | "expressive";
-  from?: "pointer" | "previous" | { x: number; y: number };
-};
-
-type UseGhostCursorReturn = {
-  cursorState: GhostCursorState;
-  hide: () => void;
-  run: <TResult>(
-    target: GhostCursorTarget,
-    operation: () => Promise<TResult> | TResult,
-    options?: GhostCursorMotionOptions,
-  ) => Promise<TResult>;
-};
+export { GhostCursorOverlay, useGhostCursor } from "./voice-ghost-cursor";
+export type {
+  ActivationMode,
+  OutputMode,
+  RealtimeAudioConfig,
+  RealtimeAudioFormat,
+  RealtimeClientEvent,
+  RealtimeServerEvent,
+  RealtimeTurnDetection,
+  RealtimeVoice,
+  UseVoiceControlOptions,
+  UseVoiceControlReturn,
+  VoiceControlActivity,
+  VoiceControlController,
+  VoiceControlError,
+  VoiceControlGeneration,
+  VoiceControlStatus,
+  VoiceTool,
+  VoiceToolCallRecord,
+  VoiceToolDefinition,
+} from "./voice-runtime-types";
 
 type MutableRealtimeSession<TContext = unknown> = RealtimeSession<TContext> & {
   options: {
@@ -907,6 +706,10 @@ type PendingVoiceGeneration = {
   timeToFirstTokenAt?: number;
 };
 
+type InputAudioProbe = {
+  dispose: () => void;
+};
+
 class VoiceControlControllerImpl implements VoiceControlController {
   private connectAttempt = 0;
   private destroyed = false;
@@ -923,6 +726,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
   private session: RealtimeSession<unknown> | null = null;
   private sessionAbortController: AbortController | null = null;
   private sessionDisposers: Array<() => void> = [];
+  private inputAudioProbe: InputAudioProbe | null = null;
   private inputMediaStream: MediaStream | null = null;
   private snapshot: VoiceControlSnapshot;
   private toolCallOrder: string[] = [];
@@ -933,6 +737,45 @@ class VoiceControlControllerImpl implements VoiceControlController {
     this.snapshot = createInitialSnapshot(options);
     this.liveInstructions = this.snapshot.sessionConfig.instructions;
     this.liveTools = options.tools;
+  }
+
+  private debugLog(message: string, details?: unknown) {
+    if (!this.options.debug) {
+      return;
+    }
+
+    if (details === undefined) {
+      console.debug(`[voice-agent] ${message}`);
+      return;
+    }
+
+    console.debug(`[voice-agent] ${message}`, details);
+  }
+
+  private debugWarn(message: string, details?: unknown) {
+    if (!this.options.debug) {
+      return;
+    }
+
+    if (details === undefined) {
+      console.warn(`[voice-agent] ${message}`);
+      return;
+    }
+
+    console.warn(`[voice-agent] ${message}`, details);
+  }
+
+  private debugError(message: string, details?: unknown) {
+    if (!this.options.debug) {
+      return;
+    }
+
+    if (details === undefined) {
+      console.error(`[voice-agent] ${message}`);
+      return;
+    }
+
+    console.error(`[voice-agent] ${message}`, details);
   }
 
   get status() {
@@ -987,6 +830,13 @@ class VoiceControlControllerImpl implements VoiceControlController {
 
     const nextSessionConfig = resolveSessionConfig(options, this.liveInstructions, this.liveTools);
     this.setSessionConfig(nextSessionConfig);
+    this.debugLog("controller configured", {
+      activationMode: nextSessionConfig.activationMode,
+      model: nextSessionConfig.model,
+      outputMode: nextSessionConfig.outputMode,
+      toolCount: nextSessionConfig.tools.length,
+      turnDetection: nextSessionConfig.audio?.input?.turnDetection ?? "default",
+    });
 
     if (this.connected) {
       void this.applyConnectedSessionUpdate(nextSessionConfig);
@@ -1021,14 +871,22 @@ class VoiceControlControllerImpl implements VoiceControlController {
     this.setTranscript("");
     this.clearToolCalls();
     this.resetResponseState();
-
-    const inputMediaStream = await this.getOrCreateInputMediaStream(connectSignal);
-    throwIfAborted(connectSignal);
-
-    const session = this.createSession();
-    this.attachSession(session);
+    this.cleanupSession();
+    this.debugLog("connect started", {
+      activationMode: this.sessionConfig.activationMode,
+      model: this.sessionConfig.model,
+      outputMode: this.sessionConfig.outputMode,
+      toolCount: this.sessionConfig.tools.length,
+    });
 
     try {
+      const inputMediaStream = await this.getOrCreateInputMediaStream(connectSignal);
+      throwIfAborted(connectSignal);
+
+      const session = this.createSession();
+      this.attachSession(session);
+
+      this.debugLog("requesting realtime client secret");
       const clientSecret = await fetchClientSecret(
         this.options.auth,
         this.sessionConfig.model,
@@ -1036,6 +894,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
       );
 
       throwIfAborted(connectSignal);
+      this.debugLog("connecting realtime session");
       await connectRealtimeSession(session, {
         apiKey: clientSecret,
         model: this.sessionConfig.model,
@@ -1051,12 +910,17 @@ class VoiceControlControllerImpl implements VoiceControlController {
       this.setConnected(true);
       this.setMutedState(Boolean(session.muted));
       this.setActivity(this.runningToolCallCount > 0 ? "executing" : "listening");
+      this.debugLog("connect completed", {
+        muted: Boolean(session.muted),
+        transportStatus: session.transport.status,
+      });
     } catch (error) {
       if (this.sessionAbortController?.signal === connectSignal) {
         this.sessionAbortController = null;
       }
 
       if (this.destroyed || attemptId !== this.connectAttempt || isAbortError(error)) {
+        this.debugWarn("connect aborted");
         this.cleanupSession();
         this.setConnected(false);
         this.setMutedState(false);
@@ -1064,6 +928,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
         return;
       }
 
+      this.debugError("connect failed", normalizeError(error));
       this.emitError(error, true);
     }
   };
@@ -1076,6 +941,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
     this.connectAttempt += 1;
     this.sessionAbortController?.abort();
     this.sessionAbortController = null;
+    this.debugLog("disconnect requested");
     this.cleanupSession();
     this.setConnected(false);
     this.setMutedState(false);
@@ -1098,7 +964,9 @@ class VoiceControlControllerImpl implements VoiceControlController {
     try {
       session.mute(muted);
       this.setMutedState(muted);
+      this.debugLog("mute changed", { muted });
     } catch (error) {
+      this.debugError("mute failed", normalizeError(error));
       this.emitError(error, false);
     }
   };
@@ -1109,12 +977,14 @@ class VoiceControlControllerImpl implements VoiceControlController {
     }
 
     if (this.responseInFlight) {
+      this.debugWarn("requestResponse skipped because response is already in flight");
       return;
     }
 
     const response = buildResponseCreateConfig(this.sessionConfig);
     this.responseInFlight = true;
     this.setActivity(this.runningToolCallCount > 0 ? "executing" : "processing");
+    this.debugLog("requesting response", response ?? {});
 
     if (this.session.transport.requestResponse) {
       this.session.transport.requestResponse(response);
@@ -1132,6 +1002,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
       return;
     }
 
+    this.debugLog("client event sent", summarizeRealtimeEvent(event));
     this.session.transport.sendEvent(event as never);
   };
 
@@ -1143,6 +1014,44 @@ class VoiceControlControllerImpl implements VoiceControlController {
 
     return transport.connectionState.peerConnection ?? null;
   };
+
+  private attachPeerConnectionDebugListeners(session: RealtimeSession<unknown>) {
+    if (!this.options.debug) {
+      return;
+    }
+
+    const transport = session.transport;
+    if (!(transport instanceof OpenAIRealtimeWebRTC)) {
+      return;
+    }
+
+    const peerConnection = transport.connectionState.peerConnection;
+    if (!peerConnection) {
+      this.debugWarn("peer connection is not available yet");
+      return;
+    }
+
+    const logPeerState = () => {
+      this.debugLog("peer connection state", {
+        connectionState: peerConnection.connectionState,
+        iceConnectionState: peerConnection.iceConnectionState,
+        iceGatheringState: peerConnection.iceGatheringState,
+        signalingState: peerConnection.signalingState,
+      });
+    };
+
+    peerConnection.addEventListener("connectionstatechange", logPeerState);
+    peerConnection.addEventListener("iceconnectionstatechange", logPeerState);
+    peerConnection.addEventListener("icegatheringstatechange", logPeerState);
+    peerConnection.addEventListener("signalingstatechange", logPeerState);
+    this.sessionDisposers.push(() => {
+      peerConnection.removeEventListener("connectionstatechange", logPeerState);
+      peerConnection.removeEventListener("iceconnectionstatechange", logPeerState);
+      peerConnection.removeEventListener("icegatheringstatechange", logPeerState);
+      peerConnection.removeEventListener("signalingstatechange", logPeerState);
+    });
+    logPeerState();
+  }
 
   private createSession() {
     const inputMediaStream = this.inputMediaStream ?? undefined;
@@ -1186,6 +1095,11 @@ class VoiceControlControllerImpl implements VoiceControlController {
           startedAt,
           status: "running",
         });
+        this.debugLog("tool call started", {
+          args: input,
+          callId,
+          name: voiceTool.name,
+        });
 
         try {
           const output = await voiceTool.execute(input as TArgs);
@@ -1198,16 +1112,29 @@ class VoiceControlControllerImpl implements VoiceControlController {
             startedAt,
             status: "success",
           });
+          this.debugLog("tool call completed", {
+            callId,
+            durationMs: Date.now() - startedAt,
+            name: voiceTool.name,
+            output,
+          });
           return output;
         } catch (error) {
+          const normalizedError = normalizeError(error);
           this.upsertToolCallRecord({
             args: input,
-            error: normalizeError(error),
+            error: normalizedError,
             finishedAt: Date.now(),
             id: callId,
             name: voiceTool.name,
             startedAt,
             status: "error",
+          });
+          this.debugError("tool call failed", {
+            callId,
+            durationMs: Date.now() - startedAt,
+            error: normalizedError,
+            name: voiceTool.name,
           });
           throw error;
         } finally {
@@ -1227,8 +1154,10 @@ class VoiceControlControllerImpl implements VoiceControlController {
   }
 
   private attachSession(session: RealtimeSession<unknown>) {
-    this.cleanupSession();
     this.session = session;
+    this.debugLog("session attached", {
+      transportStatus: session.transport.status,
+    });
 
     const bind = (
       emitter: {
@@ -1249,6 +1178,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
         return;
       }
 
+      this.debugError("session error", normalizeError(event.error ?? "Realtime session error."));
       this.emitError(event.error ?? "Realtime session error.", session.transport.status === "disconnected");
     });
 
@@ -1257,6 +1187,9 @@ class VoiceControlControllerImpl implements VoiceControlController {
         return;
       }
 
+      if (shouldLogRealtimeEvent(event)) {
+        this.debugLog("server event", summarizeRealtimeEvent(event));
+      }
       this.handleTransportEvent(event);
     });
 
@@ -1264,6 +1197,8 @@ class VoiceControlControllerImpl implements VoiceControlController {
       if (this.session !== session) {
         return;
       }
+
+      this.debugLog("transport connection changed", { status });
 
       if (status === "connecting") {
         this.setConnected(false);
@@ -1273,6 +1208,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
       }
 
       if (status === "connected") {
+        this.attachPeerConnectionDebugListeners(session);
         this.setConnected(true);
         this.setMutedState(Boolean(session.muted));
         if (this.runningToolCallCount === 0 && !this.responseInFlight) {
@@ -1309,13 +1245,83 @@ class VoiceControlControllerImpl implements VoiceControlController {
     this.releaseInputMediaStream();
   }
 
+  private startInputAudioProbe(stream: MediaStream) {
+    if (!this.options.debug || typeof window === "undefined") {
+      return;
+    }
+
+    this.inputAudioProbe?.dispose();
+    this.inputAudioProbe = null;
+
+    const AudioContextConstructor =
+      window.AudioContext ??
+      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+    if (!AudioContextConstructor) {
+      this.debugWarn("audio probe unavailable because AudioContext is unsupported");
+      return;
+    }
+
+    try {
+      const audioContext = new AudioContextConstructor();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+
+      const samples = new Uint8Array(analyser.fftSize);
+      const logLevel = () => {
+        analyser.getByteTimeDomainData(samples);
+
+        let sumSquares = 0;
+        let peak = 0;
+        for (const sample of samples) {
+          const centered = (sample - 128) / 128;
+          sumSquares += centered * centered;
+          peak = Math.max(peak, Math.abs(centered));
+        }
+
+        const rms = Math.sqrt(sumSquares / samples.length);
+        this.debugLog("microphone level", {
+          peak: Number(peak.toFixed(4)),
+          rms: Number(rms.toFixed(4)),
+          state: audioContext.state,
+        });
+      };
+
+      const intervalId = window.setInterval(logLevel, 1000);
+      void audioContext.resume().catch((error: unknown) => {
+        this.debugWarn("audio probe resume failed", normalizeError(error));
+      });
+      logLevel();
+
+      this.inputAudioProbe = {
+        dispose: () => {
+          window.clearInterval(intervalId);
+          source.disconnect();
+          void audioContext.close().catch(() => undefined);
+        },
+      };
+    } catch (error) {
+      this.debugWarn("audio probe failed to start", normalizeError(error));
+    }
+  }
+
   private async getOrCreateInputMediaStream(signal: AbortSignal) {
     const existingTrack = this.inputMediaStream?.getAudioTracks()[0];
     if (this.inputMediaStream && existingTrack?.readyState === "live") {
+      this.debugLog("reusing existing microphone stream", {
+        trackState: existingTrack.readyState,
+      });
       return this.inputMediaStream;
     }
 
     const captureConstraints = this.sessionConfig.audio?.input?.capture;
+    this.debugLog("requesting microphone stream", {
+      captureConstraints: captureConstraints ?? true,
+      hasMediaDevices: Boolean(navigator.mediaDevices?.getUserMedia),
+      isSecureContext: window.isSecureContext,
+    });
     const mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: captureConstraints ?? true,
     });
@@ -1326,6 +1332,42 @@ class VoiceControlControllerImpl implements VoiceControlController {
     }
 
     this.inputMediaStream = mediaStream;
+    const audioTracks = mediaStream.getAudioTracks();
+    this.debugLog("microphone stream ready", {
+      active: mediaStream.active,
+      audioTrackCount: audioTracks.length,
+      tracks: audioTracks.map((track) => ({
+        enabled: track.enabled,
+        id: track.id,
+        kind: track.kind,
+        label: track.label,
+        muted: track.muted,
+        readyState: track.readyState,
+        settings: track.getSettings(),
+      })),
+    });
+
+    for (const track of audioTracks) {
+      const logTrackState = () => {
+        this.debugLog("microphone track state", {
+          enabled: track.enabled,
+          id: track.id,
+          label: track.label,
+          muted: track.muted,
+          readyState: track.readyState,
+        });
+      };
+      track.addEventListener("mute", logTrackState);
+      track.addEventListener("unmute", logTrackState);
+      track.addEventListener("ended", logTrackState);
+      this.sessionDisposers.push(() => {
+        track.removeEventListener("mute", logTrackState);
+        track.removeEventListener("unmute", logTrackState);
+        track.removeEventListener("ended", logTrackState);
+      });
+    }
+
+    this.startInputAudioProbe(mediaStream);
     return mediaStream;
   }
 
@@ -1333,6 +1375,13 @@ class VoiceControlControllerImpl implements VoiceControlController {
     if (!stream) {
       return;
     }
+
+    this.inputAudioProbe?.dispose();
+    this.inputAudioProbe = null;
+    this.debugLog("releasing microphone stream", {
+      active: stream.active,
+      audioTrackCount: stream.getAudioTracks().length,
+    });
 
     for (const track of stream.getTracks()) {
       track.stop();
@@ -1731,198 +1780,4 @@ export function createVoiceControlController(
 export function useVoiceControl(controller: VoiceControlController): UseVoiceControlReturn {
   useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
   return controller;
-}
-
-function getViewportFallbackPoint() {
-  if (typeof window === "undefined") {
-    return {
-      x: 0,
-      y: 0,
-    };
-  }
-
-  return {
-    x: Math.max(window.innerWidth - 84, 0),
-    y: Math.max(window.innerHeight - 84, 0),
-  };
-}
-
-function getElementPoint(element: HTMLElement) {
-  const rect = element.getBoundingClientRect();
-  const isTextEntry = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement;
-
-  if (isTextEntry) {
-    return {
-      x: rect.left + Math.min(28, rect.width * 0.18),
-      y: rect.top + rect.height / 2,
-    };
-  }
-
-  return {
-    x: rect.left + rect.width / 2,
-    y: rect.top + rect.height / 2,
-  };
-}
-
-function resolveTargetPoint(target: GhostCursorTarget) {
-  if (target.point) {
-    return target.point;
-  }
-
-  if (target.element) {
-    return getElementPoint(target.element);
-  }
-
-  return getViewportFallbackPoint();
-}
-
-export function useGhostCursor(): UseGhostCursorReturn {
-  const [cursorState, setCursorState] = useState<GhostCursorState>(() => ({
-    visible: false,
-    phase: "hidden",
-    ...getViewportFallbackPoint(),
-  }));
-  const scriptedPointerRef = useRef<{ x: number; y: number } | null>(null);
-  const queueRef = useRef(Promise.resolve());
-
-  useEffect(() => {
-    const handlePointerMove = (event: PointerEvent) => {
-      if (scriptedPointerRef.current) {
-        return;
-      }
-
-      setCursorState((current) =>
-        current.visible
-          ? current
-          : {
-              ...current,
-              x: event.clientX,
-              y: event.clientY,
-            },
-      );
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-    };
-  }, []);
-
-  const hide = useCallback(() => {
-    scriptedPointerRef.current = null;
-    setCursorState((current) => ({
-      ...current,
-      visible: false,
-      phase: "hidden",
-    }));
-  }, []);
-
-  const run = useCallback<UseGhostCursorReturn["run"]>(
-    async (target, operation) => {
-      const nextTask = queueRef.current.then(async () => {
-        const targetElement = target.element ?? null;
-        if (targetElement) {
-          targetElement.scrollIntoView({
-            block: "center",
-            inline: "center",
-            behavior: "smooth",
-          });
-          await wait(180);
-        }
-
-        const point = resolveTargetPoint(target);
-        scriptedPointerRef.current = point;
-        setCursorState({
-          phase: "traveling",
-          visible: true,
-          x: point.x,
-          y: point.y,
-        });
-
-        await wait(220);
-        setCursorState((current) => ({
-          ...current,
-          phase: "arrived",
-        }));
-        try {
-          const result = await operation();
-          await wait(180);
-          return result;
-        } finally {
-          scriptedPointerRef.current = null;
-          setCursorState((current) => ({
-            ...current,
-            visible: false,
-            phase: "hidden",
-          }));
-        }
-      });
-
-      queueRef.current = nextTask.then(
-        () => undefined,
-        () => undefined,
-      );
-      return await nextTask;
-    },
-    [],
-  );
-
-  return {
-    cursorState,
-    hide,
-    run,
-  };
-}
-
-export function GhostCursorOverlay({ state }: { state: GhostCursorState }) {
-  if (!state.visible || state.phase === "hidden") {
-    return null;
-  }
-
-  const style = {
-    left: 0,
-    pointerEvents: "none",
-    position: "fixed",
-    top: 0,
-    transform: `translate3d(${state.x}px, ${state.y}px, 0)`,
-    transition:
-      state.phase === "traveling"
-        ? "transform 220ms cubic-bezier(0.22, 0.84, 0.26, 1)"
-        : "transform 140ms ease-out, opacity 180ms ease-out",
-    zIndex: 80,
-  } satisfies CSSProperties;
-
-  return (
-    <div aria-hidden="true" style={style}>
-      <span
-        style={{
-          position: "absolute",
-          left: -18,
-          top: -18,
-          width: 36,
-          height: 36,
-          borderRadius: 9999,
-          background:
-            state.phase === "traveling"
-              ? "radial-gradient(circle, rgba(59,244,199,0.28), rgba(59,244,199,0.02))"
-              : "radial-gradient(circle, rgba(77,179,214,0.28), rgba(77,179,214,0.03))",
-          transform: state.phase === "arrived" ? "scale(1.15)" : "scale(1)",
-          transition: "transform 180ms ease-out",
-        }}
-      />
-      <span
-        style={{
-          position: "absolute",
-          left: -7,
-          top: -7,
-          width: 14,
-          height: 14,
-          borderRadius: 9999,
-          background: "#ffffff",
-          border: "3px solid #3BF4C7",
-          boxShadow: "0 8px 22px rgba(0,0,0,0.16)",
-        }}
-      />
-    </div>
-  );
 }
