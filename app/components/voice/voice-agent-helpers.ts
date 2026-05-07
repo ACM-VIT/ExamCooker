@@ -72,9 +72,8 @@ Rules:
 - On a course past papers page like "/past_papers/CSE1001", use filter_course_papers_by_exam for requests such as "open CAT-1 papers" or "open FAT papers".
 - Use inspect_current_view before a multi-step interaction or when the page may have changed.
 - Use activate_control and fill_input only with control IDs returned by inspect_current_view.
-- If an ExamCooker PDF is open and the user asks about its contents, use answer_question_about_open_pdf with the user's question.
+- If an ExamCooker PDF is open and the user asks about its visible contents, use answer_question_about_open_pdf with the user's question. This tool reads the currently rendered PDF page image, including diagrams and tables.
 - If the user says "this question", "that question", "this page", or similar while a PDF is open, treat it as a question about the currently visible PDF page and use answer_question_about_open_pdf.
-- If the user asks about a visible diagram, image, table layout, or anything that needs visual context, use attach_current_visual_context before answering.
 - Use inspect_open_pdf for page-number or document-status questions.
 - Use go_to_pdf_page when the user asks to jump to a PDF page.
 - Do not guess what a PDF says without using the PDF tools.
@@ -98,11 +97,23 @@ export type VoiceGuideSnapshot = VoicePageSnapshot & {
 
 export type CapturedVoiceVisualContext = {
   image: string;
-  source: "canvas";
+  source: "pdf-page-image" | "canvas";
   width: number;
   height: number;
   openPdf: VoiceOpenPdfView | null;
 };
+
+const MAX_VOICE_IMAGE_DATA_URL_LENGTH = 8_000_000;
+const VOICE_IMAGE_CAPTURE_ATTEMPTS = [
+  { maxDimension: 2400, quality: 0.92 },
+  { maxDimension: 2200, quality: 0.9 },
+  { maxDimension: 2000, quality: 0.88 },
+  { maxDimension: 1800, quality: 0.84 },
+  { maxDimension: 1600, quality: 0.8 },
+  { maxDimension: 1400, quality: 0.74 },
+  { maxDimension: 1200, quality: 0.68 },
+  { maxDimension: 1000, quality: 0.6 },
+] as const;
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
@@ -414,8 +425,8 @@ export function getOpenPdfView(): VoiceOpenPdfView | null {
   };
 }
 
-function getCanvasViewportIntersection(canvas: HTMLCanvasElement) {
-  const rect = canvas.getBoundingClientRect();
+function getElementViewportIntersection(element: Element) {
+  const rect = element.getBoundingClientRect();
   const width = Math.max(
     0,
     Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0),
@@ -433,6 +444,52 @@ function getCanvasViewportIntersection(canvas: HTMLCanvasElement) {
   };
 }
 
+function isRenderableElement(element: Element) {
+  if (element.closest("[data-voice-agent-ignore='true']")) {
+    return false;
+  }
+
+  const style = window.getComputedStyle(element);
+  if (style.display === "none" || style.visibility === "hidden") {
+    return false;
+  }
+
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+function chooseVisiblePdfPageImage() {
+  const activePdf = getActivePdfSnapshot();
+  if (!activePdf) {
+    return null;
+  }
+
+  const pageSelector = `img[data-ec-pdf-page-number="${activePdf.currentPage}"]`;
+  const exactPageImage = document.querySelector<HTMLImageElement>(pageSelector);
+  if (
+    exactPageImage instanceof HTMLImageElement &&
+    isRenderableElement(exactPageImage) &&
+    getElementViewportIntersection(exactPageImage).area > 2500
+  ) {
+    return exactPageImage;
+  }
+
+  const candidates = Array.from(
+    document.querySelectorAll("img[data-ec-pdf-page-image='true']"),
+  )
+    .filter((image): image is HTMLImageElement => {
+      return image instanceof HTMLImageElement && isRenderableElement(image);
+    })
+    .map((image) => ({
+      image,
+      intersection: getElementViewportIntersection(image),
+    }))
+    .filter((candidate) => candidate.intersection.area > 2500)
+    .sort((a, b) => b.intersection.area - a.intersection.area);
+
+  return candidates[0]?.image ?? null;
+}
+
 function chooseVisibleCanvas() {
   const candidates = Array.from(document.querySelectorAll("canvas"))
     .filter((canvas): canvas is HTMLCanvasElement => {
@@ -440,21 +497,15 @@ function chooseVisibleCanvas() {
         return false;
       }
 
-      if (canvas.closest("[data-voice-agent-ignore='true']")) {
-        return false;
-      }
-
-      const style = window.getComputedStyle(canvas);
       return (
-        style.display !== "none" &&
-        style.visibility !== "hidden" &&
+        isRenderableElement(canvas) &&
         canvas.width > 0 &&
         canvas.height > 0
       );
     })
     .map((canvas) => ({
       canvas,
-      intersection: getCanvasViewportIntersection(canvas),
+      intersection: getElementViewportIntersection(canvas),
     }))
     .filter((candidate) => candidate.intersection.area > 2500)
     .sort((a, b) => b.intersection.area - a.intersection.area);
@@ -462,10 +513,19 @@ function chooseVisibleCanvas() {
   return candidates[0] ?? null;
 }
 
-function canvasToJpegDataUrl(canvas: HTMLCanvasElement, maxDimension = 1400) {
-  const scale = Math.min(1, maxDimension / Math.max(canvas.width, canvas.height));
-  const targetWidth = Math.max(1, Math.round(canvas.width * scale));
-  const targetHeight = Math.max(1, Math.round(canvas.height * scale));
+function drawSourceToJpegDataUrl(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+  options: {
+    maxDimension: number;
+    quality: number;
+  },
+) {
+  const { maxDimension, quality } = options;
+  const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
+  const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+  const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
 
   const output = document.createElement("canvas");
   output.width = targetWidth;
@@ -476,28 +536,112 @@ function canvasToJpegDataUrl(canvas: HTMLCanvasElement, maxDimension = 1400) {
     return null;
   }
 
-  context.drawImage(canvas, 0, 0, targetWidth, targetHeight);
-  return output.toDataURL("image/jpeg", 0.78);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(source, 0, 0, targetWidth, targetHeight);
+  return {
+    height: targetHeight,
+    image: output.toDataURL("image/jpeg", quality),
+    width: targetWidth,
+  };
+}
+
+function captureSourceForVoice(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+) {
+  let fallback:
+    | {
+        height: number;
+        image: string;
+        width: number;
+      }
+    | null = null;
+
+  for (const attempt of VOICE_IMAGE_CAPTURE_ATTEMPTS) {
+    const captured = drawSourceToJpegDataUrl(
+      source,
+      sourceWidth,
+      sourceHeight,
+      attempt,
+    );
+    if (!captured) {
+      continue;
+    }
+
+    fallback = captured;
+    if (captured.image.length <= MAX_VOICE_IMAGE_DATA_URL_LENGTH) {
+      return captured;
+    }
+  }
+
+  return fallback;
+}
+
+async function waitForImageReady(image: HTMLImageElement) {
+  if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+    return true;
+  }
+
+  try {
+    await image.decode();
+  } catch {
+    await wait(80);
+  }
+
+  return image.complete && image.naturalWidth > 0 && image.naturalHeight > 0;
+}
+
+async function capturePdfPageImageForVoice(image: HTMLImageElement) {
+  const isReady = await waitForImageReady(image);
+  if (!isReady) {
+    return null;
+  }
+
+  return captureSourceForVoice(image, image.naturalWidth, image.naturalHeight);
+}
+
+function captureCanvasForVoice(canvas: HTMLCanvasElement) {
+  return captureSourceForVoice(canvas, canvas.width, canvas.height);
 }
 
 export async function captureCurrentVisualContext(): Promise<CapturedVoiceVisualContext | null> {
   await waitForAnimationFrame();
+  const pdfPageImage = chooseVisiblePdfPageImage();
+  if (pdfPageImage) {
+    try {
+      const captured = await capturePdfPageImageForVoice(pdfPageImage);
+      if (captured) {
+        return {
+          image: captured.image,
+          source: "pdf-page-image",
+          width: captured.width,
+          height: captured.height,
+          openPdf: getOpenPdfView(),
+        };
+      }
+    } catch {
+      // Fall back to canvas capture for non-PDF visual surfaces.
+    }
+  }
+
   const selected = chooseVisibleCanvas();
   if (!selected) {
     return null;
   }
 
   try {
-    const image = canvasToJpegDataUrl(selected.canvas);
-    if (!image) {
+    const captured = captureCanvasForVoice(selected.canvas);
+    if (!captured) {
       return null;
     }
 
     return {
-      image,
+      image: captured.image,
       source: "canvas",
-      width: selected.canvas.width,
-      height: selected.canvas.height,
+      width: captured.width,
+      height: captured.height,
       openPdf: getOpenPdfView(),
     };
   } catch {
@@ -520,7 +664,7 @@ export function buildPageContextMessage(snapshot: VoiceGuideSnapshot) {
       `Open PDF: ${snapshot.openPdf.fileName}, page ${snapshot.openPdf.currentPage} of ${snapshot.openPdf.totalPages}.`,
     );
     parts.push(
-      "Use inspect_open_pdf or answer_question_about_open_pdf for document questions.",
+      "Use inspect_open_pdf for document status and answer_question_about_open_pdf for visible page questions.",
     );
   }
 

@@ -71,7 +71,7 @@ type MutableRealtimeSession<TContext = unknown> = RealtimeSession<TContext> & {
   };
 };
 
-const DEFAULT_MODEL = "gpt-realtime-2";
+const DEFAULT_MODEL = "gpt-realtime-mini";
 const DEFAULT_INSTRUCTIONS =
   "You are a voice control agent for a web app. Use registered tools whenever you can take action. Keep any spoken reply brief.";
 const TOOL_INPUT_RECOVERY_PROMPT =

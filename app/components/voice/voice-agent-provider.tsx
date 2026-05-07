@@ -22,6 +22,7 @@ import {
   type UseVoiceControlReturn,
   type VoiceControlController,
 } from "./voice-runtime";
+import { answerVisiblePdfPageQuestionAction } from "./voice-agent-actions";
 import {
   DEFAULT_VOICE,
   MAX_VISIBLE_CONTROLS,
@@ -104,7 +105,7 @@ export default function VoiceAgentProvider({
       auth: { sessionEndpoint: "/api/realtime/session" },
       debug: VOICE_DEBUG,
       instructions: "Voice guide is preparing.",
-      model: "gpt-realtime-2",
+      model: "gpt-realtime-mini",
       maxOutputTokens: 90,
       outputMode: "audio",
       postToolResponse: true,
@@ -183,46 +184,44 @@ export default function VoiceAgentProvider({
       voiceAnalyticsSessionIdRef.current ?? crypto.randomUUID();
     voiceAnalyticsSessionIdRef.current = voiceSessionId;
 
-    const response = await fetch("/api/realtime/pdf-answer", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        currentPage: activePdf.currentPage,
-        fileName: activePdf.fileName,
-        fileUrl: new URL(activePdf.fileUrl, window.location.origin).toString(),
-        posthogSessionId: getPostHogSessionId(),
-        question,
-        title: document.title,
-        totalPages: activePdf.totalPages,
-        voiceEntryPoint: sessionEntryPointRef.current,
-        voiceSessionId,
-      }),
-      cache: "no-store",
-    });
-
-    const payload = (await response.json().catch(() => null)) as
-      | {
-          answer?: unknown;
-          error?: unknown;
-        }
-      | null;
-
-    if (!response.ok) {
-      throw new Error(
-        typeof payload?.error === "string"
-          ? payload.error
-          : "Unable to answer that PDF question right now.",
-      );
+    const visualContext = await captureCurrentVisualContext();
+    if (!visualContext) {
+      throw new Error("I could not capture the visible PDF page.");
     }
 
-    if (typeof payload?.answer !== "string" || !payload.answer.trim()) {
-      throw new Error("The PDF answer service returned an empty answer.");
+    if (VOICE_DEBUG) {
+      console.debug("[voice-agent] visible PDF capture", {
+        height: visualContext.height,
+        source: visualContext.source,
+        width: visualContext.width,
+      });
+    }
+
+    const result = await answerVisiblePdfPageQuestionAction({
+      currentPage: activePdf.currentPage,
+      fileName: activePdf.fileName,
+      imageDataUrl: visualContext.image,
+      imageHeight: visualContext.height,
+      imageSource: visualContext.source,
+      imageWidth: visualContext.width,
+      posthogSessionId: getPostHogSessionId(),
+      question,
+      title: document.title,
+      totalPages: activePdf.totalPages,
+      voiceEntryPoint: sessionEntryPointRef.current,
+      voiceSessionId,
+    });
+
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
+
+    if (!result.answer.trim()) {
+      throw new Error("The visible PDF answer service returned an empty answer.");
     }
 
     return {
-      answer: payload.answer.trim(),
+      answer: result.answer.trim(),
       openPdf: getOpenPdfView(),
     };
   }, []);
@@ -335,30 +334,6 @@ export default function VoiceAgentProvider({
         },
       }),
       defineVoiceTool({
-        name: "attach_current_visual_context",
-        description:
-          "Attach an image of the currently visible PDF/page canvas to the voice session. Use this before answering questions about diagrams, screenshots, tables, images, or visual layout.",
-        parameters: z.object({}),
-        execute: async () => {
-          const visualContext = await captureCurrentVisualContext();
-          if (!visualContext) {
-            return buildToolFailure(
-              "I could not capture a visible page image. Use the PDF text tool or inspect the current view instead.",
-            );
-          }
-
-          controller.addImage(visualContext.image, { triggerResponse: false });
-          return {
-            ok: true as const,
-            source: visualContext.source,
-            width: visualContext.width,
-            height: visualContext.height,
-            openPdf: visualContext.openPdf,
-            currentView: getFreshSnapshot(),
-          };
-        },
-      }),
-      defineVoiceTool({
         name: "go_to_pdf_page",
         description:
           "Jump to a page inside the currently open ExamCooker PDF.",
@@ -400,7 +375,7 @@ export default function VoiceAgentProvider({
       defineVoiceTool({
         name: "answer_question_about_open_pdf",
         description:
-          "Answer a question about the currently open ExamCooker PDF. Use this whenever the user asks about the contents of a past paper, notes PDF, syllabus PDF, or another open document.",
+          "Answer a question about the currently visible page of the open ExamCooker PDF by reading its rendered page image.",
         parameters: z.object({
           question: z.string().min(1).max(1200),
         }),
@@ -770,7 +745,6 @@ export default function VoiceAgentProvider({
     ],
     [
       buildToolFailure,
-      controller,
       getFreshSnapshot,
       requestOpenPdfAnswer,
       resolveRegistryEntry,
@@ -806,7 +780,7 @@ export default function VoiceAgentProvider({
       debug: VOICE_DEBUG,
       instructions: VOICE_GUIDE_INSTRUCTIONS,
       maxOutputTokens: 400,
-      model: "gpt-realtime-2",
+      model: "gpt-realtime-mini",
       onGenerationCompleted: (generation) => {
         const voiceSessionId = voiceAnalyticsSessionIdRef.current;
         if (!voiceSessionId) {

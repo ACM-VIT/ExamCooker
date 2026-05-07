@@ -694,7 +694,7 @@ function PageRenderLayer({
       options: {
         scaleFactor: documentState.scale || 1,
         rotation: documentState.rotation,
-        dpr: Math.min(window.devicePixelRatio || 1, 1.5),
+        dpr: Math.min(window.devicePixelRatio || 1, 2),
       },
     });
 
@@ -750,6 +750,9 @@ function PageRenderLayer({
       src={imageUrl}
       alt=""
       className="absolute inset-0 h-full w-full select-none object-fill"
+      data-ec-pdf-page-image="true"
+      data-ec-pdf-page-index={pageIndex}
+      data-ec-pdf-page-number={pageIndex + 1}
       draggable={false}
       style={isPdfDarkMode ? { filter: PDF_DARK_MODE_FILTER } : undefined}
     />
