@@ -1,3 +1,4 @@
+import type { RealtimeOutputGuardrail } from "@openai/agents/realtime";
 import type { ZodType } from "zod";
 
 export type JsonSchema = {
@@ -23,6 +24,24 @@ export type RealtimeClientEvent = {
   type: string;
   [key: string]: unknown;
 };
+
+export type RealtimeUserInput =
+  | string
+  | {
+      type: "message";
+      role: "user";
+      content: Array<
+        | {
+            type: "input_text";
+            text: string;
+          }
+        | {
+            type: "input_image";
+            image: string;
+            providerData?: Record<string, unknown>;
+          }
+      >;
+    };
 
 export type ToolCallStatus = "running" | "success" | "error" | "skipped";
 
@@ -88,6 +107,8 @@ export type RealtimeTurnDetection =
       createResponse?: boolean;
       interruptResponse?: boolean;
       eagerness?: "low" | "medium" | "high" | "auto";
+      idleTimeoutMs?: number;
+      modelVersion?: string;
     };
 
 export type RealtimeAudioConfig = {
@@ -149,6 +170,17 @@ export type VoiceControlResolvedSessionConfig = {
   maxOutputTokens?: number | "inf";
 };
 
+export type VoiceControlTraceConfig = {
+  workflowName?: string;
+  groupId?: string;
+  metadata?: Record<string, unknown>;
+  disabled?: boolean;
+};
+
+export type VoiceControlTraceOptions =
+  | VoiceControlTraceConfig
+  | (() => VoiceControlTraceConfig | null | undefined);
+
 export type UseVoiceControlOptions = {
   auth: {
     sessionEndpoint: string;
@@ -161,8 +193,10 @@ export type UseVoiceControlOptions = {
   outputMode?: OutputMode;
   audio?: RealtimeAudioConfig;
   maxOutputTokens?: number | "inf";
+  outputGuardrails?: RealtimeOutputGuardrail[];
   postToolResponse?: boolean;
   debug?: boolean;
+  trace?: VoiceControlTraceOptions;
   onGenerationCompleted?: (generation: VoiceControlGeneration) => void;
   onError?: (error: VoiceControlError) => void;
 };
@@ -197,8 +231,20 @@ export type UseVoiceControlReturn = VoiceControlSnapshot & {
   connect: () => Promise<void>;
   disconnect: () => void;
   setMuted: (muted: boolean) => void;
+  interrupt: () => void;
+  addImage: (
+    image: string,
+    options?: {
+      triggerResponse?: boolean;
+    },
+  ) => void;
   requestResponse: () => void;
+  sendContextMessage: (text: string) => void;
   sendClientEvent: (event: RealtimeClientEvent) => void;
+  sendMessage: (
+    message: RealtimeUserInput,
+    otherEventData?: Record<string, unknown>,
+  ) => void;
 };
 
 export type VoiceControlController = UseVoiceControlReturn & {

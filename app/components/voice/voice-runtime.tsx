@@ -10,6 +10,11 @@ import {
 import { useSyncExternalStore } from "react";
 import { toJSONSchema } from "zod";
 import {
+  createVoiceToolInputGuardrail,
+  parseVoiceToolInput,
+  voiceToolOutputGuardrail,
+} from "./voice-runtime-guardrails";
+import {
   shouldLogRealtimeEvent,
   summarizeRealtimeEvent,
 } from "./voice-runtime-debug";
@@ -19,6 +24,7 @@ import type {
   RealtimeClientEvent,
   RealtimeServerEvent,
   RealtimeTurnDetection,
+  RealtimeUserInput,
   ToolCallStatus,
   UseVoiceControlOptions,
   UseVoiceControlReturn,
@@ -43,6 +49,7 @@ export type {
   RealtimeClientEvent,
   RealtimeServerEvent,
   RealtimeTurnDetection,
+  RealtimeUserInput,
   RealtimeVoice,
   UseVoiceControlOptions,
   UseVoiceControlReturn,
@@ -213,12 +220,10 @@ function defaultTurnDetection(
   }
 
   return {
-    type: "server_vad",
+    type: "semantic_vad",
     createResponse: true,
     interruptResponse: true,
-    prefixPaddingMs: 300,
-    silenceDurationMs: 200,
-    threshold: 0.5,
+    eagerness: "medium",
   };
 }
 
@@ -275,6 +280,24 @@ function buildResponseCreateConfig(session: VoiceControlResolvedSessionConfig) {
 
   return {
     max_output_tokens: session.maxOutputTokens,
+  };
+}
+
+function resolveTraceConfig(options: UseVoiceControlOptions) {
+  const trace =
+    typeof options.trace === "function" ? options.trace() : options.trace;
+
+  if (!trace) {
+    return {
+      workflowName: "ExamCooker Voice Guide",
+    };
+  }
+
+  return {
+    ...(trace.disabled !== undefined ? { tracingDisabled: trace.disabled } : {}),
+    workflowName: trace.workflowName ?? "ExamCooker Voice Guide",
+    ...(trace.groupId ? { groupId: trace.groupId } : {}),
+    ...(trace.metadata ? { traceMetadata: trace.metadata } : {}),
   };
 }
 
@@ -971,6 +994,45 @@ class VoiceControlControllerImpl implements VoiceControlController {
     }
   };
 
+  interrupt = () => {
+    if (this.destroyed || !this.session || !this.connected) {
+      return;
+    }
+
+    try {
+      this.session.interrupt();
+      this.resetResponseState();
+      this.setTranscript("");
+      this.setActivity(this.restingActivity());
+      this.debugLog("session interrupted");
+    } catch (error) {
+      this.debugError("interrupt failed", normalizeError(error));
+      this.emitError(error, false);
+    }
+  };
+
+  addImage = (
+    image: string,
+    options?: {
+      triggerResponse?: boolean;
+    },
+  ) => {
+    if (this.destroyed || !this.session || !this.connected) {
+      return;
+    }
+
+    try {
+      this.session.addImage(image, options);
+      this.debugLog("image added to realtime session", {
+        byteLength: image.length,
+        triggerResponse: options?.triggerResponse ?? true,
+      });
+    } catch (error) {
+      this.debugError("addImage failed", normalizeError(error));
+      this.emitError(error, false);
+    }
+  };
+
   requestResponse = () => {
     if (this.destroyed || !this.connected || !this.session) {
       return;
@@ -997,6 +1059,26 @@ class VoiceControlControllerImpl implements VoiceControlController {
     });
   };
 
+  sendContextMessage = (text: string) => {
+    if (!text.trim()) {
+      return;
+    }
+
+    this.sendClientEvent({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "system",
+        content: [
+          {
+            type: "input_text",
+            text,
+          },
+        ],
+      },
+    });
+  };
+
   sendClientEvent = (event: RealtimeClientEvent) => {
     if (this.destroyed || !this.session) {
       return;
@@ -1004,6 +1086,26 @@ class VoiceControlControllerImpl implements VoiceControlController {
 
     this.debugLog("client event sent", summarizeRealtimeEvent(event));
     this.session.transport.sendEvent(event as never);
+  };
+
+  sendMessage = (
+    message: RealtimeUserInput,
+    otherEventData?: Record<string, unknown>,
+  ) => {
+    if (this.destroyed || !this.session || !this.connected) {
+      return;
+    }
+
+    try {
+      this.session.sendMessage(message, otherEventData);
+      this.debugLog("message sent to realtime session", {
+        hasOtherEventData: otherEventData !== undefined,
+        kind: typeof message === "string" ? "text" : "message",
+      });
+    } catch (error) {
+      this.debugError("sendMessage failed", normalizeError(error));
+      this.emitError(error, false);
+    }
   };
 
   getPeerConnection = () => {
@@ -1055,6 +1157,10 @@ class VoiceControlControllerImpl implements VoiceControlController {
 
   private createSession() {
     const inputMediaStream = this.inputMediaStream ?? undefined;
+    const traceConfig = resolveTraceConfig(this.options);
+    const outputGuardrails = this.options.outputGuardrails?.length
+      ? this.options.outputGuardrails
+      : undefined;
 
     return new RealtimeSession(this.createSessionAgent(), {
       model: this.sessionConfig.model,
@@ -1062,6 +1168,16 @@ class VoiceControlControllerImpl implements VoiceControlController {
         inputMediaStream ? { mediaStream: inputMediaStream } : undefined,
       ),
       config: buildRealtimeSessionConfig(this.sessionConfig),
+      ...(outputGuardrails
+        ? {
+            outputGuardrails,
+            outputGuardrailSettings: {
+              debounceTextLength: -1,
+            },
+          }
+        : {}),
+      toolErrorFormatter: ({ defaultMessage }) => defaultMessage,
+      ...traceConfig,
     });
   }
 
@@ -1082,29 +1198,32 @@ class VoiceControlControllerImpl implements VoiceControlController {
       description: voiceTool.description,
       parameters: voiceTool.jsonSchema as never,
       strict: false,
+      inputGuardrails: [createVoiceToolInputGuardrail(voiceTool)],
+      outputGuardrails: [voiceToolOutputGuardrail],
       execute: async (input, _context, details) => {
         const callId = getToolCallId(voiceTool.name, details);
         const startedAt = Date.now();
+        const parsedInput = parseVoiceToolInput(voiceTool, input);
 
         this.runningToolCallCount += 1;
         this.setActivity("executing");
         this.upsertToolCallRecord({
-          args: input,
+          args: parsedInput,
           id: callId,
           name: voiceTool.name,
           startedAt,
           status: "running",
         });
         this.debugLog("tool call started", {
-          args: input,
+          args: parsedInput,
           callId,
           name: voiceTool.name,
         });
 
         try {
-          const output = await voiceTool.execute(input as TArgs);
+          const output = await voiceTool.execute(parsedInput);
           this.upsertToolCallRecord({
-            args: input,
+            args: parsedInput,
             finishedAt: Date.now(),
             id: callId,
             name: voiceTool.name,
@@ -1122,7 +1241,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
         } catch (error) {
           const normalizedError = normalizeError(error);
           this.upsertToolCallRecord({
-            args: input,
+            args: parsedInput,
             error: normalizedError,
             finishedAt: Date.now(),
             id: callId,
@@ -1181,6 +1300,21 @@ class VoiceControlControllerImpl implements VoiceControlController {
       this.debugError("session error", normalizeError(event.error ?? "Realtime session error."));
       this.emitError(event.error ?? "Realtime session error.", session.transport.status === "disconnected");
     });
+
+    bind(
+      session,
+      "guardrail_tripped",
+      (_context: unknown, _agent: unknown, error: unknown, details: unknown) => {
+        if (this.session !== session) {
+          return;
+        }
+
+        this.debugWarn("output guardrail tripped", {
+          details,
+          error: normalizeError(error),
+        });
+      },
+    );
 
     bind(session, "transport_event", (event: RealtimeServerEvent) => {
       if (this.session !== session) {
@@ -1434,6 +1568,8 @@ class VoiceControlControllerImpl implements VoiceControlController {
       ...mutableSession.options,
       model: nextSessionConfig.model,
       config: buildRealtimeSessionConfig(nextSessionConfig),
+      outputGuardrails: this.options.outputGuardrails,
+      ...resolveTraceConfig(this.options),
     };
 
     try {
@@ -1680,19 +1816,7 @@ class VoiceControlControllerImpl implements VoiceControlController {
     }
 
     this.lastRecoverableToolInputAt = now;
-    this.sendClientEvent({
-      type: "conversation.item.create",
-      item: {
-        type: "message",
-        role: "system",
-        content: [
-          {
-            type: "input_text",
-            text: TOOL_INPUT_RECOVERY_PROMPT,
-          },
-        ],
-      },
-    });
+    this.sendContextMessage(TOOL_INPUT_RECOVERY_PROMPT);
     this.requestResponse();
   }
 

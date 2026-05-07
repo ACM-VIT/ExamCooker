@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Mic, MicOff, RefreshCcw, X } from "lucide-react";
+import { Loader2, Mic, MicOff, RefreshCcw, Square, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ type VoiceAgentDockProps = {
 const TOOL_ACTION_HOLD_MS = 4500;
 const DOCK_EXIT_MS = 220;
 const LISTENING_TIP_INTERVAL_MS = 3200;
+const MAX_TRANSCRIPT_CHARS = 220;
 
 const LISTENING_TIPS = [
   "Say hi, I'm listening",
@@ -199,7 +200,14 @@ function StatusCaption({
 }
 
 function LyricLine({ text }: { text: string }) {
-  const words = useMemo(() => splitWords(text), [text]);
+  const displayText = useMemo(() => {
+    if (text.length <= MAX_TRANSCRIPT_CHARS) {
+      return text;
+    }
+
+    return text.slice(-MAX_TRANSCRIPT_CHARS).replace(/^\S+\s*/, "");
+  }, [text]);
+  const words = useMemo(() => splitWords(displayText), [displayText]);
 
   return (
     <p className="text-balance text-center text-[15px] sm:text-[17px] font-semibold leading-snug tracking-[-0.005em] text-[#0E5876] dark:text-[#3BF4C7]">
@@ -263,6 +271,10 @@ export default function VoiceAgentDock({
         ? "default"
         : (fallback?.tone ?? "default");
   const showSpinner = !runtime.connected && !lastError;
+  const canInterrupt =
+    runtime.connected &&
+    !lastError &&
+    (runtime.activity === "processing" || runtime.activity === "executing");
 
   return createPortal(
     <div
@@ -351,6 +363,18 @@ export default function VoiceAgentDock({
               )}
             </button>
           )}
+
+          {canInterrupt ? (
+            <button
+              type="button"
+              aria-label="Stop current voice response"
+              title="Stop current voice response"
+              onClick={runtime.interrupt}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.05] text-black/70 ring-1 ring-inset ring-black/[0.06] transition-all duration-150 hover:bg-black/[0.09] hover:text-black/90 active:scale-[0.97] dark:bg-white/[0.05] dark:text-[#D5D5D5]/75 dark:ring-white/[0.06] dark:hover:bg-white/[0.09] dark:hover:text-[#D5D5D5]"
+            >
+              <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+            </button>
+          ) : null}
 
           <button
             type="button"
