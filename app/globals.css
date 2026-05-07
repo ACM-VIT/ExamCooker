@@ -559,6 +559,94 @@ html[data-native-tabs-pending="true"] .ec-mobile-tab-bar {
     to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 
+.ec-markdown-loading-shell {
+    animation: ec-markdown-panel-in 220ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.ec-markdown-progress {
+    animation: ec-markdown-progress 1350ms cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.ec-markdown-skeleton {
+    animation: ec-markdown-skeleton 1400ms ease-in-out infinite;
+}
+
+.ec-markdown-surface {
+    animation: ec-markdown-surface-in 260ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.ec-markdown-page {
+    animation: ec-markdown-page-in 360ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.ec-markdown-question {
+    animation: ec-markdown-question-in 420ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes ec-markdown-panel-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes ec-markdown-progress {
+    0% { transform: translateX(-120%); }
+    55% { transform: translateX(140%); }
+    100% { transform: translateX(320%); }
+}
+
+@keyframes ec-markdown-skeleton {
+    0%, 100% {
+        opacity: 0.42;
+    }
+    50% {
+        opacity: 0.78;
+    }
+}
+
+@keyframes ec-markdown-surface-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes ec-markdown-page-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes ec-markdown-question-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ec-markdown-loading-shell,
+    .ec-markdown-progress,
+    .ec-markdown-skeleton,
+    .ec-markdown-surface,
+    .ec-markdown-page,
+    .ec-markdown-question {
+        animation: none !important;
+    }
+}
+
 ::view-transition-old(.fade-out) {
     animation: var(--duration-exit) ease-in fade reverse;
 }
