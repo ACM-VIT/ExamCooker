@@ -1,6 +1,6 @@
 "use client";
 
-import React, { addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Image from "@/app/components/common/app-image";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
@@ -44,15 +44,12 @@ export default function NotesCourseSearch({
     initialQuery = "",
 }: Props) {
     const router = useRouter();
-    const [uiState, setUiState] = useState({
-        query: "",
-        isOpen: false,
-        highlightedIndex: -1,
-    });
+    const [query, setQuery] = useState(initialQuery);
+    const [isOpen, setIsOpen] = useState(false);
+    const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [nativeSearchAvailable, setNativeSearchAvailable] = useState(false);
-    const { query, isOpen, highlightedIndex } = uiState;
     const deferredQuery = useDeferredValue(query);
 
     const searchableCourses = useMemo(
@@ -66,24 +63,6 @@ export default function NotesCourseSearch({
             })),
         [courses],
     );
-
-    useEffect(() => {
-        setUiState((currentState) => {
-            if (
-                currentState.query === initialQuery &&
-                !currentState.isOpen &&
-                currentState.highlightedIndex === -1
-            ) {
-                return currentState;
-            }
-
-            return {
-                query: initialQuery,
-                isOpen: false,
-                highlightedIndex: -1,
-            };
-        });
-    }, [initialQuery]);
 
     const filtered = useMemo(() => {
         const trimmed = deferredQuery.trim();
@@ -102,6 +81,8 @@ export default function NotesCourseSearch({
             .map(({ course }) => course)
             .slice(0, MAX_RESULTS);
     }, [deferredQuery, searchableCourses]);
+    const dropdownVisible =
+        !nativeSearchAvailable && isOpen && (filtered.length > 0 || query.trim().length > 0);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -111,7 +92,7 @@ export default function NotesCourseSearch({
                 inputRef.current &&
                 !inputRef.current.contains(event.target as Node)
             ) {
-                setUiState((currentState) => ({ ...currentState, isOpen: false }));
+                setIsOpen(false);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -144,7 +125,7 @@ export default function NotesCourseSearch({
             addTransitionType("nav-forward");
             router.push(`/notes/course/${encodeURIComponent(course.code)}`);
         });
-        setUiState((currentState) => ({ ...currentState, isOpen: false }));
+        setIsOpen(false);
     };
 
     const submitFreeText = () => {
@@ -168,30 +149,22 @@ export default function NotesCourseSearch({
             addTransitionType("filter-results");
             router.push(`/notes?search=${encodeURIComponent(trimmed)}`);
         });
-        setUiState((currentState) => ({ ...currentState, isOpen: false }));
+        setIsOpen(false);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "ArrowDown") {
             if (!isOpen || filtered.length === 0) return;
             e.preventDefault();
-            setUiState((currentState) => ({
-                ...currentState,
-                highlightedIndex:
-                    currentState.highlightedIndex < filtered.length - 1
-                        ? currentState.highlightedIndex + 1
-                        : 0,
-            }));
+            setHighlightedIndex((currentIndex) =>
+                currentIndex < filtered.length - 1 ? currentIndex + 1 : 0,
+            );
         } else if (e.key === "ArrowUp") {
             if (!isOpen || filtered.length === 0) return;
             e.preventDefault();
-            setUiState((currentState) => ({
-                ...currentState,
-                highlightedIndex:
-                    currentState.highlightedIndex > 0
-                        ? currentState.highlightedIndex - 1
-                        : filtered.length - 1,
-            }));
+            setHighlightedIndex((currentIndex) =>
+                currentIndex > 0 ? currentIndex - 1 : filtered.length - 1,
+            );
         } else if (e.key === "Enter") {
             e.preventDefault();
             if (isOpen && highlightedIndex >= 0 && filtered[highlightedIndex]) {
@@ -203,16 +176,14 @@ export default function NotesCourseSearch({
                 submitFreeText();
             }
         } else if (e.key === "Escape") {
-            setUiState((currentState) => ({ ...currentState, isOpen: false }));
+            setIsOpen(false);
         }
     };
 
     const clear = () => {
-        setUiState({
-            query: "",
-            isOpen: false,
-            highlightedIndex: -1,
-        });
+        setQuery("");
+        setIsOpen(false);
+        setHighlightedIndex(-1);
         inputRef.current?.focus();
     };
 
@@ -308,15 +279,13 @@ export default function NotesCourseSearch({
                         placeholder="Search course or code..."
                         value={query}
                         onChange={(e) => {
-                            setUiState({
-                                query: e.target.value,
-                                isOpen: e.target.value.trim().length > 0,
-                                highlightedIndex: -1,
-                            });
+                            setQuery(e.target.value);
+                            setIsOpen(e.target.value.trim().length > 0);
+                            setHighlightedIndex(-1);
                         }}
                         onFocus={() => {
                             if (!query.trim()) return;
-                            setUiState((currentState) => ({ ...currentState, isOpen: true }));
+                            setIsOpen(true);
                         }}
                         onKeyDown={handleKeyDown}
                     />
@@ -343,67 +312,59 @@ export default function NotesCourseSearch({
                 )}
             </div>
 
-            {!nativeSearchAvailable && isOpen && filtered.length > 0 && (
+            <Activity mode={dropdownVisible ? "visible" : "hidden"}>
                 <div
                     ref={dropdownRef}
                     className="absolute z-50 mt-2 max-h-80 w-full overflow-y-auto border border-black/15 bg-white shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]"
                 >
-                    {filtered.map((course, index) => (
-                        <button
-                            key={course.id}
-                            type="button"
-                            onMouseDown={(e) => {
-                                e.preventDefault();
-                                navigate(course, {
-                                    interaction: "click",
-                                    resultIndex: index,
-                                });
-                            }}
-                            onMouseEnter={() =>
-                                setUiState((currentState) => ({
-                                    ...currentState,
-                                    highlightedIndex: index,
-                                }))
-                            }
-                            className={`flex w-full items-center justify-between gap-3 border-b border-black/10 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/15 dark:hover:bg-[#3BF4C7]/10 ${
-                                highlightedIndex === index
-                                    ? "bg-[#5FC4E7]/25 dark:bg-[#3BF4C7]/10"
-                                    : ""
-                            }`}
-                        >
-                            <div className="min-w-0 flex-1">
-                                <div className="truncate font-semibold text-black dark:text-[#D5D5D5]">
-                                    {course.title}
+                    {filtered.length > 0 ? (
+                        filtered.map((course, index) => (
+                            <button
+                                key={course.id}
+                                type="button"
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    navigate(course, {
+                                        interaction: "click",
+                                        resultIndex: index,
+                                    });
+                                }}
+                                onMouseEnter={() => setHighlightedIndex(index)}
+                                className={`flex w-full items-center justify-between gap-3 border-b border-black/10 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/15 dark:hover:bg-[#3BF4C7]/10 ${
+                                    highlightedIndex === index
+                                        ? "bg-[#5FC4E7]/25 dark:bg-[#3BF4C7]/10"
+                                        : ""
+                                }`}
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <div className="truncate font-semibold text-black dark:text-[#D5D5D5]">
+                                        {course.title}
+                                    </div>
+                                    <div className="mt-0.5 text-xs uppercase tracking-wide text-black/60 dark:text-[#D5D5D5]/60">
+                                        {course.code}
+                                    </div>
                                 </div>
-                                <div className="mt-0.5 text-xs uppercase tracking-wide text-black/60 dark:text-[#D5D5D5]/60">
-                                    {course.code}
+                                <div className="flex shrink-0 gap-1.5 text-[11px] font-semibold">
+                                    {course.noteCount > 0 && (
+                                        <span className="border border-black/40 px-1.5 py-0.5 text-black/70 dark:border-[#3BF4C7]/50 dark:text-[#3BF4C7]">
+                                            {course.noteCount} notes
+                                        </span>
+                                    )}
+                                    {course.paperCount > 0 && (
+                                        <span className="hidden border border-black/40 px-1.5 py-0.5 text-black/70 dark:border-[#5FC4E7]/50 dark:text-[#5FC4E7] sm:inline-flex">
+                                            {course.paperCount} papers
+                                        </span>
+                                    )}
                                 </div>
-                            </div>
-                            <div className="flex shrink-0 gap-1.5 text-[11px] font-semibold">
-                                {course.noteCount > 0 && (
-                                    <span className="border border-black/40 px-1.5 py-0.5 text-black/70 dark:border-[#3BF4C7]/50 dark:text-[#3BF4C7]">
-                                        {course.noteCount} notes
-                                    </span>
-                                )}
-                                {course.paperCount > 0 && (
-                                    <span className="hidden border border-black/40 px-1.5 py-0.5 text-black/70 dark:border-[#5FC4E7]/50 dark:text-[#5FC4E7] sm:inline-flex">
-                                        {course.paperCount} papers
-                                    </span>
-                                )}
-                            </div>
-                        </button>
-                    ))}
+                            </button>
+                        ))
+                    ) : query.trim() ? (
+                        <div className="px-4 py-4 text-center text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                            No courses found for &quot;{query}&quot;.
+                        </div>
+                    ) : null}
                 </div>
-            )}
-
-            {!nativeSearchAvailable && isOpen && query.trim() && filtered.length === 0 && (
-                <div
-                    ref={dropdownRef}
-                    className="absolute z-50 mt-2 w-full border border-black/15 bg-white px-4 py-4 text-center text-sm text-black/60 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/60"
-                >
-                    No courses found for &quot;{query}&quot;.
-                </div>
-            )}
+            </Activity>
         </div>
     );
 }

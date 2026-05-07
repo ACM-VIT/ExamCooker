@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Activity, useEffect, useMemo, useRef, useState } from "react";
 import { searchPastPaperLinkTargets } from "@/app/actions/search-past-paper-link-targets";
 import {
     formatPaperLinkOption,
@@ -57,10 +57,6 @@ export default function PaperPicker({
     }, []);
 
     useEffect(() => {
-        setHighlight(0);
-    }, [query]);
-
-    useEffect(() => {
         if (!shouldShowResults) {
             return;
         }
@@ -110,6 +106,7 @@ export default function PaperPicker({
     const choose = (paper: PaperLinkOption) => {
         onChange(paper);
         setQuery("");
+        setHighlight(0);
         setResults([]);
         setError(null);
         setOpen(false);
@@ -118,6 +115,7 @@ export default function PaperPicker({
     const clear = () => {
         onChange(null);
         setQuery("");
+        setHighlight(0);
         setResults([]);
         setError(null);
     };
@@ -148,6 +146,7 @@ export default function PaperPicker({
                     value={query}
                     onChange={(event) => {
                         setQuery(event.target.value);
+                        setHighlight(0);
                         setOpen(true);
                     }}
                     onFocus={() => setOpen(true)}
@@ -175,7 +174,7 @@ export default function PaperPicker({
                 />
             )}
 
-            {shouldShowResults && (
+            <Activity mode={shouldShowResults ? "visible" : "hidden"}>
                 <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-72 overflow-auto border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] shadow-lg">
                     {results.length > 0 ? (
                         <ul>
@@ -211,7 +210,7 @@ export default function PaperPicker({
                         </p>
                     )}
                 </div>
-            )}
+            </Activity>
         </div>
     );
 }

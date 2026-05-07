@@ -22,10 +22,6 @@ function ResourceFilters({
     const pathname = usePathname();
     const [query, setQuery] = useState(initialSearch);
 
-    useEffect(() => {
-        setQuery((currentQuery) => currentQuery === initialSearch ? currentQuery : initialSearch);
-    }, [initialSearch]);
-
     const updateUrl = useMemo(
         () =>
             debounce((nextQuery: string, nextYear: string) => {
