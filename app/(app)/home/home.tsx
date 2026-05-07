@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import { auth } from "@/app/auth";
-import { GradientText } from "@/app/components/landing_page/landing";
+import { GradientText } from "@/app/components/landing/landing";
 import ExamCookerLogo from "@/app/components/common/exam-cooker-logo";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import ExamsMarquee, { ExamsMarqueeFallback } from "./exams-marquee";
