@@ -103,6 +103,9 @@ const nextConfig: NextConfig = {
                 : false,
     },
     experimental: {
+        serverActions: {
+            bodySizeLimit: "10mb",
+        },
         viewTransition: true,
     },
     reactCompiler: true,
