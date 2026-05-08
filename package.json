@@ -128,6 +128,10 @@
   },
   "pnpm": {
     "overrides": {
+      "fast-uri": "3.1.2",
+      "fast-xml-builder": "1.1.7",
+      "hono": "4.12.16",
+      "ip-address": "10.1.1",
       "postcss": "8.5.13",
       "uuid": "14.0.0"
     },

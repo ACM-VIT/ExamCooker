@@ -33,7 +33,7 @@ diff --git a/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabs
 index 7a11564..7e0008b 100644
 --- a/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabsPlugin.java
 +++ b/android/src/main/java/com/smallcloud/capacitornativetabs/NativeTabsPlugin.java
-@@ -1,64 +1,451 @@
+@@ -1,64 +1,460 @@
  package com.smallcloud.capacitornativetabs;
  
 +import android.content.res.ColorStateList;
