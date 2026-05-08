@@ -413,6 +413,39 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     liquidEffect?: Effect;
   } | null>(null);
   const prevConfigRef = useRef<ReinitConfig | null>(null);
+
+  useEffect(() => {
+    if (!autoPauseOffscreen) {
+      visibilityRef.current.visible = true;
+      return;
+    }
+
+    const container = containerRef.current;
+    if (!container || typeof IntersectionObserver === 'undefined') {
+      visibilityRef.current.visible = true;
+      return;
+    }
+
+    let isIntersecting = true;
+    const updateVisibility = () => {
+      visibilityRef.current.visible = isIntersecting && !document.hidden;
+    };
+    const observer = new IntersectionObserver(([entry]) => {
+      isIntersecting = entry?.isIntersecting ?? true;
+      updateVisibility();
+    });
+
+    observer.observe(container);
+    document.addEventListener('visibilitychange', updateVisibility);
+    updateVisibility();
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', updateVisibility);
+      visibilityRef.current.visible = true;
+    };
+  }, [autoPauseOffscreen]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -653,7 +686,6 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     }
     prevConfigRef.current = cfg;
     return () => {
-      if (threeRef.current && mustReinit) return;
       if (!threeRef.current) return;
       const t = threeRef.current;
       t.resizeObserver?.disconnect();

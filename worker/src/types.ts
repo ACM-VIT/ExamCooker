@@ -33,7 +33,6 @@ export type CommandIntentCacheValue = {
 export type CommandHistoryEvent = {
   id: string;
   query: string;
-  userKey?: string | null;
   resource: CommandIntent["resource"];
   examType: CommandIntent["examType"];
   confidence: CommandIntent["confidence"];
