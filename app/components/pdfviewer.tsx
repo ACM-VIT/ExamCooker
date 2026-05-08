@@ -617,10 +617,10 @@ function AiPaperView({
   }
 
   const pageShellClass = isDarkMode
-    ? "bg-[hsl(224,48%,9%)] text-[#D5D5D5]"
+    ? "bg-black text-[#D5D5D5]"
     : "bg-[#C2E6EC] text-black";
   const pageClass = isDarkMode
-    ? "border-[#D5D5D5]/15 bg-[#0C1222] text-[#D5D5D5] shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]"
+    ? "border-[#D5D5D5]/15 bg-black text-[#D5D5D5] shadow-none"
     : "border-black/10 bg-white text-gray-950 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.35)]";
   const ruleClass = isDarkMode ? "border-[#D5D5D5]/10" : "border-black/10";
   const mutedTextClass = isDarkMode ? "text-[#D5D5D5]/60" : "text-black/55";

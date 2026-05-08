@@ -11,6 +11,19 @@ const WELL_KNOWN_JSON_HEADERS = {
   "Cache-Control": "public, max-age=3600",
 } as const;
 
+const DEFAULT_APPLE_TEAM_ID = "RZGK9VX3KX";
+
+function readEnvList(...names: string[]) {
+  return Array.from(
+    new Set(
+      names
+        .flatMap((name) => (process.env[name] ?? "").split(/[\s,]+/))
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
 const ratelimit =
   redisUrl && redisToken
     ? new Ratelimit({
@@ -65,10 +78,7 @@ export default async function proxy(request: NextRequest) {
   const pathname = url.pathname;
 
   if (pathname === "/.well-known/apple-app-site-association") {
-    const teamId = process.env.APPLE_TEAM_ID?.trim();
-    if (!teamId) {
-      return new NextResponse(null, { status: 404 });
-    }
+    const teamId = process.env.APPLE_TEAM_ID?.trim() || DEFAULT_APPLE_TEAM_ID;
     return NextResponse.json(
       {
         applinks: {
@@ -86,8 +96,11 @@ export default async function proxy(request: NextRequest) {
   }
 
   if (pathname === "/.well-known/assetlinks.json") {
-    const fingerprint = process.env.ANDROID_APP_LINK_SHA256?.trim();
-    if (!fingerprint) {
+    const fingerprints = readEnvList(
+      "ANDROID_APP_LINK_SHA256",
+      "ANDROID_APP_LINK_SHA256_FINGERPRINTS",
+    );
+    if (fingerprints.length === 0) {
       return new NextResponse(null, { status: 404 });
     }
     return NextResponse.json(
@@ -97,7 +110,7 @@ export default async function proxy(request: NextRequest) {
           target: {
             namespace: "android_app",
             package_name: "in.acmvit.examcooker",
-            sha256_cert_fingerprints: [fingerprint],
+            sha256_cert_fingerprints: fingerprints,
           },
         },
       ],

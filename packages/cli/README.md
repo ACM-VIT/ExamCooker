@@ -21,10 +21,13 @@ npm install -g examcooker
 examcooker auth login
 examcooker whoami
 examcooker courses search "distributed systems"
-examcooker papers search --course BCSE409L
+examcooker papers search --course BCSE409L --exam-type cat-1
 examcooker papers download <paper-id-or-url>
-examcooker papers upload ./fat.pdf --course BCSE409L --exam-type FAT --year 2025
+examcooker papers upload ./fat.pdf --course BCSE409L --exam-type fat --year 2025
 ```
+
+Exam type flags accept enum values, labels, and slugs, including `CAT_1`,
+`cat-1`, `cat 1`, `model-fat`, `midterm`, and `endsem`.
 
 ## Configuration
 

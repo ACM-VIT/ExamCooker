@@ -3,6 +3,8 @@
 export type CourseVisitRecord = {
     count: number;
     lastVisitedAt: number;
+    lastPath?: string;
+    lastLabel?: string;
 };
 
 const STORAGE_KEY = "ec:pastPaperCourseVisits";
@@ -43,7 +45,13 @@ function writeRecords(records: Record<string, CourseVisitRecord>) {
     window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
-export function recordCourseVisit(code: string) {
+export function recordCourseVisit(
+    code: string,
+    options: {
+        path?: string;
+        label?: string;
+    } = {},
+) {
     if (typeof window === "undefined") return;
 
     const normalized = code.trim().toUpperCase();
@@ -54,6 +62,8 @@ export function recordCourseVisit(code: string) {
     records[normalized] = {
         count: current.count + 1,
         lastVisitedAt: Date.now(),
+        lastPath: options.path ?? current.lastPath,
+        lastLabel: options.label ?? current.lastLabel,
     };
     writeRecords(records);
 }
