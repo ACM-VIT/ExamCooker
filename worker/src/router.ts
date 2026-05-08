@@ -16,7 +16,7 @@ export async function routeWorkerRequest(request: Request, env: Env) {
       ok: true,
       service: "examcooker-command-agent",
       routes: [
-        "/agents/exam-cooker-command-agent/global",
+        "/agents/ExamCookerCommandAgent/global",
       ],
     });
   }

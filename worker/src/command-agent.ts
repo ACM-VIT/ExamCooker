@@ -31,6 +31,7 @@ import type {
 } from "./types";
 
 const COMMAND_AGENT_ADMIN_HEADER = "X-ExamCooker-Command-Admin";
+const textEncoder = new TextEncoder();
 
 function getAgentAction(request: Request) {
   const segments = new URL(request.url).pathname.split("/").filter(Boolean);
@@ -60,6 +61,32 @@ function resolveSurfaceContext(
         ? surfaceContext.voiceAgentEnabled
         : null,
   };
+}
+
+async function sha256Bytes(value: string) {
+  return new Uint8Array(
+    await crypto.subtle.digest("SHA-256", textEncoder.encode(value)),
+  );
+}
+
+function timingSafeEqual(left: Uint8Array, right: Uint8Array) {
+  if (left.byteLength !== right.byteLength) return false;
+
+  let difference = 0;
+  for (let index = 0; index < left.byteLength; index++) {
+    difference |= left[index] ^ right[index];
+  }
+
+  return difference === 0;
+}
+
+async function timingSafeTokenMatch(receivedToken: string, expectedToken: string) {
+  const [receivedHash, expectedHash] = await Promise.all([
+    sha256Bytes(receivedToken),
+    sha256Bytes(expectedToken),
+  ]);
+
+  return timingSafeEqual(receivedHash, expectedHash);
 }
 
 export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
@@ -161,7 +188,6 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     recordCommandEvent(this, {
       id: crypto.randomUUID(),
       query,
-      userKey,
       resource: resolution.intent.resource,
       examType: resolution.intent.examType,
       confidence: resolution.intent.confidence,
@@ -277,12 +303,12 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     });
   }
 
-  private handleHistory(request: Request) {
+  private async handleHistory(request: Request) {
     if (request.method !== "GET") {
       return jsonResponse({ error: "Use GET for command history." }, { status: 405 });
     }
 
-    if (!this.isModeratorDebugRequest(request)) {
+    if (!(await this.isModeratorDebugRequest(request))) {
       return jsonResponse({ error: "Not found" }, { status: 404 });
     }
 
@@ -294,8 +320,8 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     });
   }
 
-  private handleStats(request: Request) {
-    if (!this.isModeratorDebugRequest(request)) {
+  private async handleStats(request: Request) {
+    if (!(await this.isModeratorDebugRequest(request))) {
       return jsonResponse({ error: "Not found" }, { status: 404 });
     }
 
@@ -308,10 +334,11 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     });
   }
 
-  private isModeratorDebugRequest(request: Request) {
+  private async isModeratorDebugRequest(request: Request) {
     const expectedToken = this.env.CLOUDFLARE_COMMAND_AGENT_ADMIN_TOKEN?.trim();
     const receivedToken = request.headers.get(COMMAND_AGENT_ADMIN_HEADER)?.trim();
 
-    return Boolean(expectedToken && receivedToken && receivedToken === expectedToken);
+    if (!expectedToken || !receivedToken) return false;
+    return timingSafeTokenMatch(receivedToken, expectedToken);
   }
 }

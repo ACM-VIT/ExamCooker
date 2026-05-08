@@ -136,6 +136,7 @@ export async function resolveCommandIntentWithAI(
     currentPath: options.surfaceContext?.currentPath ?? null,
     authenticated: options.surfaceContext?.authenticated ?? null,
     role: options.surfaceContext?.role ?? null,
+    voiceAgentEnabled: options.surfaceContext?.voiceAgentEnabled ?? null,
   };
   const commandSurface = getCommandSurface(surfaceContext);
   const actionCapabilities = commandSurface.capabilities;

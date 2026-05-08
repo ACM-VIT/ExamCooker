@@ -333,8 +333,8 @@ function canAccess(
   context: Pick<CommandSurfaceContext, "authenticated" | "role">,
 ) {
   if (access === "public") return true;
-  if (access === "authenticated") return context.authenticated !== false;
-  return context.role === "moderator";
+  if (access === "authenticated") return context.authenticated === true;
+  return context.authenticated === true && context.role === "moderator";
 }
 
 function hasRequiredFeature(
@@ -389,7 +389,7 @@ export function getCommandSurface(
 
 export const COMMAND_ACTION_CAPABILITIES = getCommandSurface({
   query: "",
-  authenticated: null,
+  authenticated: true,
   role: "moderator",
   voiceAgentEnabled: true,
 }).capabilities;
