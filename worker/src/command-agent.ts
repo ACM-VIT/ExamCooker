@@ -32,6 +32,7 @@ import type {
 
 const COMMAND_AGENT_ADMIN_HEADER = "X-ExamCooker-Command-Admin";
 const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
 function getAgentAction(request: Request) {
   const segments = new URL(request.url).pathname.split("/").filter(Boolean);
@@ -89,6 +90,64 @@ async function timingSafeTokenMatch(receivedToken: string, expectedToken: string
   return timingSafeEqual(receivedHash, expectedHash);
 }
 
+function base64UrlToBytes(value: string) {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index++) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+async function hmacSha256Bytes(secret: string, value: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    textEncoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+
+  return new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, textEncoder.encode(value)),
+  );
+}
+
+async function isCommandUserTokenValid(input: {
+  userKey: string;
+  userToken: string;
+  secret: string;
+}) {
+  const [version, payloadPart, signaturePart] = input.userToken.split(".");
+  if (version !== "v1" || !payloadPart || !signaturePart) return false;
+
+  let receivedSignature: Uint8Array;
+  let payload: { userKey?: unknown; exp?: unknown };
+
+  try {
+    receivedSignature = base64UrlToBytes(signaturePart);
+    payload = JSON.parse(textDecoder.decode(base64UrlToBytes(payloadPart))) as {
+      userKey?: unknown;
+      exp?: unknown;
+    };
+  } catch {
+    return false;
+  }
+
+  const expectedSignature = await hmacSha256Bytes(input.secret, payloadPart);
+  if (!timingSafeEqual(receivedSignature, expectedSignature)) return false;
+
+  return (
+    payload.userKey === input.userKey &&
+    typeof payload.exp === "number" &&
+    payload.exp >= Date.now()
+  );
+}
+
 export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
   initialState: CommandAgentState = {
     requests: 0,
@@ -140,6 +199,22 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     pruneCommandSemanticCache(this);
   }
 
+  private async getTrustedUserKey(input: {
+    userKey?: unknown;
+    userToken?: unknown;
+  }) {
+    const userKey = typeof input.userKey === "string" ? input.userKey.trim() : "";
+    const userToken =
+      typeof input.userToken === "string" ? input.userToken.trim() : "";
+    const secret = this.env.CLOUDFLARE_COMMAND_AGENT_ADMIN_TOKEN?.trim();
+
+    if (!userKey || !userToken || !secret) return "";
+
+    return (await isCommandUserTokenValid({ userKey, userToken, secret }))
+      ? userKey
+      : "";
+  }
+
   @callable()
   async resolveIntent(input: CommandIntentRequestInput) {
     ensureCommandHistorySchema(this);
@@ -148,7 +223,7 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     const query = typeof input.query === "string" ? input.query : "";
     const preferenceQuery =
       typeof input.preferenceQuery === "string" ? input.preferenceQuery : "";
-    const userKey = typeof input.userKey === "string" ? input.userKey : "";
+    const userKey = await this.getTrustedUserKey(input);
     const surfaceContext = resolveSurfaceContext(query, input.surfaceContext);
     const semanticCacheHit = await findCommandSemanticCacheHit(this, this.env, {
       query,
@@ -233,7 +308,7 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     ensureCommandHistorySchema(this);
 
     const result = recordCommandCoursePreference(this, {
-      userKey: typeof input.userKey === "string" ? input.userKey : "",
+      userKey: await this.getTrustedUserKey(input),
       query: typeof input.query === "string" ? input.query : "",
       courseCode: typeof input.courseCode === "string" ? input.courseCode : "",
       courseTitle:
@@ -276,6 +351,8 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     const payload = await readJsonPayload(request);
     const { preference } = await this.recordPreference({
       userKey: typeof payload?.userKey === "string" ? payload.userKey : "",
+      userToken:
+        typeof payload?.userToken === "string" ? payload.userToken : "",
       query: typeof payload?.query === "string" ? payload.query : "",
       courseCode:
         typeof payload?.courseCode === "string" ? payload.courseCode : "",

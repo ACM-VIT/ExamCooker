@@ -53,6 +53,7 @@ export async function readCommandIntentInput(request: Request) {
       query: url.searchParams.get("query") ?? "",
       preferenceQuery: url.searchParams.get("preferenceQuery") ?? "",
       userKey: url.searchParams.get("userKey") ?? "",
+      userToken: url.searchParams.get("userToken") ?? "",
     };
   }
 
@@ -69,6 +70,7 @@ export async function readCommandIntentInput(request: Request) {
     preferenceQuery:
       typeof payload?.preferenceQuery === "string" ? payload.preferenceQuery : "",
     userKey: typeof payload?.userKey === "string" ? payload.userKey : "",
+    userToken: typeof payload?.userToken === "string" ? payload.userToken : "",
     surfaceContext,
   };
 }

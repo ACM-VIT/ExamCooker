@@ -1,6 +1,7 @@
 "use client";
 
 import React, {
+  Activity,
   addTransitionType,
   startTransition,
   useEffect,
@@ -129,6 +130,7 @@ type CommandAgentIntentInput = {
   query: string;
   preferenceQuery: string;
   userKey: string;
+  userToken: string;
   surfaceContext: Partial<CommandSurfaceContext>;
 };
 
@@ -138,10 +140,12 @@ type CommandAgentPreferenceInput = {
   courseTitle: string;
   resource: CommandResourceIntent | null;
   userKey: string;
+  userToken: string;
 };
 
 type CommandUserContextResponse = {
   userKey: string;
+  userToken: string | null;
   surfaceContext: Pick<
     CommandSurfaceContext,
     "authenticated" | "role"
@@ -155,8 +159,7 @@ type RecentCourseCandidate = {
 
 const COMMAND_PALETTE_MEDIA_QUERY = "(min-width: 768px)";
 const COMMAND_AGENT_HOST =
-  process.env.NEXT_PUBLIC_CLOUDFLARE_COMMAND_AGENT_HOST?.trim() ||
-  "examcooker-command-agent.technicaldirector-acmvit.workers.dev";
+  process.env.NEXT_PUBLIC_CLOUDFLARE_COMMAND_AGENT_HOST?.trim() || "";
 const COMMAND_AGENT_NAME =
   process.env.NEXT_PUBLIC_CLOUDFLARE_COMMAND_AGENT_NAME?.trim() ||
   "ExamCookerCommandAgent";
@@ -835,24 +838,26 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      {open ? <CommandPaletteSession onOpenChange={onOpenChange} /> : null}
+      <CommandPaletteSession open={open} onOpenChange={onOpenChange} />
     </Dialog.Root>
   );
 }
 
 function CommandPaletteSession({
+  open,
   onOpenChange,
-}: Pick<CommandPaletteProps, "onOpenChange">) {
+}: CommandPaletteProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthed, status: authStatus } = useGuestPrompt();
   const voiceAgentEnabled =
     usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? false;
+  const isCommandAgentConfigured = COMMAND_AGENT_HOST.length > 0;
   const commandAgent = useAgent<CommandAgentState>({
     host: COMMAND_AGENT_HOST,
     agent: COMMAND_AGENT_NAME,
     name: COMMAND_AGENT_INSTANCE,
-    enabled: true,
+    enabled: isCommandAgentConfigured,
   });
   const [search, setSearch] = useState("");
   const [courses, setCourses] = useState<CommandCourse[]>([]);
@@ -872,6 +877,17 @@ function CommandPaletteSession({
   const [courseStatus, setCourseStatus] = useState<
     "idle" | "loading" | "ready" | "error"
   >("idle");
+
+  useEffect(() => {
+    if (open) return;
+
+    setSearch("");
+    setAgentIntent(null);
+    setAgentCourseSearchText("");
+    setAgentActions([]);
+    setCommandPreferences([]);
+    setIntentStatus("idle");
+  }, [open]);
 
   useEffect(() => {
     if (courseStatus !== "idle") return;
@@ -936,6 +952,7 @@ function CommandPaletteSession({
     [authStatus, commandUserContext, isAuthed, pathname, trimmedSearch, voiceAgentEnabled],
   );
   const commandUserKey = commandUserContext?.userKey ?? "";
+  const commandUserToken = commandUserContext?.userToken ?? "";
 
   useEffect(() => {
     if (!hasSearch) {
@@ -954,10 +971,11 @@ function CommandPaletteSession({
         query: trimmedSearch,
         preferenceQuery: localCourseSearchText || trimmedSearch,
         userKey: commandUserKey,
+        userToken: commandUserToken,
         surfaceContext,
       };
 
-      const intentRequest = commandUserKey
+      const intentRequest = isCommandAgentConfigured && commandUserKey && commandUserToken
         ? withTimeout(
             commandAgent.ready,
             COMMAND_AGENT_READY_TIMEOUT_MS,
@@ -1002,8 +1020,10 @@ function CommandPaletteSession({
     };
   }, [
     commandAgent,
+    commandUserToken,
     commandUserKey,
     hasSearch,
+    isCommandAgentConfigured,
     localCourseSearchText,
     surfaceContext,
     trimmedSearch,
@@ -1216,9 +1236,10 @@ function CommandPaletteSession({
       courseTitle: action.courseTitle,
       resource: action.resource ?? null,
       userKey: commandUserKey,
+      userToken: commandUserToken,
     };
 
-    if (!commandUserKey) {
+    if (!isCommandAgentConfigured || !commandUserKey || !commandUserToken) {
       void rememberPreferenceWithServerFallback(input).catch(() => undefined);
       return;
     }
@@ -1301,9 +1322,16 @@ function CommandPaletteSession({
   };
 
   return (
-    <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[95] bg-[#19323A]/28 backdrop-blur-sm dark:bg-black/42" />
-        <Dialog.Content className="ec-command-dialog-panel fixed left-1/2 top-1/2 z-[96] h-[min(20rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-[34rem] overflow-hidden rounded-lg border border-[#BED0D7] bg-[#FBFDFE]/98 shadow-[0_24px_70px_rgba(20,54,66,0.24)] outline-none backdrop-blur-xl dark:border-white/14 dark:bg-[#11151D]/98 dark:shadow-[0_24px_90px_rgba(0,0,0,0.62)]">
+    <Activity mode={open ? "visible" : "hidden"} name="ExamCooker command menu">
+      <Dialog.Portal forceMount>
+        <Dialog.Overlay
+          forceMount
+          className="fixed inset-0 z-[95] bg-[#19323A]/28 backdrop-blur-sm data-[state=closed]:hidden dark:bg-black/42"
+        />
+        <Dialog.Content
+          forceMount
+          className="ec-command-dialog-panel fixed left-1/2 top-1/2 z-[96] h-[min(20rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-[34rem] overflow-hidden rounded-lg border border-[#BED0D7] bg-[#FBFDFE]/98 shadow-[0_24px_70px_rgba(20,54,66,0.24)] outline-none backdrop-blur-xl data-[state=closed]:hidden dark:border-white/14 dark:bg-[#11151D]/98 dark:shadow-[0_24px_90px_rgba(0,0,0,0.62)]"
+        >
           <Dialog.Title className="sr-only">ExamCooker command menu</Dialog.Title>
           <Dialog.Description className="sr-only">
             Search courses, notes, syllabi, and past papers.
@@ -1318,7 +1346,7 @@ function CommandPaletteSession({
               <Command.Input
                 value={search}
                 onValueChange={setSearch}
-                autoFocus
+                autoFocus={open}
                 placeholder="Search"
                 className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-black outline-none placeholder:text-black/50 dark:text-[#F3F7FA] dark:placeholder:text-white/55"
               />
@@ -1382,6 +1410,7 @@ function CommandPaletteSession({
             </Command.List>
           </Command>
         </Dialog.Content>
-    </Dialog.Portal>
+      </Dialog.Portal>
+    </Activity>
   );
 }

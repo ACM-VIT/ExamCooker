@@ -1,6 +1,6 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { auth } from "@/app/auth";
 import {
@@ -23,6 +23,7 @@ const COMMAND_CLIENT_COOKIE = "ec-command-client-id";
 const COMMAND_CLIENT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const COMMAND_AGENT_RPC_TIMEOUT_MS = 6_500;
 const COMMAND_AGENT_ADMIN_HEADER = "X-ExamCooker-Command-Admin";
+const COMMAND_USER_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 type CommandCoursePreference = {
   courseCode: string;
@@ -44,6 +45,7 @@ type CommandIntentResponse = {
 
 type CommandRequestContext = {
   userKey: string;
+  userToken: string | null;
   anonymousClientId: string | null;
   surfaceContext: Pick<CommandSurfaceContext, "authenticated" | "role">;
 };
@@ -75,6 +77,29 @@ function getCommandAgentConnection() {
   const name = process.env.CLOUDFLARE_COMMAND_AGENT_INSTANCE || "global";
 
   return { agent, host, name };
+}
+
+function base64UrlEncode(value: string | Buffer) {
+  return Buffer.from(value).toString("base64url");
+}
+
+function getCommandUserTokenSecret() {
+  return process.env.CLOUDFLARE_COMMAND_AGENT_ADMIN_TOKEN?.trim() || "";
+}
+
+function signCommandUserToken(userKey: string) {
+  const secret = getCommandUserTokenSecret();
+  if (!secret) return null;
+
+  const payload = base64UrlEncode(
+    JSON.stringify({
+      userKey,
+      exp: Date.now() + COMMAND_USER_TOKEN_TTL_MS,
+    }),
+  );
+  const signature = createHmac("sha256", secret).update(payload).digest();
+
+  return `v1.${payload}.${base64UrlEncode(signature)}`;
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string) {
@@ -171,9 +196,11 @@ async function getCommandRequestContext(): Promise<CommandRequestContext> {
 
   if (userId) {
     const role = session?.user?.role;
+    const userKey = `user:${userId}`;
 
     return {
-      userKey: `user:${userId}`,
+      userKey,
+      userToken: signCommandUserToken(userKey),
       anonymousClientId: null,
       surfaceContext: {
         authenticated: true,
@@ -188,6 +215,7 @@ async function getCommandRequestContext(): Promise<CommandRequestContext> {
 
   return {
     userKey: `anon:${anonymousClientId}`,
+    userToken: signCommandUserToken(`anon:${anonymousClientId}`),
     anonymousClientId: currentClientId ? null : anonymousClientId,
     surfaceContext: {
       authenticated: false,
@@ -339,6 +367,7 @@ async function resolveWithCloudflareAgent(input: {
   query: string;
   preferenceQuery: string;
   userKey: string;
+  userToken: string | null;
   surfaceContext: Partial<CommandSurfaceContext>;
 }) {
   type AgentPayload = {
@@ -439,12 +468,13 @@ export async function getCommandCatalogAction() {
 }
 
 export async function getCommandSessionAction() {
-  const { userKey, anonymousClientId, surfaceContext } =
+  const { userKey, userToken, anonymousClientId, surfaceContext } =
     await getCommandRequestContext();
   await setCommandClientCookie(anonymousClientId);
 
   return {
     userKey,
+    userToken,
     surfaceContext,
   };
 }
@@ -462,7 +492,7 @@ export async function resolveCommandIntentAction(
   const surfaceContext = readSurfaceContext(input.surfaceContext);
   const localIntent = resolveCommandIntent(query);
   const requestContext = await getCommandRequestContext();
-  const { userKey, anonymousClientId } = requestContext;
+  const { userKey, userToken, anonymousClientId } = requestContext;
   const trustedSurfaceContext = getRequestSurfaceContext(
     surfaceContext,
     requestContext.surfaceContext,
@@ -473,6 +503,7 @@ export async function resolveCommandIntentAction(
       query,
       preferenceQuery,
       userKey,
+      userToken,
       surfaceContext: trustedSurfaceContext,
     });
 
@@ -530,9 +561,11 @@ export async function rememberCommandPreferenceAction(
     return { ok: false, source: "local", error: "Missing query or courseCode." };
   }
 
-  const { userKey, anonymousClientId } = await getCommandRequestContext();
+  const { userKey, userToken, anonymousClientId } =
+    await getCommandRequestContext();
   const agentPayload = {
     userKey,
+    userToken,
     query,
     courseCode,
     courseTitle: typeof input.courseTitle === "string" ? input.courseTitle : null,
