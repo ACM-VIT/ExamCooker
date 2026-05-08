@@ -30,7 +30,7 @@ async function HomeMarqueeSection() {
 }
 
 const subtitleClass =
-    "text-sm sm:text-base lg:text-xl text-black/70 dark:text-[#D5D5D5]/70 md:text-white/85 dark:md:text-white/85 mb-6 sm:mb-8 lg:mb-10 max-w-2xl mx-auto";
+    "ec-home-subtitle text-sm sm:text-base lg:text-xl text-black/70 dark:text-[#D5D5D5]/70 md:text-white/85 dark:md:text-white/85 mb-6 sm:mb-8 lg:mb-10 max-w-2xl mx-auto";
 
 function HomeSubtitle({ userName }: { userName: string | null }) {
     if (!userName) {

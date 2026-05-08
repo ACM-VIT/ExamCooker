@@ -1,18 +1,21 @@
 "use client";
 
 import { ReactNode, useCallback, useState } from "react";
-import HeroBackdropVideo from "./hero-backdrop-video";
+import HeroBackdropVideo, { type HeroBackdropKind } from "./hero-backdrop-video";
 
 export default function HeroFrame({ children }: { children: ReactNode }) {
     const [videoReady, setVideoReady] = useState(false);
     const [youtubeEngaged, setYoutubeEngaged] = useState(false);
+    const [backdropKind, setBackdropKind] = useState<HeroBackdropKind | null>(null);
     const handleBackdropReady = useCallback(() => setVideoReady(true), []);
     const handleYouTubeEngaged = useCallback(() => setYoutubeEngaged(true), []);
+    const isPixelBackdrop = backdropKind === "pixel";
 
     return (
         <div
+            data-hero-backdrop={backdropKind ?? undefined}
             className={`relative transition-colors duration-500 ${
-                videoReady ? "min-[600px]:text-white dark:min-[600px]:text-white" : ""
+                videoReady && !isPixelBackdrop ? "min-[600px]:text-white dark:min-[600px]:text-white" : ""
             }`}
         >
             <div
@@ -22,6 +25,7 @@ export default function HeroFrame({ children }: { children: ReactNode }) {
                 <HeroBackdropVideo
                     onReady={handleBackdropReady}
                     onYouTubeEngaged={handleYouTubeEngaged}
+                    onVariantChange={setBackdropKind}
                 />
                 <div
                     className={`absolute inset-0 transition-colors duration-700 ${

@@ -85,6 +85,7 @@
     "pg": "^8.20.0",
     "posthog-js": "^1.372.5",
     "posthog-node": "^5.24.7",
+    "postprocessing": "^6.39.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-dropzone": "^14.3.8",
@@ -92,6 +93,7 @@
     "streamdown": "^2.5.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+    "three": "^0.184.0",
     "vaul": "^1.1.2",
     "zod": "^4.3.6"
   },
@@ -102,6 +104,7 @@
     "@types/pg": "^8.20.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "@types/three": "^0.184.1",
     "babel-plugin-react-compiler": "^1.0.0",
     "drizzle-kit": "1.0.0-rc.1",
     "postcss": "^8.5.13",

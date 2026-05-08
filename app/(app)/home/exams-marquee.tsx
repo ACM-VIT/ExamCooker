@@ -17,9 +17,9 @@ function MarqueeItem({
             href={`/past_papers/${encodeURIComponent(item.courseCode)}`}
             prefetch={prefetch}
             transitionTypes={["nav-forward"]}
-            className="group inline-flex items-center gap-3 whitespace-nowrap text-base text-black/75 transition-colors hover:text-[#253EE0] dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] md:text-lg md:text-white/85 md:hover:text-[#3BF4C7] dark:md:text-white/85"
+            className="ec-home-marquee-link group inline-flex items-center gap-3 whitespace-nowrap text-base text-black/75 transition-colors hover:text-[#253EE0] dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] md:text-lg md:text-white/85 md:hover:text-[#3BF4C7] dark:md:text-white/85"
         >
-            <span className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-black/55 dark:text-[#D5D5D5]/55 group-hover:text-current md:text-sm md:text-white/65 dark:md:text-white/65">
+            <span className="ec-home-marquee-code font-mono text-xs font-semibold uppercase tracking-[0.16em] text-black/55 dark:text-[#D5D5D5]/55 group-hover:text-current md:text-sm md:text-white/65 dark:md:text-white/65">
                 {item.courseCode}
             </span>
             <span className="font-semibold underline-offset-4 decoration-1 group-hover:underline">
@@ -53,7 +53,7 @@ function MarqueeRow({
                         <MarqueeItem item={item} prefetch={prefetch === true && copy === "base"} />
                         <span
                             aria-hidden="true"
-                            className="select-none text-xs text-black/25 dark:text-[#D5D5D5]/20 md:text-white/30 dark:md:text-white/30"
+                            className="ec-home-marquee-divider select-none text-xs text-black/25 dark:text-[#D5D5D5]/20 md:text-white/30 dark:md:text-white/30"
                         >
                             ◆
                         </span>

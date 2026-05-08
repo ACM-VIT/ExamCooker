@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import ReactPlayer from "react-player";
 import { scheduleIdleWork } from "@/lib/schedule-idle-work";
+
+const PixelBlast = dynamic(() => import("./pixel-bg"), { ssr: false });
+export type HeroBackdropKind = "local" | "youtube" | "pixel";
 
 const VIDEOS = [
     { kind: "local", webm: "/rainy.webm", mp4: "/rainy.mp4", poster: "/rainy.jpg" },
     { kind: "local", webm: "/midnight.webm", mp4: "/midnight.mp4", poster: "/midnight.jpg" },
     { kind: "local", webm: "/night.webm", mp4: "/night.mp4", poster: "/night.jpg" },
     { kind: "local", webm: "/night-city.webm", mp4: "/night-city.mp4", poster: "/night-city.jpg" },
+    { kind: "pixel" },
     {
         kind: "youtube",
         id: "AUQKjgKQF7w",
@@ -20,9 +25,10 @@ const TABLET_MIN_WIDTH_MEDIA = "(min-width: 600px)";
 interface Props {
     onReady?: () => void;
     onYouTubeEngaged?: () => void;
+    onVariantChange?: (kind: HeroBackdropKind | null) => void;
 }
 
-export default function HeroBackdropVideo({ onReady, onYouTubeEngaged }: Props) {
+export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariantChange }: Props) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [isVisible, setIsVisible] = useState(false);
     const [video, setVideo] = useState<(typeof VIDEOS)[number] | null>(null);
@@ -96,6 +102,15 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged }: Props) 
         onYouTubeEngaged?.();
     }, [isYouTubeEngaged, onYouTubeEngaged]);
 
+    useEffect(() => {
+        onVariantChange?.(video?.kind ?? null);
+    }, [onVariantChange, video]);
+
+    useEffect(() => {
+        if (video?.kind !== "pixel") return;
+        onReady?.();
+    }, [onReady, video]);
+
     const handleYouTubeReady = () => {
         setIsYouTubeReady(true);
         onReady?.();
@@ -143,6 +158,38 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged }: Props) 
                                 },
                             },
                         }}
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    if (video.kind === "pixel") {
+        return (
+            <div
+                ref={containerRef}
+                className="absolute inset-0 overflow-hidden"
+                aria-hidden="true"
+            >
+                <div className="relative h-full w-full">
+                    <PixelBlast
+                        variant="square"
+                        pixelSize={4}
+                        color="#B497CF"
+                        patternScale={2}
+                        patternDensity={1}
+                        pixelSizeJitter={0}
+                        enableRipples
+                        rippleSpeed={0.4}
+                        rippleThickness={0.12}
+                        rippleIntensityScale={1.5}
+                        liquid={false}
+                        liquidStrength={0.12}
+                        liquidRadius={1.2}
+                        liquidWobbleSpeed={5}
+                        speed={0.5}
+                        edgeFade={0.25}
+                        transparent
                     />
                 </div>
             </div>
