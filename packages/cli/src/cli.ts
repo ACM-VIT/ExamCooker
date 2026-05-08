@@ -15,29 +15,19 @@ import {
   saveConfig,
   type ExamCookerConfig,
 } from "./config.js";
+import {
+  EXAM_TYPE_LABELS,
+  EXAM_TYPE_ORDER,
+  formatExamTypeInputList,
+  parseCliExamTypeInput,
+  type CliExamType,
+} from "./exam-types.js";
 import { ApiError, requestJson, requestRaw } from "./http.js";
 import { printJson, showBanner, showHelp, truncate } from "./output.js";
 
 const VERSION = "0.1.0";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-const EXAM_TYPE_LABELS = {
-  CAT_1: "CAT-1",
-  CAT_2: "CAT-2",
-  FAT: "FAT",
-  MODEL_CAT_1: "Model CAT-1",
-  MODEL_CAT_2: "Model CAT-2",
-  MODEL_FAT: "Model FAT",
-  MID: "Mid",
-  QUIZ: "Quiz",
-  CIA: "CIA",
-  OTHER: "Other",
-} as const;
-
-const EXAM_TYPE_ORDER = Object.keys(EXAM_TYPE_LABELS) as Array<
-  keyof typeof EXAM_TYPE_LABELS
->;
 
 const SEMESTER_LABELS = {
   FALL: "Fall",
@@ -56,7 +46,6 @@ const CAMPUS_LABELS = {
   MAURITIUS: "Mauritius",
 } as const;
 
-type CliExamType = keyof typeof EXAM_TYPE_LABELS;
 type CliSemester = keyof typeof SEMESTER_LABELS;
 type CliCampus = keyof typeof CAMPUS_LABELS;
 type FlagType = "string" | "boolean";
@@ -246,6 +235,25 @@ function hasFlag(
   key: string,
 ) {
   return Object.prototype.hasOwnProperty.call(flags, key);
+}
+
+function getExamTypeFlag(
+  flags: Record<string, string | boolean>,
+  key = "examType",
+) {
+  const rawValue = getStringFlag(flags, key);
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  const examType = parseCliExamTypeInput(rawValue);
+  if (!examType) {
+    throw new Error(
+      `Unknown exam type "${rawValue}". Use one of: ${formatExamTypeInputList()}.`,
+    );
+  }
+
+  return examType;
 }
 
 async function resolveCliRuntimeConfig(input?: { baseUrl?: string | null }) {
@@ -1625,9 +1633,7 @@ async function runPaperSearch(args: string[]) {
   const jsonOutput = getBooleanFlag(values, "json");
   const interactive = shouldUseInteractive(values, jsonOutput);
   const predefinedCourse = getStringFlag(values, "course");
-  const predefinedExamType = getStringFlag(values, "examType") as
-    | CliExamType
-    | undefined;
+  const predefinedExamType = getExamTypeFlag(values);
 
   if (jsonOutput) {
     const payload = await fetchPaperSearchResults(runtimeConfig, {
@@ -1758,9 +1764,7 @@ async function runPaperView(args: string[]) {
     reference,
     courseQuery: reference || undefined,
     predefinedCourse: getStringFlag(values, "course"),
-    predefinedExamType: getStringFlag(values, "examType") as
-      | CliExamType
-      | undefined,
+    predefinedExamType: getExamTypeFlag(values),
     year: getStringFlag(values, "year"),
     slot: getStringFlag(values, "slot"),
     semester: getStringFlag(values, "semester") as CliSemester | undefined,
@@ -1808,9 +1812,7 @@ async function runPaperDownload(args: string[]) {
     reference,
     courseQuery: reference || undefined,
     predefinedCourse: getStringFlag(values, "course"),
-    predefinedExamType: getStringFlag(values, "examType") as
-      | CliExamType
-      | undefined,
+    predefinedExamType: getExamTypeFlag(values),
     year: getStringFlag(values, "year"),
     slot: getStringFlag(values, "slot"),
     semester: getStringFlag(values, "semester") as CliSemester | undefined,
@@ -1878,7 +1880,7 @@ async function runPaperUpload(args: string[]) {
   const fileName = basename(resolvedFilePath);
 
   let courseCode = getStringFlag(values, "course");
-  let examType = getStringFlag(values, "examType") as CliExamType | undefined;
+  let examType = getExamTypeFlag(values);
   let year = getStringFlag(values, "year");
   let title =
     getStringFlag(values, "title") ?? fileName.replace(/\.pdf$/i, "");
