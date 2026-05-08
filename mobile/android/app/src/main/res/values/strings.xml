@@ -3,5 +3,5 @@
     <string name="app_name">ExamCooker</string>
     <string name="title_activity_main">ExamCooker</string>
     <string name="package_name">in.acmvit.examcooker</string>
-    <string name="custom_url_scheme">in.acmvit.examcooker</string>
+    <string name="custom_url_scheme">examcooker</string>
 </resources>
