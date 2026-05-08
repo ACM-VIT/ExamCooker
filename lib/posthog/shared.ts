@@ -8,6 +8,7 @@ function readEnv(value?: string | null) {
 }
 
 export const POSTHOG_FEATURE_FLAGS = {
+    commandPalette: "command_palette",
     voiceAgent: "voice-agent-enabled",
 } as const;
 

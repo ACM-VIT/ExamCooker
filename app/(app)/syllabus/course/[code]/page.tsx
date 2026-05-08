@@ -3,6 +3,7 @@ import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import PDFViewerClient from "@/app/components/pdf-viewer-client";
+import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
 import ViewTracker from "@/app/components/view-tracker";
 import StructuredData from "@/app/components/seo/structured-data";
 import DirectionalTransition from "@/app/components/common/directional-transition";
@@ -110,6 +111,7 @@ async function CourseSyllabusContent({
 
     return (
         <>
+            <CourseVisitTracker code={context.code} context="syllabus" />
             <StructuredData
                     data={[
                         buildBreadcrumbList([

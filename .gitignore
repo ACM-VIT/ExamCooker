@@ -65,3 +65,4 @@ packages/cli/node_modules
 mobile/android/keystore.properties
 mobile/android/keystores/examcooker-upload.jks
 .deepsec
+.wrangler

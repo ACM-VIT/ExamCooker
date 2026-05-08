@@ -5,34 +5,48 @@ import { useRouter } from "next/navigation";
 import { buildIosNativeTabConfigs } from "@/lib/ios-native-tab-config";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 
-function navigateFromDeepLink(rawUrl: string) {
+const EXAMCOOKER_LINK_HOSTS = new Set([
+  "examcooker.acmvit.in",
+  "beta.examcooker.acmvit.in",
+  "examcooker-2024.azurewebsites.net",
+  "examcooker-beta-2024.azurewebsites.net",
+]);
+
+function isExamCookerLinkHost(hostname: string) {
+  const normalized = hostname.toLowerCase();
+  if (EXAMCOOKER_LINK_HOSTS.has(normalized)) return true;
+  if (typeof window === "undefined") return false;
+  return normalized === window.location.hostname.toLowerCase();
+}
+
+function normalizeInternalPath(path: string) {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return normalized.replace(/^\/{2,}/, "/") || "/";
+}
+
+function resolveDeepLinkPath(rawUrl: string) {
   try {
     const parsed = new URL(rawUrl);
     if (parsed.protocol === "examcooker:") {
-      const path = `/${parsed.hostname}${parsed.pathname}${parsed.search}${parsed.hash}`;
-      if (
-        path &&
-        path !== window.location.pathname + window.location.search + window.location.hash
-      ) {
-        window.location.assign(path);
-      }
-      return;
+      const host = parsed.hostname.toLowerCase();
+      const hostPath = host && !isExamCookerLinkHost(host) ? `/${host}` : "";
+      return normalizeInternalPath(`${hostPath}${parsed.pathname}${parsed.search}${parsed.hash}`);
     }
 
-    const hostOk =
-      parsed.hostname === "examcooker.acmvit.in" ||
-      parsed.hostname === "beta.examcooker.acmvit.in" ||
-      parsed.hostname.endsWith(".azurewebsites.net");
-    if (!hostOk) {
-      return;
-    }
-    const path = `${parsed.pathname}${parsed.search}${parsed.hash}`;
-    if (path && path !== window.location.pathname + window.location.search + window.location.hash) {
-      window.location.assign(path);
-    }
+    if (parsed.protocol !== "https:" || !isExamCookerLinkHost(parsed.hostname)) return null;
+    return normalizeInternalPath(`${parsed.pathname}${parsed.search}${parsed.hash}`);
   } catch {
-    // ignore malformed URLs
+    return null;
   }
+}
+
+function navigateFromDeepLink(rawUrl: string, navigate: (path: string) => void) {
+  const path = resolveDeepLinkPath(rawUrl);
+  if (!path) return;
+  if (path === window.location.pathname + window.location.search + window.location.hash) {
+    return;
+  }
+  navigate(path);
 }
 
 function isDarkTheme() {
@@ -67,6 +81,7 @@ export default function CapacitorBridge() {
   useEffect(() => {
     let cancelled = false;
     let cleanupStatusBar: (() => void) | undefined;
+    let cleanupDeepLinks: (() => void) | undefined;
     let cleanupNativeBridge: (() => void) | undefined;
     let cleanupNativeTabs: (() => void) | undefined;
 
@@ -172,17 +187,20 @@ export default function CapacitorBridge() {
 
       const launchUrl = await App.getLaunchUrl().catch(() => ({ url: "" }));
       if (launchUrl?.url) {
-        navigateFromDeepLink(launchUrl.url);
+        navigateFromDeepLink(launchUrl.url, router.push);
       }
 
-      void App.addListener("appUrlOpen", (event) => {
+      const appUrlOpenListener = await App.addListener("appUrlOpen", (event: { url: string }) => {
         if (event.url.startsWith("examcooker://native-auth/")) {
           void import("@capacitor/browser").then(({ Browser }) =>
             Browser.close().catch(() => undefined),
           );
         }
-        navigateFromDeepLink(event.url);
+        navigateFromDeepLink(event.url, router.push);
       });
+      cleanupDeepLinks = () => {
+        void appUrlOpenListener.remove();
+      };
 
       if (platform === "android") {
         const backButtonListener = await App.addListener("backButton", async ({ canGoBack }) => {
@@ -245,6 +263,7 @@ export default function CapacitorBridge() {
     return () => {
       cancelled = true;
       cleanupStatusBar?.();
+      cleanupDeepLinks?.();
       cleanupNativeBridge?.();
       cleanupNativeTabs?.();
       const root = document.documentElement;

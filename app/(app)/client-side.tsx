@@ -1,5 +1,6 @@
 "use client";
 import React, { Suspense, useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import NavBar from "@/app/components/nav-bar";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -14,6 +15,12 @@ import {
     PaperSplitViewProvider,
     usePaperSplitView,
 } from "@/app/components/past_papers/paper-split-view";
+import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
+import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
+
+const CommandPalette = dynamic(() => import("@/app/components/command-palette"), {
+    ssr: false,
+});
 
 function RouteEffects({ onPathChange }: { onPathChange: () => void }) {
     const pathname = usePathname();
@@ -174,11 +181,30 @@ function ClientShell({
     children,
     isNavOn,
     toggleNavbar,
+    commandPaletteOpen,
+    setCommandPaletteOpen,
 }: {
     children: React.ReactNode;
     isNavOn: boolean;
     toggleNavbar: () => void;
+    commandPaletteOpen: boolean;
+    setCommandPaletteOpen: (open: boolean) => void;
 }) {
+    const commandPaletteEnabled =
+        usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.commandPalette) ?? false;
+
+    useEffect(() => {
+        if (!commandPaletteEnabled && commandPaletteOpen) {
+            setCommandPaletteOpen(false);
+        }
+    }, [commandPaletteEnabled, commandPaletteOpen, setCommandPaletteOpen]);
+
+    const openCommandPalette = useCallback(() => {
+        if (commandPaletteEnabled) {
+            setCommandPaletteOpen(true);
+        }
+    }, [commandPaletteEnabled, setCommandPaletteOpen]);
+
     return (
         <Suspense fallback={<div className="relative flex" />}>
             <NavFromProvider>
@@ -192,8 +218,19 @@ function ClientShell({
                             />
                         }
                     >
-                        <NavBar isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
+                        <NavBar
+                            isNavOn={isNavOn}
+                            toggleNavbar={toggleNavbar}
+                            commandPaletteEnabled={commandPaletteEnabled}
+                            onOpenCommandPalette={openCommandPalette}
+                        />
                     </Suspense>
+                    {commandPaletteEnabled ? (
+                        <CommandPalette
+                            open={commandPaletteOpen}
+                            onOpenChange={setCommandPaletteOpen}
+                        />
+                    ) : null}
                     <main className="ec-app-main min-w-0 flex-1 pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] lg:pb-0 lg:pl-14 lg:pt-0">
                         <PaperSplitViewProvider>
                             <Suspense fallback={null}>
@@ -217,6 +254,7 @@ export default function ClientSide({
     children: React.ReactNode;
 }) {
     const [isNavOn, setIsNavOn] = useState(false);
+    const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -251,6 +289,8 @@ export default function ClientSide({
         <ClientShell
             isNavOn={isNavOn}
             toggleNavbar={toggleNavbar}
+            commandPaletteOpen={commandPaletteOpen}
+            setCommandPaletteOpen={setCommandPaletteOpen}
         >
             <Suspense fallback={null}>
                 <RouteEffects onPathChange={handlePathChange} />

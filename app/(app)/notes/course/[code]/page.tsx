@@ -6,6 +6,7 @@ import DirectionalTransition from "@/app/components/common/directional-transitio
 import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import CourseNotesGrid from "@/app/components/notes/course-notes-grid";
 import Pagination from "@/app/components/pagination";
+import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
 import StructuredData from "@/app/components/seo/structured-data";
 import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import {
@@ -190,6 +191,7 @@ async function CourseNotesContent({
 
     return (
         <>
+            <CourseVisitTracker code={course.code} context="notes" />
             <StructuredData
                 data={[
                     buildBreadcrumbList([

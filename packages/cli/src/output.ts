@@ -221,9 +221,11 @@ ${pc.bold("Examples:")}
   ${pc.dim("$")} examcooker
   ${pc.dim("$")} examcooker auth login
   ${pc.dim("$")} examcooker courses search distributed systems
-  ${pc.dim("$")} examcooker papers search complex
+  ${pc.dim("$")} examcooker papers search --course BCSE409L --exam-type cat-1
   ${pc.dim("$")} examcooker papers view https://examcooker.acmvit.in/past_papers/BCSE409L/paper/cmoeqw7jz032ra8v3t92qszr9
-  ${pc.dim("$")} examcooker papers upload ./fat.pdf
+  ${pc.dim("$")} examcooker papers upload ./fat.pdf --course BCSE409L --exam-type fat --year 2025
+
+${pc.bold("Exam types:")} CAT_1, cat-1, cat 1, model-fat, midterm, endsem, etc.
 `);
 }
 

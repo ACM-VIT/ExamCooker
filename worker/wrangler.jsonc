@@ -1,0 +1,28 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "examcooker-command-agent",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ExamCookerCommandAgent",
+        "class_name": "ExamCookerCommandAgent"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ExamCookerCommandAgent"]
+    }
+  ],
+  "vars": {
+    "OPENAI_COMMAND_MODEL": "gpt-5.4-nano",
+    "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

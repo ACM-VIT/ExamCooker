@@ -1,6 +1,6 @@
 {
   "name": "examcooker",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Official CLI for searching, downloading, and uploading ExamCooker resources",
   "type": "module",
   "repository": {
