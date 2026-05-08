@@ -207,7 +207,7 @@ export default function FilterSidebar({ options, searchString = "" }: Props) {
                 </FilterGroup>
             )}
 
-            {options.campuses.length > 1 && (
+            {(options.campuses.length > 1 || selected.campuses.length > 0) && (
                 <FilterGroup title="Campus">
                     {options.campuses.map((c) => (
                         <FilterCheckbox

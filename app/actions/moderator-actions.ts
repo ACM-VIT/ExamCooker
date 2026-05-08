@@ -5,6 +5,7 @@ import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/past-paper-title";
+import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { course, db, note, pastPaper, user } from "@/db";
 
 export async function fetchUnclearedItems() {
@@ -171,6 +172,7 @@ export async function approveItem(
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
     revalidateTag("past_papers", "minutes");
+    await invalidatePastPapersSurfaceCache();
 
     return { status: "approved" as const };
 }
@@ -193,6 +195,7 @@ export async function renameItem(id: string, type: "note" | "pastPaper", title: 
         revalidatePath(`/past_papers/${id}`);
         revalidateTag(`past_paper:${id}`, "minutes");
     }
+    await invalidatePastPapersSurfaceCache();
 }
 
 export async function deleteItem(id: string, type: "note" | "pastPaper") {
@@ -205,6 +208,7 @@ export async function deleteItem(id: string, type: "note" | "pastPaper") {
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
     revalidateTag("past_papers", "minutes");
+    await invalidatePastPapersSurfaceCache();
 }
 
 export async function generatePastPaperTitle(id: string) {
@@ -232,6 +236,7 @@ export async function generatePastPaperTitle(id: string) {
 
     revalidatePath("/mod");
     revalidateTag("past_papers", "minutes");
+    await invalidatePastPapersSurfaceCache();
 
     return { title: aiTitle };
 }

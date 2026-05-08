@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/past-paper-title";
+import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import type {
     Campus,
     ExamType,
@@ -161,6 +162,7 @@ export async function createUploadedResources({
                     }),
                 );
                 revalidateTag("past_papers", "minutes");
+                await invalidatePastPapersSurfaceCache();
             } catch (error) {
                 console.error("Failed to post-process uploaded past papers:", error);
             }
@@ -170,9 +172,11 @@ export async function createUploadedResources({
     if (variant === "Notes") {
         revalidatePath("/notes");
         revalidateTag("notes", "minutes");
+        await invalidatePastPapersSurfaceCache();
     } else {
         revalidatePath("/past_papers");
         revalidateTag("past_papers", "minutes");
+        await invalidatePastPapersSurfaceCache();
     }
 
     return { success: true as const, data };

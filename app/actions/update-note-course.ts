@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { db, note } from "@/db";
+import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 
 const schema = z.object({
     id: z.string().min(1),
@@ -29,5 +30,6 @@ export async function updateNoteCourse(input: UpdateNoteCourseInput) {
     revalidatePath("/mod/notes/review");
     revalidateTag("notes", "minutes");
     revalidateTag("courses", "minutes");
+    await invalidatePastPapersSurfaceCache();
     return { success: true };
 }

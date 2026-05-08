@@ -23,6 +23,10 @@ import {
 import CourseHeader from "@/app/components/past_papers/course-header";
 import CoursePaperGrid from "@/app/components/past_papers/course-paper-grid";
 import {
+    DESKTOP_SELECT_ALL_HOST_ID,
+    MOBILE_SELECT_ALL_HOST_ID,
+} from "@/app/components/past_papers/course-paper-grid-controls";
+import {
     buildBreadcrumbList,
     buildCollectionPage,
     buildFaqPage,
@@ -116,8 +120,10 @@ async function CourseExamContent({
     const course = await getCourseDetailByCode(normalized);
     if (!course) notFound();
 
-    const [options, { papers, totalCount }, syllabus] = await Promise.all([
-        getCoursePaperFilterOptions(course.id),
+    const [options, { papers }, syllabus] = await Promise.all([
+        getCoursePaperFilterOptions(course.id, {
+            examTypes: [examType],
+        }),
         getCoursePapers({
             courseId: course.id,
             filters: { examTypes: [examType] },
@@ -216,17 +222,24 @@ async function CourseExamContent({
                             Filtered view
                         </p>
                         <h2 className="text-xl font-bold sm:text-2xl">{label}</h2>
-                        <p className="mt-1 text-sm text-black/70 dark:text-[#D5D5D5]/70">
-                            {totalCount} paper{totalCount === 1 ? "" : "s"}
-                        </p>
+                        <div
+                            id={MOBILE_SELECT_ALL_HOST_ID}
+                            className="mt-1 flex justify-start sm:hidden"
+                        />
                     </div>
-                    <Link
-                        href={getCoursePastPapersPath(course.code)}
-                        transitionTypes={["nav-back"]}
-                        className="inline-flex h-9 items-center border border-black/60 px-3 text-sm font-semibold text-black transition hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/60 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7]/10 dark:hover:text-[#3BF4C7]"
-                    >
-                        All filters →
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        <div
+                            id={DESKTOP_SELECT_ALL_HOST_ID}
+                            className="hidden justify-end sm:flex"
+                        />
+                        <Link
+                            href={getCoursePastPapersPath(course.code)}
+                            transitionTypes={["nav-back"]}
+                            className="inline-flex h-9 items-center border border-black/60 px-3 text-sm font-semibold text-black transition hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/60 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7]/10 dark:hover:text-[#3BF4C7]"
+                        >
+                            All filters →
+                        </Link>
+                    </div>
                 </div>
 
                 {options.examTypes.length > 1 && (

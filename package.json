@@ -48,6 +48,7 @@
     "@capacitor/status-bar": "^8.0.2",
     "@embedpdf/core": "^2.14.1",
     "@embedpdf/engines": "^2.14.1",
+    "@embedpdf/models": "^2.14.1",
     "@embedpdf/pdfium": "^2.14.1",
     "@embedpdf/plugin-document-manager": "^2.14.1",
     "@embedpdf/plugin-render": "^2.14.1",

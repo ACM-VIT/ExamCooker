@@ -130,7 +130,8 @@ export default function FilterBar({
         options.slots.length > 0 ||
         options.years.length > 0 ||
         visibleSemesters.length > 0 ||
-        options.campuses.length > 1;
+        options.campuses.length > 1 ||
+        selected.campuses.length > 0;
 
     const yearItems = useMemo(
         () => options.years.map((y) => ({
@@ -220,7 +221,7 @@ export default function FilterBar({
                             onToggle={toggleSemester}
                         />
                     )}
-                    {options.campuses.length > 1 && (
+                    {(options.campuses.length > 1 || selected.campuses.length > 0) && (
                         <ChipRow
                             items={campusItems}
                             onToggle={toggleCampus}

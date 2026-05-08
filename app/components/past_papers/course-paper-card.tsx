@@ -83,8 +83,18 @@ function CoursePaperCard({
             return;
         }
         hasWarmedPdf.current = true;
-        void preloadPdfiumEngine().catch(() => undefined);
-        preloadPdfBuffer(paper.fileUrl);
+
+        const warm = () => {
+            void preloadPdfiumEngine().catch(() => undefined);
+            preloadPdfBuffer(paper.fileUrl);
+        };
+
+        if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+            window.requestIdleCallback(warm, { timeout: 250 });
+            return;
+        }
+
+        globalThis.setTimeout(warm, 0);
     }, [paper.fileUrl]);
 
     const handleToggleSelect = useCallback((e: React.MouseEvent | React.ChangeEvent) => {
@@ -221,105 +231,110 @@ function CoursePaperCard({
     }, [onContextMenuOpen, paper]);
 
     return (
-        <Link
-            href={href}
-            draggable={false}
-            prefetch={index < 3}
-            transitionTypes={["nav-forward"]}
-            aria-label={linkAriaLabel}
-            onClickCapture={handleClickCapture}
-            onContextMenu={handleContextMenu}
-            onDragStart={preventNativeDrag}
-            onFocus={handleWarmPdf}
-            onMouseDown={handleWarmPdf}
-            onPointerDown={handleSplitPointerDown}
-            onPointerMove={handleSplitPointerMove}
-            onPointerUp={handleSplitPointerUp}
-            onPointerCancel={handleSplitPointerCancel}
-            onPointerEnter={handleWarmPdf}
-            onTouchStart={handleWarmPdf}
-            className={`group relative flex h-full flex-col border-2 p-3 text-black transition duration-200 hover:scale-[1.02] hover:shadow-xl dark:text-[#D5D5D5] ${
+        <article
+            className={`group relative isolate flex h-full flex-col border-2 p-3 text-black transition duration-200 hover:scale-[1.02] hover:shadow-xl focus-within:outline-none focus-within:ring-2 focus-within:ring-black/70 dark:text-[#D5D5D5] dark:focus-within:ring-[#3BF4C7] ${
                 splitDragEnabled ? "[touch-action:pan-y]" : ""
             } ${selected
                     ? "border-black bg-[#5FC4E7] shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:border-[#3BF4C7] dark:bg-[#0C1222] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)]"
                     : "border-[#5FC4E7] bg-[#5FC4E7] hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
                 }`}
         >
-            {/* Metadata + title at top */}
-            <div className="flex flex-col gap-1.5 pb-2 pr-6 text-black dark:text-[#D5D5D5]">
-                <div className="flex flex-wrap items-center gap-1.5">
-                    {paper.examType && (
-                        <span className="inline-flex items-center bg-black/10 px-2 py-0.5 text-[11px] font-bold text-black/80 dark:bg-[#D5D5D5]/15 dark:text-[#D5D5D5]/90">
-                            {examTypeLabel(paper.examType)}
-                        </span>
-                    )}
-                    {paper.slot && (
-                        <span className="inline-flex items-center bg-black/10 px-2 py-0.5 text-[11px] font-bold text-black/80 dark:bg-[#D5D5D5]/15 dark:text-[#D5D5D5]/90">
-                            {paper.slot}
-                        </span>
-                    )}
-                    {paper.year !== null && (
-                        <span className="text-[11px] font-bold text-black/60 dark:text-[#D5D5D5]/60">
-                            {paper.year}
-                        </span>
-                    )}
+            <Link
+                href={href}
+                draggable={false}
+                prefetch={index < 3}
+                transitionTypes={["nav-forward"]}
+                aria-label={linkAriaLabel}
+                onClickCapture={handleClickCapture}
+                onContextMenu={handleContextMenu}
+                onDragStart={preventNativeDrag}
+                onFocus={handleWarmPdf}
+                onPointerDown={handleSplitPointerDown}
+                onPointerMove={handleSplitPointerMove}
+                onPointerUp={handleSplitPointerUp}
+                onPointerCancel={handleSplitPointerCancel}
+                onPointerEnter={handleWarmPdf}
+                className="absolute inset-0 z-0"
+            >
+                <span className="sr-only">{linkAriaLabel}</span>
+            </Link>
+
+            <div className="pointer-events-none flex h-full flex-col">
+                <div className="flex flex-col gap-1.5 pb-2 pr-6 text-black dark:text-[#D5D5D5]">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {paper.examType && (
+                            <span className="inline-flex items-center bg-black/10 px-2 py-0.5 text-[11px] font-bold text-black/80 dark:bg-[#D5D5D5]/15 dark:text-[#D5D5D5]/90">
+                                {examTypeLabel(paper.examType)}
+                            </span>
+                        )}
+                        {paper.slot && (
+                            <span className="inline-flex items-center bg-black/10 px-2 py-0.5 text-[11px] font-bold text-black/80 dark:bg-[#D5D5D5]/15 dark:text-[#D5D5D5]/90">
+                                {paper.slot}
+                            </span>
+                        )}
+                        {paper.year !== null && (
+                            <span className="text-[11px] font-bold text-black/60 dark:text-[#D5D5D5]/60">
+                                {paper.year}
+                            </span>
+                        )}
+                    </div>
+                    <div className="line-clamp-2 text-sm font-bold leading-snug">
+                        {courseTitle}
+                    </div>
                 </div>
-                <div className="line-clamp-2 text-sm font-bold leading-snug">
-                    {courseTitle}
+
+                <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#d9d9d9] dark:bg-white/5">
+                    <Image
+                        src={paper.thumbNailUrl || "/assets/exam-cooker.png"}
+                        alt={courseTitle}
+                        fill
+                        sizes="(min-width: 1280px) 220px, (min-width: 1024px) 25vw, (min-width: 640px) 32vw, 45vw"
+                        className="pointer-events-none select-none object-cover"
+                        draggable={false}
+                        priority={index < 3}
+                    />
+                    {paper.hasAnswerKey && (
+                        <span
+                            title="Answer key included"
+                            className="absolute left-1/2 top-1.5 inline-flex h-5 -translate-x-1/2 items-center gap-1 rounded bg-white/85 px-1.5 text-[9px] font-semibold uppercase tracking-wider text-black backdrop-blur dark:bg-[#0C1222]/80 dark:text-[#3BF4C7]"
+                        >
+                            <KeyRound className="h-2.5 w-2.5" aria-hidden />
+                            Key
+                        </span>
+                    )}
+                    <button
+                        type="button"
+                        onClick={handleToggleSelect}
+                        aria-label={selected ? "Deselect paper" : "Select paper"}
+                        aria-pressed={selected}
+                        className={`pointer-events-auto absolute left-1.5 top-1.5 z-10 inline-flex h-5 w-5 items-center justify-center rounded transition ${selected
+                                ? "bg-black text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
+                                : "bg-white/80 text-transparent backdrop-blur hover:bg-white hover:text-black/40 dark:bg-[#0C1222]/60 dark:hover:bg-[#0C1222]"
+                            }`}
+                    >
+                        <Check className="h-2.5 w-2.5" aria-hidden />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleDownload}
+                        aria-label="Download paper"
+                        className="pointer-events-auto absolute right-1.5 top-1.5 z-10 inline-flex h-5 w-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur transition hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
+                    >
+                        <Download className="h-2.5 w-2.5" aria-hidden />
+                    </button>
                 </div>
             </div>
+
             <button
                 type="button"
                 onClick={handleOpenInNewTab}
                 aria-label="Open paper in new tab"
                 title="Open paper in new tab"
-                className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded text-black/60 transition hover:bg-black/10 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/10 dark:hover:text-[#D5D5D5]"
+                className="pointer-events-auto absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded text-black/60 transition hover:bg-black/10 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/10 dark:hover:text-[#D5D5D5]"
             >
                 <ExternalLink className="h-3 w-3" aria-hidden />
             </button>
-
-            {/* Thumbnail below */}
-            <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#d9d9d9] dark:bg-white/5">
-                <Image
-                    src={paper.thumbNailUrl || "/assets/exam-cooker.png"}
-                    alt={courseTitle}
-                    fill
-                    sizes="(min-width: 1280px) 220px, (min-width: 1024px) 25vw, (min-width: 640px) 32vw, 45vw"
-                    className="pointer-events-none select-none object-cover"
-                    draggable={false}
-                    priority={index < 3}
-                />
-                <button
-                    type="button"
-                    onClick={handleToggleSelect}
-                    aria-label={selected ? "Deselect paper" : "Select paper"}
-                    aria-pressed={selected}
-                    className={`absolute left-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded transition ${selected
-                            ? "bg-black text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
-                            : "bg-white/80 text-transparent backdrop-blur hover:bg-white hover:text-black/40 dark:bg-[#0C1222]/60 dark:hover:bg-[#0C1222]"
-                        }`}
-                >
-                    <Check className="h-2.5 w-2.5" aria-hidden />
-                </button>
-                {paper.hasAnswerKey && (
-                    <span
-                        title="Answer key included"
-                        className="absolute left-1/2 top-1.5 inline-flex h-5 -translate-x-1/2 items-center gap-1 rounded bg-white/85 px-1.5 text-[9px] font-semibold uppercase tracking-wider text-black backdrop-blur dark:bg-[#0C1222]/80 dark:text-[#3BF4C7]"
-                    >
-                        <KeyRound className="h-2.5 w-2.5" aria-hidden />
-                        Key
-                    </span>
-                )}
-                <button
-                    type="button"
-                    onClick={handleDownload}
-                    aria-label="Download paper"
-                    className="absolute right-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur transition hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
-                >
-                    <Download className="h-2.5 w-2.5" aria-hidden />
-                </button>
-            </div>
-        </Link>
+        </article>
     );
 }
 

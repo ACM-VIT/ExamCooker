@@ -5,6 +5,7 @@ import { auth } from "@/app/auth";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { revalidateTag } from "next/cache";
 import { course, db } from "@/db";
+import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 
 export async function createCourse(input: {
     code: string;
@@ -55,6 +56,7 @@ export async function createCourse(input: {
         }
 
         revalidateTag("courses", "minutes");
+        await invalidatePastPapersSurfaceCache();
         return {
             success: true,
             id: createdCourse.id,
