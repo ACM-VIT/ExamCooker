@@ -301,7 +301,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                     ) : (
                         <input
                             ref={inputRef}
-                            type="search"
+                            type="text"
                             inputMode="search"
                             enterKeyHint="search"
                             autoCapitalize="off"
