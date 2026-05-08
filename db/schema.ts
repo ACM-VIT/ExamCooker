@@ -21,6 +21,7 @@ import {
   semesterValues,
   voteTypeValues,
 } from "@/db/enums";
+import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 
 const cockroachEnum = pgEnum;
 const cockroachTable = pgTable;
@@ -407,6 +408,7 @@ export const pastPaper = cockroachTable(
     campus: campus().default("VELLORE").notNull(),
     hasAnswerKey: bool().default(false).notNull(),
     questionPaperId: string(),
+    pageEdits: jsonb("page_edits").$type<PdfPageEdits>(),
   },
   (table) => [
     foreignKey({

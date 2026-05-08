@@ -10,6 +10,7 @@ import {
     X,
 } from "lucide-react";
 import {
+    Activity,
     createContext,
     useCallback,
     useContext,
@@ -268,6 +269,7 @@ function PaperSplitPanel({
 
 export function PaperSplitViewProvider({ children }: { children: ReactNode }) {
     const [activePaper, setActivePaper] = useState<PaperSplitItem | null>(null);
+    const [cachedPaper, setCachedPaper] = useState<PaperSplitItem | null>(null);
     const [side, setSide] = useState<PaperSplitSide>("right");
     const [width, setWidth] = useState(() => getDefaultPanelWidth());
     const [isSupported, setIsSupported] = useState(false);
@@ -303,6 +305,7 @@ export function PaperSplitViewProvider({ children }: { children: ReactNode }) {
         (paper: PaperSplitItem, nextSide: PaperSplitSide) => {
             if (!window.matchMedia("(min-width: 768px)").matches) return;
             setActivePaper(paper);
+            setCachedPaper(paper);
             setSide(nextSide);
             window.localStorage.setItem(STORAGE_SIDE_KEY, nextSide);
         },
@@ -346,15 +349,20 @@ export function PaperSplitViewProvider({ children }: { children: ReactNode }) {
                     {children}
                 </div>
             </div>
-            {activePaper && isSupported ? (
-                <PaperSplitPanel
-                    paper={activePaper}
-                    side={side}
-                    width={width}
-                    onClose={closePaperSplit}
-                    onMove={movePaperSplit}
-                    onResize={resizePaperSplit}
-                />
+            {cachedPaper && isSupported ? (
+                <Activity
+                    mode={activePaper ? "visible" : "hidden"}
+                    name="Past paper split view"
+                >
+                    <PaperSplitPanel
+                        paper={cachedPaper}
+                        side={side}
+                        width={width}
+                        onClose={closePaperSplit}
+                        onMove={movePaperSplit}
+                        onResize={resizePaperSplit}
+                    />
+                </Activity>
             ) : null}
         </PaperSplitContext.Provider>
     );

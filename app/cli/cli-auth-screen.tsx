@@ -33,11 +33,44 @@ type CliLookupResponse = {
   request: CliLookupRequest | null;
 };
 
-const PRIMARY_BTN =
-  "inline-flex h-11 items-center justify-center rounded-lg bg-[#12715E] px-7 text-sm font-semibold text-white transition-transform duration-100 hover:scale-[1.01] active:translate-y-px dark:bg-[#3BF4C7] dark:text-[#0C1222]";
+function PrimaryActionButton({
+  children,
+  href,
+  type = "button",
+}: {
+  children: React.ReactNode;
+  href?: string;
+  type?: "submit" | "button";
+}) {
+  const buttonClass =
+    "relative inline-flex h-11 items-center justify-center border-2 border-black bg-[#3BF4C7] px-7 text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]";
 
-const GHOST_BTN =
-  "inline-flex h-11 items-center justify-center rounded-lg border border-black/20 bg-transparent px-7 text-sm font-semibold text-black transition-colors hover:bg-black hover:text-white dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7] dark:hover:text-[#0C1222]";
+  return (
+    <div className="group relative inline-flex items-stretch">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-black dark:bg-[#3BF4C7]"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[#3BF4C7] opacity-0 blur-[60px] transition duration-200 group-hover:opacity-20 dark:hidden"
+      />
+      <div
+        aria-hidden="true"
+        className="duration-1000 transition dark:absolute dark:inset-0 dark:blur-[75px] dark:group-hover:duration-200 dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7]"
+      />
+      {href ? (
+        <Link href={href} className={buttonClass}>
+          {children}
+        </Link>
+      ) : (
+        <button type={type} className={buttonClass}>
+          {children}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function normalizeUserCode(input: string) {
   const normalized = input.replace(/[^a-z0-9]/gi, "").toUpperCase();
@@ -167,14 +200,14 @@ function PendingBlock({
       {isSignedIn ? (
         <form action={approveCliDeviceAuthAction}>
           <input type="hidden" name="userCode" value={request.userCode} />
-          <button type="submit" className={PRIMARY_BTN}>
+          <PrimaryActionButton type="submit">
             Approve device
-          </button>
+          </PrimaryActionButton>
         </form>
       ) : (
-        <Link href={signInHref} className={PRIMARY_BTN}>
+        <PrimaryActionButton href={signInHref}>
           Sign in to continue
-        </Link>
+        </PrimaryActionButton>
       )}
     </>
   );

@@ -60,6 +60,9 @@ importers:
       '@embedpdf/engines':
         specifier: ^2.14.1
         version: 2.14.1(preact@10.29.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@embedpdf/models':
+        specifier: ^2.14.1
+        version: 2.14.1
       '@embedpdf/pdfium':
         specifier: ^2.14.1
         version: 2.14.1

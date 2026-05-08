@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
     Check,
     Download,
@@ -24,6 +25,10 @@ import {
     type PaperSplitItem,
     type PaperSplitSide,
 } from "@/app/components/past_papers/paper-split-view";
+import {
+    DESKTOP_SELECT_ALL_HOST_ID,
+    MOBILE_SELECT_ALL_HOST_ID,
+} from "./course-paper-grid-controls";
 
 type Props = {
     papers: CoursePaperListItem[];
@@ -89,6 +94,7 @@ export default function CoursePaperGrid({
 }: Props) {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [isDownloading, setIsDownloading] = useState(false);
+    const [portalReady, setPortalReady] = useState(false);
     const [splitDrag, setSplitDrag] = useState<{
         x: number;
         y: number;
@@ -121,6 +127,10 @@ export default function CoursePaperGrid({
 
     const paperById = useMemo(
         () => new Map(papers.map((paper) => [paper.id, paper])),
+        [papers],
+    );
+    const visiblePaperIds = useMemo(
+        () => papers.map((paper) => paper.id),
         [papers],
     );
 
@@ -306,6 +316,19 @@ export default function CoursePaperGrid({
     }, []);
 
     useEffect(() => {
+        setPortalReady(true);
+    }, []);
+
+    useEffect(() => {
+        setSelected((prev) => {
+            if (prev.size === 0) return prev;
+
+            const next = new Set(visiblePaperIds.filter((id) => prev.has(id)));
+            return next.size === prev.size ? prev : next;
+        });
+    }, [visiblePaperIds]);
+
+    useEffect(() => {
         if (!contextMenu) return;
 
         const closeOnOutsideInteraction = () => closeContextMenu();
@@ -367,9 +390,50 @@ export default function CoursePaperGrid({
     }, [cancelSplitDrag, endSplitDrag, moveSplitDrag, splitDrag]);
 
     const count = selected.size;
+    const allVisibleSelected =
+        visiblePaperIds.length > 0 && visiblePaperIds.every((id) => selected.has(id));
+    const toggleSelectAllVisible = useCallback(() => {
+        if (allVisibleSelected) {
+            clear();
+            return;
+        }
+
+        setSelected(new Set(visiblePaperIds));
+    }, [allVisibleSelected, clear, visiblePaperIds]);
+
+    const renderSelectAllButton = () => {
+        if (papers.length < 2) return null;
+
+        return (
+            <button
+                type="button"
+                onClick={toggleSelectAllVisible}
+                className="inline-flex h-9 items-center gap-2 border border-black/15 bg-white px-3.5 text-sm font-semibold text-black transition hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/40 dark:hover:bg-white/5"
+            >
+                <Check className="h-3.5 w-3.5" aria-hidden />
+                {allVisibleSelected ? "Clear all" : "Select all"}
+            </button>
+        );
+    };
+
+    const mobileSelectAllHost =
+        portalReady && typeof document !== "undefined"
+            ? document.getElementById(MOBILE_SELECT_ALL_HOST_ID)
+            : null;
+    const desktopSelectAllHost =
+        portalReady && typeof document !== "undefined"
+            ? document.getElementById(DESKTOP_SELECT_ALL_HOST_ID)
+            : null;
 
     return (
         <>
+            {mobileSelectAllHost
+                ? createPortal(renderSelectAllButton(), mobileSelectAllHost)
+                : null}
+            {desktopSelectAllHost
+                ? createPortal(renderSelectAllButton(), desktopSelectAllHost)
+                : null}
+
             {splitDrag && (
                 <div
                     aria-hidden="true"

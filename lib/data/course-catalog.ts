@@ -9,6 +9,7 @@ import {
     isNotNull,
     sql,
 } from "drizzle-orm";
+import { withPastPapersSurfaceRedisCache } from "@/lib/cache/past-papers-surface-cache";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { course, db, note, pastPaper, syllabi, viewHistory } from "@/db";
 
@@ -104,52 +105,59 @@ async function getCourseCatalogRows(): Promise<CourseCatalogRow[]> {
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const [courses, noteCounts, paperCounts] = await Promise.all([
-        db
-            .select({
-                id: course.id,
-                code: course.code,
-                title: course.title,
-                aliases: course.aliases,
-            })
-            .from(course),
-        db
-            .select({
-                courseId: note.courseId,
-                noteCount: count(),
-            })
-            .from(note)
-            .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
-            .groupBy(note.courseId),
-        db
-            .select({
-                courseId: pastPaper.courseId,
-                paperCount: count(),
-            })
-            .from(pastPaper)
-            .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
-            .groupBy(pastPaper.courseId),
-    ]);
+    return withPastPapersSurfaceRedisCache(
+        {
+            keyParts: ["course-catalog-rows"],
+        },
+        async () => {
+            const [courses, noteCounts, paperCounts] = await Promise.all([
+                db
+                    .select({
+                        id: course.id,
+                        code: course.code,
+                        title: course.title,
+                        aliases: course.aliases,
+                    })
+                    .from(course),
+                db
+                    .select({
+                        courseId: note.courseId,
+                        noteCount: count(),
+                    })
+                    .from(note)
+                    .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
+                    .groupBy(note.courseId),
+                db
+                    .select({
+                        courseId: pastPaper.courseId,
+                        paperCount: count(),
+                    })
+                    .from(pastPaper)
+                    .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
+                    .groupBy(pastPaper.courseId),
+            ]);
 
-    const noteCountByCourseId = new Map(
-        noteCounts
-            .filter((row) => row.courseId !== null)
-            .map((row) => [row.courseId, row.noteCount]),
-    );
-    const paperCountByCourseId = new Map(
-        paperCounts
-            .filter((row) => row.courseId !== null)
-            .map((row) => [row.courseId, row.paperCount]),
-    );
+            const noteCountByCourseId = new Map(
+                noteCounts
+                    .filter((row) => row.courseId !== null)
+                    .map((row) => [row.courseId, row.noteCount]),
+            );
+            const paperCountByCourseId = new Map(
+                paperCounts
+                    .filter((row) => row.courseId !== null)
+                    .map((row) => [row.courseId, row.paperCount]),
+            );
 
-    return courses.map((courseRow) => ({
-        id: courseRow.id,
-        code: courseRow.code,
-        title: courseRow.title,
-        aliases: courseRow.aliases ?? [],
-        paperCount: paperCountByCourseId.get(courseRow.id) ?? 0,
-        noteCount: noteCountByCourseId.get(courseRow.id) ?? 0,
-    }));
+            return courses.map((courseRow) => ({
+                id: courseRow.id,
+                code: courseRow.code,
+                title: courseRow.title,
+                aliases: courseRow.aliases ?? [],
+                paperCount: paperCountByCourseId.get(courseRow.id) ?? 0,
+                noteCount: noteCountByCourseId.get(courseRow.id) ?? 0,
+            }));
+        },
+    );
 }
 
 export async function getCourseSearchRecords(): Promise<CourseSearchRecord[]> {
@@ -229,19 +237,56 @@ async function getCourseGridBase(): Promise<CourseGridItem[]> {
 }
 
 async function loadCourseDetailByCode(normalized: string) {
-    const courseRow = (await getCourseCatalogRows()).find(
-        (candidate) => candidate.code === normalized,
-    );
-    if (!courseRow) return null;
+    return withPastPapersSurfaceRedisCache(
+        {
+            keyParts: ["course-detail-by-code", normalized],
+        },
+        async () => {
+            const courseRows = await db
+                .select({
+                    id: course.id,
+                    code: course.code,
+                    title: course.title,
+                    aliases: course.aliases,
+                })
+                .from(course)
+                .where(eq(course.code, normalized))
+                .limit(1);
 
-    return {
-        id: courseRow.id,
-        code: courseRow.code,
-        title: courseRow.title,
-        aliases: courseRow.aliases ?? [],
-        paperCount: courseRow.paperCount,
-        noteCount: courseRow.noteCount,
-    } satisfies CourseDetail;
+            const courseRow = courseRows[0];
+            if (!courseRow) return null;
+
+            const [paperRows, noteRows] = await Promise.all([
+                db
+                    .select({ total: count() })
+                    .from(pastPaper)
+                    .where(
+                        and(
+                            eq(pastPaper.courseId, courseRow.id),
+                            eq(pastPaper.isClear, true),
+                        ),
+                    ),
+                db
+                    .select({ total: count() })
+                    .from(note)
+                    .where(
+                        and(
+                            eq(note.courseId, courseRow.id),
+                            eq(note.isClear, true),
+                        ),
+                    ),
+            ]);
+
+            return {
+                id: courseRow.id,
+                code: courseRow.code,
+                title: courseRow.title,
+                aliases: courseRow.aliases ?? [],
+                paperCount: paperRows[0]?.total ?? 0,
+                noteCount: noteRows[0]?.total ?? 0,
+            } satisfies CourseDetail;
+        },
+    );
 }
 
 export async function getPopularCourseGrid(limit = 6): Promise<CourseGridItem[]> {
@@ -390,33 +435,40 @@ export async function getRecentPapers(limit = 10): Promise<RecentPaper[]> {
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const papers = await db
-        .select({
-            id: pastPaper.id,
-            title: pastPaper.title,
-            thumbNailUrl: pastPaper.thumbNailUrl,
-            examType: pastPaper.examType,
-            slot: pastPaper.slot,
-            year: pastPaper.year,
-            courseCode: course.code,
-            courseTitle: course.title,
-        })
-        .from(pastPaper)
-        .innerJoin(course, eq(pastPaper.courseId, course.id))
-        .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
-        .orderBy(desc(pastPaper.createdAt))
-        .limit(limit);
+    return withPastPapersSurfaceRedisCache(
+        {
+            keyParts: ["recent-papers", { limit }],
+        },
+        async () => {
+            const papers = await db
+                .select({
+                    id: pastPaper.id,
+                    title: pastPaper.title,
+                    thumbNailUrl: pastPaper.thumbNailUrl,
+                    examType: pastPaper.examType,
+                    slot: pastPaper.slot,
+                    year: pastPaper.year,
+                    courseCode: course.code,
+                    courseTitle: course.title,
+                })
+                .from(pastPaper)
+                .innerJoin(course, eq(pastPaper.courseId, course.id))
+                .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
+                .orderBy(desc(pastPaper.createdAt))
+                .limit(limit);
 
-    return papers.map((p) => ({
-        id: p.id,
-        title: p.title,
-        thumbNailUrl: p.thumbNailUrl,
-        courseCode: p.courseCode ?? null,
-        courseTitle: p.courseTitle ?? null,
-        examType: p.examType,
-        slot: p.slot,
-        year: p.year,
-    }));
+            return papers.map((p) => ({
+                id: p.id,
+                title: p.title,
+                thumbNailUrl: p.thumbNailUrl,
+                courseCode: p.courseCode ?? null,
+                courseTitle: p.courseTitle ?? null,
+                examType: p.examType,
+                slot: p.slot,
+                year: p.year,
+            }));
+        },
+    );
 }
 
 export async function getCourseDetailByCode(code: string): Promise<CourseDetail | null> {
@@ -425,6 +477,7 @@ export async function getCourseDetailByCode(code: string): Promise<CourseDetail 
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     const normalized = normalizeCourseCode(code);
+    if (!normalized) return null;
     return loadCourseDetailByCode(normalized);
 }
 

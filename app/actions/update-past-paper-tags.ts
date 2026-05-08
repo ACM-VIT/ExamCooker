@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { db, pastPaperToTag } from "@/db";
+import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { findOrCreateTag } from "@/db/helpers";
 
 function normalizeTags(tags: string[]) {
@@ -44,6 +45,7 @@ export async function updatePastPaperTags(paperId: string, tags: string[]) {
     revalidateTag("past_papers", "minutes");
     revalidateTag(`past_paper:${paperId}`, "minutes");
     revalidatePath(`/past_papers/${paperId}`);
+    await invalidatePastPapersSurfaceCache();
 
     return { success: true };
 }

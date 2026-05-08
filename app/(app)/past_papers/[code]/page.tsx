@@ -26,6 +26,10 @@ import AnswerKeyButton from "@/app/components/past_papers/answer-key-button";
 import SortDropdown from "@/app/components/past_papers/sort-dropdown";
 import AnswerKeyToggle from "@/app/components/past_papers/answer-key-toggle";
 import CoursePaperGrid from "@/app/components/past_papers/course-paper-grid";
+import {
+    DESKTOP_SELECT_ALL_HOST_ID,
+    MOBILE_SELECT_ALL_HOST_ID,
+} from "@/app/components/past_papers/course-paper-grid-controls";
 import CoursePagination from "@/app/components/past_papers/course-pagination";
 import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
 import {
@@ -351,7 +355,14 @@ async function CoursePastPapersContent({
     const searchString = buildSearchString(raw);
     const basePath = getCoursePastPapersPath(course.code);
     const [options, { papers, totalCount }] = await Promise.all([
-        getCoursePaperFilterOptions(course.id),
+        getCoursePaperFilterOptions(course.id, {
+            examTypes: filters.examTypes,
+            slots: filters.slots,
+            years: filters.years,
+            semesters: filters.semesters,
+            campuses: filters.campuses,
+            hasAnswerKey: filters.hasAnswerKey || undefined,
+        }),
         getCoursePapers({
             courseId: course.id,
             filters: {
@@ -413,9 +424,7 @@ async function CoursePastPapersContent({
                             searchString={searchString}
                         />
                     </div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                        {totalCount} result{totalCount === 1 ? "" : "s"}
-                    </p>
+                    <div id={MOBILE_SELECT_ALL_HOST_ID} className="flex justify-end" />
                 </div>
 
                 <div className="hidden flex-col gap-2 sm:flex sm:gap-1.5">
@@ -441,9 +450,7 @@ async function CoursePastPapersContent({
                                 searchString={searchString}
                             />
                         </div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                            {totalCount} result{totalCount === 1 ? "" : "s"}
-                        </p>
+                        <div id={DESKTOP_SELECT_ALL_HOST_ID} className="flex justify-end" />
                     </div>
                 </div>
             </section>

@@ -66,3 +66,4 @@ mobile/android/keystore.properties
 mobile/android/keystores/examcooker-upload.jks
 .deepsec
 .wrangler
+.pnpm-store/

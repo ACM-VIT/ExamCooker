@@ -165,6 +165,8 @@ export default function FilterSheet({
         () => options.semesters.filter((s) => s !== "UNKNOWN"),
         [options.semesters],
     );
+    const showCampusFilters =
+        options.campuses.length > 1 || selected.campuses.length > 0;
 
     return (
         <Drawer.Root open={open} onOpenChange={setOpen}>
@@ -312,7 +314,7 @@ export default function FilterSheet({
                                 </Section>
                             )}
 
-                            {options.campuses.length > 1 && (
+                            {showCampusFilters && (
                                 <Section title="Campus">
                                     <ChipWrap>
                                         {options.campuses.map((c) => (
