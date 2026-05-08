@@ -16,6 +16,8 @@ config stays at the repo root (`capacitor.config.ts`) so the CLI runs next to
 - Default app URL: `https://examcooker.acmvit.in`
 - Override for local or beta testing: `EXAMCOOKER_APP_URL`
 - Native app id: `in.acmvit.examcooker`
+- HTTPS app-link domains: `examcooker.acmvit.in`, `beta.examcooker.acmvit.in`
+- Custom scheme fallback: `examcooker://`
 
 Examples:
 
@@ -34,6 +36,30 @@ pnpm cap:open:android
 
 Use `pnpm cap:sync` after changing `capacitor.config.ts`, native icons, native
 plugins, or the local fallback shell under `mobile/native-shell`.
+
+## Deep Links
+
+The native apps are configured for iOS Universal Links and Android App Links,
+so supported `https://examcooker.acmvit.in/...` and
+`https://beta.examcooker.acmvit.in/...` URLs open directly in the installed app.
+The same in-app router also accepts `examcooker://...` fallback links.
+
+The production web app must serve these association endpoints:
+
+- `/.well-known/apple-app-site-association`
+- `/.well-known/assetlinks.json`
+
+Configure the deployed web environment with:
+
+```bash
+ANDROID_APP_LINK_SHA256_FINGERPRINTS=<sha256-fingerprint>[,<another-fingerprint>]
+```
+
+`APPLE_TEAM_ID` can override the bundled Apple team ID if signing moves to a
+different developer team. `ANDROID_APP_LINK_SHA256` is also supported for a
+single fingerprint. Include every signing certificate that should verify links,
+especially the Play App Signing certificate and any non-Play release certificate
+used for distribution.
 
 ## App Review Notes
 
