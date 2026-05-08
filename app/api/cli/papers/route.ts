@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   campusValues,
-  examTypeValues,
   semesterValues,
   type Campus,
   type ExamType,
@@ -10,6 +9,7 @@ import {
 import { searchCliPapers } from "@/lib/cli/papers";
 import { getPublicAuthOrigin } from "@/lib/auth-origin";
 import { requireCliRequestUser } from "@/lib/cli/request-auth";
+import { parseExamTypeInput } from "@/lib/exam-slug";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 250;
@@ -28,6 +28,19 @@ function parseOptionalEnum<T extends string>(
   }
 
   return { error: `${label} is invalid.` };
+}
+
+function parseOptionalExamType(value: string | null) {
+  if (!value) {
+    return { value: null as ExamType | null };
+  }
+
+  const parsed = parseExamTypeInput(value);
+  if (parsed) {
+    return { value: parsed };
+  }
+
+  return { error: "Exam type is invalid." };
 }
 
 function parseLimit(rawValue: string | null) {
@@ -84,11 +97,7 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams;
   const includeDrafts = parseBooleanFlag(searchParams.get("includeDrafts"));
-  const examType = parseOptionalEnum<ExamType>(
-    searchParams.get("examType"),
-    examTypeValues,
-    "Exam type",
-  );
+  const examType = parseOptionalExamType(searchParams.get("examType"));
   const semester = parseOptionalEnum<Semester>(
     searchParams.get("semester"),
     semesterValues,

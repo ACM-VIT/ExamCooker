@@ -4,7 +4,6 @@ import {
   campusValues,
   course,
   db,
-  examTypeValues,
   semesterValues,
   type Campus,
   type ExamType,
@@ -17,9 +16,9 @@ import {
   type UploadVariant,
 } from "@/lib/uploads/create-uploaded-resources";
 import { processUploadFile } from "@/lib/uploads/processor-client";
+import { parseExamTypeInput } from "@/lib/exam-slug";
 
 const uploadVariants = new Set<UploadVariant>(["Notes", "Past Papers"]);
-const examTypes = new Set<string>(examTypeValues);
 const semesters = new Set<string>(semesterValues);
 const campuses = new Set<string>(campusValues);
 
@@ -51,6 +50,19 @@ function validateOptionalEnum(
   }
 
   return { error: `${fieldName} is invalid.` };
+}
+
+function validateOptionalExamType(value: string | null) {
+  if (!value) {
+    return { value: null as ExamType | null };
+  }
+
+  const parsed = parseExamTypeInput(value);
+  if (parsed) {
+    return { value: parsed };
+  }
+
+  return { error: "Exam type is invalid." };
 }
 
 function validateRequiredYear(value: string, fieldName: string) {
@@ -147,7 +159,7 @@ export async function POST(request: NextRequest) {
   const title = stringValue(formData.get("title")) || stripExtension(fileEntry.name);
   const courseId = nullableStringValue(formData.get("courseId"));
   const courseCode = nullableStringValue(formData.get("course"));
-  const examType = nullableStringValue(formData.get("examType"));
+  const examTypeInput = nullableStringValue(formData.get("examType"));
   const semester = nullableStringValue(formData.get("semester"));
   const campus = nullableStringValue(formData.get("campus"));
   const year = stringValue(formData.get("year"));
@@ -158,7 +170,7 @@ export async function POST(request: NextRequest) {
       ? validateRequiredYear(year, "Year")
       : { value: year };
 
-  const examTypeValidation = validateOptionalEnum(examType, examTypes, "Exam type");
+  const examTypeValidation = validateOptionalExamType(examTypeInput);
   const semesterValidation = validateOptionalEnum(semester, semesters, "Semester");
   const campusValidation = validateOptionalEnum(campus, campuses, "Campus");
   const validationError =
@@ -176,6 +188,8 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  const examType = examTypeValidation.value;
 
   const resolvedCourse = await resolveCourseId({ courseId, courseCode });
   if (variant === "Past Papers" && !resolvedCourse) {
@@ -221,7 +235,7 @@ export async function POST(request: NextRequest) {
       slot,
       variant,
       courseId: resolvedCourse?.id ?? null,
-      examType: examType as ExamType | null,
+      examType,
       semester: semester as Semester | null,
       campus: campus as Campus | null,
       hasAnswerKey,
