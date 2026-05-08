@@ -32,11 +32,13 @@ export default function CourseVisitTracker({
     code,
     context = "past_papers",
 }: Props) {
-    const didRun = useRef(false);
+    const lastTrackedKey = useRef<string | null>(null);
 
     useEffect(() => {
-        if (didRun.current) return;
-        didRun.current = true;
+        const trackingKey = `${code}:${context}`;
+        if (lastTrackedKey.current === trackingKey) return;
+        lastTrackedKey.current = trackingKey;
+
         if (context === "past_papers") {
             capturePastPapersCourseViewed(code);
         }

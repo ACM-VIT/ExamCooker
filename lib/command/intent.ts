@@ -150,7 +150,7 @@ export function resolveCommandIntent(query: string): CommandIntent {
   if (includesResourceTerm(normalized, NOTE_TERMS, NOTE_PREFIXES)) {
     return {
       resource: "notes",
-      examType,
+      examType: null,
       confidence: "high",
     };
   }
@@ -158,7 +158,7 @@ export function resolveCommandIntent(query: string): CommandIntent {
   if (includesResourceTerm(normalized, SYLLABUS_TERMS, SYLLABUS_PREFIXES)) {
     return {
       resource: "syllabus",
-      examType,
+      examType: null,
       confidence: "high",
     };
   }
