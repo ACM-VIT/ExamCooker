@@ -109,6 +109,18 @@
     display: none; /* Chrome, Safari, Opera */
 }
 
+.ec-command-dialog-panel {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    translate: none !important;
+    transform: translate(-50%, -50%) !important;
+}
+
+.ec-command-menu [cmdk-list] {
+    scroll-padding-block: 0.5rem;
+}
+
 .paper-split-shell {
     overflow-x: clip;
     transition: padding 320ms cubic-bezier(0.32, 0.72, 0, 1);

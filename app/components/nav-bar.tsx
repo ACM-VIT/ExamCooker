@@ -16,11 +16,13 @@ import {
 import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
-import { X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 type Props = {
   isNavOn: boolean;
   toggleNavbar: () => void;
+  commandPaletteEnabled: boolean;
+  onOpenCommandPalette: () => void;
 };
 
 const navActionButtonClassName =
@@ -52,7 +54,12 @@ const VoiceAgentEntry = dynamic(
   },
 );
 
-const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
+const NavBar: React.FC<Props> = ({
+  isNavOn,
+  toggleNavbar,
+  commandPaletteEnabled,
+  onOpenCommandPalette,
+}) => {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthed, requireAuth, openPrompt, session } = useGuestPrompt();
@@ -77,6 +84,13 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
       ? "lg:ml-3 lg:max-w-[150px] lg:opacity-100"
       : "lg:max-w-0 lg:opacity-0 lg:group-hover/nav:ml-3 lg:group-hover/nav:max-w-[150px] lg:group-hover/nav:opacity-100"
   }`;
+  const toolGridClassName = commandPaletteEnabled
+    ? voiceAgentEnabled
+      ? "grid-cols-3 md:grid-cols-4"
+      : "grid-cols-2 md:grid-cols-3"
+    : voiceAgentEnabled
+      ? "grid-cols-3"
+      : "grid-cols-2";
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -220,6 +234,8 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
   };
 
   const handleVoiceClick = useCallback((entryPoint: VoiceAgentEntryPoint = "nav") => {
+    if (!voiceAgentEnabled) return;
+
     captureVoiceAgentRequested({
       entryPoint,
       authenticated: isAuthed,
@@ -233,9 +249,11 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     setVoiceEntryPoint(entryPoint);
     setVoiceRuntimeRequested(true);
     setVoiceStartToken((current) => current + 1);
-  }, [isAuthed, requireAuth]);
+  }, [isAuthed, requireAuth, voiceAgentEnabled]);
 
   useEffect(() => {
+    if (!voiceAgentEnabled) return;
+
     const handler = (event: Event) => {
       const source =
         event instanceof CustomEvent &&
@@ -249,7 +267,7 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
     };
     window.addEventListener("examcooker:voice-agent-start", handler);
     return () => window.removeEventListener("examcooker:voice-agent-start", handler);
-  }, [handleVoiceClick]);
+  }, [handleVoiceClick, voiceAgentEnabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -353,10 +371,30 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
             <div className="hidden min-h-[2.5rem] lg:block" aria-hidden />
           </div>
 
-          <div className="order-2 grid grid-cols-3 gap-3 border-b border-black/10 px-5 py-4 dark:border-white/10 lg:order-3 lg:mt-auto lg:flex lg:w-full lg:flex-col lg:items-stretch lg:gap-0 lg:border-b-0 lg:px-1 lg:py-2">
-            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
-              <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
-                {voiceAgentEnabled ? (
+          <div className={`order-2 grid ${toolGridClassName} gap-3 border-b border-black/10 px-5 py-4 dark:border-white/10 lg:order-3 lg:mt-auto lg:flex lg:w-full lg:flex-col lg:items-stretch lg:gap-0 lg:border-b-0 lg:px-1 lg:py-2`}>
+            {commandPaletteEnabled ? (
+              <div className="group/action hidden flex-col items-center gap-2 md:flex lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
+                <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
+                  <button
+                    type="button"
+                    title="Search"
+                    aria-label="Open command search"
+                    onClick={onOpenCommandPalette}
+                    className={`${navActionButtonClassName} pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent bg-transparent shadow-none transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:focus-visible:ring-[#3BF4C7]/50`}
+                  >
+                    <Search className={navActionIconClassName} aria-hidden />
+                    <span className={navLabelClassName}>Search</span>
+                  </button>
+                </div>
+                <span className="text-[11px] font-semibold text-black/48 dark:text-[#D5D5D5]/55 lg:hidden">
+                  Search
+                </span>
+              </div>
+            ) : null}
+
+            {voiceAgentEnabled ? (
+              <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
+                <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
                   <div className="flex lg:w-full">
                     {voiceRuntimeRequested ? (
                       <VoiceAgentEntry
@@ -384,12 +422,12 @@ const NavBar: React.FC<Props> = ({ isNavOn, toggleNavbar }) => {
                       </VoiceAgentButton>
                     )}
                   </div>
-                ) : null}
+                </div>
+                <span className="text-[11px] font-semibold text-black/48 dark:text-[#D5D5D5]/55 lg:hidden">
+                  Voice
+                </span>
               </div>
-              <span className="text-[11px] font-semibold text-black/48 dark:text-[#D5D5D5]/55 lg:hidden">
-                Voice
-              </span>
-            </div>
+            ) : null}
 
             <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
               <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
