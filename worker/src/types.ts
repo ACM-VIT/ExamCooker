@@ -81,11 +81,13 @@ export type CommandIntentRequestInput = {
   query?: string;
   preferenceQuery?: string;
   userKey?: string;
+  userToken?: string | null;
   surfaceContext?: Partial<CommandSurfaceContext>;
 };
 
 export type CommandPreferenceRequestInput = {
   userKey?: string;
+  userToken?: string | null;
   query?: string;
   courseCode?: string;
   courseTitle?: string | null;
