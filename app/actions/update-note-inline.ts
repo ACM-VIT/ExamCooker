@@ -47,23 +47,25 @@ export async function updateNoteInline(input: z.input<typeof schema>) {
     ),
   );
 
-  await db
-    .update(note)
-    .set({
-      title: parsed.title,
-      courseId: parsed.courseId,
-    })
-    .where(eq(note.id, parsed.id));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(note)
+      .set({
+        title: parsed.title,
+        courseId: parsed.courseId,
+      })
+      .where(eq(note.id, parsed.id));
 
-  await db.delete(noteToTag).where(eq(noteToTag.a, parsed.id));
-  if (tagRecords.length > 0) {
-    await db.insert(noteToTag).values(
-      tagRecords.map((tagRecord) => ({
-        a: parsed.id,
-        b: tagRecord.id,
-      })),
-    );
-  }
+    await tx.delete(noteToTag).where(eq(noteToTag.a, parsed.id));
+    if (tagRecords.length > 0) {
+      await tx.insert(noteToTag).values(
+        tagRecords.map((tagRecord) => ({
+          a: parsed.id,
+          b: tagRecord.id,
+        })),
+      );
+    }
+  });
 
   revalidateTag("notes", "minutes");
   revalidateTag(`note:${parsed.id}`, "minutes");

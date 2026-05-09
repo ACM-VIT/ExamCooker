@@ -87,13 +87,18 @@ function getCommandUserTokenSecret() {
   return process.env.CLOUDFLARE_COMMAND_AGENT_ADMIN_TOKEN?.trim() || "";
 }
 
-function signCommandUserToken(userKey: string) {
+function signCommandUserToken(
+  userKey: string,
+  surfaceContext: Pick<CommandSurfaceContext, "authenticated" | "role">,
+) {
   const secret = getCommandUserTokenSecret();
   if (!secret) return null;
 
   const payload = base64UrlEncode(
     JSON.stringify({
       userKey,
+      authenticated: surfaceContext.authenticated === true,
+      role: surfaceContext.role ?? null,
       exp: Date.now() + COMMAND_USER_TOKEN_TTL_MS,
     }),
   );
@@ -197,30 +202,32 @@ async function getCommandRequestContext(): Promise<CommandRequestContext> {
   if (userId) {
     const role = session?.user?.role;
     const userKey = `user:${userId}`;
+    const surfaceContext = {
+      authenticated: true,
+      role: role === "MODERATOR" ? "moderator" : "user",
+    } as const;
 
     return {
       userKey,
-      userToken: signCommandUserToken(userKey),
+      userToken: signCommandUserToken(userKey, surfaceContext),
       anonymousClientId: null,
-      surfaceContext: {
-        authenticated: true,
-        role: role === "MODERATOR" ? "moderator" : "user",
-      },
+      surfaceContext,
     };
   }
 
   const cookieStore = await cookies();
   const currentClientId = cookieStore.get(COMMAND_CLIENT_COOKIE)?.value?.trim();
   const anonymousClientId = currentClientId || randomUUID();
+  const surfaceContext = {
+    authenticated: false,
+    role: null,
+  } as const;
 
   return {
     userKey: `anon:${anonymousClientId}`,
-    userToken: signCommandUserToken(`anon:${anonymousClientId}`),
+    userToken: signCommandUserToken(`anon:${anonymousClientId}`, surfaceContext),
     anonymousClientId: currentClientId ? null : anonymousClientId,
-    surfaceContext: {
-      authenticated: false,
-      role: null,
-    },
+    surfaceContext,
   };
 }
 
