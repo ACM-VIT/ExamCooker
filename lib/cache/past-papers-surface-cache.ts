@@ -9,6 +9,8 @@ const DEFAULT_CACHE_TTL_SECONDS = 900;
 const DEFAULT_LOCK_TTL_SECONDS = 15;
 const DEFAULT_WAIT_TIMEOUT_MS = 1200;
 const DEFAULT_WAIT_INTERVAL_MS = 80;
+const RELEASE_LOCK_SCRIPT =
+  "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end";
 
 type CacheHit<T> = {
   type: "hit";
@@ -127,10 +129,7 @@ async function releaseCacheLock(redis: Redis, cacheKey: string, token: string | 
   const lockKey = buildLockKey(cacheKey);
 
   try {
-    const currentToken = await redis.get<string>(lockKey);
-    if (currentToken === token) {
-      await redis.del(lockKey);
-    }
+    await redis.eval(RELEASE_LOCK_SCRIPT, [lockKey], [token]);
   } catch (error) {
     console.error("[past-papers-surface-cache] lock release failed", error);
   }

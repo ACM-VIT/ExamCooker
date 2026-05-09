@@ -890,6 +890,7 @@ function CommandPaletteSession({
   }, [open]);
 
   useEffect(() => {
+    if (!open) return;
     if (courseStatus !== "idle") return;
 
     setCourseStatus("loading");
@@ -903,15 +904,19 @@ function CommandPaletteSession({
       .catch(() => {
         setCourseStatus("error");
       });
-  }, [courseStatus]);
+  }, [courseStatus, open]);
 
   useEffect(() => {
+    if (!open) return;
+
     const refreshVisits = () => setVisitRecords(loadCourseVisitRecords());
     refreshVisits();
     return subscribeToCourseVisitChanges(refreshVisits);
-  }, []);
+  }, [open]);
 
   useEffect(() => {
+    if (!open) return;
+
     let cancelled = false;
 
     void getCommandSessionAction()
@@ -925,7 +930,7 @@ function CommandPaletteSession({
     return () => {
       cancelled = true;
     };
-  }, [authStatus, isAuthed]);
+  }, [authStatus, isAuthed, open]);
 
   const trimmedSearch = search.trim();
   const hasSearch = trimmedSearch.length > 0;

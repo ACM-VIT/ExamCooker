@@ -16,7 +16,10 @@ const schema = z.object({
   examType: z.enum(examTypeValues).nullable(),
   slot: z
     .string()
-    .regex(/^[A-G][12]$/i, "Slot must match A1..G2")
+    .regex(
+      /^[A-Za-z][A-Za-z0-9]*(\+[A-Za-z][A-Za-z0-9]*)*$/,
+      "Invalid slot format",
+    )
     .transform((value) => value.toUpperCase())
     .nullable()
     .or(z.literal("").transform(() => null)),
