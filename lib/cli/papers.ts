@@ -2,7 +2,11 @@ import { and, count, eq, ilike, or, desc } from "drizzle-orm";
 import type { Campus, ExamType, Semester } from "@/db";
 import { course, db, pastPaper } from "@/db";
 import { normalizeCourseCode } from "@/lib/course-tags";
-import { getSiblingPastPaper, getPastPaperDetail } from "@/lib/data/past-paper-detail";
+import {
+  getSiblingPastPaper,
+  getPastPaperDetail,
+  getPastPaperDetailIncludingDrafts,
+} from "@/lib/data/past-paper-detail";
 import { examTypeLabel } from "@/lib/exam-slug";
 import { getPastPaperDetailPath } from "@/lib/seo";
 
@@ -151,8 +155,14 @@ export async function searchCliPapers(
   };
 }
 
-export async function getCliPastPaperDetail(baseUrl: string, paperId: string) {
-  const paper = await getPastPaperDetail(paperId);
+export async function getCliPastPaperDetail(
+  baseUrl: string,
+  paperId: string,
+  options?: { includeDrafts?: boolean },
+) {
+  const paper = options?.includeDrafts
+    ? await getPastPaperDetailIncludingDrafts(paperId)
+    : await getPastPaperDetail(paperId);
   if (!paper) {
     return null;
   }

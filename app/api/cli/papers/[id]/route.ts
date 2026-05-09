@@ -16,7 +16,21 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const publicOrigin = getPublicAuthOrigin(request);
   const baseUrl = publicOrigin?.origin ?? request.nextUrl.origin;
   const { id } = await context.params;
-  const paper = await getCliPastPaperDetail(baseUrl, id);
+  const includeDrafts =
+    request.nextUrl.searchParams.get("includeDrafts") === "1" ||
+    request.nextUrl.searchParams.get("includeDrafts")?.toLowerCase() === "true";
+
+  if (includeDrafts && user.role !== "MODERATOR") {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "includeDrafts requires moderator access.",
+      },
+      { status: 403 },
+    );
+  }
+
+  const paper = await getCliPastPaperDetail(baseUrl, id, { includeDrafts });
 
   if (!paper) {
     return NextResponse.json(

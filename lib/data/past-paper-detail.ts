@@ -55,7 +55,12 @@ function mapCourse(
     };
 }
 
-const loadPastPaperDetail = cache(async (id: string) => {
+const loadPastPaperDetail = cache(async (id: string, includeDrafts = false) => {
+    const filters = [eq(pastPaper.id, id)];
+    if (!includeDrafts) {
+        filters.push(eq(pastPaper.isClear, true));
+    }
+
     const rows = await db
         .select({
             id: pastPaper.id,
@@ -86,7 +91,7 @@ const loadPastPaperDetail = cache(async (id: string) => {
         .leftJoin(course, eq(pastPaper.courseId, course.id))
         .leftJoin(pastPaperToTag, eq(pastPaperToTag.a, pastPaper.id))
         .leftJoin(tag, eq(pastPaperToTag.b, tag.id))
-        .where(eq(pastPaper.id, id))
+        .where(and(...filters))
         .orderBy(asc(tag.name));
 
     const firstRow = rows[0];
@@ -119,6 +124,15 @@ export async function getPastPaperDetail(id: string) {
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     return loadPastPaperDetail(id);
+}
+
+export async function getPastPaperDetailIncludingDrafts(id: string) {
+    "use cache";
+    cacheTag("past_papers");
+    cacheTag(`past_paper:${id}`);
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    return loadPastPaperDetail(id, true);
 }
 
 export async function getSiblingPastPaper(input: {
