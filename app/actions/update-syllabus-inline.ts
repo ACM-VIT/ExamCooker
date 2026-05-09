@@ -9,7 +9,7 @@ import { course, db, syllabi } from "@/db";
 const schema = z.object({
   id: z.string().min(1),
   courseId: z.string().min(1).nullable(),
-  title: z.string().trim().max(240),
+  title: z.string().trim().max(240).optional().default(""),
 });
 
 function buildSyllabusName(input: {
