@@ -130,6 +130,26 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
       );
     }
 
+    const [linkedAnswerKey] = await db
+      .select({
+        id: pastPaper.id,
+        title: pastPaper.title,
+      })
+      .from(pastPaper)
+      .where(
+        and(
+          eq(pastPaper.questionPaperId, parsed.id),
+          ne(pastPaper.id, parsed.id),
+        ),
+      )
+      .limit(1);
+
+    if (linkedAnswerKey) {
+      throw new Error(
+        `This paper already has an answer key linked: ${linkedAnswerKey.title}`,
+      );
+    }
+
     questionPaperId = questionPaper.id;
   }
 
@@ -140,30 +160,32 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
     ),
   );
 
-  await db
-    .update(pastPaper)
-    .set({
-      title: parsed.title,
-      courseId: parsed.courseId,
-      examType: parsed.examType,
-      slot: parsed.slot,
-      year: parsed.year,
-      semester: parsed.semester,
-      campus: parsed.campus,
-      hasAnswerKey: parsed.hasAnswerKey,
-      questionPaperId,
-    })
-    .where(eq(pastPaper.id, parsed.id));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(pastPaper)
+      .set({
+        title: parsed.title,
+        courseId: parsed.courseId,
+        examType: parsed.examType,
+        slot: parsed.slot,
+        year: parsed.year,
+        semester: parsed.semester,
+        campus: parsed.campus,
+        hasAnswerKey: parsed.hasAnswerKey,
+        questionPaperId,
+      })
+      .where(eq(pastPaper.id, parsed.id));
 
-  await db.delete(pastPaperToTag).where(eq(pastPaperToTag.a, parsed.id));
-  if (tagRecords.length > 0) {
-    await db.insert(pastPaperToTag).values(
-      tagRecords.map((tagRecord) => ({
-        a: parsed.id,
-        b: tagRecord.id,
-      })),
-    );
-  }
+    await tx.delete(pastPaperToTag).where(eq(pastPaperToTag.a, parsed.id));
+    if (tagRecords.length > 0) {
+      await tx.insert(pastPaperToTag).values(
+        tagRecords.map((tagRecord) => ({
+          a: parsed.id,
+          b: tagRecord.id,
+        })),
+      );
+    }
+  });
 
   revalidateTag("past_papers", "minutes");
   revalidateTag(`past_paper:${parsed.id}`, "minutes");

@@ -85,6 +85,12 @@ export type CommandIntentRequestInput = {
   surfaceContext?: Partial<CommandSurfaceContext>;
 };
 
+export type TrustedCommandUserContext = {
+  userKey: string;
+  authenticated: boolean;
+  role: "user" | "moderator" | null;
+};
+
 export type CommandPreferenceRequestInput = {
   userKey?: string;
   userToken?: string | null;
