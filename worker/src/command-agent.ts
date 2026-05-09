@@ -175,7 +175,10 @@ async function getTrustedUserFromCommandToken(input: {
   userToken: string;
   secret: string;
 }): Promise<TrustedCommandUserContext | null> {
-  const [version, payloadPart, signaturePart] = input.userToken.split(".");
+  const tokenParts = input.userToken.split(".");
+  if (tokenParts.length !== 3) return null;
+
+  const [version, payloadPart, signaturePart] = tokenParts;
   if (version !== "v1" || !payloadPart || !signaturePart) return null;
 
   let receivedSignature: Uint8Array;
