@@ -19,6 +19,50 @@ const DEFAULT_FEEDBACK_TTL_SECONDS = 60 * 60 * 24 * 180;
 const GENERATION_LOCK_TTL_SECONDS = 120;
 const WAIT_FOR_CACHE_TIMEOUT_MS = 7000;
 const WAIT_FOR_CACHE_INTERVAL_MS = 500;
+const RELEASE_LOCK_SCRIPT =
+  "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end";
+const RECORD_FEEDBACK_SCRIPT = `
+local voteKey = KEYS[1]
+local feedbackKey = KEYS[2]
+local nextVote = ARGV[1]
+local updatedAt = ARGV[2]
+local ttlSeconds = tonumber(ARGV[3])
+local previousVote = redis.call("GET", voteKey)
+local upvotes = tonumber(redis.call("HGET", feedbackKey, "upvotes") or "0")
+local downvotes = tonumber(redis.call("HGET", feedbackKey, "downvotes") or "0")
+
+if previousVote == nextVote then
+  return { previousVote or "", tostring(upvotes), tostring(downvotes) }
+end
+
+redis.call("SET", voteKey, nextVote, "EX", ttlSeconds)
+
+if previousVote == "up" then
+  upvotes = math.max(upvotes - 1, 0)
+elseif previousVote == "down" then
+  downvotes = math.max(downvotes - 1, 0)
+end
+
+if nextVote == "up" then
+  upvotes = upvotes + 1
+else
+  downvotes = downvotes + 1
+end
+
+redis.call(
+  "HSET",
+  feedbackKey,
+  "updatedAt",
+  updatedAt,
+  "upvotes",
+  upvotes,
+  "downvotes",
+  downvotes
+)
+redis.call("EXPIRE", feedbackKey, ttlSeconds)
+
+return { previousVote or "", tostring(upvotes), tostring(downvotes) }
+`;
 
 const CacheEntrySchema = z.object({
   cacheKey: z.string().regex(/^[a-f0-9]{64}$/),
@@ -528,10 +572,7 @@ export async function releasePdfMarkdownGenerationLock(
   }
 
   try {
-    const currentToken = await redis.get<string>(lockRedisKey(cacheKey));
-    if (currentToken === token) {
-      await redis.del(lockRedisKey(cacheKey));
-    }
+    await redis.eval(RELEASE_LOCK_SCRIPT, [lockRedisKey(cacheKey)], [token]);
   } catch (error) {
     console.error("[pdf-markdown-cache] lock release failed", error);
   }
@@ -567,57 +608,49 @@ export async function recordPdfMarkdownFeedback(input: {
     return null;
   }
 
-  const entry = await redis
-    .get<unknown>(entryRedisKey(input.cacheKey))
-    .catch(() => null);
-  const parsedEntry = parseCacheEntryValue(entry);
+  try {
+    const entry = await redis.get<unknown>(entryRedisKey(input.cacheKey));
+    const parsedEntry = parseCacheEntryValue(entry);
 
-  if (!parsedEntry?.success) {
-    return null;
-  }
+    if (!parsedEntry?.success) {
+      return null;
+    }
 
-  if (parsedEntry.data.generationId !== input.generationId) {
-    return null;
-  }
+    if (parsedEntry.data.generationId !== input.generationId) {
+      return null;
+    }
 
-  const feedbackKey = feedbackRedisKey(input.cacheKey, input.generationId);
-  const voteKey = voteRedisKey(input.cacheKey, input.generationId, input.voterId);
-  const previousVote = normalizeVote(await redis.get<string>(voteKey));
+    const feedbackKey = feedbackRedisKey(input.cacheKey, input.generationId);
+    const voteKey = voteRedisKey(
+      input.cacheKey,
+      input.generationId,
+      input.voterId,
+    );
+    const ttlSeconds = parseSecondsEnv(
+      "PDF_MARKDOWN_FEEDBACK_TTL_SECONDS",
+      DEFAULT_FEEDBACK_TTL_SECONDS,
+    );
+    const result = await redis.eval<[string, string, string], unknown>(
+      RECORD_FEEDBACK_SCRIPT,
+      [voteKey, feedbackKey],
+      [input.vote, new Date().toISOString(), String(ttlSeconds)],
+    );
 
-  if (previousVote === input.vote) {
-    return readPdfMarkdownFeedback({
-      cacheKey: input.cacheKey,
-      generationId: input.generationId,
-      voterId: input.voterId,
+    if (!Array.isArray(result)) {
+      return readPdfMarkdownFeedback({
+        cacheKey: input.cacheKey,
+        generationId: input.generationId,
+        voterId: input.voterId,
+      });
+    }
+
+    return buildFeedbackSummary({
+      downvotes: normalizeCount(result[2]),
+      upvotes: normalizeCount(result[1]),
+      userVote: input.vote,
     });
+  } catch (error) {
+    console.error("[pdf-markdown-cache] feedback write failed", error);
+    return null;
   }
-
-  const ttlSeconds = parseSecondsEnv(
-    "PDF_MARKDOWN_FEEDBACK_TTL_SECONDS",
-    DEFAULT_FEEDBACK_TTL_SECONDS,
-  );
-  const now = new Date().toISOString();
-
-  await redis.set(voteKey, input.vote, { ex: ttlSeconds });
-  await redis.hset(feedbackKey, { updatedAt: now });
-
-  if (previousVote === "up") {
-    await redis.hincrby(feedbackKey, "upvotes", -1);
-  } else if (previousVote === "down") {
-    await redis.hincrby(feedbackKey, "downvotes", -1);
-  }
-
-  if (input.vote === "up") {
-    await redis.hincrby(feedbackKey, "upvotes", 1);
-  } else {
-    await redis.hincrby(feedbackKey, "downvotes", 1);
-  }
-
-  await redis.expire(feedbackKey, ttlSeconds);
-
-  return readPdfMarkdownFeedback({
-    cacheKey: input.cacheKey,
-    generationId: input.generationId,
-    voterId: input.voterId,
-  });
 }

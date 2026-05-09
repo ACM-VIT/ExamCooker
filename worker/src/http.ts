@@ -49,11 +49,16 @@ export async function readJsonPayload(request: Request) {
 export async function readCommandIntentInput(request: Request) {
   if (request.method === "GET") {
     const url = new URL(request.url);
+    const authorizationHeader = request.headers.get("Authorization")?.trim() ?? "";
+    const userToken = authorizationHeader.startsWith("Bearer ")
+      ? authorizationHeader.slice("Bearer ".length).trim()
+      : "";
+
     return {
       query: url.searchParams.get("query") ?? "",
       preferenceQuery: url.searchParams.get("preferenceQuery") ?? "",
       userKey: url.searchParams.get("userKey") ?? "",
-      userToken: url.searchParams.get("userToken") ?? "",
+      userToken,
     };
   }
 
