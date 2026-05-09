@@ -46,19 +46,20 @@ export async function readJsonPayload(request: Request) {
   return (await request.json().catch(() => null)) as Record<string, unknown> | null;
 }
 
+function readBearerToken(value: string | null) {
+  const match = value?.match(/^\s*Bearer\s+(.+?)\s*$/i);
+  return match?.[1]?.trim() ?? "";
+}
+
 export async function readCommandIntentInput(request: Request) {
   if (request.method === "GET") {
     const url = new URL(request.url);
-    const authorizationHeader = request.headers.get("Authorization")?.trim() ?? "";
-    const userToken = authorizationHeader.startsWith("Bearer ")
-      ? authorizationHeader.slice("Bearer ".length).trim()
-      : "";
 
     return {
       query: url.searchParams.get("query") ?? "",
       preferenceQuery: url.searchParams.get("preferenceQuery") ?? "",
       userKey: url.searchParams.get("userKey") ?? "",
-      userToken,
+      userToken: readBearerToken(request.headers.get("Authorization")),
     };
   }
 

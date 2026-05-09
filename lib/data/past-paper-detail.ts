@@ -126,12 +126,27 @@ function deserializePastPaperDetail(
     }
 
     const paper = value as Record<string, unknown>;
+    const createdAt = readCachedDate(paper.createdAt, "createdAt");
+    const updatedAt = readCachedDate(paper.updatedAt, "updatedAt");
 
     return {
         ...(paper as NonNullable<Awaited<ReturnType<typeof loadPastPaperDetail>>>),
-        createdAt: new Date(String(paper.createdAt)),
-        updatedAt: new Date(String(paper.updatedAt)),
+        createdAt,
+        updatedAt,
     };
+}
+
+function readCachedDate(value: unknown, fieldName: string) {
+    if (typeof value !== "string" && !(value instanceof Date)) {
+        throw new Error(`Invalid cached past paper ${fieldName}.`);
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        throw new Error(`Invalid cached past paper ${fieldName}.`);
+    }
+
+    return date;
 }
 
 export async function getPastPaperDetail(id: string) {
