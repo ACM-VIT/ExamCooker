@@ -65,8 +65,6 @@ type CoursePaperFilterOptionRow = {
     hasAnswerKey: boolean;
 };
 
-type CoursePaperFilterKey = keyof CoursePaperFilters;
-
 function normalizeFiltersForCache(filters: CoursePaperFilters) {
     return {
         examTypes: [...(filters.examTypes ?? [])].sort(),
@@ -113,60 +111,6 @@ function sortOrder(sort: CoursePaperSort) {
         default:
             return [sql`${pastPaper.year} desc nulls last`, desc(pastPaper.createdAt)] as const;
     }
-}
-
-function matchesFilterRow(
-    row: CoursePaperFilterOptionRow,
-    filters: CoursePaperFilters,
-    excludedKeys: CoursePaperFilterKey[] = [],
-) {
-    const excluded = new Set<CoursePaperFilterKey>(excludedKeys);
-
-    if (
-        !excluded.has("examTypes") &&
-        filters.examTypes?.length &&
-        (!row.examType || !filters.examTypes.includes(row.examType))
-    ) {
-        return false;
-    }
-
-    if (
-        !excluded.has("slots") &&
-        filters.slots?.length &&
-        (!row.slot || !filters.slots.includes(row.slot))
-    ) {
-        return false;
-    }
-
-    if (
-        !excluded.has("years") &&
-        filters.years?.length &&
-        (row.year === null || !filters.years.includes(row.year))
-    ) {
-        return false;
-    }
-
-    if (
-        !excluded.has("semesters") &&
-        filters.semesters?.length &&
-        !filters.semesters.includes(row.semester)
-    ) {
-        return false;
-    }
-
-    if (
-        !excluded.has("campuses") &&
-        filters.campuses?.length &&
-        !filters.campuses.includes(row.campus)
-    ) {
-        return false;
-    }
-
-    if (!excluded.has("hasAnswerKey") && filters.hasAnswerKey && !row.hasAnswerKey) {
-        return false;
-    }
-
-    return true;
 }
 
 export async function getCoursePapers(input: {
@@ -265,16 +209,16 @@ export async function getCoursePaperFilterOptions(
                 .from(pastPaper)
                 .where(and(eq(pastPaper.courseId, courseId), eq(pastPaper.isClear, true)));
 
-            const examRows = rows.filter((row) => matchesFilterRow(row, filters, ["examTypes"]));
-            const yearRows = rows.filter((row) => matchesFilterRow(row, filters, ["years"]));
-            const slotRows = rows.filter((row) => matchesFilterRow(row, filters, ["slots"]));
-            const semesterRows = rows.filter((row) =>
-                matchesFilterRow(row, filters, ["semesters"]),
-            );
-            const campusRows = rows.filter((row) => matchesFilterRow(row, filters, ["campuses"]));
-            const answerKeyRows = rows.filter((row) =>
-                matchesFilterRow(row, filters, ["hasAnswerKey"]),
-            );
+            const examTypeFilter = filters.examTypes?.length
+                ? new Set(filters.examTypes)
+                : null;
+            const slotFilter = filters.slots?.length ? new Set(filters.slots) : null;
+            const yearFilter = filters.years?.length ? new Set(filters.years) : null;
+            const semesterFilter = filters.semesters?.length
+                ? new Set(filters.semesters)
+                : null;
+            const campusFilter = filters.campuses?.length ? new Set(filters.campuses) : null;
+            const hasAnswerKeyFilter = filters.hasAnswerKey === true;
 
             const examCounts: Partial<Record<ExamType, number>> = {};
             const yearCounts: Partial<Record<number, number>> = {};
@@ -284,35 +228,87 @@ export async function getCoursePaperFilterOptions(
             const semesters = new Set<Semester>();
             const campuses = new Set<Campus>();
             let answerKeyCount = 0;
+            let totalPapers = 0;
 
-            for (const row of examRows) {
-                if (row.examType) {
-                    examCounts[row.examType] = (examCounts[row.examType] ?? 0) + 1;
+            for (const row of rows) {
+                const matchesExamType =
+                    !examTypeFilter ||
+                    (row.examType !== null && examTypeFilter.has(row.examType));
+                const matchesSlot =
+                    !slotFilter || (row.slot !== null && slotFilter.has(row.slot));
+                const matchesYear =
+                    !yearFilter || (row.year !== null && yearFilter.has(row.year));
+                const matchesSemester = !semesterFilter || semesterFilter.has(row.semester);
+                const matchesCampus = !campusFilter || campusFilter.has(row.campus);
+                const matchesHasAnswerKey = !hasAnswerKeyFilter || row.hasAnswerKey;
+
+                if (
+                    matchesSlot &&
+                    matchesYear &&
+                    matchesSemester &&
+                    matchesCampus &&
+                    matchesHasAnswerKey
+                ) {
+                    totalPapers++;
+                    if (row.examType) {
+                        examCounts[row.examType] = (examCounts[row.examType] ?? 0) + 1;
+                    }
                 }
-            }
 
-            for (const row of yearRows) {
-                if (row.year === null) continue;
-                years.add(row.year);
-                yearCounts[row.year] = (yearCounts[row.year] ?? 0) + 1;
-            }
+                if (
+                    matchesExamType &&
+                    matchesSlot &&
+                    matchesSemester &&
+                    matchesCampus &&
+                    matchesHasAnswerKey &&
+                    row.year !== null
+                ) {
+                    years.add(row.year);
+                    yearCounts[row.year] = (yearCounts[row.year] ?? 0) + 1;
+                }
 
-            for (const row of slotRows) {
-                if (!row.slot) continue;
-                slots.add(row.slot);
-                slotCounts[row.slot] = (slotCounts[row.slot] ?? 0) + 1;
-            }
+                if (
+                    matchesExamType &&
+                    matchesYear &&
+                    matchesSemester &&
+                    matchesCampus &&
+                    matchesHasAnswerKey &&
+                    row.slot
+                ) {
+                    slots.add(row.slot);
+                    slotCounts[row.slot] = (slotCounts[row.slot] ?? 0) + 1;
+                }
 
-            for (const row of semesterRows) {
-                semesters.add(row.semester);
-            }
+                if (
+                    matchesExamType &&
+                    matchesSlot &&
+                    matchesYear &&
+                    matchesCampus &&
+                    matchesHasAnswerKey
+                ) {
+                    semesters.add(row.semester);
+                }
 
-            for (const row of campusRows) {
-                campuses.add(row.campus);
-            }
+                if (
+                    matchesExamType &&
+                    matchesSlot &&
+                    matchesYear &&
+                    matchesSemester &&
+                    matchesHasAnswerKey
+                ) {
+                    campuses.add(row.campus);
+                }
 
-            for (const row of answerKeyRows) {
-                if (row.hasAnswerKey) answerKeyCount++;
+                if (
+                    matchesExamType &&
+                    matchesSlot &&
+                    matchesYear &&
+                    matchesSemester &&
+                    matchesCampus &&
+                    row.hasAnswerKey
+                ) {
+                    answerKeyCount++;
+                }
             }
 
             const examTypes = (Object.keys(examCounts) as ExamType[]).sort(
@@ -332,7 +328,7 @@ export async function getCoursePaperFilterOptions(
                     (a, b) => (campusOrder.get(a) ?? 0) - (campusOrder.get(b) ?? 0),
                 ),
                 answerKeyCount,
-                totalPapers: examRows.length,
+                totalPapers,
                 examCounts,
                 yearCounts,
                 slotCounts,

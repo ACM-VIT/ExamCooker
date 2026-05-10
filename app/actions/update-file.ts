@@ -2,6 +2,7 @@
 
 import { eq } from 'drizzle-orm'
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { auth } from '@/app/auth'
 import { db, note, pastPaper } from '@/db'
 import { invalidatePastPapersSurfaceCache } from '@/lib/cache/past-papers-surface-cache'
 
@@ -16,6 +17,11 @@ export async function updateFile(
     newTitle: string,
     activeTab: EditableTab,
 ): Promise<UpdateFileResult> {
+    const session = await auth();
+    if (session?.user?.role !== "MODERATOR") {
+        return { success: false, error: "Access denied." };
+    }
+
     const title = newTitle.trim();
     if (!title) {
         return { success: false, error: "Title cannot be empty." };
