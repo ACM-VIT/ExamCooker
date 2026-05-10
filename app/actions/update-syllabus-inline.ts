@@ -10,22 +10,31 @@ const schema = z.object({
   id: z.string().min(1),
   courseId: z.string().min(1).nullable(),
   title: z.string().trim().max(240).optional().default(""),
+}).superRefine((value, context) => {
+  if (!value.courseId && !value.title.trim()) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Title is required when no course is selected.",
+      path: ["title"],
+    });
+  }
 });
 
-function buildSyllabusName(input: {
-  courseCode: string | null;
-  title: string;
-}) {
-  const cleanTitle = input.title
+function normalizeSyllabusTitle(title: string) {
+  return title
     .trim()
     .replace(/\.pdf$/i, "")
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
 
-  if (!cleanTitle) {
-    throw new Error("Title is required.");
-  }
+function buildSyllabusName(input: {
+  courseCode: string | null;
+  title: string;
+}) {
+  const cleanTitle = normalizeSyllabusTitle(input.title);
+  if (!cleanTitle) return null;
 
   const fileSafeTitle = cleanTitle.replace(/\s+/g, "_");
   if (input.courseCode) {
@@ -59,11 +68,18 @@ export async function updateSyllabusInline(input: z.input<typeof schema>) {
     throw new Error("Course not found.");
   }
 
-  const nextTitle = parsed.title.trim() || selectedCourse?.title || "";
+  const nextTitle = normalizeSyllabusTitle(parsed.title || selectedCourse?.title || "");
+  if (!nextTitle) {
+    throw new Error("Title is required.");
+  }
+
   const nextName = buildSyllabusName({
     courseCode: selectedCourse?.code ?? null,
     title: nextTitle,
   });
+  if (!nextName) {
+    throw new Error("Title is required.");
+  }
 
   await db
     .update(syllabi)
