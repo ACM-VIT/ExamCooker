@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useId, useReducer, useRef } from "react";
 import Link from "next/link";
 import type { Note, PastPaper } from "@/db";
 import { useToast } from "@/app/components/ui/use-toast";
@@ -13,6 +13,8 @@ const PAGE_SIZE = 9;
 
 type NoteWithoutTags = Omit<Note, "tags">;
 type PastPaperWithoutTags = Omit<PastPaper, "tags">;
+type ModeratorItemType = "note" | "pastPaper";
+type ModeratorActiveTab = "notes" | "past_papers";
 
 type ModeratorDashboardClientProps = {
     initialNotes: NoteWithoutTags[];
@@ -43,6 +45,188 @@ function validatePage(page: number, totalPages: number): number {
     return page;
 }
 
+type RenameDialogState = {
+    isOpen: boolean;
+    id?: string;
+    type?: ModeratorItemType;
+    value: string;
+};
+
+type DuplicateDialogState = {
+    isOpen: boolean;
+    duplicateId?: string;
+    duplicateTitle?: string;
+    pendingId?: string;
+    pendingType?: ModeratorItemType;
+};
+
+type ModeratorDashboardState = {
+    notes: NoteWithoutTags[];
+    pastPapers: PastPaperWithoutTags[];
+    activeTab: ModeratorActiveTab;
+    selectedItems: string[];
+    aiProcessingIds: string[];
+    renameDialog: RenameDialogState;
+    duplicateDialog: DuplicateDialogState;
+};
+
+type ModeratorDashboardInitialState = {
+    initialNotes: NoteWithoutTags[];
+    initialPastPapers: PastPaperWithoutTags[];
+};
+
+type ModeratorDashboardAction =
+    | { type: "set-active-tab"; activeTab: ModeratorActiveTab }
+    | { type: "approve-item"; id: string; itemType: ModeratorItemType }
+    | { type: "delete-item"; id: string; itemType: ModeratorItemType }
+    | {
+          type: "rename-item";
+          id: string;
+          itemType: ModeratorItemType;
+          title: string;
+      }
+    | { type: "start-ai-title"; id: string }
+    | { type: "finish-ai-title"; id: string }
+    | { type: "set-ai-title"; id: string; title: string }
+    | { type: "clear-selection" }
+    | { type: "toggle-selection"; id: string }
+    | {
+          type: "open-rename-dialog";
+          id: string;
+          itemType: ModeratorItemType;
+          value: string;
+      }
+    | { type: "update-rename-dialog-value"; value: string }
+    | { type: "close-rename-dialog" }
+    | {
+          type: "open-duplicate-dialog";
+          duplicateId?: string;
+          duplicateTitle?: string;
+          pendingId: string;
+          pendingType: ModeratorItemType;
+      }
+    | { type: "close-duplicate-dialog" };
+
+function getInitialModeratorDashboardState({
+    initialNotes,
+    initialPastPapers,
+}: ModeratorDashboardInitialState): ModeratorDashboardState {
+    return {
+        notes: initialNotes,
+        pastPapers: initialPastPapers,
+        activeTab: "notes",
+        selectedItems: [],
+        aiProcessingIds: [],
+        renameDialog: { isOpen: false, value: "" },
+        duplicateDialog: { isOpen: false },
+    };
+}
+
+function removeSelectedItem(selectedItems: string[], id: string) {
+    return selectedItems.filter((item) => item !== id);
+}
+
+function moderatorDashboardReducer(
+    state: ModeratorDashboardState,
+    action: ModeratorDashboardAction,
+): ModeratorDashboardState {
+    switch (action.type) {
+        case "set-active-tab":
+            return { ...state, activeTab: action.activeTab };
+        case "approve-item":
+        case "delete-item":
+            return {
+                ...state,
+                notes:
+                    action.itemType === "note"
+                        ? removeById(state.notes, action.id)
+                        : state.notes,
+                pastPapers:
+                    action.itemType === "pastPaper"
+                        ? removeById(state.pastPapers, action.id)
+                        : state.pastPapers,
+                selectedItems: removeSelectedItem(state.selectedItems, action.id),
+            };
+        case "rename-item":
+            return {
+                ...state,
+                notes:
+                    action.itemType === "note"
+                        ? replaceTitleById(state.notes, action.id, action.title)
+                        : state.notes,
+                pastPapers:
+                    action.itemType === "pastPaper"
+                        ? replaceTitleById(state.pastPapers, action.id, action.title)
+                        : state.pastPapers,
+            };
+        case "start-ai-title":
+            if (state.aiProcessingIds.includes(action.id)) return state;
+            return {
+                ...state,
+                aiProcessingIds: [...state.aiProcessingIds, action.id],
+            };
+        case "finish-ai-title":
+            return {
+                ...state,
+                aiProcessingIds: removeSelectedItem(state.aiProcessingIds, action.id),
+            };
+        case "set-ai-title":
+            return {
+                ...state,
+                pastPapers: replaceTitleById(
+                    state.pastPapers,
+                    action.id,
+                    action.title,
+                ),
+            };
+        case "clear-selection":
+            if (state.selectedItems.length === 0) return state;
+            return { ...state, selectedItems: [] };
+        case "toggle-selection":
+            return {
+                ...state,
+                selectedItems: state.selectedItems.includes(action.id)
+                    ? removeSelectedItem(state.selectedItems, action.id)
+                    : [...state.selectedItems, action.id],
+            };
+        case "open-rename-dialog":
+            return {
+                ...state,
+                renameDialog: {
+                    isOpen: true,
+                    id: action.id,
+                    type: action.itemType,
+                    value: action.value,
+                },
+            };
+        case "update-rename-dialog-value":
+            return {
+                ...state,
+                renameDialog: { ...state.renameDialog, value: action.value },
+            };
+        case "close-rename-dialog":
+            return {
+                ...state,
+                renameDialog: { isOpen: false, value: "" },
+            };
+        case "open-duplicate-dialog":
+            return {
+                ...state,
+                duplicateDialog: {
+                    isOpen: true,
+                    duplicateId: action.duplicateId,
+                    duplicateTitle: action.duplicateTitle,
+                    pendingId: action.pendingId,
+                    pendingType: action.pendingType,
+                },
+            };
+        case "close-duplicate-dialog":
+            return { ...state, duplicateDialog: { isOpen: false } };
+        default:
+            return state;
+    }
+}
+
 const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     initialNotes,
     initialPastPapers,
@@ -50,29 +234,20 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     totalUsers,
 }) => {
     const { toast } = useToast();
-    const initialNotesRef = useRef(initialNotes);
-    const initialPastPapersRef = useRef(initialPastPapers);
-    const [notes, setNotes] = useState<NoteWithoutTags[]>(initialNotesRef.current);
-    const [pastPapers, setPastPapers] =
-        useState<PastPaperWithoutTags[]>(initialPastPapersRef.current);
-    const [activeTab, setActiveTab] = useState<"notes" | "past_papers">(
-        "notes"
+    const [state, dispatch] = useReducer(
+        moderatorDashboardReducer,
+        { initialNotes, initialPastPapers },
+        getInitialModeratorDashboardState,
     );
-    const [selectedItems, setSelectedItems] = useState<string[]>([]);
-    const [aiProcessingIds, setAiProcessingIds] = useState<string[]>([]);
-    const [renameDialog, setRenameDialog] = useState<{
-        isOpen: boolean;
-        id?: string;
-        type?: "note" | "pastPaper";
-        value: string;
-    }>({ isOpen: false, value: "" });
-    const [duplicateDialog, setDuplicateDialog] = useState<{
-        isOpen: boolean;
-        duplicateId?: string;
-        duplicateTitle?: string;
-        pendingId?: string;
-        pendingType?: "note" | "pastPaper";
-    }>({ isOpen: false });
+    const {
+        notes,
+        pastPapers,
+        activeTab,
+        selectedItems,
+        aiProcessingIds,
+        renameDialog,
+        duplicateDialog,
+    } = state;
     const renameInputId = useId();
     const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,20 +264,15 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     const paginatedItems = items.slice(startIndex, endIndex);
 
     const applyApproved = (id: string, type: "note" | "pastPaper") => {
-        if (type === "note") {
-            setNotes((prev) => removeById(prev, id));
-        } else {
-            setPastPapers((prev) => removeById(prev, id));
-        }
-        setSelectedItems((prev) => prev.filter((item) => item !== id));
+        dispatch({ type: "approve-item", id, itemType: type });
     };
 
     const handleApprove = async (id: string, type: "note" | "pastPaper") => {
         try {
             const result = await approveItem(id, type);
             if (result?.status === "duplicate") {
-                setDuplicateDialog({
-                    isOpen: true,
+                dispatch({
+                    type: "open-duplicate-dialog",
                     duplicateId: result.duplicateId,
                     duplicateTitle: result.duplicateTitle,
                     pendingId: id,
@@ -122,11 +292,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     const handleRename = async (id: string, type: "note" | "pastPaper", newName: string) => {
         try {
             await renameItem(id, type, newName);
-            if (type === "note") {
-                setNotes((prev) => replaceTitleById(prev, id, newName));
-            } else {
-                setPastPapers((prev) => replaceTitleById(prev, id, newName));
-            }
+            dispatch({ type: "rename-item", id, itemType: type, title: newName });
         } catch (error) {
             console.error("Error renaming item:", error);
             toast({ title: "Could not rename item.", variant: "destructive" });
@@ -136,11 +302,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     const handleDelete = async (id: string, type: "note" | "pastPaper") => {
         try {
             await deleteItem(id, type);
-            type === "note"
-                ? setNotes((prev) => removeById(prev, id))
-                : setPastPapers((prev) => removeById(prev, id));
-
-            setSelectedItems((prev) => prev.filter((item) => item !== id));
+            dispatch({ type: "delete-item", id, itemType: type });
         } catch (error) {
             console.error("Error deleting item:", error);
             toast({ title: "Could not delete item.", variant: "destructive" });
@@ -151,21 +313,17 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
         if (!window.confirm("Generate AI title for this past paper?")) {
             return;
         }
-        setAiProcessingIds((prev) => [...prev, id]);
+        dispatch({ type: "start-ai-title", id });
         try {
             const result = await generatePastPaperTitle(id);
             if (result?.title) {
-                setPastPapers((prev) =>
-                    prev.map((paper) =>
-                        paper.id === id ? { ...paper, title: result.title } : paper
-                    )
-                );
+                dispatch({ type: "set-ai-title", id, title: result.title });
             }
         } catch (error) {
             console.error("Error generating AI title:", error);
             toast({ title: "Could not generate AI title.", variant: "destructive" });
         } finally {
-            setAiProcessingIds((prev) => prev.filter((itemId) => itemId !== id));
+            dispatch({ type: "finish-ai-title", id });
         }
     };
 
@@ -179,7 +337,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                 break;
             }
         }
-        setSelectedItems([]);
+        dispatch({ type: "clear-selection" });
     };
 
     const handleBulkDelete = async () => {
@@ -192,24 +350,20 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     };
 
     const toggleItemSelection = (id: string) => {
-        setSelectedItems((prev) =>
-            prev.includes(id)
-                ? prev.filter((item) => item !== id)
-                : [...prev, id]
-        );
+        dispatch({ type: "toggle-selection", id });
     };
 
     const openRenameDialog = (id: string, type: "note" | "pastPaper", currentTitle: string) => {
-        setRenameDialog({
-            isOpen: true,
+        dispatch({
+            type: "open-rename-dialog",
             id,
-            type,
+            itemType: type,
             value: currentTitle,
         });
     };
 
     const closeRenameDialog = () => {
-        setRenameDialog({ isOpen: false, value: "" });
+        dispatch({ type: "close-rename-dialog" });
     };
 
     const submitRename = async () => {
@@ -227,7 +381,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     };
 
     const closeDuplicateDialog = () => {
-        setDuplicateDialog({ isOpen: false });
+        dispatch({ type: "close-duplicate-dialog" });
     };
 
     useEffect(() => {
@@ -282,7 +436,9 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                             ? "bg-blue-500 text-white shadow-md"
                             : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                         }`}
-                    onClick={() => setActiveTab("notes")}
+                    onClick={() =>
+                        dispatch({ type: "set-active-tab", activeTab: "notes" })
+                    }
                 >
                     Notes
                 </button>
@@ -292,7 +448,12 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                             ? "bg-blue-500 text-white shadow-md"
                             : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                         }`}
-                    onClick={() => setActiveTab("past_papers")}
+                    onClick={() =>
+                        dispatch({
+                            type: "set-active-tab",
+                            activeTab: "past_papers",
+                        })
+                    }
                 >
                     Past Papers
                 </button>
@@ -455,10 +616,10 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                 type="text"
                                 value={renameDialog.value}
                                 onChange={(event) =>
-                                    setRenameDialog((prev) => ({
-                                        ...prev,
+                                    dispatch({
+                                        type: "update-rename-dialog-value",
                                         value: event.target.value,
-                                    }))
+                                    })
                                 }
                                 onKeyDown={(event) => {
                                     if (event.key === "Enter") {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId, useState, useTransition } from "react";
+import React, { useId, useReducer, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import CoursePicker, { type CourseOption } from "./course-picker";
 import { useToast } from "@/app/components/ui/use-toast";
@@ -180,33 +180,43 @@ function Row({
     const router = useRouter();
     const { toast } = useToast();
     const [pending, start] = useTransition();
-    const [editing, setEditing] = useState(false);
-    const [courseId, setCourseId] = useState<string | null>(item.courseId);
-    const [slotsText, setSlotsText] = useState(item.slots.join(", "));
-    const [examType, setExamType] = useState<ExamType | "">(
-        item.examType ?? "",
-    );
-    const [scheduledAt, setScheduledAt] = useState(
-        () =>
-        item.scheduledAt
-            ? new Date(item.scheduledAt).toISOString().slice(0, 16)
-            : "",
+    const [draft, updateDraft] = useReducer(
+        (
+            state: {
+                courseId: string | null;
+                editing: boolean;
+                examType: ExamType | "";
+                scheduledAt: string;
+                slotsText: string;
+            },
+            patch: Partial<typeof state>,
+        ) => ({ ...state, ...patch }),
+        {
+            courseId: item.courseId,
+            editing: false,
+            examType: item.examType ?? "",
+            scheduledAt: item.scheduledAt
+                ? new Date(item.scheduledAt).toISOString().slice(0, 16)
+                : "",
+            slotsText: item.slots.join(", "),
+        },
     );
 
     const save = () => {
+        const courseId = draft.courseId;
         if (!courseId) return;
         start(async () => {
             try {
                 await updateUpcomingExam(item.id, {
                     courseId,
-                    slots: parseSlots(slotsText),
-                    examType: examType === "" ? null : (examType as ExamType),
-                    scheduledAt: scheduledAt
-                        ? new Date(scheduledAt).toISOString()
+                    slots: parseSlots(draft.slotsText),
+                    examType: draft.examType === "" ? null : (draft.examType as ExamType),
+                    scheduledAt: draft.scheduledAt
+                        ? new Date(draft.scheduledAt).toISOString()
                         : null,
                 });
                 toast({ title: "Updated" });
-                setEditing(false);
+                updateDraft({ editing: false });
                 router.refresh();
             } catch (err) {
                 toast({
@@ -235,26 +245,26 @@ function Row({
         });
     };
 
-    if (editing) {
+    if (draft.editing) {
         return (
             <tr className="border-b border-black/10 dark:border-[#D5D5D5]/10">
                 <td className="p-2" colSpan={5}>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                         <CoursePicker
                             courses={courses}
-                            value={courseId}
-                            onChange={setCourseId}
+                            value={draft.courseId}
+                            onChange={(courseId) => updateDraft({ courseId })}
                         />
                         <input
-                            value={slotsText}
-                            onChange={(e) => setSlotsText(e.target.value)}
+                            value={draft.slotsText}
+                            onChange={(e) => updateDraft({ slotsText: e.target.value })}
                             className="border border-black/30 bg-white px-2 py-1 text-sm dark:border-[#D5D5D5]/40 dark:bg-[#0C1222]"
                             placeholder="A1, C2"
                         />
                         <select
-                            value={examType}
+                            value={draft.examType}
                             onChange={(e) =>
-                                setExamType(e.target.value as ExamType | "")
+                                updateDraft({ examType: e.target.value as ExamType | "" })
                             }
                             className="border border-black/30 bg-white px-2 py-1 text-sm dark:border-[#D5D5D5]/40 dark:bg-[#0C1222]"
                         >
@@ -267,8 +277,8 @@ function Row({
                         </select>
                         <input
                             type="datetime-local"
-                            value={scheduledAt}
-                            onChange={(e) => setScheduledAt(e.target.value)}
+                            value={draft.scheduledAt}
+                            onChange={(e) => updateDraft({ scheduledAt: e.target.value })}
                             className="border border-black/30 bg-white px-2 py-1 text-sm dark:border-[#D5D5D5]/40 dark:bg-[#0C1222]"
                         />
                     </div>
@@ -283,7 +293,7 @@ function Row({
                         </button>
                         <button
                             type="button"
-                            onClick={() => setEditing(false)}
+                            onClick={() => updateDraft({ editing: false })}
                             className="rounded-md border border-black/20 px-3 py-1 text-xs text-black/70 dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/70"
                         >
                             Cancel
@@ -326,7 +336,7 @@ function Row({
                 <div className="flex gap-2">
                     <button
                         type="button"
-                        onClick={() => setEditing(true)}
+                        onClick={() => updateDraft({ editing: true })}
                         className="text-xs text-black/70 underline hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
                     >
                         edit

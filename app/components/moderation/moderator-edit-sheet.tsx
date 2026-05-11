@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { Drawer } from "vaul";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useEffectEvent, type ReactNode } from "react";
 import ModeratorPrimaryButton from "@/app/components/moderation/moderator-primary-button";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +40,12 @@ export default function ModeratorEditSheet({
   title,
   trigger,
 }: ModeratorEditSheetProps) {
+  const saveFromShortcut = useEffectEvent(() => {
+    if (hasChanges && !isSaving) {
+      onSave();
+    }
+  });
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -50,15 +56,13 @@ export default function ModeratorEditSheet({
         event.key.toLowerCase() === "s"
       ) {
         event.preventDefault();
-        if (hasChanges && !isSaving) {
-          onSave();
-        }
+        saveFromShortcut();
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [hasChanges, isOpen, isSaving, onSave]);
+  }, [isOpen]);
 
   const handleCancel = () => {
     onCancel?.();
@@ -101,13 +105,7 @@ export default function ModeratorEditSheet({
             </Drawer.Close>
           </header>
 
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (hasChanges && !isSaving) {
-                onSave();
-              }
-            }}
+          <div
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-1">
@@ -130,7 +128,8 @@ export default function ModeratorEditSheet({
                   {cancelLabel}
                 </button>
                 <ModeratorPrimaryButton
-                  type="submit"
+                  type="button"
+                  onClick={onSave}
                   className="h-10"
                   disabled={isSaving || !hasChanges}
                 >
@@ -138,7 +137,7 @@ export default function ModeratorEditSheet({
                 </ModeratorPrimaryButton>
               </div>
             </footer>
-          </form>
+          </div>
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>

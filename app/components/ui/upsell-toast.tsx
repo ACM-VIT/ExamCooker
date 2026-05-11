@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useReducer, useRef } from "react";
 import { usePathname } from "next/navigation";
 import {
     type Upsell,
@@ -16,12 +16,44 @@ const UPSELL_AUTO_HIDE_MS = 10_000;
 const ctaClassName =
     "relative inline-flex h-11 w-full cursor-pointer items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-0.5 dark:group-hover:-translate-y-0.5";
 
+type UpsellToastState = {
+    mounted: boolean;
+    upsell: Upsell | null;
+    visible: boolean;
+};
+
+type UpsellToastAction =
+    | { type: "mount"; upsell: Upsell }
+    | { type: "show" }
+    | { type: "hide" }
+    | { type: "unmount" }
+    | { type: "reset" };
+
+function upsellToastReducer(
+    state: UpsellToastState,
+    action: UpsellToastAction,
+): UpsellToastState {
+    switch (action.type) {
+        case "mount":
+            return { mounted: true, upsell: action.upsell, visible: false };
+        case "show":
+            return state.mounted ? { ...state, visible: true } : state;
+        case "hide":
+            return { ...state, visible: false };
+        case "unmount":
+            return { mounted: false, upsell: null, visible: false };
+        case "reset":
+            return { mounted: false, upsell: null, visible: false };
+    }
+}
+
 const UpsellToast = () => {
     const pathname = usePathname();
     const isMobile = useIsMobile();
-    const [upsell, setUpsell] = useState<Upsell | null>(null);
-    const [mounted, setMounted] = useState(false);
-    const [visible, setVisible] = useState(false);
+    const [{ mounted, upsell, visible }, dispatch] = useReducer(
+        upsellToastReducer,
+        { mounted: false, upsell: null, visible: false },
+    );
     const upsellRef = useRef<Upsell | null>(null);
     const unmountAfterEnterRef = useRef<number | null>(null);
 
@@ -35,12 +67,12 @@ const UpsellToast = () => {
         if (current) {
             markUpsellDismissed(current.id);
         }
-        setVisible(false);
+        dispatch({ type: "hide" });
         if (unmountAfterEnterRef.current !== null) {
             clearTimeout(unmountAfterEnterRef.current);
         }
         unmountAfterEnterRef.current = window.setTimeout(() => {
-            setMounted(false);
+            dispatch({ type: "unmount" });
             unmountAfterEnterRef.current = null;
         }, ENTER_MS);
     }, []);
@@ -58,8 +90,7 @@ const UpsellToast = () => {
         const next = pickNextUpsell();
         if (!next) return;
         const timer = window.setTimeout(() => {
-            setUpsell(next);
-            setMounted(true);
+            dispatch({ type: "mount", upsell: next });
         }, UPSELL_SHOW_DELAY_MS);
         return () => window.clearTimeout(timer);
     }, [isAuthPage, isCliPage, isMobile]);
@@ -67,16 +98,14 @@ const UpsellToast = () => {
     useEffect(() => {
         if (!mounted) return;
         const raf = requestAnimationFrame(() => {
-            requestAnimationFrame(() => setVisible(true));
+            requestAnimationFrame(() => dispatch({ type: "show" }));
         });
         return () => cancelAnimationFrame(raf);
     }, [mounted]);
 
     useEffect(() => {
         if (!isCliPage && !isAuthPage && !isMobile) return;
-        setVisible(false);
-        setMounted(false);
-        setUpsell(null);
+        dispatch({ type: "reset" });
     }, [isAuthPage, isCliPage, isMobile]);
 
     useEffect(() => {

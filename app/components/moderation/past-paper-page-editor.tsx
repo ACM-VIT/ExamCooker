@@ -38,6 +38,17 @@ type PastPaperPageEditorProps = {
   totalPages: number;
 };
 
+type PageEditorDraftState = {
+  sourceKey: string;
+  baseline: PdfPageEdits | null;
+  draft: PdfPageEdits | null;
+};
+
+type PageEditsUpdate =
+  | PdfPageEdits
+  | null
+  | ((currentPageEdits: PdfPageEdits | null) => PdfPageEdits | null);
+
 const SECONDARY_BUTTON_CLASS =
   "inline-flex h-8 items-center gap-1 border border-black/15 bg-white px-2.5 text-[11px] font-semibold text-black transition-all duration-150 ease-out hover:-translate-y-px hover:border-black/35 hover:bg-black/[0.03] hover:shadow-[0_2px_0_0_rgba(0,0,0,0.85)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:shadow-none dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/55 dark:hover:bg-white/[0.04] dark:hover:text-[#3BF4C7] dark:hover:shadow-[0_2px_0_0_rgba(59,244,199,0.45)]";
 
@@ -144,18 +155,53 @@ export default function PastPaperPageEditor({
     () => serializePdfPageEdits(normalizedSavedPageEdits, totalPages),
     [normalizedSavedPageEdits, totalPages],
   );
-  const [baselinePageEdits, setBaselinePageEdits] =
-    useState<PdfPageEdits | null>(normalizedSavedPageEdits);
-  const [draftPageEdits, setDraftPageEdits] =
-    useState<PdfPageEdits | null>(normalizedSavedPageEdits);
+  const [pageEditState, setPageEditState] = useState<PageEditorDraftState>({
+    sourceKey: normalizedSavedKey,
+    baseline: normalizedSavedPageEdits,
+    draft: normalizedSavedPageEdits,
+  });
   const [isOpen, setIsOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const baselinePageEdits =
+    pageEditState.sourceKey === normalizedSavedKey
+      ? pageEditState.baseline
+      : normalizedSavedPageEdits;
+  const draftPageEdits =
+    pageEditState.sourceKey === normalizedSavedKey
+      ? pageEditState.draft
+      : normalizedSavedPageEdits;
+  const setDraftPageEdits = (nextDraft: PageEditsUpdate) => {
+    setPageEditState((currentState) => {
+      const currentBaseline =
+        currentState.sourceKey === normalizedSavedKey
+          ? currentState.baseline
+          : normalizedSavedPageEdits;
+      const currentDraft =
+        currentState.sourceKey === normalizedSavedKey
+          ? currentState.draft
+          : normalizedSavedPageEdits;
 
-  useEffect(() => {
-    setBaselinePageEdits(normalizedSavedPageEdits);
-    setDraftPageEdits(normalizedSavedPageEdits);
-  }, [normalizedSavedKey, normalizedSavedPageEdits]);
+      return {
+        sourceKey: normalizedSavedKey,
+        baseline: currentBaseline,
+        draft:
+          typeof nextDraft === "function" ? nextDraft(currentDraft) : nextDraft,
+      };
+    });
+  };
+  const replaceSavedPageEdits = (nextSavedPageEdits: PdfPageEdits | null) => {
+    const normalizedNextPageEdits = normalizePdfPageEdits(
+      nextSavedPageEdits,
+      totalPages,
+    );
+
+    setPageEditState({
+      sourceKey: serializePdfPageEdits(normalizedNextPageEdits, totalPages),
+      baseline: normalizedNextPageEdits,
+      draft: normalizedNextPageEdits,
+    });
+  };
 
   const entries = useMemo(
     () => getPdfPageDisplayEntries(totalPages, draftPageEdits),
@@ -195,8 +241,7 @@ export default function PastPaperPageEditor({
           pageEdits: draftPageEdits,
         });
 
-        setBaselinePageEdits(response.pageEdits ?? null);
-        setDraftPageEdits(response.pageEdits ?? null);
+        replaceSavedPageEdits(response.pageEdits ?? null);
         onSaved(response.pageEdits ?? null);
         router.refresh();
         toast({

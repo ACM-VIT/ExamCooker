@@ -9,6 +9,11 @@ import {
 } from "@/lib/native-auth-token";
 import NativeAuthBrowserCompleteClient from "./native-auth-browser-complete-client";
 
+export const metadata = {
+  title: "Completing Sign In | ExamCooker",
+  description: "Complete native app sign-in for ExamCooker.",
+};
+
 function NativeAuthMessage({ children }: { children: ReactNode }) {
   return (
     <main className="flex min-h-[100dvh] items-center justify-center bg-[#C2E6EC] px-6 text-center text-black dark:bg-[#0C1222] dark:text-[#D5D5D5]">

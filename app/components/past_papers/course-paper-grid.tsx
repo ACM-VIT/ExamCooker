@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
     Check,
@@ -87,25 +87,97 @@ function ContextMenuItem({
     );
 }
 
+type SplitDragState = {
+    x: number;
+    y: number;
+    side: PaperSplitSide | null;
+    label: string;
+};
+
+type ContextMenuState = {
+    paper: CoursePaperListItem;
+    x: number;
+    y: number;
+} | null;
+
+type CoursePaperGridState = {
+    contextMenu: ContextMenuState;
+    isDownloading: boolean;
+    portalReady: boolean;
+    selected: Set<string>;
+    splitDrag: SplitDragState | null;
+};
+
+type CoursePaperGridAction =
+    | { type: "toggle-selected"; id: string }
+    | { type: "clear-selected" }
+    | { type: "select-all"; ids: string[] }
+    | { type: "reconcile-selected"; ids: string[] }
+    | { type: "downloading"; value: boolean }
+    | { type: "portal-ready" }
+    | { type: "context-menu"; contextMenu: ContextMenuState }
+    | { type: "split-drag"; splitDrag: SplitDragState | null }
+    | { type: "move-split-drag"; x: number; y: number; side: PaperSplitSide | null };
+
+const initialCoursePaperGridState: CoursePaperGridState = {
+    contextMenu: null,
+    isDownloading: false,
+    portalReady: false,
+    selected: new Set(),
+    splitDrag: null,
+};
+
+function coursePaperGridReducer(
+    state: CoursePaperGridState,
+    action: CoursePaperGridAction,
+): CoursePaperGridState {
+    switch (action.type) {
+        case "toggle-selected": {
+            const selected = new Set(state.selected);
+            if (selected.has(action.id)) selected.delete(action.id);
+            else selected.add(action.id);
+            return { ...state, selected };
+        }
+        case "clear-selected":
+            return { ...state, selected: new Set() };
+        case "select-all":
+            return { ...state, selected: new Set(action.ids) };
+        case "reconcile-selected": {
+            if (state.selected.size === 0) return state;
+
+            const selected = new Set(action.ids.filter((id) => state.selected.has(id)));
+            return selected.size === state.selected.size ? state : { ...state, selected };
+        }
+        case "downloading":
+            return { ...state, isDownloading: action.value };
+        case "portal-ready":
+            return { ...state, portalReady: true };
+        case "context-menu":
+            return { ...state, contextMenu: action.contextMenu };
+        case "split-drag":
+            return { ...state, splitDrag: action.splitDrag };
+        case "move-split-drag":
+            return state.splitDrag
+                ? {
+                      ...state,
+                      splitDrag: {
+                          ...state.splitDrag,
+                          x: action.x,
+                          y: action.y,
+                          side: action.side,
+                      },
+                  }
+                : state;
+    }
+}
+
 export default function CoursePaperGrid({
     papers,
     courseCode,
     courseTitle,
 }: Props) {
-    const [selected, setSelected] = useState<Set<string>>(new Set());
-    const [isDownloading, setIsDownloading] = useState(false);
-    const [portalReady, setPortalReady] = useState(false);
-    const [splitDrag, setSplitDrag] = useState<{
-        x: number;
-        y: number;
-        side: PaperSplitSide | null;
-        label: string;
-    } | null>(null);
-    const [contextMenu, setContextMenu] = useState<{
-        paper: CoursePaperListItem;
-        x: number;
-        y: number;
-    } | null>(null);
+    const [{ contextMenu, isDownloading, portalReady, selected, splitDrag }, dispatch] =
+        useReducer(coursePaperGridReducer, initialCoursePaperGridState);
     const splitDragPaperRef = useRef<CoursePaperListItem | null>(null);
     const splitDragSideRef = useRef<PaperSplitSide | null>(null);
     const { toast } = useToast();
@@ -114,16 +186,16 @@ export default function CoursePaperGrid({
     const wideStretchClass = WIDE_STRETCH_CLASS_BY_REMAINDER[wideRemainder] ?? "";
 
     const toggle = useCallback((id: string) => {
-        setSelected((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
+        dispatch({ type: "toggle-selected", id });
     }, []);
 
-    const clear = useCallback(() => setSelected(new Set()), []);
-    const closeContextMenu = useCallback(() => setContextMenu(null), []);
+    const clear = useCallback(() => dispatch({ type: "clear-selected" }), []);
+    const closeContextMenu = useCallback(() => {
+        dispatch({ type: "context-menu", contextMenu: null });
+    }, []);
+    const closeContextMenuFromEvent = useEffectEvent(() => {
+        closeContextMenu();
+    });
 
     const paperById = useMemo(
         () => new Map(papers.map((paper) => [paper.id, paper])),
@@ -143,7 +215,7 @@ export default function CoursePaperGrid({
 
         if (!selectedPapers.length) return;
 
-        setIsDownloading(true);
+        dispatch({ type: "downloading", value: true });
         try {
             await downloadPdfZip({
                 zipFileName: buildPastPaperZipFileName({ courseCode, courseTitle }),
@@ -166,7 +238,7 @@ export default function CoursePaperGrid({
                 variant: "destructive",
             });
         } finally {
-            setIsDownloading(false);
+            dispatch({ type: "downloading", value: false });
         }
     }, [courseCode, courseTitle, isDownloading, paperById, selected, toast]);
 
@@ -218,9 +290,12 @@ export default function CoursePaperGrid({
 
     const openContextMenu = useCallback(
         (paper: CoursePaperListItem, point: { x: number; y: number }) => {
-            setContextMenu({
-                paper,
-                ...clampContextMenuPoint(point),
+            dispatch({
+                type: "context-menu",
+                contextMenu: {
+                    paper,
+                    ...clampContextMenuPoint(point),
+                },
             });
         },
         [],
@@ -262,16 +337,19 @@ export default function CoursePaperGrid({
             const side = getSplitSideForPoint(point.x);
             splitDragPaperRef.current = paper;
             splitDragSideRef.current = side;
-            setSplitDrag({
-                ...point,
-                side,
-                label: [
-                    paper.examType ? examTypeLabel(paper.examType) : null,
-                    paper.slot,
-                    paper.year !== null ? String(paper.year) : null,
-                ]
-                    .filter(Boolean)
-                    .join(" · "),
+            dispatch({
+                type: "split-drag",
+                splitDrag: {
+                    ...point,
+                    side,
+                    label: [
+                        paper.examType ? examTypeLabel(paper.examType) : null,
+                        paper.slot,
+                        paper.year !== null ? String(paper.year) : null,
+                    ]
+                        .filter(Boolean)
+                        .join(" · "),
+                },
             });
         },
         [getSplitSideForPoint],
@@ -281,15 +359,7 @@ export default function CoursePaperGrid({
         (point: { x: number; y: number }) => {
             const side = getSplitSideForPoint(point.x);
             splitDragSideRef.current = side;
-            setSplitDrag((current) =>
-                current
-                    ? {
-                          ...current,
-                          ...point,
-                          side,
-                      }
-                    : current,
-            );
+            dispatch({ type: "move-split-drag", ...point, side });
         },
         [getSplitSideForPoint],
     );
@@ -301,7 +371,7 @@ export default function CoursePaperGrid({
 
             splitDragPaperRef.current = null;
             splitDragSideRef.current = null;
-            setSplitDrag(null);
+            dispatch({ type: "split-drag", splitDrag: null });
 
             if (!paper || !side) return;
             openPaperInSplit(paper, side);
@@ -312,30 +382,34 @@ export default function CoursePaperGrid({
     const cancelSplitDrag = useCallback(() => {
         splitDragPaperRef.current = null;
         splitDragSideRef.current = null;
-        setSplitDrag(null);
+        dispatch({ type: "split-drag", splitDrag: null });
+    }, []);
+    const moveSplitDragFromEvent = useEffectEvent((point: { x: number; y: number }) => {
+        moveSplitDrag(point);
+    });
+    const endSplitDragFromEvent = useEffectEvent((point: { x: number; y: number }) => {
+        endSplitDrag(point);
+    });
+    const cancelSplitDragFromEvent = useEffectEvent(() => {
+        cancelSplitDrag();
+    });
+
+    useEffect(() => {
+        dispatch({ type: "portal-ready" });
     }, []);
 
     useEffect(() => {
-        setPortalReady(true);
-    }, []);
-
-    useEffect(() => {
-        setSelected((prev) => {
-            if (prev.size === 0) return prev;
-
-            const next = new Set(visiblePaperIds.filter((id) => prev.has(id)));
-            return next.size === prev.size ? prev : next;
-        });
+        dispatch({ type: "reconcile-selected", ids: visiblePaperIds });
     }, [visiblePaperIds]);
 
     useEffect(() => {
         if (!contextMenu) return;
 
-        const closeOnOutsideInteraction = () => closeContextMenu();
-        const closeOnOutsideContextMenu = () => closeContextMenu();
+        const closeOnOutsideInteraction = () => closeContextMenuFromEvent();
+        const closeOnOutsideContextMenu = () => closeContextMenuFromEvent();
         const closeOnEscape = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
-                closeContextMenu();
+                closeContextMenuFromEvent();
             }
         };
 
@@ -352,23 +426,23 @@ export default function CoursePaperGrid({
             window.removeEventListener("scroll", closeOnOutsideInteraction, true);
             window.removeEventListener("keydown", closeOnEscape);
         };
-    }, [closeContextMenu, contextMenu]);
+    }, [contextMenu]);
 
     useEffect(() => {
         if (!splitDrag) return;
 
         const handlePointerMove = (event: PointerEvent) => {
-            moveSplitDrag({ x: event.clientX, y: event.clientY });
+            moveSplitDragFromEvent({ x: event.clientX, y: event.clientY });
         };
         const handlePointerUp = (event: PointerEvent) => {
-            endSplitDrag({ x: event.clientX, y: event.clientY });
+            endSplitDragFromEvent({ x: event.clientX, y: event.clientY });
         };
         const handlePointerCancel = () => {
-            cancelSplitDrag();
+            cancelSplitDragFromEvent();
         };
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
-                cancelSplitDrag();
+                cancelSplitDragFromEvent();
             }
         };
 
@@ -387,7 +461,7 @@ export default function CoursePaperGrid({
             window.removeEventListener("keydown", handleKeyDown);
             document.removeEventListener("visibilitychange", handlePointerCancel);
         };
-    }, [cancelSplitDrag, endSplitDrag, moveSplitDrag, splitDrag]);
+    }, [splitDrag]);
 
     const count = selected.size;
     const allVisibleSelected =
@@ -398,7 +472,7 @@ export default function CoursePaperGrid({
             return;
         }
 
-        setSelected(new Set(visiblePaperIds));
+        dispatch({ type: "select-all", ids: visiblePaperIds });
     }, [allVisibleSelected, clear, visiblePaperIds]);
 
     const renderSelectAllButton = () => {
@@ -476,6 +550,7 @@ export default function CoursePaperGrid({
                     role="menu"
                     aria-label="Past paper actions"
                     onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
                     onContextMenu={(event) => {
                         event.preventDefault();
                         event.stopPropagation();

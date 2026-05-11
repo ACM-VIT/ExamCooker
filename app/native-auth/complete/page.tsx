@@ -4,6 +4,11 @@ import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
 import { normalizeNativeAuthHandoffChallenge } from "@/lib/native-auth-token";
 import NativeAuthCompleteClient from "./native-auth-complete-client";
 
+export const metadata = {
+  title: "Finishing Sign In | ExamCooker",
+  description: "Return to the ExamCooker app after sign-in.",
+};
+
 async function NativeAuthCompleteContent({
   searchParams,
 }: {

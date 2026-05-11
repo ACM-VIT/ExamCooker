@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Mic, MicOff, RefreshCcw, Square, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import type {
@@ -31,6 +31,33 @@ const LISTENING_TIPS = [
   'Try "scroll down"',
   'Try "go back"',
 ];
+
+type DockVisibilityState = {
+  entered: boolean;
+  mounted: boolean;
+};
+
+type DockVisibilityAction =
+  | { type: "mount" }
+  | { type: "enter" }
+  | { type: "exit" }
+  | { type: "unmount" };
+
+function dockVisibilityReducer(
+  state: DockVisibilityState,
+  action: DockVisibilityAction,
+): DockVisibilityState {
+  switch (action.type) {
+    case "mount":
+      return { mounted: true, entered: false };
+    case "enter":
+      return state.mounted ? { mounted: true, entered: true } : state;
+    case "exit":
+      return { ...state, entered: false };
+    case "unmount":
+      return { mounted: false, entered: false };
+  }
+}
 
 function splitWords(text: string) {
   return text.split(/\s+/).filter(Boolean);
@@ -207,13 +234,20 @@ function LyricLine({ text }: { text: string }) {
 
     return text.slice(-MAX_TRANSCRIPT_CHARS).replace(/^\S+\s*/, "");
   }, [text]);
-  const words = useMemo(() => splitWords(displayText), [displayText]);
+  const words = useMemo(() => {
+    const counts = new Map<string, number>();
+    return splitWords(displayText).map((word) => {
+      const count = counts.get(word) ?? 0;
+      counts.set(word, count + 1);
+      return { key: `${word}-${count}`, value: word };
+    });
+  }, [displayText]);
 
   return (
     <p className="text-balance text-center text-[15px] sm:text-[17px] font-semibold leading-snug tracking-[-0.005em] text-[#0E5876] dark:text-[#3BF4C7]">
       {words.map((word, i) => (
-        <span key={i} className="voice-lyric-word inline-block whitespace-pre">
-          {word}
+        <span key={word.key} className="voice-lyric-word inline-block whitespace-pre">
+          {word.value}
           {i < words.length - 1 ? " " : ""}
         </span>
       ))}
@@ -243,18 +277,28 @@ export default function VoiceAgentDock({
     runtime.activity === "connecting" ||
     lastError !== null;
 
-  const [mounted, setMounted] = useState(visible);
-  const [entered, setEntered] = useState(false);
+  const [{ mounted, entered }, dispatchVisibility] = useReducer(
+    dockVisibilityReducer,
+    {
+      entered: false,
+      mounted: visible,
+    },
+  );
 
   useEffect(() => {
     if (visible) {
-      setMounted(true);
-      const frame = window.requestAnimationFrame(() => setEntered(true));
+      dispatchVisibility({ type: "mount" });
+      const frame = window.requestAnimationFrame(() =>
+        dispatchVisibility({ type: "enter" }),
+      );
       return () => window.cancelAnimationFrame(frame);
     }
 
-    setEntered(false);
-    const timer = window.setTimeout(() => setMounted(false), DOCK_EXIT_MS);
+    dispatchVisibility({ type: "exit" });
+    const timer = window.setTimeout(
+      () => dispatchVisibility({ type: "unmount" }),
+      DOCK_EXIT_MS,
+    );
     return () => window.clearTimeout(timer);
   }, [visible]);
 

@@ -2,6 +2,7 @@
 
 import { createHmac, randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { auth } from "@/app/auth";
 import {
   getCommandActionCapability,
@@ -195,8 +196,9 @@ async function fetchCommandAgentAdmin(path: string | undefined) {
   );
 }
 
-async function getCommandRequestContext(): Promise<CommandRequestContext> {
-  const session = await auth().catch(() => null);
+async function getCommandRequestContext(
+  session: Awaited<ReturnType<typeof auth>> | null,
+): Promise<CommandRequestContext> {
   const userId = session?.user?.id?.trim();
 
   if (userId) {
@@ -435,7 +437,13 @@ async function resolveWithCloudflareAgent(input: {
     const result = normalizePayload(payload, "websocket");
     if (result) return result;
   } catch (error) {
-    console.warn("[command] Cloudflare command agent WebSocket unavailable", error);
+    after(
+      console.warn.bind(
+        console,
+        "[command] Cloudflare command agent WebSocket unavailable",
+        error,
+      ),
+    );
   }
 
   const path = process.env.CLOUDFLARE_COMMAND_AGENT_PATH?.trim();
@@ -446,6 +454,8 @@ async function resolveWithCloudflareAgent(input: {
 }
 
 export async function getCommandCatalogAction() {
+  await auth().catch(() => null);
+
   const [courses, recentPapers] = await Promise.all([
     getSearchableCourses(),
     getRecentPapers(12),
@@ -475,8 +485,9 @@ export async function getCommandCatalogAction() {
 }
 
 export async function getCommandSessionAction() {
+  const session = await auth().catch(() => null);
   const { userKey, userToken, anonymousClientId, surfaceContext } =
-    await getCommandRequestContext();
+    await getCommandRequestContext(session);
   await setCommandClientCookie(anonymousClientId);
 
   return {
@@ -489,6 +500,7 @@ export async function getCommandSessionAction() {
 export async function resolveCommandIntentAction(
   input: CommandIntentActionInput,
 ): Promise<CommandIntentResponse> {
+  const session = await auth().catch(() => null);
   const query = typeof input.query === "string" ? input.query : "";
   const preferenceQuery =
     typeof input.preferenceQuery === "string"
@@ -498,7 +510,7 @@ export async function resolveCommandIntentAction(
         : query;
   const surfaceContext = readSurfaceContext(input.surfaceContext);
   const localIntent = resolveCommandIntent(query);
-  const requestContext = await getCommandRequestContext();
+  const requestContext = await getCommandRequestContext(session);
   const { userKey, userToken, anonymousClientId } = requestContext;
   const trustedSurfaceContext = getRequestSurfaceContext(
     surfaceContext,
@@ -540,7 +552,13 @@ export async function resolveCommandIntentAction(
       };
     }
   } catch (error) {
-    console.warn("[command] Cloudflare command agent unavailable", error);
+    after(
+      console.warn.bind(
+        console,
+        "[command] Cloudflare command agent unavailable",
+        error,
+      ),
+    );
   }
 
   await setCommandClientCookie(anonymousClientId);
@@ -558,6 +576,7 @@ export async function resolveCommandIntentAction(
 export async function rememberCommandPreferenceAction(
   input: CommandPreferenceActionInput,
 ) {
+  const session = await auth().catch(() => null);
   const query = typeof input.query === "string" ? input.query.trim() : "";
   const courseCode =
     typeof input.courseCode === "string"
@@ -569,7 +588,7 @@ export async function rememberCommandPreferenceAction(
   }
 
   const { userKey, userToken, anonymousClientId } =
-    await getCommandRequestContext();
+    await getCommandRequestContext(session);
   const agentPayload = {
     userKey,
     userToken,
@@ -594,7 +613,13 @@ export async function rememberCommandPreferenceAction(
       };
     }
   } catch (error) {
-    console.warn("[command] Cloudflare command preference WebSocket unavailable", error);
+    after(
+      console.warn.bind(
+        console,
+        "[command] Cloudflare command preference WebSocket unavailable",
+        error,
+      ),
+    );
   }
 
   try {
@@ -609,7 +634,13 @@ export async function rememberCommandPreferenceAction(
       };
     }
   } catch (error) {
-    console.warn("[command] Cloudflare command preference unavailable", error);
+    after(
+      console.warn.bind(
+        console,
+        "[command] Cloudflare command preference unavailable",
+        error,
+      ),
+    );
   }
 
   await setCommandClientCookie(anonymousClientId);

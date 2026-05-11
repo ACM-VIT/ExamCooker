@@ -17,6 +17,79 @@ type Props = {
     variant?: "fixed" | "inline";
 };
 
+function BreadcrumbItems({
+    items,
+    compact,
+    leadingChevron,
+}: {
+    items: BreadcrumbNavItem[];
+    compact: boolean;
+    leadingChevron: boolean;
+}) {
+    return items.map((item, index) => {
+        const isLast = index === items.length - 1;
+        const showAsLink = Boolean(item.href);
+        const itemKey = item.href ?? `${item.label}-${isLast ? "current" : "crumb"}`;
+        const itemLinkClass = compact ? compactLinkClass : linkClass;
+        const itemMutedClass = compact ? compactMutedClass : mutedClass;
+        const itemCurrentClass = compact ? compactCurrentClass : currentClass;
+        const labelClass =
+            compact ?
+                "min-w-0 max-w-[min(46vw,12rem)] truncate"
+            :   "min-w-0 truncate";
+
+        return (
+            <li key={itemKey} className="flex min-w-0 items-center gap-1.5">
+                {showAsLink ? (
+                    <Link
+                        href={item.href!}
+                        transitionTypes={["nav-back"]}
+                        aria-label={
+                            leadingChevron && index === 0 ?
+                                `Back to ${item.label}`
+                            :   undefined
+                        }
+                        className={`${itemLinkClass} inline-flex max-w-full min-w-0 items-center gap-1 ${
+                            leadingChevron && index === 0 ? "group" : ""
+                        }`}
+                    >
+                        {leadingChevron && index === 0 ?
+                            <ChevronLeft
+                                className={`${compact ? "h-3.5 w-3.5" : "h-4 w-4"} shrink-0 transition-transform group-hover:-translate-x-0.5`}
+                                strokeWidth={2.5}
+                                aria-hidden
+                            />
+                        : null}
+                        {leadingChevron && index === 0 ?
+                            <>
+                                <span className="hidden lg:inline">Back to </span>
+                                <span className={labelClass}>{item.label}</span>
+                            </>
+                        :   <span className={labelClass}>{item.label}</span>}
+                    </Link>
+                ) : (
+                    <span
+                        className={`${labelClass} ${
+                            isLast ? itemCurrentClass : itemMutedClass
+                        }`}
+                    >
+                        {item.label}
+                    </span>
+                )}
+
+                {!isLast && (
+                    <span
+                        aria-hidden="true"
+                        className={`${compact ? "text-xs" : "text-sm"} shrink-0 font-medium text-black/30 dark:text-[#D5D5D5]/35`}
+                    >
+                        ›
+                    </span>
+                )}
+            </li>
+        );
+    });
+}
+
 export function BreadcrumbOrderedList({
     items,
     leadingChevron = false,
@@ -30,77 +103,21 @@ export function BreadcrumbOrderedList({
         : items.length > 2 ? [items[0], items[items.length - 1]]
         : items;
 
-    const renderItems = (sourceItems: BreadcrumbNavItem[], compact: boolean) =>
-        sourceItems.map((item, index) => {
-            const isLast = index === sourceItems.length - 1;
-            const showAsLink = Boolean(item.href);
-            const itemKey = item.href ?? `${item.label}-${isLast ? "current" : "crumb"}`;
-            const itemLinkClass = compact ? compactLinkClass : linkClass;
-            const itemMutedClass = compact ? compactMutedClass : mutedClass;
-            const itemCurrentClass = compact ? compactCurrentClass : currentClass;
-            const labelClass =
-                compact ?
-                    "min-w-0 max-w-[min(46vw,12rem)] truncate"
-                :   "min-w-0 truncate";
-
-            return (
-                <li key={itemKey} className="flex min-w-0 items-center gap-1.5">
-                    {showAsLink ? (
-                        <Link
-                            href={item.href!}
-                            transitionTypes={["nav-back"]}
-                            aria-label={
-                                leadingChevron && index === 0 ?
-                                    `Back to ${item.label}`
-                                :   undefined
-                            }
-                            className={`${itemLinkClass} inline-flex max-w-full min-w-0 items-center gap-1 ${
-                                leadingChevron && index === 0 ? "group" : ""
-                            }`}
-                        >
-                            {leadingChevron && index === 0 ?
-                                <ChevronLeft
-                                    className={`${compact ? "h-3.5 w-3.5" : "h-4 w-4"} shrink-0 transition-transform group-hover:-translate-x-0.5`}
-                                    strokeWidth={2.5}
-                                    aria-hidden
-                                />
-                            : null}
-                            {leadingChevron && index === 0 ?
-                                <>
-                                    <span className="hidden lg:inline">Back to </span>
-                                    <span className={labelClass}>{item.label}</span>
-                                </>
-                            :   <span className={labelClass}>{item.label}</span>}
-                        </Link>
-                    ) : (
-                        <span
-                            className={`${labelClass} ${
-                                isLast ? itemCurrentClass : itemMutedClass
-                            }`}
-                        >
-                            {item.label}
-                        </span>
-                    )}
-
-                    {!isLast && (
-                        <span
-                            aria-hidden="true"
-                            className={`${compact ? "text-xs" : "text-sm"} shrink-0 font-medium text-black/30 dark:text-[#D5D5D5]/35`}
-                        >
-                            ›
-                        </span>
-                    )}
-                </li>
-            );
-        });
-
     return (
         <>
             <ol className="flex min-w-0 items-center gap-1 overflow-hidden sm:hidden">
-                {renderItems(compactItems, true)}
+                <BreadcrumbItems
+                    items={compactItems}
+                    compact
+                    leadingChevron={leadingChevron}
+                />
             </ol>
             <ol className="hidden min-w-0 items-center gap-1.5 overflow-hidden sm:flex">
-                {renderItems(items, false)}
+                <BreadcrumbItems
+                    items={items}
+                    compact={false}
+                    leadingChevron={leadingChevron}
+                />
             </ol>
         </>
     );
