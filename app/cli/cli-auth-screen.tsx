@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useLocationSearch } from "@/app/components/common/use-location-search";
 import { approveCliDeviceAuthAction } from "@/app/cli/actions";
 import ExamCookerLogo from "@/app/components/common/exam-cooker-logo";
 import ThemeToggle from "@/app/components/common/theme-toggle";
@@ -32,6 +33,64 @@ type CliLookupResponse = {
   sessionEmail: string | null;
   request: CliLookupRequest | null;
 };
+
+type CliScreenState = {
+  isSignedIn: boolean;
+  request: CliLookupRequest | null;
+  sessionEmail: string | null;
+  state: CliState;
+  userCode: string;
+};
+
+type CliScreenAction =
+  | { type: "empty" }
+  | { type: "checking"; userCode: string }
+  | { type: "success"; approved: boolean; payload: CliLookupResponse }
+  | { type: "invalid"; userCode: string };
+
+function cliScreenReducer(
+  state: CliScreenState,
+  action: CliScreenAction,
+): CliScreenState {
+  switch (action.type) {
+    case "empty":
+      return {
+        ...state,
+        isSignedIn: false,
+        request: null,
+        sessionEmail: null,
+        state: "idle",
+        userCode: "",
+      };
+    case "checking":
+      return {
+        ...state,
+        state: "checking",
+        userCode: action.userCode,
+      };
+    case "success": {
+      const nextState =
+        action.approved && action.payload.state === "pending"
+          ? "approved"
+          : action.payload.state;
+
+      return {
+        isSignedIn: action.payload.isSignedIn,
+        request: action.payload.request,
+        sessionEmail: action.payload.sessionEmail,
+        state: nextState,
+        userCode: action.payload.userCode,
+      };
+    }
+    case "invalid":
+      return {
+        ...state,
+        request: null,
+        state: "invalid",
+        userCode: action.userCode,
+      };
+  }
+}
 
 function PrimaryActionButton({
   children,
@@ -215,20 +274,27 @@ function PendingBlock({
 
 export default function CliAuthScreen() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const locationSearch = useLocationSearch();
   const lookupIdRef = useRef(0);
 
+  const searchParams = useMemo(
+    () => new URLSearchParams(locationSearch),
+    [locationSearch],
+  );
   const initialCode = useMemo(
     () => normalizeUserCode(searchParams.get("code") ?? ""),
     [searchParams],
   );
   const initialApproved = searchParams.get("approved") === "1";
 
-  const [state, setState] = useState<CliState>("idle");
-  const [userCode, setUserCode] = useState(initialCode);
-  const [request, setRequest] = useState<CliLookupRequest | null>(null);
-  const [isSignedIn, setIsSignedIn] = useState(false);
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [screenState, dispatchScreenState] = useReducer(cliScreenReducer, {
+    isSignedIn: false,
+    request: null,
+    sessionEmail: null,
+    state: "idle",
+    userCode: initialCode,
+  });
+  const { isSignedIn, request, sessionEmail, state, userCode } = screenState;
 
   const runLookup = useCallback(
     async (
@@ -247,19 +313,14 @@ export default function CliAuthScreen() {
       }
 
       if (!nextCode) {
-        setState("idle");
-        setUserCode("");
-        setRequest(null);
-        setIsSignedIn(false);
-        setSessionEmail(null);
+        dispatchScreenState({ type: "empty" });
         return;
       }
 
       const lookupId = lookupIdRef.current + 1;
       lookupIdRef.current = lookupId;
 
-      setState("checking");
-      setUserCode(nextCode);
+      dispatchScreenState({ type: "checking", userCode: nextCode });
 
       try {
         const response = await fetch(
@@ -274,22 +335,13 @@ export default function CliAuthScreen() {
           return;
         }
 
-        const nextState =
-          approved && payload.state === "pending" ? "approved" : payload.state;
-
-        setState(nextState);
-        setUserCode(payload.userCode);
-        setRequest(payload.request);
-        setIsSignedIn(payload.isSignedIn);
-        setSessionEmail(payload.sessionEmail);
+        dispatchScreenState({ type: "success", approved, payload });
       } catch {
         if (lookupIdRef.current !== lookupId) {
           return;
         }
 
-        setState("invalid");
-        setUserCode(nextCode);
-        setRequest(null);
+        dispatchScreenState({ type: "invalid", userCode: nextCode });
       }
     },
     [router],

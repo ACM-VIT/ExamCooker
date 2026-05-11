@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { buildIosNativeTabConfigs } from "@/lib/ios-native-tab-config";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
@@ -11,6 +11,35 @@ const EXAMCOOKER_LINK_HOSTS = new Set([
   "examcooker-2024.azurewebsites.net",
   "examcooker-beta-2024.azurewebsites.net",
 ]);
+
+type NativeListenerHandle = {
+  remove: () => Promise<void> | void;
+};
+
+type NativeTabsBridge = {
+  addListener: (
+    eventName: "tabSelected",
+    listenerFunc: (info: { tab: { route?: string | null } }) => void,
+  ) => Promise<NativeListenerHandle>;
+};
+
+type CapacitorAppBridge = {
+  addListener(
+    eventName: "appUrlOpen",
+    listenerFunc: (event: { url: string }) => void,
+  ): Promise<NativeListenerHandle>;
+  addListener(
+    eventName: "backButton",
+    listenerFunc: (event: { canGoBack: boolean }) => void | Promise<void>,
+  ): Promise<NativeListenerHandle>;
+};
+
+type PushNotificationsBridge = {
+  addListener: (
+    eventName: "registration",
+    listenerFunc: (token: { value: string }) => void | Promise<void>,
+  ) => Promise<NativeListenerHandle>;
+};
 
 function isExamCookerLinkHost(hostname: string) {
   const normalized = hostname.toLowerCase();
@@ -70,13 +99,109 @@ function currentLocationPath() {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
+function observeNativeThemeAttributes(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributeFilter: ["class", "data-theme", "style"],
+  });
+
+  return () => observer.disconnect();
+}
+
+function subscribeColorSchemeChange(
+  colorSchemeQuery: MediaQueryList,
+  onChange: () => void,
+) {
+  colorSchemeQuery.addEventListener("change", onChange);
+
+  return () => {
+    colorSchemeQuery.removeEventListener("change", onChange);
+  };
+}
+
+function subscribeWindowLoadOnce(onLoad: () => void) {
+  window.addEventListener("load", onLoad, { once: true });
+
+  return () => {
+    window.removeEventListener("load", onLoad);
+  };
+}
+
 function normalizeNativeTabRoute(route: unknown) {
   if (typeof route !== "string" || route.length === 0) return "/";
   return route.startsWith("/") ? route : `/${route}`;
 }
 
+async function sendNativePushToken(token: string, platform: string) {
+  await fetch("/api/native/push-token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, platform }),
+  });
+}
+
+async function subscribeNativeTabSelection(
+  nativeTabs: NativeTabsBridge,
+  navigate: (path: string) => void,
+) {
+  const listener = await nativeTabs.addListener("tabSelected", (info) => {
+    const route = info.tab.route ?? "/";
+    const nextPath = route.startsWith("/") ? route : `/${route}`;
+    if (nextPath === currentLocationPath()) return;
+    navigate(nextPath);
+  });
+
+  return () => {
+    void listener.remove();
+  };
+}
+
+async function subscribeAppUrlOpen(
+  app: CapacitorAppBridge,
+  onOpen: (url: string) => void,
+) {
+  const listener = await app.addListener("appUrlOpen", (event) => {
+    onOpen(event.url);
+  });
+
+  return () => {
+    void listener.remove();
+  };
+}
+
+async function subscribeAndroidBackButton(
+  app: CapacitorAppBridge,
+  onBack: (event: { canGoBack: boolean }) => void | Promise<void>,
+) {
+  const listener = await app.addListener("backButton", onBack);
+
+  return () => {
+    void listener.remove();
+  };
+}
+
+async function subscribePushRegistration(
+  pushNotifications: PushNotificationsBridge,
+  onRegistration: (token: { value: string }) => void | Promise<void>,
+) {
+  const listener = await pushNotifications.addListener(
+    "registration",
+    onRegistration,
+  );
+
+  return () => {
+    void listener.remove();
+  };
+}
+
 export default function CapacitorBridge() {
   const router = useRouter();
+  const navigateToNativePath = useCallback(
+    (path: string) => {
+      router.push(path);
+    },
+    [router],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +209,8 @@ export default function CapacitorBridge() {
     let cleanupDeepLinks: (() => void) | undefined;
     let cleanupNativeBridge: (() => void) | undefined;
     let cleanupNativeTabs: (() => void) | undefined;
+    let cleanupSplash: (() => void) | undefined;
+    let cleanupPushNotifications: (() => void) | undefined;
 
     void (async () => {
       const { Capacitor } = await import("@capacitor/core");
@@ -114,16 +241,17 @@ export default function CapacitorBridge() {
       };
       applyStatusBarAppearance();
 
-      const themeObserver = new MutationObserver(applyStatusBarAppearance);
-      themeObserver.observe(document.documentElement, {
-        attributeFilter: ["class", "data-theme", "style"],
-      });
-
       const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      colorSchemeQuery.addEventListener("change", applyStatusBarAppearance);
+      const cleanupStatusBarThemeObserver = observeNativeThemeAttributes(
+        applyStatusBarAppearance,
+      );
+      const cleanupStatusBarColorScheme = subscribeColorSchemeChange(
+        colorSchemeQuery,
+        applyStatusBarAppearance,
+      );
       cleanupStatusBar = () => {
-        themeObserver.disconnect();
-        colorSchemeQuery.removeEventListener("change", applyStatusBarAppearance);
+        cleanupStatusBarThemeObserver();
+        cleanupStatusBarColorScheme();
       };
 
       if (platform === "ios" || platform === "android") {
@@ -145,15 +273,10 @@ export default function CapacitorBridge() {
           document.documentElement.removeAttribute("data-native-tabs-pending");
           document.documentElement.removeAttribute("data-native-ios-tabs-pending");
           document.documentElement.removeAttribute("data-native-android-tabs-pending");
-          const tabSelectionListener = await NativeTabs.addListener("tabSelected", (info) => {
-            const route = info.tab.route ?? "/";
-            const nextPath = route.startsWith("/") ? route : `/${route}`;
-            if (nextPath === currentLocationPath()) return;
-            router.push(nextPath);
-          });
-          cleanupNativeTabs = () => {
-            void tabSelectionListener.remove();
-          };
+          cleanupNativeTabs = await subscribeNativeTabSelection(
+            NativeTabs,
+            navigateToNativePath,
+          );
           const updateNativeTabsTheme = () => {
             void NativeTabs.updateTabs({
               tabs: buildIosNativeTabConfigs(currentNativeTabTheme()),
@@ -162,16 +285,18 @@ export default function CapacitorBridge() {
               () => undefined,
             );
           };
-          const nativeTabsThemeObserver = new MutationObserver(updateNativeTabsTheme);
-          nativeTabsThemeObserver.observe(document.documentElement, {
-            attributeFilter: ["class", "data-theme", "style"],
-          });
-          colorSchemeQuery.addEventListener("change", updateNativeTabsTheme);
+          const cleanupNativeTabsThemeObserver = observeNativeThemeAttributes(
+            updateNativeTabsTheme,
+          );
+          const cleanupNativeTabsColorScheme = subscribeColorSchemeChange(
+            colorSchemeQuery,
+            updateNativeTabsTheme,
+          );
           const cleanupExistingNativeTabs = cleanupNativeTabs;
           cleanupNativeTabs = () => {
             cleanupExistingNativeTabs();
-            nativeTabsThemeObserver.disconnect();
-            colorSchemeQuery.removeEventListener("change", updateNativeTabsTheme);
+            cleanupNativeTabsThemeObserver();
+            cleanupNativeTabsColorScheme();
           };
           await NativeTabs.showTabBar().catch(() => undefined);
         } catch {
@@ -187,23 +312,20 @@ export default function CapacitorBridge() {
 
       const launchUrl = await App.getLaunchUrl().catch(() => ({ url: "" }));
       if (launchUrl?.url) {
-        navigateFromDeepLink(launchUrl.url, router.push);
+        navigateFromDeepLink(launchUrl.url, navigateToNativePath);
       }
 
-      const appUrlOpenListener = await App.addListener("appUrlOpen", (event: { url: string }) => {
-        if (event.url.startsWith("examcooker://native-auth/")) {
+      cleanupDeepLinks = await subscribeAppUrlOpen(App, (url) => {
+        if (url.startsWith("examcooker://native-auth/")) {
           void import("@capacitor/browser").then(({ Browser }) =>
             Browser.close().catch(() => undefined),
           );
         }
-        navigateFromDeepLink(event.url, router.push);
+        navigateFromDeepLink(url, navigateToNativePath);
       });
-      cleanupDeepLinks = () => {
-        void appUrlOpenListener.remove();
-      };
 
       if (platform === "android") {
-        const backButtonListener = await App.addListener("backButton", async ({ canGoBack }) => {
+        cleanupNativeBridge = await subscribeAndroidBackButton(App, async ({ canGoBack }) => {
           const backEvent = new CustomEvent("examcooker:native-back", {
             bubbles: true,
             cancelable: true,
@@ -220,10 +342,6 @@ export default function CapacitorBridge() {
 
           await App.minimizeApp().catch(() => App.exitApp().catch(() => undefined));
         });
-
-        cleanupNativeBridge = () => {
-          void backButtonListener.remove();
-        };
       }
 
       const hideSplash = () => {
@@ -233,7 +351,7 @@ export default function CapacitorBridge() {
       if (document.readyState === "complete") {
         hideSplash();
       } else {
-        window.addEventListener("load", hideSplash, { once: true });
+        cleanupSplash = subscribeWindowLoadOnce(hideSplash);
       }
 
       if (
@@ -241,21 +359,17 @@ export default function CapacitorBridge() {
         process.env.NEXT_PUBLIC_ENABLE_NATIVE_PUSH === "true"
       ) {
         const { PushNotifications } = await import("@capacitor/push-notifications");
-        await PushNotifications.requestPermissions().catch(() => undefined);
-        await PushNotifications.addListener("registration", async (token) => {
-          try {
-            await fetch("/api/native/push-token", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                token: token.value,
-                platform: Capacitor.getPlatform(),
-              }),
-            });
-          } catch {
-            // non-blocking
-          }
-        });
+        const [, cleanupPushRegistration] = await Promise.all([
+          PushNotifications.requestPermissions().catch(() => undefined),
+          subscribePushRegistration(PushNotifications, async (token) => {
+            try {
+              await sendNativePushToken(token.value, Capacitor.getPlatform());
+            } catch {
+              // non-blocking
+            }
+          }),
+        ]);
+        cleanupPushNotifications = cleanupPushRegistration;
         await PushNotifications.register().catch(() => undefined);
       }
     })();
@@ -266,6 +380,8 @@ export default function CapacitorBridge() {
       cleanupDeepLinks?.();
       cleanupNativeBridge?.();
       cleanupNativeTabs?.();
+      cleanupSplash?.();
+      cleanupPushNotifications?.();
       const root = document.documentElement;
       delete root.dataset.nativePlatform;
       root.removeAttribute("data-native-tabs");
@@ -277,7 +393,7 @@ export default function CapacitorBridge() {
       root.removeAttribute("data-native-ios-tabs-pending");
       root.removeAttribute("data-native-android-tabs-pending");
     };
-  }, [router]);
+  }, [navigateToNativePath, router]);
 
   return null;
 }

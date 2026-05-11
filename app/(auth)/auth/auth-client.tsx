@@ -1,7 +1,7 @@
 "use client";
 
-import { type SyntheticEvent, useEffect, useMemo, useState } from "react";
-import { signIn } from "next-auth/react";
+import { type SyntheticEvent, useEffect, useMemo, useReducer, useState } from "react";
+import { getProviders, signIn } from "next-auth/react";
 import { captureSignInStarted } from "@/lib/posthog/client";
 import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
 
@@ -9,6 +9,42 @@ type Provider = {
     id: string;
     name: string;
 };
+
+type ReviewFormState = {
+    email: string;
+    error: string | null;
+    password: string;
+    show: boolean;
+    submitting: boolean;
+};
+
+type ReviewFormAction =
+    | { type: "show" }
+    | { type: "email"; value: string }
+    | { type: "password"; value: string }
+    | { type: "submit" }
+    | { type: "error"; message: string }
+    | { type: "complete" };
+
+function reviewFormReducer(
+    state: ReviewFormState,
+    action: ReviewFormAction,
+): ReviewFormState {
+    switch (action.type) {
+        case "show":
+            return { ...state, show: true };
+        case "email":
+            return { ...state, email: action.value };
+        case "password":
+            return { ...state, password: action.value };
+        case "submit":
+            return { ...state, error: null, submitting: true };
+        case "error":
+            return { ...state, error: action.message };
+        case "complete":
+            return { ...state, submitting: false };
+    }
+}
 
 const providerLabels: Record<string, string> = {
     apple: "Continue with Apple",
@@ -174,35 +210,41 @@ export default function AuthClient({
     callbackUrl: string;
     error?: string | null;
 }) {
-    const [providers, setProviders] = useState<Provider[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [reviewEmail, setReviewEmail] = useState("");
-    const [reviewPassword, setReviewPassword] = useState("");
-    const [reviewSubmitting, setReviewSubmitting] = useState(false);
-    const [reviewError, setReviewError] = useState<string | null>(null);
-    const [showReviewForm, setShowReviewForm] = useState(false);
+    const [providerState, setProviderState] = useState<{
+        loading: boolean;
+        providers: Provider[];
+    }>({
+        loading: true,
+        providers: [],
+    });
+    const [reviewForm, dispatchReviewForm] = useReducer(reviewFormReducer, {
+        email: "",
+        error: null,
+        password: "",
+        show: false,
+        submitting: false,
+    });
     const errorMessage = getErrorMessage(error);
 
     useEffect(() => {
         let cancelled = false;
 
         async function loadProviders() {
+            let nextProviders: Provider[] = [];
             try {
-                const response = await fetch("/api/auth/providers", {
-                    cache: "no-store",
-                });
-                const payload = (await response.json()) as Record<string, Provider>;
-                if (cancelled) return;
-
-                setProviders(
-                    Object.values(payload).filter((provider) =>
-                        ["apple", "google", "app-review"].includes(provider.id),
-                    ),
+                const payload = await getProviders();
+                nextProviders = Object.values(payload ?? {}).filter((provider) =>
+                    ["apple", "google", "app-review"].includes(provider.id),
                 );
             } catch {
-                if (!cancelled) setProviders([]);
-            } finally {
-                if (!cancelled) setLoading(false);
+                nextProviders = [];
+            }
+
+            if (!cancelled) {
+                setProviderState({
+                    loading: false,
+                    providers: nextProviders,
+                });
             }
         }
 
@@ -215,11 +257,11 @@ export default function AuthClient({
 
     const visibleProviders = useMemo(() => {
         const ordered = ["google", "apple"];
-        return providers
+        return providerState.providers
             .filter((provider) => ordered.includes(provider.id))
             .sort((a, b) => ordered.indexOf(a.id) - ordered.indexOf(b.id));
-    }, [providers]);
-    const reviewProvider = providers.find(
+    }, [providerState.providers]);
+    const reviewProvider = providerState.providers.find(
         (provider) => provider.id === "app-review",
     );
 
@@ -251,10 +293,9 @@ export default function AuthClient({
 
     const handleReviewSignIn = async (event: SyntheticEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!reviewProvider || reviewSubmitting) return;
+        if (!reviewProvider || reviewForm.submitting) return;
 
-        setReviewSubmitting(true);
-        setReviewError(null);
+        dispatchReviewForm({ type: "submit" });
         captureSignInStarted({
             source: "app_review_auth_page",
             callbackPath: callbackUrl,
@@ -263,8 +304,8 @@ export default function AuthClient({
 
         try {
             const result = await signIn(reviewProvider.id, {
-                email: reviewEmail,
-                password: reviewPassword,
+                email: reviewForm.email,
+                password: reviewForm.password,
                 callbackUrl,
                 redirect: false,
             });
@@ -274,11 +315,17 @@ export default function AuthClient({
                 return;
             }
 
-            setReviewError("The reviewer email or password is incorrect.");
+            dispatchReviewForm({
+                type: "error",
+                message: "The reviewer email or password is incorrect.",
+            });
         } catch {
-            setReviewError("Authentication could not be completed. Try again.");
+            dispatchReviewForm({
+                type: "error",
+                message: "Authentication could not be completed. Try again.",
+            });
         } finally {
-            setReviewSubmitting(false);
+            dispatchReviewForm({ type: "complete" });
             invalidateAuthSessionCache();
         }
     };
@@ -291,11 +338,11 @@ export default function AuthClient({
                 </p>
             )}
 
-            {loading ? (
+            {providerState.loading ? (
                 <div className="h-11 rounded-lg border border-black/15 bg-white/60 dark:border-white/15 dark:bg-white/[0.05]" />
             ) : reviewProvider || visibleProviders.length > 0 ? (
                 <>
-                    {showReviewForm && reviewProvider ? (
+                    {reviewForm.show && reviewProvider ? (
                         <form
                             onSubmit={handleReviewSignIn}
                             className="flex flex-col gap-3 rounded-lg border border-black/15 bg-white/70 p-4 text-left dark:border-white/15 dark:bg-white/[0.05]"
@@ -311,8 +358,13 @@ export default function AuthClient({
                                 </span>
                                 <input
                                     type="email"
-                                    value={reviewEmail}
-                                    onChange={(event) => setReviewEmail(event.target.value)}
+                                    value={reviewForm.email}
+                                    onChange={(event) =>
+                                        dispatchReviewForm({
+                                            type: "email",
+                                            value: event.target.value,
+                                        })
+                                    }
                                     autoComplete="username"
                                     required
                                     className="h-11 rounded-md border border-black/15 bg-white px-3 text-sm text-black outline-none transition focus:border-black dark:border-white/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:focus:border-[#3BF4C7]"
@@ -324,24 +376,29 @@ export default function AuthClient({
                                 </span>
                                 <input
                                     type="password"
-                                    value={reviewPassword}
-                                    onChange={(event) => setReviewPassword(event.target.value)}
+                                    value={reviewForm.password}
+                                    onChange={(event) =>
+                                        dispatchReviewForm({
+                                            type: "password",
+                                            value: event.target.value,
+                                        })
+                                    }
                                     autoComplete="current-password"
                                     required
                                     className="h-11 rounded-md border border-black/15 bg-white px-3 text-sm text-black outline-none transition focus:border-black dark:border-white/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:focus:border-[#3BF4C7]"
                                 />
                             </label>
-                            {reviewError && (
+                            {reviewForm.error && (
                                 <p className="text-xs leading-5 text-red-700 dark:text-red-200">
-                                    {reviewError}
+                                    {reviewForm.error}
                                 </p>
                             )}
                             <button
                                 type="submit"
-                                disabled={reviewSubmitting}
+                                disabled={reviewForm.submitting}
                                 className="inline-flex h-11 items-center justify-center rounded-md border border-black bg-black px-4 text-sm font-bold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:bg-white/10 dark:text-[#D5D5D5] dark:hover:bg-white/15"
                             >
-                                {reviewSubmitting ? "Signing in..." : "Sign in"}
+                                {reviewForm.submitting ? "Signing in..." : "Sign in"}
                             </button>
                         </form>
                     ) : (
@@ -349,7 +406,7 @@ export default function AuthClient({
                             {reviewProvider && (
                                 <button
                                     type="button"
-                                    onClick={() => setShowReviewForm(true)}
+                                    onClick={() => dispatchReviewForm({ type: "show" })}
                                     className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-black hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
                                 >
                                     Continue with username/password

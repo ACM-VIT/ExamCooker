@@ -21,6 +21,14 @@ type SyllabusInlineEditorProps = {
   syllabusId: string;
 };
 
+type SyllabusDraftState = {
+  baselineCourseId: string | null | undefined;
+  baselineTitle: string;
+  draftCourseId: string | null | undefined;
+  draftTitle: string;
+  sourceTitle: string;
+};
+
 function appendCourseOption(
   currentCourses: CourseOption[],
   nextCourse: CourseOption,
@@ -54,19 +62,27 @@ export default function SyllabusInlineEditor({
         : null,
     [courses, initialCourseCode],
   );
-  const [draftTitle, setDraftTitle] = useState(initialTitle);
-  const [draftCourseId, setDraftCourseId] = useState<string | null | undefined>(
-    undefined,
-  );
-  const [baselineTitle, setBaselineTitle] = useState(initialTitle);
-  const [baselineCourseId, setBaselineCourseId] = useState<string | null | undefined>(
-    undefined,
-  );
+  const [draftState, setDraftState] = useState<SyllabusDraftState>({
+    baselineCourseId: undefined,
+    baselineTitle: initialTitle,
+    draftCourseId: undefined,
+    draftTitle: initialTitle,
+    sourceTitle: initialTitle,
+  });
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const currentDraftState =
+    draftState.sourceTitle === initialTitle
+      ? draftState
+      : {
+          ...draftState,
+          baselineTitle: initialTitle,
+          draftTitle: initialTitle,
+          sourceTitle: initialTitle,
+        };
 
   useEffect(() => {
-    if (draftCourseId !== undefined || (courses.length === 0 && !isLoading)) {
+    if (draftState.draftCourseId !== undefined || (courses.length === 0 && !isLoading)) {
       return;
     }
 
@@ -74,20 +90,24 @@ export default function SyllabusInlineEditor({
       return;
     }
 
-    setDraftCourseId(resolvedInitialCourseId);
-    setBaselineCourseId(resolvedInitialCourseId);
-  }, [courses.length, draftCourseId, isLoading, resolvedInitialCourseId]);
+    setDraftState((state) => ({
+      ...state,
+      baselineCourseId: resolvedInitialCourseId,
+      draftCourseId: resolvedInitialCourseId,
+    }));
+  }, [courses.length, draftState.draftCourseId, isLoading, resolvedInitialCourseId]);
 
   if (status === "loading" || !isModerator) {
     return null;
   }
 
   const hasChanges =
-    draftCourseId !== undefined &&
-    (draftTitle.trim() !== baselineTitle.trim() ||
-      draftCourseId !== baselineCourseId);
+    currentDraftState.draftCourseId !== undefined &&
+    (currentDraftState.draftTitle.trim() !== currentDraftState.baselineTitle.trim() ||
+      currentDraftState.draftCourseId !== currentDraftState.baselineCourseId);
 
   const handleSave = () => {
+    const draftCourseId = currentDraftState.draftCourseId;
     if (!hasChanges || draftCourseId === undefined) {
       return;
     }
@@ -98,12 +118,17 @@ export default function SyllabusInlineEditor({
         const result = await updateSyllabusInline({
           id: syllabusId,
           courseId: draftCourseId,
-          title: draftTitle,
+          title: currentDraftState.draftTitle,
         });
 
-        setBaselineCourseId(draftCourseId);
-        setBaselineTitle(result.title);
-        setDraftTitle(result.title);
+        setDraftState((state) => ({
+          ...state,
+          baselineCourseId: draftCourseId,
+          baselineTitle: result.title,
+          draftCourseId: draftCourseId,
+          draftTitle: result.title,
+          sourceTitle: result.title,
+        }));
         toast({ title: "Syllabus updated" });
 
         const nextPath = result.courseCode
@@ -127,8 +152,11 @@ export default function SyllabusInlineEditor({
   };
 
   const handleCancel = () => {
-    setDraftTitle(baselineTitle);
-    setDraftCourseId(baselineCourseId);
+    setDraftState((state) => ({
+      ...state,
+      draftCourseId: currentDraftState.baselineCourseId,
+      draftTitle: currentDraftState.baselineTitle,
+    }));
     setSaveError(null);
   };
 
@@ -159,17 +187,24 @@ export default function SyllabusInlineEditor({
 
       <EditorTextInput
         label="Title"
-        value={draftTitle}
-        onChange={setDraftTitle}
+        value={currentDraftState.draftTitle}
+        onChange={(nextTitle) =>
+          setDraftState((state) => ({ ...state, draftTitle: nextTitle }))
+        }
         placeholder="Syllabus title"
       />
 
       <FieldShell label="Course">
-        {courses.length > 0 && draftCourseId !== undefined ? (
+        {courses.length > 0 && currentDraftState.draftCourseId !== undefined ? (
           <CoursePicker
             courses={courses}
-            value={draftCourseId}
-            onChange={setDraftCourseId}
+            value={currentDraftState.draftCourseId}
+            onChange={(nextCourseId) =>
+              setDraftState((state) => ({
+                ...state,
+                draftCourseId: nextCourseId,
+              }))
+            }
             allowCreateCourse
             onCourseCreated={(courseOption) =>
               setCourses((currentCourses) =>

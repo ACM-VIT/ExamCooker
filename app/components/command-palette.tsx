@@ -5,7 +5,9 @@ import React, {
   addTransitionType,
   startTransition,
   useEffect,
+  useEffectEvent,
   useMemo,
+  useReducer,
   useState,
 } from "react";
 import { Command } from "cmdk";
@@ -156,6 +158,48 @@ type RecentCourseCandidate = {
   course: CommandCourse;
   record: CourseVisitRecord;
 };
+
+type CommandCatalogStatus = "idle" | "loading" | "ready" | "error";
+
+type CommandCatalogState = {
+  status: CommandCatalogStatus;
+  courses: CommandCourse[];
+  recentPapers: CommandPaper[];
+};
+
+type CommandCatalogAction =
+  | { type: "load" }
+  | {
+      type: "loaded";
+      courses: CommandCourse[];
+      recentPapers: CommandPaper[];
+    }
+  | { type: "failed" };
+
+type CommandIntentStatus = "idle" | "loading" | "settled";
+
+type CommandPaletteSessionState = {
+  search: string;
+  agentIntent: CommandIntent | null;
+  agentCourseSearchText: string;
+  agentActions: CommandGeneratedAction[];
+  commandPreferences: CommandCoursePreference[];
+  intentStatus: CommandIntentStatus;
+};
+
+type CommandPaletteSessionAction =
+  | { type: "setSearch"; search: string }
+  | { type: "reset" }
+  | { type: "intentLoading" }
+  | { type: "intentResolved"; payload: CommandIntentResponse }
+  | { type: "intentFailed" }
+  | {
+      type: "recordPreference";
+      courseCode: string;
+      courseTitle: string | null;
+      resource: CommandResourceIntent | null;
+      updatedAt: number;
+    };
 
 const COMMAND_PALETTE_MEDIA_QUERY = "(min-width: 768px)";
 const COMMAND_AGENT_HOST =
@@ -313,6 +357,152 @@ const COMMAND_PHRASES = [
   "question papers",
   "study material",
 ];
+
+const INITIAL_COMMAND_CATALOG_STATE: CommandCatalogState = {
+  status: "idle",
+  courses: [],
+  recentPapers: [],
+};
+
+const INITIAL_COMMAND_PALETTE_SESSION_STATE: CommandPaletteSessionState = {
+  search: "",
+  agentIntent: null,
+  agentCourseSearchText: "",
+  agentActions: [],
+  commandPreferences: [],
+  intentStatus: "idle",
+};
+
+function isCommandPaletteSessionReset(state: CommandPaletteSessionState) {
+  return (
+    state.search === "" &&
+    state.agentIntent === null &&
+    state.agentCourseSearchText === "" &&
+    state.agentActions.length === 0 &&
+    state.commandPreferences.length === 0 &&
+    state.intentStatus === "idle"
+  );
+}
+
+function resetCommandPaletteSession(state: CommandPaletteSessionState) {
+  return isCommandPaletteSessionReset(state)
+    ? state
+    : INITIAL_COMMAND_PALETTE_SESSION_STATE;
+}
+
+function clearCommandAgentSession(
+  state: CommandPaletteSessionState,
+  search: string,
+) {
+  return {
+    ...state,
+    search,
+    agentIntent: null,
+    agentCourseSearchText: "",
+    agentActions: [],
+    commandPreferences: [],
+    intentStatus: "idle" as const,
+  };
+}
+
+function recordCommandPreference(
+  preferences: CommandCoursePreference[],
+  action: Extract<CommandPaletteSessionAction, { type: "recordPreference" }>,
+) {
+  const code = action.courseCode.toUpperCase();
+  const existing = preferences.find(
+    (preference) => preference.courseCode.toUpperCase() === code,
+  );
+
+  if (existing) {
+    return preferences.map((preference) =>
+      preference.courseCode.toUpperCase() === code
+        ? {
+            ...preference,
+            weight: preference.weight + 1,
+            updatedAt: action.updatedAt,
+          }
+        : preference,
+    );
+  }
+
+  return [
+    {
+      courseCode: code,
+      courseTitle: action.courseTitle,
+      resource: action.resource,
+      weight: 1,
+      updatedAt: action.updatedAt,
+    },
+    ...preferences,
+  ];
+}
+
+function commandCatalogReducer(
+  state: CommandCatalogState,
+  action: CommandCatalogAction,
+): CommandCatalogState {
+  switch (action.type) {
+    case "load":
+      return state.status === "loading" ? state : { ...state, status: "loading" };
+    case "loaded":
+      return {
+        status: "ready",
+        courses: action.courses,
+        recentPapers: action.recentPapers,
+      };
+    case "failed":
+      return { ...state, status: "error" };
+    default:
+      return state;
+  }
+}
+
+function commandPaletteSessionReducer(
+  state: CommandPaletteSessionState,
+  action: CommandPaletteSessionAction,
+): CommandPaletteSessionState {
+  switch (action.type) {
+    case "setSearch":
+      return action.search.trim()
+        ? { ...state, search: action.search }
+        : clearCommandAgentSession(state, action.search);
+    case "reset":
+      return resetCommandPaletteSession(state);
+    case "intentLoading":
+      return state.intentStatus === "loading"
+        ? state
+        : { ...state, intentStatus: "loading" };
+    case "intentResolved":
+      return {
+        ...state,
+        agentIntent: action.payload.intent,
+        agentCourseSearchText: action.payload.courseQuery?.trim() ?? "",
+        agentActions: action.payload.actions ?? [],
+        commandPreferences: action.payload.preferences ?? [],
+        intentStatus: "settled",
+      };
+    case "intentFailed":
+      return {
+        ...state,
+        agentIntent: null,
+        agentCourseSearchText: "",
+        agentActions: [],
+        commandPreferences: [],
+        intentStatus: "settled",
+      };
+    case "recordPreference":
+      return {
+        ...state,
+        commandPreferences: recordCommandPreference(
+          state.commandPreferences,
+          action,
+        ),
+      };
+    default:
+      return state;
+  }
+}
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -803,20 +993,26 @@ function CommandSuspenseFallback({
 
 export default function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [isSupportedViewport, setIsSupportedViewport] = useState(false);
+  const closeUnsupportedPalette = useEffectEvent(() => {
+    onOpenChange(false);
+  });
+  const togglePaletteFromShortcut = useEffectEvent(() => {
+    onOpenChange(!open);
+  });
 
   useEffect(() => {
     const media = window.matchMedia(COMMAND_PALETTE_MEDIA_QUERY);
     const updateSupport = () => {
       setIsSupportedViewport(media.matches);
       if (!media.matches) {
-        onOpenChange(false);
+        closeUnsupportedPalette();
       }
     };
 
     updateSupport();
     media.addEventListener("change", updateSupport);
     return () => media.removeEventListener("change", updateSupport);
-  }, [onOpenChange]);
+  }, [isSupportedViewport]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -825,12 +1021,12 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
         return;
       }
       event.preventDefault();
-      onOpenChange(!open);
+      togglePaletteFromShortcut();
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isSupportedViewport, onOpenChange, open]);
+  }, []);
 
   if (!isSupportedViewport) {
     return null;
@@ -859,50 +1055,53 @@ function CommandPaletteSession({
     name: COMMAND_AGENT_INSTANCE,
     enabled: isCommandAgentConfigured,
   });
-  const [search, setSearch] = useState("");
-  const [courses, setCourses] = useState<CommandCourse[]>([]);
-  const [recentPapers, setRecentPapers] = useState<CommandPaper[]>([]);
+  const [sessionState, dispatchSession] = useReducer(
+    commandPaletteSessionReducer,
+    INITIAL_COMMAND_PALETTE_SESSION_STATE,
+  );
+  const [catalogState, dispatchCatalog] = useReducer(
+    commandCatalogReducer,
+    INITIAL_COMMAND_CATALOG_STATE,
+  );
   const [visitRecords, setVisitRecords] = useState<Record<string, CourseVisitRecord>>({});
-  const [agentIntent, setAgentIntent] = useState<CommandIntent | null>(null);
-  const [agentCourseSearchText, setAgentCourseSearchText] = useState("");
-  const [agentActions, setAgentActions] = useState<CommandGeneratedAction[]>([]);
-  const [commandPreferences, setCommandPreferences] = useState<
-    CommandCoursePreference[]
-  >([]);
   const [commandUserContext, setCommandUserContext] =
     useState<CommandUserContextResponse | null>(null);
-  const [intentStatus, setIntentStatus] = useState<"idle" | "loading" | "settled">(
-    "idle",
-  );
-  const [courseStatus, setCourseStatus] = useState<
-    "idle" | "loading" | "ready" | "error"
-  >("idle");
+  const {
+    search,
+    agentIntent,
+    agentCourseSearchText,
+    agentActions,
+    commandPreferences,
+    intentStatus,
+  } = sessionState;
+  const {
+    courses,
+    recentPapers,
+    status: courseStatus,
+  } = catalogState;
 
   useEffect(() => {
     if (open) return;
 
-    setSearch("");
-    setAgentIntent(null);
-    setAgentCourseSearchText("");
-    setAgentActions([]);
-    setCommandPreferences([]);
-    setIntentStatus("idle");
+    dispatchSession({ type: "reset" });
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     if (courseStatus !== "idle") return;
 
-    setCourseStatus("loading");
+    dispatchCatalog({ type: "load" });
 
     void getCommandCatalogAction()
       .then((payload) => {
-        setCourses(payload.courses as CourseResponse["courses"]);
-        setRecentPapers(payload.recentPapers as CourseResponse["recentPapers"]);
-        setCourseStatus("ready");
+        dispatchCatalog({
+          type: "loaded",
+          courses: payload.courses as CourseResponse["courses"],
+          recentPapers: payload.recentPapers as CourseResponse["recentPapers"],
+        });
       })
       .catch(() => {
-        setCourseStatus("error");
+        dispatchCatalog({ type: "failed" });
       });
   }, [courseStatus, open]);
 
@@ -960,17 +1159,10 @@ function CommandPaletteSession({
   const commandUserToken = commandUserContext?.userToken ?? "";
 
   useEffect(() => {
-    if (!hasSearch) {
-      setAgentIntent(null);
-      setAgentCourseSearchText("");
-      setAgentActions([]);
-      setCommandPreferences([]);
-      setIntentStatus("idle");
-      return;
-    }
+    if (!hasSearch) return;
 
     let cancelled = false;
-    setIntentStatus("loading");
+    dispatchSession({ type: "intentLoading" });
     const timeout = window.setTimeout(() => {
       const input: CommandAgentIntentInput = {
         query: trimmedSearch,
@@ -1003,19 +1195,11 @@ function CommandPaletteSession({
       void intentRequest
         .then((payload) => {
           if (cancelled) return;
-          setAgentIntent(payload.intent);
-          setAgentCourseSearchText(payload.courseQuery?.trim() ?? "");
-          setAgentActions(payload.actions ?? []);
-          setCommandPreferences(payload.preferences ?? []);
-          setIntentStatus("settled");
+          dispatchSession({ type: "intentResolved", payload });
         })
         .catch(() => {
           if (cancelled) return;
-          setAgentIntent(null);
-          setAgentCourseSearchText("");
-          setAgentActions([]);
-          setCommandPreferences([]);
-          setIntentStatus("settled");
+          dispatchSession({ type: "intentFailed" });
         });
     }, 140);
 
@@ -1202,37 +1386,12 @@ function CommandPaletteSession({
     const preferenceQuery = courseSearchText || trimmedSearch;
     if (!preferenceQuery) return;
 
-    setCommandPreferences((current) => {
-      const code = action.courseCode?.toUpperCase();
-      if (!code) return current;
-
-      const now = Date.now();
-      const existing = current.find(
-        (preference) => preference.courseCode.toUpperCase() === code,
-      );
-
-      if (existing) {
-        return current.map((preference) =>
-          preference.courseCode.toUpperCase() === code
-            ? {
-                ...preference,
-                weight: preference.weight + 1,
-                updatedAt: now,
-              }
-            : preference,
-        );
-      }
-
-      return [
-        {
-          courseCode: code,
-          courseTitle: action.courseTitle ?? null,
-          resource: action.resource ?? null,
-          weight: 1,
-          updatedAt: now,
-        },
-        ...current,
-      ];
+    dispatchSession({
+      type: "recordPreference",
+      courseCode: action.courseCode,
+      courseTitle: action.courseTitle,
+      resource: action.resource ?? null,
+      updatedAt: Date.now(),
     });
 
     const input: CommandAgentPreferenceInput = {
@@ -1265,11 +1424,7 @@ function CommandPaletteSession({
 
   const resetPaletteSession = () => {
     onOpenChange(false);
-    setSearch("");
-    setAgentIntent(null);
-    setAgentCourseSearchText("");
-    setAgentActions([]);
-    setCommandPreferences([]);
+    dispatchSession({ type: "reset" });
   };
 
   const pushRoute = (href: string) => {
@@ -1350,8 +1505,9 @@ function CommandPaletteSession({
             <div className="flex h-14 items-center gap-3 border-b border-[#CFDDE2] bg-white/78 px-4 dark:border-white/12 dark:bg-white/[0.04]">
               <Command.Input
                 value={search}
-                onValueChange={setSearch}
-                autoFocus={open}
+                onValueChange={(value) =>
+                  dispatchSession({ type: "setSearch", search: value })
+                }
                 placeholder="Search"
                 className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-black outline-none placeholder:text-black/50 dark:text-[#F3F7FA] dark:placeholder:text-white/55"
               />

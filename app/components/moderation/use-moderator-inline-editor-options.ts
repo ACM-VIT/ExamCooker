@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import { getModeratorInlineEditorOptions } from "@/app/actions/get-moderator-inline-editor-options";
 import type { CourseOption } from "@/app/components/mod/course-picker";
 
@@ -11,6 +11,45 @@ type ModeratorInlineEditorOptions = {
 
 let cachedOptions: ModeratorInlineEditorOptions | null | undefined;
 let optionsPromise: Promise<ModeratorInlineEditorOptions> | null = null;
+
+type ModeratorInlineEditorOptionsState = {
+  options: ModeratorInlineEditorOptions | null;
+  error: string | null;
+  isLoading: boolean;
+};
+
+type ModeratorInlineEditorOptionsAction =
+  | { type: "loading" }
+  | { type: "loaded"; options: ModeratorInlineEditorOptions }
+  | { type: "failed"; message: string };
+
+function getInitialOptionsState(enabled: boolean): ModeratorInlineEditorOptionsState {
+  return {
+    options: cachedOptions ?? null,
+    error: null,
+    isLoading: enabled && !cachedOptions,
+  };
+}
+
+function moderatorInlineEditorOptionsReducer(
+  state: ModeratorInlineEditorOptionsState,
+  action: ModeratorInlineEditorOptionsAction,
+): ModeratorInlineEditorOptionsState {
+  switch (action.type) {
+    case "loading":
+      return { ...state, isLoading: true };
+    case "loaded":
+      return {
+        options: action.options,
+        error: null,
+        isLoading: false,
+      };
+    case "failed":
+      return { ...state, error: action.message, isLoading: false };
+    default:
+      return state;
+  }
+}
 
 function loadOptions() {
   if (cachedOptions) {
@@ -32,11 +71,19 @@ function loadOptions() {
 }
 
 export function useModeratorInlineEditorOptions(enabled: boolean) {
-  const [options, setOptions] = useState<ModeratorInlineEditorOptions | null>(
-    cachedOptions ?? null,
+  const [{ error, isLoading, options }, dispatch] = useReducer(
+    moderatorInlineEditorOptionsReducer,
+    enabled,
+    getInitialOptionsState,
   );
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(enabled && !cachedOptions);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
+  const replaceOptions = useCallback((nextOptions: ModeratorInlineEditorOptions) => {
+    optionsRef.current = nextOptions;
+    cachedOptions = nextOptions;
+    dispatch({ type: "loaded", options: nextOptions });
+  }, []);
 
   useEffect(() => {
     if (!enabled) {
@@ -44,13 +91,12 @@ export function useModeratorInlineEditorOptions(enabled: boolean) {
     }
 
     if (cachedOptions) {
-      setOptions(cachedOptions);
-      setIsLoading(false);
+      replaceOptions(cachedOptions);
       return;
     }
 
     let cancelled = false;
-    setIsLoading(true);
+    dispatch({ type: "loading" });
 
     void loadOptions()
       .then((nextOptions) => {
@@ -58,30 +104,26 @@ export function useModeratorInlineEditorOptions(enabled: boolean) {
           return;
         }
 
-        setOptions(nextOptions);
-        setError(null);
+        replaceOptions(nextOptions);
       })
       .catch((loadError) => {
         if (cancelled) {
           return;
         }
 
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Failed to load moderator editor options.",
-        );
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+        dispatch({
+          type: "failed",
+          message:
+            loadError instanceof Error
+              ? loadError.message
+              : "Failed to load moderator editor options.",
+        });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, replaceOptions]);
 
   return {
     courses: options?.courses ?? [],
@@ -93,35 +135,29 @@ export function useModeratorInlineEditorOptions(enabled: boolean) {
         | CourseOption[]
         | ((currentCourses: CourseOption[]) => CourseOption[]),
     ) => {
-      setOptions((currentOptions) => {
-        const currentCourses = currentOptions?.courses ?? [];
-        const courses =
-          typeof nextCourses === "function"
-            ? nextCourses(currentCourses)
-            : nextCourses;
+      const currentOptions = optionsRef.current;
+      const currentCourses = currentOptions?.courses ?? [];
+      const courses =
+        typeof nextCourses === "function"
+          ? nextCourses(currentCourses)
+          : nextCourses;
 
-        const nextOptions = {
-          courses,
-          tags: currentOptions?.tags ?? [],
-        };
-        cachedOptions = nextOptions;
-        return nextOptions;
+      replaceOptions({
+        courses,
+        tags: currentOptions?.tags ?? [],
       });
     },
     setTags: (
       nextTags: string[] | ((currentTags: string[]) => string[]),
     ) => {
-      setOptions((currentOptions) => {
-        const currentTags = currentOptions?.tags ?? [];
-        const tags =
-          typeof nextTags === "function" ? nextTags(currentTags) : nextTags;
+      const currentOptions = optionsRef.current;
+      const currentTags = currentOptions?.tags ?? [];
+      const tags =
+        typeof nextTags === "function" ? nextTags(currentTags) : nextTags;
 
-        const nextOptions = {
-          courses: currentOptions?.courses ?? [],
-          tags,
-        };
-        cachedOptions = nextOptions;
-        return nextOptions;
+      replaceOptions({
+        courses: currentOptions?.courses ?? [],
+        tags,
       });
     },
   };

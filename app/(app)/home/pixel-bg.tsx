@@ -30,6 +30,24 @@ interface ReinitConfig {
   noiseAmount: number;
 }
 
+function bindPixelPointerEvents(
+  element: HTMLElement,
+  onPointerDown: (event: PointerEvent) => void,
+  onPointerMove: (event: PointerEvent) => void,
+) {
+  element.addEventListener('pointerdown', onPointerDown, {
+    passive: true
+  });
+  element.addEventListener('pointermove', onPointerMove, {
+    passive: true
+  });
+
+  return () => {
+    element.removeEventListener('pointerdown', onPointerDown);
+    element.removeEventListener('pointermove', onPointerMove);
+  };
+}
+
 type PixelBlastProps = {
   variant?: PixelBlastVariant;
   pixelSize?: number;
@@ -406,6 +424,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     };
     resizeObserver?: ResizeObserver;
     raf?: number;
+    cleanupPointerEvents?: () => void;
     quad?: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
     timeOffset?: number;
     composer?: EffectComposer;
@@ -464,6 +483,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     if (mustReinit) {
       if (threeRef.current) {
         const t = threeRef.current;
+        t.cleanupPointerEvents?.();
         t.resizeObserver?.disconnect();
         cancelAnimationFrame(t.raf!);
         t.quad?.geometry.dispose();
@@ -610,12 +630,11 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
         const { fx, fy, w, h } = mapToPixels(e);
         touch.addTouch({ x: fx / w, y: fy / h });
       };
-      renderer.domElement.addEventListener('pointerdown', onPointerDown, {
-        passive: true
-      });
-      renderer.domElement.addEventListener('pointermove', onPointerMove, {
-        passive: true
-      });
+      const cleanupPointerEvents = bindPixelPointerEvents(
+        renderer.domElement,
+        onPointerDown,
+        onPointerMove,
+      );
       let raf = 0;
       const animate = () => {
         if (autoPauseOffscreen && !visibilityRef.current.visible) {
@@ -654,6 +673,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
         uniforms,
         resizeObserver: ro,
         raf,
+        cleanupPointerEvents,
         quad,
         timeOffset,
         composer,
@@ -688,6 +708,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     return () => {
       if (!threeRef.current) return;
       const t = threeRef.current;
+      t.cleanupPointerEvents?.();
       t.resizeObserver?.disconnect();
       cancelAnimationFrame(t.raf!);
       t.quad?.geometry.dispose();

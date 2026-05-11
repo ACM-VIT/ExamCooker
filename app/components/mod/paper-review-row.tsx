@@ -169,7 +169,12 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                     <CoursePicker
                         courses={courses}
                         value={draft.courseId}
-                        onChange={(id) => setDraft({ ...draft, courseId: id })}
+                        onChange={(id) =>
+                            setDraft((currentDraft) => ({
+                                ...currentDraft,
+                                courseId: id,
+                            }))
+                        }
                         allowCreateCourse
                         onCourseCreated={onCourseCreated}
                     />
@@ -179,10 +184,10 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                     <select
                         value={draft.examType ?? ""}
                         onChange={(e) =>
-                            setDraft({
-                                ...draft,
+                            setDraft((currentDraft) => ({
+                                ...currentDraft,
                                 examType: (e.target.value || null) as ExamType | null,
-                            })
+                            }))
                         }
                         className="w-full border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3 py-2 text-sm text-black dark:text-[#D5D5D5] focus:outline-none focus:ring-2 focus:ring-[#5FC4E7]"
                     >
@@ -203,10 +208,10 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                         value={draft.year ?? ""}
                         onChange={(e) => {
                             const v = e.target.value;
-                            setDraft({
-                                ...draft,
+                            setDraft((currentDraft) => ({
+                                ...currentDraft,
                                 year: v === "" ? null : Number(v),
-                            });
+                            }));
                         }}
                         className="w-full border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3 py-2 text-sm text-black dark:text-[#D5D5D5] focus:outline-none focus:ring-2 focus:ring-[#5FC4E7]"
                         placeholder="e.g. 2024"
@@ -220,10 +225,10 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                         onChange={(e) => {
                             const raw = e.target.value.toUpperCase();
                             const v = /^[A-G][12]$/.test(raw) ? raw : raw === "" ? "" : raw.slice(0, 2);
-                            setDraft({
-                                ...draft,
+                            setDraft((currentDraft) => ({
+                                ...currentDraft,
                                 slot: v === "" ? null : v,
-                            });
+                            }));
                         }}
                         maxLength={2}
                         className="w-full border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3 py-2 font-mono text-sm text-black dark:text-[#D5D5D5] focus:outline-none focus:ring-2 focus:ring-[#5FC4E7]"
@@ -235,7 +240,10 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                     <select
                         value={draft.semester}
                         onChange={(e) =>
-                            setDraft({ ...draft, semester: e.target.value as Semester })
+                            setDraft((currentDraft) => ({
+                                ...currentDraft,
+                                semester: e.target.value as Semester,
+                            }))
                         }
                         className="w-full border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3 py-2 text-sm text-black dark:text-[#D5D5D5] focus:outline-none focus:ring-2 focus:ring-[#5FC4E7]"
                     >
@@ -251,7 +259,10 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                     <select
                         value={draft.campus}
                         onChange={(e) =>
-                            setDraft({ ...draft, campus: e.target.value as Campus })
+                            setDraft((currentDraft) => ({
+                                ...currentDraft,
+                                campus: e.target.value as Campus,
+                            }))
                         }
                         className="w-full border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3 py-2 text-sm text-black dark:text-[#D5D5D5] focus:outline-none focus:ring-2 focus:ring-[#5FC4E7]"
                     >
@@ -268,13 +279,16 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                         <input
                             type="checkbox"
                             checked={draft.hasAnswerKey}
-                            onChange={(e) =>
-                                setDraft({
-                                    ...draft,
-                                    hasAnswerKey: e.target.checked,
-                                    questionPaper: e.target.checked ? draft.questionPaper : null,
-                                })
-                            }
+                            onChange={(e) => {
+                                const hasAnswerKey = e.target.checked;
+                                setDraft((currentDraft) => ({
+                                    ...currentDraft,
+                                    hasAnswerKey,
+                                    questionPaper: hasAnswerKey
+                                        ? currentDraft.questionPaper
+                                        : null,
+                                }));
+                            }}
                             className="h-4 w-4 accent-[#5FC4E7]"
                         />
                         <span className="text-sm text-black dark:text-[#D5D5D5]">
@@ -295,7 +309,10 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                                 excludePaperId={draft.id}
                                 courseId={draft.courseId}
                                 onChange={(questionPaper) =>
-                                    setDraft({ ...draft, questionPaper })
+                                    setDraft((currentDraft) => ({
+                                        ...currentDraft,
+                                        questionPaper,
+                                    }))
                                 }
                             />
                         </FieldLabel>

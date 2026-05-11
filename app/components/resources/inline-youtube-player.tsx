@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import ReactPlayer from "react-player";
 import { Pause, Play, Volume1, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,78 @@ type ProgressState = {
     loaded: number;
     loadedSeconds: number;
 };
+
+type PlayerState = {
+    currentTime: number;
+    duration: number;
+    isMuted: boolean;
+    isPlaying: boolean;
+    playbackSpeed: number;
+    progress: number;
+    showControls: boolean;
+    useNativeControls: boolean;
+    volume: number;
+};
+
+type PlayerAction =
+    | { type: "playing"; playing: boolean }
+    | { type: "volume"; volume: number }
+    | { type: "mute"; muted: boolean }
+    | { type: "progress"; currentTime: number; progress: number }
+    | { type: "seek"; currentTime: number; progress: number }
+    | { type: "duration"; duration: number }
+    | { type: "speed"; speed: number }
+    | { type: "controls"; show: boolean }
+    | { type: "native-controls"; enabled: boolean };
+
+function createInitialPlayerState(autoplay: boolean): PlayerState {
+    return {
+        currentTime: 0,
+        duration: 0,
+        isMuted: false,
+        isPlaying: autoplay,
+        playbackSpeed: 1,
+        progress: 0,
+        showControls: false,
+        useNativeControls: false,
+        volume: 1,
+    };
+}
+
+function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
+    switch (action.type) {
+        case "playing":
+            return { ...state, isPlaying: action.playing };
+        case "volume":
+            return {
+                ...state,
+                isMuted: action.volume === 0,
+                volume: action.volume,
+            };
+        case "mute":
+            return { ...state, isMuted: action.muted };
+        case "progress":
+            return {
+                ...state,
+                currentTime: action.currentTime,
+                progress: action.progress,
+            };
+        case "seek":
+            return {
+                ...state,
+                currentTime: action.currentTime,
+                progress: action.progress,
+            };
+        case "duration":
+            return { ...state, duration: action.duration };
+        case "speed":
+            return { ...state, playbackSpeed: action.speed };
+        case "controls":
+            return { ...state, showControls: action.show };
+        case "native-controls":
+            return { ...state, useNativeControls: action.enabled };
+    }
+}
 
 function formatTime(seconds: number) {
     if (!Number.isFinite(seconds) || seconds < 0) {
@@ -100,30 +172,27 @@ function Slider({
     );
 }
 
-export default function InlineYouTubePlayer({
+function InlineYouTubePlayerInner({
     videoId,
     title,
     autoplay = false,
 }: InlineYouTubePlayerProps) {
     const playerRef = useRef<ReactPlayer | null>(null);
     const lastVolumeRef = useRef(1);
-    const [isPlaying, setIsPlaying] = useState(autoplay);
-    const [volume, setVolume] = useState(1);
-    const [progress, setProgress] = useState(0);
-    const [isMuted, setIsMuted] = useState(false);
-    const [playbackSpeed, setPlaybackSpeed] = useState(1);
-    const [showControls, setShowControls] = useState(false);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const [useNativeControls, setUseNativeControls] = useState(false);
-
-    useEffect(() => {
-        setIsPlaying(autoplay);
-        setProgress(0);
-        setCurrentTime(0);
-        setDuration(0);
-        setPlaybackSpeed(1);
-    }, [videoId, autoplay]);
+    const [
+        {
+            currentTime,
+            duration,
+            isMuted,
+            isPlaying,
+            playbackSpeed,
+            progress,
+            showControls,
+            useNativeControls,
+            volume,
+        },
+        dispatch,
+    ] = useReducer(playerReducer, autoplay, createInitialPlayerState);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -135,7 +204,10 @@ export default function InlineYouTubePlayer({
 
         const syncNativeControls = () => {
             if (!cancelled) {
-                setUseNativeControls(mediaQuery.matches);
+                dispatch({
+                    type: "native-controls",
+                    enabled: mediaQuery.matches,
+                });
             }
         };
 
@@ -145,7 +217,7 @@ export default function InlineYouTubePlayer({
         void import("@capacitor/core")
             .then(({ Capacitor }) => {
                 if (!cancelled && Capacitor.isNativePlatform()) {
-                    setUseNativeControls(true);
+                    dispatch({ type: "native-controls", enabled: true });
                 }
             })
             .catch(() => {
@@ -161,13 +233,12 @@ export default function InlineYouTubePlayer({
     const url = `https://www.youtube.com/watch?v=${videoId}`;
 
     const togglePlay = () => {
-        setIsPlaying((current) => !current);
+        dispatch({ type: "playing", playing: !isPlaying });
     };
 
     const handleVolumeChange = (nextValue: number) => {
         const nextVolume = clampPercentage(nextValue) / 100;
-        setVolume(nextVolume);
-        setIsMuted(nextVolume === 0);
+        dispatch({ type: "volume", volume: nextVolume });
 
         if (nextVolume > 0) {
             lastVolumeRef.current = nextVolume;
@@ -175,8 +246,11 @@ export default function InlineYouTubePlayer({
     };
 
     const handleProgress = (state: ProgressState) => {
-        setCurrentTime(state.playedSeconds);
-        setProgress(state.played * 100);
+        dispatch({
+            type: "progress",
+            currentTime: state.playedSeconds,
+            progress: state.played * 100,
+        });
     };
 
     const handleSeek = (nextValue: number) => {
@@ -187,36 +261,38 @@ export default function InlineYouTubePlayer({
 
         const playedFraction = clampPercentage(nextValue) / 100;
         player.seekTo(playedFraction, "fraction");
-        setProgress(playedFraction * 100);
-        setCurrentTime(playedFraction * duration);
+        dispatch({
+            type: "seek",
+            currentTime: playedFraction * duration,
+            progress: playedFraction * 100,
+        });
     };
 
     const toggleMute = () => {
         if (isMuted || volume === 0) {
             const restoredVolume = lastVolumeRef.current > 0 ? lastVolumeRef.current : 1;
-            setVolume(restoredVolume);
-            setIsMuted(false);
+            dispatch({ type: "volume", volume: restoredVolume });
             return;
         }
 
         if (volume > 0) {
             lastVolumeRef.current = volume;
         }
-        setIsMuted(true);
+        dispatch({ type: "mute", muted: true });
     };
 
     const handleSetPlaybackSpeed = (speed: number) => {
-        setPlaybackSpeed(speed);
+        dispatch({ type: "speed", speed });
     };
 
     return (
         <div
             className="relative aspect-video w-full overflow-hidden border-2 border-[#5FC4E7] bg-black dark:border-[#ffffff]/20"
             onMouseEnter={() => {
-                if (!useNativeControls) setShowControls(true);
+                if (!useNativeControls) dispatch({ type: "controls", show: true });
             }}
             onMouseLeave={() => {
-                if (!useNativeControls) setShowControls(false);
+                if (!useNativeControls) dispatch({ type: "controls", show: false });
             }}
         >
             <div className="absolute inset-0">
@@ -232,11 +308,13 @@ export default function InlineYouTubePlayer({
                     muted={isMuted}
                     playbackRate={playbackSpeed}
                     playsinline
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onEnded={() => setIsPlaying(false)}
+                    onPlay={() => dispatch({ type: "playing", playing: true })}
+                    onPause={() => dispatch({ type: "playing", playing: false })}
+                    onEnded={() => dispatch({ type: "playing", playing: false })}
                     onProgress={handleProgress}
-                    onDuration={setDuration}
+                    onDuration={(nextDuration) =>
+                        dispatch({ type: "duration", duration: nextDuration })
+                    }
                     config={{
                         youtube: {
                             playerVars: {
@@ -348,5 +426,14 @@ export default function InlineYouTubePlayer({
                 </div>
             )}
         </div>
+    );
+}
+
+export default function InlineYouTubePlayer(props: InlineYouTubePlayerProps) {
+    return (
+        <InlineYouTubePlayerInner
+            key={`${props.videoId}:${props.autoplay ? "autoplay" : "manual"}`}
+            {...props}
+        />
     );
 }

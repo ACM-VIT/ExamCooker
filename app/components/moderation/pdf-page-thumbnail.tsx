@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { useEffect, useReducer, useRef } from "react";
 import { useDocumentState } from "@embedpdf/core/react";
 import { Rotation } from "@embedpdf/models";
 import { useRenderCapability } from "@embedpdf/plugin-render/react";
@@ -29,6 +30,27 @@ type PdfPageThumbnailProps = {
   rotation: PdfPageRotation;
 };
 
+type PreviewState =
+  | { status: "loading"; imageUrl: null }
+  | { status: "ready"; imageUrl: string }
+  | { status: "error"; imageUrl: null };
+
+type PreviewAction =
+  | { type: "loading" }
+  | { type: "ready"; imageUrl: string }
+  | { type: "error" };
+
+function previewReducer(state: PreviewState, action: PreviewAction): PreviewState {
+  switch (action.type) {
+    case "loading":
+      return state.status === "loading" ? state : { status: "loading", imageUrl: null };
+    case "ready":
+      return { status: "ready", imageUrl: action.imageUrl };
+    case "error":
+      return { status: "error", imageUrl: null };
+  }
+}
+
 /**
  * Compact PDF page preview rendered through the same EmbedPDF render
  * pipeline used by the main viewer. Renders the page pre-rotated so the
@@ -41,8 +63,10 @@ export default function PdfPageThumbnail({
 }: PdfPageThumbnailProps) {
   const { provides: renderProvides } = useRenderCapability();
   const documentState = useDocumentState(documentId);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [hasError, setHasError] = useState(false);
+  const [previewState, dispatchPreview] = useReducer(previewReducer, {
+    status: "loading",
+    imageUrl: null,
+  });
   const imageUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -51,7 +75,7 @@ export default function PdfPageThumbnail({
     }
 
     let cancelled = false;
-    setHasError(false);
+    dispatchPreview({ type: "loading" });
 
     const task = renderProvides.forDocument(documentId).renderPage({
       pageIndex,
@@ -71,11 +95,11 @@ export default function PdfPageThumbnail({
           URL.revokeObjectURL(imageUrlRef.current);
         }
         imageUrlRef.current = nextImageUrl;
-        setImageUrl(nextImageUrl);
+        dispatchPreview({ type: "ready", imageUrl: nextImageUrl });
       })
       .catch(() => {
         if (cancelled) return;
-        setHasError(true);
+        dispatchPreview({ type: "error" });
       });
 
     return () => {
@@ -93,7 +117,7 @@ export default function PdfPageThumbnail({
     [],
   );
 
-  if (hasError) {
+  if (previewState.status === "error") {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-black/45 dark:text-[#D5D5D5]/35">
         <span>Page {pageIndex + 1}</span>
@@ -102,18 +126,23 @@ export default function PdfPageThumbnail({
     );
   }
 
-  if (!imageUrl) {
+  if (previewState.status !== "ready") {
     return (
       <div className="h-full w-full animate-pulse bg-black/5 dark:bg-white/5" />
     );
   }
 
   return (
-    <img
+    <div className="relative h-full w-full">
+    <Image
       alt={`Source page ${pageIndex + 1} preview`}
-      src={imageUrl}
-      className="h-full w-full select-none object-contain"
+      src={previewState.imageUrl}
+      fill
+      unoptimized
+      sizes="12rem"
+      className="select-none object-contain"
       draggable={false}
     />
+    </div>
   );
 }

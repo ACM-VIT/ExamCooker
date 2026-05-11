@@ -22,9 +22,10 @@ const QuizCard: React.FC<QuizCardProps> = ({
   onClick,
 }) => {
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      className="hover:shadow-xl px-5 py-6 w-full bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7]
+      className="hover:shadow-xl px-5 py-6 w-full bg-[#5FC4E7] dark:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] text-left
             dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-[#5FC4E7] hover:border-b-[#ffffff] hover:border-b-2
             dark:hover:border-b-[#3BF4C7]  dark:hover:bg-[#ffffff]/10 transition duration-200 transform hover:scale-105 max-w-96 cursor-pointer"
     >
@@ -32,7 +33,7 @@ const QuizCard: React.FC<QuizCardProps> = ({
         {courseName}
       </h3>
       <p className="text-gray-600 dark:text-gray-300">{courseCode}</p>
-    </div>
+    </button>
   );
 };
 
@@ -47,7 +48,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
 
   return (
     <div className="fixed inset-0 z-50">
-      <div
+      <button
+        type="button"
+        aria-label="Close quiz dialog"
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />

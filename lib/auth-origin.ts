@@ -207,16 +207,3 @@ export function buildNormalizedAuthHeaders(request: RequestLike, publicOrigin: A
 
     return headers;
 }
-
-export function getAuthOriginCookieConfig(publicOrigin: AllowedOrigin) {
-    return {
-        name: AUTH_ORIGIN_COOKIE_NAME,
-        value: publicOrigin.origin,
-        options: {
-            path: "/",
-            httpOnly: true,
-            sameSite: "lax" as const,
-            secure: publicOrigin.protocol === "https",
-        },
-    };
-}

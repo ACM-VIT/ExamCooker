@@ -335,7 +335,6 @@ export async function getPopularCourseGrid(limit = 6): Promise<CourseGridItem[]>
 
 export async function searchCourseGrid(query: string): Promise<CourseGridItem[]> {
     const records = await getCourseSearchRecords();
-    const fuse = await getCourseSearchIndex();
     const grid = records.map(({ aliases: _aliases, ...courseRow }) => ({
         ...courseRow,
         viewCount: 0,
@@ -368,6 +367,7 @@ export async function searchCourseGrid(query: string): Promise<CourseGridItem[]>
         }));
     }
 
+    const fuse = await getCourseSearchIndex();
     return fuse.search(trimmed).map(({ item }) => {
         const { aliases: _aliases, ...rest } = item;
         return {

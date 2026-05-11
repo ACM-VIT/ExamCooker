@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 
 export const PDFIUM_WASM_URL = "/vendor/embedpdf/pdfium.wasm";
 
@@ -48,34 +48,62 @@ export function preloadPdfiumEngine() {
   return enginePromise;
 }
 
+type PdfiumEngineAction =
+  | { type: "loading" }
+  | { type: "loaded"; engine: PdfiumEngine }
+  | { type: "error"; error: unknown };
+
+function getInitialPdfiumEngineState(): PdfiumEngineState {
+  if (cachedEngine) {
+    return { status: "loaded", engine: cachedEngine, error: null };
+  }
+
+  if (cachedError) {
+    return { status: "error", engine: null, error: cachedError };
+  }
+
+  return { status: "loading", engine: null, error: null };
+}
+
+function pdfiumEngineReducer(
+  state: PdfiumEngineState,
+  action: PdfiumEngineAction,
+): PdfiumEngineState {
+  switch (action.type) {
+    case "loading":
+      if (state.status === "loading") return state;
+      return { status: "loading", engine: null, error: null };
+    case "loaded":
+      return { status: "loaded", engine: action.engine, error: null };
+    case "error":
+      return { status: "error", engine: null, error: action.error };
+    default:
+      return state;
+  }
+}
+
 export function usePreloadedPdfiumEngine(retryKey = 0): PdfiumEngineState {
-  const [state, setState] = useState<PdfiumEngineState>(() => {
-    if (cachedEngine) {
-      return { status: "loaded", engine: cachedEngine, error: null };
-    }
-
-    if (cachedError) {
-      return { status: "error", engine: null, error: cachedError };
-    }
-
-    return { status: "loading", engine: null, error: null };
-  });
+  const [state, dispatch] = useReducer(
+    pdfiumEngineReducer,
+    undefined,
+    getInitialPdfiumEngineState,
+  );
 
   useEffect(() => {
     let isActive = true;
 
     if (!cachedEngine) {
-      setState({ status: "loading", engine: null, error: null });
+      dispatch({ type: "loading" });
     }
 
     preloadPdfiumEngine()
       .then((engine) => {
         if (!isActive) return;
-        setState({ status: "loaded", engine, error: null });
+        dispatch({ type: "loaded", engine });
       })
       .catch((error) => {
         if (!isActive) return;
-        setState({ status: "error", engine: null, error });
+        dispatch({ type: "error", error });
       });
 
     return () => {

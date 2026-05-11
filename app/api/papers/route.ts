@@ -140,12 +140,15 @@ export async function GET(req: NextRequest) {
             .where(inArray(pastPaperToTag.a, recordIds))
         : []
 
-    const tagsByPaperId = new Map<string, Array<{ name: string }>>()
-    for (const tagRow of tagRows) {
-      const existing = tagsByPaperId.get(tagRow.paperId) ?? []
-      existing.push({ name: tagRow.name })
-      tagsByPaperId.set(tagRow.paperId, existing)
-    }
+    const tagsByPaperId = tagRows.reduce<Record<string, Array<{ name: string }>>>(
+      (acc, tagRow) => {
+        const existing = acc[tagRow.paperId] ?? []
+        existing.push({ name: tagRow.name })
+        acc[tagRow.paperId] = existing
+        return acc
+      },
+      {},
+    )
 
     const records = recordRows.map<PastPaperWithTags>(record => ({
       id: record.id,
@@ -156,7 +159,7 @@ export async function GET(req: NextRequest) {
       year: record.year,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
-      tags: tagsByPaperId.get(record.id) ?? [],
+      tags: tagsByPaperId[record.id] ?? [],
       course:
         record.courseCode && record.courseTitle
           ? { code: record.courseCode, title: record.courseTitle }
