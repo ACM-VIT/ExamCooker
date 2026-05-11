@@ -874,7 +874,7 @@ function ActionRow({
       value={action.id}
       keywords={action.keywords}
       onSelect={() => onSelect(action)}
-      className="flex min-h-[3.1rem] cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-left outline-none transition-colors data-[selected=true]:bg-[#DDEFF4] dark:data-[selected=true]:bg-white/[0.09]"
+      className="ec-command-row flex min-h-[3.1rem] cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-left outline-none transition-colors data-[selected=true]:bg-[#DDEFF4] dark:data-[selected=true]:bg-white/[0.09]"
     >
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold text-black dark:text-[#F3F7FA]">
@@ -901,7 +901,7 @@ function UnavailableCourseRow({
   resource: CommandResourceIntent;
 }) {
   return (
-    <div className="mx-1 mb-1 rounded-md border border-black/10 bg-black/[0.03] px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.045]">
+    <div className="ec-command-row mx-1 mb-1 rounded-md border border-black/10 bg-black/[0.03] px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.045]">
       <div className="text-sm font-semibold text-black dark:text-[#F3F7FA]">
         No {getResourceLabel(resource)} for {course.title}
       </div>
@@ -940,7 +940,7 @@ function PaperRow({
         String(paper.year ?? ""),
       ]}
       onSelect={() => onSelect(paper.href)}
-      className="flex min-h-[3.1rem] cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-left outline-none transition-colors data-[selected=true]:bg-[#DDEFF4] dark:data-[selected=true]:bg-white/[0.09]"
+      className="ec-command-row flex min-h-[3.1rem] cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-left outline-none transition-colors data-[selected=true]:bg-[#DDEFF4] dark:data-[selected=true]:bg-white/[0.09]"
     >
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold text-black dark:text-[#F3F7FA]">
@@ -954,6 +954,29 @@ function PaperRow({
         Paper
       </span>
     </Command.Item>
+  );
+}
+
+function RecentSkeletonRow({ widthHint }: { widthHint: "lg" | "md" | "sm" }) {
+  const titleWidth =
+    widthHint === "lg" ? "w-7/12" : widthHint === "md" ? "w-6/12" : "w-5/12";
+  const metaWidth =
+    widthHint === "lg" ? "w-4/12" : widthHint === "md" ? "w-3/12" : "w-3/12";
+  return (
+    <div
+      aria-hidden="true"
+      className="ec-command-skeleton-row flex min-h-[3.1rem] items-center justify-between gap-3 rounded-md px-3 py-2"
+    >
+      <span className="min-w-0 flex-1">
+        <span
+          className={`block h-2.5 ${titleWidth} rounded-full bg-black/[0.10] dark:bg-white/[0.12]`}
+        />
+        <span
+          className={`mt-2 block h-2 ${metaWidth} rounded-full bg-black/[0.07] dark:bg-white/[0.08]`}
+        />
+      </span>
+      <span className="h-4 w-12 shrink-0 rounded border border-black/10 bg-black/[0.05] dark:border-white/10 dark:bg-white/[0.06]" />
+    </div>
   );
 }
 
@@ -1015,8 +1038,9 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
   }, [isSupportedViewport]);
 
   useEffect(() => {
+    if (!isSupportedViewport) return;
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isSupportedViewport) return;
       if (event.key.toLowerCase() !== "k" || (!event.metaKey && !event.ctrlKey)) {
         return;
       }
@@ -1026,7 +1050,7 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isSupportedViewport]);
 
   if (!isSupportedViewport) {
     return null;
@@ -1379,6 +1403,10 @@ function CommandPaletteSession({
     !hasVisibleResults &&
     !shouldShowResolvingFallback &&
     (courseStatus === "ready" || courseStatus === "error");
+  const showRecentSkeletons =
+    !hasSearch &&
+    recentCourseActions.length === 0 &&
+    (courseStatus === "idle" || courseStatus === "loading");
 
   const rememberCoursePreference = (action: CommandAction) => {
     if (!action.courseCode || !action.courseTitle) return;
@@ -1486,11 +1514,11 @@ function CommandPaletteSession({
       <Dialog.Portal forceMount>
         <Dialog.Overlay
           forceMount
-          className="fixed inset-0 z-[95] bg-[#19323A]/28 backdrop-blur-sm data-[state=closed]:hidden dark:bg-black/42"
+          className="ec-command-dialog-overlay fixed inset-0 z-[95] bg-[#19323A]/28 backdrop-blur-sm dark:bg-black/42"
         />
         <Dialog.Content
           forceMount
-          className="ec-command-dialog-panel fixed left-1/2 top-1/2 z-[96] h-[min(20rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-[34rem] overflow-hidden rounded-lg border border-[#BED0D7] bg-[#FBFDFE]/98 shadow-[0_24px_70px_rgba(20,54,66,0.24)] outline-none backdrop-blur-xl data-[state=closed]:hidden dark:border-white/14 dark:bg-[#11151D]/98 dark:shadow-[0_24px_90px_rgba(0,0,0,0.62)]"
+          className="ec-command-dialog-panel fixed left-1/2 top-1/2 z-[96] h-[min(20rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-[34rem] overflow-hidden rounded-lg border border-[#BED0D7] bg-[#FBFDFE]/98 shadow-[0_24px_70px_rgba(20,54,66,0.24)] outline-none backdrop-blur-xl dark:border-white/14 dark:bg-[#11151D]/98 dark:shadow-[0_24px_90px_rgba(0,0,0,0.62)]"
         >
           <Dialog.Title className="sr-only">ExamCooker command menu</Dialog.Title>
           <Dialog.Description className="sr-only">
@@ -1522,6 +1550,14 @@ function CommandPaletteSession({
             </div>
 
             <Command.List className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
+              {showRecentSkeletons ? (
+                <>
+                  <RecentSkeletonRow widthHint="lg" />
+                  <RecentSkeletonRow widthHint="md" />
+                  <RecentSkeletonRow widthHint="sm" />
+                </>
+              ) : null}
+
               {requestedResource
                 ? unavailableCourses.map((course) => (
                     <UnavailableCourseRow
