@@ -1,6 +1,8 @@
 import { eq, sql } from "drizzle-orm";
 import { db, tag, user } from "@/db";
 
+type TagDbClient = Pick<typeof db, "insert" | "select">;
+
 function first<T>(rows: T[]) {
   return rows[0] ?? null;
 }
@@ -21,14 +23,16 @@ export async function requireUserByEmail(email: string) {
 
 export async function findOrCreateTag(
   rawName: string,
-  options?: { caseInsensitive?: boolean },
+  options?: { caseInsensitive?: boolean; dbClient?: TagDbClient },
 ) {
   const name = rawName.trim();
   if (!name) {
     throw new Error("Invalid tag name");
   }
 
-  const existingTag = await db
+  const dbClient = options?.dbClient ?? db;
+
+  const existingTag = await dbClient
     .select()
     .from(tag)
     .where(
@@ -42,7 +46,7 @@ export async function findOrCreateTag(
     return existingTagRow;
   }
 
-  const [createdTag] = await db
+  const [createdTag] = await dbClient
     .insert(tag)
     .values({ name })
     .onConflictDoNothing()
@@ -52,7 +56,7 @@ export async function findOrCreateTag(
     return createdTag;
   }
 
-  const conflictedTag = await db
+  const conflictedTag = await dbClient
     .select()
     .from(tag)
     .where(eq(tag.name, name));

@@ -6,25 +6,23 @@ import { initializePostHogClient } from "@/lib/posthog/client";
 export function usePostHogFeatureFlagEnabled(flag: string) {
     const [enabled, setEnabled] = useState<boolean | undefined>(undefined);
 
-    useEffect(() => {
-        let cancelled = false;
-        let unsubscribe: (() => void) | undefined;
+	useEffect(() => {
+		let cancelled = false;
+		let unsubscribe: (() => void) | undefined;
 
-        void initializePostHogClient()
-            .then((posthog) => {
-                if (cancelled) return;
+		void initializePostHogClient()
+			.then((posthog) => {
+				if (cancelled) return;
 
-                if (!posthog) {
-                    setEnabled(false);
-                    return;
-                }
+				const readFlag = () =>
+					posthog?.isFeatureEnabled(flag, { send_event: false }) === true;
 
-                setEnabled(posthog.isFeatureEnabled(flag, { send_event: false }) === true);
-                unsubscribe = posthog.onFeatureFlags(() => {
-                    setEnabled(posthog.isFeatureEnabled(flag, { send_event: false }) === true);
-                });
-            })
-            .catch(() => undefined);
+				setEnabled(readFlag());
+				unsubscribe = posthog?.onFeatureFlags(() => {
+					setEnabled(readFlag());
+				});
+			})
+			.catch(() => undefined);
 
         return () => {
             cancelled = true;

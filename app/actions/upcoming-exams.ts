@@ -23,15 +23,15 @@ const upsertSchema = z.object({
         .or(z.literal("").transform(() => null)),
 });
 
-async function requireModerator() {
-    const session = await auth();
+function requireModeratorSession(session: Awaited<ReturnType<typeof auth>>) {
     if (session?.user?.role !== "MODERATOR") {
         throw new Error("Access denied");
     }
 }
 
 export async function createUpcomingExam(input: z.input<typeof upsertSchema>) {
-    await requireModerator();
+    const session = await auth();
+    requireModeratorSession(session);
     const parsed = upsertSchema.parse(input);
     await db.insert(upcomingExam).values({
         courseId: parsed.courseId,
@@ -48,7 +48,8 @@ export async function updateUpcomingExam(
     id: string,
     input: z.input<typeof upsertSchema>,
 ) {
-    await requireModerator();
+    const session = await auth();
+    requireModeratorSession(session);
     const parsed = upsertSchema.parse(input);
     await db
         .update(upcomingExam)
@@ -65,7 +66,8 @@ export async function updateUpcomingExam(
 }
 
 export async function deleteUpcomingExam(id: string) {
-    await requireModerator();
+    const session = await auth();
+    requireModeratorSession(session);
     await db.delete(upcomingExam).where(eq(upcomingExam.id, id));
     revalidateTag("upcoming_exams", "minutes");
     revalidatePath("/mod/upcoming");

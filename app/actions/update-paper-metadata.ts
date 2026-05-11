@@ -5,6 +5,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { db, pastPaper } from "@/db";
+import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { campusValues, examTypeValues, semesterValues } from "@/db/enums";
 
 const schema = z.object({
@@ -122,5 +123,6 @@ export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
         revalidateTag(`past_paper:${questionPaperId}`, "minutes");
     }
     revalidateTag("courses", "minutes");
+    await invalidatePastPapersSurfaceCache();
     return { success: true };
 }

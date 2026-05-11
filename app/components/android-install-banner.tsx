@@ -65,30 +65,33 @@ export default function AndroidInstallBanner() {
         let cancelled = false;
 
         async function checkEligibility() {
+            let nextShouldShow = false;
+
             if (!isMobile || isCliPage || isAuthPage || !isAndroidBrowser()) {
-                setShouldShow(false);
-                return;
+                return nextShouldShow;
             }
 
             const { Capacitor } = await import("@capacitor/core");
             if (cancelled) return;
 
-            if (Capacitor.isNativePlatform() || hasDismissedBanner()) {
-                setShouldShow(false);
-                return;
+            if (!Capacitor.isNativePlatform() && !hasDismissedBanner()) {
+                nextShouldShow = !(await hasInstalledRelatedApp());
             }
 
-            const installed = await hasInstalledRelatedApp();
-            if (cancelled) return;
-
-            setShouldShow(!installed);
+            return nextShouldShow;
         }
 
-        checkEligibility().catch(() => {
-            if (!cancelled) {
-                setShouldShow(false);
-            }
-        });
+        void checkEligibility()
+            .then((nextShouldShow) => {
+                if (!cancelled) {
+                    setShouldShow(Boolean(nextShouldShow));
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setShouldShow(false);
+                }
+            });
 
         return () => {
             cancelled = true;

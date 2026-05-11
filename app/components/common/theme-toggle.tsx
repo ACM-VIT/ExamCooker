@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 
 type ThemeToggleSwitchProps = {
@@ -9,13 +9,32 @@ type ThemeToggleSwitchProps = {
     iconClassName?: string;
 };
 
-function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSwitchProps) {
-    const [darkMode, setDarkMode] = useState(false);
-    const buttonRef = useRef<HTMLButtonElement>(null);
+function getDarkModeSnapshot() {
+    if (typeof document === "undefined") return false;
+    return document.documentElement.classList.contains("dark");
+}
 
-    useEffect(() => {
-        setDarkMode(document.documentElement.classList.contains("dark"));
-    }, []);
+function subscribeToThemeChanges(onStoreChange: () => void) {
+    const observer = new MutationObserver(onStoreChange);
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class", "data-theme"],
+    });
+    window.addEventListener("storage", onStoreChange);
+
+    return () => {
+        observer.disconnect();
+        window.removeEventListener("storage", onStoreChange);
+    };
+}
+
+function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSwitchProps) {
+    const darkMode = useSyncExternalStore(
+        subscribeToThemeChanges,
+        getDarkModeSnapshot,
+        () => false,
+    );
+    const buttonRef = useRef<HTMLButtonElement>(null);
 
     const applyTheme = (next: boolean) => {
         const root = document.documentElement;
@@ -26,7 +45,6 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
         root.style.setProperty("--ec-app-bg", background);
         root.style.backgroundColor = background;
         localStorage.setItem("theme", next ? "dark" : "light");
-        setDarkMode(next);
     };
 
     const toggleTheme = async () => {

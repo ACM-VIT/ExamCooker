@@ -179,7 +179,7 @@ function CourseGridSectionShell({ search }: { search: string }) {
                 <nav className="flex flex-wrap items-center justify-center gap-1">
                     {["‹", "1", "2", "3", "4", "5", "›"].map((label, index) => (
                         <span
-                            key={`${label}-${index}`}
+                            key={label}
                             className={`inline-flex h-9 min-w-[2.25rem] items-center justify-center border px-3 text-sm font-semibold transition ${
                                 index === 1
                                     ? "border-black bg-[#5FC4E7] text-black dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/20 dark:text-[#3BF4C7]"

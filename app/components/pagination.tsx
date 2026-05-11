@@ -13,6 +13,58 @@ interface PaginationProps {
   typeQuery?: string;
 }
 
+function getPageUrl(
+  basePath: string,
+  page: number,
+  searchQuery?: string,
+  tagsQuery?: string,
+  typeQuery?: string,
+) {
+  let url = `${basePath}?page=${page}`;
+  if (searchQuery) {
+    url += `&search=${encodeURIComponent(searchQuery)}`;
+  }
+  if (tagsQuery) {
+    url += `&tags=${encodeURIComponent(tagsQuery)}`;
+  }
+  if (typeQuery) {
+    url += `&type=${encodeURIComponent(typeQuery)}`;
+  }
+  return url;
+}
+
+type PageLinkProps = {
+  page: number;
+  currentPage: number;
+  basePath: string;
+  searchQuery?: string;
+  tagsQuery?: string;
+  typeQuery?: string;
+  children: React.ReactNode;
+};
+
+function PageLink({
+  page,
+  currentPage,
+  basePath,
+  searchQuery,
+  tagsQuery,
+  typeQuery,
+  children,
+}: PageLinkProps) {
+  return (
+    <Link
+      href={getPageUrl(basePath, page, searchQuery, tagsQuery, typeQuery)}
+      className={`px-3 py-1.5 text-sm font-medium ${page === currentPage
+        ? 'bg-[#73E8CC] dark:bg-[#232530]'
+        : 'bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90]'
+        }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
 const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePath, searchQuery, tagsQuery, typeQuery }) => {
   const maxVisiblePages = 5;
 
@@ -34,49 +86,31 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
 
   const { pageNumbers, startPage, endPage } = getPageNumbers();
 
-  const getPageUrl = (page: number) => {
-    let url = `${basePath}?page=${page}`;
-    if (searchQuery) {
-      url += `&search=${encodeURIComponent(searchQuery)}`;
-    }
-    if (tagsQuery) {
-      url += `&tags=${encodeURIComponent(tagsQuery)}`;
-    }
-    if (typeQuery) {
-      url += `&type=${encodeURIComponent(typeQuery)}`;
-    }
-    return url;
+  const pageLinkProps = {
+    currentPage,
+    basePath,
+    searchQuery,
+    tagsQuery,
+    typeQuery,
   };
-
-  const PageLink = ({ page, children }: { page: number; children: React.ReactNode }) => (
-    <Link
-      href={getPageUrl(page)}
-      className={`px-3 py-1.5 text-sm font-medium ${page === currentPage
-        ? 'bg-[#73E8CC] dark:bg-[#232530]'
-        : 'bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90]'
-        }`}
-    >
-      {children}
-    </Link>
-  );
 
   return (
     <div className="flex items-center justify-center space-x-2 py-4">
       {currentPage > 1 && (
-        <PageLink page={currentPage - 1}>
+        <PageLink {...pageLinkProps} page={currentPage - 1}>
           <FontAwesomeIcon icon={faAngleLeft} />
         </PageLink>
       )}
 
       {startPage > 1 && (
         <>
-          <PageLink page={1}>1</PageLink>
+          <PageLink {...pageLinkProps} page={1}>1</PageLink>
           {startPage > 2 && <span className="text-gray-500">...</span>}
         </>
       )}
 
       {pageNumbers.map((number) => (
-        <PageLink key={number} page={number}>
+        <PageLink key={number} {...pageLinkProps} page={number}>
           {number}
         </PageLink>
       ))}
@@ -84,12 +118,12 @@ const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, basePa
       {endPage < totalPages && (
         <>
           {endPage < totalPages - 1 && <span className="text-gray-500">...</span>}
-          <PageLink page={totalPages}>{totalPages}</PageLink>
+          <PageLink {...pageLinkProps} page={totalPages}>{totalPages}</PageLink>
         </>
       )}
 
       {currentPage < totalPages && (
-        <PageLink page={currentPage + 1}>
+        <PageLink {...pageLinkProps} page={currentPage + 1}>
           <FontAwesomeIcon icon={faAngleRight} />
         </PageLink>
       )}

@@ -1,7 +1,8 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { auth } from "@/app/auth";
 import {
   getCommandActionCapability,
@@ -23,6 +24,7 @@ const COMMAND_CLIENT_COOKIE = "ec-command-client-id";
 const COMMAND_CLIENT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const COMMAND_AGENT_RPC_TIMEOUT_MS = 6_500;
 const COMMAND_AGENT_ADMIN_HEADER = "X-ExamCooker-Command-Admin";
+const COMMAND_USER_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 type CommandCoursePreference = {
   courseCode: string;
@@ -44,6 +46,7 @@ type CommandIntentResponse = {
 
 type CommandRequestContext = {
   userKey: string;
+  userToken: string | null;
   anonymousClientId: string | null;
   surfaceContext: Pick<CommandSurfaceContext, "authenticated" | "role">;
 };
@@ -75,6 +78,34 @@ function getCommandAgentConnection() {
   const name = process.env.CLOUDFLARE_COMMAND_AGENT_INSTANCE || "global";
 
   return { agent, host, name };
+}
+
+function base64UrlEncode(value: string | Buffer) {
+  return Buffer.from(value).toString("base64url");
+}
+
+function getCommandUserTokenSecret() {
+  return process.env.CLOUDFLARE_COMMAND_AGENT_ADMIN_TOKEN?.trim() || "";
+}
+
+function signCommandUserToken(
+  userKey: string,
+  surfaceContext: Pick<CommandSurfaceContext, "authenticated" | "role">,
+) {
+  const secret = getCommandUserTokenSecret();
+  if (!secret) return null;
+
+  const payload = base64UrlEncode(
+    JSON.stringify({
+      userKey,
+      authenticated: surfaceContext.authenticated === true,
+      role: surfaceContext.role ?? null,
+      exp: Date.now() + COMMAND_USER_TOKEN_TTL_MS,
+    }),
+  );
+  const signature = createHmac("sha256", secret).update(payload).digest();
+
+  return `v1.${payload}.${base64UrlEncode(signature)}`;
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string) {
@@ -165,34 +196,40 @@ async function fetchCommandAgentAdmin(path: string | undefined) {
   );
 }
 
-async function getCommandRequestContext(): Promise<CommandRequestContext> {
-  const session = await auth().catch(() => null);
+async function getCommandRequestContext(
+  session: Awaited<ReturnType<typeof auth>> | null,
+): Promise<CommandRequestContext> {
   const userId = session?.user?.id?.trim();
 
   if (userId) {
     const role = session?.user?.role;
+    const userKey = `user:${userId}`;
+    const surfaceContext = {
+      authenticated: true,
+      role: role === "MODERATOR" ? "moderator" : "user",
+    } as const;
 
     return {
-      userKey: `user:${userId}`,
+      userKey,
+      userToken: signCommandUserToken(userKey, surfaceContext),
       anonymousClientId: null,
-      surfaceContext: {
-        authenticated: true,
-        role: role === "MODERATOR" ? "moderator" : "user",
-      },
+      surfaceContext,
     };
   }
 
   const cookieStore = await cookies();
   const currentClientId = cookieStore.get(COMMAND_CLIENT_COOKIE)?.value?.trim();
   const anonymousClientId = currentClientId || randomUUID();
+  const surfaceContext = {
+    authenticated: false,
+    role: null,
+  } as const;
 
   return {
     userKey: `anon:${anonymousClientId}`,
+    userToken: signCommandUserToken(`anon:${anonymousClientId}`, surfaceContext),
     anonymousClientId: currentClientId ? null : anonymousClientId,
-    surfaceContext: {
-      authenticated: false,
-      role: null,
-    },
+    surfaceContext,
   };
 }
 
@@ -339,6 +376,7 @@ async function resolveWithCloudflareAgent(input: {
   query: string;
   preferenceQuery: string;
   userKey: string;
+  userToken: string | null;
   surfaceContext: Partial<CommandSurfaceContext>;
 }) {
   type AgentPayload = {
@@ -399,7 +437,13 @@ async function resolveWithCloudflareAgent(input: {
     const result = normalizePayload(payload, "websocket");
     if (result) return result;
   } catch (error) {
-    console.warn("[command] Cloudflare command agent WebSocket unavailable", error);
+    after(
+      console.warn.bind(
+        console,
+        "[command] Cloudflare command agent WebSocket unavailable",
+        error,
+      ),
+    );
   }
 
   const path = process.env.CLOUDFLARE_COMMAND_AGENT_PATH?.trim();
@@ -410,6 +454,8 @@ async function resolveWithCloudflareAgent(input: {
 }
 
 export async function getCommandCatalogAction() {
+  await auth().catch(() => null);
+
   const [courses, recentPapers] = await Promise.all([
     getSearchableCourses(),
     getRecentPapers(12),
@@ -439,12 +485,14 @@ export async function getCommandCatalogAction() {
 }
 
 export async function getCommandSessionAction() {
-  const { userKey, anonymousClientId, surfaceContext } =
-    await getCommandRequestContext();
+  const session = await auth().catch(() => null);
+  const { userKey, userToken, anonymousClientId, surfaceContext } =
+    await getCommandRequestContext(session);
   await setCommandClientCookie(anonymousClientId);
 
   return {
     userKey,
+    userToken,
     surfaceContext,
   };
 }
@@ -452,6 +500,7 @@ export async function getCommandSessionAction() {
 export async function resolveCommandIntentAction(
   input: CommandIntentActionInput,
 ): Promise<CommandIntentResponse> {
+  const session = await auth().catch(() => null);
   const query = typeof input.query === "string" ? input.query : "";
   const preferenceQuery =
     typeof input.preferenceQuery === "string"
@@ -461,8 +510,8 @@ export async function resolveCommandIntentAction(
         : query;
   const surfaceContext = readSurfaceContext(input.surfaceContext);
   const localIntent = resolveCommandIntent(query);
-  const requestContext = await getCommandRequestContext();
-  const { userKey, anonymousClientId } = requestContext;
+  const requestContext = await getCommandRequestContext(session);
+  const { userKey, userToken, anonymousClientId } = requestContext;
   const trustedSurfaceContext = getRequestSurfaceContext(
     surfaceContext,
     requestContext.surfaceContext,
@@ -473,6 +522,7 @@ export async function resolveCommandIntentAction(
       query,
       preferenceQuery,
       userKey,
+      userToken,
       surfaceContext: trustedSurfaceContext,
     });
 
@@ -502,7 +552,13 @@ export async function resolveCommandIntentAction(
       };
     }
   } catch (error) {
-    console.warn("[command] Cloudflare command agent unavailable", error);
+    after(
+      console.warn.bind(
+        console,
+        "[command] Cloudflare command agent unavailable",
+        error,
+      ),
+    );
   }
 
   await setCommandClientCookie(anonymousClientId);
@@ -520,6 +576,7 @@ export async function resolveCommandIntentAction(
 export async function rememberCommandPreferenceAction(
   input: CommandPreferenceActionInput,
 ) {
+  const session = await auth().catch(() => null);
   const query = typeof input.query === "string" ? input.query.trim() : "";
   const courseCode =
     typeof input.courseCode === "string"
@@ -530,9 +587,11 @@ export async function rememberCommandPreferenceAction(
     return { ok: false, source: "local", error: "Missing query or courseCode." };
   }
 
-  const { userKey, anonymousClientId } = await getCommandRequestContext();
+  const { userKey, userToken, anonymousClientId } =
+    await getCommandRequestContext(session);
   const agentPayload = {
     userKey,
+    userToken,
     query,
     courseCode,
     courseTitle: typeof input.courseTitle === "string" ? input.courseTitle : null,
@@ -554,7 +613,13 @@ export async function rememberCommandPreferenceAction(
       };
     }
   } catch (error) {
-    console.warn("[command] Cloudflare command preference WebSocket unavailable", error);
+    after(
+      console.warn.bind(
+        console,
+        "[command] Cloudflare command preference WebSocket unavailable",
+        error,
+      ),
+    );
   }
 
   try {
@@ -569,7 +634,13 @@ export async function rememberCommandPreferenceAction(
       };
     }
   } catch (error) {
-    console.warn("[command] Cloudflare command preference unavailable", error);
+    after(
+      console.warn.bind(
+        console,
+        "[command] Cloudflare command preference unavailable",
+        error,
+      ),
+    );
   }
 
   await setCommandClientCookie(anonymousClientId);

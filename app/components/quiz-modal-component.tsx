@@ -219,30 +219,31 @@ export default function QuizModalContent({
             {courseCode}
           </h3>
         </div>
-        <button onClick={handleStartQuiz} className="relative group">
+        <button type="button" onClick={handleStartQuiz} className="relative group">
           <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
           <div className="absolute inset-0 blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
-          <button
-            type="submit"
-            title="Start Quiz"
+          <span
             className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7]
                         dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#3BF4C7] text-black font-bold
-                        group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150"
+                        group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150 block"
           >
             Start Quiz
-          </button>
+          </span>
         </button>
       </div>
 
       <div className="flex space-x-4 mb-6">
         <div className="w-1/2 flex flex-col justify-between" ref={dropdownRef}>
           <div className="flex items-center mb-2">
-            <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
+            <span id="quiz-weeks-label" className="text-sm font-medium text-black dark:text-[#D5D5D5]">
               Select Weeks
-            </label>
+            </span>
           </div>
           <div className="relative">
             <button
+              type="button"
+              aria-labelledby="quiz-weeks-label"
+              aria-expanded={showDropdown}
               className={`p-3 w-full border text-left flex justify-between items-center bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] ${
                 validation.weeks.isValid ? "border-gray-300" : "border-red-500"
               }`}
@@ -260,9 +261,10 @@ export default function QuizModalContent({
             </button>
             {showDropdown && (
               <div className="absolute z-10 w-full bg-white dark:bg-[#3D414E] text-black dark:text-[#D5D5D5] border mt-1 shadow-lg overflow-y-auto max-h-64">
-                <div
+                <button
+                  type="button"
                   onClick={toggleAllWeeks}
-                  className="cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20 border-b"
+                  className="flex w-full cursor-pointer items-center p-2 text-left hover:bg-black/20 dark:hover:bg-white/20 border-b"
                 >
                   <input
                     type="checkbox"
@@ -271,13 +273,14 @@ export default function QuizModalContent({
                     className="mr-2"
                   />
                   <span>All Weeks</span>
-                </div>
+                </button>
                 {Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map(
                   (week) => (
-                    <div
+                    <button
+                      type="button"
                       key={week}
                       onClick={() => toggleWeek(week)}
-                      className="cursor-pointer p-2 hover:bg-black/20 dark:hover:bg-white/20"
+                      className="flex w-full cursor-pointer items-center p-2 text-left hover:bg-black/20 dark:hover:bg-white/20"
                     >
                       <input
                         type="checkbox"
@@ -286,7 +289,7 @@ export default function QuizModalContent({
                         className="mr-2"
                       />
                       <span>Week {week}</span>
-                    </div>
+                    </button>
                   )
                 )}
               </div>
@@ -299,11 +302,12 @@ export default function QuizModalContent({
 
         <div className="w-1/2">
           <div className="flex items-center mb-2">
-            <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
+            <label htmlFor="quiz-num-questions" className="text-sm font-medium text-black dark:text-[#D5D5D5]">
               Number of Questions
             </label>
           </div>
           <input
+            id="quiz-num-questions"
             type="number"
             min="0"
             value={quizState.numQuestions || ""}
@@ -322,10 +326,11 @@ export default function QuizModalContent({
 
       <div className="flex space-x-4 mb-6">
         <div className="w-1/3">
-          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
+          <label htmlFor="quiz-duration-hours" className="text-sm font-medium text-black dark:text-[#D5D5D5]">
             Hours
           </label>
           <input
+            id="quiz-duration-hours"
             type="number"
             value={quizState.duration.hours}
             onChange={(e) =>
@@ -338,10 +343,11 @@ export default function QuizModalContent({
           />
         </div>
         <div className="w-1/3">
-          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
+          <label htmlFor="quiz-duration-minutes" className="text-sm font-medium text-black dark:text-[#D5D5D5]">
             Minutes
           </label>
           <input
+            id="quiz-duration-minutes"
             type="number"
             value={quizState.duration.minutes}
             onChange={(e) =>
@@ -354,10 +360,11 @@ export default function QuizModalContent({
           />
         </div>
         <div className="w-1/3">
-          <label className="text-sm font-medium text-black dark:text-[#D5D5D5]">
+          <label htmlFor="quiz-duration-seconds" className="text-sm font-medium text-black dark:text-[#D5D5D5]">
             Seconds
           </label>
           <input
+            id="quiz-duration-seconds"
             type="number"
             value={quizState.duration.seconds}
             onChange={(e) =>

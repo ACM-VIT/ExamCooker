@@ -99,8 +99,19 @@ function getPreferenceResourceKey(resource: CommandCoursePreferenceInput["resour
   return resource || "course";
 }
 
-function fromPreferenceResourceKey(resourceKey: string) {
-  return resourceKey === "course" ? "course" : resourceKey;
+function readPreferenceResourceKey(
+  resourceKey: string,
+): CommandCoursePreference["resource"] {
+  if (
+    resourceKey === "notes" ||
+    resourceKey === "syllabus" ||
+    resourceKey === "papers" ||
+    resourceKey === "course"
+  ) {
+    return resourceKey;
+  }
+
+  return "course";
 }
 
 export function recordCommandCoursePreference(
@@ -146,7 +157,7 @@ export function recordCommandCoursePreference(
   return {
     queryKey,
     courseCode,
-    resource: fromPreferenceResourceKey(resourceKey),
+    resource: readPreferenceResourceKey(resourceKey),
   };
 }
 
@@ -187,7 +198,7 @@ export function listCommandCoursePreferences(
   return rows.map((row) => ({
     courseCode: row.courseCode,
     courseTitle: row.courseTitle,
-    resource: fromPreferenceResourceKey(row.resourceKey) as CommandCoursePreference["resource"],
+    resource: readPreferenceResourceKey(row.resourceKey),
     weight: row.weight,
     updatedAt: row.updatedAt,
   }));

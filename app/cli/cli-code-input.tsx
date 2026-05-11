@@ -211,20 +211,40 @@ export default function CliCodeInput({
         ))}
       </div>
 
-      <button
-        type="submit"
-        disabled={!filled || submitting}
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-black text-sm font-semibold text-white transition-[transform,opacity] duration-100 hover:enabled:scale-[1.01] active:enabled:translate-y-px disabled:cursor-not-allowed disabled:opacity-40 dark:bg-[#3BF4C7] dark:text-[#0C1222]"
+      <div
+        className={`group relative inline-flex w-full items-stretch ${submitting || !filled ? "pointer-events-none opacity-50" : ""}`}
       >
-        {submitting ? (
+        {filled && !submitting ? (
           <>
-            <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            Checking
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-black dark:bg-[#3BF4C7]"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-[#3BF4C7] opacity-0 blur-[60px] transition duration-200 group-hover:opacity-20 dark:hidden"
+            />
+            <div
+              aria-hidden="true"
+              className="duration-1000 transition dark:absolute dark:inset-0 dark:blur-[75px] dark:group-hover:duration-200 dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7]"
+            />
           </>
-        ) : (
-          "Continue"
-        )}
-      </button>
+        ) : null}
+        <button
+          type="submit"
+          disabled={!filled || submitting}
+          className="relative inline-flex h-11 w-full items-center justify-center gap-2 border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 disabled:cursor-not-allowed dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]"
+        >
+          {submitting ? (
+            <>
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              Checking
+            </>
+          ) : (
+            "Continue"
+          )}
+        </button>
+      </div>
 
       <button
         type="button"

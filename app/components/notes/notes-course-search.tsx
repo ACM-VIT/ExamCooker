@@ -11,8 +11,8 @@ import {
     type CourseSearchInteraction,
 } from "@/lib/posthog/client";
 import {
-    canUseNativeCourseSearch,
     presentNativeCourseSearch,
+    useNativeCourseSearchAvailable,
 } from "@/lib/native-course-search";
 
 export type SearchableNoteCourseItem = {
@@ -44,12 +44,15 @@ export default function NotesCourseSearch({
     initialQuery = "",
 }: Props) {
     const router = useRouter();
-    const [query, setQuery] = useState(initialQuery);
+    const [query, setQuery] = useState(() => initialQuery);
     const [isOpen, setIsOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const [nativeSearchAvailable, setNativeSearchAvailable] = useState(false);
+    const nativeCourseSearchAvailable = useNativeCourseSearchAvailable();
+    const [nativeSearchUnavailable, setNativeSearchUnavailable] = useState(false);
+    const nativeSearchAvailable =
+        nativeCourseSearchAvailable && !nativeSearchUnavailable;
     const deferredQuery = useDeferredValue(query);
 
     const searchableCourses = useMemo(
@@ -97,10 +100,6 @@ export default function NotesCourseSearch({
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    useEffect(() => {
-        setNativeSearchAvailable(canUseNativeCourseSearch());
     }, []);
 
     const navigate = (
@@ -250,7 +249,7 @@ export default function NotesCourseSearch({
                 router.push(`/notes?search=${encodeURIComponent(trimmed)}`);
             });
         } catch {
-            setNativeSearchAvailable(false);
+            setNativeSearchUnavailable(true);
             inputRef.current?.focus();
         }
     };

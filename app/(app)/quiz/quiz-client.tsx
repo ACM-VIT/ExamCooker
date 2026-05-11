@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useReducer, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
     ChevronRight,
@@ -44,6 +44,91 @@ interface CourseData {
     weeks: Week[];
 }
 
+type QuizState = {
+    currentQuestionIndex: number;
+    expandedQuestionIndex: number | null;
+    questions: QuizQuestion[];
+    quizSubmitted: boolean;
+    score: number;
+    showError: boolean;
+    showOnlyIncorrect: boolean;
+    timeRemaining: number;
+};
+
+type QuizAction =
+    | { type: "initialize"; questions: QuizQuestion[]; timeRemaining: number }
+    | { type: "answer"; answer: string; index: number }
+    | { type: "next-question" }
+    | { type: "missing-answer" }
+    | { type: "submit"; score: number }
+    | { type: "tick" }
+    | { type: "show-only-incorrect"; value: boolean }
+    | { type: "toggle-expanded"; index: number };
+
+const initialQuizState: QuizState = {
+    currentQuestionIndex: 0,
+    expandedQuestionIndex: null,
+    questions: [],
+    quizSubmitted: false,
+    score: 0,
+    showError: false,
+    showOnlyIncorrect: false,
+    timeRemaining: 0,
+};
+
+function quizReducer(state: QuizState, action: QuizAction): QuizState {
+    switch (action.type) {
+        case "initialize":
+            return {
+                ...initialQuizState,
+                questions: action.questions,
+                timeRemaining: action.timeRemaining,
+            };
+        case "answer":
+            return {
+                ...state,
+                questions: state.questions.map((question, index) =>
+                    index === action.index
+                        ? { ...question, selectedAnswer: action.answer }
+                        : question,
+                ),
+                showError: false,
+            };
+        case "next-question":
+            return {
+                ...state,
+                currentQuestionIndex: state.currentQuestionIndex + 1,
+                showError: false,
+            };
+        case "missing-answer":
+            return { ...state, showError: true };
+        case "submit":
+            return {
+                ...state,
+                quizSubmitted: true,
+                score: action.score,
+                timeRemaining: 0,
+            };
+        case "tick":
+            return {
+                ...state,
+                timeRemaining: Math.max(0, state.timeRemaining - 1),
+            };
+        case "show-only-incorrect":
+            return { ...state, showOnlyIncorrect: action.value };
+        case "toggle-expanded":
+            return state.quizSubmitted
+                ? {
+                      ...state,
+                      expandedQuestionIndex:
+                          state.expandedQuestionIndex === action.index
+                              ? null
+                              : action.index,
+                  }
+                : state;
+    }
+}
+
 const getCourseData = (courseCode: string): CourseData => {
     switch (courseCode) {
         case "102104073":
@@ -61,16 +146,19 @@ const getCourseData = (courseCode: string): CourseData => {
 
 export default function QuizClient({ quizConfig }: { quizConfig: string }) {
     const router = useRouter();
-
-    const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [timeRemaining, setTimeRemaining] = useState(0);
-    const [quizSubmitted, setQuizSubmitted] = useState(false);
-    const [score, setScore] = useState(0);
-    const [showWarning, setShowWarning] = useState(false);
-    const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false);
-    const [expandedQuestionIndex, setExpandedQuestionIndex] = useState<number | null>(null);
-    const [showError, setShowError] = useState(false);
+    const [
+        {
+            currentQuestionIndex,
+            expandedQuestionIndex,
+            questions,
+            quizSubmitted,
+            score,
+            showError,
+            showOnlyIncorrect,
+            timeRemaining,
+        },
+        dispatch,
+    ] = useReducer(quizReducer, initialQuizState);
     const quizMetaRef = useRef<{ courseCode: string; totalQuestions: number }>({ courseCode: "", totalQuestions: 0 });
 
     useEffect(() => {
@@ -85,7 +173,6 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
         const minutes = Number.parseInt(time.slice(2, 4), 10);
         const seconds = Number.parseInt(time.slice(4, 6), 10);
         const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-        setTimeRemaining(totalSeconds);
 
         const courseData = getCourseData(courseCode);
 
@@ -113,24 +200,23 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
             originalIndex: index,
         }));
         quizMetaRef.current.totalQuestions = selectedQuestions.length;
-        setQuestions(selectedQuestions);
+        dispatch({
+            type: "initialize",
+            questions: selectedQuestions,
+            timeRemaining: totalSeconds,
+        });
     }, [quizConfig]);
 
     useEffect(() => {
         if (timeRemaining > 0 && !quizSubmitted) {
             const timer = setInterval(() => {
-                setTimeRemaining((prev) => {
-                    if (prev <= 1) {
-                        submitQuiz();
-                        clearInterval(timer);
-                        return 0;
-                    }
+                if (timeRemaining <= 1) {
+                    submitQuiz();
+                    clearInterval(timer);
+                    return;
+                }
 
-                    if (prev === 30) {
-                        setShowWarning(true);
-                    }
-                    return prev - 1;
-                });
+                dispatch({ type: "tick" });
             }, 1000);
 
             return () => clearInterval(timer);
@@ -145,10 +231,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
     };
 
     const handleAnswerSelect = (answer: string) => {
-        setShowError(false);
-        const updatedQuestions = [...questions];
-        updatedQuestions[currentQuestionIndex].selectedAnswer = answer;
-        setQuestions(updatedQuestions);
+        dispatch({ type: "answer", answer, index: currentQuestionIndex });
     };
 
     const isAnswerCorrect = (selected: string, correctAnswers: string | string[]) => {
@@ -169,8 +252,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
             const selectedAnswer = (q.selectedAnswer || "").trim();
             return isAnswerCorrect(selectedAnswer, q.answer);
         }).length;
-        setScore(correctAnswersCount);
-        setQuizSubmitted(true);
+        dispatch({ type: "submit", score: correctAnswersCount });
         captureQuizSubmitted({
             courseCode: quizMetaRef.current.courseCode,
             score: correctAnswersCount,
@@ -182,22 +264,19 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
         const currentQuestion = questions[currentQuestionIndex];
 
         if (!currentQuestion.selectedAnswer) {
-            setShowError(true);
+            dispatch({ type: "missing-answer" });
             return;
         }
 
-        setShowError(false);
         if (currentQuestionIndex === questions.length - 1) {
             submitQuiz();
         } else {
-            setCurrentQuestionIndex(currentQuestionIndex + 1);
+            dispatch({ type: "next-question" });
         }
     };
 
     const toggleQuestionExpansion = (index: number) => {
-        if (quizSubmitted) {
-            setExpandedQuestionIndex(expandedQuestionIndex === index ? null : index);
-        }
+        dispatch({ type: "toggle-expanded", index });
     };
 
     const getScoreColor = (percentage: number) => {
@@ -260,7 +339,12 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
                             <input
                                 type="checkbox"
                                 checked={showOnlyIncorrect}
-                                onChange={(e) => setShowOnlyIncorrect(e.target.checked)}
+                                onChange={(e) =>
+                                    dispatch({
+                                        type: "show-only-incorrect",
+                                        value: e.target.checked,
+                                    })
+                                }
                                 className="form-checkbox h-5 w-5"
                             />
                             <span className="text-base font-medium dark:text-[#D5D5D5]">
@@ -275,8 +359,9 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
 
                 <div className="mb-6 grid w-full grid-cols-3 gap-4 sm:grid-cols-4">
                     {displayedQuestions.map((q, index) => (
-                        <div
-                            key={index}
+                        <button
+                            type="button"
+                            key={`${q.weekNumber}-${q.originalIndex ?? q.question}`}
                             className={`cursor-pointer p-2 py-4 transition-all duration-300 ${
                                 expandedQuestionIndex === index ? "col-span-4" : ""
                             } ${
@@ -317,7 +402,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
                                     </p>
                                 </div>
                             )}
-                        </div>
+                        </button>
                     ))}
                 </div>
 
@@ -376,7 +461,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
                 </div>
             </div>
 
-            {showWarning && (
+            {timeRemaining <= 30 && timeRemaining > 0 && (
                 <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 sm:px-4 sm:py-3 sm:text-base">
                     30 seconds remaining! Please finish your quiz.
                 </div>
@@ -392,7 +477,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
                 <div className="w-[60vw] space-y-3">
                     {currentQuestion.options.map((option, index) => (
                         <button
-                            key={index}
+                            key={option}
                             onClick={() => handleAnswerSelect(option)}
                             className={`w-full p-3 text-left text-sm text-black transition-colors sm:p-4 sm:text-base dark:border dark:border-[#D5D5D5] dark:text-[#D5D5D5] ${
                                 currentQuestion.selectedAnswer === option

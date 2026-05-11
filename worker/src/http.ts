@@ -46,13 +46,20 @@ export async function readJsonPayload(request: Request) {
   return (await request.json().catch(() => null)) as Record<string, unknown> | null;
 }
 
+function readBearerToken(value: string | null) {
+  const match = value?.match(/^\s*Bearer\s+(.+?)\s*$/i);
+  return match?.[1]?.trim() ?? "";
+}
+
 export async function readCommandIntentInput(request: Request) {
   if (request.method === "GET") {
     const url = new URL(request.url);
+
     return {
       query: url.searchParams.get("query") ?? "",
       preferenceQuery: url.searchParams.get("preferenceQuery") ?? "",
       userKey: url.searchParams.get("userKey") ?? "",
+      userToken: readBearerToken(request.headers.get("Authorization")),
     };
   }
 
@@ -69,6 +76,7 @@ export async function readCommandIntentInput(request: Request) {
     preferenceQuery:
       typeof payload?.preferenceQuery === "string" ? payload.preferenceQuery : "",
     userKey: typeof payload?.userKey === "string" ? payload.userKey : "",
+    userToken: typeof payload?.userToken === "string" ? payload.userToken : "",
     surfaceContext,
   };
 }

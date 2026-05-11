@@ -8,6 +8,7 @@ import {
     sql,
 } from "drizzle-orm";
 import { cache } from "react";
+import { withPastPapersSurfaceRedisCache } from "@/lib/cache/past-papers-surface-cache";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import {
     course,
@@ -74,6 +75,7 @@ const loadPastPaperDetail = cache(async (id: string) => {
             campus: pastPaper.campus,
             hasAnswerKey: pastPaper.hasAnswerKey,
             questionPaperId: pastPaper.questionPaperId,
+            pageEdits: pastPaper.pageEdits,
             authorName: user.name,
             authorImage: user.image,
             courseCode: course.code,
@@ -112,13 +114,54 @@ const loadPastPaperDetail = cache(async (id: string) => {
     };
 });
 
+function deserializePastPaperDetail(
+    value: unknown,
+): Awaited<ReturnType<typeof loadPastPaperDetail>> {
+    if (value === null) {
+        return null;
+    }
+
+    if (!value || typeof value !== "object") {
+        throw new Error("Invalid cached past paper detail.");
+    }
+
+    const paper = value as Record<string, unknown>;
+    const createdAt = readCachedDate(paper.createdAt, "createdAt");
+    const updatedAt = readCachedDate(paper.updatedAt, "updatedAt");
+
+    return {
+        ...(paper as NonNullable<Awaited<ReturnType<typeof loadPastPaperDetail>>>),
+        createdAt,
+        updatedAt,
+    };
+}
+
+function readCachedDate(value: unknown, fieldName: string) {
+    if (typeof value !== "string" && !(value instanceof Date)) {
+        throw new Error(`Invalid cached past paper ${fieldName}.`);
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        throw new Error(`Invalid cached past paper ${fieldName}.`);
+    }
+
+    return date;
+}
+
 export async function getPastPaperDetail(id: string) {
     "use cache";
     cacheTag("past_papers");
     cacheTag(`past_paper:${id}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    return loadPastPaperDetail(id);
+    return withPastPapersSurfaceRedisCache(
+        {
+            keyParts: ["past-paper-detail", { id }],
+            deserialize: deserializePastPaperDetail,
+        },
+        async () => loadPastPaperDetail(id),
+    );
 }
 
 export async function getSiblingPastPaper(input: {
@@ -137,75 +180,86 @@ export async function getSiblingPastPaper(input: {
     cacheTag(`past_paper:${input.paperId}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const select = {
-        id: pastPaper.id,
-        title: pastPaper.title,
-        hasAnswerKey: pastPaper.hasAnswerKey,
-        examType: pastPaper.examType,
-        slot: pastPaper.slot,
-        year: pastPaper.year,
-        courseCode: course.code,
-        courseTitle: course.title,
-    };
+    return withPastPapersSurfaceRedisCache(
+        {
+            keyParts: ["sibling-past-paper", input],
+        },
+        async () => {
+            const select = {
+                id: pastPaper.id,
+                title: pastPaper.title,
+                hasAnswerKey: pastPaper.hasAnswerKey,
+                examType: pastPaper.examType,
+                slot: pastPaper.slot,
+                year: pastPaper.year,
+                courseCode: course.code,
+                courseTitle: course.title,
+            };
 
-    if (input.hasAnswerKey && input.questionPaperId) {
-        const linkedQuestionPaperRows = await db
-            .select(select)
-            .from(pastPaper)
-            .leftJoin(course, eq(pastPaper.courseId, course.id))
-            .where(eq(pastPaper.id, input.questionPaperId))
-            .limit(1);
+            if (input.hasAnswerKey && input.questionPaperId) {
+                const linkedQuestionPaperRows = await db
+                    .select(select)
+                    .from(pastPaper)
+                    .leftJoin(course, eq(pastPaper.courseId, course.id))
+                    .where(eq(pastPaper.id, input.questionPaperId))
+                    .limit(1);
 
-        const linkedQuestionPaper = linkedQuestionPaperRows[0];
+                const linkedQuestionPaper = linkedQuestionPaperRows[0];
 
-        if (linkedQuestionPaper) return normalizePaperLinkSummary(linkedQuestionPaper);
-    }
+                if (linkedQuestionPaper) {
+                    return normalizePaperLinkSummary(linkedQuestionPaper);
+                }
+            }
 
-    const linkedAnswerKeyRows = await db
-        .select(select)
-        .from(pastPaper)
-        .leftJoin(course, eq(pastPaper.courseId, course.id))
-        .where(
-            and(
-                eq(pastPaper.questionPaperId, input.paperId),
-                ne(pastPaper.id, input.paperId),
-                eq(pastPaper.isClear, true),
-            ),
-        )
-        .orderBy(desc(pastPaper.createdAt))
-        .limit(1);
+            const linkedAnswerKeyRows = await db
+                .select(select)
+                .from(pastPaper)
+                .leftJoin(course, eq(pastPaper.courseId, course.id))
+                .where(
+                    and(
+                        eq(pastPaper.questionPaperId, input.paperId),
+                        ne(pastPaper.id, input.paperId),
+                        eq(pastPaper.isClear, true),
+                    ),
+                )
+                .orderBy(desc(pastPaper.createdAt))
+                .limit(1);
 
-    const linkedAnswerKey = linkedAnswerKeyRows[0];
+            const linkedAnswerKey = linkedAnswerKeyRows[0];
 
-    if (linkedAnswerKey) return normalizePaperLinkSummary(linkedAnswerKey);
+            if (linkedAnswerKey) {
+                return normalizePaperLinkSummary(linkedAnswerKey);
+            }
 
-    if (!input.courseId || !input.examType || !input.slot || input.year === null) {
-        return null;
-    }
+            if (!input.courseId || !input.examType || !input.slot || input.year === null) {
+                return null;
+            }
 
-    const metadataSiblingRows = await db
-        .select(select)
-        .from(pastPaper)
-        .leftJoin(course, eq(pastPaper.courseId, course.id))
-        .where(
-            and(
-                ne(pastPaper.id, input.paperId),
-                eq(pastPaper.courseId, input.courseId),
-                eq(pastPaper.examType, input.examType),
-                eq(pastPaper.slot, input.slot),
-                eq(pastPaper.year, input.year),
-                eq(pastPaper.semester, input.semester),
-                eq(pastPaper.campus, input.campus),
-                eq(pastPaper.hasAnswerKey, !input.hasAnswerKey),
-                eq(pastPaper.isClear, true),
-            ),
-        )
-        .orderBy(desc(pastPaper.createdAt))
-        .limit(1);
+            const metadataSiblingRows = await db
+                .select(select)
+                .from(pastPaper)
+                .leftJoin(course, eq(pastPaper.courseId, course.id))
+                .where(
+                    and(
+                        ne(pastPaper.id, input.paperId),
+                        eq(pastPaper.courseId, input.courseId),
+                        eq(pastPaper.examType, input.examType),
+                        eq(pastPaper.slot, input.slot),
+                        eq(pastPaper.year, input.year),
+                        eq(pastPaper.semester, input.semester),
+                        eq(pastPaper.campus, input.campus),
+                        eq(pastPaper.hasAnswerKey, !input.hasAnswerKey),
+                        eq(pastPaper.isClear, true),
+                    ),
+                )
+                .orderBy(desc(pastPaper.createdAt))
+                .limit(1);
 
-    const metadataSibling = metadataSiblingRows[0];
+            const metadataSibling = metadataSiblingRows[0];
 
-    return metadataSibling ? normalizePaperLinkSummary(metadataSibling) : null;
+            return metadataSibling ? normalizePaperLinkSummary(metadataSibling) : null;
+        },
+    );
 }
 
 export async function getAdjacentPapersInCourse(input: {
@@ -216,39 +270,46 @@ export async function getAdjacentPapersInCourse(input: {
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const rows = await db
-        .select({
-            id: pastPaper.id,
-            year: pastPaper.year,
-            examType: pastPaper.examType,
-            slot: pastPaper.slot,
-            courseCode: course.code,
-        })
-        .from(pastPaper)
-        .leftJoin(course, eq(pastPaper.courseId, course.id))
-        .where(
-            and(
-                eq(pastPaper.courseId, input.courseId),
-                eq(pastPaper.isClear, true),
-            ),
-        )
-        .orderBy(sql`${pastPaper.year} desc nulls last`, desc(pastPaper.createdAt));
+    return withPastPapersSurfaceRedisCache(
+        {
+            keyParts: ["adjacent-past-papers-in-course", input],
+        },
+        async () => {
+            const rows = await db
+                .select({
+                    id: pastPaper.id,
+                    year: pastPaper.year,
+                    examType: pastPaper.examType,
+                    slot: pastPaper.slot,
+                    courseCode: course.code,
+                })
+                .from(pastPaper)
+                .leftJoin(course, eq(pastPaper.courseId, course.id))
+                .where(
+                    and(
+                        eq(pastPaper.courseId, input.courseId),
+                        eq(pastPaper.isClear, true),
+                    ),
+                )
+                .orderBy(sql`${pastPaper.year} desc nulls last`, desc(pastPaper.createdAt));
 
-    const papers = rows.map((row) => ({
-        id: row.id,
-        year: row.year,
-        examType: row.examType,
-        slot: row.slot,
-        course: row.courseCode ? { code: row.courseCode } : null,
-    }));
+            const papers = rows.map((row) => ({
+                id: row.id,
+                year: row.year,
+                examType: row.examType,
+                slot: row.slot,
+                course: row.courseCode ? { code: row.courseCode } : null,
+            }));
 
-    const index = papers.findIndex((p) => p.id === input.paperId);
-    if (index === -1) return { prev: null, next: null };
+            const index = papers.findIndex((p) => p.id === input.paperId);
+            if (index === -1) return { prev: null, next: null };
 
-    return {
-        prev: index > 0 ? papers[index - 1] : null,
-        next: index < papers.length - 1 ? papers[index + 1] : null,
-    };
+            return {
+                prev: index > 0 ? papers[index - 1] : null,
+                next: index < papers.length - 1 ? papers[index + 1] : null,
+            };
+        },
+    );
 }
 
 export async function getRelatedPapersForCourse(input: {
@@ -261,40 +322,47 @@ export async function getRelatedPapersForCourse(input: {
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const filters = [
-        ne(pastPaper.id, input.paperId),
-        eq(pastPaper.courseId, input.courseId),
-        eq(pastPaper.isClear, true),
-    ];
+    return withPastPapersSurfaceRedisCache(
+        {
+            keyParts: ["related-papers-for-course", input],
+        },
+        async () => {
+            const filters = [
+                ne(pastPaper.id, input.paperId),
+                eq(pastPaper.courseId, input.courseId),
+                eq(pastPaper.isClear, true),
+            ];
 
-    if (input.examType) {
-        filters.push(eq(pastPaper.examType, input.examType));
-    }
+            if (input.examType) {
+                filters.push(eq(pastPaper.examType, input.examType));
+            }
 
-    const papers = await db
-        .select({
-            id: pastPaper.id,
-            title: pastPaper.title,
-            thumbNailUrl: pastPaper.thumbNailUrl,
-            examType: pastPaper.examType,
-            slot: pastPaper.slot,
-            year: pastPaper.year,
-            courseCode: course.code,
-            courseTitle: course.title,
-        })
-        .from(pastPaper)
-        .leftJoin(course, eq(pastPaper.courseId, course.id))
-        .where(and(...filters))
-        .orderBy(sql`${pastPaper.year} desc nulls last`, desc(pastPaper.createdAt))
-        .limit(input.limit ?? 6);
+            const papers = await db
+                .select({
+                    id: pastPaper.id,
+                    title: pastPaper.title,
+                    thumbNailUrl: pastPaper.thumbNailUrl,
+                    examType: pastPaper.examType,
+                    slot: pastPaper.slot,
+                    year: pastPaper.year,
+                    courseCode: course.code,
+                    courseTitle: course.title,
+                })
+                .from(pastPaper)
+                .leftJoin(course, eq(pastPaper.courseId, course.id))
+                .where(and(...filters))
+                .orderBy(sql`${pastPaper.year} desc nulls last`, desc(pastPaper.createdAt))
+                .limit(input.limit ?? 6);
 
-    return papers.map((paper) => ({
-        id: paper.id,
-        title: paper.title,
-        thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
-        examType: paper.examType,
-        slot: paper.slot,
-        year: paper.year,
-        course: mapCourse(paper.courseCode, paper.courseTitle),
-    }));
+            return papers.map((paper) => ({
+                id: paper.id,
+                title: paper.title,
+                thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
+                examType: paper.examType,
+                slot: paper.slot,
+                year: paper.year,
+                course: mapCourse(paper.courseCode, paper.courseTitle),
+            }));
+        },
+    );
 }

@@ -2,6 +2,7 @@
 
 import { createPluginRegistration } from "@embedpdf/core";
 import { EmbedPDF, useDocumentState } from "@embedpdf/core/react";
+import Image from "next/image";
 import {
   DocumentContent,
   DocumentManagerPluginPackage,
@@ -40,26 +41,50 @@ import {
   Moon,
   Minus,
   Plus,
+  ShieldAlert,
+  ShieldCheck,
   Sparkles,
   Sun,
+  ThumbsDown,
+  ThumbsUp,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useId,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import {
   Streamdown,
   type Components as StreamdownComponents,
   type PluginConfig as StreamdownPluginConfig,
 } from "streamdown";
+import { LazyPastPaperPageEditor } from "@/app/components/moderation/lazy-editors";
 import type { PdfPaperDocument } from "@/lib/ai/pdf-markdown";
+import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
+import {
+  applyPdfPageEditsToBuffer,
+  normalizePdfPageEdits,
+  serializePdfPageEdits,
+} from "@/lib/pdf/page-edits";
 import { capturePdfDownloaded, getPostHogSessionId } from "@/lib/posthog/client";
 import {
   clearActivePdfSnapshot,
   setActivePdfSnapshot,
 } from "@/app/components/voice/pdf-voice-context";
+import type {
+  PdfMarkdownCacheMetadata,
+  PdfMarkdownFeedbackVote,
+} from "@/lib/ai/pdf-markdown-cache-types";
 
 const TOOLBAR_BUTTON_CLASS =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500";
@@ -71,6 +96,7 @@ const SLOW_LOAD_NOTICE_MS = 3500;
 const PDF_DARK_MODE_FILTER =
   "invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95)";
 const PDF_MARKDOWN_ENDPOINT = "/api/pdf/markdown";
+const PDF_MARKDOWN_FEEDBACK_ENDPOINT = "/api/pdf/markdown/feedback";
 const MARKDOWN_ACTION_BUTTON_CLASS =
   "flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-800";
 const STREAMDOWN_MATH_PLUGIN = createMathPlugin({
@@ -88,6 +114,7 @@ type PaperStatus = "idle" | "loading" | "ready" | "error";
 type CopyStatus = "idle" | "copying" | "copied";
 
 type PdfPaperResponse = {
+  cache?: PdfMarkdownCacheMetadata;
   paper: PdfPaperDocument;
   markdown: string;
   model?: string;
@@ -95,13 +122,250 @@ type PdfPaperResponse = {
 
 type PdfPaperStreamEvent =
   | { type: "partial"; paper?: unknown }
-  | { type: "done"; paper: PdfPaperDocument; markdown: string; model?: string }
+  | {
+      type: "done";
+      cache?: PdfMarkdownCacheMetadata;
+      paper: PdfPaperDocument;
+      markdown: string;
+      model?: string;
+    }
   | { type: "error"; error?: string };
 
 type PdfBufferState =
   | { status: "loading"; progress: number | null }
   | { status: "loaded"; buffer: ArrayBuffer }
   | { status: "error"; message: string };
+
+type PdfViewerModeration = {
+  pageEdits: PdfPageEdits | null;
+  paperId: string;
+};
+
+type PdfViewerProps = {
+  enableQuestionMarkdown?: boolean;
+  fileName?: string;
+  fileUrl: string;
+  moderation?: PdfViewerModeration | null;
+  pageEdits?: PdfPageEdits | null;
+};
+
+type SavedPageEditsState = {
+  sourceKey: string;
+  value: PdfPageEdits | null;
+};
+
+type PdfBufferLifecycleState = {
+  bufferState: PdfBufferState;
+  bufferVersion: number;
+  retryNonce: number;
+  showSlowLoadFallback: boolean;
+};
+
+type PdfBufferLifecycleAction =
+  | { type: "retry" }
+  | { type: "loadingStarted" }
+  | { type: "loadingProgress"; progress: number | null }
+  | { type: "loaded"; buffer: ArrayBuffer }
+  | { type: "failed"; message: string }
+  | { type: "showSlowLoadFallback" }
+  | { type: "hideSlowLoadFallback" };
+
+type PaperSessionState = {
+  viewMode: PaperViewMode;
+  paper: PdfPaperDocument | null;
+  paperMarkdown: string;
+  paperCache: PdfMarkdownCacheMetadata | null;
+  paperStatus: PaperStatus;
+  paperError: string | null;
+  feedbackError: string | null;
+  pendingFeedbackVote: PdfMarkdownFeedbackVote | null;
+  copyStatus: CopyStatus;
+};
+
+type PaperSessionAction =
+  | { type: "resetDocument" }
+  | { type: "showPaper" }
+  | { type: "showPdf" }
+  | { type: "copying" }
+  | { type: "copied" }
+  | { type: "copyIdle" }
+  | { type: "copyFailed"; message: string }
+  | { type: "loadStarted"; force: boolean }
+  | { type: "loadPartial"; paper: PdfPaperDocument }
+  | {
+      type: "loadSucceeded";
+      paper: PdfPaperDocument;
+      markdown: string;
+      cache: PdfMarkdownCacheMetadata | null;
+    }
+  | { type: "loadFailed"; message: string; showPaper: boolean }
+  | { type: "feedbackStarted"; vote: PdfMarkdownFeedbackVote }
+  | { type: "feedbackSucceeded"; cache: PdfMarkdownCacheMetadata }
+  | { type: "feedbackFailed"; message: string };
+
+const INITIAL_PAPER_SESSION_STATE: PaperSessionState = {
+  viewMode: "pdf",
+  paper: null,
+  paperMarkdown: "",
+  paperCache: null,
+  paperStatus: "idle",
+  paperError: null,
+  feedbackError: null,
+  pendingFeedbackVote: null,
+  copyStatus: "idle",
+};
+
+const INITIAL_PDF_BUFFER_LIFECYCLE_STATE: PdfBufferLifecycleState = {
+  bufferState: {
+    status: "loading",
+    progress: null,
+  },
+  bufferVersion: 0,
+  retryNonce: 0,
+  showSlowLoadFallback: false,
+};
+
+function pdfBufferLifecycleReducer(
+  state: PdfBufferLifecycleState,
+  action: PdfBufferLifecycleAction,
+): PdfBufferLifecycleState {
+  switch (action.type) {
+    case "retry":
+      return {
+        ...state,
+        retryNonce: state.retryNonce + 1,
+        showSlowLoadFallback: false,
+      };
+    case "loadingStarted":
+      return {
+        ...state,
+        bufferState: { status: "loading", progress: null },
+        showSlowLoadFallback: false,
+      };
+    case "loadingProgress":
+      return {
+        ...state,
+        bufferState: { status: "loading", progress: action.progress },
+      };
+    case "loaded":
+      return {
+        ...state,
+        bufferState: { status: "loaded", buffer: action.buffer },
+        bufferVersion: state.bufferVersion + 1,
+      };
+    case "failed":
+      return {
+        ...state,
+        bufferState: {
+          status: "error",
+          message: action.message,
+        },
+      };
+    case "showSlowLoadFallback":
+      return state.showSlowLoadFallback
+        ? state
+        : { ...state, showSlowLoadFallback: true };
+    case "hideSlowLoadFallback":
+      return state.showSlowLoadFallback
+        ? { ...state, showSlowLoadFallback: false }
+        : state;
+    default:
+      return state;
+  }
+}
+
+function isPaperSessionReset(state: PaperSessionState) {
+  return (
+    state.viewMode === "pdf" &&
+    state.paper === null &&
+    state.paperMarkdown === "" &&
+    state.paperCache === null &&
+    state.paperStatus === "idle" &&
+    state.paperError === null &&
+    state.feedbackError === null &&
+    state.pendingFeedbackVote === null &&
+    state.copyStatus === "idle"
+  );
+}
+
+function resetPaperSession(state: PaperSessionState) {
+  return isPaperSessionReset(state) ? state : INITIAL_PAPER_SESSION_STATE;
+}
+
+function paperSessionReducer(
+  state: PaperSessionState,
+  action: PaperSessionAction,
+): PaperSessionState {
+  switch (action.type) {
+    case "resetDocument":
+      return resetPaperSession(state);
+    case "showPaper":
+      return state.viewMode === "paper" ? state : { ...state, viewMode: "paper" };
+    case "showPdf":
+      return state.viewMode === "pdf" ? state : { ...state, viewMode: "pdf" };
+    case "copying":
+      return { ...state, copyStatus: "copying" };
+    case "copied":
+      return { ...state, copyStatus: "copied" };
+    case "copyIdle":
+      return state.copyStatus === "idle" ? state : { ...state, copyStatus: "idle" };
+    case "copyFailed":
+      return {
+        ...state,
+        copyStatus: "idle",
+        paperError: action.message,
+        paperStatus: "error",
+        viewMode: "paper",
+      };
+    case "loadStarted":
+      return {
+        ...state,
+        paper: action.force ? null : state.paper,
+        paperMarkdown: action.force ? "" : state.paperMarkdown,
+        paperCache: action.force ? null : state.paperCache,
+        paperStatus: "loading",
+        paperError: null,
+        feedbackError: null,
+      };
+    case "loadPartial":
+      return { ...state, paper: action.paper };
+    case "loadSucceeded":
+      return {
+        ...state,
+        paper: action.paper,
+        paperMarkdown: action.markdown,
+        paperCache: action.cache,
+        paperStatus: "ready",
+      };
+    case "loadFailed":
+      return {
+        ...state,
+        paperStatus: "error",
+        paperError: action.message,
+        viewMode: action.showPaper ? "paper" : state.viewMode,
+      };
+    case "feedbackStarted":
+      return {
+        ...state,
+        feedbackError: null,
+        pendingFeedbackVote: action.vote,
+      };
+    case "feedbackSucceeded":
+      return {
+        ...state,
+        paperCache: action.cache,
+        pendingFeedbackVote: null,
+      };
+    case "feedbackFailed":
+      return {
+        ...state,
+        feedbackError: action.message,
+        pendingFeedbackVote: null,
+      };
+    default:
+      return state;
+  }
+}
 
 const MARKDOWN_COMPONENTS: StreamdownComponents = {
   h1: ({ children }) => (
@@ -189,9 +453,11 @@ async function getJsonResponseErrorMessage(response: Response) {
 }
 
 async function loadPdfPaper(input: {
+  cacheMode?: "default" | "refresh";
   fileName: string;
   fileUrl: string;
   onPartial?: (paper: PdfPaperDocument) => void;
+  pageEdits?: PdfPageEdits | null;
   signal: AbortSignal;
 }): Promise<PdfPaperResponse> {
   const response = await fetch(PDF_MARKDOWN_ENDPOINT, {
@@ -200,8 +466,10 @@ async function loadPdfPaper(input: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      cacheMode: input.cacheMode ?? "default",
       fileName: input.fileName,
       fileUrl: input.fileUrl,
+      pageEdits: input.pageEdits ?? null,
       posthogSessionId: getPostHogSessionId(),
     }),
     cache: "no-store",
@@ -236,6 +504,7 @@ async function loadPdfPaper(input: {
 
     if (event.type === "done") {
       finalPayload = {
+        cache: event.cache,
         markdown: event.markdown,
         model: event.model,
         paper: event.paper,
@@ -353,6 +622,44 @@ async function copyTextToClipboard(text: string) {
   } finally {
     document.body.removeChild(textArea);
   }
+}
+
+async function submitPdfMarkdownFeedback(input: {
+  cache: PdfMarkdownCacheMetadata;
+  vote: PdfMarkdownFeedbackVote;
+}) {
+  if (!input.cache.cacheKey || !input.cache.generationId) {
+    throw new Error("This Markdown generation cannot be rated yet.");
+  }
+
+  const response = await fetch(PDF_MARKDOWN_FEEDBACK_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      cacheKey: input.cache.cacheKey,
+      contentHash: input.cache.contentHash,
+      generationId: input.cache.generationId,
+      model: input.cache.model,
+      vote: input.vote,
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getJsonResponseErrorMessage(response));
+  }
+
+  const payload = (await response.json()) as {
+    cache?: PdfMarkdownCacheMetadata;
+  };
+
+  if (!payload.cache) {
+    throw new Error("Feedback was saved, but the updated score was missing.");
+  }
+
+  return payload.cache;
 }
 
 function LoadingState({
@@ -585,17 +892,163 @@ function AiPaperErrorState({
   );
 }
 
+function getAccuracyCopy(cache: PdfMarkdownCacheMetadata | null) {
+  if (!cache || cache.status === "disabled" || cache.status === "skipped") {
+    return {
+      description:
+        "Redis feedback is unavailable for this generation, so verify it against the PDF before relying on it.",
+      label: "Not cached",
+      tone: "neutral" as const,
+    };
+  }
+
+  switch (cache.feedback.status) {
+    case "community_verified":
+      return {
+        description:
+          "Multiple students marked this extraction as accurate. Still verify formulas and marks against the PDF.",
+        label: "Community verified",
+        tone: "good" as const,
+      };
+    case "helpful":
+      return {
+        description:
+          "At least one student marked this extraction as accurate. More feedback improves the cache signal.",
+        label: "Positive signal",
+        tone: "good" as const,
+      };
+    case "needs_review":
+      return {
+        description:
+          "Students reported a problem. This cached generation will be bypassed for future requests unless stronger positive feedback exists.",
+        label: "Needs review",
+        tone: "warning" as const,
+      };
+    default:
+      return {
+        description:
+          "No student has verified this extraction yet. Check it against the original PDF before trusting it.",
+        label: "Unverified",
+        tone: "neutral" as const,
+      };
+  }
+}
+
+function AiPaperQualityPanel({
+  cache,
+  feedbackError,
+  isDarkMode,
+  pendingVote,
+  onFeedback,
+}: {
+  cache: PdfMarkdownCacheMetadata | null;
+  feedbackError: string | null;
+  isDarkMode: boolean;
+  pendingVote: PdfMarkdownFeedbackVote | null;
+  onFeedback: (vote: PdfMarkdownFeedbackVote) => void;
+}) {
+  const copy = getAccuracyCopy(cache);
+  const canVote = Boolean(
+    cache?.cacheKey &&
+      cache.generationId &&
+      ["bypassed", "hit", "stored"].includes(cache.status),
+  );
+  const selectedVote = cache?.feedback.userVote ?? null;
+  const isWarning = copy.tone === "warning";
+  const panelClass = isDarkMode
+    ? "border-[#D5D5D5]/15 bg-[#D5D5D5]/5"
+    : "border-black/10 bg-[#F8FBFC]";
+  const badgeClass = isWarning
+    ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200"
+    : copy.tone === "good"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200"
+      : "border-current/15 bg-current/5 text-inherit";
+
+  return (
+    <section className={`mt-5 border px-4 py-3 text-left ${panelClass}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 gap-3">
+          {isWarning ? (
+            <ShieldAlert
+              className="mt-0.5 h-5 w-5 shrink-0 text-amber-500"
+              aria-hidden="true"
+            />
+          ) : (
+            <ShieldCheck
+              className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500"
+              aria-hidden="true"
+            />
+          )}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold">Is this generation accurate?</p>
+              <span className={`border px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] ${badgeClass}`}>
+                {copy.label}
+              </span>
+            </div>
+            <p className="mt-1 text-xs leading-5 opacity-70">{copy.description}</p>
+            {feedbackError ? (
+              <p className="mt-2 text-xs font-medium text-red-500">
+                {feedbackError}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onFeedback("up")}
+            disabled={!canVote || pendingVote !== null}
+            aria-pressed={selectedVote === "up"}
+            className={`inline-flex h-9 items-center gap-1.5 border px-3 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-45 ${
+              selectedVote === "up"
+                ? "border-emerald-500 bg-emerald-500 text-white"
+                : "border-current/15 bg-transparent hover:bg-current/10"
+            }`}
+          >
+            <ThumbsUp className="h-4 w-4" aria-hidden="true" />
+            {pendingVote === "up" ? "Saving" : cache?.feedback.upvotes ?? 0}
+          </button>
+          <button
+            type="button"
+            onClick={() => onFeedback("down")}
+            disabled={!canVote || pendingVote !== null}
+            aria-pressed={selectedVote === "down"}
+            className={`inline-flex h-9 items-center gap-1.5 border px-3 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-45 ${
+              selectedVote === "down"
+                ? "border-amber-500 bg-amber-500 text-black"
+                : "border-current/15 bg-transparent hover:bg-current/10"
+            }`}
+          >
+            <ThumbsDown className="h-4 w-4" aria-hidden="true" />
+            {pendingVote === "down" ? "Saving" : cache?.feedback.downvotes ?? 0}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function AiPaperView({
+  cache,
   errorMessage,
+  feedbackError,
   isDarkMode,
   paper,
+  pendingVote,
   status,
+  onFeedback,
   onRetry,
 }: {
+  cache: PdfMarkdownCacheMetadata | null;
   errorMessage: string | null;
+  feedbackError: string | null;
   isDarkMode: boolean;
   paper: PdfPaperDocument | null;
+  pendingVote: PdfMarkdownFeedbackVote | null;
   status: PaperStatus;
+  onFeedback: (vote: PdfMarkdownFeedbackVote) => void;
   onRetry: () => void;
 }) {
   const hasQuestions = Boolean(paper?.questions.length);
@@ -634,6 +1087,13 @@ function AiPaperView({
           <h1 className="font-serif text-3xl font-semibold leading-tight">
             Questions
           </h1>
+          <AiPaperQualityPanel
+            cache={cache}
+            feedbackError={feedbackError}
+            isDarkMode={isDarkMode}
+            pendingVote={pendingVote}
+            onFeedback={onFeedback}
+          />
         </header>
 
         <div className={`divide-y ${ruleClass}`}>
@@ -746,10 +1206,13 @@ function PageRenderLayer({
   if (!imageUrl) return null;
 
   return (
-    <img
+    <Image
       src={imageUrl}
       alt=""
-      className="absolute inset-0 h-full w-full select-none object-fill"
+      fill
+      unoptimized
+      sizes="100vw"
+      className="absolute inset-0 select-none object-fill"
       data-ec-pdf-page-image="true"
       data-ec-pdf-page-index={pageIndex}
       data-ec-pdf-page-number={pageIndex + 1}
@@ -1120,7 +1583,7 @@ function PdfVoiceBridge({
   fileName: string;
   fileUrl: string;
 }) {
-  const viewerIdRef = useRef(`pdf_${Math.random().toString(36).slice(2, 10)}`);
+  const viewerId = `pdf_${useId().replaceAll(":", "")}`;
   const { provides: scrollControls, state: scrollState } = useScroll(documentId);
   const currentPage = Math.max(scrollState.currentPage || 1, 1);
   const totalPages = Math.max(scrollState.totalPages || 1, 1);
@@ -1145,15 +1608,15 @@ function PdfVoiceBridge({
       navigateToPage,
       title: document.title,
       totalPages,
-      viewerId: viewerIdRef.current,
+      viewerId,
     });
-  }, [currentPage, fileName, fileUrl, navigateToPage, totalPages]);
+  }, [currentPage, fileName, fileUrl, navigateToPage, totalPages, viewerId]);
 
   useEffect(
     () => () => {
-      clearActivePdfSnapshot(viewerIdRef.current);
+      clearActivePdfSnapshot(viewerId);
     },
-    [],
+    [viewerId],
   );
 
   return null;
@@ -1166,8 +1629,11 @@ function LoadedDocumentSurface({
   fileName,
   isFullScreen,
   isPdfDarkMode,
+  moderation,
   onTogglePdfDarkMode,
   onToggleFullScreen,
+  onPageEditsSaved,
+  pageEdits,
 }: {
   documentId: string;
   enableQuestionMarkdown: boolean;
@@ -1175,25 +1641,34 @@ function LoadedDocumentSurface({
   fileName: string;
   isFullScreen: boolean;
   isPdfDarkMode: boolean;
+  moderation: PdfViewerModeration | null;
   onTogglePdfDarkMode: () => void;
   onToggleFullScreen: () => void;
+  onPageEditsSaved: (nextPageEdits: PdfPageEdits | null) => void;
+  pageEdits: PdfPageEdits | null;
 }) {
-  const [viewMode, setViewMode] = useState<PaperViewMode>("pdf");
-  const [paper, setPaper] = useState<PdfPaperDocument | null>(null);
-  const [paperMarkdown, setPaperMarkdown] = useState("");
-  const [paperStatus, setPaperStatus] = useState<PaperStatus>("idle");
-  const [paperError, setPaperError] = useState<string | null>(null);
-  const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+  const [paperState, dispatchPaper] = useReducer(
+    paperSessionReducer,
+    INITIAL_PAPER_SESSION_STATE,
+  );
+  const {
+    viewMode,
+    paper,
+    paperMarkdown,
+    paperCache,
+    paperStatus,
+    paperError,
+    feedbackError,
+    pendingFeedbackVote,
+    copyStatus,
+  } = paperState;
   const paperAbortRef = useRef<AbortController | null>(null);
   const copyResetTimerRef = useRef<number | null>(null);
+  const { state: scrollState } = useScroll(documentId);
+  const totalPages = Math.max(scrollState.totalPages || 0, 0);
 
   useEffect(() => {
-    setViewMode("pdf");
-    setPaper(null);
-    setPaperMarkdown("");
-    setPaperStatus("idle");
-    setPaperError(null);
-    setCopyStatus("idle");
+    dispatchPaper({ type: "resetDocument" });
     paperAbortRef.current?.abort();
     paperAbortRef.current = null;
   }, [fileName, fileUrl]);
@@ -1209,12 +1684,12 @@ function LoadedDocumentSurface({
   );
 
   const markCopied = useCallback(() => {
-    setCopyStatus("copied");
+    dispatchPaper({ type: "copied" });
     if (copyResetTimerRef.current) {
       window.clearTimeout(copyResetTimerRef.current);
     }
     copyResetTimerRef.current = window.setTimeout(() => {
-      setCopyStatus("idle");
+      dispatchPaper({ type: "copyIdle" });
       copyResetTimerRef.current = null;
     }, 1800);
   }, []);
@@ -1225,17 +1700,16 @@ function LoadedDocumentSurface({
         return;
       }
 
-      setCopyStatus("copying");
+      dispatchPaper({ type: "copying" });
       try {
         await copyTextToClipboard(markdown);
         markCopied();
       } catch (error) {
-        setCopyStatus("idle");
-        setPaperError(
-          error instanceof Error ? error.message : "Failed to copy Markdown.",
-        );
-        setPaperStatus("error");
-        setViewMode("paper");
+        dispatchPaper({
+          type: "copyFailed",
+          message:
+            error instanceof Error ? error.message : "Failed to copy Markdown.",
+        });
       }
     },
     [markCopied],
@@ -1256,7 +1730,7 @@ function LoadedDocumentSurface({
       }
 
       if (showPaper) {
-        setViewMode("paper");
+        dispatchPaper({ type: "showPaper" });
       }
 
       if (!force && paperStatus === "loading") {
@@ -1274,15 +1748,11 @@ function LoadedDocumentSurface({
       paperAbortRef.current?.abort();
       paperAbortRef.current = controller;
 
-      setPaperError(null);
-      if (force) {
-        setPaper(null);
-        setPaperMarkdown("");
-      }
-      setPaperStatus("loading");
+      dispatchPaper({ type: "loadStarted", force });
 
       try {
         const response = await loadPdfPaper({
+          cacheMode: force ? "refresh" : "default",
           fileName,
           fileUrl,
           onPartial: (partialPaper) => {
@@ -1290,14 +1760,18 @@ function LoadedDocumentSurface({
               return;
             }
 
-            setPaper(partialPaper);
+            dispatchPaper({ type: "loadPartial", paper: partialPaper });
           },
+          pageEdits,
           signal: controller.signal,
         });
 
-        setPaper(response.paper);
-        setPaperMarkdown(response.markdown);
-        setPaperStatus("ready");
+        dispatchPaper({
+          type: "loadSucceeded",
+          paper: response.paper,
+          markdown: response.markdown,
+          cache: response.cache ?? null,
+        });
 
         if (copyAfter) {
           await copyMarkdownText(response.markdown);
@@ -1307,16 +1781,14 @@ function LoadedDocumentSurface({
           return;
         }
 
-        setPaperStatus("error");
-        setPaperError(
-          error instanceof Error
-            ? error.message
-            : "Failed to convert this PDF to Markdown.",
-        );
-
-        if (copyAfter) {
-          setViewMode("paper");
-        }
+        dispatchPaper({
+          type: "loadFailed",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to convert this PDF to Markdown.",
+          showPaper: copyAfter,
+        });
       } finally {
         if (paperAbortRef.current === controller) {
           paperAbortRef.current = null;
@@ -1328,6 +1800,7 @@ function LoadedDocumentSurface({
       enableQuestionMarkdown,
       fileName,
       fileUrl,
+      pageEdits,
       paperMarkdown,
       paperStatus,
     ],
@@ -1345,6 +1818,34 @@ function LoadedDocumentSurface({
     void loadPaper({ force: true, showPaper: true });
   }, [loadPaper]);
 
+  const handleMarkdownFeedback = useCallback(
+    (vote: PdfMarkdownFeedbackVote) => {
+      if (!paperCache || pendingFeedbackVote) {
+        return;
+      }
+
+      dispatchPaper({ type: "feedbackStarted", vote });
+
+      void submitPdfMarkdownFeedback({
+        cache: paperCache,
+        vote,
+      })
+        .then((updatedCache) => {
+          dispatchPaper({ type: "feedbackSucceeded", cache: updatedCache });
+        })
+        .catch((error) => {
+          dispatchPaper({
+            type: "feedbackFailed",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Failed to save Markdown feedback.",
+          });
+        });
+    },
+    [paperCache, pendingFeedbackVote],
+  );
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <PdfVoiceBridge
@@ -1352,59 +1853,77 @@ function LoadedDocumentSurface({
         fileName={fileName}
         fileUrl={fileUrl}
       />
-      <ViewerToolbar
-        documentId={documentId}
-        enableQuestionMarkdown={enableQuestionMarkdown}
-        fileUrl={fileUrl}
-        fileName={fileName}
-        isFullScreen={isFullScreen}
-        isPdfDarkMode={isPdfDarkMode}
-        viewMode={viewMode}
-        paperStatus={paperStatus}
-        copyStatus={copyStatus}
-        onCopyMarkdown={handleCopyMarkdown}
-        onShowPdf={() => setViewMode("pdf")}
-        onTogglePdfDarkMode={onTogglePdfDarkMode}
-        onToggleFullScreen={onToggleFullScreen}
-        onViewMarkdown={handleViewMarkdown}
-      />
-      {viewMode === "paper" ? (
-        <AiPaperView
-          errorMessage={paperError}
-          isDarkMode={isPdfDarkMode}
-          paper={paper}
-          status={paperStatus}
-          onRetry={handleRetryMarkdown}
-        />
-      ) : (
-        <Viewport
-          documentId={documentId}
-          className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950"
-          style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
-        >
-          <Scroller
+      <div className="relative flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <ViewerToolbar
             documentId={documentId}
-            className="py-3 sm:py-4"
-            renderPage={({ pageIndex, rotatedHeight, rotatedWidth }) => (
-              <div
-                className={`relative overflow-hidden shadow-[0_3px_18px_-10px_rgba(0,0,0,0.45)] ${
-                  isPdfDarkMode ? "bg-black" : "bg-white"
-                }`}
-                style={{
-                  width: rotatedWidth,
-                  height: rotatedHeight,
-                }}
-              >
-                <PageRenderLayer
-                  documentId={documentId}
-                  isPdfDarkMode={isPdfDarkMode}
-                  pageIndex={pageIndex}
-                />
-              </div>
-            )}
+            enableQuestionMarkdown={enableQuestionMarkdown}
+            fileUrl={fileUrl}
+            fileName={fileName}
+            isFullScreen={isFullScreen}
+            isPdfDarkMode={isPdfDarkMode}
+            viewMode={viewMode}
+            paperStatus={paperStatus}
+            copyStatus={copyStatus}
+            onCopyMarkdown={handleCopyMarkdown}
+            onShowPdf={() => dispatchPaper({ type: "showPdf" })}
+            onTogglePdfDarkMode={onTogglePdfDarkMode}
+            onToggleFullScreen={onToggleFullScreen}
+            onViewMarkdown={handleViewMarkdown}
           />
-        </Viewport>
-      )}
+          {viewMode === "paper" ? (
+            <AiPaperView
+              cache={paperCache}
+              errorMessage={paperError}
+              feedbackError={feedbackError}
+              isDarkMode={isPdfDarkMode}
+              paper={paper}
+              pendingVote={pendingFeedbackVote}
+              status={paperStatus}
+              onFeedback={handleMarkdownFeedback}
+              onRetry={handleRetryMarkdown}
+            />
+          ) : (
+            <Viewport
+              documentId={documentId}
+              className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-950"
+              style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
+            >
+              <Scroller
+                documentId={documentId}
+                className="py-3 sm:py-4"
+                renderPage={({ pageIndex, rotatedHeight, rotatedWidth }) => (
+                  <div
+                    className={`relative overflow-hidden shadow-[0_3px_18px_-10px_rgba(0,0,0,0.45)] ${
+                      isPdfDarkMode ? "bg-black" : "bg-white"
+                    }`}
+                    style={{
+                      width: rotatedWidth,
+                      height: rotatedHeight,
+                    }}
+                  >
+                    <PageRenderLayer
+                      documentId={documentId}
+                      isPdfDarkMode={isPdfDarkMode}
+                      pageIndex={pageIndex}
+                    />
+                  </div>
+                )}
+              />
+            </Viewport>
+          )}
+        </div>
+
+        {viewMode === "pdf" && moderation && totalPages > 0 ? (
+          <LazyPastPaperPageEditor
+            documentId={documentId}
+            paperId={moderation.paperId}
+            savedPageEdits={pageEdits}
+            totalPages={totalPages}
+            onSaved={onPageEditsSaved}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -1416,8 +1935,11 @@ function DocumentViewport({
   fileName,
   isFullScreen,
   isPdfDarkMode,
+  moderation,
   onTogglePdfDarkMode,
   onToggleFullScreen,
+  onPageEditsSaved,
+  pageEdits,
 }: {
   documentId: string;
   enableQuestionMarkdown: boolean;
@@ -1425,8 +1947,11 @@ function DocumentViewport({
   fileName: string;
   isFullScreen: boolean;
   isPdfDarkMode: boolean;
+  moderation: PdfViewerModeration | null;
   onTogglePdfDarkMode: () => void;
   onToggleFullScreen: () => void;
+  onPageEditsSaved: (nextPageEdits: PdfPageEdits | null) => void;
+  pageEdits: PdfPageEdits | null;
 }) {
   return (
     <DocumentContent documentId={documentId}>
@@ -1452,8 +1977,11 @@ function DocumentViewport({
             fileName={fileName}
             isFullScreen={isFullScreen}
             isPdfDarkMode={isPdfDarkMode}
+            moderation={moderation}
             onTogglePdfDarkMode={onTogglePdfDarkMode}
             onToggleFullScreen={onToggleFullScreen}
+            onPageEditsSaved={onPageEditsSaved}
+            pageEdits={pageEdits}
           />
         );
       }}
@@ -1465,34 +1993,63 @@ export default function PDFViewer({
   enableQuestionMarkdown = false,
   fileUrl,
   fileName,
-}: {
-  enableQuestionMarkdown?: boolean;
-  fileUrl: string;
-  fileName?: string;
-}) {
+  moderation = null,
+  pageEdits = null,
+}: PdfViewerProps) {
   const downloadFileName = useMemo(
     () => fileName ?? getFallbackPdfFileName(fileUrl),
-    [fileName, fileUrl]
+    [fileName, fileUrl],
+  );
+  const normalizedInitialPageEdits = useMemo(
+    () => normalizePdfPageEdits(pageEdits ?? moderation?.pageEdits ?? null),
+    [moderation?.pageEdits, pageEdits],
+  );
+  const normalizedInitialPageEditsKey = useMemo(
+    () => serializePdfPageEdits(normalizedInitialPageEdits),
+    [normalizedInitialPageEdits],
   );
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isPdfDarkMode, setIsPdfDarkMode] = useState(false);
-  const [bufferState, setBufferState] = useState<PdfBufferState>({
-    status: "loading",
-    progress: null,
-  });
-  const [retryNonce, setRetryNonce] = useState(0);
-  const [showSlowLoadFallback, setShowSlowLoadFallback] = useState(false);
+  const [savedPageEditsState, setSavedPageEditsState] =
+    useState<SavedPageEditsState>({
+      sourceKey: normalizedInitialPageEditsKey,
+      value: normalizedInitialPageEdits,
+    });
+  const [bufferLifecycleState, dispatchBufferLifecycle] = useReducer(
+    pdfBufferLifecycleReducer,
+    INITIAL_PDF_BUFFER_LIFECYCLE_STATE,
+  );
+  const {
+    bufferState,
+    bufferVersion,
+    retryNonce,
+    showSlowLoadFallback,
+  } = bufferLifecycleState;
+  const savedPageEdits =
+    savedPageEditsState.sourceKey === normalizedInitialPageEditsKey
+      ? savedPageEditsState.value
+      : normalizedInitialPageEdits;
+  const setSavedPageEdits = (nextPageEdits: PdfPageEdits | null) => {
+    const normalizedNextPageEdits = normalizePdfPageEdits(nextPageEdits);
+    setSavedPageEditsState({
+      sourceKey: serializePdfPageEdits(normalizedNextPageEdits),
+      value: normalizedNextPageEdits,
+    });
+  };
+  const deferredPageEdits = useDeferredValue(savedPageEdits);
+  const deferredPageEditsKey = useMemo(
+    () => serializePdfPageEdits(deferredPageEdits),
+    [deferredPageEdits],
+  );
   const engineState = usePreloadedPdfiumEngine(retryNonce);
 
   const retryViewerLoad = useCallback(() => {
-    setShowSlowLoadFallback(false);
-    setRetryNonce((currentValue) => currentValue + 1);
+    dispatchBufferLifecycle({ type: "retry" });
   }, []);
 
   useEffect(() => {
     let isActive = true;
-    setShowSlowLoadFallback(false);
-    setBufferState({ status: "loading", progress: null });
+    dispatchBufferLifecycle({ type: "loadingStarted" });
 
     if (retryNonce > 0) {
       invalidatePdfBuffer(fileUrl);
@@ -1500,18 +2057,24 @@ export default function PDFViewer({
 
     const { promise, unsubscribe } = loadPdfBuffer(fileUrl, (progress) => {
       if (!isActive) return;
-      setBufferState({ status: "loading", progress });
+      dispatchBufferLifecycle({ type: "loadingProgress", progress });
     });
 
     promise
-      .then((buffer) => {
+      .then(async (buffer) => {
         if (!isActive) return;
-        setBufferState({ status: "loaded", buffer });
+
+        const nextBuffer = deferredPageEdits
+          ? await applyPdfPageEditsToBuffer(buffer, deferredPageEdits)
+          : buffer;
+
+        if (!isActive) return;
+        dispatchBufferLifecycle({ type: "loaded", buffer: nextBuffer });
       })
       .catch((loadError) => {
         if (!isActive) return;
-        setBufferState({
-          status: "error",
+        dispatchBufferLifecycle({
+          type: "failed",
           message:
             loadError instanceof Error
               ? loadError.message
@@ -1523,30 +2086,28 @@ export default function PDFViewer({
       isActive = false;
       unsubscribe();
     };
-  }, [fileUrl, retryNonce]);
+  }, [deferredPageEdits, deferredPageEditsKey, fileUrl, retryNonce]);
 
   useEffect(() => {
     if (engineState.status !== "loading" && bufferState.status !== "loading") {
-      setShowSlowLoadFallback(false);
+      dispatchBufferLifecycle({ type: "hideSlowLoadFallback" });
       return;
     }
 
     const slowLoadTimer = window.setTimeout(() => {
-      setShowSlowLoadFallback(true);
+      dispatchBufferLifecycle({ type: "showSlowLoadFallback" });
     }, SLOW_LOAD_NOTICE_MS);
 
     return () => window.clearTimeout(slowLoadTimer);
   }, [bufferState.status, engineState.status, retryNonce]);
 
+  const activeBuffer = bufferState.status === "loaded" ? bufferState.buffer : null;
   const plugins = useMemo(
     () => [
       createPluginRegistration(DocumentManagerPluginPackage, {
         initialDocuments: [
           {
-            buffer:
-              bufferState.status === "loaded"
-                ? bufferState.buffer
-                : new ArrayBuffer(0),
+            buffer: activeBuffer ?? new ArrayBuffer(0),
             name: downloadFileName,
             autoActivate: true,
           },
@@ -1572,8 +2133,9 @@ export default function PDFViewer({
         zoomStep: 0.1,
       }),
     ],
-    [bufferState, downloadFileName]
+    [activeBuffer, downloadFileName],
   );
+  const documentKey = `${fileUrl}::${bufferVersion}`;
 
   const toggleFullScreen = useCallback(() => {
     setIsFullScreen((currentValue) => !currentValue);
@@ -1638,7 +2200,7 @@ export default function PDFViewer({
       }`}
     >
       <EmbedPDF
-        key={fileUrl}
+        key={documentKey}
         engine={engineState.engine}
         plugins={plugins}
         autoMountDomElements={false}
@@ -1652,8 +2214,11 @@ export default function PDFViewer({
               fileName={downloadFileName}
               isFullScreen={isFullScreen}
               isPdfDarkMode={isPdfDarkMode}
+              moderation={moderation}
               onTogglePdfDarkMode={togglePdfDarkMode}
               onToggleFullScreen={toggleFullScreen}
+              onPageEditsSaved={setSavedPageEdits}
+              pageEdits={savedPageEdits}
             />
           ) : (
             <LoadingState label="Opening PDF" />

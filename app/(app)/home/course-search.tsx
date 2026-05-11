@@ -2,14 +2,12 @@
 
 import React, { Activity, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import Image from "@/app/components/common/app-image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import VoiceAgentButton from "@/app/components/voice/voice-agent-button";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import {
-    captureCourseSearchDestinationClicked,
     captureCourseSearchSelection,
     captureCourseSearchSubmitted,
     type CourseSearchInteraction,
@@ -17,14 +15,10 @@ import {
 } from "@/lib/posthog/client";
 import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
+import { getCoursePastPapersPath } from "@/lib/seo";
 import {
-    getCourseNotesPath,
-    getCoursePastPapersPath,
-    getCourseSyllabusPath,
-} from "@/lib/seo";
-import {
-    canUseNativeCourseSearch,
     presentNativeCourseSearch,
+    useNativeCourseSearchAvailable,
 } from "@/lib/native-course-search";
 
 export type CourseResult = {
@@ -51,9 +45,11 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     const router = useRouter();
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
-    const [selectedCourse, setSelectedCourse] = useState<CourseResult | null>(null);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
-    const [nativeSearchAvailable, setNativeSearchAvailable] = useState(false);
+    const nativeCourseSearchAvailable = useNativeCourseSearchAvailable();
+    const [nativeSearchUnavailable, setNativeSearchUnavailable] = useState(false);
+    const nativeSearchAvailable =
+        nativeCourseSearchAvailable && !nativeSearchUnavailable;
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const deferredQuery = useDeferredValue(query);
@@ -124,18 +120,11 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    useEffect(() => {
-        setNativeSearchAvailable(canUseNativeCourseSearch());
-    }, []);
-
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setQuery(value);
         setIsOpen(value.trim().length > 0);
         setHighlightedIndex(-1);
-        if (selectedCourse && value !== `${selectedCourse.title} (${selectedCourse.code})`) {
-            setSelectedCourse(null);
-        }
     };
 
     const handleSelectCourse = (
@@ -203,7 +192,6 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
 
     const clearSelection = () => {
         setQuery('');
-        setSelectedCourse(null);
         setIsOpen(false);
         inputRef.current?.focus();
     };
@@ -276,7 +264,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
             }
             router.push(`/past_papers?search=${encodeURIComponent(trimmed)}`);
         } catch {
-            setNativeSearchAvailable(false);
+            setNativeSearchUnavailable(true);
             inputRef.current?.focus();
         }
     };
@@ -409,83 +397,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                 </Activity>
             </div>
 
-            <div className="mt-4 sm:mt-6 h-[10.75rem] sm:h-[8.75rem]">
-                {selectedCourse && (
-                    <div className="h-full animate-in fade-in slide-in-from-bottom-4 duration-300">
-                        <div className="flex h-full min-w-0 flex-col overflow-hidden border border-black/20 bg-white text-black dark:border-[#D5D5D5]/20 dark:bg-[#0C1222] dark:text-[#D5D5D5]">
-                            <div className="min-h-0 min-w-0 flex-1 overflow-hidden border-b border-black/15 p-5 dark:border-[#D5D5D5]/15">
-                                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-black/55 dark:text-[#3BF4C7]/80">
-                                    {selectedCourse.code}
-                                </p>
-                                <h3 className="mt-1 block max-w-full truncate text-lg font-bold leading-snug">
-                                    {selectedCourse.title}
-                                </h3>
-                            </div>
-
-                            {(() => {
-                                const actions: Array<{
-                                    href: string;
-                                    label: string;
-                                    destination: "past_papers" | "notes" | "syllabus";
-                                }> = [];
-
-                                if (selectedCourse.paperCount > 0) {
-                                    actions.push({
-                                        href: getCoursePastPapersPath(selectedCourse.code),
-                                        label: `Past Papers (${selectedCourse.paperCount})`,
-                                        destination: "past_papers",
-                                    });
-                                }
-
-                                if (selectedCourse.noteCount > 0) {
-                                    actions.push({
-                                        href: getCourseNotesPath(selectedCourse.code),
-                                        label: `Notes (${selectedCourse.noteCount})`,
-                                        destination: "notes",
-                                    });
-                                }
-
-                                if (selectedCourse.syllabusId) {
-                                    actions.push({
-                                        href: getCourseSyllabusPath(selectedCourse.code),
-                                        label: 'Syllabus',
-                                        destination: "syllabus",
-                                    });
-                                }
-
-                                if (actions.length === 0) {
-                                    return (
-                                        <p className="shrink-0 px-5 py-4 text-center text-sm text-black/55 dark:text-[#D5D5D5]/55">
-                                            No resources yet for this course.
-                                        </p>
-                                    );
-                                }
-
-                                return (
-                                    <div className="flex shrink-0 gap-2 overflow-x-auto p-3 sm:p-4">
-                                        {actions.map((action) => (
-                                            <Link
-                                                key={action.href}
-                                                href={action.href}
-                                                onClick={() =>
-                                                    captureCourseSearchDestinationClicked({
-                                                        context: "home",
-                                                        courseCode: selectedCourse.code,
-                                                        destination: action.destination,
-                                                    })
-                                                }
-                                                className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap border border-black/70 px-3 text-sm font-semibold text-black transition-colors hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/60 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7]/10 dark:hover:text-[#3BF4C7]"
-                                            >
-                                                {action.label}
-                                            </Link>
-                                        ))}
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    </div>
-                )}
-            </div>
+            <div className="mt-4 sm:mt-6 h-[10.75rem] sm:h-[8.75rem]" />
         </div>
     );
 }

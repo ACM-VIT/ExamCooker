@@ -1,14 +1,15 @@
 "use client";
-import React, { Suspense, useCallback, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useEffectEvent, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import NavBar from "@/app/components/nav-bar";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import AppImage from "@/app/components/common/app-image";
 import ExamCookerLogoIcon from "@/public/assets/logo-icon.svg";
 import { markRenderedRoutePath } from "@/app/components/voice/voice-navigation";
 import MobileTabBar from "@/app/components/mobile-tab-bar";
 import { NavFromProvider } from "@/app/components/common/nav-from-provider";
+import { useLocationSearch } from "@/app/components/common/use-location-search";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 import { MoreHorizontal, X } from "lucide-react";
 import {
@@ -24,19 +25,21 @@ const CommandPalette = dynamic(() => import("@/app/components/command-palette"),
 
 function RouteEffects({ onPathChange }: { onPathChange: () => void }) {
     const pathname = usePathname();
+    const handlePathChange = useEffectEvent(() => {
+        onPathChange();
+    });
 
     useEffect(() => {
-        onPathChange();
-    }, [onPathChange, pathname]);
+        handlePathChange();
+    }, [pathname]);
 
     return null;
 }
 
 function RenderedRouteBeacon() {
     const pathname = usePathname() ?? "";
-    const searchParams = useSearchParams();
-    const search = searchParams.toString();
-    const routePath = `${pathname}${search ? `?${search}` : ""}`;
+    const search = useLocationSearch();
+    const routePath = `${pathname}${search}`;
 
     useEffect(() => {
         markRenderedRoutePath(routePath);
@@ -192,12 +195,15 @@ function ClientShell({
 }) {
     const commandPaletteEnabled =
         usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.commandPalette) ?? false;
+    const closeCommandPalette = useEffectEvent(() => {
+        setCommandPaletteOpen(false);
+    });
 
     useEffect(() => {
         if (!commandPaletteEnabled && commandPaletteOpen) {
-            setCommandPaletteOpen(false);
+            closeCommandPalette();
         }
-    }, [commandPaletteEnabled, commandPaletteOpen, setCommandPaletteOpen]);
+    }, [commandPaletteEnabled, commandPaletteOpen]);
 
     const openCommandPalette = useCallback(() => {
         if (commandPaletteEnabled) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Activity, useEffect, useMemo, useRef, useState } from "react";
+import React, { Activity, useEffect, useMemo, useReducer, useRef } from "react";
 import { createCourse } from "@/app/actions/create-course";
 
 export type CourseOption = {
@@ -34,6 +34,116 @@ function scoreCourse(course: CourseOption, q: string): number {
     return 0;
 }
 
+type CoursePickerState = {
+    createError: string | null;
+    creating: boolean;
+    highlight: number;
+    newCode: string;
+    newTitle: string;
+    open: boolean;
+    query: string;
+    showCreate: boolean;
+};
+
+type CoursePickerAction =
+    | { type: "close" }
+    | { type: "open" }
+    | { type: "query"; value: string }
+    | { type: "highlight"; value: number }
+    | { type: "highlight-next"; maxIndex: number }
+    | { type: "highlight-previous" }
+    | { type: "selected" }
+    | { type: "cleared" }
+    | { type: "start-create"; code: string }
+    | { type: "new-code"; value: string }
+    | { type: "new-title"; value: string }
+    | { type: "cancel-create" }
+    | { type: "create-start" }
+    | { type: "create-error"; message: string }
+    | { type: "create-success" }
+    | { type: "create-complete" };
+
+const initialCoursePickerState: CoursePickerState = {
+    createError: null,
+    creating: false,
+    highlight: 0,
+    newCode: "",
+    newTitle: "",
+    open: false,
+    query: "",
+    showCreate: false,
+};
+
+function coursePickerReducer(
+    state: CoursePickerState,
+    action: CoursePickerAction,
+): CoursePickerState {
+    switch (action.type) {
+        case "close":
+            return { ...state, open: false };
+        case "open":
+            return { ...state, open: true };
+        case "query":
+            return {
+                ...state,
+                highlight: 0,
+                open: true,
+                query: action.value,
+            };
+        case "highlight":
+            return { ...state, highlight: action.value };
+        case "highlight-next":
+            return {
+                ...state,
+                highlight: Math.min(state.highlight + 1, Math.max(action.maxIndex, 0)),
+            };
+        case "highlight-previous":
+            return { ...state, highlight: Math.max(state.highlight - 1, 0) };
+        case "selected":
+            return {
+                ...state,
+                highlight: 0,
+                open: false,
+                query: "",
+            };
+        case "cleared":
+            return {
+                ...state,
+                highlight: 0,
+                query: "",
+            };
+        case "start-create":
+            return {
+                ...state,
+                createError: null,
+                newCode: action.code,
+                newTitle: "",
+                open: false,
+                showCreate: true,
+            };
+        case "new-code":
+            return { ...state, newCode: action.value.toUpperCase() };
+        case "new-title":
+            return { ...state, newTitle: action.value };
+        case "cancel-create":
+            return { ...state, showCreate: false };
+        case "create-start":
+            return { ...state, createError: null, creating: true };
+        case "create-error":
+            return { ...state, createError: action.message };
+        case "create-success":
+            return {
+                ...state,
+                newCode: "",
+                newTitle: "",
+                query: "",
+                showCreate: false,
+            };
+        case "create-complete":
+            return { ...state, creating: false };
+    }
+}
+
 export default function CoursePicker({
     courses,
     value,
@@ -42,14 +152,19 @@ export default function CoursePicker({
     onCourseCreated,
     placeholder,
 }: Props) {
-    const [query, setQuery] = useState("");
-    const [open, setOpen] = useState(false);
-    const [highlight, setHighlight] = useState(0);
-    const [showCreate, setShowCreate] = useState(false);
-    const [newCode, setNewCode] = useState("");
-    const [newTitle, setNewTitle] = useState("");
-    const [creating, setCreating] = useState(false);
-    const [createError, setCreateError] = useState<string | null>(null);
+    const [
+        {
+            createError,
+            creating,
+            highlight,
+            newCode,
+            newTitle,
+            open,
+            query,
+            showCreate,
+        },
+        dispatch,
+    ] = useReducer(coursePickerReducer, initialCoursePickerState);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const currentCourse = useMemo(
@@ -74,7 +189,7 @@ export default function CoursePicker({
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
             if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                setOpen(false);
+                dispatch({ type: "close" });
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -83,32 +198,24 @@ export default function CoursePicker({
 
     const choose = (course: CourseOption) => {
         onChange(course.id);
-        setQuery("");
-        setHighlight(0);
-        setOpen(false);
+        dispatch({ type: "selected" });
     };
 
     const clear = () => {
         onChange(null);
-        setQuery("");
-        setHighlight(0);
+        dispatch({ type: "cleared" });
     };
 
     const startCreate = () => {
-        setCreateError(null);
-        setNewCode(query.trim().toUpperCase());
-        setNewTitle("");
-        setShowCreate(true);
-        setOpen(false);
+        dispatch({ type: "start-create", code: query.trim().toUpperCase() });
     };
 
     const submitCreate = async () => {
-        setCreateError(null);
-        setCreating(true);
+        dispatch({ type: "create-start" });
         try {
             const result = await createCourse({ code: newCode, title: newTitle });
             if ("error" in result) {
-                setCreateError(result.error);
+                dispatch({ type: "create-error", message: result.error });
                 return;
             }
 
@@ -120,12 +227,9 @@ export default function CoursePicker({
             };
             onCourseCreated?.(course);
             onChange(course.id);
-            setQuery("");
-            setNewCode("");
-            setNewTitle("");
-            setShowCreate(false);
+            dispatch({ type: "create-success" });
         } finally {
-            setCreating(false);
+            dispatch({ type: "create-complete" });
         }
     };
 
@@ -152,24 +256,25 @@ export default function CoursePicker({
                     type="text"
                     value={query}
                     onChange={(e) => {
-                        setQuery(e.target.value);
-                        setHighlight(0);
-                        setOpen(true);
+                        dispatch({ type: "query", value: e.target.value });
                     }}
-                    onFocus={() => setOpen(true)}
+                    onFocus={() => dispatch({ type: "open" })}
                     onKeyDown={(e) => {
                         if (!open) return;
                         if (e.key === "ArrowDown") {
                             e.preventDefault();
-                            setHighlight((h) => Math.min(h + 1, results.length - 1));
+                            dispatch({
+                                type: "highlight-next",
+                                maxIndex: results.length - 1,
+                            });
                         } else if (e.key === "ArrowUp") {
                             e.preventDefault();
-                            setHighlight((h) => Math.max(h - 1, 0));
+                            dispatch({ type: "highlight-previous" });
                         } else if (e.key === "Enter") {
                             e.preventDefault();
                             if (results[highlight]) choose(results[highlight]);
                         } else if (e.key === "Escape") {
-                            setOpen(false);
+                            dispatch({ type: "close" });
                         }
                     }}
                     placeholder={placeholder ?? "Search course by code, title, or alias"}
@@ -187,7 +292,7 @@ export default function CoursePicker({
                                     e.preventDefault();
                                     choose(c);
                                 }}
-                                onMouseEnter={() => setHighlight(idx)}
+                                onMouseEnter={() => dispatch({ type: "highlight", value: idx })}
                                 className={`cursor-pointer px-3 py-2 text-sm ${
                                     idx === highlight
                                         ? "bg-[#5FC4E7]/40 dark:bg-[#3BF4C7]/10"
@@ -228,14 +333,14 @@ export default function CoursePicker({
                         <input
                             type="text"
                             value={newCode}
-                            onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                            onChange={(e) => dispatch({ type: "new-code", value: e.target.value })}
                             placeholder="Code"
                             className="w-full border border-black/30 bg-white px-3 py-2 font-mono text-sm text-black placeholder-black/40 focus:outline-none focus:ring-2 focus:ring-[#5FC4E7] dark:border-[#D5D5D5]/40 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:placeholder-[#D5D5D5]/30"
                         />
                         <input
                             type="text"
                             value={newTitle}
-                            onChange={(e) => setNewTitle(e.target.value)}
+                            onChange={(e) => dispatch({ type: "new-title", value: e.target.value })}
                             placeholder="Course title"
                             className="w-full border border-black/30 bg-white px-3 py-2 text-sm text-black placeholder-black/40 focus:outline-none focus:ring-2 focus:ring-[#5FC4E7] dark:border-[#D5D5D5]/40 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:placeholder-[#D5D5D5]/30"
                         />
@@ -246,7 +351,7 @@ export default function CoursePicker({
                     <div className="mt-2 flex justify-end gap-2">
                         <button
                             type="button"
-                            onClick={() => setShowCreate(false)}
+                            onClick={() => dispatch({ type: "cancel-create" })}
                             className="border border-black/30 px-3 py-1.5 text-xs font-semibold text-black hover:bg-black/5 dark:border-[#D5D5D5]/40 dark:text-[#D5D5D5] dark:hover:bg-white/5"
                         >
                             Cancel

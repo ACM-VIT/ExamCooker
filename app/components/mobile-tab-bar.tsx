@@ -3,19 +3,62 @@
 import Link from "next/link";
 import Image from "@/app/components/common/app-image";
 import { usePathname, useRouter } from "next/navigation";
-import { addTransitionType, startTransition, useEffect, useState, type MouseEvent } from "react";
+import { addTransitionType, startTransition, useEffect, useReducer, type MouseEvent } from "react";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 
 type Props = {
   toolsSheetOpen?: boolean;
 };
 
+type MobileTabBarState = {
+  keyboardOpen: boolean;
+  mode: "web" | "hidden";
+  nativeAndroid: boolean;
+};
+
+type MobileTabBarAction =
+  | { type: "web" }
+  | { type: "hidden" }
+  | { type: "android" }
+  | { type: "keyboard"; open: boolean };
+
+function mobileTabBarReducer(
+  state: MobileTabBarState,
+  action: MobileTabBarAction,
+): MobileTabBarState {
+  switch (action.type) {
+    case "web":
+      return { ...state, mode: "web" };
+    case "hidden":
+      return { ...state, mode: "hidden" };
+    case "android":
+      return { ...state, nativeAndroid: true };
+    case "keyboard":
+      return { ...state, keyboardOpen: action.open };
+  }
+}
+
+function subscribeToWebTabBarFallback(onFallback: () => void) {
+  window.addEventListener("examcooker:use-web-tab-bar", onFallback, { once: true });
+  const timeoutId = window.setTimeout(onFallback, 1200);
+
+  return () => {
+    window.clearTimeout(timeoutId);
+    window.removeEventListener("examcooker:use-web-tab-bar", onFallback);
+  };
+}
+
 export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const [mode, setMode] = useState<"web" | "hidden">("web");
-  const [nativeAndroid, setNativeAndroid] = useState(false);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [{ keyboardOpen, mode, nativeAndroid }, dispatch] = useReducer(
+    mobileTabBarReducer,
+    {
+      keyboardOpen: false,
+      mode: "web",
+      nativeAndroid: false,
+    },
+  );
 
   const setNavTransitionOrigin = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -56,61 +99,65 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    let cleanupNativeTabProbe: (() => void) | undefined;
 
     void import("@capacitor/core").then(({ Capacitor }) => {
       if (cancelled) return;
       if (!Capacitor.isNativePlatform()) {
-        setMode("web");
+        dispatch({ type: "web" });
         return;
       }
 
       const platform = Capacitor.getPlatform();
       if (platform === "android") {
-        setNativeAndroid(true);
+        dispatch({ type: "android" });
       }
 
       if (platform !== "ios" && platform !== "android") {
-        setMode("web");
+        dispatch({ type: "web" });
         return;
       }
 
-      setMode("hidden");
+      dispatch({ type: "hidden" });
 
       const failOpen = () => {
-        if (!cancelled) setMode("web");
+        if (!cancelled) dispatch({ type: "web" });
       };
 
-      window.addEventListener("examcooker:use-web-tab-bar", failOpen, { once: true });
-      const timeoutId = window.setTimeout(failOpen, 1200);
+      cleanupNativeTabProbe = subscribeToWebTabBarFallback(failOpen);
 
       if (document.documentElement.hasAttribute("data-native-tabs")) {
-        window.clearTimeout(timeoutId);
-        window.removeEventListener("examcooker:use-web-tab-bar", failOpen);
-        setMode("hidden");
+        cleanupNativeTabProbe();
+        dispatch({ type: "hidden" });
         return;
       }
 
       const observer = new MutationObserver(() => {
         if (!document.documentElement.hasAttribute("data-native-tabs")) return;
-        window.clearTimeout(timeoutId);
-        window.removeEventListener("examcooker:use-web-tab-bar", failOpen);
-        if (!cancelled) setMode("hidden");
+        cleanupNativeTabProbe?.();
+        if (!cancelled) dispatch({ type: "hidden" });
         observer.disconnect();
       });
       observer.observe(document.documentElement, {
         attributes: true,
         attributeFilter: ["data-native-tabs"],
       });
+      const cleanupProbe = cleanupNativeTabProbe;
+      cleanupNativeTabProbe = () => {
+        cleanupProbe?.();
+        observer.disconnect();
+      };
     });
 
     return () => {
       cancelled = true;
+      cleanupNativeTabProbe?.();
     };
   }, []);
 
   useEffect(() => {
     if (!nativeAndroid || typeof window === "undefined") {
-      setKeyboardOpen(false);
+      dispatch({ type: "keyboard", open: false });
       return;
     }
 
@@ -121,12 +168,12 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
 
     const syncKeyboardState = () => {
       const keyboardInset = window.innerHeight - viewport.height - viewport.offsetTop;
-      setKeyboardOpen(keyboardInset > 140);
+      dispatch({ type: "keyboard", open: keyboardInset > 140 });
     };
 
     syncKeyboardState();
     viewport.addEventListener("resize", syncKeyboardState);
-    viewport.addEventListener("scroll", syncKeyboardState);
+    viewport.addEventListener("scroll", syncKeyboardState, { passive: true });
 
     return () => {
       viewport.removeEventListener("resize", syncKeyboardState);

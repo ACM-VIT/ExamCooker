@@ -108,7 +108,6 @@ const nextConfig: NextConfig = {
         },
         viewTransition: true,
     },
-    reactCompiler: true,
     turbopack: {
         root: __dirname,
         resolveAlias: {

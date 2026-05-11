@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useReducer } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -43,31 +43,37 @@ const FEATURES = [
     },
 ];
 
+type ModalPhase = "idle" | "entering" | "open" | "leaving" | "closed";
+
+function modalPhaseReducer(_: ModalPhase, phase: ModalPhase): ModalPhase {
+    return phase;
+}
+
 const UpsellModal = () => {
     const pathname = usePathname();
     const isMobile = useIsMobile();
-    const [phase, setPhase] = useState<"idle" | "entering" | "open" | "leaving" | "closed">("idle");
+    const [phase, dispatchPhase] = useReducer(modalPhaseReducer, "idle");
 
     const isCliPage = pathname === "/cli";
     const isAuthPage = pathname === "/auth";
 
     useEffect(() => {
         if (isCliPage || isAuthPage || isMobile) {
-            setPhase("closed");
+            dispatchPhase("closed");
             return;
         }
         if (hasSeenModal()) {
-            setPhase("closed");
+            dispatchPhase("closed");
             return;
         }
-        const timer = window.setTimeout(() => setPhase("entering"), MODAL_SHOW_DELAY_MS);
+        const timer = window.setTimeout(() => dispatchPhase("entering"), MODAL_SHOW_DELAY_MS);
         return () => window.clearTimeout(timer);
     }, [isAuthPage, isCliPage, isMobile]);
 
     useEffect(() => {
         if (phase === "entering") {
             const raf = requestAnimationFrame(() => {
-                requestAnimationFrame(() => setPhase("open"));
+                requestAnimationFrame(() => dispatchPhase("open"));
             });
             return () => cancelAnimationFrame(raf);
         }
@@ -75,8 +81,8 @@ const UpsellModal = () => {
 
     const handleDismiss = useCallback(() => {
         markModalSeen();
-        setPhase("leaving");
-        window.setTimeout(() => setPhase("closed"), 320);
+        dispatchPhase("leaving");
+        window.setTimeout(() => dispatchPhase("closed"), 320);
     }, []);
 
     const isVisible = phase === "open";

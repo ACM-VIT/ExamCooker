@@ -28,7 +28,7 @@ export default function AnswerKeyToggle({ basePath, count, searchString }: Props
         });
     };
 
-    if (count <= 0) return null;
+    if (count <= 0 && !checked) return null;
 
     return (
         <label className="inline-flex items-center gap-2 text-xs">

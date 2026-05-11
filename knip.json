@@ -1,0 +1,55 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "rules": {
+    "duplicates": "off",
+    "exports": "off",
+    "types": "off"
+  },
+  "entry": [
+    "app/**/{page,layout,route,loading,not-found,template,default,opengraph-image,twitter-image}.{ts,tsx,js,jsx}",
+    "app/api/auth/[...nextauth]/route.js",
+    "capacitor.config.ts",
+    "drizzle.config.ts",
+    "instrumentation-client.ts",
+    "next.config.ts",
+    "postcss.config.mjs",
+    "proxy.ts",
+    "public/sw.js",
+    "scripts/**/*.{js,ts}",
+    "tailwind.config.ts",
+    "worker/src/index.ts"
+  ],
+  "project": [
+    "app/**/*.{js,jsx,ts,tsx}",
+    "db/**/*.ts",
+    "lib/**/*.ts",
+    "packages/cli/src/**/*.ts",
+    "scripts/**/*.{js,ts}",
+    "types/**/*.ts",
+    "worker/src/**/*.ts",
+    "*.ts"
+  ],
+  "ignore": [
+    "mobile/**",
+    "services/parser/.venv/**"
+  ],
+  "ignoreFiles": [
+    "lib/shims/canvas.ts",
+    "public/sw.js",
+    "scripts/analyze-tags.js",
+    "scripts/clean-tags.js",
+    "scripts/list-tags.js",
+    "scripts/restructure-nptel-json.js",
+    "worker/src/**/*.ts"
+  ],
+  "workspaces": {
+    "packages/cli": {
+      "entry": [
+        "src/cli.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    }
+  }
+}
