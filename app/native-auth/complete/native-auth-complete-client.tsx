@@ -18,19 +18,19 @@ export default function NativeAuthCompleteClient({
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (!code || !handoffChallenge) {
-      setFailed(true);
-      return;
-    }
+    let cancelled = false;
 
-    void (async () => {
+    async function completeNativeAuth() {
+      if (!code || !handoffChallenge) {
+        return false;
+      }
+
       const storageKey = `${HANDOFF_STORAGE_PREFIX}${handoffChallenge}`;
       const verifier = window.sessionStorage.getItem(storageKey) ?? "";
       window.sessionStorage.removeItem(storageKey);
 
       if (!verifier) {
-        setFailed(true);
-        return;
+        return false;
       }
 
       invalidateAuthSessionCache();
@@ -43,13 +43,27 @@ export default function NativeAuthCompleteClient({
 
       if (result?.ok) {
         window.location.assign(result.url ?? returnTo);
-        return;
+        return true;
       }
 
-      setFailed(true);
-    })().catch(() => {
-      setFailed(true);
-    });
+      return false;
+    }
+
+    void completeNativeAuth()
+      .then((completed) => {
+        if (!completed && !cancelled) {
+          setFailed(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFailed(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [code, handoffChallenge, returnTo]);
 
   return (

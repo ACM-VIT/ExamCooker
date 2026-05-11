@@ -27,7 +27,7 @@ export default function AnswerKeyButton({ basePath, count, searchString }: Props
         });
     }, [basePath, checked, router, searchString]);
 
-    if (count <= 0) return null;
+    if (count <= 0 && !checked) return null;
 
     return (
         <button

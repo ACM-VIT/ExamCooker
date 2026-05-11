@@ -9,13 +9,13 @@ import DirectionalTransition from "@/app/components/common/directional-transitio
 import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
 import ShareLink from '@/app/components/share-link';
 import ViewTracker from "@/app/components/view-tracker";
+import { LazyPastPaperInlineEditor } from "@/app/components/moderation/lazy-editors";
 import {
     getAdjacentPapersInCourse,
     getPastPaperDetail,
     getSiblingPastPaper,
     getRelatedPapersForCourse,
 } from "@/lib/data/past-paper-detail";
-import ItemActions from "@/app/components/item-actions";
 // import PastPaperTagEditor from "@/app/components/past-paper-tag-editor";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } from "@/lib/seo";
 import { normalizeCourseCode } from "@/lib/course-tags";
@@ -196,10 +196,11 @@ async function PaperViewerContent({
         year: item.year,
     }));
 
-    const metaPills: Array<{ label: string; value: string }> = [];
-    if (displayExam) metaPills.push({ label: "Exam", value: displayExam });
-    if (displaySlot) metaPills.push({ label: "Slot", value: displaySlot });
-    if (displayYear) metaPills.push({ label: "Year", value: displayYear });
+    const metaPills: Array<{ className?: string; value: string }> = [];
+    if (displayExam) metaPills.push({ value: displayExam });
+    if (displaySlot) metaPills.push({ value: displaySlot });
+    if (displayYear) metaPills.push({ value: displayYear });
+    if (paper.course?.code) metaPills.push({ className: "hidden sm:inline-flex", value: paper.course.code });
 
     const courseHref = `/past_papers/${canonicalCode}`;
     const backLabel = paper.course?.code ?? "Past papers";
@@ -221,27 +222,33 @@ async function PaperViewerContent({
                         <div className="min-w-0 flex-1">
                             <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
                                 {headingTitle}
+                                <LazyPastPaperInlineEditor
+                                    paperId={paper.id}
+                                    canonicalCode={canonicalCode}
+                                    initialTitle={paper.title}
+                                    initialCourseId={paper.courseId}
+                                    initialExamType={paper.examType}
+                                    initialSlot={paper.slot}
+                                    initialYear={paper.year}
+                                    initialSemester={paper.semester}
+                                    initialCampus={paper.campus}
+                                    initialHasAnswerKey={paper.hasAnswerKey}
+                                    initialQuestionPaper={paper.hasAnswerKey ? siblingPaper : null}
+                                    initialTags={paper.tags.map((tag) => tag.name)}
+                                />
                             </h1>
                             {metaPills.length > 0 && (
                                 <div className="mt-3 flex flex-wrap gap-1.5">
-                                    {metaPills.map(({ label, value }) => (
+                                    {metaPills.map(({ className, value }) => (
                                         <span
-                                            key={label}
-                                            className="inline-flex items-center gap-1.5 border border-black/15 bg-white px-2.5 py-1 text-xs font-semibold text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]"
+                                            key={value}
+                                            className={`inline-flex items-center border border-black/12 bg-white px-2.5 py-1 text-xs font-medium text-black/75 dark:border-[#D5D5D5]/12 dark:bg-[#0C1222] dark:text-[#D5D5D5]/80 ${className ?? ""}`}
                                         >
-                                            <span className="text-[10px] uppercase tracking-wider text-black/45 dark:text-[#D5D5D5]/45">
-                                                {label}
-                                            </span>
                                             <span>{value}</span>
                                         </span>
                                     ))}
                                 </div>
                             )}
-                            {/* <p className="mt-3 text-xs text-black/55 dark:text-[#D5D5D5]/55">
-                                Posted by <span className="font-semibold text-black/75 dark:text-[#D5D5D5]/75">{authorName}</span>
-                                <span className="mx-1.5" aria-hidden>·</span>
-                                {postedAtLine}
-                            </p> */}
                         </div>
                         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:pt-1">
                             {siblingPaper ? (
@@ -253,12 +260,6 @@ async function PaperViewerContent({
                                     {siblingPaper.hasAnswerKey ? "Answer key" : "Question paper"}
                                 </Link>
                             ) : null}
-                            <ItemActions
-                                itemId={paper.id}
-                                title={paper.title}
-                                authorId={paper.author?.id}
-                                activeTab="pastPaper"
-                            />
                             <ShareLink
                                 fileType="this Past Paper"
                                 resourceTitle={displayTitle}
@@ -292,6 +293,11 @@ async function PaperViewerContent({
                                     enableQuestionMarkdown
                                     fileUrl={paper.fileUrl}
                                     fileName={downloadFileName}
+                                    pageEdits={paper.pageEdits}
+                                    moderation={{
+                                        paperId: paper.id,
+                                        pageEdits: paper.pageEdits,
+                                    }}
                                 />
                             </div>
                         </div>

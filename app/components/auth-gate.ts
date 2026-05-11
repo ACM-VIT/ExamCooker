@@ -14,16 +14,18 @@ type AuthGate = {
     closePrompt: () => void;
 };
 
+type AuthSessionState = Pick<AuthGate, "session" | "status">;
+
 let sessionPromise: Promise<Session | null> | null = null;
 let cachedSession: Session | null | undefined;
 
-const AUTH_SESSION_CACHE_INVALIDATED = "auth-session-cache-invalidated";
+const SESSION_CACHE_INVALIDATED_EVENT = "examcooker:session-cache-invalidated";
 
 export function invalidateAuthSessionCache() {
     sessionPromise = null;
     cachedSession = undefined;
     if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event(AUTH_SESSION_CACHE_INVALIDATED));
+        window.dispatchEvent(new Event(SESSION_CACHE_INVALIDATED_EVENT));
     }
 }
 
@@ -62,6 +64,17 @@ function getCurrentRedirect() {
     return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
+function getAuthSessionState(session: Session | null | undefined): AuthSessionState {
+    if (session === undefined) {
+        return { session: null, status: "loading" };
+    }
+
+    return {
+        session,
+        status: session ? "authenticated" : "unauthenticated",
+    };
+}
+
 function redirectToAuth(action?: string) {
     const callbackUrl = getCurrentRedirect();
     captureAuthPromptOpened(action);
@@ -70,15 +83,8 @@ function redirectToAuth(action?: string) {
 }
 
 export function useGuestPrompt(): AuthGate {
-    const [session, setSession] = useState<Session | null>(
-        cachedSession === undefined ? null : cachedSession,
-    );
-    const [status, setStatus] = useState<AuthGate["status"]>(
-        cachedSession === undefined
-            ? "loading"
-            : cachedSession
-                ? "authenticated"
-                : "unauthenticated",
+    const [{ session, status }, setAuthSessionState] = useState<AuthSessionState>(
+        () => getAuthSessionState(cachedSession),
     );
     const isAuthed = Boolean(session?.user);
 
@@ -86,21 +92,13 @@ export function useGuestPrompt(): AuthGate {
         let cancelled = false;
 
         function syncSession() {
-            setSession(cachedSession === undefined ? null : cachedSession);
-            setStatus(
-                cachedSession === undefined
-                    ? "loading"
-                    : cachedSession
-                        ? "authenticated"
-                        : "unauthenticated",
-            );
+            setAuthSessionState(getAuthSessionState(cachedSession));
 
             if (cachedSession !== undefined) return;
 
             void loadSession().then((nextSession) => {
                 if (cancelled) return;
-                setSession(nextSession);
-                setStatus(nextSession ? "authenticated" : "unauthenticated");
+                setAuthSessionState(getAuthSessionState(nextSession));
             });
         }
 
@@ -111,12 +109,12 @@ export function useGuestPrompt(): AuthGate {
             )
             : null;
 
-        window.addEventListener(AUTH_SESSION_CACHE_INVALIDATED, syncSession);
+        window.addEventListener(SESSION_CACHE_INVALIDATED_EVENT, syncSession);
 
         return () => {
             cancelled = true;
             cancelInitialSync?.();
-            window.removeEventListener(AUTH_SESSION_CACHE_INVALIDATED, syncSession);
+            window.removeEventListener(SESSION_CACHE_INVALIDATED_EVENT, syncSession);
         };
     }, []);
 
@@ -129,8 +127,7 @@ export function useGuestPrompt(): AuthGate {
             if (isAuthed) return true;
             if (status === "loading") {
                 void loadSession().then((nextSession) => {
-                    setSession(nextSession);
-                    setStatus(nextSession ? "authenticated" : "unauthenticated");
+                    setAuthSessionState(getAuthSessionState(nextSession));
                     if (!nextSession?.user) {
                         redirectToAuth(action);
                     }

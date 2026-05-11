@@ -1,5 +1,5 @@
 "use client";
-import React, { addTransitionType, startTransition, useCallback, useEffect, useRef, useState } from "react";
+import React, { addTransitionType, startTransition, useCallback, useEffect, useEffectEvent, useReducer, useRef, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { createPortal } from "react-dom";
@@ -31,6 +31,69 @@ const navActionIconClassName =
   "h-6 w-6 transform-gpu transition-all can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110";
 const navActionLabelBaseClassName =
   "hidden overflow-hidden whitespace-nowrap text-sm font-medium text-black transition-all duration-300 lg:block lg:group-hover/action:text-[#0D5875] lg:dark:text-[#D5D5D5] lg:dark:group-hover/action:text-[#3BF4C7]";
+
+type ProfileMenuPosition = {
+  top: number;
+  left: number;
+};
+
+type NavBarState = {
+  keepNavExpanded: boolean;
+  profileMenuPosition: ProfileMenuPosition | null;
+  showProfile: boolean;
+  voiceEntryPoint: VoiceAgentEntryPoint;
+  voiceRuntimeRequested: boolean;
+  voiceStartToken: number;
+};
+
+type NavBarAction =
+  | { type: "close-profile" }
+  | { type: "toggle-profile" }
+  | { type: "profile-position"; position: ProfileMenuPosition | null }
+  | { type: "keep-expanded"; value: boolean }
+  | { type: "start-voice"; entryPoint: VoiceAgentEntryPoint };
+
+const initialNavBarState: NavBarState = {
+  keepNavExpanded: false,
+  profileMenuPosition: null,
+  showProfile: false,
+  voiceEntryPoint: "nav",
+  voiceRuntimeRequested: false,
+  voiceStartToken: 0,
+};
+
+function navBarReducer(state: NavBarState, action: NavBarAction): NavBarState {
+  switch (action.type) {
+    case "close-profile":
+      return { ...state, showProfile: false };
+    case "toggle-profile":
+      return { ...state, showProfile: !state.showProfile };
+    case "profile-position":
+      return { ...state, profileMenuPosition: action.position };
+    case "keep-expanded":
+      return { ...state, keepNavExpanded: action.value };
+    case "start-voice":
+      return {
+        ...state,
+        voiceEntryPoint: action.entryPoint,
+        voiceRuntimeRequested: true,
+        voiceStartToken: state.voiceStartToken + 1,
+      };
+  }
+}
+
+function subscribeClientReady(onStoreChange: () => void) {
+  onStoreChange();
+  return () => undefined;
+}
+
+function getClientReadySnapshot() {
+  return true;
+}
+
+function getServerReadySnapshot() {
+  return false;
+}
 
 const VoiceAgentEntry = dynamic(
   () => import("@/app/components/voice/voice-agent-entry"),
@@ -65,16 +128,22 @@ const NavBar: React.FC<Props> = ({
   const { isAuthed, requireAuth, openPrompt, session } = useGuestPrompt();
   const voiceAgentEnabled =
     usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? false;
-  const [showProfile, setShowProfile] = useState(false);
-  const [keepNavExpanded, setKeepNavExpanded] = useState(false);
-  const [profileMenuPosition, setProfileMenuPosition] = useState<{
-    top: number;
-    left: number;
-  } | null>(null);
-  const [voiceRuntimeRequested, setVoiceRuntimeRequested] = useState(false);
-  const [voiceStartToken, setVoiceStartToken] = useState(0);
-  const [voiceEntryPoint, setVoiceEntryPoint] = useState<VoiceAgentEntryPoint>("nav");
-  const [portalReady, setPortalReady] = useState(false);
+  const [
+    {
+      keepNavExpanded,
+      profileMenuPosition,
+      showProfile,
+      voiceEntryPoint,
+      voiceRuntimeRequested,
+      voiceStartToken,
+    },
+    dispatch,
+  ] = useReducer(navBarReducer, initialNavBarState);
+  const portalReady = useSyncExternalStore(
+    subscribeClientReady,
+    getClientReadySnapshot,
+    getServerReadySnapshot,
+  );
   const profileRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -100,15 +169,11 @@ const NavBar: React.FC<Props> = ({
         !profileRef.current.contains(target) &&
         !profileMenuRef.current?.contains(target)
       ) {
-        setShowProfile(false);
+        dispatch({ type: "close-profile" });
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    setPortalReady(true);
   }, []);
 
   const updateProfileMenuPosition = useCallback(() => {
@@ -135,7 +200,7 @@ const NavBar: React.FC<Props> = ({
         Math.max(buttonRect.top - menuHeight - gap, margin),
         window.innerHeight - menuHeight - margin,
       );
-      setProfileMenuPosition({ top, left });
+      dispatch({ type: "profile-position", position: { top, left } });
       return;
     }
 
@@ -148,15 +213,18 @@ const NavBar: React.FC<Props> = ({
       window.innerWidth - menuWidth - margin,
     );
 
-    setProfileMenuPosition({
+    dispatch({
+      type: "profile-position",
+      position: {
       top,
       left: Math.max(left, margin),
+      },
     });
   }, []);
 
   useEffect(() => {
     if (!showProfile) {
-      setProfileMenuPosition(null);
+      dispatch({ type: "profile-position", position: null });
       return;
     }
 
@@ -175,7 +243,7 @@ const NavBar: React.FC<Props> = ({
     if (!keepNavExpanded) return;
     const routeChanged = pathname !== keepNavExpandedFromPathRef.current;
     const timeout = window.setTimeout(
-      () => setKeepNavExpanded(false),
+      () => dispatch({ type: "keep-expanded", value: false }),
       routeChanged ? 450 : 1200,
     );
     return () => window.clearTimeout(timeout);
@@ -201,11 +269,11 @@ const NavBar: React.FC<Props> = ({
     setNavTransitionOrigin(link as HTMLElement);
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
     keepNavExpandedFromPathRef.current = pathname;
-    setKeepNavExpanded(true);
+    dispatch({ type: "keep-expanded", value: true });
   };
 
   const collapseNavAfterPointerLeave = () => {
-    setKeepNavExpanded(false);
+    dispatch({ type: "keep-expanded", value: false });
   };
 
   const handleNavLinkClick = (
@@ -246,10 +314,13 @@ const NavBar: React.FC<Props> = ({
       return;
     }
 
-    setVoiceEntryPoint(entryPoint);
-    setVoiceRuntimeRequested(true);
-    setVoiceStartToken((current) => current + 1);
+    dispatch({ type: "start-voice", entryPoint });
   }, [isAuthed, requireAuth, voiceAgentEnabled]);
+  const handleVoiceStartEvent = useEffectEvent(
+    (entryPoint: VoiceAgentEntryPoint) => {
+      handleVoiceClick(entryPoint);
+    },
+  );
 
   useEffect(() => {
     if (!voiceAgentEnabled) return;
@@ -263,11 +334,11 @@ const NavBar: React.FC<Props> = ({
         (event.detail.source === "home_search" || event.detail.source === "nav")
           ? event.detail.source
           : "home_search";
-      handleVoiceClick(source);
+      handleVoiceStartEvent(source);
     };
     window.addEventListener("examcooker:voice-agent-start", handler);
     return () => window.removeEventListener("examcooker:voice-agent-start", handler);
-  }, [handleVoiceClick, voiceAgentEnabled]);
+  }, [voiceAgentEnabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -323,7 +394,7 @@ const NavBar: React.FC<Props> = ({
           href="/delete"
           prefetch
           className="mb-2 block text-xs font-semibold text-red-500 hover:underline dark:text-red-400"
-          onClick={() => setShowProfile(false)}
+          onClick={() => dispatch({ type: "close-profile" })}
         >
           Delete account
         </Link>
@@ -452,7 +523,7 @@ const NavBar: React.FC<Props> = ({
                       type="button"
                       title="Profile"
                       aria-label="Profile"
-                      onClick={() => setShowProfile((v) => !v)}
+                      onClick={() => dispatch({ type: "toggle-profile" })}
                       className="pointer-events-auto flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-black transition-colors duration-200 hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:p-0"
                     >
                       <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-200 can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110">

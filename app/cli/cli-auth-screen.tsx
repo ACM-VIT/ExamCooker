@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useLocationSearch } from "@/app/components/common/use-location-search";
 import { approveCliDeviceAuthAction } from "@/app/cli/actions";
 import ExamCookerLogo from "@/app/components/common/exam-cooker-logo";
 import ThemeToggle from "@/app/components/common/theme-toggle";
@@ -33,11 +34,102 @@ type CliLookupResponse = {
   request: CliLookupRequest | null;
 };
 
-const PRIMARY_BTN =
-  "inline-flex h-11 items-center justify-center rounded-lg bg-[#12715E] px-7 text-sm font-semibold text-white transition-transform duration-100 hover:scale-[1.01] active:translate-y-px dark:bg-[#3BF4C7] dark:text-[#0C1222]";
+type CliScreenState = {
+  isSignedIn: boolean;
+  request: CliLookupRequest | null;
+  sessionEmail: string | null;
+  state: CliState;
+  userCode: string;
+};
 
-const GHOST_BTN =
-  "inline-flex h-11 items-center justify-center rounded-lg border border-black/20 bg-transparent px-7 text-sm font-semibold text-black transition-colors hover:bg-black hover:text-white dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7] dark:hover:text-[#0C1222]";
+type CliScreenAction =
+  | { type: "empty" }
+  | { type: "checking"; userCode: string }
+  | { type: "success"; approved: boolean; payload: CliLookupResponse }
+  | { type: "invalid"; userCode: string };
+
+function cliScreenReducer(
+  state: CliScreenState,
+  action: CliScreenAction,
+): CliScreenState {
+  switch (action.type) {
+    case "empty":
+      return {
+        ...state,
+        isSignedIn: false,
+        request: null,
+        sessionEmail: null,
+        state: "idle",
+        userCode: "",
+      };
+    case "checking":
+      return {
+        ...state,
+        state: "checking",
+        userCode: action.userCode,
+      };
+    case "success": {
+      const nextState =
+        action.approved && action.payload.state === "pending"
+          ? "approved"
+          : action.payload.state;
+
+      return {
+        isSignedIn: action.payload.isSignedIn,
+        request: action.payload.request,
+        sessionEmail: action.payload.sessionEmail,
+        state: nextState,
+        userCode: action.payload.userCode,
+      };
+    }
+    case "invalid":
+      return {
+        ...state,
+        request: null,
+        state: "invalid",
+        userCode: action.userCode,
+      };
+  }
+}
+
+function PrimaryActionButton({
+  children,
+  href,
+  type = "button",
+}: {
+  children: React.ReactNode;
+  href?: string;
+  type?: "submit" | "button";
+}) {
+  const buttonClass =
+    "relative inline-flex h-11 items-center justify-center border-2 border-black bg-[#3BF4C7] px-7 text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]";
+
+  return (
+    <div className="group relative inline-flex items-stretch">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-black dark:bg-[#3BF4C7]"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[#3BF4C7] opacity-0 blur-[60px] transition duration-200 group-hover:opacity-20 dark:hidden"
+      />
+      <div
+        aria-hidden="true"
+        className="duration-1000 transition dark:absolute dark:inset-0 dark:blur-[75px] dark:group-hover:duration-200 dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7]"
+      />
+      {href ? (
+        <Link href={href} className={buttonClass}>
+          {children}
+        </Link>
+      ) : (
+        <button type={type} className={buttonClass}>
+          {children}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function normalizeUserCode(input: string) {
   const normalized = input.replace(/[^a-z0-9]/gi, "").toUpperCase();
@@ -167,14 +259,14 @@ function PendingBlock({
       {isSignedIn ? (
         <form action={approveCliDeviceAuthAction}>
           <input type="hidden" name="userCode" value={request.userCode} />
-          <button type="submit" className={PRIMARY_BTN}>
+          <PrimaryActionButton type="submit">
             Approve device
-          </button>
+          </PrimaryActionButton>
         </form>
       ) : (
-        <Link href={signInHref} className={PRIMARY_BTN}>
+        <PrimaryActionButton href={signInHref}>
           Sign in to continue
-        </Link>
+        </PrimaryActionButton>
       )}
     </>
   );
@@ -182,20 +274,27 @@ function PendingBlock({
 
 export default function CliAuthScreen() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const locationSearch = useLocationSearch();
   const lookupIdRef = useRef(0);
 
+  const searchParams = useMemo(
+    () => new URLSearchParams(locationSearch),
+    [locationSearch],
+  );
   const initialCode = useMemo(
     () => normalizeUserCode(searchParams.get("code") ?? ""),
     [searchParams],
   );
   const initialApproved = searchParams.get("approved") === "1";
 
-  const [state, setState] = useState<CliState>("idle");
-  const [userCode, setUserCode] = useState(initialCode);
-  const [request, setRequest] = useState<CliLookupRequest | null>(null);
-  const [isSignedIn, setIsSignedIn] = useState(false);
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [screenState, dispatchScreenState] = useReducer(cliScreenReducer, {
+    isSignedIn: false,
+    request: null,
+    sessionEmail: null,
+    state: "idle",
+    userCode: initialCode,
+  });
+  const { isSignedIn, request, sessionEmail, state, userCode } = screenState;
 
   const runLookup = useCallback(
     async (
@@ -214,19 +313,14 @@ export default function CliAuthScreen() {
       }
 
       if (!nextCode) {
-        setState("idle");
-        setUserCode("");
-        setRequest(null);
-        setIsSignedIn(false);
-        setSessionEmail(null);
+        dispatchScreenState({ type: "empty" });
         return;
       }
 
       const lookupId = lookupIdRef.current + 1;
       lookupIdRef.current = lookupId;
 
-      setState("checking");
-      setUserCode(nextCode);
+      dispatchScreenState({ type: "checking", userCode: nextCode });
 
       try {
         const response = await fetch(
@@ -241,22 +335,13 @@ export default function CliAuthScreen() {
           return;
         }
 
-        const nextState =
-          approved && payload.state === "pending" ? "approved" : payload.state;
-
-        setState(nextState);
-        setUserCode(payload.userCode);
-        setRequest(payload.request);
-        setIsSignedIn(payload.isSignedIn);
-        setSessionEmail(payload.sessionEmail);
+        dispatchScreenState({ type: "success", approved, payload });
       } catch {
         if (lookupIdRef.current !== lookupId) {
           return;
         }
 
-        setState("invalid");
-        setUserCode(nextCode);
-        setRequest(null);
+        dispatchScreenState({ type: "invalid", userCode: nextCode });
       }
     },
     [router],

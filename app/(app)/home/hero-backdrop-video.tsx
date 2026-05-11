@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import ReactPlayer from "react-player";
 import { scheduleIdleWork } from "@/lib/schedule-idle-work";
@@ -35,6 +35,15 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
     const [hasInteracted, setHasInteracted] = useState(false);
     const [isYouTubeReady, setIsYouTubeReady] = useState(false);
     const isYouTubeEngaged = video?.kind === "youtube" && hasInteracted && isYouTubeReady;
+    const notifyReady = useEffectEvent(() => {
+        onReady?.();
+    });
+    const notifyYouTubeEngaged = useEffectEvent(() => {
+        onYouTubeEngaged?.();
+    });
+    const notifyVariantChange = useEffectEvent((kind: HeroBackdropKind | null) => {
+        onVariantChange?.(kind);
+    });
 
     useEffect(() => {
         const container = containerRef.current;
@@ -99,17 +108,17 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
 
     useEffect(() => {
         if (!isYouTubeEngaged) return;
-        onYouTubeEngaged?.();
-    }, [isYouTubeEngaged, onYouTubeEngaged]);
+        notifyYouTubeEngaged();
+    }, [isYouTubeEngaged]);
 
     useEffect(() => {
-        onVariantChange?.(video?.kind ?? null);
-    }, [onVariantChange, video]);
+        notifyVariantChange(video?.kind ?? null);
+    }, [video]);
 
     useEffect(() => {
         if (video?.kind !== "pixel") return;
-        onReady?.();
-    }, [onReady, video]);
+        notifyReady();
+    }, [video]);
 
     const handleYouTubeReady = () => {
         setIsYouTubeReady(true);

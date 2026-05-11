@@ -5,6 +5,11 @@ import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
 import { normalizeNativeAuthHandoffChallenge } from "@/lib/native-auth-token";
 import NativeAuthStartClient from "./native-auth-start-client";
 
+export const metadata = {
+  title: "Start Sign In | ExamCooker",
+  description: "Start native app sign-in for ExamCooker.",
+};
+
 const PROVIDERS = new Set(["apple", "google"]);
 
 async function NativeAuthStartContent({

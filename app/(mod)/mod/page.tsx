@@ -3,6 +3,11 @@ import {auth} from "../../auth";
 import {fetchUnclearedItems} from "../../actions/moderator-actions";
 import ModeratorDashboardClient from "../../components/moderator-dash-board";
 import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Moderator Dashboard | ExamCooker",
+};
 
 type ModeratorSearchParams = { page?: string; search?: string; tags?: string | string[] };
 

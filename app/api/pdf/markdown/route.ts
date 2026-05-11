@@ -11,13 +11,35 @@ import {
 } from "@/lib/ai/pdf-markdown";
 import type { PdfPaperQuestion } from "@/lib/ai/pdf-markdown";
 import {
+  getPdfMarkdownCacheKey,
+  getPdfMarkdownContentHash,
+  getPdfMarkdownPromptFingerprint,
+  readPdfMarkdownCache,
+  releasePdfMarkdownGenerationLock,
+  storePdfMarkdownCache,
+  tryAcquirePdfMarkdownGenerationLock,
+  waitForPdfMarkdownCache,
+} from "@/lib/ai/pdf-markdown-cache";
+import type { PdfMarkdownCacheMetadata } from "@/lib/ai/pdf-markdown-cache-types";
+import {
   capturePostHogAiGeneration,
   createAiTextMessage,
 } from "@/lib/posthog/llm";
+import {
+  applyPdfPageEditsToBuffer,
+  normalizePdfPageEdits,
+} from "@/lib/pdf/page-edits";
 
 const MAX_PDF_MARKDOWN_BYTES = 24 * 1024 * 1024;
 const PDF_MARKDOWN_MAX_OUTPUT_TOKENS = 12000;
 const POSTHOG_AI_TEXT_LIMIT = 8000;
+const PDF_MARKDOWN_PROMPT_VERSION = "questions-only-v1";
+const PdfPageRotationSchema = z.union([
+  z.literal(0),
+  z.literal(90),
+  z.literal(180),
+  z.literal(270),
+]);
 const PDF_MARKDOWN_SYSTEM_PROMPT = [
   "You are a careful transcription engine for ExamCooker question-paper PDFs.",
   "Extract only the exam questions. Ignore cover-page metadata, institution/course details, course code, course name, slot, registration fields, faculty names, course outcomes, page separators, general instructions, CO columns, and Bloom taxonomy columns.",
@@ -37,8 +59,19 @@ const PDF_MARKDOWN_SYSTEM_PROMPT = [
 ].join("\n");
 
 const PdfMarkdownRequestSchema = z.object({
+  cacheMode: z.enum(["default", "refresh"]).optional(),
   fileName: z.string().trim().min(1).max(240),
   fileUrl: z.string().trim().url(),
+  pageEdits: z
+    .object({
+      pageOrder: z.array(z.number().int().min(0)).max(400).nullable().optional(),
+      pageRotations: z
+        .record(z.string().regex(/^\d+$/), PdfPageRotationSchema)
+        .nullable()
+        .optional(),
+    })
+    .nullable()
+    .optional(),
   posthogSessionId: z.string().trim().min(1).max(200).nullable().optional(),
 });
 
@@ -78,6 +111,14 @@ type PdfMarkdownAiCaptureEvent = {
   traceId: string;
   usage?: PromiseLike<AiUsageSummary> | null;
   userPrompt: string;
+};
+
+type PdfMarkdownDoneEvent = {
+  cache: PdfMarkdownCacheMetadata;
+  markdown: string;
+  model: string;
+  paper: z.infer<typeof PdfPaperDocumentSchema>;
+  type: "done";
 };
 
 function getAzureBaseUrlFromEnv() {
@@ -260,6 +301,21 @@ function truncateForPostHogAiText(text: string) {
     text: text.slice(0, POSTHOG_AI_TEXT_LIMIT),
     wasTruncated: true,
   };
+}
+
+function createDoneStreamResponse(
+  event: PdfMarkdownDoneEvent,
+  headers?: HeadersInit,
+) {
+  return new Response(`${JSON.stringify(event)}\n`, {
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "X-Accel-Buffering": "no",
+      "X-ExamCooker-AI-Model": event.model,
+      ...headers,
+    },
+  });
 }
 
 async function safeAwait<T>(promise: PromiseLike<T> | null | undefined) {
@@ -449,9 +505,97 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const model = getPdfMarkdownLanguageModel();
   const modelId = getPdfMarkdownModel();
   const provider = getAiProviderFromModel(modelId);
+  const normalizedPageEdits = normalizePdfPageEdits(
+    parsedBody.pageEdits ?? null,
+  );
+
+  if (normalizedPageEdits) {
+    try {
+      pdfBuffer = Buffer.from(
+        await applyPdfPageEditsToBuffer(pdfBuffer, normalizedPageEdits),
+      );
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to apply saved PDF page fixes.",
+        },
+        {
+          status: 500,
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    }
+  }
+
+  const contentHash = getPdfMarkdownContentHash(pdfBuffer);
+  const promptFingerprint = getPdfMarkdownPromptFingerprint(
+    [PDF_MARKDOWN_PROMPT_VERSION, PDF_MARKDOWN_SYSTEM_PROMPT].join("\n"),
+  );
+  const cacheKey = getPdfMarkdownCacheKey({
+    contentHash,
+    modelId,
+    promptFingerprint,
+  });
+  const cacheLookupInput = {
+    cacheKey,
+    contentHash,
+    modelId,
+    promptFingerprint,
+    voterId: distinctId,
+  };
+  const cacheMode = parsedBody.cacheMode ?? "default";
+  let cacheMetadata: PdfMarkdownCacheMetadata | null = null;
+  let generationLockToken: string | null = null;
+
+  if (cacheMode !== "refresh") {
+    const cached = await readPdfMarkdownCache(cacheLookupInput);
+    cacheMetadata = cached.metadata;
+
+    if (cached.type === "hit") {
+      return createDoneStreamResponse(
+        {
+          cache: cached.metadata,
+          markdown: cached.entry.markdown,
+          model: modelId,
+          paper: cached.entry.paper,
+          type: "done",
+        },
+        {
+          "X-ExamCooker-Markdown-Cache": "hit",
+        },
+      );
+    }
+
+    if (cached.type !== "disabled") {
+      generationLockToken = await tryAcquirePdfMarkdownGenerationLock(cacheKey);
+      if (!generationLockToken) {
+        const waited = await waitForPdfMarkdownCache(cacheLookupInput);
+        if (waited) {
+          return createDoneStreamResponse(
+            {
+              cache: waited.metadata,
+              markdown: waited.entry.markdown,
+              model: modelId,
+              paper: waited.entry.paper,
+              type: "done",
+            },
+            {
+              "X-ExamCooker-Markdown-Cache": "hit-waited",
+            },
+          );
+        }
+      }
+    }
+  }
+
+  const model = getPdfMarkdownLanguageModel();
   const traceId = crypto.randomUUID();
   const spanId = crypto.randomUUID();
   const userPrompt =
@@ -557,7 +701,26 @@ export async function POST(request: NextRequest) {
             questions,
           });
           const markdown = buildPdfPaperMarkdown(paper);
+          const storedCacheMetadata = await storePdfMarkdownCache({
+            cacheKey,
+            contentHash,
+            fileName: parsedBody.fileName,
+            fileUrl: fileUrl.href,
+            markdown,
+            modelId,
+            paper,
+            promptFingerprint,
+          });
+          const responseCacheMetadata =
+            cacheMetadata?.status === "bypassed" &&
+            storedCacheMetadata.status === "stored"
+              ? {
+                  ...storedCacheMetadata,
+                  reason: "replaced_flagged_generation",
+                }
+              : storedCacheMetadata;
           enqueue({
+            cache: responseCacheMetadata,
             type: "done",
             paper,
             markdown,
@@ -615,10 +778,14 @@ export async function POST(request: NextRequest) {
           });
         } finally {
           resolveCaptureEventOnce(null);
+          await releasePdfMarkdownGenerationLock(
+            cacheKey,
+            generationLockToken,
+          );
           controller.close();
         }
       },
-      cancel() {
+      async cancel() {
         resolveCaptureEventOnce({
           distinctId,
           error: "PDF Markdown conversion was cancelled.",
@@ -639,6 +806,7 @@ export async function POST(request: NextRequest) {
           traceId,
           userPrompt,
         });
+        await releasePdfMarkdownGenerationLock(cacheKey, generationLockToken);
       },
     });
 
@@ -648,9 +816,13 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/x-ndjson; charset=utf-8",
         "X-Accel-Buffering": "no",
         "X-ExamCooker-AI-Model": modelId,
+        "X-ExamCooker-Markdown-Cache":
+          cacheMetadata?.status === "bypassed" ? "bypassed" : "miss",
       },
     });
   } catch (error) {
+    await releasePdfMarkdownGenerationLock(cacheKey, generationLockToken);
+
     if (request.signal.aborted) {
       return NextResponse.json(
         {

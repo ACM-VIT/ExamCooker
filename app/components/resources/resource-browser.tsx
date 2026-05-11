@@ -95,8 +95,8 @@ function ResourceBrowser({
     sourceUrl,
 }: ResourceBrowserProps) {
     const pathname = usePathname();
-    const [query, setQuery] = useState(initialSearch);
-    const [year, setYear] = useState(initialYear);
+    const [query, setQuery] = useState(() => initialSearch);
+    const [year, setYear] = useState(() => initialYear);
     const deferredQuery = useDeferredValue(query);
 
     const searchableCourses = useMemo(

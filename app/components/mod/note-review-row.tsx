@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import CoursePicker, { type CourseOption } from "./course-picker";
@@ -21,7 +21,10 @@ type Props = {
 };
 
 export default function NoteReviewRow({ note, courses, onResolved, onCourseCreated }: Props) {
-    const [courseId, setCourseId] = useState<string | null>(note.courseId);
+    const initialCourseIdRef = useRef(note.courseId);
+    const [courseId, setCourseId] = useState<string | null>(
+        initialCourseIdRef.current
+    );
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 

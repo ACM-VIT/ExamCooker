@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Activity, useEffect, useMemo, useRef, useState } from "react";
+import React, { Activity, useEffect, useMemo, useReducer, useRef } from "react";
 import { searchPastPaperLinkTargets } from "@/app/actions/search-past-paper-link-targets";
 import {
     formatPaperLinkOption,
@@ -15,6 +15,87 @@ type Props = {
     placeholder?: string;
 };
 
+type PaperPickerState = {
+    error: string | null;
+    highlight: number;
+    loading: boolean;
+    open: boolean;
+    query: string;
+    results: PaperLinkOption[];
+};
+
+type PaperPickerAction =
+    | { type: "close" }
+    | { type: "open" }
+    | { type: "query"; value: string }
+    | { type: "highlight"; value: number }
+    | { type: "highlight-next"; maxIndex: number }
+    | { type: "highlight-previous" }
+    | { type: "empty-query" }
+    | { type: "search-start" }
+    | { type: "search-success"; results: PaperLinkOption[] }
+    | { type: "search-error"; message: string }
+    | { type: "reset"; close?: boolean };
+
+const initialPaperPickerState: PaperPickerState = {
+    error: null,
+    highlight: 0,
+    loading: false,
+    open: false,
+    query: "",
+    results: [],
+};
+
+function paperPickerReducer(
+    state: PaperPickerState,
+    action: PaperPickerAction,
+): PaperPickerState {
+    switch (action.type) {
+        case "close":
+            return { ...state, open: false };
+        case "open":
+            return { ...state, open: true };
+        case "query":
+            return {
+                ...state,
+                highlight: 0,
+                open: true,
+                query: action.value,
+            };
+        case "highlight":
+            return { ...state, highlight: action.value };
+        case "highlight-next":
+            return {
+                ...state,
+                highlight: Math.min(state.highlight + 1, Math.max(action.maxIndex, 0)),
+            };
+        case "highlight-previous":
+            return { ...state, highlight: Math.max(state.highlight - 1, 0) };
+        case "empty-query":
+            return { ...state, error: null, loading: false, results: [] };
+        case "search-start":
+            return { ...state, error: null, loading: true };
+        case "search-success":
+            return { ...state, loading: false, results: action.results };
+        case "search-error":
+            return {
+                ...state,
+                error: action.message,
+                loading: false,
+                results: [],
+            };
+        case "reset":
+            return {
+                ...state,
+                error: null,
+                highlight: 0,
+                open: action.close ? false : state.open,
+                query: "",
+                results: [],
+            };
+    }
+}
+
 export default function PaperPicker({
     value,
     excludePaperId,
@@ -22,12 +103,8 @@ export default function PaperPicker({
     onChange,
     placeholder,
 }: Props) {
-    const [query, setQuery] = useState("");
-    const [open, setOpen] = useState(false);
-    const [highlight, setHighlight] = useState(0);
-    const [results, setResults] = useState<PaperLinkOption[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [{ error, highlight, loading, open, query, results }, dispatch] =
+        useReducer(paperPickerReducer, initialPaperPickerState);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const trimmedQuery = query.trim();
@@ -48,7 +125,7 @@ export default function PaperPicker({
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setOpen(false);
+                dispatch({ type: "close" });
             }
         }
 
@@ -62,16 +139,13 @@ export default function PaperPicker({
         }
 
         if (!trimmedQuery) {
-            setResults([]);
-            setLoading(false);
-            setError(null);
+            dispatch({ type: "empty-query" });
             return;
         }
 
         let cancelled = false;
         const timer = window.setTimeout(async () => {
-            setLoading(true);
-            setError(null);
+            dispatch({ type: "search-start" });
             try {
                 const matches = await searchPastPaperLinkTargets({
                     query: trimmedQuery,
@@ -79,20 +153,17 @@ export default function PaperPicker({
                     courseId,
                 });
                 if (!cancelled) {
-                    setResults(matches);
+                    dispatch({ type: "search-success", results: matches });
                 }
             } catch (searchError) {
                 if (!cancelled) {
-                    setResults([]);
-                    setError(
-                        searchError instanceof Error
-                            ? searchError.message
-                            : "Search failed",
-                    );
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
+                    dispatch({
+                        type: "search-error",
+                        message:
+                            searchError instanceof Error
+                                ? searchError.message
+                                : "Search failed",
+                    });
                 }
             }
         }, 200);
@@ -105,19 +176,12 @@ export default function PaperPicker({
 
     const choose = (paper: PaperLinkOption) => {
         onChange(paper);
-        setQuery("");
-        setHighlight(0);
-        setResults([]);
-        setError(null);
-        setOpen(false);
+        dispatch({ type: "reset", close: true });
     };
 
     const clear = () => {
         onChange(null);
-        setQuery("");
-        setHighlight(0);
-        setResults([]);
-        setError(null);
+        dispatch({ type: "reset" });
     };
 
     return (
@@ -145,26 +209,25 @@ export default function PaperPicker({
                     type="text"
                     value={query}
                     onChange={(event) => {
-                        setQuery(event.target.value);
-                        setHighlight(0);
-                        setOpen(true);
+                        dispatch({ type: "query", value: event.target.value });
                     }}
-                    onFocus={() => setOpen(true)}
+                    onFocus={() => dispatch({ type: "open" })}
                     onKeyDown={(event) => {
                         if (!shouldShowResults) return;
                         if (event.key === "ArrowDown") {
                             event.preventDefault();
-                            setHighlight((current) =>
-                                Math.min(current + 1, Math.max(results.length - 1, 0)),
-                            );
+                            dispatch({
+                                type: "highlight-next",
+                                maxIndex: results.length - 1,
+                            });
                         } else if (event.key === "ArrowUp") {
                             event.preventDefault();
-                            setHighlight((current) => Math.max(current - 1, 0));
+                            dispatch({ type: "highlight-previous" });
                         } else if (event.key === "Enter") {
                             event.preventDefault();
                             if (results[highlight]) choose(results[highlight]);
                         } else if (event.key === "Escape") {
-                            setOpen(false);
+                            dispatch({ type: "close" });
                         }
                     }}
                     placeholder={
@@ -185,7 +248,9 @@ export default function PaperPicker({
                                         event.preventDefault();
                                         choose(paper);
                                     }}
-                                    onMouseEnter={() => setHighlight(index)}
+                                    onMouseEnter={() =>
+                                        dispatch({ type: "highlight", value: index })
+                                    }
                                     className={`cursor-pointer px-3 py-2 ${
                                         index === highlight
                                             ? "bg-[#5FC4E7]/40 dark:bg-[#3BF4C7]/10"

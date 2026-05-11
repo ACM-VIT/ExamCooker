@@ -28,10 +28,12 @@ import type {
   CommandIntentRequestInput,
   CommandPreferenceRequestInput,
   Env,
+  TrustedCommandUserContext,
 } from "./types";
 
 const COMMAND_AGENT_ADMIN_HEADER = "X-ExamCooker-Command-Admin";
 const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
 function getAgentAction(request: Request) {
   const segments = new URL(request.url).pathname.split("/").filter(Boolean);
@@ -41,6 +43,7 @@ function getAgentAction(request: Request) {
 function resolveSurfaceContext(
   query: string,
   surfaceContext: CommandIntentRequestInput["surfaceContext"],
+  trustedUser: TrustedCommandUserContext,
 ): CommandSurfaceContext {
   return {
     query,
@@ -48,14 +51,8 @@ function resolveSurfaceContext(
       typeof surfaceContext?.currentPath === "string"
         ? surfaceContext.currentPath
         : null,
-    authenticated:
-      typeof surfaceContext?.authenticated === "boolean"
-        ? surfaceContext.authenticated
-        : null,
-    role:
-      surfaceContext?.role === "moderator" || surfaceContext?.role === "user"
-        ? surfaceContext.role
-        : null,
+    authenticated: trustedUser.authenticated,
+    role: trustedUser.role,
     voiceAgentEnabled:
       typeof surfaceContext?.voiceAgentEnabled === "boolean"
         ? surfaceContext.voiceAgentEnabled
@@ -87,6 +84,121 @@ async function timingSafeTokenMatch(receivedToken: string, expectedToken: string
   ]);
 
   return timingSafeEqual(receivedHash, expectedHash);
+}
+
+function base64UrlToBytes(value: string) {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index++) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+async function hmacSha256Bytes(secret: string, value: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    textEncoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+
+  return new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, textEncoder.encode(value)),
+  );
+}
+
+type CommandUserTokenPayload = {
+  userKey?: unknown;
+  authenticated?: unknown;
+  role?: unknown;
+  exp?: unknown;
+};
+
+class UnauthorizedCommandAgentRequestError extends Error {
+  constructor() {
+    super("Valid signed command user token required.");
+    this.name = "UnauthorizedCommandAgentRequestError";
+  }
+}
+
+function getTrustedUserContext(
+  expectedUserKey: string,
+  payload: CommandUserTokenPayload,
+): TrustedCommandUserContext | null {
+  const payloadUserKey =
+    typeof payload.userKey === "string" ? payload.userKey.trim() : "";
+  if (payloadUserKey !== expectedUserKey) return null;
+
+  const isAuthenticatedUser = payloadUserKey.startsWith("user:");
+  const isAnonymousUser = payloadUserKey.startsWith("anon:");
+  if (!isAuthenticatedUser && !isAnonymousUser) return null;
+
+  if (
+    typeof payload.authenticated === "boolean" &&
+    payload.authenticated !== isAuthenticatedUser
+  ) {
+    return null;
+  }
+
+  if (
+    payload.role !== undefined &&
+    payload.role !== null &&
+    payload.role !== "user" &&
+    payload.role !== "moderator"
+  ) {
+    return null;
+  }
+
+  if (!isAuthenticatedUser && payload.role !== undefined && payload.role !== null) {
+    return null;
+  }
+
+  return {
+    userKey: payloadUserKey,
+    authenticated: isAuthenticatedUser,
+    role: isAuthenticatedUser
+      ? payload.role === "moderator"
+        ? "moderator"
+        : "user"
+      : null,
+  };
+}
+
+async function getTrustedUserFromCommandToken(input: {
+  userKey: string;
+  userToken: string;
+  secret: string;
+}): Promise<TrustedCommandUserContext | null> {
+  const tokenParts = input.userToken.split(".");
+  if (tokenParts.length !== 3) return null;
+
+  const [version, payloadPart, signaturePart] = tokenParts;
+  if (version !== "v1" || !payloadPart || !signaturePart) return null;
+
+  let receivedSignature: Uint8Array;
+  let payload: CommandUserTokenPayload;
+
+  try {
+    receivedSignature = base64UrlToBytes(signaturePart);
+    payload = JSON.parse(
+      textDecoder.decode(base64UrlToBytes(payloadPart)),
+    ) as CommandUserTokenPayload;
+  } catch {
+    return null;
+  }
+
+  const expectedSignature = await hmacSha256Bytes(input.secret, payloadPart);
+  if (!timingSafeEqual(receivedSignature, expectedSignature)) return null;
+
+  if (typeof payload.exp !== "number" || payload.exp < Date.now()) return null;
+
+  return getTrustedUserContext(input.userKey, payload);
 }
 
 export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
@@ -140,6 +252,20 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     pruneCommandSemanticCache(this);
   }
 
+  private async getTrustedUser(input: {
+    userKey?: unknown;
+    userToken?: unknown;
+  }) {
+    const userKey = typeof input.userKey === "string" ? input.userKey.trim() : "";
+    const userToken =
+      typeof input.userToken === "string" ? input.userToken.trim() : "";
+    const secret = this.env.CLOUDFLARE_COMMAND_AGENT_ADMIN_TOKEN?.trim();
+
+    if (!userKey || !userToken || !secret) return null;
+
+    return getTrustedUserFromCommandToken({ userKey, userToken, secret });
+  }
+
   @callable()
   async resolveIntent(input: CommandIntentRequestInput) {
     ensureCommandHistorySchema(this);
@@ -148,8 +274,16 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     const query = typeof input.query === "string" ? input.query : "";
     const preferenceQuery =
       typeof input.preferenceQuery === "string" ? input.preferenceQuery : "";
-    const userKey = typeof input.userKey === "string" ? input.userKey : "";
-    const surfaceContext = resolveSurfaceContext(query, input.surfaceContext);
+    const trustedUser = await this.getTrustedUser(input);
+    if (!trustedUser) {
+      throw new UnauthorizedCommandAgentRequestError();
+    }
+
+    const surfaceContext = resolveSurfaceContext(
+      query,
+      input.surfaceContext,
+      trustedUser,
+    );
     const semanticCacheHit = await findCommandSemanticCacheHit(this, this.env, {
       query,
       surfaceContext,
@@ -181,7 +315,7 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
       resolution.courseQuery || preferenceQuery || query;
     const preferences = listCommandCoursePreferences(
       this,
-      userKey,
+      trustedUser.userKey,
       preferenceLookupQuery,
     );
 
@@ -232,8 +366,13 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
   async recordPreference(input: CommandPreferenceRequestInput) {
     ensureCommandHistorySchema(this);
 
+    const trustedUser = await this.getTrustedUser(input);
+    if (!trustedUser) {
+      throw new UnauthorizedCommandAgentRequestError();
+    }
+
     const result = recordCommandCoursePreference(this, {
-      userKey: typeof input.userKey === "string" ? input.userKey : "",
+      userKey: trustedUser.userKey,
       query: typeof input.query === "string" ? input.query : "",
       courseCode: typeof input.courseCode === "string" ? input.courseCode : "",
       courseTitle:
@@ -262,7 +401,17 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
       );
     }
 
-    return jsonResponse(await this.resolveIntent(await readCommandIntentInput(request)));
+    try {
+      return jsonResponse(
+        await this.resolveIntent(await readCommandIntentInput(request)),
+      );
+    } catch (error) {
+      if (error instanceof UnauthorizedCommandAgentRequestError) {
+        return jsonResponse({ error: error.message }, { status: 401 });
+      }
+
+      throw error;
+    }
   }
 
   private async handlePreference(request: Request) {
@@ -274,21 +423,33 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
     }
 
     const payload = await readJsonPayload(request);
-    const { preference } = await this.recordPreference({
-      userKey: typeof payload?.userKey === "string" ? payload.userKey : "",
-      query: typeof payload?.query === "string" ? payload.query : "",
-      courseCode:
-        typeof payload?.courseCode === "string" ? payload.courseCode : "",
-      courseTitle:
-        typeof payload?.courseTitle === "string" ? payload.courseTitle : null,
-      resource:
-        payload?.resource === "notes" ||
-        payload?.resource === "syllabus" ||
-        payload?.resource === "papers" ||
-        payload?.resource === "course"
-          ? payload.resource
-          : null,
-    });
+    let preference: unknown;
+
+    try {
+      ({ preference } = await this.recordPreference({
+        userKey: typeof payload?.userKey === "string" ? payload.userKey : "",
+        userToken:
+          typeof payload?.userToken === "string" ? payload.userToken : "",
+        query: typeof payload?.query === "string" ? payload.query : "",
+        courseCode:
+          typeof payload?.courseCode === "string" ? payload.courseCode : "",
+        courseTitle:
+          typeof payload?.courseTitle === "string" ? payload.courseTitle : null,
+        resource:
+          payload?.resource === "notes" ||
+          payload?.resource === "syllabus" ||
+          payload?.resource === "papers" ||
+          payload?.resource === "course"
+            ? payload.resource
+            : null,
+      }));
+    } catch (error) {
+      if (error instanceof UnauthorizedCommandAgentRequestError) {
+        return jsonResponse({ error: error.message }, { status: 401 });
+      }
+
+      throw error;
+    }
 
     if (!preference) {
       return jsonResponse(

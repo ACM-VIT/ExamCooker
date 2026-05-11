@@ -26,6 +26,10 @@ import AnswerKeyButton from "@/app/components/past_papers/answer-key-button";
 import SortDropdown from "@/app/components/past_papers/sort-dropdown";
 import AnswerKeyToggle from "@/app/components/past_papers/answer-key-toggle";
 import CoursePaperGrid from "@/app/components/past_papers/course-paper-grid";
+import {
+    DESKTOP_SELECT_ALL_HOST_ID,
+    MOBILE_SELECT_ALL_HOST_ID,
+} from "@/app/components/past_papers/course-paper-grid-controls";
 import CoursePagination from "@/app/components/past_papers/course-pagination";
 import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
 import {
@@ -253,27 +257,27 @@ function CoursePastPapersSectionsShell() {
                 {/* Desktop: stacked chip rows + bottom toolbar */}
                 <div className="hidden flex-col gap-1.5 sm:flex">
                     <div className="flex flex-wrap items-center gap-1.5">
-                        {SHELL_EXAM_TABS.map((chip, i) => (
+                        {SHELL_EXAM_TABS.map((chip, index) => (
                             <ShellChip
-                                key={`exam-${i}`}
+                                key={`exam-${index}`}
                                 labelW={chip.labelW}
                                 countW={chip.countW}
                             />
                         ))}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
-                        {SHELL_YEAR_CHIPS.map((chip, i) => (
+                        {SHELL_YEAR_CHIPS.map((chip, index) => (
                             <ShellChip
-                                key={`year-${i}`}
+                                key={`year-${index}`}
                                 labelW={chip.labelW}
                                 countW={chip.countW}
                             />
                         ))}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
-                        {SHELL_SLOT_CHIPS.map((chip, i) => (
+                        {SHELL_SLOT_CHIPS.map((chip, index) => (
                             <ShellChip
-                                key={`slot-${i}`}
+                                key={`slot-${index}`}
                                 labelW={chip.labelW}
                                 countW={chip.countW}
                             />
@@ -296,9 +300,9 @@ function CoursePastPapersSectionsShell() {
             </section>
 
             <div className="flex flex-wrap gap-3" aria-hidden="true">
-                {Array.from({ length: 10 }).map((_, index) => (
+                {Array.from({ length: 10 }, (_, index) => `paper-shell-${index + 1}`).map((shellKey) => (
                     <div
-                        key={index}
+                        key={shellKey}
                         className="min-w-0 basis-[calc((100%-0.75rem)/2)] sm:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-2.25rem)/4)] xl:basis-[calc((100%-3rem)/5)]"
                     >
                         <div className="flex h-full flex-col border-2 border-[#5FC4E7] bg-[#5FC4E7] p-3 text-black dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]">
@@ -323,7 +327,7 @@ function CoursePastPapersSectionsShell() {
                 <nav className="flex flex-wrap items-center justify-center gap-1">
                     {["‹", "1", "2", "3", "4", "›"].map((label, index) => (
                         <span
-                            key={`${label}-${index}`}
+                            key={label}
                             className={`inline-flex h-9 min-w-[2.25rem] items-center justify-center border px-3 text-sm font-semibold ${
                                 index === 1
                                     ? "border-black bg-[#5FC4E7] text-black dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/20 dark:text-[#3BF4C7]"
@@ -351,7 +355,14 @@ async function CoursePastPapersContent({
     const searchString = buildSearchString(raw);
     const basePath = getCoursePastPapersPath(course.code);
     const [options, { papers, totalCount }] = await Promise.all([
-        getCoursePaperFilterOptions(course.id),
+        getCoursePaperFilterOptions(course.id, {
+            examTypes: filters.examTypes,
+            slots: filters.slots,
+            years: filters.years,
+            semesters: filters.semesters,
+            campuses: filters.campuses,
+            hasAnswerKey: filters.hasAnswerKey || undefined,
+        }),
         getCoursePapers({
             courseId: course.id,
             filters: {
@@ -413,9 +424,7 @@ async function CoursePastPapersContent({
                             searchString={searchString}
                         />
                     </div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                        {totalCount} result{totalCount === 1 ? "" : "s"}
-                    </p>
+                    <div id={MOBILE_SELECT_ALL_HOST_ID} className="flex justify-end" />
                 </div>
 
                 <div className="hidden flex-col gap-2 sm:flex sm:gap-1.5">
@@ -441,9 +450,7 @@ async function CoursePastPapersContent({
                                 searchString={searchString}
                             />
                         </div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
-                            {totalCount} result{totalCount === 1 ? "" : "s"}
-                        </p>
+                        <div id={DESKTOP_SELECT_ALL_HOST_ID} className="flex justify-end" />
                     </div>
                 </div>
             </section>

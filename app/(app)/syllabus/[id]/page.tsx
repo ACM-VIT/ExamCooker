@@ -4,6 +4,7 @@ import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import { notFound, permanentRedirect } from "next/navigation";
 import ViewTracker from "@/app/components/view-tracker";
 import DirectionalTransition from "@/app/components/common/directional-transition";
+import { LazySyllabusInlineEditor } from "@/app/components/moderation/lazy-editors";
 import { getSyllabusDetail } from "@/lib/data/syllabus-detail";
 import type { Metadata } from "next";
 import {
@@ -120,6 +121,11 @@ async function SyllabusViewerContent({
                         <div className="min-w-0 flex-1">
                             <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
                                 {title}
+                                <LazySyllabusInlineEditor
+                                    syllabusId={syllabus.id}
+                                    initialCourseCode={parsed.courseCode}
+                                    initialTitle={title}
+                                />
                             </h1>
                             {parsed.courseCode || parsed.courseName ? (
                                 <div className="mt-3 flex flex-wrap gap-1.5">

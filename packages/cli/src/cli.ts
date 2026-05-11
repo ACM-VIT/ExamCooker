@@ -5,6 +5,7 @@ import { access, readFile, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { hostname, platform } from "node:os";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import * as p from "@clack/prompts";
 import pc from "picocolors";
 import {
@@ -25,7 +26,10 @@ import {
 import { ApiError, requestJson, requestRaw } from "./http.js";
 import { printJson, showBanner, showHelp, truncate } from "./output.js";
 
-const VERSION = "0.1.0";
+const require = createRequire(import.meta.url);
+const packageMetadata = require("../package.json") as { version?: unknown };
+const VERSION =
+  typeof packageMetadata.version === "string" ? packageMetadata.version : "0.0.0";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

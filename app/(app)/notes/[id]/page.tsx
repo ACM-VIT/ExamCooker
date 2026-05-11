@@ -8,7 +8,7 @@ import StructuredData from "@/app/components/seo/structured-data";
 
 import ShareLink from '@/app/components/share-link';
 import ViewTracker from "@/app/components/view-tracker";
-import ItemActions from "@/app/components/item-actions";
+import { LazyNoteInlineEditor } from "@/app/components/moderation/lazy-editors";
 import { getNoteDetail } from "@/lib/data/note-detail";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getCourseNotesPath } from "@/lib/seo";
 import { buildNotePdfFileName } from "@/lib/downloads/resource-names";
@@ -103,6 +103,7 @@ async function NoteViewerContent({
         title: note.title,
     });
     const metaPills: Array<{ label: string; value: string }> = [];
+    if (note.course?.code) metaPills.push({ label: "Course", value: note.course.code });
     if (slot) metaPills.push({ label: "Slot", value: slot });
     if (year) metaPills.push({ label: "Year", value: year });
     note.tags
@@ -144,6 +145,12 @@ async function NoteViewerContent({
                         <div className="min-w-0 flex-1">
                             <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
                                 {title}
+                                <LazyNoteInlineEditor
+                                    noteId={note.id}
+                                    initialTitle={note.title}
+                                    initialCourseId={note.courseId}
+                                    initialTags={note.tags.map((tag) => tag.name)}
+                                />
                             </h1>
                             {metaPills.length > 0 && (
                                 <div className="mt-3 flex flex-wrap gap-1.5">
@@ -167,12 +174,6 @@ async function NoteViewerContent({
                             </p>
                         </div>
                         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:pt-1">
-                            <ItemActions
-                                itemId={note.id}
-                                title={note.title}
-                                authorId={note.author?.id}
-                                activeTab="notes"
-                            />
                             <ShareLink
                                 fileType="these Notes"
                                 resourceTitle={title}

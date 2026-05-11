@@ -10,11 +10,13 @@ import {
     X,
 } from "lucide-react";
 import {
+    Activity,
     createContext,
     useCallback,
     useContext,
     useEffect,
     useMemo,
+    useReducer,
     useRef,
     useState,
     type CSSProperties,
@@ -93,6 +95,54 @@ function readStoredWidth(): number {
     return Number.isFinite(stored) && stored > 0
         ? clampPanelWidth(stored)
         : getDefaultPanelWidth();
+}
+
+type PaperSplitState = {
+    activePaper: PaperSplitItem | null;
+    cachedPaper: PaperSplitItem | null;
+    isSupported: boolean;
+    side: PaperSplitSide;
+    width: number;
+};
+
+type PaperSplitAction =
+    | { type: "support"; isSupported: boolean }
+    | { type: "hydrate"; side: PaperSplitSide; width: number }
+    | { type: "clamp-width" }
+    | { type: "open"; paper: PaperSplitItem; side: PaperSplitSide }
+    | { type: "move"; side: PaperSplitSide }
+    | { type: "resize"; width: number }
+    | { type: "close" };
+
+function paperSplitReducer(
+    state: PaperSplitState,
+    action: PaperSplitAction,
+): PaperSplitState {
+    switch (action.type) {
+        case "support":
+            return {
+                ...state,
+                activePaper: action.isSupported ? state.activePaper : null,
+                isSupported: action.isSupported,
+            };
+        case "hydrate":
+            return { ...state, side: action.side, width: action.width };
+        case "clamp-width":
+            return { ...state, width: clampPanelWidth(state.width) };
+        case "open":
+            return {
+                ...state,
+                activePaper: action.paper,
+                cachedPaper: action.paper,
+                side: action.side,
+            };
+        case "move":
+            return { ...state, side: action.side };
+        case "resize":
+            return { ...state, width: action.width };
+        case "close":
+            return { ...state, activePaper: null };
+    }
 }
 
 function PaperSplitPanel({
@@ -267,21 +317,29 @@ function PaperSplitPanel({
 }
 
 export function PaperSplitViewProvider({ children }: { children: ReactNode }) {
-    const [activePaper, setActivePaper] = useState<PaperSplitItem | null>(null);
-    const [side, setSide] = useState<PaperSplitSide>("right");
-    const [width, setWidth] = useState(() => getDefaultPanelWidth());
-    const [isSupported, setIsSupported] = useState(false);
+    const [{ activePaper, cachedPaper, isSupported, side, width }, dispatch] =
+        useReducer(paperSplitReducer, {
+            activePaper: null,
+            cachedPaper: null,
+            isSupported: false,
+            side: "right",
+            width: getDefaultPanelWidth(),
+        });
 
     useEffect(() => {
         const mediaQuery = window.matchMedia("(min-width: 768px)");
-        const syncSupport = () => setIsSupported(mediaQuery.matches);
+        const syncSupport = () =>
+            dispatch({ type: "support", isSupported: mediaQuery.matches });
         syncSupport();
         mediaQuery.addEventListener("change", syncSupport);
-        setSide(readStoredSide());
-        setWidth(readStoredWidth());
+        dispatch({
+            type: "hydrate",
+            side: readStoredSide(),
+            width: readStoredWidth(),
+        });
 
         const syncWidth = () => {
-            setWidth((currentWidth) => clampPanelWidth(currentWidth));
+            dispatch({ type: "clamp-width" });
         };
         window.addEventListener("resize", syncWidth);
 
@@ -293,35 +351,28 @@ export function PaperSplitViewProvider({ children }: { children: ReactNode }) {
         };
     }, []);
 
-    useEffect(() => {
-        if (!isSupported && activePaper) {
-            setActivePaper(null);
-        }
-    }, [activePaper, isSupported]);
-
     const openPaperSplit = useCallback(
         (paper: PaperSplitItem, nextSide: PaperSplitSide) => {
             if (!window.matchMedia("(min-width: 768px)").matches) return;
-            setActivePaper(paper);
-            setSide(nextSide);
+            dispatch({ type: "open", paper, side: nextSide });
             window.localStorage.setItem(STORAGE_SIDE_KEY, nextSide);
         },
         [],
     );
 
     const movePaperSplit = useCallback((nextSide: PaperSplitSide) => {
-        setSide(nextSide);
+        dispatch({ type: "move", side: nextSide });
         window.localStorage.setItem(STORAGE_SIDE_KEY, nextSide);
     }, []);
 
     const resizePaperSplit = useCallback((nextWidth: number) => {
         const clampedWidth = clampPanelWidth(nextWidth);
-        setWidth(clampedWidth);
+        dispatch({ type: "resize", width: clampedWidth });
         window.localStorage.setItem(STORAGE_WIDTH_KEY, String(clampedWidth));
     }, []);
 
     const closePaperSplit = useCallback(() => {
-        setActivePaper(null);
+        dispatch({ type: "close" });
     }, []);
 
     const contextValue = useMemo<PaperSplitContextValue>(
@@ -346,15 +397,20 @@ export function PaperSplitViewProvider({ children }: { children: ReactNode }) {
                     {children}
                 </div>
             </div>
-            {activePaper && isSupported ? (
-                <PaperSplitPanel
-                    paper={activePaper}
-                    side={side}
-                    width={width}
-                    onClose={closePaperSplit}
-                    onMove={movePaperSplit}
-                    onResize={resizePaperSplit}
-                />
+            {cachedPaper && isSupported ? (
+                <Activity
+                    mode={activePaper ? "visible" : "hidden"}
+                    name="Past paper split view"
+                >
+                    <PaperSplitPanel
+                        paper={cachedPaper}
+                        side={side}
+                        width={width}
+                        onClose={closePaperSplit}
+                        onMove={movePaperSplit}
+                        onResize={resizePaperSplit}
+                    />
+                </Activity>
             ) : null}
         </PaperSplitContext.Provider>
     );

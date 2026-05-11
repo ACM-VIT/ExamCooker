@@ -1,6 +1,7 @@
 "use client";
 
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { useSyncExternalStore } from "react";
 
 export type NativeCourseSearchCourse = {
   code: string;
@@ -74,6 +75,36 @@ export function canUseNativeCourseSearch() {
     typeof window !== "undefined" &&
     Capacitor.isNativePlatform() &&
     Capacitor.getPlatform() === "ios"
+  );
+}
+
+function subscribeToNativeCourseSearchAvailability(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  window.addEventListener("focus", onStoreChange);
+  document.addEventListener("visibilitychange", onStoreChange);
+
+  return () => {
+    window.removeEventListener("focus", onStoreChange);
+    document.removeEventListener("visibilitychange", onStoreChange);
+  };
+}
+
+function getNativeCourseSearchAvailabilitySnapshot() {
+  return canUseNativeCourseSearch();
+}
+
+function getServerNativeCourseSearchAvailabilitySnapshot() {
+  return false;
+}
+
+export function useNativeCourseSearchAvailable() {
+  return useSyncExternalStore(
+    subscribeToNativeCourseSearchAvailability,
+    getNativeCourseSearchAvailabilitySnapshot,
+    getServerNativeCourseSearchAvailabilitySnapshot,
   );
 }
 

@@ -8,21 +8,21 @@ import React, {
     useRef,
     useState,
 } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
     describePathForBreadcrumb,
     mergePrevCrumb,
     normalizeRouteKey,
     type BreadcrumbNavItem,
 } from "@/lib/breadcrumb-nav";
+import { useLocationSearch } from "@/app/components/common/use-location-search";
 
 const NavFromRawContext = createContext<string | null>(null);
 
 function NavFromProviderInner({ children }: { children: React.ReactNode }) {
     const pathname = usePathname() ?? "";
-    const searchParams = useSearchParams();
-    const search = searchParams.toString();
-    const full = `${pathname}${search ? `?${search}` : ""}`;
+    const search = useLocationSearch();
+    const full = `${pathname}${search}`;
     const currentRef = useRef<string | null>(null);
     const [fromPath, setFromPath] = useState<string | null>(null);
 
@@ -70,9 +70,8 @@ export function useNavFromRawPath(): string | null {
 export function useNavFromBreadcrumbItem(): { label: string; href: string } | null {
     const raw = useNavFromRawPath();
     const pathname = usePathname() ?? "";
-    const searchParams = useSearchParams();
-    const search = searchParams.toString();
-    const current = `${pathname}${search ? `?${search}` : ""}`;
+    const search = useLocationSearch();
+    const current = `${pathname}${search}`;
 
     return useMemo(() => {
         if (!raw) return null;
@@ -84,9 +83,8 @@ export function useNavFromBreadcrumbItem(): { label: string; href: string } | nu
 export function useMergedBreadcrumbItems(items: BreadcrumbNavItem[]): BreadcrumbNavItem[] {
     const prev = useNavFromBreadcrumbItem();
     const pathname = usePathname() ?? "";
-    const searchParams = useSearchParams();
-    const search = searchParams.toString();
-    const current = `${pathname}${search ? `?${search}` : ""}`;
+    const search = useLocationSearch();
+    const current = `${pathname}${search}`;
 
     return useMemo(
         () => mergePrevCrumb(prev, items, current),

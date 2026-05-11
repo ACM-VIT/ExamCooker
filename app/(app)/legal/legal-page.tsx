@@ -56,7 +56,7 @@ export default function LegalPage({
                                     {section.body.map((item, index) =>
                                         typeof item === "string" ? (
                                             <p
-                                                key={index}
+                                                key={item}
                                                 className="text-sm leading-7 text-black/70 dark:text-[#D5D5D5]/70 sm:text-base"
                                             >
                                                 {item}
@@ -73,7 +73,7 @@ export default function LegalPage({
                                             </p>
                                         ) : (
                                             <p
-                                                key={index}
+                                                key={item.text?.toString() ?? `${section.id}-${index}`}
                                                 className="text-sm leading-7 text-black/70 dark:text-[#D5D5D5]/70 sm:text-base"
                                             >
                                                 {item.text}

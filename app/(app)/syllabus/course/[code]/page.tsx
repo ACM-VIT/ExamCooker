@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import PDFViewerClient from "@/app/components/pdf-viewer-client";
 import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
 import ViewTracker from "@/app/components/view-tracker";
+import { LazySyllabusInlineEditor } from "@/app/components/moderation/lazy-editors";
 import StructuredData from "@/app/components/seo/structured-data";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import { getCourseByCodeAny } from "@/lib/data/courses";
@@ -18,6 +19,7 @@ import {
     formatSyllabusDisplayName,
     getCoursePath,
     getCourseSyllabusPath,
+    parseSyllabusName,
 } from "@/lib/seo";
 import { buildSyllabusPdfFileName } from "@/lib/downloads/resource-names";
 import {
@@ -39,9 +41,12 @@ async function loadCourseSyllabusContext(rawCode: string) {
 
     if (!syllabus) return null;
 
+    const parsedSyllabus = parseSyllabusName(syllabus.name);
+
     return {
         code: courseDetail?.code ?? tagCourse?.code ?? normalized,
         title:
+            parsedSyllabus.courseName ??
             courseDetail?.title ??
             tagCourse?.title ??
             formatSyllabusDisplayName(syllabus.name),
@@ -160,6 +165,11 @@ async function CourseSyllabusContent({
                         <div className="min-w-0 flex-1">
                             <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
                                 {context.title}
+                                <LazySyllabusInlineEditor
+                                    syllabusId={context.syllabus.id}
+                                    initialCourseCode={context.code}
+                                    initialTitle={context.title}
+                                />
                             </h1>
                             <div className="mt-3 flex flex-wrap gap-1.5">
                                 <span className="inline-flex items-center gap-1.5 border border-black/15 bg-white px-2.5 py-1 text-xs font-semibold text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]">
