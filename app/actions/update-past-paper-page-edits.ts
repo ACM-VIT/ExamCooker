@@ -40,12 +40,16 @@ export async function updatePastPaperPageEdits(input: z.input<typeof schema>) {
   const parsed = schema.parse(input);
   const pageEdits = normalizePdfPageEdits(parsed.pageEdits ?? null);
 
-  await db
+  const updatedRows = await db
     .update(pastPaper)
     .set({
       pageEdits,
     })
-    .where(eq(pastPaper.id, parsed.id));
+    .where(eq(pastPaper.id, parsed.id))
+    .returning({ id: pastPaper.id });
+  if (updatedRows.length === 0) {
+    throw new Error("Past paper not found.");
+  }
 
   revalidateTag("past_papers", "minutes");
   revalidateTag(`past_paper:${parsed.id}`, "minutes");
