@@ -114,11 +114,71 @@
     top: 50% !important;
     left: 50% !important;
     translate: none !important;
-    transform: translate(-50%, -50%) !important;
+    transform-origin: top center;
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    transition:
+        opacity 200ms cubic-bezier(0.2, 0, 0, 1),
+        transform 220ms cubic-bezier(0.2, 0, 0, 1);
+    will-change: opacity, transform;
+}
+
+.ec-command-dialog-panel[data-state="closed"] {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 6px)) scale(0.97);
+    pointer-events: none;
+}
+
+.ec-command-dialog-overlay {
+    opacity: 1;
+    transition: opacity 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ec-command-dialog-overlay[data-state="closed"] {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .ec-command-menu [cmdk-list] {
     scroll-padding-block: 0.5rem;
+}
+
+.ec-command-row {
+    animation: ec-command-row-in 220ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.ec-command-skeleton-row {
+    animation: ec-command-skeleton-pulse 1400ms ease-in-out infinite;
+}
+
+@keyframes ec-command-row-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes ec-command-skeleton-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ec-command-dialog-panel,
+    .ec-command-dialog-overlay {
+        transition: none !important;
+    }
+    .ec-command-dialog-panel[data-state="closed"] {
+        transform: translate(-50%, -50%) scale(1);
+    }
+    .ec-command-row,
+    .ec-command-skeleton-row {
+        animation: none !important;
+    }
 }
 
 .paper-split-shell {
