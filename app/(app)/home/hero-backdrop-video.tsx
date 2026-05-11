@@ -14,11 +14,11 @@ const VIDEOS = [
     { kind: "local", webm: "/night.webm", mp4: "/night.mp4", poster: "/night.jpg" },
     { kind: "local", webm: "/night-city.webm", mp4: "/night-city.mp4", poster: "/night-city.jpg" },
     { kind: "pixel" },
-    {
-        kind: "youtube",
-        id: "AUQKjgKQF7w",
-        url: "https://www.youtube.com/watch?v=AUQKjgKQF7w",
-    },
+    // {
+    //     kind: "youtube",
+    //     id: "AUQKjgKQF7w",
+    //     url: "https://www.youtube.com/watch?v=AUQKjgKQF7w",
+    // },
 ] as const;
 const TABLET_MIN_WIDTH_MEDIA = "(min-width: 600px)";
 
@@ -34,7 +34,8 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
     const [video, setVideo] = useState<(typeof VIDEOS)[number] | null>(null);
     const [hasInteracted, setHasInteracted] = useState(false);
     const [isYouTubeReady, setIsYouTubeReady] = useState(false);
-    const isYouTubeEngaged = video?.kind === "youtube" && hasInteracted && isYouTubeReady;
+    // const isYouTubeEngaged = video?.kind === "youtube" && hasInteracted && isYouTubeReady;
+    const isYouTubeEngaged = false;
     const notifyReady = useEffectEvent(() => {
         onReady?.();
     });
@@ -127,51 +128,51 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
 
     if (!video) return <div ref={containerRef} className="absolute inset-0" aria-hidden="true" />;
 
-    if (video.kind === "youtube") {
-        return (
-            <div ref={containerRef} className="absolute inset-0 overflow-hidden bg-black" aria-hidden="true">
-                <div
-                    className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-[filter,transform] duration-1000 ease-out will-change-transform ${
-                        isYouTubeEngaged
-                            ? "scale-[1.04] brightness-[1.1] contrast-[1.08] saturate-[1.15]"
-                            : "scale-100 brightness-[0.9] saturate-[0.9]"
-                    }`}
-                    style={{
-                        width: "max(100%, 177.777778vh)",
-                        height: "max(100%, 56.25vw)",
-                    }}
-                >
-                    <ReactPlayer
-                        url={video.url}
-                        playing
-                        loop
-                        muted={!hasInteracted || !isYouTubeReady}
-                        controls={false}
-                        playsinline
-                        width="100%"
-                        height="100%"
-                        onReady={handleYouTubeReady}
-                        config={{
-                            youtube: {
-                                playerVars: {
-                                    autoplay: 1,
-                                    controls: 0,
-                                    disablekb: 1,
-                                    fs: 0,
-                                    iv_load_policy: 3,
-                                    loop: 1,
-                                    modestbranding: 1,
-                                    playsinline: 1,
-                                    playlist: video.id,
-                                    rel: 0,
-                                },
-                            },
-                        }}
-                    />
-                </div>
-            </div>
-        );
-    }
+    // if (video.kind === "youtube") {
+    //     return (
+    //         <div ref={containerRef} className="absolute inset-0 overflow-hidden bg-black" aria-hidden="true">
+    //             <div
+    //                 className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-[filter,transform] duration-1000 ease-out will-change-transform ${
+    //                     isYouTubeEngaged
+    //                         ? "scale-[1.04] brightness-[1.1] contrast-[1.08] saturate-[1.15]"
+    //                         : "scale-100 brightness-[0.9] saturate-[0.9]"
+    //                 }`}
+    //                 style={{
+    //                     width: "max(100%, 177.777778vh)",
+    //                     height: "max(100%, 56.25vw)",
+    //                 }}
+    //             >
+    //                 <ReactPlayer
+    //                     url={video.url}
+    //                     playing
+    //                     loop
+    //                     muted={!hasInteracted || !isYouTubeReady}
+    //                     controls={false}
+    //                     playsinline
+    //                     width="100%"
+    //                     height="100%"
+    //                     onReady={handleYouTubeReady}
+    //                     config={{
+    //                         youtube: {
+    //                             playerVars: {
+    //                                 autoplay: 1,
+    //                                 controls: 0,
+    //                                 disablekb: 1,
+    //                                 fs: 0,
+    //                                 iv_load_policy: 3,
+    //                                 loop: 1,
+    //                                 modestbranding: 1,
+    //                                 playsinline: 1,
+    //                                 playlist: video.id,
+    //                                 rel: 0,
+    //                             },
+    //                         },
+    //                     }}
+    //                 />
+    //             </div>
+    //         </div>
+    //     );
+    // }
 
     if (video.kind === "pixel") {
         return (
