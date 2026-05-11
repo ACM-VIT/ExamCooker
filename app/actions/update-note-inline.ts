@@ -41,13 +41,14 @@ export async function updateNoteInline(input: z.input<typeof schema>) {
 
   const parsed = schema.parse(input);
   const tagNames = normalizeTags(parsed.tags);
-  const tagRecords = await Promise.all(
-    tagNames.map((tagName) =>
-      findOrCreateTag(tagName, { caseInsensitive: true }),
-    ),
-  );
 
   await db.transaction(async (tx) => {
+    const tagRecords = await Promise.all(
+      tagNames.map((tagName) =>
+        findOrCreateTag(tagName, { caseInsensitive: true, dbClient: tx }),
+      ),
+    );
+
     await tx
       .update(note)
       .set({

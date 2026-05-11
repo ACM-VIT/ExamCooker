@@ -103,11 +103,6 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
   }
 
   const tagNames = normalizeTags(parsed.tags);
-  const tagRecords = await Promise.all(
-    tagNames.map((tagName) =>
-      findOrCreateTag(tagName, { caseInsensitive: true }),
-    ),
-  );
 
   let questionPaperId: string | null = null;
   try {
@@ -207,6 +202,12 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
           questionPaperId: nextQuestionPaperId,
         })
         .where(eq(pastPaper.id, parsed.id));
+
+      const tagRecords = await Promise.all(
+        tagNames.map((tagName) =>
+          findOrCreateTag(tagName, { caseInsensitive: true, dbClient: tx }),
+        ),
+      );
 
       await tx.delete(pastPaperToTag).where(eq(pastPaperToTag.a, parsed.id));
       if (tagRecords.length > 0) {
