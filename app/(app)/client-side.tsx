@@ -114,7 +114,7 @@ function MobileChromeHeader({
                     aria-label={isNavOn ? "Close tools menu" : "Open tools menu"}
                     aria-expanded={isNavOn}
                     style={{ viewTransitionName: "persistent-menu-button" }}
-                    className={`pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-black/65 transition-colors active:bg-black/[0.08] dark:text-[#D5D5D5]/85 dark:active:bg-white/[0.07] ${isNavOn ? "pointer-events-none opacity-0" : "opacity-100"}`}
+                    className={`ec-icon-button pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-black/65 active:bg-black/[0.08] dark:text-[#D5D5D5]/85 dark:active:bg-white/[0.07] ${isNavOn ? "pointer-events-none opacity-0" : "opacity-100"}`}
                 >
                     <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} aria-hidden />
                 </button>

@@ -232,7 +232,7 @@ function CoursePaperCard({
 
     return (
         <article
-            className={`group relative isolate flex h-full flex-col border-2 p-3 text-black transition duration-200 hover:scale-[1.02] hover:shadow-xl focus-within:outline-none focus-within:ring-2 focus-within:ring-black/70 dark:text-[#D5D5D5] dark:focus-within:ring-[#3BF4C7] ${
+            className={`ec-card-lift ec-press group relative isolate flex h-full flex-col border-2 p-3 text-black focus-within:outline-none focus-within:ring-2 focus-within:ring-black/70 dark:text-[#D5D5D5] dark:focus-within:ring-[#3BF4C7] ${
                 splitDragEnabled ? "[touch-action:pan-y]" : ""
             } ${selected
                     ? "border-black bg-[#5FC4E7] shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:border-[#3BF4C7] dark:bg-[#0C1222] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)]"
@@ -289,7 +289,7 @@ function CoursePaperCard({
                         alt={courseTitle}
                         fill
                         sizes="(min-width: 1280px) 220px, (min-width: 1024px) 25vw, (min-width: 640px) 32vw, 45vw"
-                        className="pointer-events-none select-none object-cover"
+                        className="ec-card-media pointer-events-none select-none object-cover"
                         draggable={false}
                         priority={index < 3}
                     />
@@ -307,7 +307,7 @@ function CoursePaperCard({
                         onClick={handleToggleSelect}
                         aria-label={selected ? "Deselect paper" : "Select paper"}
                         aria-pressed={selected}
-                        className={`pointer-events-auto absolute left-1.5 top-1.5 z-10 inline-flex h-5 w-5 items-center justify-center rounded transition ${selected
+                        className={`ec-icon-button pointer-events-auto absolute left-1.5 top-1.5 z-10 inline-flex h-5 w-5 items-center justify-center rounded ${selected
                                 ? "bg-black text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
                                 : "bg-white/80 text-transparent backdrop-blur hover:bg-white hover:text-black/40 dark:bg-[#0C1222]/60 dark:hover:bg-[#0C1222]"
                             }`}
@@ -318,7 +318,7 @@ function CoursePaperCard({
                         type="button"
                         onClick={handleDownload}
                         aria-label="Download paper"
-                        className="pointer-events-auto absolute right-1.5 top-1.5 z-10 inline-flex h-5 w-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur transition hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
+                        className="ec-icon-button pointer-events-auto absolute right-1.5 top-1.5 z-10 inline-flex h-5 w-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
                     >
                         <Download className="h-2.5 w-2.5" aria-hidden />
                     </button>
@@ -330,7 +330,7 @@ function CoursePaperCard({
                 onClick={handleOpenInNewTab}
                 aria-label="Open paper in new tab"
                 title="Open paper in new tab"
-                className="pointer-events-auto absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded text-black/60 transition hover:bg-black/10 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/10 dark:hover:text-[#D5D5D5]"
+                className="ec-icon-button pointer-events-auto absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded text-black/60 hover:bg-black/10 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/10 dark:hover:text-[#D5D5D5]"
             >
                 <ExternalLink className="h-3 w-3" aria-hidden />
             </button>
