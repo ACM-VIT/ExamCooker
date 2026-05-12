@@ -13,7 +13,6 @@ import {
 } from "@/lib/data/syllabus";
 import {
   findVinCourseByNames,
-  getVinCatalogMeta,
   getVinCourseById,
   getVinCourses,
   type VinCourse,
@@ -95,11 +94,25 @@ function dedupeResults(results: McpSearchResult[]) {
 
 async function searchCourses(query: string) {
   const courses = await searchCourseGrid(query);
-  return courses.slice(0, PER_TYPE_SEARCH_LIMIT).map((course) => ({
-    id: toResourceId({ kind: "course", id: course.code }),
-    title: `Course: ${course.code} - ${course.title}`,
-    url: absoluteUrl(getCoursePastPapersPath(course.code)),
-  }));
+  const ranked = [...courses].sort(
+    (a, b) =>
+      b.paperCount - a.paperCount ||
+      b.noteCount - a.noteCount ||
+      a.code.localeCompare(b.code),
+  );
+  return ranked.slice(0, PER_TYPE_SEARCH_LIMIT).map((course) => {
+    const signals = [
+      course.paperCount ? `${course.paperCount} papers` : null,
+      course.noteCount ? `${course.noteCount} notes` : null,
+    ].filter(Boolean);
+    return {
+      id: toResourceId({ kind: "course", id: course.code }),
+      title: `Course: ${course.code} - ${course.title}${
+        signals.length ? ` (${signals.join(", ")})` : ""
+      }`,
+      url: absoluteUrl(getCoursePastPapersPath(course.code)),
+    };
+  });
 }
 
 async function searchPastPapers(query: string) {
@@ -247,7 +260,6 @@ function formatVinCourse(course: VinCourse): McpFetchOutput {
     metadata: compactMetadata({
       type: "resource",
       source: "VInTogether",
-      syncedAt: getVinCatalogMeta().syncedAt,
       moduleCount: course.counts.moduleCount,
       topicCount: course.counts.topicCount,
       videoCount: course.counts.videoCount,
@@ -429,7 +441,6 @@ async function fetchNote(ref: ResourceRef) {
       courseCode: note.course?.code ?? null,
       fileUrl: note.fileUrl,
       thumbnailUrl: note.thumbNailUrl,
-      updatedAt: note.updatedAt.toISOString(),
     }),
   };
 }
