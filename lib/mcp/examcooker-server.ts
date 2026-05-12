@@ -4,10 +4,17 @@ import {
   fetchExamCookerResource,
   searchExamCookerResources,
 } from "@/lib/mcp/examcooker-resources";
+import {
+  EXAMCOOKER_WIDGET_HTML,
+  EXAMCOOKER_WIDGET_URI,
+} from "@/lib/mcp/examcooker-widget";
+
+const WIDGET_MIME_TYPE = "text/html;profile=mcp-app";
+const WIDGET_DOMAIN = "https://examcooker.acmvit.in";
 
 const ToolAnnotations = {
   readOnlyHint: true,
-  openWorldHint: false,
+  openWorldHint: true,
   destructiveHint: false,
   idempotentHint: true,
 } as const;
@@ -41,7 +48,7 @@ export function createExamCookerMcpServer() {
       name: "examcooker",
       title: "ExamCooker",
       version: "0.1.0",
-      websiteUrl: "https://examcooker.acmvit.in",
+      websiteUrl: WIDGET_DOMAIN,
       description:
         "Read-only access to ExamCooker courses, notes, past papers, syllabi, and module resources.",
     },
@@ -51,12 +58,47 @@ export function createExamCookerMcpServer() {
     },
   );
 
+  server.registerResource(
+    "examcooker-widget",
+    EXAMCOOKER_WIDGET_URI,
+    {
+      title: "ExamCooker widget",
+      description:
+        "Renders ExamCooker search results and resource detail cards inside ChatGPT.",
+      mimeType: WIDGET_MIME_TYPE,
+      _meta: {
+        ui: {
+          domain: WIDGET_DOMAIN,
+          prefersBorder: true,
+          csp: {
+            connectDomains: [],
+            resourceDomains: [
+              "https://fonts.googleapis.com",
+              "https://fonts.gstatic.com",
+            ],
+          },
+        },
+        "openai/widgetDescription":
+          "Shows ExamCooker search results or a selected resource (course, past paper, note, or syllabus) with a link out to ExamCooker.",
+      },
+    },
+    async () => ({
+      contents: [
+        {
+          uri: EXAMCOOKER_WIDGET_URI,
+          mimeType: WIDGET_MIME_TYPE,
+          text: EXAMCOOKER_WIDGET_HTML,
+        },
+      ],
+    }),
+  );
+
   server.registerTool(
     "search",
     {
       title: "Search ExamCooker",
       description:
-        "Use this when the user wants to find public ExamCooker courses, notes, past papers, syllabi, or module resources by course code, subject, exam type, year, or keyword.",
+        "Search the public ExamCooker catalog for courses, notes, past papers, syllabi, and module resources by course code, subject, exam type, year, or keyword. Returns a ranked list of matching resources with stable ids and canonical ExamCooker URLs.",
       inputSchema: {
         query: z
           .string()
@@ -67,6 +109,8 @@ export function createExamCookerMcpServer() {
       outputSchema: SearchOutputSchema,
       annotations: ToolAnnotations,
       _meta: {
+        ui: { resourceUri: EXAMCOOKER_WIDGET_URI },
+        "openai/outputTemplate": EXAMCOOKER_WIDGET_URI,
         "openai/toolInvocation/invoking": "Searching ExamCooker",
         "openai/toolInvocation/invoked": "Found ExamCooker resources",
       },
@@ -90,7 +134,7 @@ export function createExamCookerMcpServer() {
     {
       title: "Fetch ExamCooker Resource",
       description:
-        "Use this when the user wants the details for one public ExamCooker resource returned by search, or when they provide an ExamCooker course code or resource URL.",
+        "Fetch the full details of a single public ExamCooker resource (course, past paper, note, syllabus, or module resource). Accepts a search-result id, a course code, or a canonical ExamCooker URL.",
       inputSchema: {
         id: z
           .string()
@@ -102,6 +146,8 @@ export function createExamCookerMcpServer() {
       outputSchema: FetchOutputSchema,
       annotations: ToolAnnotations,
       _meta: {
+        ui: { resourceUri: EXAMCOOKER_WIDGET_URI },
+        "openai/outputTemplate": EXAMCOOKER_WIDGET_URI,
         "openai/toolInvocation/invoking": "Fetching ExamCooker resource",
         "openai/toolInvocation/invoked": "Fetched ExamCooker resource",
       },
