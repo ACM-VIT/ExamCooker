@@ -61,8 +61,17 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     font-size: 14px;
     line-height: 1.5;
   }
-  /* Generous outer padding so the widget reads as a self-contained surface inside ChatGPT */
-  .root { padding: 24px 28px; max-width: 1180px; margin: 0 auto; }
+  /* Generous outer margin so the widget reads as a self-contained surface inside ChatGPT.
+     ChatGPT renders the widget edge-to-edge inside its sandbox iframe with no outer chrome,
+     so we need to provide all of the breathing room ourselves. */
+  body { padding: 36px 40px 40px; }
+  .root { max-width: 1100px; margin: 0 auto; padding: 0; }
+  @media (max-width: 720px) {
+    body { padding: 24px 22px 28px; }
+  }
+  @media (max-width: 480px) {
+    body { padding: 20px 16px 24px; }
+  }
 
   .status { display: flex; align-items: center; justify-content: center; padding: 56px 16px; color: var(--ec-text-muted); font-size: 13px; font-weight: 500; gap: 10px; }
   .spinner { width: 14px; height: 14px; border: 2px solid var(--ec-text-muted); border-top-color: transparent; border-radius: 50%; animation: spin 700ms linear infinite; }
