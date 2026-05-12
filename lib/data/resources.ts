@@ -91,3 +91,39 @@ export async function getSubjectByCourseCode(code: string) {
         modules,
     };
 }
+
+export async function getSubjectDetail(id: string) {
+    "use cache";
+    cacheTag("resources");
+    cacheTag(`resource:${id}`);
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const subjectRows = await db
+        .select({
+            id: subject.id,
+            name: subject.name,
+        })
+        .from(subject)
+        .where(eq(subject.id, id))
+        .limit(1);
+
+    const foundSubject = subjectRows[0];
+    if (!foundSubject) return null;
+
+    const modules = await db
+        .select({
+            id: module.id,
+            title: module.title,
+            subjectId: module.subjectId,
+            webReferences: module.webReferences,
+            youtubeLinks: module.youtubeLinks,
+        })
+        .from(module)
+        .where(eq(module.subjectId, foundSubject.id))
+        .orderBy(asc(module.title));
+
+    return {
+        ...foundSubject,
+        modules,
+    };
+}

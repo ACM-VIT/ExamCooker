@@ -272,7 +272,7 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     return (
         <div className="mx-auto w-full min-w-0 text-left">
             <div className="relative">
-                <div className="relative flex h-12 sm:h-14 lg:h-16 w-full min-w-0 items-center overflow-hidden bg-white pl-4 pr-2 dark:bg-[#3D414E] border border-black/25 dark:border-[#D5D5D5]/30">
+                <div className="ec-focus-ring relative flex h-12 sm:h-14 lg:h-16 w-full min-w-0 items-center overflow-hidden bg-white pl-4 pr-2 dark:bg-[#3D414E] border border-black/25 dark:border-[#D5D5D5]/30">
                     <Image src={SearchIcon} alt="search" className="dark:invert-[.835] h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
                     {nativeSearchAvailable ? (
                         <button
@@ -311,8 +311,8 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                     )}
                     <button
                         onClick={clearSelection}
-                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] ${query ? "visible" : "invisible pointer-events-none w-0 overflow-hidden"
-                            }`}
+                        data-hidden={query ? "false" : "true"}
+                        className="ec-collapse-toggle ec-icon-button inline-flex h-9 w-9 shrink-0 items-center justify-center text-black/60 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
                         type="button"
                         aria-label="Clear search"
                         tabIndex={query ? 0 : -1}
@@ -361,7 +361,8 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
                                             resultIndex: index,
                                         })
                                     }
-                                    className={`w-full px-4 py-3 text-left flex justify-between items-center gap-3 transition-colors border-b border-black/10 dark:border-[#D5D5D5]/15 last:border-b-0 hover:bg-[#5FC4E7]/25 dark:hover:bg-[#3BF4C7]/10 ${highlightedIndex === index
+                                    style={{ ["--ec-row-index" as string]: index } as React.CSSProperties}
+                                    className={`ec-row-reveal w-full px-4 py-3 text-left flex justify-between items-center gap-3 transition-colors border-b border-black/10 dark:border-[#D5D5D5]/15 last:border-b-0 hover:bg-[#5FC4E7]/25 dark:hover:bg-[#3BF4C7]/10 ${highlightedIndex === index
                                             ? 'bg-[#5FC4E7]/25 dark:bg-[#3BF4C7]/10'
                                             : ''
                                         }`}

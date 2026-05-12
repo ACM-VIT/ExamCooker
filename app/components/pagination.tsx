@@ -52,12 +52,14 @@ function PageLink({
   typeQuery,
   children,
 }: PageLinkProps) {
+  const isCurrent = page === currentPage;
   return (
     <Link
       href={getPageUrl(basePath, page, searchQuery, tagsQuery, typeQuery)}
-      className={`px-3 py-1.5 text-sm font-medium ${page === currentPage
+      aria-current={isCurrent ? "page" : undefined}
+      className={`ec-press inline-flex min-w-9 items-center justify-center px-3 py-1.5 text-sm font-medium transition-[background-color,color,transform] duration-200 ${isCurrent
         ? 'bg-[#73E8CC] dark:bg-[#232530]'
-        : 'bg-[#5fc4e7] hover:bg-opacity-85 dark:bg-[#008A90]'
+        : 'bg-[#5fc4e7] hover:bg-[#5fc4e7]/85 dark:bg-[#008A90] dark:hover:bg-[#008A90]/85'
         }`}
     >
       {children}

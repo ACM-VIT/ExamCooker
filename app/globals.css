@@ -109,16 +109,209 @@
     display: none; /* Chrome, Safari, Opera */
 }
 
+:root { 
+    --ec-ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    --ec-ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+    --ec-ease-out-snap: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ec-press {
+    transition: transform 160ms var(--ec-ease-out-soft);
+    will-change: transform;
+}
+
+.ec-press:active {
+    transform: scale(0.97);
+}
+
+.ec-card-lift {
+    transition:
+        transform 280ms var(--ec-ease-spring),
+        box-shadow 280ms var(--ec-ease-out-soft),
+        border-color 200ms ease;
+    will-change: transform, box-shadow;
+}
+
+@media (hover: hover) {
+    .ec-card-lift:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 30px -18px rgb(0 0 0 / 0.32);
+    }
+
+    .dark .ec-card-lift:hover {
+        box-shadow: 0 18px 36px -20px rgb(0 0 0 / 0.55);
+    }
+}
+
+.ec-card-lift:active {
+    transform: translateY(0) scale(0.99);
+    transition-duration: 90ms;
+}
+
+@media (hover: hover) {
+    .ec-card-lift:hover .ec-card-media {
+        transform: scale(1.045);
+    }
+}
+
+.ec-card-media {
+    transition: transform 700ms var(--ec-ease-out-soft);
+    will-change: transform;
+}
+
+.ec-focus-ring {
+    transition: box-shadow 220ms var(--ec-ease-out-soft),
+                border-color 220ms ease;
+}
+
+.ec-focus-ring:focus-within {
+    box-shadow: 0 0 0 2px rgb(13 88 117 / 0.45);
+    border-color: rgb(13 88 117 / 0.55);
+}
+
+.dark .ec-focus-ring:focus-within {
+    box-shadow: 0 0 0 2px rgb(59 244 199 / 0.45);
+    border-color: rgb(59 244 199 / 0.55);
+}
+
+@keyframes ec-row-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ec-row-reveal {
+    animation: ec-row-reveal 260ms var(--ec-ease-out-soft) both;
+    animation-delay: calc(var(--ec-row-index, 0) * 28ms);
+}
+
+/* Generic icon button — soft scale-up on hover, snappy press-down. */
+.ec-icon-button {
+    transition: transform 180ms var(--ec-ease-out-soft),
+                background-color 180ms ease,
+                color 180ms ease;
+}
+
+@media (hover: hover) {
+    .ec-icon-button:hover {
+        transform: scale(1.08);
+    }
+}
+
+.ec-icon-button:active {
+    transform: scale(0.94);
+    transition-duration: 80ms;
+}
+
+/* Smooth show/hide for a button that toggles between visible and collapsed
+   width (e.g. the clear-search × button). */
+.ec-collapse-toggle {
+    transition: opacity 180ms var(--ec-ease-out-soft),
+                transform 200ms var(--ec-ease-spring),
+                width 200ms var(--ec-ease-spring);
+}
+
+.ec-collapse-toggle[data-hidden="true"] {
+    opacity: 0;
+    transform: scale(0.85);
+    width: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ec-press,
+    .ec-card-lift,
+    .ec-card-media,
+    .ec-focus-ring,
+    .ec-icon-button,
+    .ec-collapse-toggle {
+        transition: none;
+    }
+    .ec-card-lift:hover,
+    .ec-icon-button:hover {
+        transform: none;
+    }
+    .ec-row-reveal {
+        animation: none;
+    }
+}
+
 .ec-command-dialog-panel {
     position: fixed !important;
     top: 50% !important;
     left: 50% !important;
     translate: none !important;
-    transform: translate(-50%, -50%) !important;
+    transform-origin: top center;
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    transition:
+        opacity 200ms cubic-bezier(0.2, 0, 0, 1),
+        transform 220ms cubic-bezier(0.2, 0, 0, 1);
+    will-change: opacity, transform;
+}
+
+.ec-command-dialog-panel[data-state="closed"] {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 6px)) scale(0.97);
+    pointer-events: none;
+}
+
+.ec-command-dialog-overlay {
+    opacity: 1;
+    transition: opacity 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ec-command-dialog-overlay[data-state="closed"] {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .ec-command-menu [cmdk-list] {
     scroll-padding-block: 0.5rem;
+}
+
+.ec-command-row {
+    animation: ec-command-row-in 220ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.ec-command-skeleton-row {
+    animation: ec-command-skeleton-pulse 1400ms ease-in-out infinite;
+}
+
+@keyframes ec-command-row-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes ec-command-skeleton-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ec-command-dialog-panel,
+    .ec-command-dialog-overlay {
+        transition: none !important;
+    }
+    .ec-command-dialog-panel[data-state="closed"] {
+        transform: translate(-50%, -50%) scale(1);
+    }
+    .ec-command-row,
+    .ec-command-skeleton-row {
+        animation: none !important;
+    }
 }
 
 .paper-split-shell {
@@ -502,6 +695,157 @@
 html[data-native-tabs="true"] .ec-mobile-tab-bar,
 html[data-native-tabs-pending="true"] .ec-mobile-tab-bar {
     display: none;
+}
+
+.ec-tab-bar-frame {
+    position: relative;
+}
+
+.ec-tab-anchor-active {
+    anchor-name: --ec-active-tab;
+}
+
+.ec-tab-pill {
+    position: absolute;
+    position-anchor: --ec-active-tab;
+    top: anchor(top);
+    left: anchor(left);
+    width: anchor-size(width);
+    height: anchor-size(height);
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 0.75rem;
+    background: rgb(0 0 0 / 0.07);
+    transition:
+        top 320ms cubic-bezier(0.32, 0.72, 0, 1),
+        left 320ms cubic-bezier(0.32, 0.72, 0, 1),
+        width 320ms cubic-bezier(0.32, 0.72, 0, 1),
+        height 320ms cubic-bezier(0.32, 0.72, 0, 1),
+        background-color 200ms ease;
+}
+
+.dark .ec-tab-pill {
+    background: rgb(255 255 255 / 0.08);
+}
+
+.ec-tab-pill[data-variant="android"] {
+    border-radius: 9999px;
+    background: #D6EEF5;
+}
+
+.dark .ec-tab-pill[data-variant="android"] {
+    background: #113446;
+}
+
+/* Hover-following pill for the tools sheet action grid.
+   Anchor moves to whichever .ec-tool-action is :hover, and the
+   container shows the pill only when something is hovered. */
+.ec-tools-grid {
+    position: relative;
+}
+
+.ec-tool-pill {
+    position: absolute;
+    position-anchor: --ec-tool-hover;
+    top: anchor(top);
+    left: anchor(left);
+    width: anchor-size(width);
+    height: anchor-size(height);
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 0.85rem;
+    background: rgb(0 0 0 / 0.05);
+    opacity: 0;
+    transition:
+        opacity 160ms ease,
+        top 240ms cubic-bezier(0.32, 0.72, 0, 1),
+        left 240ms cubic-bezier(0.32, 0.72, 0, 1),
+        width 240ms cubic-bezier(0.32, 0.72, 0, 1),
+        height 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.dark .ec-tool-pill {
+    background: rgb(255 255 255 / 0.07);
+}
+
+@media (hover: hover) {
+    .ec-tool-action:hover > .ec-tool-action-target {
+        anchor-name: --ec-tool-hover;
+    }
+
+    .ec-tools-grid:has(.ec-tool-action:hover) .ec-tool-pill {
+        opacity: 1;
+    }
+}
+
+.ec-nav-rail {
+    position: relative;
+}
+
+.ec-nav-anchor-active {
+    anchor-name: --ec-active-nav;
+}
+
+.ec-nav-pill {
+    position: absolute;
+    position-anchor: --ec-active-nav;
+    top: anchor(top);
+    left: anchor(left);
+    width: anchor-size(width);
+    height: anchor-size(height);
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 0.5rem;
+    background: rgb(255 255 255 / 0.22);
+    transition:
+        top 320ms cubic-bezier(0.32, 0.72, 0, 1),
+        left 320ms cubic-bezier(0.32, 0.72, 0, 1),
+        width 320ms cubic-bezier(0.32, 0.72, 0, 1),
+        height 320ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.dark .ec-nav-pill {
+    background: rgb(255 255 255 / 0.10);
+}
+
+@supports not (anchor-name: --x) {
+    .ec-tab-pill,
+    .ec-tool-pill,
+    .ec-nav-pill {
+        display: none;
+    }
+
+    .ec-tab-anchor-active:not([data-variant="android"]) {
+        background-color: rgb(0 0 0 / 0.07);
+    }
+
+    .dark .ec-tab-anchor-active:not([data-variant="android"]) {
+        background-color: rgb(255 255 255 / 0.08);
+    }
+
+    .ec-tab-anchor-active[data-variant="android"] {
+        background-color: #D6EEF5;
+    }
+
+    .dark .ec-tab-anchor-active[data-variant="android"] {
+        background-color: #113446;
+    }
+
+    .ec-nav-anchor-active {
+        background-color: rgb(255 255 255 / 0.22);
+    }
+
+    .dark .ec-nav-anchor-active {
+        background-color: rgb(255 255 255 / 0.10);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ec-tab-pill,
+    .ec-tool-pill,
+    .ec-nav-pill {
+        transition: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
