@@ -93,6 +93,9 @@ importers:
       '@fortawesome/react-fontawesome':
         specifier: ^3.0.2
         version: 3.1.1(@fortawesome/fontawesome-svg-core@7.1.0)(react@19.2.4)
+      '@modelcontextprotocol/sdk':
+        specifier: 1.29.0
+        version: 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
       '@next/third-parties':
         specifier: 16.2.0
         version: 16.2.0(next@16.2.6(@opentelemetry/api@1.9.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
@@ -156,6 +159,9 @@ importers:
       fuse.js:
         specifier: ^7.1.0
         version: 7.1.0
+      gsap:
+        specifier: ^3.15.0
+        version: 3.15.0
       jose:
         specifier: ^6.2.3
         version: 6.2.3
@@ -3018,6 +3024,9 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+
+  gsap@3.15.0:
+    resolution: {integrity: sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==}
 
   hachure-fill@0.5.2:
     resolution: {integrity: sha512-3GKBOn+m2LX9iq+JC1064cSFprJY4jL1jCXTcpnfER5HYE2l/4EfWSGzkPa/ZDBmYI0ZOEj5VHV/eKnPGkHuOg==}
@@ -6980,6 +6989,8 @@ snapshots:
   gopd@1.2.0: {}
 
   graceful-fs@4.2.11: {}
+
+  gsap@3.15.0: {}
 
   hachure-fill@0.5.2: {}
 
