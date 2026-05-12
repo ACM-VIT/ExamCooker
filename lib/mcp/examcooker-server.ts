@@ -1,4 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from "@modelcontextprotocol/ext-apps/server";
 import { z } from "zod";
 import {
   fetchExamCookerResource,
@@ -9,12 +14,23 @@ import {
   EXAMCOOKER_WIDGET_URI,
 } from "@/lib/mcp/examcooker-widget";
 
-const WIDGET_MIME_TYPE = "text/html;profile=mcp-app";
 const WIDGET_DOMAIN = "https://examcooker.acmvit.in";
+
+const WIDGET_UI_META = {
+  domain: WIDGET_DOMAIN,
+  prefersBorder: true,
+  csp: {
+    connectDomains: [] as string[],
+    resourceDomains: [
+      "https://fonts.googleapis.com",
+      "https://fonts.gstatic.com",
+    ] as string[],
+  },
+} as const;
 
 const ToolAnnotations = {
   readOnlyHint: true,
-  openWorldHint: true,
+  openWorldHint: false,
   destructiveHint: false,
   idempotentHint: true,
 } as const;
@@ -58,42 +74,32 @@ export function createExamCookerMcpServer() {
     },
   );
 
-  server.registerResource(
-    "examcooker-widget",
+  registerAppResource(
+    server,
+    "ExamCooker widget",
     EXAMCOOKER_WIDGET_URI,
     {
-      title: "ExamCooker widget",
       description:
         "Renders ExamCooker search results and resource detail cards inside ChatGPT.",
-      mimeType: WIDGET_MIME_TYPE,
-      _meta: {
-        ui: {
-          domain: WIDGET_DOMAIN,
-          prefersBorder: true,
-          csp: {
-            connectDomains: [],
-            resourceDomains: [
-              "https://fonts.googleapis.com",
-              "https://fonts.gstatic.com",
-            ],
-          },
-        },
-        "openai/widgetDescription":
-          "Shows ExamCooker search results or a selected resource (course, past paper, note, or syllabus) with a link out to ExamCooker.",
-      },
     },
     async () => ({
       contents: [
         {
           uri: EXAMCOOKER_WIDGET_URI,
-          mimeType: WIDGET_MIME_TYPE,
+          mimeType: RESOURCE_MIME_TYPE,
           text: EXAMCOOKER_WIDGET_HTML,
+          _meta: {
+            ui: WIDGET_UI_META,
+            "openai/widgetDescription":
+              "Shows ExamCooker search results or a selected resource (course, past paper, note, or syllabus) with a link out to ExamCooker.",
+          },
         },
       ],
     }),
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     "search",
     {
       title: "Search ExamCooker",
@@ -129,7 +135,8 @@ export function createExamCookerMcpServer() {
     },
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     "fetch",
     {
       title: "Fetch ExamCooker Resource",
