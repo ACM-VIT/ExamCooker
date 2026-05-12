@@ -202,23 +202,28 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
       }`}
     >
       <ul
-        className={`mx-auto flex max-w-lg items-stretch justify-between ${
+        className={`ec-tab-bar-frame mx-auto flex max-w-lg items-stretch justify-between ${
           nativeAndroid ? "gap-0 px-2 py-2" : "gap-1 px-1 pt-1"
         }`}
       >
+        <span
+          aria-hidden
+          className="ec-tab-pill"
+          data-variant={nativeAndroid ? "android" : "web"}
+        />
         {APP_NAV_LINKS.map((link) => {
           const isActive = link.matches
             ? link.matches(pathname)
             : pathname === link.href;
           return (
-            <li key={link.href} className="min-w-0 flex-1">
+            <li key={link.href} className="relative z-[1] min-w-0 flex-1">
               <Link
                 href={link.href}
                 prefetch
                 transitionTypes={isActive ? undefined : ["nav-lateral"]}
                 onClickCapture={(event) => setNavTransitionOrigin(event.currentTarget)}
                 onClick={(event) => handleTabClick(event, link.href, isActive)}
-                className={`flex flex-col items-center rounded-xl font-semibold leading-tight tracking-tight transition-[background-color,color,transform] active:scale-[0.98] ${
+                className={`flex flex-col items-center rounded-xl font-semibold leading-tight tracking-tight transition-[color,transform] active:scale-[0.98] ${
                   nativeAndroid
                     ? `gap-1 px-1 py-1 text-[11px] ${
                         isActive
@@ -234,14 +239,13 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
                 aria-current={isActive ? "page" : undefined}
               >
                 <span
-                  className={`flex items-center justify-center transition-colors ${
+                  data-variant={nativeAndroid ? "android" : "web"}
+                  className={`relative z-[1] flex items-center justify-center ${
+                    isActive ? "ec-tab-anchor-active" : ""
+                  } ${
                     nativeAndroid
-                      ? `h-8 min-w-[3.5rem] rounded-full px-3 ${
-                          isActive
-                            ? "bg-[#D6EEF5] dark:bg-[#113446]"
-                            : "bg-transparent"
-                        }`
-                      : `h-10 w-10 rounded-xl ${isActive ? "bg-black/[0.06] dark:bg-white/[0.07]" : ""}`
+                      ? "h-8 min-w-[3.5rem] rounded-full px-3"
+                      : "h-10 w-10 rounded-xl"
                   }`}
                 >
                   <Image
@@ -249,9 +253,9 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
                     alt=""
                     width={22}
                     height={22}
-                    className={`shrink-0 dark:invert-[.835] ${
+                    className={`shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] dark:invert-[.835] ${
                       nativeAndroid ? "h-6 w-6" : "h-[22px] w-[22px]"
-                    } ${isActive ? "opacity-100" : "opacity-85"}`}
+                    } ${isActive ? "scale-[1.08] opacity-100" : "opacity-85"}`}
                   />
                 </span>
                 <span className={`max-w-full truncate ${nativeAndroid ? "text-[12px]" : ""}`}>

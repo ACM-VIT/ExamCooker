@@ -49,7 +49,7 @@ function PastPaperCard({
         prefetch={index < 3}
         transitionTypes={openInNewTab || transitionTypes === false ? undefined : transitionTypes ?? ["nav-forward"]}
         target={openInNewTab ? "_blank" : undefined}
-        className="group block max-w-96 cursor-pointer border-2 border-[#5FC4E7] bg-[#5FC4E7] text-center transition duration-200 hover:scale-105 hover:shadow-xl hover:border-b-2 hover:border-b-[#ffffff] dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 lg:dark:bg-[#0C1222]"
+        className="ec-card-lift ec-press group block max-w-96 cursor-pointer border-2 border-[#5FC4E7] bg-[#5FC4E7] text-center hover:border-b-2 hover:border-b-[#ffffff] dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 lg:dark:bg-[#0C1222]"
       >
         <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">
           <div className="min-w-0 flex-1 text-left">
@@ -70,7 +70,7 @@ function PastPaperCard({
             alt={displayTitle}
             fill
             sizes="(min-width: 1024px) 320px, (min-width: 768px) 45vw, 90vw"
-            className="object-cover"
+            className="ec-card-media object-cover"
             priority={index < 3}
           />
         </div>

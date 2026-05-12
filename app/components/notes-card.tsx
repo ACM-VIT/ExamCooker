@@ -49,7 +49,7 @@ function NotesCard({
                 prefetch={index < 3}
                 transitionTypes={openInNewTab ? undefined : ["nav-forward"]}
                 target={openInNewTab ? "_blank" : undefined}
-                className={`group block max-w-96 cursor-pointer border-2 text-center transition duration-200 hover:scale-105 hover:border-b-2 hover:border-b-[#ffffff] hover:shadow-xl dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] ${selected
+                className={`ec-card-lift ec-press group block max-w-96 cursor-pointer border-2 text-center hover:border-b-2 hover:border-b-[#ffffff] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] ${selected
                         ? "border-black bg-[#5FC4E7] shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:border-[#3BF4C7] dark:bg-[#0C1222] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)]"
                         : "border-[#5FC4E7] bg-[#5FC4E7] dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10"
                     }`}
@@ -68,7 +68,7 @@ function NotesCard({
                         alt={displayTitle}
                         fill
                         sizes="(min-width: 1024px) 320px, (min-width: 768px) 45vw, 90vw"
-                        className="object-cover"
+                        className="ec-card-media object-cover"
                         priority={index < 3}
                     />
                     {onToggleSelect && (
@@ -77,7 +77,7 @@ function NotesCard({
                             onClick={handleToggleSelect}
                             aria-label={selected ? "Deselect note" : "Select note"}
                             aria-pressed={selected}
-                            className={`absolute left-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded transition ${selected
+                            className={`ec-icon-button absolute left-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded ${selected
                                     ? "bg-black text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
                                     : "bg-white/80 text-transparent backdrop-blur hover:bg-white hover:text-black/40 dark:bg-[#0C1222]/60 dark:hover:bg-[#0C1222]"
                                 }`}
@@ -90,7 +90,7 @@ function NotesCard({
                             type="button"
                             onClick={handleDownload}
                             aria-label="Download note"
-                            className="absolute right-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur transition hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
+                            className="ec-icon-button absolute right-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
                         >
                             <FontAwesomeIcon icon={faDownload} className="h-2.5 w-2.5" />
                         </button>

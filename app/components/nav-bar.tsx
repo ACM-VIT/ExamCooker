@@ -442,10 +442,11 @@ const NavBar: React.FC<Props> = ({
             <div className="hidden min-h-[2.5rem] lg:block" aria-hidden />
           </div>
 
-          <div className={`order-2 grid ${toolGridClassName} gap-3 border-b border-black/10 px-5 py-4 dark:border-white/10 lg:order-3 lg:mt-auto lg:flex lg:w-full lg:flex-col lg:items-stretch lg:gap-0 lg:border-b-0 lg:px-1 lg:py-2`}>
+          <div className={`ec-tools-grid order-2 grid ${toolGridClassName} gap-3 border-b border-black/10 px-5 py-4 dark:border-white/10 lg:order-3 lg:mt-auto lg:flex lg:w-full lg:flex-col lg:items-stretch lg:gap-0 lg:border-b-0 lg:px-1 lg:py-2`}>
+            <span aria-hidden className="ec-tool-pill" />
             {commandPaletteEnabled ? (
-              <div className="group/action hidden flex-col items-center gap-2 md:flex lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
-                <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
+              <div className="ec-tool-action group/action relative z-[1] hidden flex-col items-center gap-2 md:flex lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
+                <div className="ec-tool-action-target flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
                   <button
                     type="button"
                     title="Search"
@@ -464,8 +465,8 @@ const NavBar: React.FC<Props> = ({
             ) : null}
 
             {voiceAgentEnabled ? (
-              <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
-                <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
+              <div className="ec-tool-action group/action relative z-[1] flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
+                <div className="ec-tool-action-target flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
                   <div className="flex lg:w-full">
                     {voiceRuntimeRequested ? (
                       <VoiceAgentEntry
@@ -500,7 +501,7 @@ const NavBar: React.FC<Props> = ({
               </div>
             ) : null}
 
-            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
+            <div className="ec-tool-action group/action relative z-[1] flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
               <div className="flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
                 <ThemeToggleSwitch
                   className={navActionButtonClassName}
@@ -514,8 +515,8 @@ const NavBar: React.FC<Props> = ({
               </span>
             </div>
 
-            <div className="group/action flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
-              <div className="relative z-10 flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
+            <div className="ec-tool-action group/action relative z-[1] flex flex-col items-center gap-2 lg:m-2 lg:min-h-8 lg:flex-row lg:gap-0 lg:px-2 lg:py-1">
+              <div className="ec-tool-action-target relative z-10 flex min-h-10 items-center justify-center lg:min-h-0 lg:w-full">
                 {isAuthed ? (
                   <div className="lg:w-full" ref={profileRef}>
                     <button
@@ -564,7 +565,8 @@ const NavBar: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="order-3 hidden min-h-0 flex-1 flex-col items-stretch overflow-y-auto px-2 py-2 lg:order-2 lg:flex lg:justify-center lg:overflow-visible lg:px-1 lg:py-2">
+          <div className="ec-nav-rail order-3 hidden min-h-0 flex-1 flex-col items-stretch overflow-y-auto px-2 py-2 lg:order-2 lg:flex lg:justify-center lg:overflow-visible lg:px-1 lg:py-2">
+            <span aria-hidden className="ec-nav-pill" />
             {APP_NAV_LINKS.map((link) => {
               const isActive = link.matches
                 ? link.matches(pathname)
@@ -576,7 +578,7 @@ const NavBar: React.FC<Props> = ({
                   prefetch
                   transitionTypes={isActive ? undefined : ["nav-lateral"]}
                   onClick={(event) => handleNavLinkClick(event, link.href, isActive)}
-                  className={`group/action m-2 flex min-h-8 items-center rounded-md px-2 py-1 ${isActive ? "bg-[#ffffff]/20" : ""}`}
+                  className={`group/action relative z-[1] m-2 flex min-h-8 items-center rounded-md px-2 py-1 ${isActive ? "ec-nav-anchor-active" : ""}`}
                 >
                   <div className="flex items-center cursor-pointer">
                     <div className="flex-shrink-0 flex items-center justify-center">
