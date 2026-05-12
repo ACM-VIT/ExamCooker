@@ -49,12 +49,24 @@ export type McpFetchOutput = {
   metadata?: Record<string, string | number | boolean | null>;
 };
 
-type SearchProvider = (query: string) => Promise<McpSearchResult[]> | McpSearchResult[];
+type InternalResult = McpSearchResult & {
+  _courseCode?: string | null;
+  _kindRank: number;
+};
+type SearchProvider = (query: string) => Promise<InternalResult[]> | InternalResult[];
 type FetchProvider = (ref: ResourceRef) => Promise<McpFetchOutput | null>;
 
 const MAX_SEARCH_RESULTS = 20;
 const PER_TYPE_SEARCH_LIMIT = 5;
 const COURSE_DETAIL_LIMIT = 10;
+
+const KIND_RANK = {
+  course: 0,
+  past_paper: 1,
+  note: 2,
+  syllabus: 3,
+  resource: 4,
+} as const;
 
 function stripPdfExtension(value: string) {
   return value.replace(/\.pdf$/i, "").trim();
@@ -84,15 +96,28 @@ function joinSections(sections: Array<string | null | undefined>) {
   return trimText(sections.filter(Boolean).join("\n\n"));
 }
 
-function dedupeResults(results: McpSearchResult[]) {
-  const byId = new Map<string, McpSearchResult>();
-  for (const result of results) {
-    if (!byId.has(result.id)) byId.set(result.id, result);
-  }
-  return Array.from(byId.values()).slice(0, MAX_SEARCH_RESULTS);
+function dedupeAndSort(
+  results: InternalResult[],
+  coursePaperRank: Map<string, number>,
+): McpSearchResult[] {
+  const byId = new Map<string, { item: InternalResult; pos: number }>();
+  results.forEach((item, pos) => {
+    if (!byId.has(item.id)) byId.set(item.id, { item, pos });
+  });
+  const entries = Array.from(byId.values());
+  entries.sort((a, b) => {
+    const aRank = a.item._courseCode ? coursePaperRank.get(a.item._courseCode) ?? 0 : 0;
+    const bRank = b.item._courseCode ? coursePaperRank.get(b.item._courseCode) ?? 0 : 0;
+    if (aRank !== bRank) return bRank - aRank;
+    if (a.item._kindRank !== b.item._kindRank) return a.item._kindRank - b.item._kindRank;
+    return a.pos - b.pos;
+  });
+  return entries
+    .slice(0, MAX_SEARCH_RESULTS)
+    .map(({ item }) => ({ id: item.id, title: item.title, url: item.url }));
 }
 
-async function searchCourses(query: string) {
+async function searchCourses(query: string): Promise<InternalResult[]> {
   const courses = await searchCourseGrid(query);
   const ranked = [...courses].sort(
     (a, b) =>
@@ -111,11 +136,20 @@ async function searchCourses(query: string) {
         signals.length ? ` (${signals.join(", ")})` : ""
       }`,
       url: absoluteUrl(getCoursePastPapersPath(course.code)),
+      _courseCode: course.code,
+      _kindRank: KIND_RANK.course,
     };
   });
 }
 
-async function searchPastPapers(query: string) {
+// Notes have course code embedded in their filename, e.g. "...-BMAT202L.pdf".
+// Pull it from the title since the data layer doesn't return the course relation.
+function inferCourseCodeFromTitle(title: string): string | null {
+  const m = /\b([A-Z]{2,5}\d{2,4}[A-Z]?)\b/.exec(title);
+  return m ? m[1] : null;
+}
+
+async function searchPastPapers(query: string): Promise<InternalResult[]> {
   const result = await searchCliPapers(absoluteUrl("/"), {
     query,
     course: null,
@@ -144,11 +178,13 @@ async function searchPastPapers(query: string) {
         qualifiers.length ? ` (${qualifiers.join(", ")})` : ""
       }`,
       url: paper.pageUrl,
+      _courseCode: paper.course?.code ?? null,
+      _kindRank: KIND_RANK.past_paper,
     };
   });
 }
 
-async function searchNotes(query: string) {
+async function searchNotes(query: string): Promise<InternalResult[]> {
   const notes = await getNotesPage({
     search: query,
     tags: [],
@@ -160,10 +196,12 @@ async function searchNotes(query: string) {
     id: toResourceId({ kind: "note", id: note.id }),
     title: `Note: ${stripPdfExtension(note.title)}`,
     url: absoluteUrl(`/notes/${encodeURIComponent(note.id)}`),
+    _courseCode: inferCourseCodeFromTitle(note.title),
+    _kindRank: KIND_RANK.note,
   }));
 }
 
-async function searchSyllabi(query: string) {
+async function searchSyllabi(query: string): Promise<InternalResult[]> {
   const syllabi = await getSyllabusPage({
     search: query,
     page: 1,
@@ -178,17 +216,21 @@ async function searchSyllabi(query: string) {
       id: toResourceId({ kind: "syllabus", id: syllabus.id }),
       title: `Syllabus: ${name}${parsed.courseCode ? ` (${parsed.courseCode})` : ""}`,
       url: absoluteUrl(`/syllabus/${encodeURIComponent(syllabus.id)}`),
+      _courseCode: parsed.courseCode ?? null,
+      _kindRank: KIND_RANK.syllabus,
     };
   });
 }
 
-function searchVinResources(query: string) {
+function searchVinResources(query: string): InternalResult[] {
   return getVinCourses({ search: query })
     .slice(0, PER_TYPE_SEARCH_LIMIT)
     .map((course) => ({
       id: toResourceId({ kind: "resource", id: course.slug }),
       title: `Resource: ${course.displayName}`,
       url: absoluteUrl(`/resources/${encodeURIComponent(course.slug)}`),
+      _courseCode: null,
+      _kindRank: KIND_RANK.resource,
     }));
 }
 
@@ -207,9 +249,18 @@ export async function searchExamCookerResources(
   const providerResults = await Promise.all(
     searchProviders.map((provider) => provider(trimmedQuery)),
   );
+  const all = providerResults.flat();
+
+  // Build paperCount rank from the course results so we can group everything
+  // by course and pull the most-active courses (most papers) to the top.
+  const coursePaperRank = new Map<string, number>();
+  // Match the same course ranking as searchCourses(): full catalog rank by
+  // paperCount, not just the top 5 we surface as tiles.
+  const allCourses = await searchCourseGrid(trimmedQuery);
+  for (const c of allCourses) coursePaperRank.set(c.code, c.paperCount);
 
   return {
-    results: dedupeResults(providerResults.flat()),
+    results: dedupeAndSort(all, coursePaperRank),
   };
 }
 
