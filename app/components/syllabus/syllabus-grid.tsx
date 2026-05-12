@@ -65,7 +65,7 @@ function SyllabusRow({
             href={href}
             prefetch
             transitionTypes={["nav-forward"]}
-            className={`group flex min-w-0 items-center gap-3 border-2 px-3 py-2.5 transition-colors hover:border-b-white hover:bg-[#5FC4E7]/10 dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 ${selected
+            className={`ec-press group flex min-w-0 items-center gap-3 border-2 px-3 py-2.5 transition-[background-color,border-color,transform] duration-200 hover:border-b-white hover:bg-[#5FC4E7]/10 dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 ${selected
                     ? "border-black bg-[#5FC4E7] dark:border-[#3BF4C7] dark:bg-[#0C1222]"
                     : "border-[#5FC4E7] bg-white dark:border-[#ffffff]/20 dark:bg-[#0C1222]"
                 }`}
@@ -75,7 +75,7 @@ function SyllabusRow({
                 onClick={handleToggleSelect}
                 aria-label={selected ? "Deselect syllabus" : "Select syllabus"}
                 aria-pressed={selected}
-                className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded transition ${selected
+                className={`ec-icon-button inline-flex h-5 w-5 shrink-0 items-center justify-center rounded ${selected
                         ? "bg-black text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
                         : "bg-black/5 text-transparent hover:bg-black/10 hover:text-black/40 dark:bg-white/10 dark:hover:text-[#D5D5D5]/50"
                     }`}
@@ -92,7 +92,7 @@ function SyllabusRow({
                 type="button"
                 onClick={handleDownload}
                 aria-label="Download syllabus"
-                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-black/55 transition hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
+                className="ec-icon-button inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-black/55 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
             >
                 <FontAwesomeIcon icon={faDownload} className="h-3 w-3" />
             </button>
