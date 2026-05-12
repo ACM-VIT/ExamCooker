@@ -201,20 +201,85 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     history: [],           // stack of previous views: { mode, searchResults, detail }
   };
 
-  // ===== MCP bridge =====
+  // ===== MCP Apps bridge =====
+  // The host (ChatGPT) only starts pushing tool-result notifications AFTER the
+  // widget completes the ui/initialize → ui/notifications/initialized handshake.
   let nextRpcId = 1;
   const pending = new Map();
   const send = (payload) => {
     try { window.parent.postMessage(payload, '*'); } catch (e) { /* ignore */ }
   };
-  const callTool = (name, args) => new Promise((resolve, reject) => {
+  const request = (method, params) => new Promise((resolve, reject) => {
     const id = 'w-' + (nextRpcId++);
     pending.set(id, { resolve, reject });
-    send({ jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args } });
+    send({ jsonrpc: '2.0', id, method, params });
     setTimeout(() => {
-      if (pending.has(id)) { pending.delete(id); reject(new Error('Request timed out')); }
+      if (pending.has(id)) { pending.delete(id); reject(new Error('Request timed out: ' + method)); }
     }, 25000);
   });
+  const notify = (method, params) => send({ jsonrpc: '2.0', method, params: params || {} });
+  const callTool = (name, args) => request('tools/call', { name, arguments: args });
+
+  // Tell the host how tall the widget is, so the iframe sizes correctly.
+  let lastW = 0, lastH = 0, sizeFrame = 0;
+  const sendSize = () => {
+    if (sizeFrame) return;
+    sizeFrame = requestAnimationFrame(() => {
+      sizeFrame = 0;
+      const el = document.documentElement;
+      const prev = el.style.height;
+      el.style.height = 'max-content';
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      el.style.height = prev;
+      const w = Math.ceil(window.innerWidth);
+      if (w === lastW && h === lastH) return;
+      lastW = w; lastH = h;
+      notify('ui/notifications/size-changed', { width: w, height: h });
+    });
+  };
+  let initialized = false;
+
+  // Perform the MCP Apps handshake. If it succeeds, host begins pushing
+  // tool-result notifications. If it fails (older host that doesn't require
+  // it), we fall back to the passive listener — the widget still renders if
+  // the host sends ui/notifications/tool-result without a handshake.
+  (async () => {
+    try {
+      await request('ui/initialize', {
+        protocolVersion: '2025-11-21',
+        appInfo: { name: 'examcooker-widget', version: '0.1.0' },
+        appCapabilities: {},
+      });
+      notify('ui/notifications/initialized', {});
+      initialized = true;
+      sendSize();
+    } catch (e) {
+      // No-op: passive listener below still works if the host pushes anyway.
+    }
+  })();
+
+  // ChatGPT's window.openai runtime sometimes injects toolOutput synchronously
+  // before any postMessage arrives. Defer to a microtask so applyInitialResult
+  // (declared later in this IIFE) is in scope when we invoke it.
+  Promise.resolve().then(() => {
+    try {
+      const wo = window.openai;
+      if (!wo) return;
+      if (wo.toolOutput) applyInitialResult(wo.toolOutput);
+      if (typeof wo.addEventListener === 'function') {
+        wo.addEventListener('toolOutput', (ev) => applyInitialResult(ev && ev.detail ? ev.detail : ev));
+      } else if (typeof wo.subscribe === 'function') {
+        wo.subscribe('toolOutput', (v) => applyInitialResult(v));
+      }
+    } catch (e) { /* ignore */ }
+  });
+
+  // Watch for DOM size changes after each render and report them up.
+  try {
+    const ro = new ResizeObserver(sendSize);
+    ro.observe(document.documentElement);
+    ro.observe(document.body);
+  } catch (e) { /* older browser */ }
 
   // Parse the structuredContent of a tool/call response, regardless of shape.
   // The host may deliver the result wrapped in MCP content or unwrapped.
@@ -466,10 +531,11 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
   };
 
   const render = () => {
-    if (state.mode === 'loading') return renderStatus('Loading ExamCooker resource…', true);
-    if (state.mode === 'search') return renderSearch();
-    if (state.mode === 'detail') return renderDetail();
-    renderStatus('Ask ChatGPT to search ExamCooker.', false);
+    if (state.mode === 'loading') renderStatus('Loading ExamCooker resource…', true);
+    else if (state.mode === 'search') renderSearch();
+    else if (state.mode === 'detail') renderDetail();
+    else renderStatus('Ask ChatGPT to search ExamCooker.', false);
+    if (initialized) sendSize();
   };
 
   // ===== Actions =====
@@ -524,7 +590,6 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
   };
 
   window.addEventListener('message', (event) => {
-    if (event.source !== window.parent) return;
     const msg = event.data;
     if (!msg || msg.jsonrpc !== '2.0') return;
 
