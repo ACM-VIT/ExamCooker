@@ -182,7 +182,7 @@ export async function getSiblingPastPaper(input: {
 
     return withPastPapersSurfaceRedisCache(
         {
-            keyParts: ["sibling-past-paper", input],
+            keyParts: ["sibling-past-paper-v2", input],
         },
         async () => {
             const select = {
@@ -201,7 +201,12 @@ export async function getSiblingPastPaper(input: {
                     .select(select)
                     .from(pastPaper)
                     .leftJoin(course, eq(pastPaper.courseId, course.id))
-                    .where(eq(pastPaper.id, input.questionPaperId))
+                    .where(
+                        and(
+                            eq(pastPaper.id, input.questionPaperId),
+                            eq(pastPaper.isClear, true),
+                        ),
+                    )
                     .limit(1);
 
                 const linkedQuestionPaper = linkedQuestionPaperRows[0];
