@@ -8,18 +8,28 @@ import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 const PixelBlast = dynamic(() => import("./pixel-bg"), { ssr: false });
 export type HeroBackdropKind = "local" | "youtube" | "pixel";
 
+type LocalHeroVideo = {
+    kind: "local";
+    webm?: string;
+    mp4: string;
+    poster?: string;
+};
+type PixelHeroVideo = { kind: "pixel" };
+type HeroVideo = LocalHeroVideo | PixelHeroVideo;
+
 const VIDEOS = [
     { kind: "local", webm: "/rainy.webm", mp4: "/rainy.mp4", poster: "/rainy.jpg" },
     { kind: "local", webm: "/midnight.webm", mp4: "/midnight.mp4", poster: "/midnight.jpg" },
     { kind: "local", webm: "/night.webm", mp4: "/night.mp4", poster: "/night.jpg" },
     { kind: "local", webm: "/night-city.webm", mp4: "/night-city.mp4", poster: "/night-city.jpg" },
+    { kind: "local", mp4: "/claude-hero.mp4" },
     { kind: "pixel" },
     // {
     //     kind: "youtube",
     //     id: "AUQKjgKQF7w",
     //     url: "https://www.youtube.com/watch?v=AUQKjgKQF7w",
     // },
-] as const;
+] satisfies readonly HeroVideo[];
 const TABLET_MIN_WIDTH_MEDIA = "(min-width: 600px)";
 
 interface Props {
@@ -31,7 +41,7 @@ interface Props {
 export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariantChange }: Props) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [isVisible, setIsVisible] = useState(false);
-    const [video, setVideo] = useState<(typeof VIDEOS)[number] | null>(null);
+    const [video, setVideo] = useState<HeroVideo | null>(null);
     const [hasInteracted, setHasInteracted] = useState(false);
     const [isYouTubeReady, setIsYouTubeReady] = useState(false);
     // const isYouTubeEngaged = video?.kind === "youtube" && hasInteracted && isYouTubeReady;
@@ -206,6 +216,11 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
         );
     }
 
+    const sources = [
+        video.webm ? { src: video.webm, type: "video/webm" } : null,
+        { src: video.mp4, type: "video/mp4" },
+    ];
+
     return (
         <div ref={containerRef} className="absolute inset-0" aria-hidden="true">
             <video
@@ -220,8 +235,9 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
                 onCanPlay={onReady}
                 className="h-full w-full object-cover"
             >
-                <source src={video.webm} type="video/webm" />
-                <source src={video.mp4} type="video/mp4" />
+                {sources.map((source) =>
+                    source ? <source key={source.src} src={source.src} type={source.type} /> : null,
+                )}
             </video>
         </div>
     );
