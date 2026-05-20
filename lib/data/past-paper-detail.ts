@@ -88,7 +88,7 @@ const loadPastPaperDetail = cache(async (id: string) => {
         .leftJoin(course, eq(pastPaper.courseId, course.id))
         .leftJoin(pastPaperToTag, eq(pastPaperToTag.a, pastPaper.id))
         .leftJoin(tag, eq(pastPaperToTag.b, tag.id))
-        .where(eq(pastPaper.id, id))
+        .where(and(eq(pastPaper.id, id), eq(pastPaper.isClear, true)))
         .orderBy(asc(tag.name));
 
     const firstRow = rows[0];

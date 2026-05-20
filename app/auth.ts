@@ -190,6 +190,10 @@ async function findOrCreateAppleUser(input: {
     return accountUser;
   }
 
+  if (!input.emailVerified) {
+    return null;
+  }
+
   const existingUsers = await db
     .select()
     .from(userTable)
@@ -374,7 +378,6 @@ function buildProviders() {
           Apple({
             clientId: appleClientId,
             clientSecret: appleClientSecret,
-            allowDangerousEmailAccountLinking: true,
           }),
         ]
       : []),
