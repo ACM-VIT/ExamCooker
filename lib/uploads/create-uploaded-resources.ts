@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { generatePastPaperTitleFromPdf } from "@/lib/ai/past-paper-title";
+import { isAllowedUploadedResourceUrl } from "@/lib/uploads/allowed-resource-url";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import type {
     Campus,
@@ -84,6 +85,18 @@ export async function createUploadedResources({
         return {
             success: false as const,
             error: "Upload processor response was missing a file URL or filename.",
+        };
+    }
+
+    const unsafeResult = results.find(
+        (result) =>
+            !isAllowedUploadedResourceUrl(result.fileUrl) ||
+            (result.thumbnailUrl && !isAllowedUploadedResourceUrl(result.thumbnailUrl)),
+    );
+    if (unsafeResult) {
+        return {
+            success: false as const,
+            error: "Upload processor response included an unapproved storage URL.",
         };
     }
 

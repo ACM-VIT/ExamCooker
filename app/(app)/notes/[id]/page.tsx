@@ -9,7 +9,9 @@ import StructuredData from "@/app/components/seo/structured-data";
 import ShareLink from '@/app/components/share-link';
 import ViewTracker from "@/app/components/view-tracker";
 import { LazyNoteInlineEditor } from "@/app/components/moderation/lazy-editors";
+import { auth } from "@/app/auth";
 import { getNoteDetail } from "@/lib/data/note-detail";
+import { canViewModeratedResource } from "@/lib/moderated-resource-visibility";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getCourseNotesPath } from "@/lib/seo";
 import { buildNotePdfFileName } from "@/lib/downloads/resource-names";
 import { stripPdfExtension } from "@/lib/pdf";
@@ -59,10 +61,14 @@ async function NoteViewerContent({
     let year: string = '';
     let slot: string = '';
     let note;
+    let canViewNote = false;
     const { id } = await paramsPromise;
 
     try {
+        const sessionPromise = auth();
         note = await getNoteDetail(id);
+        const session = await sessionPromise;
+        canViewNote = note ? canViewModeratedResource(note, session?.user) : false;
 
         if (note) {
             for (let i: number = 0; i < note!.tags.length; i++) {
@@ -88,7 +94,7 @@ async function NoteViewerContent({
         // no-op
     }
 
-    if (!note) {
+    if (!note || !canViewNote) {
         return notFound();
     }
     const title = stripPdfExtension(note.title);
@@ -240,6 +246,6 @@ export async function generateMetadata({params}: { params: Promise<{ id: string 
         },
         alternates: { canonical },
         keywords,
-        robots: { index: true, follow: true },
+        robots: { index: note.isClear, follow: true },
     }
 }

@@ -6,6 +6,7 @@ import {
     type ProcessedUploadResult,
     type UploadVariant,
 } from "@/lib/uploads/create-uploaded-resources";
+import { isAllowedUploadedResourceUrl } from "@/lib/uploads/allowed-resource-url";
 import { campusValues, examTypeValues, semesterValues } from "@/db";
 
 const uploadVariants = new Set<UploadVariant>(["Notes", "Past Papers"]);
@@ -101,6 +102,19 @@ export async function POST(request: NextRequest) {
     if (results.length === 0 || results.some((result) => result === null)) {
         return NextResponse.json(
             { success: false, error: "Upload results are missing required fields." },
+            { status: 400 },
+        );
+    }
+    const unsafeResult = results.find(
+        (result) =>
+            result &&
+            (!isAllowedUploadedResourceUrl(result.fileUrl) ||
+                (result.thumbnailUrl &&
+                    !isAllowedUploadedResourceUrl(result.thumbnailUrl))),
+    );
+    if (unsafeResult) {
+        return NextResponse.json(
+            { success: false, error: "Upload result URLs are not from approved storage." },
             { status: 400 },
         );
     }

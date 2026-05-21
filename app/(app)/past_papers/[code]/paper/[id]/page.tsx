@@ -10,12 +10,14 @@ import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
 import ShareLink from '@/app/components/share-link';
 import ViewTracker from "@/app/components/view-tracker";
 import { LazyPastPaperInlineEditor } from "@/app/components/moderation/lazy-editors";
+import { auth } from "@/app/auth";
 import {
     getAdjacentPapersInCourse,
     getPastPaperDetail,
     getSiblingPastPaper,
     getRelatedPapersForCourse,
 } from "@/lib/data/past-paper-detail";
+import { canViewModeratedResource } from "@/lib/moderated-resource-visibility";
 // import PastPaperTagEditor from "@/app/components/past-paper-tag-editor";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } from "@/lib/seo";
 import { normalizeCourseCode } from "@/lib/course-tags";
@@ -135,8 +137,9 @@ async function PaperViewerContent({
 }) {
     const { code, id } = await paramsPromise;
 
-    const paper = await getPastPaperDetail(id);
+    const [paper, session] = await Promise.all([getPastPaperDetail(id), auth()]);
     if (!paper) return notFound();
+    if (!canViewModeratedResource(paper, session?.user)) return notFound();
 
     const canonicalCode = paper.course?.code ?? "unassigned";
 
@@ -360,6 +363,6 @@ export async function generateMetadata({
         },
         alternates: { canonical },
         keywords,
-        robots: { index: true, follow: true },
+        robots: { index: paper.isClear, follow: true },
     };
 }

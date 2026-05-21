@@ -4,6 +4,7 @@ import { course, db, pastPaper } from "@/db";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { getSiblingPastPaper, getPastPaperDetail } from "@/lib/data/past-paper-detail";
 import { examTypeLabel } from "@/lib/exam-slug";
+import { canViewModeratedResource } from "@/lib/moderated-resource-visibility";
 import { getPastPaperDetailPath } from "@/lib/seo";
 
 const UUID_PATTERN =
@@ -151,9 +152,13 @@ export async function searchCliPapers(
   };
 }
 
-export async function getCliPastPaperDetail(baseUrl: string, paperId: string) {
+export async function getCliPastPaperDetail(
+  baseUrl: string,
+  paperId: string,
+  viewer?: { id?: string | null; role?: "USER" | "MODERATOR" | null },
+) {
   const paper = await getPastPaperDetail(paperId);
-  if (!paper) {
+  if (!paper || !canViewModeratedResource(paper, viewer)) {
     return null;
   }
 

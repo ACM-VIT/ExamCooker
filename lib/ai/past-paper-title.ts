@@ -2,6 +2,7 @@ import { generateText, Output } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { isAllowedUploadedResourceUrl } from "@/lib/uploads/allowed-resource-url";
 
 const AI_PAST_PAPER_MODEL = process.env.OPENAI_PAST_PAPER_MODEL?.trim() || "gpt-5.4-mini";
 const COURSE_CODE_REGEX = /^[A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3}$/i;
@@ -71,6 +72,10 @@ export async function generatePastPaperTitleFromPdf(input: {
     fallbackTitle: string;
 }) {
     try {
+        if (!isAllowedUploadedResourceUrl(input.fileUrl)) {
+            throw new Error("PDF URL is not from approved storage.");
+        }
+
         const response = await fetch(input.fileUrl);
         if (!response.ok) {
             throw new Error(`Failed to fetch PDF: ${response.status}`);
