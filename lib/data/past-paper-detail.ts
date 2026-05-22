@@ -188,6 +188,7 @@ export async function getSiblingPastPaper(input: {
             const select = {
                 id: pastPaper.id,
                 title: pastPaper.title,
+                isClear: pastPaper.isClear,
                 hasAnswerKey: pastPaper.hasAnswerKey,
                 examType: pastPaper.examType,
                 slot: pastPaper.slot,

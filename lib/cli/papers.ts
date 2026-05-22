@@ -151,9 +151,13 @@ export async function searchCliPapers(
   };
 }
 
-export async function getCliPastPaperDetail(baseUrl: string, paperId: string) {
+export async function getCliPastPaperDetail(
+  baseUrl: string,
+  paperId: string,
+  options: { includeDrafts?: boolean } = {},
+) {
   const paper = await getPastPaperDetail(paperId);
-  if (!paper) {
+  if (!paper || (!options.includeDrafts && !paper.isClear)) {
     return null;
   }
 
@@ -188,7 +192,7 @@ export async function getCliPastPaperDetail(baseUrl: string, paperId: string) {
     course: paper.course,
     author: paper.author,
     tags: paper.tags,
-    siblingPaper: siblingPaper
+    siblingPaper: siblingPaper && (options.includeDrafts || siblingPaper.isClear)
       ? {
           ...siblingPaper,
           pageUrl: buildPageUrl(baseUrl, siblingPaper.id, siblingPaper.course?.code),

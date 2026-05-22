@@ -16,7 +16,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const publicOrigin = getPublicAuthOrigin(request);
   const baseUrl = publicOrigin?.origin ?? request.nextUrl.origin;
   const { id } = await context.params;
-  const paper = await getCliPastPaperDetail(baseUrl, id);
+  const paper = await getCliPastPaperDetail(baseUrl, id, {
+    includeDrafts: user.role === "MODERATOR",
+  });
 
   if (!paper) {
     return NextResponse.json(
