@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, ilike, ne } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/app/auth";
 import { revalidateTag } from "next/cache";
@@ -81,12 +81,41 @@ export async function updateSyllabusInline(input: z.input<typeof schema>) {
     throw new Error("Title is required.");
   }
 
-  await db
-    .update(syllabi)
-    .set({
-      name: nextName,
-    })
-    .where(eq(syllabi.id, parsed.id));
+  await db.transaction(async (tx) => {
+    if (selectedCourse) {
+      const [existingCourseSyllabus] = await tx
+        .select({
+          id: syllabi.id,
+          name: syllabi.name,
+        })
+        .from(syllabi)
+        .where(
+          and(
+            ilike(syllabi.name, `${selectedCourse.code}_%`),
+            ne(syllabi.id, parsed.id),
+          ),
+        )
+        .limit(1);
+
+      if (existingCourseSyllabus) {
+        throw new Error(
+          `${selectedCourse.code} already has a syllabus linked: ${existingCourseSyllabus.name}`,
+        );
+      }
+    }
+
+    const [updatedSyllabus] = await tx
+      .update(syllabi)
+      .set({
+        name: nextName,
+      })
+      .where(eq(syllabi.id, parsed.id))
+      .returning({ id: syllabi.id });
+
+    if (!updatedSyllabus) {
+      throw new Error("Syllabus not found.");
+    }
+  });
 
   revalidateTag("syllabus", "minutes");
   revalidateTag(`syllabus:${parsed.id}`, "minutes");
