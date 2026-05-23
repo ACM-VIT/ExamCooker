@@ -236,7 +236,19 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
   const root = document.getElementById('root');
   const ESC = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' };
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ESC[c]);
-  const linkify = (s) => s.replace(/(https?:\\/\\/[^\\s<)\\]]+)/g, (u) => '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + u.replace(/^https?:\\/\\//,'').replace(/^www\\./,'') + '</a>');
+  const safeHref = (href) => {
+    try {
+      const url = new URL(String(href || ''), window.location.href);
+      return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const linkify = (s) => s.replace(/(https?:\\/\\/[^\\s<)\\]]+)/g, (u) => {
+    const href = safeHref(u);
+    if (!href) return u;
+    return '<a href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' + esc(href.replace(/^https?:\\/\\//,'').replace(/^www\\./,'')) + '</a>';
+  });
   const ARROW_RIGHT = '<svg class="tile-cta-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
   const ARROW_LEFT = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>';
   const CHEVRON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
@@ -484,8 +496,9 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
 
     const renderRow = (item) => {
       const sub = item.kind ? '<div class="row-sub">' + esc(item.kind) + '</div>' : '';
-      if (item.url) {
-        return '<a class="row" href="' + esc(item.url) + '" target="_blank" rel="noopener noreferrer">' +
+      const itemHref = item.url ? safeHref(item.url) : null;
+      if (itemHref) {
+        return '<a class="row" href="' + esc(itemHref) + '" target="_blank" rel="noopener noreferrer">' +
           '<div class="row-main"><div class="row-title">' + esc(item.label) + '</div>' + sub + '</div>' +
           '<span class="row-arrow">' + CHEVRON + '</span>' +
         '</a>';
@@ -510,11 +523,13 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     const primaryPdf = meta.fileUrl || parsed.extras.syllabusPdf;
     const pdfLabel = meta.fileUrl ? (meta.type === 'syllabus' ? 'Open syllabus PDF' : 'Open PDF') : 'Open syllabus PDF';
     const renderBtn = (href, label, secondary) => {
+      const safe = safeHref(href);
+      if (!safe) return '';
       const cls = 'btn-wrap' + (secondary ? ' secondary' : '');
       const btnCls = 'btn' + (secondary ? ' secondary' : '');
       return '<span class="' + cls + '">' +
         '<span class="btn-shadow"></span>' +
-        '<a class="' + btnCls + '" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' + esc(label) + '</a>' +
+        '<a class="' + btnCls + '" href="' + esc(safe) + '" target="_blank" rel="noopener noreferrer">' + esc(label) + '</a>' +
       '</span>';
     };
     const actionBtns = [
