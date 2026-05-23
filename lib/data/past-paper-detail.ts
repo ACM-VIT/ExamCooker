@@ -88,7 +88,12 @@ const loadPastPaperDetail = cache(async (id: string) => {
         .leftJoin(course, eq(pastPaper.courseId, course.id))
         .leftJoin(pastPaperToTag, eq(pastPaperToTag.a, pastPaper.id))
         .leftJoin(tag, eq(pastPaperToTag.b, tag.id))
-        .where(eq(pastPaper.id, id))
+        .where(
+            and(
+                eq(pastPaper.id, id),
+                eq(pastPaper.isClear, true),
+            ),
+        )
         .orderBy(asc(tag.name));
 
     const firstRow = rows[0];
@@ -157,7 +162,7 @@ export async function getPastPaperDetail(id: string) {
 
     return withPastPapersSurfaceRedisCache(
         {
-            keyParts: ["past-paper-detail", { id }],
+            keyParts: ["published-past-paper-detail", { id }],
             deserialize: deserializePastPaperDetail,
         },
         async () => loadPastPaperDetail(id),
@@ -182,7 +187,7 @@ export async function getSiblingPastPaper(input: {
 
     return withPastPapersSurfaceRedisCache(
         {
-            keyParts: ["sibling-past-paper", input],
+            keyParts: ["published-sibling-past-paper", input],
         },
         async () => {
             const select = {
@@ -201,7 +206,12 @@ export async function getSiblingPastPaper(input: {
                     .select(select)
                     .from(pastPaper)
                     .leftJoin(course, eq(pastPaper.courseId, course.id))
-                    .where(eq(pastPaper.id, input.questionPaperId))
+                    .where(
+                        and(
+                            eq(pastPaper.id, input.questionPaperId),
+                            eq(pastPaper.isClear, true),
+                        ),
+                    )
                     .limit(1);
 
                 const linkedQuestionPaper = linkedQuestionPaperRows[0];

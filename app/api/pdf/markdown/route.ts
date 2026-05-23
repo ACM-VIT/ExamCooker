@@ -284,6 +284,14 @@ function getStreamErrorMessage(error: unknown, streamError: unknown) {
   return fallbackMessage || "Failed to convert this PDF to Markdown.";
 }
 
+function getIncompletePdfMarkdownMessage(finishReason: string | undefined) {
+  if (finishReason !== "length") {
+    return null;
+  }
+
+  return "The Markdown conversion was cut off before it finished. Try a smaller PDF or fewer edited pages.";
+}
+
 function getAiProviderFromModel(modelId: string) {
   const [provider] = modelId.split("/");
   return provider && provider !== modelId ? provider : "openai";
@@ -676,6 +684,7 @@ export async function POST(request: NextRequest) {
         const enqueue = (payload: unknown) => {
           controller.enqueue(encoder.encode(`${JSON.stringify(payload)}\n`));
         };
+        let finishReason: string | undefined;
 
         try {
           const streamedQuestions: PdfPaperQuestion[] = [];
@@ -696,6 +705,12 @@ export async function POST(request: NextRequest) {
           }
 
           const questions = await result.output;
+          finishReason = (await result.finishReason) ?? undefined;
+          const incompleteMessage = getIncompletePdfMarkdownMessage(finishReason);
+          if (incompleteMessage) {
+            throw new Error(incompleteMessage);
+          }
+
           const paper = PdfPaperDocumentSchema.parse({
             schemaVersion: "exam-questions-v1",
             questions,
@@ -731,7 +746,7 @@ export async function POST(request: NextRequest) {
             fileBytes: pdfBuffer.byteLength,
             fileName: parsedBody.fileName,
             fileUrl: fileUrl.href,
-            finishReason: result.finishReason,
+            finishReason: Promise.resolve(finishReason),
             httpStatus: 200,
             isError: false,
             latencySeconds: Math.max(Date.now() - llmStartedAt, 0) / 1000,
@@ -762,6 +777,8 @@ export async function POST(request: NextRequest) {
             fileBytes: pdfBuffer.byteLength,
             fileName: parsedBody.fileName,
             fileUrl: fileUrl.href,
+            finishReason:
+              finishReason === undefined ? result.finishReason : Promise.resolve(finishReason),
             httpStatus: request.signal.aborted ? 499 : 500,
             isError: true,
             latencySeconds: Math.max(Date.now() - llmStartedAt, 0) / 1000,
