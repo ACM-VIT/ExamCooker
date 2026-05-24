@@ -1666,12 +1666,16 @@ function LoadedDocumentSurface({
   const copyResetTimerRef = useRef<number | null>(null);
   const { state: scrollState } = useScroll(documentId);
   const totalPages = Math.max(scrollState.totalPages || 0, 0);
+  const pageEditsKey = useMemo(
+    () => serializePdfPageEdits(pageEdits),
+    [pageEdits],
+  );
 
   useEffect(() => {
     dispatchPaper({ type: "resetDocument" });
     paperAbortRef.current?.abort();
     paperAbortRef.current = null;
-  }, [fileName, fileUrl]);
+  }, [fileName, fileUrl, pageEditsKey]);
 
   useEffect(
     () => () => {
