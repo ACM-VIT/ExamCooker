@@ -2,8 +2,6 @@
   
 Welcome to **ExamCooker** – a one-stop solution to all your exam problems, powered by ACM-VIT and VIT Vellore. The biggest problem to deal with in VIT is exam resources! This website solves all your issues from notes to past papers to YouTube links. It is an efficient and user-friendly website that helps you manage and save the most needed resource right before exams, **Time!**
 
-(PS: We know that you probably left everything for the last minute :D)
-
 ## Tech Stack
 
 ExamCooker uses scalable tech stacks to ensure optimal performance and ease of maintenance.
