@@ -46,7 +46,6 @@ public class MainActivity extends BridgeActivity {
         settings.setLoadsImagesAutomatically(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setJavaScriptEnabled(true);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setSupportMultipleWindows(false);
