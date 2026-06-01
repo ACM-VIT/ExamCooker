@@ -40,7 +40,7 @@ export default function QuizModalContent({
   courseName,
   onClose,
 }: QuizModalContentProps) {
-  const router = useRouter();
+  const { push } = useRouter();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const TOTAL_WEEKS = 12;
@@ -156,7 +156,7 @@ export default function QuizModalContent({
         time: formattedDuration,
         course: courseCode,
       });
-      router.push(`/quiz?${params.toString()}`);
+      push(`/quiz?${params.toString()}`);
     }
   };
 
@@ -206,6 +206,7 @@ export default function QuizModalContent({
     <div className="relative p-6 max-w-2xl mx-auto shadow-lg bg-[#C2E6EC] dark:bg-[#0C1222]">
       <div className="flex justify-between items-center mb-6">
         <button
+          type="button"
           onClick={onClose}
           className="p-2 hover:bg-gray-100 transition-colors"
         >
@@ -220,7 +221,7 @@ export default function QuizModalContent({
           </h3>
         </div>
         <button type="button" onClick={handleStartQuiz} className="relative group">
-          <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
+          <div className="absolute inset-0 bg-[#0A0F1C] dark:bg-[#3BF4C7]" />
           <div className="absolute inset-0 blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
           <span
             className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7]
@@ -270,6 +271,7 @@ export default function QuizModalContent({
                     type="checkbox"
                     checked={quizState.selectedWeeks.length === TOTAL_WEEKS}
                     readOnly
+                    aria-label="All weeks"
                     className="mr-2"
                   />
                   <span>All Weeks</span>
@@ -282,11 +284,12 @@ export default function QuizModalContent({
                       onClick={() => toggleWeek(week)}
                       className="flex w-full cursor-pointer items-center p-2 text-left hover:bg-black/20 dark:hover:bg-white/20"
                     >
-                      <input
-                        type="checkbox"
-                        checked={quizState.selectedWeeks.includes(week)}
-                        readOnly
-                        className="mr-2"
+                        <input
+                          type="checkbox"
+                          checked={quizState.selectedWeeks.includes(week)}
+                          readOnly
+                          aria-label={`Week ${week}`}
+                          className="mr-2"
                       />
                       <span>Week {week}</span>
                     </button>

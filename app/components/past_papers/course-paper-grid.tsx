@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
+import React, { ViewTransition, useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
     Check,
@@ -79,7 +79,7 @@ function ContextMenuItem({
             onClick={onClick}
             className="flex h-9 w-full items-center gap-2 px-2.5 text-left text-sm font-semibold text-black transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-45 dark:text-[#D5D5D5] dark:hover:bg-white/5"
         >
-            <span className="flex h-4 w-4 shrink-0 items-center justify-center text-black/55 dark:text-[#D5D5D5]/60">
+            <span className="flex size-4 shrink-0 items-center justify-center text-black/55 dark:text-[#D5D5D5]/60">
                 {icon}
             </span>
             <span className="min-w-0 flex-1 truncate">{children}</span>
@@ -484,7 +484,7 @@ export default function CoursePaperGrid({
                 onClick={toggleSelectAllVisible}
                 className="inline-flex h-9 items-center gap-2 border border-black/15 bg-white px-3.5 text-sm font-semibold text-black transition hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/40 dark:hover:bg-white/5"
             >
-                <Check className="h-3.5 w-3.5" aria-hidden />
+                <Check className="size-3.5" aria-hidden />
                 {allVisibleSelected ? "Clear all" : "Select all"}
             </button>
         );
@@ -520,7 +520,7 @@ export default function CoursePaperGrid({
                                 : "border-black/10 bg-[#C2E6EC]/40 text-black/35 dark:border-white/10 dark:bg-[#0C1222]/35 dark:text-[#D5D5D5]/35"
                         }`}
                     >
-                        <PanelLeft className="h-10 w-10" aria-hidden />
+                        <PanelLeft className="size-10" aria-hidden />
                     </div>
                     <div
                         className={`paper-split-drop-zone paper-split-drop-zone-right absolute inset-y-0 flex items-center justify-center border-l transition ${
@@ -529,7 +529,7 @@ export default function CoursePaperGrid({
                                 : "border-black/10 bg-[#C2E6EC]/40 text-black/35 dark:border-white/10 dark:bg-[#0C1222]/35 dark:text-[#D5D5D5]/35"
                         }`}
                     >
-                        <PanelRight className="h-10 w-10" aria-hidden />
+                        <PanelRight className="size-10" aria-hidden />
                     </div>
                     <div
                         className="absolute max-w-[260px] -translate-x-1/2 -translate-y-1/2 rounded-md border border-black/15 bg-white/95 px-3 py-2 text-black shadow-2xl backdrop-blur dark:border-[#D5D5D5]/15 dark:bg-[#121B31]/95 dark:text-[#D5D5D5]"
@@ -548,6 +548,7 @@ export default function CoursePaperGrid({
             {contextMenu && (
                 <div
                     role="menu"
+                    tabIndex={-1}
                     aria-label="Past paper actions"
                     onClick={(event) => event.stopPropagation()}
                     onKeyDown={(event) => event.stopPropagation()}
@@ -574,39 +575,39 @@ export default function CoursePaperGrid({
                     </div>
                     <div className="py-1">
                         <ContextMenuItem
-                            icon={<FileText className="h-4 w-4" aria-hidden />}
+                            icon={<FileText className="size-4" aria-hidden />}
                             onClick={() => openPaperPage(contextMenu.paper)}
                         >
                             Open paper page
                         </ContextMenuItem>
                         <ContextMenuItem
-                            icon={<PanelLeft className="h-4 w-4" aria-hidden />}
+                            icon={<PanelLeft className="size-4" aria-hidden />}
                             disabled={!splitViewSupported}
                             onClick={() => openSplitFromContextMenu(contextMenu.paper, "left")}
                         >
                             Open in left split
                         </ContextMenuItem>
                         <ContextMenuItem
-                            icon={<PanelRight className="h-4 w-4" aria-hidden />}
+                            icon={<PanelRight className="size-4" aria-hidden />}
                             disabled={!splitViewSupported}
                             onClick={() => openSplitFromContextMenu(contextMenu.paper, "right")}
                         >
                             Open in right split
                         </ContextMenuItem>
                         <ContextMenuItem
-                            icon={<ExternalLink className="h-4 w-4" aria-hidden />}
+                            icon={<ExternalLink className="size-4" aria-hidden />}
                             onClick={() => openPdfInNewTab(contextMenu.paper)}
                         >
                             Open PDF in new tab
                         </ContextMenuItem>
                         <ContextMenuItem
-                            icon={<Download className="h-4 w-4" aria-hidden />}
+                            icon={<Download className="size-4" aria-hidden />}
                             onClick={() => downloadPaper(contextMenu.paper)}
                         >
                             Download paper
                         </ContextMenuItem>
                         <ContextMenuItem
-                            icon={<Check className="h-4 w-4" aria-hidden />}
+                            icon={<Check className="size-4" aria-hidden />}
                             onClick={() => toggleFromContextMenu(contextMenu.paper)}
                         >
                             {selected.has(contextMenu.paper.id) ? "Deselect paper" : "Select paper"}
@@ -617,25 +618,41 @@ export default function CoursePaperGrid({
 
             <div className="course-paper-grid flex flex-wrap gap-3">
                 {papers.map((paper, index) => (
-                    <div
+                    <ViewTransition
                         key={paper.id}
-                        className={`course-paper-grid-item min-w-0 basis-[calc((100%-0.75rem)/2)] sm:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-2.25rem)/4)] xl:basis-[calc((100%-3rem)/5)] ${wideStretchClass}`}
+                        enter={{
+                            "filter-results": "paper-card-enter",
+                            default: "none",
+                        }}
+                        exit={{
+                            "filter-results": "paper-card-exit",
+                            default: "none",
+                        }}
+                        update={{
+                            "filter-results": "paper-card-move",
+                            default: "none",
+                        }}
+                        default="none"
                     >
-                        <CoursePaperCard
-                            paper={paper}
-                            courseCode={courseCode}
-                            courseTitle={courseTitle}
-                            index={index}
-                            selected={selected.has(paper.id)}
-                            onToggleSelect={toggle}
-                            splitDragEnabled={splitViewSupported}
-                            onSplitDragStart={startSplitDrag}
-                            onSplitDragMove={moveSplitDrag}
-                            onSplitDragEnd={endSplitDrag}
-                            onSplitDragCancel={cancelSplitDrag}
-                            onContextMenuOpen={openContextMenu}
-                        />
-                    </div>
+                        <div
+                            className={`course-paper-grid-item min-w-0 basis-[calc((100%-0.75rem)/2)] sm:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-2.25rem)/4)] xl:basis-[calc((100%-3rem)/5)] ${wideStretchClass}`}
+                        >
+                            <CoursePaperCard
+                                paper={paper}
+                                courseCode={courseCode}
+                                courseTitle={courseTitle}
+                                index={index}
+                                selected={selected.has(paper.id)}
+                                onToggleSelect={toggle}
+                                splitDragEnabled={splitViewSupported}
+                                onSplitDragStart={startSplitDrag}
+                                onSplitDragMove={moveSplitDrag}
+                                onSplitDragEnd={endSplitDrag}
+                                onSplitDragCancel={cancelSplitDrag}
+                                onContextMenuOpen={openContextMenu}
+                            />
+                        </div>
+                    </ViewTransition>
                 ))}
             </div>
 
@@ -655,16 +672,16 @@ export default function CoursePaperGrid({
                             disabled={isDownloading}
                             className="inline-flex h-8 items-center gap-1.5 rounded border border-black/20 bg-[#5FC4E7]/90 px-3 text-xs font-semibold text-black transition hover:bg-[#5FC4E7] dark:border-[#3BF4C7]/40 dark:bg-[#3BF4C7]/20 dark:text-[#3BF4C7] dark:hover:bg-[#3BF4C7]/30 sm:text-sm"
                         >
-                            <Download className="h-3.5 w-3.5" aria-hidden />
+                            <Download className="size-3.5" aria-hidden />
                             {isDownloading ? "Zipping..." : "Download"}
                         </button>
                         <button
                             type="button"
                             onClick={clear}
                             aria-label="Clear selection"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded text-black/50 transition hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/50 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
+                            className="inline-flex size-8 items-center justify-center rounded text-black/50 transition hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/50 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                         >
-                            <X className="h-3.5 w-3.5" aria-hidden />
+                            <X className="size-3.5" aria-hidden />
                         </button>
                     </div>
                 </div>

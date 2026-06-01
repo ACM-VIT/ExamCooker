@@ -50,7 +50,7 @@ function subscribeToWebTabBarFallback(onFallback: () => void) {
 
 export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { push } = useRouter();
   const [{ keyboardOpen, mode, nativeAndroid }, dispatch] = useReducer(
     mobileTabBarReducer,
     {
@@ -93,7 +93,7 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
     setNavTransitionOrigin(event.currentTarget);
     startTransition(() => {
       addTransitionType("nav-lateral");
-      router.push(href);
+      push(href);
     });
   };
 
@@ -223,14 +223,14 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
                 transitionTypes={isActive ? undefined : ["nav-lateral"]}
                 onClickCapture={(event) => setNavTransitionOrigin(event.currentTarget)}
                 onClick={(event) => handleTabClick(event, link.href, isActive)}
-                className={`flex flex-col items-center rounded-xl font-semibold leading-tight tracking-tight transition-[color,transform] active:scale-[0.98] ${
+                className={`flex flex-col items-center rounded-xl font-semibold leading-tight tracking-tight ${
                   nativeAndroid
-                    ? `gap-1 px-1 py-1 text-[11px] ${
+                    ? `gap-1 px-1 py-1 text-[11px] transition-colors ${
                         isActive
                           ? "text-[#0D5875] dark:text-[#3BF4C7]"
                           : "text-slate-500 dark:text-slate-400"
                       }`
-                    : `gap-0.5 px-1 py-1.5 text-[11px] sm:text-[12px] ${
+                    : `gap-0.5 px-1 py-1.5 text-[11px] transition-[color,transform] active:scale-[0.98] sm:text-[12px] ${
                         isActive
                           ? "text-black dark:text-[#3BF4C7]"
                           : "text-black/55 dark:text-[#D5D5D5]/55"
@@ -255,7 +255,7 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
                     height={22}
                     className={`shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] dark:invert-[.835] ${
                       nativeAndroid ? "h-6 w-6" : "h-[22px] w-[22px]"
-                    } ${isActive ? "scale-[1.08] opacity-100" : "opacity-85"}`}
+                    } ${isActive ? `${nativeAndroid ? "" : "scale-[1.08]"} opacity-100` : "opacity-85"}`}
                   />
                 </span>
                 <span className={`max-w-full truncate ${nativeAndroid ? "text-[12px]" : ""}`}>

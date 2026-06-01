@@ -347,9 +347,11 @@ function schedulePdfMarkdownAiCapture(
       return;
     }
 
-    const usage = await safeAwait(captureEvent.usage);
-    const response = await safeAwait(captureEvent.response);
-    const finishReason = await safeAwait(captureEvent.finishReason);
+    const [usage, response, finishReason] = await Promise.all([
+      safeAwait(captureEvent.usage),
+      safeAwait(captureEvent.response),
+      safeAwait(captureEvent.finishReason),
+    ]);
     const outputText = captureEvent.markdown
       ? truncateForPostHogAiText(captureEvent.markdown)
       : null;

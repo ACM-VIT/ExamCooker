@@ -19,7 +19,9 @@ import {
     getCoursePastPapersPath,
     getPastPaperDetailPath,
 } from "@/lib/seo";
-import CourseHeader from "@/app/components/past_papers/course-header";
+import CourseHeader, {
+    CourseHeaderSyllabusLink,
+} from "@/app/components/past_papers/course-header";
 import FilterBar from "@/app/components/past_papers/filter-bar";
 import FilterSheet from "@/app/components/past_papers/filter-sheet";
 import AnswerKeyButton from "@/app/components/past_papers/answer-key-button";
@@ -78,16 +80,42 @@ type ParsedFilters = {
 
 function splitList(raw: string | undefined): string[] {
     if (!raw) return [];
-    return raw.split(",").map((s) => s.trim()).filter(Boolean);
+    const values: string[] = [];
+    for (const item of raw.split(",")) {
+        const value = item.trim();
+        if (value) values.push(value);
+    }
+    return values;
 }
 
 function parseUppercaseEnumList<T extends string>(
     raw: string | undefined,
     allowed: ReadonlySet<T>,
 ): T[] {
-    return splitList(raw)
-        .map((value) => value.toUpperCase())
-        .filter((value): value is T => allowed.has(value as T));
+    const values: T[] = [];
+    for (const value of splitList(raw)) {
+        const normalized = value.toUpperCase() as T;
+        if (allowed.has(normalized)) values.push(normalized);
+    }
+    return values;
+}
+
+function parseExamTypes(raw: string | undefined): ExamType[] {
+    const values: ExamType[] = [];
+    for (const value of splitList(raw)) {
+        const examType = examSlugToType(value);
+        if (examType) values.push(examType);
+    }
+    return values;
+}
+
+function parseYears(raw: string | undefined): number[] {
+    const values: number[] = [];
+    for (const value of splitList(raw)) {
+        const year = Number(value);
+        if (!Number.isNaN(year)) values.push(year);
+    }
+    return values;
 }
 
 function parseSearchParams(raw: SearchParamsRaw): ParsedFilters {
@@ -97,11 +125,9 @@ function parseSearchParams(raw: SearchParamsRaw): ParsedFilters {
     const page = Math.max(1, Number.parseInt(raw.page || "1", 10) || 1);
 
     return {
-        examTypes: splitList(raw.exam)
-            .map((s) => examSlugToType(s))
-            .filter((v): v is ExamType => v !== null),
+        examTypes: parseExamTypes(raw.exam),
         slots: splitList(raw.slot).map((s) => s.toUpperCase()),
-        years: splitList(raw.year).map((y) => Number(y)).filter((y) => !Number.isNaN(y)),
+        years: parseYears(raw.year),
         semesters: parseUppercaseEnumList(raw.semester, SEMESTER_VALUES),
         campuses: parseUppercaseEnumList(raw.campus, CAMPUS_VALUES),
         hasAnswerKey: raw.answer_key === "1",
@@ -243,11 +269,11 @@ function CoursePastPapersSectionsShell() {
                 <div className="flex items-center justify-between gap-2 sm:hidden">
                     <div className="flex items-center gap-2">
                         <div className="inline-flex h-10 items-center gap-2 border border-black/15 bg-white px-3.5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]">
-                            <span className="h-4 w-4 bg-black/15 dark:bg-white/15" />
+                            <span className="size-4 bg-black/15 dark:bg-white/15" />
                             <span className="h-3 w-12 bg-black/15 dark:bg-white/15" />
                         </div>
                         <div className="inline-flex h-10 items-center gap-2 border border-black/15 bg-white px-3.5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]">
-                            <span className="h-3.5 w-3.5 bg-black/15 dark:bg-white/15" />
+                            <span className="size-3.5 bg-black/15 dark:bg-white/15" />
                             <span className="h-3 w-6 bg-black/15 dark:bg-white/15" />
                         </div>
                     </div>
@@ -287,7 +313,7 @@ function CoursePastPapersSectionsShell() {
                         <div className="flex flex-wrap items-center gap-3">
                             <div className="inline-flex items-center gap-2">
                                 <span className="h-3 w-20 bg-black/15 dark:bg-white/15" />
-                                <span className="h-4 w-4 border border-black/30 bg-white dark:border-[#D5D5D5]/30 dark:bg-[#0C1222]" />
+                                <span className="size-4 border border-black/30 bg-white dark:border-[#D5D5D5]/30 dark:bg-[#0C1222]" />
                             </div>
                             <div className="inline-flex items-center gap-2">
                                 <span className="h-3 w-8 bg-black/15 dark:bg-white/15" />
@@ -505,6 +531,17 @@ function CoursePastPapersHeaderShell() {
     );
 }
 
+async function CourseHeaderSyllabusAction({
+    code,
+    syllabusPromise,
+}: {
+    code: string;
+    syllabusPromise: ReturnType<typeof getSyllabusByCourseCode>;
+}) {
+    const syllabus = await syllabusPromise;
+    return syllabus ? <CourseHeaderSyllabusLink code={code} /> : null;
+}
+
 async function CoursePastPapersPageContent({
     paramsPromise,
     searchParamsPromise,
@@ -519,10 +556,10 @@ async function CoursePastPapersPageContent({
     const normalized = normalizeCourseCode(code);
     if (!normalized) notFound();
 
-    const course = await getCourseDetailByCode(normalized);
+    const coursePromise = getCourseDetailByCode(normalized);
+    const syllabusPromise = getSyllabusByCourseCode(normalized);
+    const course = await coursePromise;
     if (!course) notFound();
-
-    const syllabus = await getSyllabusByCourseCode(course.code);
 
     const description = `Browse ${course.paperCount} past papers and ${course.noteCount} notes for ${course.title} on ExamCooker.`;
     const faq = [
@@ -563,8 +600,15 @@ async function CoursePastPapersPageContent({
                     title={course.title}
                     paperCount={course.paperCount}
                     noteCount={course.noteCount}
-                    syllabusId={syllabus?.id ?? null}
-                />
+                    syllabusId={null}
+                >
+                    <Suspense fallback={null}>
+                        <CourseHeaderSyllabusAction
+                            code={course.code}
+                            syllabusPromise={syllabusPromise}
+                        />
+                    </Suspense>
+                </CourseHeader>
 
                 <Suspense fallback={<CoursePastPapersSectionsShell />}>
                     <CoursePastPapersContent

@@ -22,7 +22,7 @@ export default function NativeIosTabSync() {
         const platform = Capacitor.getPlatform();
         if (platform !== "ios" && platform !== "android") return;
 
-        const { NativeTabs } = await import("capacitor-native-tabs");
+        const { NativeTabs } = await import("capacitor-native-tab");
         await NativeTabs.setSelectedTab({ index: activeTabIndex(pathname) }).catch(() => undefined);
       } catch {
       }

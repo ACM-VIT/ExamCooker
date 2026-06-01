@@ -46,12 +46,12 @@ export function LandingPageCard({
 }) {
   return (
     <Link href={href} className="relative overflow-hidden group">
-      <div className="hidden lg:block absolute left-0 top-0 w-[150px] h-[150px] rounded-full bg-none transition duration-1000 group-hover:duration-200 group-hover:bg-[#3BF4C7]"></div>
-      <div className="block lg:hidden absolute left-0 top-0 w-[100px] h-[100px] rounded-full bg-[#3BF4C7]"></div>
-      <div className="hidden lg:block absolute right-0 bottom-0 w-[150px] h-[150px] rounded-full transition duration-1000 group-hover:duration-200 md:bg-none md:group-hover:bg-[#82BEE9]"></div>
-      <div className="block lg:hidden absolute right-0 bottom-0 w-[100px] h-[100px] rounded-full bg-[#82BEE9]"></div>
+      <div className="hidden lg:block absolute left-0 top-0 size-[150px] rounded-full bg-none transition duration-1000 group-hover:duration-200 group-hover:bg-[#3BF4C7]"></div>
+      <div className="block lg:hidden absolute left-0 top-0 size-[100px] rounded-full bg-[#3BF4C7]"></div>
+      <div className="hidden lg:block absolute right-0 bottom-0 size-[150px] rounded-full transition duration-1000 group-hover:duration-200 md:bg-none md:group-hover:bg-[#82BEE9]"></div>
+      <div className="block lg:hidden absolute right-0 bottom-0 size-[100px] rounded-full bg-[#82BEE9]"></div>
 
-      <div className="relative flex h-full w-full flex-col justify-between border border-[#5FC4E7]/20 bg-[#5FC4E7]/20 p-4 backdrop-blur-[100px] dark:border-[#7D7467]/20 dark:bg-[#7D7467]/20 md:p-5">
+      <div className="relative flex size-full flex-col justify-between border border-[#5FC4E7]/20 bg-[#5FC4E7]/20 p-4 backdrop-blur-[100px] dark:border-[#7D7467]/20 dark:bg-[#7D7467]/20 md:p-5">
         <div className="flex min-h-[260px] w-full flex-col items-center justify-center gap-5 text-center sm:min-h-[220px] sm:flex-row sm:items-center sm:justify-between sm:text-left lg:h-[200px] lg:min-h-0 xl:h-[220px] [@media(max-height:720px)]:lg:h-[140px] [@media(max-height:560px)]:lg:h-[110px]">
           <Image
             src={imagePath}
@@ -103,7 +103,7 @@ function LandingPageContent() {
                 title="Open ExamCooker"
                 className="relative group inline-flex"
               >
-                <span className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
+                <span className="absolute inset-0 bg-[#0A0F1C] dark:bg-[#3BF4C7]" />
                 <span className="absolute inset-0 blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
                 <span className="dark:text-[#D5D5D5] dark:group-hover:text-[#3BF4C7] dark:group-hover:border-[#3BF4C7] dark:border-[#D5D5D5] dark:bg-[#0C1222] border-black border-2 relative px-4 py-2 text-lg bg-[#82BEE9] text-black font-bold group-hover:-translate-x-1 group-hover:-translate-y-1 transition duration-150">
                   Open ExamCooker
@@ -196,7 +196,7 @@ function LandingPageContent() {
             <Image
               src={GradientHeart}
               alt="Gradient Heart"
-              className="inline w-[55px] h-[55px] md:w-[150px] md:h-[150px]"
+              className="inline size-[55px] md:size-[150px]"
             />
           </div>
         </WordBetweenLine>

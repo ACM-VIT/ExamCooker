@@ -89,7 +89,7 @@ export default function VinCoursePage({
                                     className="inline-flex h-8 items-center gap-1.5 border border-black/20 bg-transparent px-2.5 text-[12px] font-semibold text-black/80 transition hover:border-black/45 hover:text-black dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/80 dark:hover:border-[#D5D5D5]/45 dark:hover:text-[#D5D5D5]"
                                 >
                                     {action.label}
-                                    <ArrowUpRight className="h-3 w-3" />
+                                    <ArrowUpRight className="size-3" />
                                 </a>
                             ) : (
                                 <Link

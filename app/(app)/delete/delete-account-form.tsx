@@ -57,7 +57,7 @@ export default function DeleteAccountForm() {
                 </p>
                 <Link
                     href={`/auth?callbackUrl=${callbackUrl}`}
-                    className="inline-flex h-12 w-fit items-center justify-center border border-black bg-black px-5 text-sm font-bold text-white transition hover:bg-black/85 dark:border-white/20 dark:bg-white/10 dark:text-[#D5D5D5] dark:hover:bg-white/15"
+                    className="inline-flex h-12 w-fit items-center justify-center border border-black bg-[#0A0F1C] px-5 text-sm font-bold text-white transition hover:bg-black/85 dark:border-white/20 dark:bg-white/10 dark:text-[#D5D5D5] dark:hover:bg-white/15"
                 >
                     Sign in to continue
                 </Link>
@@ -92,7 +92,7 @@ export default function DeleteAccountForm() {
             <label className="flex items-start gap-3 text-sm leading-6 text-black/70 dark:text-[#D5D5D5]/70">
                 <input
                     type="checkbox"
-                    className="mt-1 h-4 w-4 accent-[#253EE0]"
+                    className="mt-1 size-4 accent-[#253EE0]"
                     checked={confirmed}
                     onChange={(event) => setConfirmed(event.target.checked)}
                 />

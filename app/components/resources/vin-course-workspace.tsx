@@ -143,7 +143,7 @@ function createTopicViewState(topic: VinSubtopic | null): TopicViewState {
 function RichBlock({ item, index }: { item: VinRichItem; index: number }) {
     return (
         <div className="flex gap-3 py-3 first:pt-0 last:pb-0">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black/10 text-[11px] font-bold text-black/55 dark:bg-[#D5D5D5]/10 dark:text-[#D5D5D5]/55">
+            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-black/10 text-[11px] font-bold text-black/55 dark:bg-[#D5D5D5]/10 dark:text-[#D5D5D5]/55">
                 {index + 1}
             </span>
             <div className="min-w-0 flex-1 space-y-3">
@@ -153,7 +153,7 @@ function RichBlock({ item, index }: { item: VinRichItem; index: number }) {
                     </p>
                 ) : null}
                 {item.image ? (
-                    <div className="relative overflow-hidden border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-black">
+                    <div className="relative overflow-hidden border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0A0F1C]">
                         <AppImage
                             src={item.image}
                             alt={`Visual ${index + 1}`}
@@ -217,13 +217,13 @@ function PlaylistTile({
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <span
                         className={cn(
-                            "inline-flex h-16 w-16 items-center justify-center rounded-full text-white transition",
+                            "inline-flex size-16 items-center justify-center rounded-full text-white transition",
                             active
                                 ? "bg-[#5FC4E7]/85 text-black"
                                 : "bg-black/20 group-hover/tile:bg-black/40",
                         )}
                     >
-                        <Play className="h-8 w-8 translate-x-0.5" fill="currentColor" />
+                        <Play className="size-8 translate-x-0.5" fill="currentColor" />
                     </span>
                 </div>
                 <div className="absolute bottom-3 left-3 rounded-full bg-black/20 px-2 py-1 text-xs text-white/85 backdrop-blur-sm">
@@ -394,7 +394,7 @@ export default function VinCourseWorkspace({
                         <span className="truncate">
                             {activeTopic?.title ?? "Choose a topic"}
                         </span>
-                        <ChevronDown className="h-4 w-4 shrink-0 text-black/55 dark:text-[#D5D5D5]/55" />
+                        <ChevronDown className="size-4 shrink-0 text-black/55 dark:text-[#D5D5D5]/55" />
                     </button>
                 </div>
 
@@ -468,9 +468,9 @@ export default function VinCourseWorkspace({
                                 type="button"
                                 onClick={() => setDrawerOpen(false)}
                                 aria-label="Close topics"
-                                className="inline-flex h-8 w-8 items-center justify-center text-black/60 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:text-[#D5D5D5]"
+                                className="inline-flex size-8 items-center justify-center text-black/60 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:text-[#D5D5D5]"
                             >
-                                <X className="h-4 w-4" />
+                                <X className="size-4" />
                             </button>
                         </div>
                         <div className="flex-1 overflow-hidden">
@@ -525,11 +525,12 @@ function SidebarBody({
         <div className="flex h-full max-h-[calc(100vh-7rem)] flex-col">
             <div className="border-b border-black/10 p-3 dark:border-[#D5D5D5]/10">
                 <div className="relative flex h-9 items-center border border-black/20 bg-[#F5F9FB] px-2 dark:border-[#D5D5D5]/20 dark:bg-[#0A0F1C]">
-                    <SearchIconLucide className="h-3.5 w-3.5 shrink-0 text-black/45 dark:text-[#D5D5D5]/45" />
-                    <input
-                        type="search"
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
+                    <SearchIconLucide className="size-3.5 shrink-0 text-black/45 dark:text-[#D5D5D5]/45" />
+                        <input
+                            type="search"
+                            value={query}
+                            aria-label="Search topics"
+                            onChange={(event) => setQuery(event.target.value)}
                         placeholder="Search topics"
                         className="h-full min-w-0 flex-1 bg-transparent px-2 text-[13px] text-black placeholder:text-black/45 focus:outline-none dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/45"
                     />
@@ -538,9 +539,9 @@ function SidebarBody({
                             type="button"
                             onClick={() => setQuery("")}
                             aria-label="Clear search"
-                            className="inline-flex h-6 w-6 items-center justify-center text-black/55 hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
+                            className="inline-flex size-6 items-center justify-center text-black/55 hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
                         >
-                            <X className="h-3.5 w-3.5" />
+                            <X className="size-3.5" />
                         </button>
                     ) : null}
                 </div>
@@ -677,7 +678,7 @@ function TopicWorkspace({
                             rel="noopener noreferrer"
                             className="inline-flex h-8 items-center gap-1.5 border border-black/15 px-2.5 text-[12px] font-semibold text-black/75 transition hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/75 dark:hover:border-[#D5D5D5]/40 dark:hover:text-[#D5D5D5]"
                         >
-                            <FileText className="h-3.5 w-3.5" />
+                            <FileText className="size-3.5" />
                             PDF resource
                         </a>
                     </div>
@@ -705,20 +706,20 @@ function TopicWorkspace({
                                             (activeVideoIndex - 1 + playlist.length) % playlist.length,
                                         )
                                     }
-                                    className="inline-flex h-7 w-7 items-center justify-center border border-black/15 text-black/70 hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/70 dark:hover:border-[#D5D5D5]/40 dark:hover:text-[#D5D5D5]"
+                                    className="inline-flex size-7 items-center justify-center border border-black/15 text-black/70 hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/70 dark:hover:border-[#D5D5D5]/40 dark:hover:text-[#D5D5D5]"
                                     aria-label="Previous video"
                                 >
-                                    <ChevronLeft className="h-4 w-4" />
+                                    <ChevronLeft className="size-4" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() =>
                                         onSelectVideo((activeVideoIndex + 1) % playlist.length)
                                     }
-                                    className="inline-flex h-7 w-7 items-center justify-center border border-black/15 text-black/70 hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/70 dark:hover:border-[#D5D5D5]/40 dark:hover:text-[#D5D5D5]"
+                                    className="inline-flex size-7 items-center justify-center border border-black/15 text-black/70 hover:border-black/40 hover:text-black dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/70 dark:hover:border-[#D5D5D5]/40 dark:hover:text-[#D5D5D5]"
                                     aria-label="Next video"
                                 >
-                                    <ChevronRight className="h-4 w-4" />
+                                    <ChevronRight className="size-4" />
                                 </button>
                             </div>
                         ) : null}
@@ -738,7 +739,7 @@ function TopicWorkspace({
                 </section>
             ) : (
                 <div className="border-2 border-dashed border-black/15 p-6 text-center text-sm text-black/55 dark:border-[#D5D5D5]/15 dark:text-[#D5D5D5]/55">
-                    <ListVideo className="mx-auto h-5 w-5 text-black/35 dark:text-[#D5D5D5]/35" />
+                    <ListVideo className="mx-auto size-5 text-black/35 dark:text-[#D5D5D5]/35" />
                     <p className="mt-2">No videos for this topic.</p>
                 </div>
             )}
@@ -750,7 +751,7 @@ function TopicWorkspace({
                         {hasNotes ? (
                             <TabButton
                                 label="Notes"
-                                icon={<FileText className="h-3.5 w-3.5" />}
+                                icon={<FileText className="size-3.5" />}
                                 count={topic.takeaways.length}
                                 active={activeTab === "notes"}
                                 onClick={() => setActiveTab("notes")}
@@ -759,7 +760,7 @@ function TopicWorkspace({
                         {hasQuestions ? (
                             <TabButton
                                 label="Practice"
-                                icon={<MessageSquareQuote className="h-3.5 w-3.5" />}
+                                icon={<MessageSquareQuote className="size-3.5" />}
                                 count={topic.questions.length}
                                 active={activeTab === "practice"}
                                 onClick={() => setActiveTab("practice")}
@@ -768,7 +769,7 @@ function TopicWorkspace({
                         {hasResource ? (
                             <TabButton
                                 label="Resource"
-                                icon={<FileText className="h-3.5 w-3.5" />}
+                                icon={<FileText className="size-3.5" />}
                                 active={activeTab === "resource"}
                                 onClick={() => setActiveTab("resource")}
                             />
@@ -808,7 +809,7 @@ function TopicWorkspace({
                                     rel="noopener noreferrer"
                                     className="inline-flex h-10 items-center gap-2 border-2 border-[#5FC4E7] bg-[#5FC4E7]/40 px-4 text-sm font-semibold text-black transition hover:bg-[#5FC4E7]/60 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:hover:bg-[#ffffff]/15"
                                 >
-                                    <FileText className="h-4 w-4" />
+                                    <FileText className="size-4" />
                                     Open resource
                                 </a>
                             </div>
@@ -825,7 +826,7 @@ function TopicWorkspace({
                             onClick={onPrev}
                             className="group flex min-w-0 flex-1 items-center gap-3 border border-black/10 bg-white px-3 py-2.5 text-left transition hover:border-black/40 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:hover:border-[#D5D5D5]/40"
                         >
-                            <ChevronLeft className="h-4 w-4 shrink-0 text-black/55 dark:text-[#D5D5D5]/55" />
+                            <ChevronLeft className="size-4 shrink-0 text-black/55 dark:text-[#D5D5D5]/55" />
                             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-black dark:text-[#D5D5D5]">
                                 {prevTopicTitle}
                             </span>
@@ -842,7 +843,7 @@ function TopicWorkspace({
                             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-black dark:text-[#D5D5D5]">
                                 {nextTopicTitle}
                             </span>
-                            <ChevronRight className="h-4 w-4 shrink-0 text-black/55 dark:text-[#D5D5D5]/55" />
+                            <ChevronRight className="size-4 shrink-0 text-black/55 dark:text-[#D5D5D5]/55" />
                         </button>
                     ) : (
                         <span className="flex-1" />

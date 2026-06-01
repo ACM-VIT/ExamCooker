@@ -87,7 +87,7 @@ import type {
 } from "@/lib/ai/pdf-markdown-cache-types";
 
 const TOOLBAR_BUTTON_CLASS =
-  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500";
+  "inline-flex size-8 shrink-0 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500";
 const PAGE_INPUT_CLASS =
   "h-8 w-12 rounded border border-gray-300 bg-white px-1 text-center text-sm tabular-nums text-gray-700 outline-none transition focus:border-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 sm:w-14";
 const MIN_ZOOM = 0.2;
@@ -712,7 +712,7 @@ function LoadingState({
               href={fileUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded bg-black px-3 py-1.5 font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+              className="rounded bg-[#0A0F1C] px-3 py-1.5 font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
             >
               Open original
             </a>
@@ -749,7 +749,7 @@ function ErrorState({
           href={fileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded bg-black px-3 py-1.5 font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
+          className="rounded bg-[#0A0F1C] px-3 py-1.5 font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
         >
           Open original
         </a>
@@ -877,7 +877,7 @@ function AiPaperErrorState({
 }) {
   return (
     <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 px-4 text-center">
-      <AlertCircle className="h-7 w-7 text-red-500" aria-hidden="true" />
+      <AlertCircle className="size-7 text-red-500" aria-hidden="true" />
       <p className="max-w-lg text-sm font-medium text-gray-800 dark:text-gray-200">
         {errorMessage ?? "Markdown conversion failed."}
       </p>
@@ -970,12 +970,12 @@ function AiPaperQualityPanel({
         <div className="flex min-w-0 gap-3">
           {isWarning ? (
             <ShieldAlert
-              className="mt-0.5 h-5 w-5 shrink-0 text-amber-500"
+              className="mt-0.5 size-5 shrink-0 text-amber-500"
               aria-hidden="true"
             />
           ) : (
             <ShieldCheck
-              className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500"
+              className="mt-0.5 size-5 shrink-0 text-emerald-500"
               aria-hidden="true"
             />
           )}
@@ -1007,7 +1007,7 @@ function AiPaperQualityPanel({
                 : "border-current/15 bg-transparent hover:bg-current/10"
             }`}
           >
-            <ThumbsUp className="h-4 w-4" aria-hidden="true" />
+            <ThumbsUp className="size-4" aria-hidden="true" />
             {pendingVote === "up" ? "Saving" : cache?.feedback.upvotes ?? 0}
           </button>
           <button
@@ -1021,7 +1021,7 @@ function AiPaperQualityPanel({
                 : "border-current/15 bg-transparent hover:bg-current/10"
             }`}
           >
-            <ThumbsDown className="h-4 w-4" aria-hidden="true" />
+            <ThumbsDown className="size-4" aria-hidden="true" />
             {pendingVote === "down" ? "Saving" : cache?.feedback.downvotes ?? 0}
           </button>
         </div>
@@ -1070,10 +1070,10 @@ function AiPaperView({
   }
 
   const pageShellClass = isDarkMode
-    ? "bg-black text-[#D5D5D5]"
+    ? "bg-[#0A0F1C] text-[#D5D5D5]"
     : "bg-[#C2E6EC] text-black";
   const pageClass = isDarkMode
-    ? "border-[#D5D5D5]/15 bg-black text-[#D5D5D5] shadow-none"
+    ? "border-[#D5D5D5]/15 bg-[#0A0F1C] text-[#D5D5D5] shadow-none"
     : "border-black/10 bg-white text-gray-950 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.35)]";
   const ruleClass = isDarkMode ? "border-[#D5D5D5]/10" : "border-black/10";
   const mutedTextClass = isDarkMode ? "text-[#D5D5D5]/60" : "text-black/55";
@@ -1360,7 +1360,7 @@ function ViewerToolbar({
             title="Download PDF"
             disabled={isDownloading}
           >
-            <Download className="h-4 w-4" aria-hidden="true" />
+            <Download className="size-4" aria-hidden="true" />
           </button>
           {enableQuestionMarkdown ? (
             <div ref={markdownMenuRef} className="group/markdown relative">
@@ -1378,11 +1378,11 @@ function ViewerToolbar({
                 aria-expanded={isMarkdownMenuOpen}
               >
                 {isMarkdownBusy ? (
-                  <Sparkles className="h-4 w-4 animate-pulse" aria-hidden="true" />
+                  <Sparkles className="size-4 animate-pulse" aria-hidden="true" />
                 ) : copyStatus === "copied" ? (
-                  <Check className="h-4 w-4" aria-hidden="true" />
+                  <Check className="size-4" aria-hidden="true" />
                 ) : (
-                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  <Sparkles className="size-4" aria-hidden="true" />
                 )}
               </button>
               {!isMarkdownMenuOpen && isMarkdownTooltipVisible ? (
@@ -1394,10 +1394,10 @@ function ViewerToolbar({
                   <button
                     type="button"
                     onClick={() => setIsMarkdownTooltipVisible(false)}
-                    className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded text-gray-400 transition hover:bg-black/5 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-gray-200 dark:focus-visible:ring-gray-500"
+                    className="absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded text-gray-400 transition hover:bg-black/5 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-gray-200 dark:focus-visible:ring-gray-500"
                     aria-label="Dismiss Markdown tip"
                   >
-                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                    <X className="size-3.5" aria-hidden="true" />
                   </button>
                   <div className="mb-1 flex items-center gap-2">
                     <span className="rounded-sm bg-[#253EE0]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#253EE0] dark:bg-[#3BF4C7]/10 dark:text-[#3BF4C7]">
@@ -1419,7 +1419,7 @@ function ViewerToolbar({
                     onClick={handleViewMarkdown}
                     className={MARKDOWN_ACTION_BUTTON_CLASS}
                   >
-                    <Eye className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <Eye className="size-4 shrink-0" aria-hidden="true" />
                     <span>View as Markdown</span>
                   </button>
                   <button
@@ -1429,9 +1429,9 @@ function ViewerToolbar({
                     disabled={isMarkdownBusy || copyStatus === "copying"}
                   >
                     {copyStatus === "copied" ? (
-                      <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <Check className="size-4 shrink-0" aria-hidden="true" />
                     ) : (
-                      <Clipboard className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <Clipboard className="size-4 shrink-0" aria-hidden="true" />
                     )}
                     <span>
                       {copyStatus === "copied" ? "Copied Markdown" : "Copy as Markdown"}
@@ -1449,7 +1449,7 @@ function ViewerToolbar({
               aria-label="View PDF"
               title="View PDF"
             >
-              <FileText className="h-4 w-4" aria-hidden="true" />
+              <FileText className="size-4" aria-hidden="true" />
               <span>PDF</span>
             </button>
           ) : (
@@ -1462,7 +1462,7 @@ function ViewerToolbar({
             title="Previous page"
             disabled={currentPage <= 1}
           >
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            <ChevronLeft className="size-4" aria-hidden="true" />
           </button>
           <input
             type="number"
@@ -1491,7 +1491,7 @@ function ViewerToolbar({
             title="Next page"
             disabled={currentPage >= totalPages}
           >
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            <ChevronRight className="size-4" aria-hidden="true" />
           </button>
             </>
           )}
@@ -1508,7 +1508,7 @@ function ViewerToolbar({
             title="Zoom out"
             disabled={!zoomControls || zoomState.currentZoomLevel <= MIN_ZOOM}
           >
-            <Minus className="h-4 w-4" aria-hidden="true" />
+            <Minus className="size-4" aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -1528,7 +1528,7 @@ function ViewerToolbar({
             title="Zoom in"
             disabled={!zoomControls || zoomState.currentZoomLevel >= MAX_ZOOM}
           >
-            <Plus className="h-4 w-4" aria-hidden="true" />
+            <Plus className="size-4" aria-hidden="true" />
           </button>
             </>
           ) : (
@@ -1551,9 +1551,9 @@ function ViewerToolbar({
             }
           >
             {isPdfDarkMode ? (
-              <Sun className="h-4 w-4" aria-hidden="true" />
+              <Sun className="size-4" aria-hidden="true" />
             ) : (
-              <Moon className="h-4 w-4" aria-hidden="true" />
+              <Moon className="size-4" aria-hidden="true" />
             )}
           </button>
           <button
@@ -1564,9 +1564,9 @@ function ViewerToolbar({
             title={isFullScreen ? "Exit fullscreen" : "Enter fullscreen"}
           >
             {isFullScreen ? (
-              <Minimize2 className="h-4 w-4" aria-hidden="true" />
+              <Minimize2 className="size-4" aria-hidden="true" />
             ) : (
-              <Maximize2 className="h-4 w-4" aria-hidden="true" />
+              <Maximize2 className="size-4" aria-hidden="true" />
             )}
           </button>
         </div>
@@ -1851,7 +1851,7 @@ function LoadedDocumentSurface({
   );
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
+    <div className="flex size-full min-h-0 flex-col">
       <PdfVoiceBridge
         documentId={documentId}
         fileName={fileName}

@@ -48,7 +48,7 @@ export default function SyllabusInlineEditor({
   initialTitle,
   syllabusId,
 }: SyllabusInlineEditorProps) {
-  const router = useRouter();
+  const { replace, refresh } = useRouter();
   const { toast } = useToast();
   const { session, status } = useGuestPrompt();
   const isModerator = session?.user?.role === "MODERATOR";
@@ -134,8 +134,8 @@ export default function SyllabusInlineEditor({
         const nextPath = result.courseCode
           ? getCourseSyllabusPath(result.courseCode)
           : `/syllabus/${syllabusId}`;
-        router.replace(nextPath);
-        router.refresh();
+        replace(nextPath);
+        refresh();
         setIsOpen(false);
       } catch (saveFailure) {
         const message =

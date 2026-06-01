@@ -145,7 +145,7 @@ const getCourseData = (courseCode: string): CourseData => {
 };
 
 export default function QuizClient({ quizConfig }: { quizConfig: string }) {
-    const router = useRouter();
+    const { push } = useRouter();
     const [
         {
             currentQuestionIndex,
@@ -288,7 +288,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
     if (questions.length === 0) {
         return (
             <div className="flex min-h-screen items-center justify-center">
-                <div className="h-16 w-16 animate-spin border-b-2 border-t-2 border-gray-900" />
+                <div className="size-16 animate-spin border-b-2 border-t-2 border-gray-900" />
             </div>
         );
     }
@@ -305,7 +305,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
                 <div className="mb-8 overflow-hidden bg-[#5FC4E7] shadow-lg dark:border-2 dark:bg-[#ffffff]/20">
                     <div className="p-6 text-center">
                         <div className="mb-4 flex justify-center">
-                            <Trophy className="h-16 w-16 dark:text-[#D5D5D5]" />
+                            <Trophy className="size-16 dark:text-[#D5D5D5]" />
                         </div>
                         <h1 className="text-2xl font-bold dark:text-[#D5D5D5]">Quiz Complete!</h1>
                         <p className="mt-2 text-lg font-semibold text-black dark:text-[#D5D5D5]">
@@ -345,7 +345,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
                                         value: e.target.checked,
                                     })
                                 }
-                                className="form-checkbox h-5 w-5"
+                                className="form-checkbox size-5"
                             />
                             <span className="text-base font-medium dark:text-[#D5D5D5]">
                                 Show Incorrect Only
@@ -409,13 +409,15 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
                 <div className="mt-8 flex flex-col items-center justify-between gap-4 font-semibold dark:text-[#D5D5D5] sm:flex-row">
                     <div className="flex w-full justify-between gap-4 sm:w-fit sm:justify-start">
                         <button
-                            onClick={() => router.push("/quiz")}
+                            type="button"
+                            onClick={() => push("/quiz")}
                             className="flex items-center bg-[#5FC4E7] px-6 py-3 hover:opacity-90 transition-opacity dark:bg-[#008A90]"
                         >
                             <ArrowLeft size={20} className="mr-2" />
                             Try Another Quiz
                         </button>
                         <button
+                            type="button"
                             className="flex items-center bg-[#5FC4E7] px-6 py-3 hover:opacity-90 transition-opacity dark:bg-[#008A90]"
                             onClick={() => window.location.reload()}
                         >
@@ -424,7 +426,8 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
                         </button>
                     </div>
                     <button
-                        onClick={() => router.push("/")}
+                        type="button"
+                        onClick={() => push("/")}
                         className="flex w-full items-center justify-center bg-[#5FC4E7] px-6 py-3 hover:opacity-90 transition-opacity dark:bg-[#008A90] sm:w-fit"
                     >
                         Return Home
@@ -477,6 +480,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
                 <div className="w-[60vw] space-y-3">
                     {currentQuestion.options.map((option, index) => (
                         <button
+                            type="button"
                             key={option}
                             onClick={() => handleAnswerSelect(option)}
                             className={`w-full p-3 text-left text-sm text-black transition-colors sm:p-4 sm:text-base dark:border dark:border-[#D5D5D5] dark:text-[#D5D5D5] ${
@@ -499,6 +503,7 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
 
             <div className="mt-4 flex justify-end space-x-4 sm:mt-6">
                 <button
+                    type="button"
                     onClick={goToNextQuestion}
                     className="bg-[#5FC4E7] px-4 py-2 text-lg font-semibold hover:opacity-90 transition-opacity dark:bg-[#008A90] dark:text-[#D5D5D5] sm:px-6"
                 >

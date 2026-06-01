@@ -11,10 +11,11 @@ import {
   FieldShell,
 } from "@/app/components/moderation/editor-fields";
 import ModeratorEditSheet from "@/app/components/moderation/moderator-edit-sheet";
-import TagField, {
+import TagField from "@/app/components/moderation/tag-field";
+import {
   areTagNameListsEqual,
   dedupeTagNames,
-} from "@/app/components/moderation/tag-field";
+} from "@/app/components/moderation/tag-utils";
 import { useModeratorInlineEditorOptions } from "@/app/components/moderation/use-moderator-inline-editor-options";
 import { useToast } from "@/app/components/ui/use-toast";
 
@@ -51,7 +52,7 @@ export default function NoteInlineEditor({
   initialTitle,
   noteId,
 }: NoteInlineEditorProps) {
-  const router = useRouter();
+  const { refresh } = useRouter();
   const { toast } = useToast();
   const { session, status } = useGuestPrompt();
   const isModerator = session?.user?.role === "MODERATOR";
@@ -108,7 +109,7 @@ export default function NoteInlineEditor({
         setDraft(nextBaseline);
         setTags((currentTags) => dedupeTagNames([...currentTags, ...nextTags]));
         toast({ title: "Note updated" });
-        router.refresh();
+        refresh();
         setIsOpen(false);
       } catch (saveFailure) {
         const message =
