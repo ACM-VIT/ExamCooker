@@ -4,6 +4,10 @@ import WebKit
 
 private let appShellBackgroundColor = UIColor(red: 0.047, green: 0.071, blue: 0.133, alpha: 1)
 
+enum SharedWebViewResources {
+    static let processPool = WKProcessPool()
+}
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
@@ -82,7 +86,29 @@ private extension AppDelegate {
             webView.scrollView.bounces = false
             webView.scrollView.alwaysBounceVertical = false
             webView.scrollView.alwaysBounceHorizontal = false
+            tuneWebViewForNativeFeel(webView)
         }
+    }
+
+    func tuneWebViewForNativeFeel(_ webView: WKWebView) {
+        webView.allowsBackForwardNavigationGestures = true
+        webView.allowsLinkPreview = true
+        webView.configuration.processPool = SharedWebViewResources.processPool
+        webView.configuration.allowsInlineMediaPlayback = true
+        webView.configuration.mediaTypesRequiringUserActionForPlayback = []
+        webView.configuration.suppressesIncrementalRendering = false
+        if #available(iOS 14.0, *) {
+            webView.configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        }
+        if #available(iOS 16.4, *) {
+            webView.isInspectable = false
+        }
+
+        let scroll = webView.scrollView
+        scroll.decelerationRate = .normal
+        scroll.contentInsetAdjustmentBehavior = .never
+        scroll.showsVerticalScrollIndicator = false
+        scroll.showsHorizontalScrollIndicator = false
     }
 
     func registerLocalPluginsIfNeeded() {

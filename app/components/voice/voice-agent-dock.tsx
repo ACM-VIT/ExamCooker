@@ -379,9 +379,9 @@ export default function VoiceAgentDock({
               aria-label="Retry voice mode"
               title="Retry voice mode"
               onClick={onRetry}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.05] text-black/70 ring-1 ring-inset ring-black/[0.06] transition-all duration-150 hover:bg-black/[0.09] hover:text-black/90 active:scale-[0.97] dark:bg-white/[0.05] dark:text-[#D5D5D5]/75 dark:ring-white/[0.06] dark:hover:bg-white/[0.09] dark:hover:text-[#D5D5D5]"
+              className="inline-flex size-9 items-center justify-center rounded-full bg-black/[0.05] text-black/70 ring-1 ring-inset ring-black/[0.06] transition-all duration-150 hover:bg-black/[0.09] hover:text-black/90 active:scale-[0.97] dark:bg-white/[0.05] dark:text-[#D5D5D5]/75 dark:ring-white/[0.06] dark:hover:bg-white/[0.09] dark:hover:text-[#D5D5D5]"
             >
-              <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+              <RefreshCcw className="size-4" aria-hidden="true" />
             </button>
           ) : (
             <button
@@ -391,7 +391,7 @@ export default function VoiceAgentDock({
               onClick={() => runtime.setMuted(!runtime.muted)}
               disabled={!runtime.connected}
               className={cn(
-                "inline-flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-inset transition-all duration-150 active:scale-[0.97]",
+                "inline-flex size-9 items-center justify-center rounded-full ring-1 ring-inset transition-all duration-150 active:scale-[0.97]",
                 runtime.muted
                   ? "bg-[#0E5876] text-white ring-transparent hover:bg-[#0B4359] dark:bg-[#12314B] dark:text-[#D8F8EE] dark:hover:bg-[#16415F]"
                   : "bg-black/[0.05] text-black/70 ring-black/[0.06] hover:bg-black/[0.09] hover:text-black/90 dark:bg-white/[0.05] dark:text-[#D5D5D5]/80 dark:ring-white/[0.06] dark:hover:bg-white/[0.09] dark:hover:text-[#D5D5D5]",
@@ -399,11 +399,11 @@ export default function VoiceAgentDock({
               )}
             >
               {showSpinner ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               ) : runtime.muted ? (
-                <MicOff className="h-4 w-4" aria-hidden="true" />
+                <MicOff className="size-4" aria-hidden="true" />
               ) : (
-                <Mic className="h-4 w-4" aria-hidden="true" />
+                <Mic className="size-4" aria-hidden="true" />
               )}
             </button>
           )}
@@ -414,9 +414,9 @@ export default function VoiceAgentDock({
               aria-label="Stop current voice response"
               title="Stop current voice response"
               onClick={runtime.interrupt}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.05] text-black/70 ring-1 ring-inset ring-black/[0.06] transition-all duration-150 hover:bg-black/[0.09] hover:text-black/90 active:scale-[0.97] dark:bg-white/[0.05] dark:text-[#D5D5D5]/75 dark:ring-white/[0.06] dark:hover:bg-white/[0.09] dark:hover:text-[#D5D5D5]"
+              className="inline-flex size-9 items-center justify-center rounded-full bg-black/[0.05] text-black/70 ring-1 ring-inset ring-black/[0.06] transition-all duration-150 hover:bg-black/[0.09] hover:text-black/90 active:scale-[0.97] dark:bg-white/[0.05] dark:text-[#D5D5D5]/75 dark:ring-white/[0.06] dark:hover:bg-white/[0.09] dark:hover:text-[#D5D5D5]"
             >
-              <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+              <Square className="size-3.5 fill-current" aria-hidden="true" />
             </button>
           ) : null}
 
@@ -425,9 +425,9 @@ export default function VoiceAgentDock({
             aria-label={lastError ? "Dismiss voice guide" : "End voice mode"}
             title={lastError ? "Dismiss voice guide" : "End voice mode"}
             onClick={lastError ? onDismissError : onToggleVoiceAgent}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.05] text-black/65 ring-1 ring-inset ring-black/[0.06] transition-all duration-150 hover:bg-black/[0.09] hover:text-black/85 active:scale-[0.97] dark:bg-white/[0.05] dark:text-[#D5D5D5]/70 dark:ring-white/[0.06] dark:hover:bg-white/[0.09] dark:hover:text-[#D5D5D5]"
+            className="inline-flex size-9 items-center justify-center rounded-full bg-black/[0.05] text-black/65 ring-1 ring-inset ring-black/[0.06] transition-all duration-150 hover:bg-black/[0.09] hover:text-black/85 active:scale-[0.97] dark:bg-white/[0.05] dark:text-[#D5D5D5]/70 dark:ring-white/[0.06] dark:hover:bg-white/[0.09] dark:hover:text-[#D5D5D5]"
           >
-            <X className="h-4 w-4" aria-hidden="true" />
+            <X className="size-4" aria-hidden="true" />
           </button>
         </div>
       </div>

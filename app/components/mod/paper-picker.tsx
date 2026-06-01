@@ -207,6 +207,7 @@ export default function PaperPicker({
             ) : (
                 <input
                     type="text"
+                    aria-label="Search papers"
                     value={query}
                     onChange={(event) => {
                         dispatch({ type: "query", value: event.target.value });

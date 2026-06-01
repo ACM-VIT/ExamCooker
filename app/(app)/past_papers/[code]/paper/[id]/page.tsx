@@ -37,17 +37,22 @@ const ACRONYM_SKIP_WORDS = new Set([
     "lab",
     "laboratory",
 ]);
+const NON_LETTER_REGEX = /[^A-Za-z]/g;
+const ACRONYM_WORD_SPLIT_REGEX = /[\s/-]+/;
+const UPPERCASE_INITIAL_REGEX = /^[A-Z]/;
 
 function buildCourseAcronym(courseTitle: string): string {
-    return courseTitle
-        .replace(/\[[^\]]+\]/g, " ")
-        .split(/[\s/-]+/)
-        .map((word) => word.replace(/[^A-Za-z]/g, ""))
-        .filter(Boolean)
-        .filter((word) => /^[A-Z]/.test(word))
-        .filter((word) => !ACRONYM_SKIP_WORDS.has(word.toLowerCase()))
-        .map((word) => word[0]?.toUpperCase() ?? "")
-        .join("");
+    const acronym: string[] = [];
+    for (const rawWord of courseTitle.replace(/\[[^\]]+\]/g, " ").split(ACRONYM_WORD_SPLIT_REGEX)) {
+        const word = rawWord.replace(NON_LETTER_REGEX, "");
+        if (!word || !UPPERCASE_INITIAL_REGEX.test(word) || ACRONYM_SKIP_WORDS.has(word.toLowerCase())) {
+            continue;
+        }
+
+        acronym.push(word[0]?.toUpperCase() ?? "");
+    }
+
+    return acronym.join("");
 }
 
 function getHeadingTitle(courseTitle: string): string {
@@ -97,16 +102,16 @@ function PaperNavButton({
                 transitionTypes={[isPrev ? "nav-back" : "nav-forward"]}
                 aria-label={tooltip}
                 title={tooltip}
-                className="relative inline-flex h-full w-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:-translate-x-1 dark:group-hover:-translate-y-1 dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]"
+                className="relative inline-flex size-full items-center justify-center border-2 border-black bg-[#3BF4C7] text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:-translate-x-1 dark:group-hover:-translate-y-1 dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]"
             >
                 {isPrev ? (
                     <ChevronLeft
-                        className="h-5 w-5 transition-transform group-hover:-translate-x-0.5"
+                        className="size-5 transition-transform group-hover:-translate-x-0.5"
                         strokeWidth={2.5}
                     />
                 ) : (
                     <ChevronRight
-                        className="h-5 w-5 transition-transform group-hover:translate-x-0.5"
+                        className="size-5 transition-transform group-hover:translate-x-0.5"
                         strokeWidth={2.5}
                     />
                 )}

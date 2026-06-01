@@ -145,12 +145,12 @@ const UpsellToast = () => {
                     type="button"
                     onClick={hideToast}
                     aria-label="Dismiss"
-                    className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center text-black/40 transition-colors hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/40 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
+                    className="absolute right-2 top-2 inline-flex size-7 items-center justify-center text-black/40 transition-colors hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/40 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                 >
                     <svg
                         viewBox="0 0 14 14"
                         aria-hidden="true"
-                        className="h-3 w-3"
+                        className="size-3"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"

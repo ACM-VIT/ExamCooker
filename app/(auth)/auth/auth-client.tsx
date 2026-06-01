@@ -85,7 +85,7 @@ async function createNativeAuthHandoffChallenge() {
 
 function GoogleIcon() {
     return (
-        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+        <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
             <path
                 fill="#4285F4"
                 d="M21.6 12.23c0-.76-.07-1.49-.2-2.19H12v4.14h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.32 2.98-7.48Z"
@@ -108,7 +108,7 @@ function GoogleIcon() {
 
 function AppleIcon() {
     return (
-        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+        <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
             <path
                 fill="currentColor"
                 d="M16.65 13.03c-.03-2.73 2.23-4.05 2.33-4.11-1.27-1.86-3.25-2.11-3.95-2.14-1.68-.17-3.28.99-4.13.99-.86 0-2.18-.96-3.58-.94-1.84.03-3.54 1.07-4.49 2.72-1.92 3.33-.49 8.27 1.38 10.97.91 1.32 2 2.81 3.43 2.75 1.38-.05 1.9-.89 3.56-.89 1.67 0 2.13.89 3.59.86 1.48-.03 2.42-1.35 3.33-2.68 1.05-1.53 1.48-3.02 1.5-3.1-.03-.01-2.89-1.11-2.97-4.43ZM13.93 5c.76-.92 1.27-2.2 1.13-3.47-1.09.04-2.42.73-3.2 1.65-.7.81-1.31 2.12-1.15 3.37 1.22.09 2.46-.62 3.22-1.55Z"
@@ -396,7 +396,7 @@ export default function AuthClient({
                             <button
                                 type="submit"
                                 disabled={reviewForm.submitting}
-                                className="inline-flex h-11 items-center justify-center rounded-md border border-black bg-black px-4 text-sm font-bold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:bg-white/10 dark:text-[#D5D5D5] dark:hover:bg-white/15"
+                                className="inline-flex h-11 items-center justify-center rounded-md border border-black bg-[#0A0F1C] px-4 text-sm font-bold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:bg-white/10 dark:text-[#D5D5D5] dark:hover:bg-white/15"
                             >
                                 {reviewForm.submitting ? "Signing in..." : "Sign in"}
                             </button>
@@ -407,7 +407,7 @@ export default function AuthClient({
                                 <button
                                     type="button"
                                     onClick={() => dispatchReviewForm({ type: "show" })}
-                                    className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-black hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
+                                    className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-[#0A0F1C] hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
                                 >
                                     Continue with username/password
                                 </button>
@@ -418,7 +418,7 @@ export default function AuthClient({
                                     key={provider.id}
                                     type="button"
                                     onClick={() => handleSignIn(provider)}
-                                    className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-black hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
+                                    className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-[#0A0F1C] hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
                                 >
                                     <ProviderIcon providerId={provider.id} />
                                     {providerLabels[provider.id] ?? `Continue with ${provider.name}`}

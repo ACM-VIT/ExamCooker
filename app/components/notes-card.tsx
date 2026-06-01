@@ -43,7 +43,7 @@ function NotesCard({
     };
 
     return (
-        <div className="h-full w-full max-w-sm text-black dark:text-[#D5D5D5]">
+        <div className="size-full max-w-sm text-black dark:text-[#D5D5D5]">
             <Link
                 href={`/notes/${note.id}`}
                 prefetch={index < 3}
@@ -78,11 +78,11 @@ function NotesCard({
                             aria-label={selected ? "Deselect note" : "Select note"}
                             aria-pressed={selected}
                             className={`ec-icon-button absolute left-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded ${selected
-                                    ? "bg-black text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
+                                    ? "bg-[#0A0F1C] text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
                                     : "bg-white/80 text-transparent backdrop-blur hover:bg-white hover:text-black/40 dark:bg-[#0C1222]/60 dark:hover:bg-[#0C1222]"
                                 }`}
                         >
-                            <FontAwesomeIcon icon={faCheck} className="h-2 w-2" />
+                            <FontAwesomeIcon icon={faCheck} className="size-2" />
                         </button>
                     )}
                     {onDownload && (
@@ -90,9 +90,9 @@ function NotesCard({
                             type="button"
                             onClick={handleDownload}
                             aria-label="Download note"
-                            className="ec-icon-button absolute right-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
+                            className="ec-icon-button absolute right-1.5 top-1.5 inline-flex size-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
                         >
-                            <FontAwesomeIcon icon={faDownload} className="h-2.5 w-2.5" />
+                            <FontAwesomeIcon icon={faDownload} className="size-2.5" />
                         </button>
                     )}
                 </div>

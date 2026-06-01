@@ -76,8 +76,8 @@ export default function HomeMarketingSections({ isAuthed }: { isAuthed: boolean 
 
             {!isAuthed && (
                 <section className="relative z-20 min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] overflow-hidden flex flex-col justify-center gap-8 px-4 py-16 md:py-24 lg:min-h-screen lg:py-12 lg:sticky lg:top-0">
-                    <div className="pointer-events-none absolute -top-32 -right-32 h-[22rem] w-[22rem] rounded-full bg-[#3BF4C7]/25 blur-[140px] dark:bg-[#3BF4C7]/20" />
-                    <div className="pointer-events-none absolute -bottom-32 -left-32 h-[22rem] w-[22rem] rounded-full bg-[#253EE0]/20 blur-[140px] dark:bg-[#27BAEC]/25" />
+                    <div className="pointer-events-none absolute -top-32 -right-32 size-[22rem] rounded-full bg-[#3BF4C7]/25 blur-[140px] dark:bg-[#3BF4C7]/20" />
+                    <div className="pointer-events-none absolute -bottom-32 -left-32 size-[22rem] rounded-full bg-[#253EE0]/20 blur-[140px] dark:bg-[#27BAEC]/25" />
 
                     <div className="mx-auto w-full max-w-6xl xl:max-w-7xl">
                         <WordBetweenLine>
@@ -101,7 +101,7 @@ export default function HomeMarketingSections({ isAuthed }: { isAuthed: boolean 
                             <Image
                                 src={GradientHeart}
                                 alt="Gradient Heart"
-                                className="inline w-[40px] h-[40px] md:w-[72px] md:h-[72px] lg:w-[88px] lg:h-[88px] [@media(max-height:720px)]:lg:w-[56px] [@media(max-height:720px)]:lg:h-[56px] shrink-0"
+                                className="inline size-[40px] md:size-[72px] lg:size-[88px] [@media(max-height:720px)]:lg:w-[56px] [@media(max-height:720px)]:lg:h-[56px] shrink-0"
                             />
                         </div>
                     </WordBetweenLine>

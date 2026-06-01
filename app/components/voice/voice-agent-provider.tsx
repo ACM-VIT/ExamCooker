@@ -13,15 +13,14 @@ import React, {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
-  GhostCursorOverlay,
   createVoiceControlController,
   defineVoiceTool,
-  useGhostCursor,
   useVoiceControl,
   type UseVoiceControlOptions,
   type UseVoiceControlReturn,
   type VoiceControlController,
 } from "./voice-runtime";
+import { GhostCursorOverlay, useGhostCursor } from "./voice-ghost-cursor";
 import { answerVisiblePdfPageQuestionAction } from "./voice-agent-actions";
 import {
   DEFAULT_VOICE,
@@ -97,7 +96,7 @@ export default function VoiceAgentProvider({
   entryPoint: VoiceAgentEntryPoint;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
+  const { push, replace } = useRouter();
   const browserPath = useBrowserPath();
   const [controller] = useState(() =>
     createVoiceControlController({
@@ -430,7 +429,7 @@ export default function VoiceAgentProvider({
 
             startTransition(() => {
               addTransitionType("filter-results");
-              router.replace(nextPath);
+              replace(nextPath);
             });
             await settleUi({ targetPath: nextPath });
 
@@ -487,7 +486,7 @@ export default function VoiceAgentProvider({
             }
 
             startTransition(() => {
-              router.push(nextPath);
+              push(nextPath);
             });
             await settleUi({ targetPath: nextPath });
 
@@ -528,7 +527,7 @@ export default function VoiceAgentProvider({
             }
 
             startTransition(() => {
-              router.push(nextPath);
+              push(nextPath);
             });
             await settleUi({ targetPath: nextPath });
 
@@ -748,7 +747,8 @@ export default function VoiceAgentProvider({
       getFreshSnapshot,
       requestOpenPdfAnswer,
       resolveRegistryEntry,
-      router,
+      push,
+      replace,
       run,
     ],
   );

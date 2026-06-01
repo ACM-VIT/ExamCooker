@@ -64,6 +64,7 @@ const STORAGE_WIDTH_KEY = "ec:paperSplitWidth";
 const STORAGE_SIDE_KEY = "ec:paperSplitSide";
 const MIN_TABLET_PANEL_WIDTH = 320;
 const MIN_DESKTOP_PANEL_WIDTH = 360;
+const DEFAULT_PANEL_WIDTH = 589;
 
 function getViewportWidth() {
     return typeof window === "undefined" ? 1280 : window.innerWidth;
@@ -244,7 +245,7 @@ function PaperSplitPanel({
                     isLeft ? "-right-1.5" : "-left-1.5"
                 }`}
             >
-                <GripVertical className="h-5 w-5" aria-hidden />
+                <GripVertical className="size-5" aria-hidden />
             </button>
 
             <header className="flex shrink-0 items-center gap-2 pb-3">
@@ -261,9 +262,9 @@ function PaperSplitPanel({
                         href={paper.href}
                         aria-label="Open paper page"
                         title="Open paper page"
-                        className="inline-flex h-8 w-8 items-center justify-center border border-black/15 bg-white text-black/65 transition hover:border-black/30 hover:bg-black/5 hover:text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/65 dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
+                        className="inline-flex size-8 items-center justify-center border border-black/15 bg-white text-black/65 transition hover:border-black/30 hover:bg-black/5 hover:text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/65 dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                     >
-                        <ExternalLink className="h-4 w-4" aria-hidden />
+                        <ExternalLink className="size-4" aria-hidden />
                     </Link>
                     <button
                         type="button"
@@ -277,7 +278,7 @@ function PaperSplitPanel({
                                 : "border-black/15 bg-white text-black/55 hover:border-black/30 hover:bg-black/5 hover:text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/55 dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                         }`}
                     >
-                        <PanelLeft className="h-4 w-4" aria-hidden />
+                        <PanelLeft className="size-4" aria-hidden />
                     </button>
                     <button
                         type="button"
@@ -291,16 +292,16 @@ function PaperSplitPanel({
                                 : "border-black/15 bg-white text-black/55 hover:border-black/30 hover:bg-black/5 hover:text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/55 dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                         }`}
                     >
-                        <PanelRight className="h-4 w-4" aria-hidden />
+                        <PanelRight className="size-4" aria-hidden />
                     </button>
                     <button
                         type="button"
                         onClick={onClose}
                         aria-label="Close split paper pane"
                         title="Close split paper pane"
-                        className="inline-flex h-8 w-8 items-center justify-center border border-black/15 bg-white text-black/55 transition hover:border-black/30 hover:bg-black/5 hover:text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/55 dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
+                        className="inline-flex size-8 items-center justify-center border border-black/15 bg-white text-black/55 transition hover:border-black/30 hover:bg-black/5 hover:text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/55 dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                     >
-                        <X className="h-4 w-4" aria-hidden />
+                        <X className="size-4" aria-hidden />
                     </button>
                 </div>
             </header>
@@ -323,7 +324,7 @@ export function PaperSplitViewProvider({ children }: { children: ReactNode }) {
             cachedPaper: null,
             isSupported: false,
             side: "right",
-            width: getDefaultPanelWidth(),
+            width: DEFAULT_PANEL_WIDTH,
         });
 
     useEffect(() => {

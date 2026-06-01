@@ -82,9 +82,9 @@ function HomeFooter() {
                             rel="noopener noreferrer"
                             aria-label={link.label}
                             title={link.label}
-                            className="grid h-9 w-9 place-items-center rounded-full border border-black/15 bg-white/35 text-black transition hover:-translate-y-0.5 hover:bg-white/60 dark:border-[#D5D5D5]/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:bg-white/10"
+                            className="grid size-9 place-items-center rounded-full border border-black/15 bg-white/35 text-black transition hover:-translate-y-0.5 hover:bg-white/60 dark:border-[#D5D5D5]/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:bg-white/10"
                         >
-                            <FontAwesomeIcon icon={link.icon} className="h-5 w-5" />
+                            <FontAwesomeIcon icon={link.icon} className="size-5" />
                         </a>
                     ))}
                 </div>

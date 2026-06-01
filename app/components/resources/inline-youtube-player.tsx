@@ -165,7 +165,7 @@ function Slider({
                 style={{ width: `${safeValue}%` }}
             />
             <div
-                className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/25 bg-white shadow-sm"
+                className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-black/25 bg-white shadow-sm"
                 style={{ left: `${safeValue}%` }}
             />
         </div>
@@ -287,7 +287,7 @@ function InlineYouTubePlayerInner({
 
     return (
         <div
-            className="relative aspect-video w-full overflow-hidden border-2 border-[#5FC4E7] bg-black dark:border-[#ffffff]/20"
+            className="relative aspect-video w-full overflow-hidden border-2 border-[#5FC4E7] bg-[#0A0F1C] dark:border-[#ffffff]/20"
             onMouseEnter={() => {
                 if (!useNativeControls) dispatch({ type: "controls", show: true });
             }}
@@ -370,13 +370,13 @@ function InlineYouTubePlayerInner({
                             <button
                                 type="button"
                                 onClick={togglePlay}
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-md text-white transition hover:bg-[#111111d1]"
+                                className="inline-flex size-10 items-center justify-center rounded-md text-white transition hover:bg-[#111111d1]"
                                 aria-label={isPlaying ? "Pause video" : "Play video"}
                             >
                                 {isPlaying ? (
-                                    <Pause className="h-5 w-5" />
+                                    <Pause className="size-5" />
                                 ) : (
-                                    <Play className="h-5 w-5" />
+                                    <Play className="size-5" />
                                 )}
                             </button>
 
@@ -384,15 +384,15 @@ function InlineYouTubePlayerInner({
                                 <button
                                     type="button"
                                     onClick={toggleMute}
-                                    className="inline-flex h-10 w-10 items-center justify-center rounded-md text-white transition hover:bg-[#111111d1]"
+                                    className="inline-flex size-10 items-center justify-center rounded-md text-white transition hover:bg-[#111111d1]"
                                     aria-label={isMuted || volume === 0 ? "Unmute video" : "Mute video"}
                                 >
                                     {isMuted || volume === 0 ? (
-                                        <VolumeX className="h-5 w-5" />
+                                        <VolumeX className="size-5" />
                                     ) : volume > 0.5 ? (
-                                        <Volume2 className="h-5 w-5" />
+                                        <Volume2 className="size-5" />
                                     ) : (
-                                        <Volume1 className="h-5 w-5" />
+                                        <Volume1 className="size-5" />
                                     )}
                                 </button>
 

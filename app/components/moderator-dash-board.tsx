@@ -431,6 +431,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
             <br />
             <div className="w-full flex justify-center mb-6">
                 <button
+                    type="button"
                     className={`mr-2 px-4 py-2 rounded-lg font-semibold transition-colors duration-200 ease-in-out
                         ${activeTab === "notes"
                             ? "bg-blue-500 text-white shadow-md"
@@ -443,6 +444,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                     Notes
                 </button>
                 <button
+                    type="button"
                     className={`ml-2 px-4 py-2 rounded-lg font-semibold transition-colors duration-200 ease-in-out
                         ${activeTab === "past_papers"
                             ? "bg-blue-500 text-white shadow-md"
@@ -461,6 +463,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
 
             {selectedItems.length > 0 && (
                 <button
+                    type="button"
                     className="mb-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
                     onClick={handleBulkApprove}
                 >
@@ -470,6 +473,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
 
             {selectedItems.length > 0 && (
                 <button
+                    type="button"
                     className="mb-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
                     onClick={handleBulkDelete}
                 >
@@ -484,6 +488,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                             <div key={item.id} className="relative group">
                                 <input
                                     type="checkbox"
+                                    aria-label={`Select ${item.title}`}
                                     className="absolute top-2 left-2 z-10"
                                     checked={selectedItems.includes(item.id)}
                                     onChange={() =>
@@ -505,6 +510,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                 )}
                                 <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
                                     <button
+                                        type="button"
                                         className="bg-green-500 text-white px-2 py-1 text-xs rounded-md 
                                                 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
                                                 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
@@ -522,6 +528,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                     </button>
                                     {activeTab === "past_papers" && (
                                         <button
+                                            type="button"
                                             className="bg-blue-500 text-white px-2 py-1 text-xs rounded-md
                                                 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
                                                 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-60"
@@ -534,6 +541,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                         </button>
                                     )}
                                     <button
+                                        type="button"
                                         className="bg-green-500 text-white px-2 py-1 text-xs rounded-md
                                                 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
                                                 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
@@ -549,6 +557,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                                         Approve
                                     </button>
                                     <button
+                                        type="button"
                                         className="bg-red-500 text-white px-2 py-1 text-xs rounded-md 
                                                 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-in-out
                                                 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"

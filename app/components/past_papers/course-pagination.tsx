@@ -56,7 +56,7 @@ export default function CoursePagination({ basePath, currentPage, totalPages, se
                 aria-label="Previous page"
                 className={`${base} ${inactive} ${currentPage <= 1 ? disabled : ""}`}
             >
-                <ChevronLeft className="h-4 w-4" aria-hidden />
+                <ChevronLeft className="size-4" aria-hidden />
             </Link>
 
             {startPage > 1 && (
@@ -110,7 +110,7 @@ export default function CoursePagination({ basePath, currentPage, totalPages, se
                 aria-label="Next page"
                 className={`${base} ${inactive} ${currentPage >= totalPages ? disabled : ""}`}
             >
-                <ChevronRight className="h-4 w-4" aria-hidden />
+                <ChevronRight className="size-4" aria-hidden />
             </Link>
         </nav>
     );

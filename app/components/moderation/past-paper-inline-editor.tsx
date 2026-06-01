@@ -16,10 +16,11 @@ import {
   FieldShell,
 } from "@/app/components/moderation/editor-fields";
 import ModeratorEditSheet from "@/app/components/moderation/moderator-edit-sheet";
-import TagField, {
+import TagField from "@/app/components/moderation/tag-field";
+import {
   areTagNameListsEqual,
   dedupeTagNames,
-} from "@/app/components/moderation/tag-field";
+} from "@/app/components/moderation/tag-utils";
 import { useModeratorInlineEditorOptions } from "@/app/components/moderation/use-moderator-inline-editor-options";
 import { useToast } from "@/app/components/ui/use-toast";
 import type { Campus, ExamType, Semester } from "@/db";
@@ -130,7 +131,7 @@ function buildBaseline(input: PastPaperInlineEditorProps): PaperDraft {
 export default function PastPaperInlineEditor(
   props: PastPaperInlineEditorProps,
 ) {
-  const router = useRouter();
+  const { replace, refresh } = useRouter();
   const { toast } = useToast();
   const { session, status } = useGuestPrompt();
   const isModerator = session?.user?.role === "MODERATOR";
@@ -190,9 +191,9 @@ export default function PastPaperInlineEditor(
         const nextPath = getPastPaperDetailPath(props.paperId, nextCourseCode);
         toast({ title: "Past paper updated" });
         if (nextCourseCode !== props.canonicalCode) {
-          router.replace(nextPath);
+          replace(nextPath);
         }
-        router.refresh();
+        refresh();
         setIsOpen(false);
       } catch (saveFailure) {
         const message =

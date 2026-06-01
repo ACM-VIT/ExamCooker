@@ -14,7 +14,7 @@ type ModeratorSearchParams = { page?: string; search?: string; tags?: string | s
 function ModeratorDashboardShell() {
     return (
         <div className="flex min-h-screen items-center justify-center bg-[#C2E6EC] dark:bg-[hsl(224,48%,9%)]" aria-hidden="true">
-            <div className="h-8 w-8 animate-spin border-2 border-black border-t-transparent dark:border-[#D5D5D5] dark:border-t-transparent" />
+            <div className="size-8 animate-spin border-2 border-black border-t-transparent dark:border-[#D5D5D5] dark:border-t-transparent" />
         </div>
     );
 }

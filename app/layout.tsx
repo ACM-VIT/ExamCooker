@@ -89,6 +89,14 @@ export default function RootLayout({
             style={{ backgroundColor: "var(--ec-app-bg, #0C1222)" }}
         >
             <head>
+                <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+                <link rel="preconnect" href="https://examcookerprodsi.blob.core.windows.net" crossOrigin="" />
+                <link rel="preconnect" href="https://examcookerdevsi.blob.core.windows.net" crossOrigin="" />
+                <link rel="dns-prefetch" href="https://i.ytimg.com" />
+                <link rel="dns-prefetch" href="https://storage.googleapis.com" />
+                <link rel="dns-prefetch" href="https://eu.i.posthog.com" />
+                <link rel="dns-prefetch" href="https://us.i.posthog.com" />
                 <StructuredData
                     data={[
                            buildOrganizationStructuredData(),
