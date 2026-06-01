@@ -141,8 +141,8 @@ importers:
         specifier: ^6.0.66
         version: 6.0.66(zod@4.3.6)
       capacitor-native-tab:
-        specifier: workspace:*
-        version: link:packages/capacitor-native-tab
+        specifier: 1.0.4
+        version: 1.0.4(@capacitor/core@8.3.1)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -2768,6 +2768,11 @@ packages:
 
   caniuse-lite@1.0.30001793:
     resolution: {integrity: sha512-iwSsYWaCOoh26cV8NwNRViHlrfUvYsHDfRVcbtmw0Kg6PJIZZXwMkj1442FYLBGkeUf1juAsU3DTfxW579mrPA==}
+
+  capacitor-native-tab@1.0.4:
+    resolution: {integrity: sha512-/vEKDmnmHDY31VYpg/5/h4nyCshVUT0sKTHZaxUVEP1iMS1MQ+MO4U7gSrYztz6jnPiclLwFLtvzbt/3Gew7pA==}
+    peerDependencies:
+      '@capacitor/core': ^8.0.0
 
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
@@ -7230,6 +7235,10 @@ snapshots:
   caniuse-lite@1.0.30001766: {}
 
   caniuse-lite@1.0.30001793: {}
+
+  capacitor-native-tab@1.0.4(@capacitor/core@8.3.1):
+    dependencies:
+      '@capacitor/core': 8.3.1
 
   ccount@2.0.1: {}
 
