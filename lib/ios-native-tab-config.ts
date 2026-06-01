@@ -1,4 +1,4 @@
-import type { TabConfig } from "capacitor-native-tabs";
+import type { TabConfig } from "capacitor-native-tab";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 
 type ExamCookerTabConfig = TabConfig & {

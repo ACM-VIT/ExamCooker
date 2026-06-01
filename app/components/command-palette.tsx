@@ -358,6 +358,10 @@ const COMMAND_PHRASES = [
   "study material",
 ];
 
+const COMMAND_PHRASE_PATTERNS = COMMAND_PHRASES.map(
+  (phrase) => new RegExp(`\\b${escapeRegExp(phrase)}\\b`, "g"),
+);
+
 const INITIAL_COMMAND_CATALOG_STATE: CommandCatalogState = {
   status: "idle",
   courses: [],
@@ -549,11 +553,8 @@ async function rememberPreferenceWithServerFallback(
 function getCourseSearchText(query: string) {
   let normalized = normalizeCommandSearch(query);
 
-  for (const phrase of COMMAND_PHRASES) {
-    normalized = ` ${normalized} `.replace(
-      new RegExp(`\\b${escapeRegExp(phrase)}\\b`, "g"),
-      " ",
-    );
+  for (const pattern of COMMAND_PHRASE_PATTERNS) {
+    normalized = ` ${normalized} `.replace(pattern, " ");
   }
 
   return normalized
@@ -1067,7 +1068,7 @@ function CommandPaletteSession({
   open,
   onOpenChange,
 }: CommandPaletteProps) {
-  const router = useRouter();
+  const { push } = useRouter();
   const pathname = usePathname();
   const { isAuthed, status: authStatus } = useGuestPrompt();
   const voiceAgentEnabled =
@@ -1460,7 +1461,7 @@ function CommandPaletteSession({
 
     startTransition(() => {
       addTransitionType(href.startsWith("/past_papers/") ? "nav-forward" : "nav-lateral");
-      router.push(href);
+      push(href);
     });
   };
 

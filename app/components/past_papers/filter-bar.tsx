@@ -52,7 +52,7 @@ export default function FilterBar({
     slotCounts,
     searchString,
 }: Props) {
-    const router = useRouter();
+    const { replace } = useRouter();
     const [pending, startTransition] = useTransition();
     const searchParams = useMemo(
         () => new URLSearchParams(searchString),
@@ -83,9 +83,9 @@ export default function FilterBar({
         const qs = next.toString();
         startTransition(() => {
             addTransitionType("filter-results");
-            router.replace(qs ? `${basePath}?${qs}` : basePath);
+            replace(qs ? `${basePath}?${qs}` : basePath);
         });
-    }, [basePath, router, startTransition]);
+    }, [basePath, replace, startTransition]);
 
     const replaceList = useCallback((key: string, values: string[]) => {
         const next = new URLSearchParams(searchParams.toString());

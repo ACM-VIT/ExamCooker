@@ -10,7 +10,7 @@ type Props = {
 };
 
 export default function AnswerKeyToggle({ basePath, count, searchString }: Props) {
-    const router = useRouter();
+    const { replace } = useRouter();
     const [, startTransition] = useTransition();
     const searchParams = new URLSearchParams(searchString);
     const checked = searchParams.get("answer_key") === "1";
@@ -24,7 +24,7 @@ export default function AnswerKeyToggle({ basePath, count, searchString }: Props
         const qs = params.toString();
         startTransition(() => {
             addTransitionType("filter-results");
-            router.replace(qs ? `${basePath}?${qs}` : basePath);
+            replace(qs ? `${basePath}?${qs}` : basePath);
         });
     };
 
@@ -39,7 +39,7 @@ export default function AnswerKeyToggle({ basePath, count, searchString }: Props
                 type="checkbox"
                 checked={checked}
                 onChange={(event) => onChange(event.target.checked)}
-                className="h-4 w-4 accent-[#5FC4E7]"
+                className="size-4 accent-[#5FC4E7]"
             />
         </label>
     );

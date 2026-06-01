@@ -237,7 +237,7 @@ function UploadHeader({
         <div className="mb-4 grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:gap-4">
             <Link
                 href={href}
-                className="flex h-10 w-10 items-center justify-center border-2 border-[#3BF3C7] font-bold text-[#3BF3C7] hover:bg-[#ffffff]/10"
+                className="flex size-10 items-center justify-center border-2 border-[#3BF3C7] font-bold text-[#3BF3C7] hover:bg-[#ffffff]/10"
                 aria-label={`Back to ${variant === "Past Papers" ? "past papers" : "notes"}`}
             >
                 <FontAwesomeIcon icon={faArrowLeft} />
@@ -246,7 +246,7 @@ function UploadHeader({
                 New {variant}
             </h3>
             <div className="group relative">
-                <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
+                <div className="absolute inset-0 bg-[#0A0F1C] dark:bg-[#3BF4C7]" />
                 <div className="duration-1000 transition dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none dark:group-hover:duration-200 lg:dark:group-hover:bg-[#3BF4C7]" />
                 <button
                     type="submit"
@@ -276,6 +276,7 @@ function UploadTitleField({
         <input
             id={inputId}
             type="text"
+            aria-label={`Title ${index + 1}`}
             className="w-full border-2 border-dashed border-gray-300 p-2 text-sm font-bold text-black dark:bg-[#0C1222] dark:text-[#D5D5D5] sm:text-base"
             value={value}
             onChange={(event) => onChange(index, event.target.value)}
@@ -448,7 +449,7 @@ function PastPaperMetadataFields({
                             onChange={(event) =>
                                 updateField("hasAnswerKey", event.target.checked)
                             }
-                            className="h-4 w-4 accent-[#5FC4E7]"
+                            className="size-4 accent-[#5FC4E7]"
                         />
                         Has answer key
                     </label>
@@ -566,6 +567,7 @@ function ImageBundleSection({
                 accept="image/*"
                 capture="environment"
                 multiple
+                aria-label="Capture paper images"
                 className="hidden"
                 onChange={(event) => {
                     if (!event.target.files) return;
@@ -654,6 +656,7 @@ function PdfDropzoneSection({
             <input
                 {...dropzone.getInputProps({
                     disabled: !canSelectMoreFiles,
+                    "aria-label": `Select ${variant.toLowerCase()} files`,
                 })}
             />
             {variant === "Past Papers" ? (
@@ -663,6 +666,7 @@ function PdfDropzoneSection({
                     accept="image/*"
                     capture="environment"
                     multiple
+                    aria-label="Capture paper images"
                     className="hidden"
                     onChange={(event) => {
                         if (!event.target.files) return;
@@ -672,7 +676,7 @@ function PdfDropzoneSection({
                 />
             ) : null}
             <svg
-                className="mb-2 h-8 w-8 text-gray-400 sm:h-10 sm:w-10"
+                className="mb-2 size-8 text-gray-400 sm:size-10"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -746,7 +750,7 @@ function SelectedFilesList({
                     />
                     <button
                         type="button"
-                        className="flex h-10 w-10 shrink-0 items-center justify-center text-red-500"
+                        className="flex size-10 shrink-0 items-center justify-center text-red-500"
                         onClick={() => onRemoveFile(index)}
                         aria-label={`Remove ${file.name}`}
                     >
@@ -779,7 +783,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     };
 
     const { toast } = useToast();
-    const router = useRouter();
+    const { push } = useRouter();
     const { requireAuth } = useGuestPrompt();
 
     const {
@@ -1149,7 +1153,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                     }
 
                     toast({ title: "Selected files uploaded successfully." });
-                    router.push(variant === "Past Papers" ? "/past_papers" : "/notes");
+                    push(variant === "Past Papers" ? "/past_papers" : "/notes");
                 } catch (uploadError) {
                     console.error("Error uploading files:", uploadError);
                     dispatch({
@@ -1174,7 +1178,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             files,
             hasAnswerKey,
             requireAuth,
-            router,
+            push,
             semesterVal,
             slot,
             toast,

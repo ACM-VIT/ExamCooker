@@ -5,7 +5,7 @@ import { startGoogleSignIn } from "@/lib/start-google-sign-in";
 export function SignIn({ displayText }: { displayText: string }) {
     return (
         <div className="relative group">
-            <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
+            <div className="absolute inset-0 bg-[#0A0F1C] dark:bg-[#3BF4C7]" />
             <div className="absolute inset-0 blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
             <button
                 type="button"

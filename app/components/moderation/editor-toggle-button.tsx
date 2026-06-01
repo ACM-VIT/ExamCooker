@@ -31,7 +31,7 @@ const EditorToggleButton = forwardRef<HTMLButtonElement, EditorToggleButtonProps
         className={`group/edit ml-1.5 inline-flex h-7 w-7 shrink-0 translate-y-[-0.05em] items-center justify-center align-middle text-black/30 transition-all duration-150 ease-out hover:-translate-y-[0.18em] hover:text-black focus:outline-none focus-visible:text-black dark:text-[#D5D5D5]/30 dark:hover:text-[#3BF4C7] dark:focus-visible:text-[#3BF4C7] ${className ?? ""}`}
       >
         <Pencil
-          className="h-3.5 w-3.5 transition-transform duration-150 ease-out group-hover/edit:rotate-[-8deg]"
+          className="size-3.5 transition-transform duration-150 ease-out group-hover/edit:rotate-[-8deg]"
           aria-hidden
         />
       </button>

@@ -20,5 +20,5 @@ project(':capacitor-splash-screen').projectDir = new File('../../node_modules/.p
 include ':capacitor-status-bar'
 project(':capacitor-status-bar').projectDir = new File('../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.3.1/node_modules/@capacitor/status-bar/android')
 
-include ':capacitor-native-tabs'
-project(':capacitor-native-tabs').projectDir = new File('../../node_modules/.pnpm/capacitor-native-tabs@1.0.3_patch_hash=55be62b149d5aa91b1301057485179376dcadc1cdc7708c0_dec6997368ef8fc5cf28c3f1a3855bc8/node_modules/capacitor-native-tabs/android')
+include ':capacitor-native-tab'
+project(':capacitor-native-tab').projectDir = new File('../../packages/capacitor-native-tab/android')

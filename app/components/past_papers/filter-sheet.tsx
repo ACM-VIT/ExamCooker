@@ -67,7 +67,7 @@ export default function FilterSheet({
     searchString,
     totalCount,
 }: Props) {
-    const router = useRouter();
+    const { replace } = useRouter();
     const [open, setOpen] = useState(false);
 
     const searchParams = useMemo(
@@ -106,11 +106,11 @@ export default function FilterSheet({
         (next: URLSearchParams) => {
             next.delete("page");
             const qs = next.toString();
-            router.replace(qs ? `${basePath}?${qs}` : basePath, {
+            replace(qs ? `${basePath}?${qs}` : basePath, {
                 transitionTypes: ["filter-sheet-update"],
             });
         },
-        [basePath, router],
+        [basePath, replace],
     );
 
     const toggleIn = useCallback(
@@ -180,13 +180,13 @@ export default function FilterSheet({
                             : "border-black/15 bg-white text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]",
                     )}
                 >
-                    <SlidersHorizontal className="h-4 w-4" strokeWidth={2.25} />
+                    <SlidersHorizontal className="size-4" strokeWidth={2.25} />
                     <span>Filters</span>
                     {activeCount > 0 && (
                         <span
                             className={cn(
                                 "inline-flex h-5 min-w-5 items-center justify-center px-1.5 text-[11px] font-bold leading-none tabular-nums",
-                                "bg-black text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]",
+                                "bg-[#0A0F1C] text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]",
                             )}
                         >
                             {activeCount}
@@ -223,9 +223,9 @@ export default function FilterSheet({
                                 <button
                                     type="button"
                                     aria-label="Close filters"
-                                    className="inline-flex h-9 w-9 items-center justify-center text-black/55 hover:bg-black/5 active:scale-95 dark:text-[#D5D5D5]/55 dark:hover:bg-white/5"
+                                    className="inline-flex size-9 items-center justify-center text-black/55 hover:bg-black/5 active:scale-95 dark:text-[#D5D5D5]/55 dark:hover:bg-white/5"
                                 >
-                                    <X className="h-5 w-5" />
+                                    <X className="size-5" />
                                 </button>
                             </Drawer.Close>
                         </div>

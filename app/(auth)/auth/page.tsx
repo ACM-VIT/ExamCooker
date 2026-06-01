@@ -29,9 +29,9 @@ function AuthShell({ children }: { children: React.ReactNode }) {
             <Link
                 href="/"
                 aria-label="Back to home"
-                className="absolute left-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white/75 text-black shadow-sm backdrop-blur transition hover:bg-white active:translate-y-px dark:border-white/10 dark:bg-white/10 dark:text-[#D5D5D5] dark:hover:bg-white/15"
+                className="absolute left-4 top-4 inline-flex size-11 items-center justify-center rounded-full border border-black/10 bg-white/75 text-black shadow-sm backdrop-blur transition hover:bg-white active:translate-y-px dark:border-white/10 dark:bg-white/10 dark:text-[#D5D5D5] dark:hover:bg-white/15"
             >
-                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                <ChevronLeft className="size-5" aria-hidden="true" />
             </Link>
 
             <div className="absolute right-4 top-4">
@@ -49,7 +49,7 @@ function AuthShell({ children }: { children: React.ReactNode }) {
                         alt="ExamCooker"
                         width={72}
                         height={72}
-                        className="h-16 w-16 sm:h-[72px] sm:w-[72px]"
+                        className="size-16 sm:size-[72px]"
                     />
                     <span className="h-12 w-px bg-black/15 dark:bg-white/15 sm:h-14" />
                     <AppImage

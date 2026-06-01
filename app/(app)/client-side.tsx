@@ -82,7 +82,7 @@ function MobileStaticLogo() {
                     alt="ExamCooker"
                     width={20}
                     height={20}
-                    className="h-5 w-5 shrink-0"
+                    className="size-5 shrink-0"
                 />
                 <span className="truncate pt-px">
                     Exam
@@ -116,7 +116,7 @@ function MobileChromeHeader({
                     style={{ viewTransitionName: "persistent-menu-button" }}
                     className={`ec-icon-button pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-black/65 active:bg-black/[0.08] dark:text-[#D5D5D5]/85 dark:active:bg-white/[0.07] ${isNavOn ? "pointer-events-none opacity-0" : "opacity-100"}`}
                 >
-                    <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+                    <MoreHorizontal className="size-6" strokeWidth={2.25} aria-hidden />
                 </button>
             </div>
         </header>
@@ -151,9 +151,9 @@ function NavBarFallback({
                                 type="button"
                                 onClick={toggleNavbar}
                                 aria-label="Close tools menu"
-                                className="flex h-10 w-10 items-center justify-center rounded-full text-black/50 hover:bg-black/[0.07] dark:text-[#D5D5D5]/55 dark:hover:bg-white/[0.08]"
+                                className="flex size-10 items-center justify-center rounded-full text-black/50 hover:bg-black/[0.07] dark:text-[#D5D5D5]/55 dark:hover:bg-white/[0.08]"
                             >
-                                <X className="h-5 w-5" aria-hidden />
+                                <X className="size-5" aria-hidden />
                             </button>
                         </div>
                     </div>

@@ -30,7 +30,7 @@ const UploadButtonNotes: React.FC = () => {
                 title="Create New Note"
                 className="relative inline-flex h-full items-center gap-2 border-2 border-black bg-[#3BF4C7] px-4 text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-1 dark:group-hover:-translate-y-1"
             >
-                <Plus className="h-4 w-4" aria-hidden />
+                <Plus className="size-4" aria-hidden />
                 <span className="leading-none">New</span>
             </Link>
         </div>

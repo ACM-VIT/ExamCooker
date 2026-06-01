@@ -111,11 +111,11 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
             title={isDark ? "Switch to light mode" : "Switch to dark mode"}
             aria-pressed={isDark}
             className={cn(
-                "relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent bg-transparent text-black/70 shadow-none transition-colors duration-200 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] dark:focus-visible:ring-[#3BF4C7]/50",
+                "relative inline-flex size-8 items-center justify-center rounded-full border border-transparent bg-transparent text-black/70 shadow-none transition-colors duration-200 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7] dark:focus-visible:ring-[#3BF4C7]/50",
                 className,
             )}
         >
-            <span className="relative flex h-6 w-6 flex-shrink-0 items-center justify-center">
+            <span className="relative flex size-6 flex-shrink-0 items-center justify-center">
                 <svg
                     viewBox="0 0 24 24"
                     fill="none"
@@ -124,7 +124,7 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     className={cn(
-                        "absolute h-4 w-4 transition-transform duration-300 ease-out",
+                        "absolute size-4 transition-transform duration-300 ease-out",
                         isDark ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100",
                         iconClassName,
                     )}
@@ -148,7 +148,7 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     className={cn(
-                        "absolute h-4 w-4 transition-transform duration-300 ease-out",
+                        "absolute size-4 transition-transform duration-300 ease-out",
                         isDark ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0",
                         iconClassName,
                     )}

@@ -218,7 +218,7 @@ export default function CliCodeInput({
           <>
             <div
               aria-hidden="true"
-              className="absolute inset-0 bg-black dark:bg-[#3BF4C7]"
+              className="absolute inset-0 bg-[#0A0F1C] dark:bg-[#3BF4C7]"
             />
             <div
               aria-hidden="true"

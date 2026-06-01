@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { dedupeTagNames, normalizeTagName } from "./tag-utils";
 
 type TagFieldProps = {
   disabled?: boolean;
@@ -9,43 +10,6 @@ type TagFieldProps = {
   suggestions: string[];
   value: string[];
 };
-
-export function normalizeTagName(tagName: string) {
-  return tagName.trim().replace(/\s+/g, " ");
-}
-
-export function dedupeTagNames(tagNames: string[]) {
-  const map = new Map<string, string>();
-
-  for (const tagName of tagNames) {
-    const cleaned = normalizeTagName(tagName);
-    if (!cleaned) {
-      continue;
-    }
-
-    const key = cleaned.toLowerCase();
-    if (!map.has(key)) {
-      map.set(key, cleaned);
-    }
-  }
-
-  return Array.from(map.values());
-}
-
-export function areTagNameListsEqual(left: string[], right: string[]) {
-  const leftNormalized = dedupeTagNames(left)
-    .map((tagName) => tagName.toLowerCase())
-    .sort();
-  const rightNormalized = dedupeTagNames(right)
-    .map((tagName) => tagName.toLowerCase())
-    .sort();
-
-  if (leftNormalized.length !== rightNormalized.length) {
-    return false;
-  }
-
-  return leftNormalized.every((tagName, index) => tagName === rightNormalized[index]);
-}
 
 export default function TagField({
   disabled = false,
@@ -65,10 +29,20 @@ export default function TagField({
     );
     const query = normalizeTagName(inputValue).toLowerCase();
 
-    return dedupeTagNames(suggestions)
-      .filter((tagName) => !selected.has(tagName.toLowerCase()))
-      .filter((tagName) => !query || tagName.toLowerCase().includes(query))
-      .slice(0, 8);
+    const matches: string[] = [];
+    for (const tagName of dedupeTagNames(suggestions)) {
+      const normalizedTagName = tagName.toLowerCase();
+      if (selected.has(normalizedTagName)) {
+        continue;
+      }
+
+      if (!query || normalizedTagName.includes(query)) {
+        matches.push(tagName);
+        if (matches.length === 8) break;
+      }
+    }
+
+    return matches;
   }, [inputValue, normalizedTags, suggestions]);
 
   useEffect(() => {
@@ -138,6 +112,7 @@ export default function TagField({
           <input
             type="text"
             value={inputValue}
+            aria-label={placeholder}
             onChange={(event) => {
               setInputValue(event.target.value);
               setIsOpen(true);

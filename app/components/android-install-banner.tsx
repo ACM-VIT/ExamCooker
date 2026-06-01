@@ -118,7 +118,7 @@ export default function AndroidInstallBanner() {
                     alt=""
                     width={42}
                     height={42}
-                    className="h-10 w-10 shrink-0"
+                    className="size-10 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
                     <p className="text-sm font-extrabold leading-tight">
@@ -139,16 +139,16 @@ export default function AndroidInstallBanner() {
                     className="inline-flex h-10 shrink-0 items-center gap-1.5 border-2 border-black bg-[#5FC4E7] px-3 text-xs font-bold text-black transition active:translate-y-0.5 dark:border-white/15 dark:bg-white/10 dark:text-[#D5D5D5] dark:hover:bg-white/15"
                     aria-label="Install ExamCooker from Google Play"
                 >
-                    <Download aria-hidden="true" className="h-4 w-4" />
+                    <Download aria-hidden="true" className="size-4" />
                     Install
                 </a>
                 <button
                     type="button"
                     onClick={handleDismiss}
                     aria-label="Dismiss Android install banner"
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-black/40 transition hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/40 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
+                    className="inline-flex size-8 shrink-0 items-center justify-center text-black/40 transition hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/40 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                 >
-                    <X aria-hidden="true" className="h-4 w-4" />
+                    <X aria-hidden="true" className="size-4" />
                 </button>
             </div>
         </div>

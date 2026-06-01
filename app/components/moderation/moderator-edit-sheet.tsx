@@ -98,9 +98,9 @@ export default function ModeratorEditSheet({
               <button
                 type="button"
                 aria-label="Close editor"
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-black/15 bg-white text-black/55 shadow-[0_2px_0_0_rgba(0,0,0,0.12)] transition-all duration-150 ease-out hover:-translate-y-px hover:border-black/40 hover:bg-black/[0.04] hover:text-black hover:shadow-[0_3px_0_0_rgba(0,0,0,0.85)] focus:outline-none focus-visible:border-black/40 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/55 dark:shadow-[0_2px_0_0_rgba(213,213,213,0.12)] dark:hover:border-[#3BF4C7]/55 dark:hover:bg-white/[0.04] dark:hover:text-[#3BF4C7] dark:hover:shadow-[0_3px_0_0_rgba(59,244,199,0.45)]"
+                className="inline-flex size-8 shrink-0 items-center justify-center border border-black/15 bg-white text-black/55 shadow-[0_2px_0_0_rgba(0,0,0,0.12)] transition-all duration-150 ease-out hover:-translate-y-px hover:border-black/40 hover:bg-black/[0.04] hover:text-black hover:shadow-[0_3px_0_0_rgba(0,0,0,0.85)] focus:outline-none focus-visible:border-black/40 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/55 dark:shadow-[0_2px_0_0_rgba(213,213,213,0.12)] dark:hover:border-[#3BF4C7]/55 dark:hover:bg-white/[0.04] dark:hover:text-[#3BF4C7] dark:hover:shadow-[0_3px_0_0_rgba(59,244,199,0.45)]"
               >
-                <X className="h-4 w-4" aria-hidden />
+                <X className="size-4" aria-hidden />
               </button>
             </Drawer.Close>
           </header>
