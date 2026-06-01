@@ -28,7 +28,7 @@ type Props = {
 const navActionButtonClassName =
   "text-black hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:hover:bg-transparent lg:dark:bg-transparent lg:dark:hover:bg-transparent";
 const navActionIconClassName =
-  "h-6 w-6 transform-gpu transition-all can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110";
+  "size-6 transform-gpu transition-all can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110";
 const navActionLabelBaseClassName =
   "hidden overflow-hidden whitespace-nowrap text-sm font-medium text-black transition-all duration-300 lg:block lg:group-hover/action:text-[#0D5875] lg:dark:text-[#D5D5D5] lg:dark:group-hover/action:text-[#3BF4C7]";
 
@@ -124,7 +124,7 @@ const NavBar: React.FC<Props> = ({
   onOpenCommandPalette,
 }) => {
   const pathname = usePathname();
-  const router = useRouter();
+  const { push } = useRouter();
   const { isAuthed, requireAuth, openPrompt, session } = useGuestPrompt();
   const voiceAgentEnabled =
     usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? false;
@@ -297,7 +297,7 @@ const NavBar: React.FC<Props> = ({
     setNavTransitionOrigin(event.currentTarget);
     startTransition(() => {
       addTransitionType("nav-lateral");
-      router.push(href);
+      push(href);
     });
   };
 
@@ -349,7 +349,7 @@ const NavBar: React.FC<Props> = ({
         if (cancelled) return;
         const platform = Capacitor.getPlatform();
         if (platform !== "ios" && platform !== "android") return;
-        const { NativeTabs } = await import("capacitor-native-tabs");
+        const { NativeTabs } = await import("capacitor-native-tab");
         if (isNavOn) {
           await NativeTabs.hideTabBar().catch(() => undefined);
         } else {
@@ -433,9 +433,9 @@ const NavBar: React.FC<Props> = ({
                   type="button"
                   onClick={toggleNavbar}
                   aria-label="Close tools menu"
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-black/50 transition-colors hover:bg-black/[0.07] active:bg-black/[0.11] dark:text-[#D5D5D5]/55 dark:hover:bg-white/[0.08] dark:active:bg-white/[0.12]"
+                  className="flex size-10 items-center justify-center rounded-full text-black/50 transition-colors hover:bg-black/[0.07] active:bg-black/[0.11] dark:text-[#D5D5D5]/55 dark:hover:bg-white/[0.08] dark:active:bg-white/[0.12]"
                 >
-                  <X className="h-5 w-5" aria-hidden />
+                  <X className="size-5" aria-hidden />
                 </button>
               </div>
             </div>
@@ -452,7 +452,7 @@ const NavBar: React.FC<Props> = ({
                     title="Search"
                     aria-label="Open command search"
                     onClick={onOpenCommandPalette}
-                    className={`${navActionButtonClassName} pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent bg-transparent shadow-none transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:focus-visible:ring-[#3BF4C7]/50`}
+                    className={`${navActionButtonClassName} pointer-events-auto inline-flex size-8 items-center justify-center rounded-full border border-transparent bg-transparent shadow-none transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:focus-visible:ring-[#3BF4C7]/50`}
                   >
                     <Search className={navActionIconClassName} aria-hidden />
                     <span className={navLabelClassName}>Search</span>
@@ -525,9 +525,9 @@ const NavBar: React.FC<Props> = ({
                       title="Profile"
                       aria-label="Profile"
                       onClick={() => dispatch({ type: "toggle-profile" })}
-                      className="pointer-events-auto flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-black transition-colors duration-200 hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:p-0"
+                      className="pointer-events-auto flex size-8 cursor-pointer items-center justify-center rounded-full text-black transition-colors duration-200 hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:p-0"
                     >
-                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-200 can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110">
+                      <span className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-200 can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110">
                         {(session?.user?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
                       </span>
                       <span className={navLabelClassName}>Account</span>
@@ -539,7 +539,7 @@ const NavBar: React.FC<Props> = ({
                     title="Sign in"
                     aria-label="Sign in"
                     onClick={() => openPrompt("continue")}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-black transition-colors duration-200 hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:p-0"
+                    className="inline-flex size-8 items-center justify-center rounded-full text-black transition-colors duration-200 hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:p-0"
                   >
                     <svg
                       viewBox="0 0 24 24"

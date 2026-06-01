@@ -16,6 +16,16 @@ import { stripPdfExtension } from "@/lib/pdf";
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
+const POSTED_AT_FORMATTER = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+});
+
 function isValidSlot(str: string): boolean {
     const regex = /^[A-G]\d$/;
     return regex.test(str);
@@ -27,15 +37,7 @@ function isValidYear(year: string): boolean {
 }
 
 function formatPostedAt(date: Date) {
-    return new Intl.DateTimeFormat("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    }).format(date);
+    return POSTED_AT_FORMATTER.format(date);
 }
 
 function NoteViewerShell() {

@@ -27,11 +27,13 @@ const EXAM_TYPES: { value: ExamType; label: string }[] = [
     { value: "OTHER", label: "Other" },
 ];
 
+const SCHEDULED_AT_FORMATTER = new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+});
+
 function formatScheduledAt(value: string | Date) {
-    return new Intl.DateTimeFormat("en-IN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-    }).format(value instanceof Date ? value : new Date(value));
+    return SCHEDULED_AT_FORMATTER.format(value instanceof Date ? value : new Date(value));
 }
 
 function parseSlots(raw: string): string[] {
@@ -42,7 +44,7 @@ function parseSlots(raw: string): string[] {
 }
 
 function CreateForm({ courses }: { courses: CourseOption[] }) {
-    const router = useRouter();
+    const { refresh } = useRouter();
     const { toast } = useToast();
     const [pending, start] = useTransition();
     const [courseId, setCourseId] = useState<string | null>(null);
@@ -77,7 +79,7 @@ function CreateForm({ courses }: { courses: CourseOption[] }) {
                 });
                 toast({ title: "Added" });
                 reset();
-                router.refresh();
+                refresh();
             } catch (err) {
                 toast({
                     title: "Could not add",
@@ -177,7 +179,7 @@ function Row({
     item: UpcomingExamItem;
     courses: CourseOption[];
 }) {
-    const router = useRouter();
+    const { refresh } = useRouter();
     const { toast } = useToast();
     const [pending, start] = useTransition();
     const [draft, updateDraft] = useReducer(
@@ -217,7 +219,7 @@ function Row({
                 });
                 toast({ title: "Updated" });
                 updateDraft({ editing: false });
-                router.refresh();
+                refresh();
             } catch (err) {
                 toast({
                     title: "Could not update",
@@ -234,7 +236,7 @@ function Row({
             try {
                 await deleteUpcomingExam(item.id);
                 toast({ title: "Deleted" });
-                router.refresh();
+                refresh();
             } catch (err) {
                 toast({
                     title: "Could not delete",
@@ -256,12 +258,14 @@ function Row({
                             onChange={(courseId) => updateDraft({ courseId })}
                         />
                         <input
+                            aria-label="Slots"
                             value={draft.slotsText}
                             onChange={(e) => updateDraft({ slotsText: e.target.value })}
                             className="border border-black/30 bg-white px-2 py-1 text-sm dark:border-[#D5D5D5]/40 dark:bg-[#0C1222]"
                             placeholder="A1, C2"
                         />
                         <select
+                            aria-label="Exam type"
                             value={draft.examType}
                             onChange={(e) =>
                                 updateDraft({ examType: e.target.value as ExamType | "" })
@@ -277,6 +281,7 @@ function Row({
                         </select>
                         <input
                             type="datetime-local"
+                            aria-label="Scheduled at"
                             value={draft.scheduledAt}
                             onChange={(e) => updateDraft({ scheduledAt: e.target.value })}
                             className="border border-black/30 bg-white px-2 py-1 text-sm dark:border-[#D5D5D5]/40 dark:bg-[#0C1222]"
@@ -377,7 +382,7 @@ export default function UpcomingExamEditor({ courses, existing }: Props) {
                                 <th className="p-2">Slots</th>
                                 <th className="p-2">Exam</th>
                                 <th className="p-2">When</th>
-                                <th className="p-2" />
+                                <th className="p-2" aria-label="Actions" />
                             </tr>
                         </thead>
                         <tbody>

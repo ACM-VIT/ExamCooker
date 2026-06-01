@@ -17,21 +17,35 @@ const config: CapacitorConfig = {
   appId: "in.acmvit.examcooker",
   appName: "ExamCooker",
   webDir: "mobile/native-shell",
+  backgroundColor: "#0C1222",
   android: {
     path: "mobile/android",
+    backgroundColor: "#0C1222",
+    allowMixedContent: false,
+    captureInput: true,
+    webContentsDebuggingEnabled: false,
+    useLegacyBridge: false,
   },
   ios: {
     path: "mobile/ios",
+    backgroundColor: "#0C1222",
+    contentInset: "never",
+    scrollEnabled: true,
+    allowsLinkPreview: true,
+    handleApplicationNotifications: true,
+    preferredContentMode: "mobile",
+    limitsNavigationsToAppBoundDomains: false,
   },
   plugins: {
     App: {
       disableBackButtonHandler: true,
     },
     SplashScreen: {
-      launchAutoHide: true,
+      launchAutoHide: false,
       backgroundColor: "#0C1222",
       androidSplashResourceName: "splash",
-      launchFadeOutDuration: 260,
+      launchFadeOutDuration: 200,
+      showSpinner: false,
     },
     StatusBar: {
       style: "DARK",

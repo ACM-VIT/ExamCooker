@@ -40,7 +40,6 @@ import type {
   VoiceToolDefinition,
 } from "./voice-runtime-types";
 
-export { GhostCursorOverlay, useGhostCursor } from "./voice-ghost-cursor";
 export type {
   ActivationMode,
   OutputMode,

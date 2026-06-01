@@ -20,7 +20,7 @@ export default function SortDropdown({
     value: SortValue;
     searchString: string;
 }) {
-    const router = useRouter();
+    const { replace } = useRouter();
     const [, startTransition] = useTransition();
 
     const onChange = (next: string) => {
@@ -34,7 +34,7 @@ export default function SortDropdown({
         const qs = params.toString();
         startTransition(() => {
             addTransitionType("filter-results");
-            router.replace(qs ? `${basePath}?${qs}` : basePath);
+            replace(qs ? `${basePath}?${qs}` : basePath);
         });
     };
 

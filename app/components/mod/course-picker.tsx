@@ -254,6 +254,7 @@ export default function CoursePicker({
             ) : (
                 <input
                     type="text"
+                    aria-label="Search courses"
                     value={query}
                     onChange={(e) => {
                         dispatch({ type: "query", value: e.target.value });
@@ -333,6 +334,7 @@ export default function CoursePicker({
                         <input
                             type="text"
                             value={newCode}
+                            aria-label="New course code"
                             onChange={(e) => dispatch({ type: "new-code", value: e.target.value })}
                             placeholder="Code"
                             className="w-full border border-black/30 bg-white px-3 py-2 font-mono text-sm text-black placeholder-black/40 focus:outline-none focus:ring-2 focus:ring-[#5FC4E7] dark:border-[#D5D5D5]/40 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:placeholder-[#D5D5D5]/30"
@@ -340,6 +342,7 @@ export default function CoursePicker({
                         <input
                             type="text"
                             value={newTitle}
+                            aria-label="New course title"
                             onChange={(e) => dispatch({ type: "new-title", value: e.target.value })}
                             placeholder="Course title"
                             className="w-full border border-black/30 bg-white px-3 py-2 text-sm text-black placeholder-black/40 focus:outline-none focus:ring-2 focus:ring-[#5FC4E7] dark:border-[#D5D5D5]/40 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:placeholder-[#D5D5D5]/30"

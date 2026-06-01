@@ -8,6 +8,8 @@ type PatchedHistory = History & {
     __examcookerLocationPatched?: boolean;
 };
 
+let locationChangeQueued = false;
+
 function getSnapshot() {
     return typeof window === "undefined" ? "" : window.location.search;
 }
@@ -22,7 +24,15 @@ function patchHistoryEvents() {
     const history = window.history as PatchedHistory;
     if (history.__examcookerLocationPatched) return;
 
-    const notify = () => window.dispatchEvent(new Event(LOCATION_CHANGE_EVENT));
+    const notify = () => {
+        if (locationChangeQueued) return;
+        locationChangeQueued = true;
+
+        queueMicrotask(() => {
+            locationChangeQueued = false;
+            window.dispatchEvent(new Event(LOCATION_CHANGE_EVENT));
+        });
+    };
     const pushState = history.pushState.bind(history);
     const replaceState = history.replaceState.bind(history);
 

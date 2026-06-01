@@ -19,7 +19,7 @@ function NoteReviewShell() {
             className="flex min-h-screen items-center justify-center bg-[#F5FAFD] dark:bg-transparent"
             aria-hidden="true"
         >
-            <div className="h-8 w-8 animate-spin border-2 border-black border-t-transparent dark:border-[#D5D5D5] dark:border-t-transparent" />
+            <div className="size-8 animate-spin border-2 border-black border-t-transparent dark:border-[#D5D5D5] dark:border-t-transparent" />
         </div>
     );
 }

@@ -43,7 +43,7 @@ export default function NotesCourseSearch({
     courses,
     initialQuery = "",
 }: Props) {
-    const router = useRouter();
+    const { push } = useRouter();
     const [query, setQuery] = useState(() => initialQuery);
     const [isOpen, setIsOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -75,14 +75,19 @@ export default function NotesCourseSearch({
         const normalized = normalizeSearchInput(trimmed);
         const terms = normalized.split(" ").filter(Boolean);
 
-        return searchableCourses
-            .filter(({ course, code, normalizedHaystack }) => {
-                if (course.code === codeQuery) return true;
-                if (code.startsWith(codeQuery) && codeQuery.length >= 2) return true;
-                return terms.every((term) => normalizedHaystack.includes(term));
-            })
-            .map(({ course }) => course)
-            .slice(0, MAX_RESULTS);
+        const matches: SearchableNoteCourseItem[] = [];
+        for (const { course, code, normalizedHaystack } of searchableCourses) {
+            if (
+                course.code === codeQuery ||
+                (code.startsWith(codeQuery) && codeQuery.length >= 2) ||
+                terms.every((term) => normalizedHaystack.includes(term))
+            ) {
+                matches.push(course);
+                if (matches.length === MAX_RESULTS) break;
+            }
+        }
+
+        return matches;
     }, [deferredQuery, searchableCourses]);
     const dropdownVisible =
         !nativeSearchAvailable && isOpen && (filtered.length > 0 || query.trim().length > 0);
@@ -122,7 +127,7 @@ export default function NotesCourseSearch({
 
         startTransition(() => {
             addTransitionType("nav-forward");
-            router.push(`/notes/course/${encodeURIComponent(course.code)}`);
+            push(`/notes/course/${encodeURIComponent(course.code)}`);
         });
         setIsOpen(false);
     };
@@ -146,7 +151,7 @@ export default function NotesCourseSearch({
         }
         startTransition(() => {
             addTransitionType("filter-results");
-            router.push(`/notes?search=${encodeURIComponent(trimmed)}`);
+            push(`/notes?search=${encodeURIComponent(trimmed)}`);
         });
         setIsOpen(false);
     };
@@ -212,7 +217,7 @@ export default function NotesCourseSearch({
                 });
                 startTransition(() => {
                     addTransitionType("nav-forward");
-                    router.push(`/notes/course/${encodeURIComponent(course.code)}`);
+                    push(`/notes/course/${encodeURIComponent(course.code)}`);
                 });
                 return;
             }
@@ -240,13 +245,13 @@ export default function NotesCourseSearch({
                 });
                 startTransition(() => {
                     addTransitionType("nav-forward");
-                    router.push(`/notes/course/${encodeURIComponent(exact.code)}`);
+                    push(`/notes/course/${encodeURIComponent(exact.code)}`);
                 });
                 return;
             }
             startTransition(() => {
                 addTransitionType("filter-results");
-                router.push(`/notes?search=${encodeURIComponent(trimmed)}`);
+                push(`/notes?search=${encodeURIComponent(trimmed)}`);
             });
         } catch {
             setNativeSearchUnavailable(true);
@@ -274,6 +279,7 @@ export default function NotesCourseSearch({
                     <input
                         ref={inputRef}
                         type="text"
+                        aria-label="Search course or code"
                         className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 focus:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
                         placeholder="Search course or code..."
                         value={query}
@@ -294,12 +300,12 @@ export default function NotesCourseSearch({
                         onClick={clear}
                         type="button"
                         aria-label="Clear search"
-                        className="inline-flex h-7 w-7 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
+                        className="inline-flex size-7 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
                     >
                         <svg
                             viewBox="0 0 14 14"
                             aria-hidden="true"
-                            className="h-3.5 w-3.5"
+                            className="size-3.5"
                             fill="none"
                             stroke="currentColor"
                             strokeWidth="2"

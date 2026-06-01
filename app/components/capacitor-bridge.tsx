@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { startTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { buildIosNativeTabConfigs } from "@/lib/ios-native-tab-config";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
+import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 
 const EXAMCOOKER_LINK_HOSTS = new Set([
   "examcooker.acmvit.in",
@@ -100,7 +101,15 @@ function currentLocationPath() {
 }
 
 function observeNativeThemeAttributes(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
+  let previousTheme = currentNativeTabTheme();
+  const observer = new MutationObserver(() => {
+    const nextTheme = currentNativeTabTheme();
+    if (nextTheme === previousTheme) {
+      return;
+    }
+    previousTheme = nextTheme;
+    onChange();
+  });
   observer.observe(document.documentElement, {
     attributeFilter: ["class", "data-theme", "style"],
   });
@@ -119,17 +128,99 @@ function subscribeColorSchemeChange(
   };
 }
 
-function subscribeWindowLoadOnce(onLoad: () => void) {
-  window.addEventListener("load", onLoad, { once: true });
+function subscribeFirstPaintOnce(onPaint: () => void) {
+  let fired = false;
+  const fire = () => {
+    if (fired) return;
+    fired = true;
+    onPaint();
+  };
 
+  if (typeof PerformanceObserver !== "undefined") {
+    try {
+      const observer = new PerformanceObserver((entries) => {
+        for (const entry of entries.getEntries()) {
+          if (entry.name === "first-contentful-paint" || entry.entryType === "paint") {
+            observer.disconnect();
+            requestAnimationFrame(() => requestAnimationFrame(fire));
+            return;
+          }
+        }
+      });
+      observer.observe({ type: "paint", buffered: true });
+      const fallbackTimer = window.setTimeout(() => {
+        observer.disconnect();
+        fire();
+      }, 1500);
+      return () => {
+        observer.disconnect();
+        window.clearTimeout(fallbackTimer);
+      };
+    } catch {
+      // fall through to load/RAF below
+    }
+  }
+
+  const onDomReady = () => {
+    requestAnimationFrame(() => requestAnimationFrame(fire));
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", onDomReady, { once: true });
+  } else {
+    onDomReady();
+  }
+
+  const fallbackTimer = window.setTimeout(fire, 1500);
   return () => {
-    window.removeEventListener("load", onLoad);
+    document.removeEventListener("DOMContentLoaded", onDomReady);
+    window.clearTimeout(fallbackTimer);
   };
 }
 
 function normalizeNativeTabRoute(route: unknown) {
   if (typeof route !== "string" || route.length === 0) return "/";
   return route.startsWith("/") ? route : `/${route}`;
+}
+
+const NATIVE_PREFETCH_ROUTES = Array.from(
+  new Set(APP_NAV_LINKS.map((link) => normalizeNativeTabRoute(link.href))),
+);
+
+function scheduleNativeRoutePrefetch(prefetch: (href: string) => void) {
+  let cancelled = false;
+  let timeoutId: number | undefined;
+
+  const prefetchNext = (index: number) => {
+    if (cancelled || index >= NATIVE_PREFETCH_ROUTES.length) {
+      return;
+    }
+
+    try {
+      prefetch(NATIVE_PREFETCH_ROUTES[index]);
+    } catch {
+      // ignore
+    }
+
+    timeoutId = window.setTimeout(() => prefetchNext(index + 1), 180);
+  };
+
+  const cancelIdlePrefetch = scheduleIdleWork(
+    () => {
+      prefetchNext(0);
+    },
+    {
+      fallbackDelayMs: 1200,
+      timeoutMs: 3500,
+    },
+  );
+
+  return () => {
+    cancelled = true;
+    cancelIdlePrefetch();
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+    }
+  };
 }
 
 async function sendNativePushToken(token: string, platform: string) {
@@ -195,12 +286,14 @@ async function subscribePushRegistration(
 }
 
 export default function CapacitorBridge() {
-  const router = useRouter();
+  const { push, prefetch } = useRouter();
   const navigateToNativePath = useCallback(
     (path: string) => {
-      router.push(path);
+      startTransition(() => {
+        push(path);
+      });
     },
-    [router],
+    [push],
   );
 
   useEffect(() => {
@@ -256,9 +349,8 @@ export default function CapacitorBridge() {
 
       if (platform === "ios" || platform === "android") {
         try {
-          const { NativeTabs } = await import("capacitor-native-tabs");
+          const { NativeTabs } = await import("capacitor-native-tab");
           const tabs = buildIosNativeTabConfigs(currentNativeTabTheme());
-          tabs.forEach((tab) => router.prefetch(normalizeNativeTabRoute(tab.route)));
           const pathname = window.location.pathname;
           const idx = APP_NAV_LINKS.findIndex((link) =>
             link.matches ? link.matches(pathname) : pathname === link.href,
@@ -277,10 +369,16 @@ export default function CapacitorBridge() {
             NativeTabs,
             navigateToNativePath,
           );
+          let nativeTabsTheme = currentNativeTabTheme();
           const updateNativeTabsTheme = () => {
+            const nextTheme = currentNativeTabTheme();
+            if (nextTheme === nativeTabsTheme) {
+              return;
+            }
+            nativeTabsTheme = nextTheme;
             void NativeTabs.updateTabs({
-              tabs: buildIosNativeTabConfigs(currentNativeTabTheme()),
-              theme: currentNativeTabTheme(),
+              tabs: buildIosNativeTabConfigs(nextTheme),
+              theme: nextTheme,
             } as Parameters<typeof NativeTabs.updateTabs>[0] & { theme: "dark" | "light" }).catch(
               () => undefined,
             );
@@ -345,14 +443,17 @@ export default function CapacitorBridge() {
       }
 
       const hideSplash = () => {
-        void SplashScreen.hide({ fadeOutDuration: 220 }).catch(() => undefined);
+        void SplashScreen.hide({ fadeOutDuration: 180 }).catch(() => undefined);
       };
 
-      if (document.readyState === "complete") {
-        hideSplash();
-      } else {
-        cleanupSplash = subscribeWindowLoadOnce(hideSplash);
-      }
+      cleanupSplash = subscribeFirstPaintOnce(hideSplash);
+
+      const cancelIdlePrefetch = scheduleNativeRoutePrefetch(prefetch);
+      const cleanupExistingSplash = cleanupSplash;
+      cleanupSplash = () => {
+        cleanupExistingSplash?.();
+        cancelIdlePrefetch();
+      };
 
       if (
         process.env.NEXT_PUBLIC_ENABLE_NATIVE_PUSH === "1" ||
@@ -393,7 +494,7 @@ export default function CapacitorBridge() {
       root.removeAttribute("data-native-ios-tabs-pending");
       root.removeAttribute("data-native-android-tabs-pending");
     };
-  }, [navigateToNativePath, router]);
+  }, [navigateToNativePath, prefetch]);
 
   return null;
 }

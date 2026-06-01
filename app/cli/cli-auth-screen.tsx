@@ -108,7 +108,7 @@ function PrimaryActionButton({
     <div className="group relative inline-flex items-stretch">
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-black dark:bg-[#3BF4C7]"
+        className="absolute inset-0 bg-[#0A0F1C] dark:bg-[#3BF4C7]"
       />
       <div
         aria-hidden="true"
@@ -273,7 +273,7 @@ function PendingBlock({
 }
 
 export default function CliAuthScreen() {
-  const router = useRouter();
+  const { replace } = useRouter();
   const locationSearch = useLocationSearch();
   const lookupIdRef = useRef(0);
 
@@ -309,7 +309,7 @@ export default function CliAuthScreen() {
       const updateUrl = options?.updateUrl ?? true;
 
       if (updateUrl) {
-        router.replace(buildCliUrl(nextCode, approved), { scroll: false });
+        replace(buildCliUrl(nextCode, approved), { scroll: false });
       }
 
       if (!nextCode) {
@@ -344,7 +344,7 @@ export default function CliAuthScreen() {
         dispatchScreenState({ type: "invalid", userCode: nextCode });
       }
     },
-    [router],
+    [replace],
   );
 
   useEffect(() => {

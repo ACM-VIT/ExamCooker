@@ -12,7 +12,7 @@ type Props = {
 };
 
 export default function AnswerKeyButton({ basePath, count, searchString }: Props) {
-    const router = useRouter();
+    const { replace } = useRouter();
     const params = new URLSearchParams(searchString);
     const checked = params.get("answer_key") === "1";
 
@@ -22,10 +22,10 @@ export default function AnswerKeyButton({ basePath, count, searchString }: Props
         else next.set("answer_key", "1");
         next.delete("page");
         const qs = next.toString();
-        router.replace(qs ? `${basePath}?${qs}` : basePath, {
+        replace(qs ? `${basePath}?${qs}` : basePath, {
             transitionTypes: ["filter-sheet-update"],
         });
-    }, [basePath, checked, router, searchString]);
+    }, [basePath, checked, replace, searchString]);
 
     if (count <= 0 && !checked) return null;
 
@@ -41,7 +41,7 @@ export default function AnswerKeyButton({ basePath, count, searchString }: Props
                     : "border-black/15 bg-white text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]",
             )}
         >
-            <KeyRound className="h-3.5 w-3.5" aria-hidden />
+            <KeyRound className="size-3.5" aria-hidden />
             <span>Key</span>
         </button>
     );

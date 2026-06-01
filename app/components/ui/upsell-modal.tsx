@@ -128,12 +128,12 @@ const UpsellModal = () => {
                         type="button"
                         onClick={handleDismiss}
                         aria-label="Close"
-                        className="absolute right-2.5 top-2.5 z-10 inline-flex h-7 w-7 items-center justify-center text-white/60 transition-colors hover:text-white"
+                        className="absolute right-2.5 top-2.5 z-10 inline-flex size-7 items-center justify-center text-white/60 transition-colors hover:text-white"
                     >
                         <svg
                             viewBox="0 0 14 14"
                             aria-hidden="true"
-                            className="h-3.5 w-3.5"
+                            className="size-3.5"
                             fill="none"
                             stroke="currentColor"
                             strokeWidth="2.5"
@@ -172,7 +172,7 @@ const UpsellModal = () => {
                     </div>
 
                     <div className="group relative mt-3 inline-flex w-full items-stretch sm:mt-6">
-                        <div className="absolute inset-0 bg-black dark:bg-white/10" />
+                        <div className="absolute inset-0 bg-[#0A0F1C] dark:bg-white/10" />
                         <div className="absolute inset-0 bg-[#3BF4C7] blur-[60px] opacity-0 transition duration-200 group-hover:opacity-20 dark:hidden" />
                         <Link
                             href="/"

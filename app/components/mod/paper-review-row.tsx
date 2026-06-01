@@ -205,6 +205,7 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                         type="number"
                         min={2000}
                         max={2100}
+                        aria-label="Year"
                         value={draft.year ?? ""}
                         onChange={(e) => {
                             const v = e.target.value;
@@ -221,6 +222,7 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                 <FieldLabel label="Slot">
                     <input
                         type="text"
+                        aria-label="Slot"
                         value={draft.slot ?? ""}
                         onChange={(e) => {
                             const raw = e.target.value.toUpperCase();
@@ -289,7 +291,7 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                                         : null,
                                 }));
                             }}
-                            className="h-4 w-4 accent-[#5FC4E7]"
+                            className="size-4 accent-[#5FC4E7]"
                         />
                         <span className="text-sm text-black dark:text-[#D5D5D5]">
                             this upload is an answer key

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { BookOpen, FileText } from "lucide-react";
 import CourseBreadcrumbRail from "@/app/components/past_papers/course-breadcrumb-rail";
 import { getCourseNotesPath, getCourseSyllabusPath } from "@/lib/seo";
@@ -10,8 +11,21 @@ type Props = {
     paperCount: number;
     noteCount: number;
     syllabusId: string | null;
+    children?: ReactNode;
     breadcrumbItems?: BreadcrumbNavItem[];
 };
+
+export function CourseHeaderSyllabusLink({ code }: { code: string }) {
+    return (
+        <Link
+            href={getCourseSyllabusPath(code)}
+            className="inline-flex h-9 items-center justify-center gap-1.5 border border-black/15 px-3 font-semibold text-black transition-colors hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 dark:hover:bg-white/5 sm:h-8"
+        >
+            <BookOpen className="size-3.5" aria-hidden />
+            Syllabus
+        </Link>
+    );
+}
 
 export default function CourseHeader({
     code,
@@ -19,6 +33,7 @@ export default function CourseHeader({
     paperCount,
     noteCount,
     syllabusId,
+    children,
     breadcrumbItems,
 }: Props) {
     const items: BreadcrumbNavItem[] =
@@ -59,19 +74,11 @@ export default function CourseHeader({
                             href={getCourseNotesPath(code)}
                             className="inline-flex h-9 items-center justify-center gap-1.5 border border-black/15 px-3 font-semibold text-black transition-colors hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 dark:hover:bg-white/5 sm:h-8"
                         >
-                            <FileText className="h-3.5 w-3.5" aria-hidden />
+                            <FileText className="size-3.5" aria-hidden />
                             Notes
                         </Link>
                     )}
-                    {syllabusId && (
-                        <Link
-                            href={getCourseSyllabusPath(code)}
-                            className="inline-flex h-9 items-center justify-center gap-1.5 border border-black/15 px-3 font-semibold text-black transition-colors hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 dark:hover:bg-white/5 sm:h-8"
-                        >
-                            <BookOpen className="h-3.5 w-3.5" aria-hidden />
-                            Syllabus
-                        </Link>
-                    )}
+                    {children ?? (syllabusId ? <CourseHeaderSyllabusLink code={code} /> : null)}
                 </div>
             </div>
         </header>

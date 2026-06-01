@@ -65,7 +65,7 @@ function SourceButton({
 }) {
     return (
         <div className="group relative inline-flex h-12 shrink-0 items-stretch">
-            <div className="absolute inset-0 bg-black dark:bg-[#3BF4C7]" />
+            <div className="absolute inset-0 bg-[#0A0F1C] dark:bg-[#3BF4C7]" />
             <div className="absolute inset-0 blur-[60px] bg-[#82BEE9] opacity-0 transition duration-200 group-hover:opacity-25 dark:hidden" />
             <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
             <a
@@ -81,7 +81,7 @@ function SourceButton({
                 className="relative inline-flex h-full items-center gap-1.5 border-2 border-black bg-[#82BEE9] px-4 text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]"
             >
                 Source
-                <ArrowUpRight className="h-4 w-4" />
+                <ArrowUpRight className="size-4" />
             </a>
         </div>
     );
@@ -140,19 +140,21 @@ function ResourceBrowser({
         const normalizedSearch = normalizeKey(deferredQuery);
         const normalizedYear = year.trim();
 
-        return searchableCourses.filter(({ course, normalizedMatchKeys }) => {
+        const matches: ResourceBrowserCourse[] = [];
+        for (const { course, normalizedMatchKeys } of searchableCourses) {
             if (normalizedYear && course.year !== normalizedYear) {
-                return false;
+                continue;
             }
 
-            if (!normalizedSearch) {
-                return true;
+            if (
+                !normalizedSearch ||
+                normalizedMatchKeys.some((value) => value.includes(normalizedSearch))
+            ) {
+                matches.push(course);
             }
+        }
 
-            return normalizedMatchKeys.some((value) =>
-                value.includes(normalizedSearch),
-            );
-        }).map(({ course }) => course);
+        return matches;
     }, [deferredQuery, searchableCourses, year]);
 
     const handleQueryChange = useCallback(
@@ -195,6 +197,7 @@ function ResourceBrowser({
                         <input
                             type="text"
                             value={query}
+                            aria-label="Search resources"
                             onChange={(event) => handleQueryChange(event.target.value)}
                             placeholder="Search resources"
                             className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 focus:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
@@ -204,9 +207,9 @@ function ResourceBrowser({
                                 onClick={() => handleQueryChange("")}
                                 type="button"
                                 aria-label="Clear search"
-                                className="inline-flex h-7 w-7 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
+                                className="inline-flex size-7 items-center justify-center text-black/60 transition-colors hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
                             >
-                                <X className="h-3.5 w-3.5" />
+                                <X className="size-3.5" />
                             </button>
                         ) : null}
                     </div>
@@ -233,7 +236,7 @@ function ResourceBrowser({
                             onClick={clearFilters}
                             className="inline-flex h-9 items-center gap-1.5 px-2 text-sm font-medium text-black/60 transition hover:text-black dark:text-[#D5D5D5]/55 dark:hover:text-[#D5D5D5]"
                         >
-                            <X className="h-3.5 w-3.5" />
+                            <X className="size-3.5" />
                             Reset
                         </button>
                     ) : null}

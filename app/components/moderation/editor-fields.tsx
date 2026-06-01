@@ -83,6 +83,7 @@ export function EditorTextInput({
         max={max}
         inputMode={inputMode}
         placeholder={placeholder}
+        aria-label={label}
         onChange={(event) => onChange(event.target.value)}
         className={INPUT_BASE_CLASS}
       />
@@ -147,7 +148,7 @@ export function EditorCheckbox({
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="h-4 w-4 accent-[#3BF4C7]"
+        className="size-4 accent-[#3BF4C7]"
       />
       <span>{label}</span>
     </label>

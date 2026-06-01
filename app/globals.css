@@ -937,6 +937,56 @@ html[data-native-tabs-pending="true"] .ec-mobile-tab-bar {
     animation: none !important;
 }
 
+:active-view-transition-type(filter-results)::view-transition-old(root),
+:active-view-transition-type(filter-results)::view-transition-new(root) {
+    animation: none !important;
+    mix-blend-mode: normal;
+    opacity: 0;
+}
+
+::view-transition-group(.paper-card-move),
+::view-transition-group(.paper-card-enter),
+::view-transition-group(.paper-card-exit) {
+    animation-duration: 220ms;
+    animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+::view-transition-new(.paper-card-enter) {
+    animation: 180ms cubic-bezier(0.2, 0, 0, 1) both paper-card-enter;
+}
+
+::view-transition-old(.paper-card-exit) {
+    animation: 140ms ease-in both paper-card-exit;
+}
+
+::view-transition-old(.paper-card-move),
+::view-transition-new(.paper-card-move) {
+    animation-duration: 220ms;
+    animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes paper-card-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes paper-card-exit {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+    }
+}
+
 @keyframes fade {
     from { filter: blur(3px); opacity: 0; }
     to { filter: blur(0); opacity: 1; }
@@ -1228,5 +1278,116 @@ html[data-native-tabs-pending="true"] .ec-mobile-tab-bar {
     html[data-native-ios-tabs="true"],
     html[data-native-ios-tabs-pending="true"] {
         --ec-voice-agent-bottom-offset: 3.0625rem;
+    }
+}
+
+html[data-native-platform] {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    overscroll-behavior-y: contain;
+    scroll-behavior: auto;
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
+html[data-native-platform] body {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    overscroll-behavior-y: contain;
+}
+
+html[data-native-platform] a,
+html[data-native-platform] button,
+html[data-native-platform] [role="button"],
+html[data-native-platform] [role="tab"],
+html[data-native-platform] label,
+html[data-native-platform] input,
+html[data-native-platform] textarea,
+html[data-native-platform] select,
+html[data-native-platform] summary {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+html[data-native-platform] a:focus,
+html[data-native-platform] button:focus,
+html[data-native-platform] [role="button"]:focus {
+    outline: none;
+}
+
+html[data-native-platform] input,
+html[data-native-platform] textarea,
+html[data-native-platform] [contenteditable="true"],
+html[data-native-platform] [contenteditable="plaintext-only"],
+html[data-native-platform] p,
+html[data-native-platform] h1,
+html[data-native-platform] h2,
+html[data-native-platform] h3,
+html[data-native-platform] h4,
+html[data-native-platform] h5,
+html[data-native-platform] h6,
+html[data-native-platform] li,
+html[data-native-platform] span[data-selectable],
+html[data-native-platform] .ec-selectable {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+}
+
+html[data-native-platform] .ec-app-main,
+html[data-native-platform] [data-scroll-container] {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scroll-behavior: auto;
+}
+
+html[data-native-platform] img,
+html[data-native-platform] svg,
+html[data-native-platform] video {
+    -webkit-user-drag: none;
+    user-select: none;
+    pointer-events: auto;
+}
+
+html[data-native-platform] button:active,
+html[data-native-platform] a:active,
+html[data-native-platform] [role="button"]:active {
+    -webkit-tap-highlight-color: transparent;
+}
+
+html[data-native-platform] *,
+html[data-native-platform] *::before,
+html[data-native-platform] *::after {
+    view-transition-name: none !important;
+}
+
+html[data-native-platform]::view-transition-old(*),
+html[data-native-platform]::view-transition-new(*),
+html[data-native-platform]::view-transition-group(*) {
+    animation: none !important;
+}
+
+html[data-native-platform] .animate-marquee,
+html[data-native-platform] .animate-marquee-reverse,
+html[data-native-platform] .ec-row-reveal,
+html[data-native-platform] .ec-command-row,
+html[data-native-platform] .ec-command-skeleton-row {
+    animation: none !important;
+}
+
+html[data-native-platform] .ec-press,
+html[data-native-platform] .ec-card-lift,
+html[data-native-platform] .ec-card-media,
+html[data-native-platform] .ec-command-dialog-panel,
+html[data-native-platform] .ec-voice-dock {
+    will-change: auto;
+}
+
+@supports (transition-behavior: allow-discrete) {
+    html[data-native-platform] .ec-mobile-tab-bar a,
+    html[data-native-platform] .ec-mobile-tab-bar button {
+        transition: color 120ms cubic-bezier(0.32, 0.72, 0, 1);
     }
 }

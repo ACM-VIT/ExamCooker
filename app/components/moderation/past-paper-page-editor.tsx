@@ -53,10 +53,10 @@ const SECONDARY_BUTTON_CLASS =
   "inline-flex h-8 items-center gap-1 border border-black/15 bg-white px-2.5 text-[11px] font-semibold text-black transition-all duration-150 ease-out hover:-translate-y-px hover:border-black/35 hover:bg-black/[0.03] hover:shadow-[0_2px_0_0_rgba(0,0,0,0.85)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:shadow-none dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/55 dark:hover:bg-white/[0.04] dark:hover:text-[#3BF4C7] dark:hover:shadow-[0_2px_0_0_rgba(59,244,199,0.45)]";
 
 const ICON_BUTTON_CLASS =
-  "inline-flex h-7 w-7 items-center justify-center border border-black/15 bg-white text-black/70 transition-all duration-150 ease-out hover:-translate-y-px hover:border-black/40 hover:bg-black/[0.04] hover:text-black hover:shadow-[0_2px_0_0_rgba(0,0,0,0.85)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/65 dark:hover:border-[#3BF4C7]/55 dark:hover:bg-white/[0.05] dark:hover:text-[#3BF4C7] dark:hover:shadow-[0_2px_0_0_rgba(59,244,199,0.4)]";
+  "inline-flex size-7 items-center justify-center border border-black/15 bg-white text-black/70 transition-all duration-150 ease-out hover:-translate-y-px hover:border-black/40 hover:bg-black/[0.04] hover:text-black hover:shadow-[0_2px_0_0_rgba(0,0,0,0.85)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/65 dark:hover:border-[#3BF4C7]/55 dark:hover:bg-white/[0.05] dark:hover:text-[#3BF4C7] dark:hover:shadow-[0_2px_0_0_rgba(59,244,199,0.4)]";
 
 const COLLAPSED_TRIGGER_CLASS =
-  "inline-flex h-8 w-8 items-center justify-center border border-black/15 bg-white text-black/65 shadow-[0_2px_0_0_rgba(0,0,0,0.12)] transition-all duration-150 ease-out hover:-translate-y-px hover:border-black/40 hover:bg-black/[0.03] hover:text-black hover:shadow-[0_3px_0_0_rgba(0,0,0,0.85)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/55 dark:shadow-[0_2px_0_0_rgba(213,213,213,0.12)] dark:hover:border-[#3BF4C7]/55 dark:hover:bg-white/[0.04] dark:hover:text-[#3BF4C7] dark:hover:shadow-[0_3px_0_0_rgba(59,244,199,0.45)]";
+  "inline-flex size-8 items-center justify-center border border-black/15 bg-white text-black/65 shadow-[0_2px_0_0_rgba(0,0,0,0.12)] transition-all duration-150 ease-out hover:-translate-y-px hover:border-black/40 hover:bg-black/[0.03] hover:text-black hover:shadow-[0_3px_0_0_rgba(0,0,0,0.85)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/55 dark:shadow-[0_2px_0_0_rgba(213,213,213,0.12)] dark:hover:border-[#3BF4C7]/55 dark:hover:bg-white/[0.04] dark:hover:text-[#3BF4C7] dark:hover:shadow-[0_3px_0_0_rgba(59,244,199,0.45)]";
 
 function rotatePage(
   currentRotation: PdfPageRotation,
@@ -142,7 +142,7 @@ export default function PastPaperPageEditor({
   savedPageEdits,
   totalPages,
 }: PastPaperPageEditorProps) {
-  const router = useRouter();
+  const { refresh } = useRouter();
   const { toast } = useToast();
   const { session, status } = useGuestPrompt();
   const { provides: scrollControls, state: scrollState } = useScroll(documentId);
@@ -243,7 +243,7 @@ export default function PastPaperPageEditor({
 
         replaceSavedPageEdits(response.pageEdits ?? null);
         onSaved(response.pageEdits ?? null);
-        router.refresh();
+        refresh();
         toast({
           title: "Page fixes saved",
         });
@@ -278,7 +278,7 @@ export default function PastPaperPageEditor({
           COLLAPSED_TRIGGER_CLASS,
         )}
       >
-        <Pencil className="h-3.5 w-3.5" aria-hidden />
+        <Pencil className="size-3.5" aria-hidden />
       </button>
 
       <div
@@ -387,9 +387,9 @@ function PageEditorPanel({
           onClick={onClose}
           aria-label="Close page fixer"
           title="Close"
-          className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-black/15 bg-white text-black/55 shadow-[0_2px_0_0_rgba(0,0,0,0.12)] transition-all duration-150 ease-out hover:-translate-y-px hover:border-black/40 hover:bg-black/[0.04] hover:text-black hover:shadow-[0_3px_0_0_rgba(0,0,0,0.85)] focus:outline-none focus-visible:border-black/40 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/55 dark:shadow-[0_2px_0_0_rgba(213,213,213,0.12)] dark:hover:border-[#3BF4C7]/55 dark:hover:bg-white/[0.04] dark:hover:text-[#3BF4C7] dark:hover:shadow-[0_3px_0_0_rgba(59,244,199,0.45)]"
+          className="inline-flex size-7 shrink-0 items-center justify-center border border-black/15 bg-white text-black/55 shadow-[0_2px_0_0_rgba(0,0,0,0.12)] transition-all duration-150 ease-out hover:-translate-y-px hover:border-black/40 hover:bg-black/[0.04] hover:text-black hover:shadow-[0_3px_0_0_rgba(0,0,0,0.85)] focus:outline-none focus-visible:border-black/40 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]/55 dark:shadow-[0_2px_0_0_rgba(213,213,213,0.12)] dark:hover:border-[#3BF4C7]/55 dark:hover:bg-white/[0.04] dark:hover:text-[#3BF4C7] dark:hover:shadow-[0_3px_0_0_rgba(59,244,199,0.45)]"
         >
-          <X className="h-3.5 w-3.5" aria-hidden />
+          <X className="size-3.5" aria-hidden />
         </button>
       </header>
 
@@ -408,7 +408,7 @@ function PageEditorPanel({
           className={SECONDARY_BUTTON_CLASS}
           title="Discard unsaved changes"
         >
-          <Undo2 className="h-3 w-3" aria-hidden />
+          <Undo2 className="size-3" aria-hidden />
           <span>Undo</span>
         </button>
         <button
@@ -551,7 +551,7 @@ function PageEntryCard({
               aria-label={`Rotate source page ${entry.originalIndex + 1} left`}
               title="Rotate left"
             >
-              <RotateCcw className="h-3 w-3" aria-hidden />
+              <RotateCcw className="size-3" aria-hidden />
             </button>
             <button
               type="button"
@@ -561,7 +561,7 @@ function PageEntryCard({
               aria-label={`Rotate source page ${entry.originalIndex + 1} right`}
               title="Rotate right"
             >
-              <RotateCw className="h-3 w-3" aria-hidden />
+              <RotateCw className="size-3" aria-hidden />
             </button>
             <span aria-hidden className="mx-0.5 h-4 w-px bg-black/10 dark:bg-white/10" />
             <button
@@ -572,7 +572,7 @@ function PageEntryCard({
               aria-label={`Move display page ${entry.displayIndex + 1} earlier`}
               title="Move up"
             >
-              <ArrowUp className="h-3 w-3" aria-hidden />
+              <ArrowUp className="size-3" aria-hidden />
             </button>
             <button
               type="button"
@@ -582,7 +582,7 @@ function PageEntryCard({
               aria-label={`Move display page ${entry.displayIndex + 1} later`}
               title="Move down"
             >
-              <ArrowDown className="h-3 w-3" aria-hidden />
+              <ArrowDown className="size-3" aria-hidden />
             </button>
           </div>
         </div>

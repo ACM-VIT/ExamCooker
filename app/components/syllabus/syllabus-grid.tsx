@@ -76,11 +76,11 @@ function SyllabusRow({
                 aria-label={selected ? "Deselect syllabus" : "Select syllabus"}
                 aria-pressed={selected}
                 className={`ec-icon-button inline-flex h-5 w-5 shrink-0 items-center justify-center rounded ${selected
-                        ? "bg-black text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
+                        ? "bg-[#0A0F1C] text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
                         : "bg-black/5 text-transparent hover:bg-black/10 hover:text-black/40 dark:bg-white/10 dark:hover:text-[#D5D5D5]/50"
                     }`}
             >
-                <FontAwesomeIcon icon={faCheck} className="h-2 w-2" />
+                <FontAwesomeIcon icon={faCheck} className="size-2" />
             </button>
             <span className="w-20 shrink-0 text-xs font-bold text-black/70 transition-colors group-hover:text-black dark:text-[#D5D5D5]/65 dark:group-hover:text-[#3BF4C7]">
                 {code}
@@ -92,9 +92,9 @@ function SyllabusRow({
                 type="button"
                 onClick={handleDownload}
                 aria-label="Download syllabus"
-                className="ec-icon-button inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-black/55 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
+                className="ec-icon-button inline-flex size-7 shrink-0 items-center justify-center rounded text-black/55 hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/5 dark:hover:text-[#3BF4C7]"
             >
-                <FontAwesomeIcon icon={faDownload} className="h-3 w-3" />
+                <FontAwesomeIcon icon={faDownload} className="size-3" />
             </button>
         </Link>
     );
@@ -190,13 +190,14 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
         <div className="flex flex-col gap-5">
             <div className="relative flex h-12 w-full items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]">
                 <Image src={SearchIcon} alt="search" className="dark:invert-[.835]" />
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search by code or name..."
-                    className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 outline-none focus:outline-none focus-visible:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        aria-label="Search syllabus"
+                        placeholder="Search by code or name..."
+                        className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 outline-none focus:outline-none focus-visible:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
                     autoComplete="off"
                     spellCheck={false}
                 />
@@ -205,9 +206,9 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                         onClick={clear}
                         type="button"
                         aria-label="Clear search"
-                        className="inline-flex h-7 w-7 items-center justify-center text-black/60 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
+                        className="inline-flex size-7 items-center justify-center text-black/60 hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
                     >
-                        <svg viewBox="0 0 14 14" aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <svg viewBox="0 0 14 14" aria-hidden="true" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                             <path d="M1 1L13 13M13 1L1 13" />
                         </svg>
                     </button>
@@ -254,16 +255,16 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                             disabled={isDownloading}
                             className="inline-flex h-8 items-center gap-1.5 rounded border border-black/20 bg-[#5FC4E7]/90 px-3 text-xs font-semibold text-black transition hover:bg-[#5FC4E7] disabled:cursor-not-allowed disabled:opacity-60 dark:border-[#3BF4C7]/40 dark:bg-[#3BF4C7]/20 dark:text-[#3BF4C7] dark:hover:bg-[#3BF4C7]/30 sm:text-sm"
                         >
-                            <FontAwesomeIcon icon={faDownload} className="h-3 w-3" />
+                            <FontAwesomeIcon icon={faDownload} className="size-3" />
                             {isDownloading ? "Zipping..." : "Download"}
                         </button>
                         <button
                             type="button"
                             onClick={clearSelection}
                             aria-label="Clear selection"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded text-black/50 transition hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/50 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
+                            className="inline-flex size-8 items-center justify-center rounded text-black/50 transition hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/50 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                         >
-                            <FontAwesomeIcon icon={faXmark} className="h-3.5 w-3.5" />
+                            <FontAwesomeIcon icon={faXmark} className="size-3.5" />
                         </button>
                     </div>
                 </div>

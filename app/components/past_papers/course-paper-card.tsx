@@ -298,7 +298,7 @@ function CoursePaperCard({
                             title="Answer key included"
                             className="absolute left-1/2 top-1.5 inline-flex h-5 -translate-x-1/2 items-center gap-1 rounded bg-white/85 px-1.5 text-[9px] font-semibold uppercase tracking-wider text-black backdrop-blur dark:bg-[#0C1222]/80 dark:text-[#3BF4C7]"
                         >
-                            <KeyRound className="h-2.5 w-2.5" aria-hidden />
+                            <KeyRound className="size-2.5" aria-hidden />
                             Key
                         </span>
                     )}
@@ -308,19 +308,19 @@ function CoursePaperCard({
                         aria-label={selected ? "Deselect paper" : "Select paper"}
                         aria-pressed={selected}
                         className={`ec-icon-button pointer-events-auto absolute left-1.5 top-1.5 z-10 inline-flex h-5 w-5 items-center justify-center rounded ${selected
-                                ? "bg-black text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
+                                ? "bg-[#0A0F1C] text-white dark:bg-[#3BF4C7] dark:text-[#0C1222]"
                                 : "bg-white/80 text-transparent backdrop-blur hover:bg-white hover:text-black/40 dark:bg-[#0C1222]/60 dark:hover:bg-[#0C1222]"
                             }`}
                     >
-                        <Check className="h-2.5 w-2.5" aria-hidden />
+                        <Check className="size-2.5" aria-hidden />
                     </button>
                     <button
                         type="button"
                         onClick={handleDownload}
                         aria-label="Download paper"
-                        className="ec-icon-button pointer-events-auto absolute right-1.5 top-1.5 z-10 inline-flex h-5 w-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
+                        className="ec-icon-button pointer-events-auto absolute right-1.5 top-1.5 z-10 inline-flex size-5 items-center justify-center rounded bg-white/80 text-black/70 backdrop-blur hover:bg-white hover:text-black dark:bg-[#0C1222]/60 dark:text-[#D5D5D5]/70 dark:hover:bg-[#0C1222] dark:hover:text-[#D5D5D5]"
                     >
-                        <Download className="h-2.5 w-2.5" aria-hidden />
+                        <Download className="size-2.5" aria-hidden />
                     </button>
                 </div>
             </div>
@@ -330,9 +330,9 @@ function CoursePaperCard({
                 onClick={handleOpenInNewTab}
                 aria-label="Open paper in new tab"
                 title="Open paper in new tab"
-                className="ec-icon-button pointer-events-auto absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded text-black/60 hover:bg-black/10 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/10 dark:hover:text-[#D5D5D5]"
+                className="ec-icon-button pointer-events-auto absolute right-2 top-2 z-10 inline-flex size-6 items-center justify-center rounded text-black/60 hover:bg-black/10 hover:text-black dark:text-[#D5D5D5]/60 dark:hover:bg-white/10 dark:hover:text-[#D5D5D5]"
             >
-                <ExternalLink className="h-3 w-3" aria-hidden />
+                <ExternalLink className="size-3" aria-hidden />
             </button>
         </article>
     );
