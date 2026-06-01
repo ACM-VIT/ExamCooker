@@ -142,6 +142,19 @@ async function staleWhileRevalidate(event, cacheName) {
   return offline || Response.error();
 }
 
+async function networkOnly(event) {
+  const preloadResponse =
+    "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
+
+  if (preloadResponse) return preloadResponse;
+
+  try {
+    return await fetch(event.request);
+  } catch {
+    return Response.error();
+  }
+}
+
 async function cacheFirst(event) {
   const cache = await caches.open(STATIC_CACHE);
   const cached = await cache.match(event.request);
@@ -188,7 +201,7 @@ self.addEventListener("fetch", (event) => {
 
   if (isRoutePayloadRequest(request, url)) {
     if (isUncacheable(url)) return;
-    event.respondWith(staleWhileRevalidate(event, PAGE_CACHE));
+    event.respondWith(networkOnly(event));
     return;
   }
 

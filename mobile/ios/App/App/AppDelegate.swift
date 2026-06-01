@@ -13,7 +13,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
     private var didRegisterLocalPlugins = false
-    private var didTuneWebViews = false
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         configureWindowBackground()
@@ -110,8 +109,6 @@ private extension AppDelegate {
         scroll.contentInsetAdjustmentBehavior = .never
         scroll.showsVerticalScrollIndicator = false
         scroll.showsHorizontalScrollIndicator = false
-
-        didTuneWebViews = true
     }
 
     func registerLocalPluginsIfNeeded() {

@@ -20,8 +20,11 @@ export default function PwaServiceWorker() {
     let handleUpdateFound: (() => void) | null = null;
     let cancelRoutePrefetch: (() => void) | null = null;
 
-    const cleanupServiceWorkerListeners = () => {
-      cancelRoutePrefetch?.();
+    const cleanupServiceWorkerListeners = (cancelPrefetch = true) => {
+      if (cancelPrefetch) {
+        cancelRoutePrefetch?.();
+        cancelRoutePrefetch = null;
+      }
 
       if (registeredWorker && handleStateChange) {
         registeredWorker.removeEventListener("statechange", handleStateChange);
@@ -35,7 +38,6 @@ export default function PwaServiceWorker() {
       registration = null;
       handleStateChange = null;
       handleUpdateFound = null;
-      cancelRoutePrefetch = null;
     };
 
     async function configureServiceWorker() {
@@ -72,24 +74,34 @@ export default function PwaServiceWorker() {
           });
         };
 
+        const watchInstallingWorker = (worker: ServiceWorker | null) => {
+          if (!worker) return false;
+
+          registeredWorker = worker;
+          if (worker.state === "activated") {
+            requestPrefetch(worker);
+            cleanupServiceWorkerListeners(false);
+            return true;
+          }
+
+          handleStateChange = () => {
+            if (worker.state === "activated") {
+              requestPrefetch(worker);
+              cleanupServiceWorkerListeners(false);
+            }
+          };
+
+          worker.addEventListener("statechange", handleStateChange);
+          return true;
+        };
+
         if (registration.active) {
           requestPrefetch(registration.active);
+        } else if (watchInstallingWorker(registration.installing ?? registration.waiting)) {
+          return;
         } else {
           handleUpdateFound = () => {
-            const installing = registration?.installing ?? null;
-            if (!installing) {
-              return;
-            }
-
-            registeredWorker = installing;
-            handleStateChange = () => {
-              if (installing.state === "activated") {
-                requestPrefetch(installing);
-                cleanupServiceWorkerListeners();
-              }
-            };
-
-            installing.addEventListener("statechange", handleStateChange);
+            watchInstallingWorker(registration?.installing ?? null);
           };
 
           registration.addEventListener("updatefound", handleUpdateFound);
