@@ -78,7 +78,14 @@ ExamCooker uses scalable tech stacks to ensure optimal performance and ease of m
         <sub><b>Nitesh Kakkar</b></sub>
       </a>
     </td>
-  </tr>
+    <td align="center">
+      <a href="https://github.com/kairavsheth">
+        <img src="https://github.com/kairavsheth.png" width="50" height="50" style="border: 2px solid #4CAF50; border-radius: 50%;">
+        <br>
+        <sub><b>Kairav Nitin Sheth</b></sub>
+      </a>
+    </td>
+   </tr>
 </table>
 
 **Contributors:**
