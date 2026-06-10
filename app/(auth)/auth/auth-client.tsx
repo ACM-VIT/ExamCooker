@@ -1,0 +1,437 @@
+"use client";
+
+import { type SyntheticEvent, useEffect, useMemo, useReducer, useState } from "react";
+import { getProviders, signIn } from "next-auth/react";
+import { captureSignInStarted } from "@/lib/posthog/client";
+import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
+
+type Provider = {
+    id: string;
+    name: string;
+};
+
+type ReviewFormState = {
+    email: string;
+    error: string | null;
+    password: string;
+    show: boolean;
+    submitting: boolean;
+};
+
+type ReviewFormAction =
+    | { type: "show" }
+    | { type: "email"; value: string }
+    | { type: "password"; value: string }
+    | { type: "submit" }
+    | { type: "error"; message: string }
+    | { type: "complete" };
+
+function reviewFormReducer(
+    state: ReviewFormState,
+    action: ReviewFormAction,
+): ReviewFormState {
+    switch (action.type) {
+        case "show":
+            return { ...state, show: true };
+        case "email":
+            return { ...state, email: action.value };
+        case "password":
+            return { ...state, password: action.value };
+        case "submit":
+            return { ...state, error: null, submitting: true };
+        case "error":
+            return { ...state, error: action.message };
+        case "complete":
+            return { ...state, submitting: false };
+    }
+}
+
+const providerLabels: Record<string, string> = {
+    apple: "Continue with Apple",
+    google: "Continue with Google",
+};
+
+const handoffStoragePrefix = "examcooker.nativeAuthHandoff.";
+const nativeAppleCancelledCode = "NATIVE_APPLE_CANCELLED";
+
+function encodeBase64Url(bytes: Uint8Array) {
+    let binary = "";
+    for (const byte of bytes) {
+        binary += String.fromCharCode(byte);
+    }
+
+    return window
+        .btoa(binary)
+        .replaceAll("+", "-")
+        .replaceAll("/", "_")
+        .replaceAll("=", "");
+}
+
+async function createNativeAuthHandoffChallenge() {
+    const verifierBytes = new Uint8Array(32);
+    window.crypto.getRandomValues(verifierBytes);
+    const verifier = encodeBase64Url(verifierBytes);
+    const challengeBytes = new Uint8Array(
+        await window.crypto.subtle.digest(
+            "SHA-256",
+            new TextEncoder().encode(verifier),
+        ),
+    );
+    const challenge = encodeBase64Url(challengeBytes);
+
+    window.sessionStorage.setItem(`${handoffStoragePrefix}${challenge}`, verifier);
+    return challenge;
+}
+
+function GoogleIcon() {
+    return (
+        <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
+            <path
+                fill="#4285F4"
+                d="M21.6 12.23c0-.76-.07-1.49-.2-2.19H12v4.14h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.32 2.98-7.48Z"
+            />
+            <path
+                fill="#34A853"
+                d="M12 22c2.7 0 4.97-.9 6.62-2.43l-3.24-2.51c-.9.6-2.04.95-3.38.95-2.6 0-4.81-1.76-5.6-4.12H3.06v2.59A10 10 0 0 0 12 22Z"
+            />
+            <path
+                fill="#FBBC05"
+                d="M6.4 13.89A6 6 0 0 1 6.08 12c0-.66.11-1.3.32-1.89V7.52H3.06A10 10 0 0 0 2 12c0 1.61.39 3.14 1.06 4.48l3.34-2.59Z"
+            />
+            <path
+                fill="#EA4335"
+                d="M12 5.99c1.47 0 2.79.5 3.83 1.5l2.86-2.86C16.96 3.02 14.69 2 12 2a10 10 0 0 0-8.94 5.52l3.34 2.59C7.19 7.75 9.4 5.99 12 5.99Z"
+            />
+        </svg>
+    );
+}
+
+function AppleIcon() {
+    return (
+        <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
+            <path
+                fill="currentColor"
+                d="M16.65 13.03c-.03-2.73 2.23-4.05 2.33-4.11-1.27-1.86-3.25-2.11-3.95-2.14-1.68-.17-3.28.99-4.13.99-.86 0-2.18-.96-3.58-.94-1.84.03-3.54 1.07-4.49 2.72-1.92 3.33-.49 8.27 1.38 10.97.91 1.32 2 2.81 3.43 2.75 1.38-.05 1.9-.89 3.56-.89 1.67 0 2.13.89 3.59.86 1.48-.03 2.42-1.35 3.33-2.68 1.05-1.53 1.48-3.02 1.5-3.1-.03-.01-2.89-1.11-2.97-4.43ZM13.93 5c.76-.92 1.27-2.2 1.13-3.47-1.09.04-2.42.73-3.2 1.65-.7.81-1.31 2.12-1.15 3.37 1.22.09 2.46-.62 3.22-1.55Z"
+            />
+        </svg>
+    );
+}
+
+function ProviderIcon({ providerId }: { providerId: string }) {
+    if (providerId === "google") return <GoogleIcon />;
+    if (providerId === "apple") return <AppleIcon />;
+    return null;
+}
+
+function getErrorMessage(error?: string | null) {
+    if (!error) return null;
+    if (error === "OAuthAccountNotLinked") {
+        return "An account with this email already exists. Sign in with the provider you used before.";
+    }
+    if (error === "OAuthCallback") {
+        return "OAuth sign-in could not be completed. Try again or use username/password.";
+    }
+    return "Authentication could not be completed. Try again.";
+}
+
+function isNativeAppleCancel(error: unknown) {
+    if (!error || typeof error !== "object") return false;
+
+    const maybeCapacitorError = error as { code?: unknown; message?: unknown };
+    return (
+        maybeCapacitorError.code === nativeAppleCancelledCode ||
+        (typeof maybeCapacitorError.message === "string" &&
+            maybeCapacitorError.message.toLowerCase().includes("cancel"))
+    );
+}
+
+async function signInWithNativeApple(callbackUrl: string) {
+    const { NativeAppleSignIn } = await import("@/lib/native-apple-sign-in");
+    const { response } = await NativeAppleSignIn.authorize({
+        scopes: "email name",
+    });
+
+    if (!response.identityToken) {
+        throw new Error("Native Apple sign-in did not return an identity token");
+    }
+
+    const result = await signIn("native-apple", {
+        authorizationCode: response.authorizationCode,
+        email: response.email ?? undefined,
+        familyName: response.familyName ?? undefined,
+        givenName: response.givenName ?? undefined,
+        identityToken: response.identityToken,
+        callbackUrl,
+        redirect: false,
+    });
+
+    if (!result?.ok) {
+        throw new Error(result?.error ?? "Native Apple sign-in failed");
+    }
+
+    window.location.assign(result.url ?? callbackUrl);
+}
+
+async function openNativeOAuthBrowser(providerId: string, callbackUrl: string) {
+    const handoffChallenge = await createNativeAuthHandoffChallenge();
+    const startUrl = `/native-auth/start/${providerId}?${new URLSearchParams({
+        handoffChallenge,
+        returnTo: callbackUrl,
+    }).toString()}`;
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.open({
+        url: new URL(startUrl, window.location.origin).toString(),
+        presentationStyle: "fullscreen",
+        toolbarColor: "#0C1222",
+    });
+}
+
+async function handleNativeSignIn(provider: Provider, callbackUrl: string) {
+    const { Capacitor } = await import("@capacitor/core");
+    if (!Capacitor.isNativePlatform()) return false;
+
+    if (provider.id === "apple" && Capacitor.getPlatform() === "ios") {
+        await signInWithNativeApple(callbackUrl);
+        return true;
+    }
+
+    if (provider.id === "google") {
+        await openNativeOAuthBrowser(provider.id, callbackUrl);
+        return true;
+    }
+
+    return false;
+}
+
+export default function AuthClient({
+    callbackUrl,
+    error,
+}: {
+    callbackUrl: string;
+    error?: string | null;
+}) {
+    const [providerState, setProviderState] = useState<{
+        loading: boolean;
+        providers: Provider[];
+    }>({
+        loading: true,
+        providers: [],
+    });
+    const [reviewForm, dispatchReviewForm] = useReducer(reviewFormReducer, {
+        email: "",
+        error: null,
+        password: "",
+        show: false,
+        submitting: false,
+    });
+    const errorMessage = getErrorMessage(error);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadProviders() {
+            let nextProviders: Provider[] = [];
+            try {
+                const payload = await getProviders();
+                nextProviders = Object.values(payload ?? {}).filter((provider) =>
+                    ["apple", "google", "app-review"].includes(provider.id),
+                );
+            } catch {
+                nextProviders = [];
+            }
+
+            if (!cancelled) {
+                setProviderState({
+                    loading: false,
+                    providers: nextProviders,
+                });
+            }
+        }
+
+        void loadProviders();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    const visibleProviders = useMemo(() => {
+        const ordered = ["google", "apple"];
+        return providerState.providers
+            .filter((provider) => ordered.includes(provider.id))
+            .sort((a, b) => ordered.indexOf(a.id) - ordered.indexOf(b.id));
+    }, [providerState.providers]);
+    const reviewProvider = providerState.providers.find(
+        (provider) => provider.id === "app-review",
+    );
+
+    const handleSignIn = async (provider: Provider) => {
+        captureSignInStarted({
+            source: "auth_page",
+            callbackPath: callbackUrl,
+        });
+        invalidateAuthSessionCache();
+
+        try {
+            if (await handleNativeSignIn(provider, callbackUrl)) {
+                return;
+            }
+        } catch (error) {
+            if (isNativeAppleCancel(error)) {
+                return;
+            }
+
+            console.error("[auth] native sign-in failed", error);
+            window.location.assign("/auth?error=OAuthCallback");
+            return;
+        }
+
+        void signIn(provider.id, { callbackUrl }).finally(() => {
+            invalidateAuthSessionCache();
+        });
+    };
+
+    const handleReviewSignIn = async (event: SyntheticEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!reviewProvider || reviewForm.submitting) return;
+
+        dispatchReviewForm({ type: "submit" });
+        captureSignInStarted({
+            source: "app_review_auth_page",
+            callbackPath: callbackUrl,
+        });
+        invalidateAuthSessionCache();
+
+        try {
+            const result = await signIn(reviewProvider.id, {
+                email: reviewForm.email,
+                password: reviewForm.password,
+                callbackUrl,
+                redirect: false,
+            });
+
+            if (result?.ok && result.url) {
+                window.location.assign(result.url);
+                return;
+            }
+
+            dispatchReviewForm({
+                type: "error",
+                message: "The reviewer email or password is incorrect.",
+            });
+        } catch {
+            dispatchReviewForm({
+                type: "error",
+                message: "Authentication could not be completed. Try again.",
+            });
+        } finally {
+            dispatchReviewForm({ type: "complete" });
+            invalidateAuthSessionCache();
+        }
+    };
+
+    return (
+        <div className="flex w-full max-w-sm flex-col items-stretch gap-3">
+            {errorMessage && (
+                <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-700 dark:text-red-200">
+                    {errorMessage}
+                </p>
+            )}
+
+            {providerState.loading ? (
+                <div className="h-11 rounded-lg border border-black/15 bg-white/60 dark:border-white/15 dark:bg-white/[0.05]" />
+            ) : reviewProvider || visibleProviders.length > 0 ? (
+                <>
+                    {reviewForm.show && reviewProvider ? (
+                        <form
+                            onSubmit={handleReviewSignIn}
+                            className="flex flex-col gap-3 rounded-lg border border-black/15 bg-white/70 p-4 text-left dark:border-white/15 dark:bg-white/[0.05]"
+                        >
+                            <div>
+                                <p className="text-sm font-bold text-black dark:text-[#D5D5D5]">
+                                    Continue with username/password
+                                </p>
+                            </div>
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-black/70 dark:text-[#D5D5D5]/70">
+                                    Email
+                                </span>
+                                <input
+                                    type="email"
+                                    value={reviewForm.email}
+                                    onChange={(event) =>
+                                        dispatchReviewForm({
+                                            type: "email",
+                                            value: event.target.value,
+                                        })
+                                    }
+                                    autoComplete="username"
+                                    required
+                                    className="h-11 rounded-md border border-black/15 bg-white px-3 text-sm text-black outline-none transition focus:border-black dark:border-white/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:focus:border-[#3BF4C7]"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-black/70 dark:text-[#D5D5D5]/70">
+                                    Password
+                                </span>
+                                <input
+                                    type="password"
+                                    value={reviewForm.password}
+                                    onChange={(event) =>
+                                        dispatchReviewForm({
+                                            type: "password",
+                                            value: event.target.value,
+                                        })
+                                    }
+                                    autoComplete="current-password"
+                                    required
+                                    className="h-11 rounded-md border border-black/15 bg-white px-3 text-sm text-black outline-none transition focus:border-black dark:border-white/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:focus:border-[#3BF4C7]"
+                                />
+                            </label>
+                            {reviewForm.error && (
+                                <p className="text-xs leading-5 text-red-700 dark:text-red-200">
+                                    {reviewForm.error}
+                                </p>
+                            )}
+                            <button
+                                type="submit"
+                                disabled={reviewForm.submitting}
+                                className="inline-flex h-11 items-center justify-center rounded-md border border-black bg-[#0A0F1C] px-4 text-sm font-bold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:bg-white/10 dark:text-[#D5D5D5] dark:hover:bg-white/15"
+                            >
+                                {reviewForm.submitting ? "Signing in..." : "Sign in"}
+                            </button>
+                        </form>
+                    ) : (
+                        <>
+                            {reviewProvider && (
+                                <button
+                                    type="button"
+                                    onClick={() => dispatchReviewForm({ type: "show" })}
+                                    className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-[#0A0F1C] hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
+                                >
+                                    Continue with username/password
+                                </button>
+                            )}
+
+                            {visibleProviders.map((provider) => (
+                                <button
+                                    key={provider.id}
+                                    type="button"
+                                    onClick={() => handleSignIn(provider)}
+                                    className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-[#0A0F1C] hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
+                                >
+                                    <ProviderIcon providerId={provider.id} />
+                                    {providerLabels[provider.id] ?? `Continue with ${provider.name}`}
+                                </button>
+                            ))}
+                        </>
+                    )}
+                </>
+            ) : (
+                <p className="rounded-lg border border-black/15 bg-white/60 px-4 py-3 text-sm leading-6 text-black/70 dark:border-white/15 dark:bg-white/[0.05] dark:text-[#D5D5D5]/70">
+                    Authentication is not available right now.
+                </p>
+            )}
+        </div>
+    );
+}

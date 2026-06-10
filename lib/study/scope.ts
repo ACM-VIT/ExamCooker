@@ -1,5 +1,15 @@
-import prisma from "@/lib/prisma";
-import type { StudyScope as StudyScopeEnum } from "@/src/generated/prisma";
+import { asc, eq } from "drizzle-orm";
+import {
+    course,
+    db,
+    note,
+    noteToTag,
+    pastPaper,
+    pastPaperToTag,
+    tag,
+    type StudyScope as StudyScopeEnum,
+} from "@/db";
+import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 
 export type StudyScope =
     | { type: "NOTE"; id: string }
@@ -31,32 +41,56 @@ function pickCourseCodeFromTags(tags: { name: string }[]): string | undefined {
 
 export async function loadScopeContext(scope: StudyScope): Promise<ScopeContext | null> {
     if (scope.type === "NOTE") {
-        const note = await prisma.note.findUnique({
-            where: { id: scope.id },
-            include: { tags: { select: { name: true } } },
-        });
-        if (!note) return null;
+        const rows = await db
+            .select({
+                id: note.id,
+                title: note.title,
+                fileUrl: note.fileUrl,
+                courseCode: course.code,
+                tagName: tag.name,
+            })
+            .from(note)
+            .leftJoin(course, eq(note.courseId, course.id))
+            .leftJoin(noteToTag, eq(noteToTag.a, note.id))
+            .leftJoin(tag, eq(noteToTag.b, tag.id))
+            .where(eq(note.id, scope.id))
+            .orderBy(asc(tag.name));
+        const noteRow = rows[0];
+        if (!noteRow) return null;
+        const tags = rows.flatMap((row) => row.tagName ? [{ name: row.tagName }] : []);
         return {
             type: "NOTE",
-            title: note.title,
-            fileUrl: note.fileUrl,
-            tags: note.tags.map((t) => t.name),
-            courseCode: pickCourseCodeFromTags(note.tags),
+            title: noteRow.title,
+            fileUrl: normalizeGcsUrl(noteRow.fileUrl) ?? noteRow.fileUrl,
+            tags: tags.map((t) => t.name),
+            courseCode: noteRow.courseCode ?? pickCourseCodeFromTags(tags),
         };
     }
 
     if (scope.type === "PAST_PAPER") {
-        const paper = await prisma.pastPaper.findUnique({
-            where: { id: scope.id },
-            include: { tags: { select: { name: true } } },
-        });
+        const rows = await db
+            .select({
+                id: pastPaper.id,
+                title: pastPaper.title,
+                fileUrl: pastPaper.fileUrl,
+                courseCode: course.code,
+                tagName: tag.name,
+            })
+            .from(pastPaper)
+            .leftJoin(course, eq(pastPaper.courseId, course.id))
+            .leftJoin(pastPaperToTag, eq(pastPaperToTag.a, pastPaper.id))
+            .leftJoin(tag, eq(pastPaperToTag.b, tag.id))
+            .where(eq(pastPaper.id, scope.id))
+            .orderBy(asc(tag.name));
+        const paper = rows[0];
         if (!paper) return null;
+        const tags = rows.flatMap((row) => row.tagName ? [{ name: row.tagName }] : []);
         return {
             type: "PAST_PAPER",
             title: paper.title,
-            fileUrl: paper.fileUrl,
-            tags: paper.tags.map((t) => t.name),
-            courseCode: pickCourseCodeFromTags(paper.tags),
+            fileUrl: normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl,
+            tags: tags.map((t) => t.name),
+            courseCode: paper.courseCode ?? pickCourseCodeFromTags(tags),
         };
     }
 

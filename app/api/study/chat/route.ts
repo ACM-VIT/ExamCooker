@@ -8,6 +8,7 @@ import {
     smoothStream,
     type UIMessage,
     type ModelMessage,
+    type ToolSet,
 } from "ai";
 import { z } from "zod";
 import { auth } from "@/app/auth";
@@ -139,7 +140,7 @@ export async function POST(req: Request) {
                 contextPromise,
                 persistedMessagesPromise,
             ]);
-            const tools = loadStudyTools({ context, userId: session.user.id });
+            const tools = loadStudyTools({ context, userId: session.user.id }) as ToolSet;
             const system = buildStudySystemPrompt(scopeTyped, context);
             const promptMessages = mergePromptMessages({
                 persistedMessages,

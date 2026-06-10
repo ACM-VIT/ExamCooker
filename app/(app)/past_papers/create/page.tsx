@@ -1,14 +1,23 @@
 import React from "react";
-import UploadFile from "@/app/components/UploadFile";
-import prisma from "@/lib/prisma";
+import type { Metadata } from "next";
+import UploadFile from "@/app/components/upload-file";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import { getCoursePickerRecords } from "@/lib/data/course-catalog";
 
+export const metadata: Metadata = {
+    title: "Upload past paper",
+    alternates: { canonical: "/past_papers/create" },
+    robots: { index: false, follow: true },
+};
 
 async function UploadPaperPage() {
-    const allTags = await prisma.tag.findMany();
+    const courses = await getCoursePickerRecords();
     return (
-        <div className="create-papers">
-            <UploadFile allTags={allTags.map((i: { name: string }) => i.name)} variant="Past Papers"/>
-        </div>
+        <DirectionalTransition>
+            <div className="create-papers">
+                <UploadFile variant="Past Papers" courses={courses} />
+            </div>
+        </DirectionalTransition>
     );
 }
 

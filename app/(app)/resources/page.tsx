@@ -1,133 +1,176 @@
-import React, { Suspense } from 'react';
-import { redirect } from 'next/navigation';
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import ResourceCard from '../../components/ResourceCard';
-import Pagination from '../../components/Pagination';
-import SearchBar from '../../components/SearchBar';
-import { getResourcesCount, getResourcesPage } from '@/lib/data/resources';
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import ResourceBrowser from "@/app/components/resources/resource-browser";
+import { GradientText } from "@/app/components/landing/landing";
 import { DEFAULT_KEYWORDS } from "@/lib/seo";
+import { getVinCatalogMeta, getVinCourses, getVinYears } from "@/lib/data/vin-together";
 
-function validatePage(page: number, totalPages: number): number {
-    if (isNaN(page) || page < 1) {
-        return 1;
-    }
-    if (page > totalPages && totalPages > 0) {
-        return totalPages;
-    }
-    return page;
+type ResourcesSearchParams = { search?: string; year?: string };
+
+function formatCount(value: number) {
+    return Intl.NumberFormat("en-IN").format(value);
 }
 
-function ResourcesSkeleton() {
+function HeroStats({
+    stats,
+}: {
+    stats: { courseCount: number; moduleCount: number; videoCount: number; questionCount: number };
+}) {
+    const items = [
+        { label: "courses", value: stats.courseCount },
+        { label: "modules", value: stats.moduleCount },
+        { label: "videos", value: stats.videoCount },
+        { label: "questions", value: stats.questionCount },
+    ];
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {Array.from({ length: 12 }).map((_, index) => (
+        <div className="grid grid-cols-4 gap-2 text-black/70 dark:text-[#D5D5D5]/70 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-5 sm:gap-y-1">
+            {items.map((item, idx) => (
                 <div
-                    key={index}
-                    className="flex flex-col justify-between w-full h-full p-4 bg-[#5FC4E7]/40 border-2 border-transparent dark:bg-[#ffffff]/5 dark:lg:bg-[#0C1222] dark:border-[#ffffff]/20 transition-all duration-200"
+                    key={item.label}
+                    className="flex min-w-0 flex-col items-start gap-0.5 text-left sm:flex-row sm:items-baseline sm:gap-1.5"
                 >
-                    <div className="space-y-2">
-                        <div className="h-4 w-3/4 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
-                        <div className="h-3 w-1/3 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
-                    </div>
-                    <div className="flex justify-between mt-4">
-                        <div />
-                        <div className="h-4 w-4 bg-black/10 dark:bg-white/10 rounded-full animate-pulse" />
-                    </div>
+                    <span className="text-[1.7rem] font-black leading-none text-black dark:text-[#D5D5D5] sm:text-xl">
+                        {formatCount(item.value)}
+                    </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-xs sm:tracking-wider">
+                        {item.label}
+                    </span>
+                    {idx < items.length - 1 && (
+                        <span
+                            aria-hidden="true"
+                            className="ml-3 hidden text-black dark:text-white sm:inline"
+                        >
+                            ·
+                        </span>
+                    )}
                 </div>
             ))}
         </div>
     );
 }
 
-async function ResourcesResults({ params }: { params: { page?: string; search?: string } }) {
-    const pageSize = 12;
-    const search = params.search || '';
-    const page = parseInt(params.page || '1', 10);
-
-    const [totalCount, paginatedSubjects] = await Promise.all([
-        getResourcesCount({ search }),
-        getResourcesPage({
-            search,
-            page: page > 0 ? page : 1,
-            pageSize,
-        }),
-    ]);
-    const totalPages = Math.ceil(totalCount / pageSize);
-    const validatedPage = validatePage(page, totalPages);
-
-    if (validatedPage !== page) {
-        redirect(`/resources?page=${validatedPage}${search ? `&search=${encodeURIComponent(search)}` : ''}`);
-    }
-
+function ResourceBrowserShell() {
     return (
-        <>
-            {paginatedSubjects.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {paginatedSubjects.map((subject) => (
-                        <ResourceCard key={subject.id} subject={subject} />
+        <div className="flex flex-col gap-4" aria-hidden="true">
+            <div className="flex items-stretch gap-2 sm:gap-3">
+                <div className="h-12 min-w-0 flex-1 border border-black/25 bg-white dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]" />
+            </div>
+            <div className="flex flex-nowrap items-center gap-1 overflow-hidden sm:flex-wrap sm:gap-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <span
+                        key={index}
+                        className="inline-flex h-8 w-16 shrink-0 border-2 border-black/15 bg-white min-[380px]:h-9 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]"
+                    />
+                ))}
+            </div>
+            <div className="flex flex-col gap-4 pt-2">
+                <span className="h-5 w-32 bg-black/10 dark:bg-white/10" />
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {Array.from({ length: 8 }).map((_, index) => (
+                        <div
+                            key={index}
+                            className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222]"
+                        >
+                            <span className="block h-3 w-20 bg-black/10 dark:bg-white/10" />
+                            <span className="block h-4 w-full bg-black/10 dark:bg-white/10" />
+                            <span className="block h-4 w-3/5 bg-black/10 dark:bg-white/10" />
+                            <div className="mt-auto flex items-end gap-1 pt-1">
+                                <span className="block h-7 w-10 bg-black/10 dark:bg-white/10" />
+                                <span className="block h-3 w-12 bg-black/10 dark:bg-white/10" />
+                            </div>
+                        </div>
                     ))}
                 </div>
-            ) : (
-                <p className="text-center text-lg">
-                    {search
-                        ? "No subjects found matching your search."
-                        : "No subjects found."}
-                </p>
-            )}
+            </div>
+        </div>
+    );
+}
 
-            {totalPages > 1 && (
-                <div className="mt-12">
-                    <Pagination
-                        currentPage={validatedPage}
-                        totalPages={totalPages}
-                        basePath="/resources"
-                        searchQuery={search}
-                    />
-                </div>
-            )}
-        </>
+async function ResourceBrowserSection({
+    searchParamsPromise,
+}: {
+    searchParamsPromise: Promise<ResourcesSearchParams> | undefined;
+}) {
+    const params = (await searchParamsPromise) ?? {};
+    const search = params.search?.trim() ?? "";
+    const year = params.year?.trim() ?? "";
+    const years = getVinYears();
+    const meta = getVinCatalogMeta();
+    const courseCards = getVinCourses().map((course) => ({
+        id: course.id,
+        slug: course.slug,
+        displayName: course.displayName,
+        shortName: course.shortName,
+        year: course.year,
+        image: course.image,
+        counts: course.counts,
+        matchKeys: course.matchKeys,
+    }));
+
+    return (
+        <ResourceBrowser
+            courses={courseCards}
+            initialSearch={search}
+            initialYear={year}
+            years={years}
+            sourceUrl={meta.source.coursesUrl}
+        />
     );
 }
 
 export default async function ResourcesPage({
     searchParams,
 }: {
-    searchParams?: Promise<{ page?: string; search?: string }>;
+    searchParams?: Promise<ResourcesSearchParams>;
 }) {
-    const params = (await searchParams) ?? {};
-    const search = params.search || '';
+    const meta = getVinCatalogMeta();
 
     return (
-        <div className="transition-colors min-h-screen text-black dark:text-gray-200">
-            <div className="container mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-4 lg:py-8">
-                <h1 className="text-center mb-8">Resource Repo</h1>
+        <DirectionalTransition>
+            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
+                    <section className="flex flex-col gap-5">
+                        <h1 className="whitespace-nowrap text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
+                            Resource{" "}
+                            <GradientText>Repository</GradientText>
+                        </h1>
 
-                <div className="max-w-3xl mx-auto mb-8">
-                    <SearchBar pageType="resources" initialQuery={search} />
+                        <HeroStats stats={meta.counts} />
+
+                        <Suspense fallback={<ResourceBrowserShell />}>
+                            <ResourceBrowserSection searchParamsPromise={searchParams} />
+                        </Suspense>
+                    </section>
                 </div>
-
-                <Suspense fallback={<ResourcesSkeleton />}>
-                    <ResourcesResults params={params} />
-                </Suspense>
             </div>
-        </div>
+        </DirectionalTransition>
     );
 }
 
 export async function generateMetadata({
     searchParams,
 }: {
-    searchParams?: Promise<{ page?: string; search?: string }>;
+    searchParams?: Promise<ResourcesSearchParams>;
 }): Promise<Metadata> {
     const params = (await searchParams) ?? {};
-    const search = params.search || "";
-    const page = Number.parseInt(params.page || "1", 10) || 1;
-    const isIndexable = !search && page <= 1;
-    const title = search ? `Resources matching \"${search}\"` : "Resources";
+    const search = params.search?.trim() ?? "";
+    const year = params.year?.trim() ?? "";
+    const isIndexable = !search && !year;
+    const titleParts = ["Resources"];
+
+    if (year) {
+        titleParts.push(year);
+    }
+
+    if (search) {
+        titleParts.push(`matching "${search}"`);
+    }
 
     return {
-        title,
-        description: "Browse course resources and reference material on ExamCooker.",
+        title: titleParts.join(" | "),
+        description:
+            "Browse ExamCooker's structured course resources with module-wise videos, notes, PDFs, and previous questions.",
         keywords: DEFAULT_KEYWORDS,
         alternates: { canonical: "/resources" },
         robots: { index: isIndexable, follow: true },

@@ -19,6 +19,8 @@ export const COURSE_ACRONYMS: { [key: string]: string[] } = {
   'COMPUTER NETWORKS': ['BCSE308L', 'BITE305L', 'UCSC203L'],
   'MATERIALS SCIENCE': ['BMEE209L'],
   'MAT SCI': ['BMEE209L'],
+  ROBOTICS: ['BMEE316E'],
+  'INDUSTRIAL ROBOTICS': ['BMEE316E'],
   SE: ['BCSE301L', 'BITE307L', 'ISWE101L'],
   'SOFTWARE ENGINEERING': ['BCSE301L', 'BITE307L', 'ISWE101L'],
 
@@ -352,6 +354,7 @@ export const COURSE_MAP: { [key: string]: string } = {
   BMEE305L: 'Manufacturing Planning and Control',
   BMEE306L: 'Computer Aided Design & Finite Element Analysis',
   BMEE308L: 'Control System',
+  BMEE316E: 'Industrial Robotics',
   BMEE352E: 'Product Design Engineering - II',
   BMEE355L: 'Cloud Computing using Salesforce',
   BMEE401L: 'Computer Integrated Manufacturing',
@@ -680,7 +683,7 @@ export function recognizeCourseInText(
   }> = []
 
   const courseCodePattern = /\b[A-Z]{3,6}[0-9]{3,4}[A-Z]?\b/g
-  const codeMatches = text.match(courseCodePattern) || []
+  const codeMatches: string[] = text.match(courseCodePattern) || []
 
   codeMatches.forEach(match => {
     const upperMatch = match.toUpperCase()

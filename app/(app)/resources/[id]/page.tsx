@@ -1,21 +1,86 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import prisma from "@/lib/prisma";
-import ModuleDropdown from "../../../components/ModuleDropdown";
-import { notFound } from "next/navigation";
-import ViewTracker from "@/app/components/ViewTracker";
-import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
+import { asc, eq } from "drizzle-orm";
+import ModuleDropdown from "@/app/components/module-dropdown";
+import VinCoursePage from "@/app/components/resources/vin-course-page";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import { notFound, permanentRedirect } from "next/navigation";
+import ViewTracker from "@/app/components/view-tracker";
+import {
+    buildKeywords,
+    DEFAULT_KEYWORDS,
+    getCourseResourcesPath,
+    parseSubjectName,
+} from "@/lib/seo";
+import { getVinCourseById } from "@/lib/data/vin-together";
+import { db, module as moduleTable, type Module, subject, type Subject } from "@/db";
 
-async function fetchSubject(id: string) {
-    return prisma.subject.findUnique({
-        where: {id},
-        include: {modules: true},
-    });
+async function fetchLegacySubject(id: string) {
+    const foundSubjects = await db.select().from(subject).where(eq(subject.id, id));
+    const foundSubject = foundSubjects[0] ?? null;
+
+    if (!foundSubject) {
+        return null;
+    }
+
+    const modules = await db
+        .select()
+        .from(moduleTable)
+        .where(eq(moduleTable.subjectId, id))
+        .orderBy(asc(moduleTable.title));
+
+    return { ...foundSubject, modules };
 }
 
-function parseSubjectName(name: string) {
-    const [courseCode, ...rest] = name.split("-");
-    const courseName = rest.join("-").trim() || "Subject Name";
-    return { courseCode: courseCode?.trim() || "Course", courseName };
+function buildRemoteDescription(topicCount: number, displayName: string) {
+    return `Study ${displayName} on ExamCooker with ${topicCount} structured topics, module-wise videos, takeaways, visual notes, and previous questions sourced from VInTogether.`;
+}
+
+function renderLegacySubject(subject: Subject & { modules: Module[] }) {
+    const { courseCode, courseName } = parseSubjectName(subject.name);
+
+    if (courseCode) {
+        permanentRedirect(getCourseResourcesPath(courseCode));
+    }
+
+    return (
+        <div className="transition-colors container mx-auto p-2 text-black dark:text-[#D5D5D5] sm:p-4">
+            <ViewTracker id={subject.id} type="subject" title={subject.name} />
+            <h2>{courseName}</h2>
+            <br />
+            {courseCode ? (
+                <>
+                    <h3>Course Code: {courseCode}</h3>
+                    <br />
+                </>
+            ) : null}
+            <br />
+            <div className="space-y-6">
+                {subject.modules.map((module) => (
+                    <ModuleDropdown key={module.id} module={module} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function SubjectDetailShell() {
+    return (
+        <div
+            className="container mx-auto p-2 sm:p-4"
+            aria-hidden="true"
+        >
+            <span className="block h-8 w-1/2 bg-black/10 dark:bg-white/10" />
+            <div className="mt-6 space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="h-14 rounded-md border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                    />
+                ))}
+            </div>
+        </div>
+    );
 }
 
 export async function generateMetadata({
@@ -24,53 +89,101 @@ export async function generateMetadata({
     params: Promise<{ id: string }>;
 }): Promise<Metadata> {
     const { id } = await params;
-    const subject = await fetchSubject(id);
-    if (!subject) return {};
+    const remoteCourse = getVinCourseById(id);
+
+    if (remoteCourse) {
+        return {
+            title: `${remoteCourse.displayName} resources`,
+            description: buildRemoteDescription(
+                remoteCourse.counts.topicCount,
+                remoteCourse.displayName,
+            ),
+            keywords: buildKeywords(DEFAULT_KEYWORDS, [
+                remoteCourse.displayName,
+                remoteCourse.shortName ?? "",
+                ...remoteCourse.aliases,
+            ]),
+            alternates: { canonical: `/resources/${remoteCourse.slug}` },
+            robots: { index: true, follow: true },
+            openGraph: {
+                title: `${remoteCourse.displayName} resources`,
+                description: buildRemoteDescription(
+                    remoteCourse.counts.topicCount,
+                    remoteCourse.displayName,
+                ),
+                url: `/resources/${remoteCourse.slug}`,
+            },
+        };
+    }
+
+    const subject = await fetchLegacySubject(id);
+    if (!subject) return { robots: { index: false, follow: true } };
+
     const { courseCode, courseName } = parseSubjectName(subject.name);
-    const title = `${courseName} (${courseCode}) resources`;
-    const description = `Browse ${courseName} resources and modules on ExamCooker.`;
+    const canonical = courseCode
+        ? getCourseResourcesPath(courseCode)
+        : `/resources/${subject.id}`;
+    const title = courseCode
+        ? `${courseName} (${courseCode}) resources`
+        : `${courseName} resources`;
 
     return {
         title,
-        description,
-        keywords: buildKeywords(DEFAULT_KEYWORDS, [courseCode, courseName]),
-        alternates: { canonical: `/resources/${subject.id}` },
+        description: `Browse ${courseName} resources and modules on ExamCooker.`,
+        keywords: buildKeywords(DEFAULT_KEYWORDS, [courseCode ?? "", courseName]),
+        alternates: { canonical },
         openGraph: {
             title,
-            description,
-            url: `/resources/${subject.id}`,
+            description: `Browse ${courseName} resources and modules on ExamCooker.`,
+            url: canonical,
         },
+        robots: { index: true, follow: true },
     };
 }
 
-export default async function SubjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const subject = await fetchSubject(id);
-    //Since the Subject datatype only has a "name" field, I assume that the name has to be something like "COURSECODE - COURSENAME" and 
-    //am hence, using the '-' character to split the string
-    if (!subject) {
-        return notFound();
-    }
-    const { courseCode, courseName } = parseSubjectName(subject.name);
+async function SubjectDetailContent({
+    paramsPromise,
+}: {
+    paramsPromise: Promise<{ id: string }>;
+}) {
+    const { id } = await paramsPromise;
+    const remoteCourse = getVinCourseById(id);
 
+    if (remoteCourse) {
+        if (id !== remoteCourse.slug) {
+            permanentRedirect(`/resources/${remoteCourse.slug}`);
+        }
 
-    return (
-        <div className="transition-colors container mx-auto p-2 sm:p-4 text-black dark:text-[#D5D5D5]">
-            <ViewTracker
-                id={subject.id}
-                type="subject"
-                title={subject.name}
+        return (
+            <VinCoursePage
+                course={remoteCourse}
+                breadcrumbs={[
+                    { label: "Resources", href: "/resources" },
+                    { label: remoteCourse.displayName },
+                ]}
             />
-            <h2>{courseName}</h2>
-            <br />
-            <h3>Course Code: {courseCode}</h3>
-            <br />
-            <br />
-            <div className="space-y-6">
-                {subject.modules.map((module) => (
-                    <ModuleDropdown key={module.id} module={module} />
-                ))}
-            </div>
-        </div>
+        );
+    }
+
+    const subject = await fetchLegacySubject(id);
+
+    if (!subject) {
+        notFound();
+    }
+
+    return renderLegacySubject(subject);
+}
+
+export default function SubjectDetailPage({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}) {
+    return (
+        <DirectionalTransition>
+            <Suspense fallback={<SubjectDetailShell />}>
+                <SubjectDetailContent paramsPromise={params} />
+            </Suspense>
+        </DirectionalTransition>
     );
 }

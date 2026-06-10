@@ -1,7 +1,8 @@
 import { cacheLife, cacheTag } from "next/cache";
-import prisma from "@/lib/prisma";
-import { Prisma } from "@/src/generated/prisma";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { asc, count, ilike, or } from "drizzle-orm";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
+import { db, syllabi } from "@/db";
 
 function buildSearchTerms(search: string) {
     const rawSearch = search.trim().replace(/\s+/g, " ");
@@ -20,18 +21,31 @@ function buildSearchTerms(search: string) {
     return Array.from(terms);
 }
 
-function buildWhere(search: string): Prisma.syllabiWhereInput {
+function buildWhere(search: string) {
     const terms = buildSearchTerms(search);
-    if (!terms.length) return {};
+    if (!terms.length) return undefined;
 
-    return {
-        OR: terms.map((term) => ({
-            name: {
-                contains: term,
-                mode: "insensitive",
-            },
-        })),
-    };
+    return or(...terms.map((term) => ilike(syllabi.name, `%${term}%`)));
+}
+
+export async function getAllSyllabi() {
+    "use cache";
+    cacheTag("syllabus");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const items = await db
+        .select({
+            id: syllabi.id,
+            name: syllabi.name,
+            fileUrl: syllabi.fileUrl,
+        })
+        .from(syllabi)
+        .orderBy(asc(syllabi.name));
+
+    return items.map((syllabus) => ({
+        ...syllabus,
+        fileUrl: normalizeGcsUrl(syllabus.fileUrl) ?? syllabus.fileUrl,
+    }));
 }
 
 export async function getSyllabusCount(input: { search: string }) {
@@ -40,7 +54,12 @@ export async function getSyllabusCount(input: { search: string }) {
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
     const where = buildWhere(input.search);
-    return prisma.syllabi.count({ where });
+    const rows = await db
+        .select({ total: count() })
+        .from(syllabi)
+        .where(where);
+
+    return rows[0]?.total ?? 0;
 }
 
 export async function getSyllabusPage(input: {
@@ -55,16 +74,16 @@ export async function getSyllabusPage(input: {
     const where = buildWhere(input.search);
     const skip = (input.page - 1) * input.pageSize;
 
-    return prisma.syllabi.findMany({
-        where,
-        orderBy: { name: "asc" },
-        skip,
-        take: input.pageSize,
-        select: {
-            id: true,
-            name: true,
-        },
-    });
+    return db
+        .select({
+            id: syllabi.id,
+            name: syllabi.name,
+        })
+        .from(syllabi)
+        .where(where)
+        .orderBy(asc(syllabi.name))
+        .offset(skip)
+        .limit(input.pageSize);
 }
 
 export async function getSyllabusByCourseCode(code: string) {
@@ -75,17 +94,44 @@ export async function getSyllabusByCourseCode(code: string) {
     const normalized = normalizeCourseCode(code);
     if (!normalized) return null;
 
-    return prisma.syllabi.findFirst({
-        where: {
-            name: {
-                startsWith: `${normalized}_`,
-                mode: "insensitive",
-            },
-        },
-        select: {
-            id: true,
-            name: true,
-        },
-        orderBy: { name: "asc" },
-    });
+    const rows = await db
+        .select({
+            id: syllabi.id,
+            name: syllabi.name,
+        })
+        .from(syllabi)
+        .where(ilike(syllabi.name, `${normalized}_%`))
+        .orderBy(asc(syllabi.name))
+        .limit(1);
+
+    return rows[0] ?? null;
+}
+
+export async function getSyllabusDetailByCourseCode(code: string) {
+    "use cache";
+    cacheTag("syllabus");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const normalized = normalizeCourseCode(code);
+    if (!normalized) return null;
+
+    const rows = await db
+        .select({
+            id: syllabi.id,
+            name: syllabi.name,
+            fileUrl: syllabi.fileUrl,
+        })
+        .from(syllabi)
+        .where(ilike(syllabi.name, `${normalized}_%`))
+        .orderBy(asc(syllabi.name))
+        .limit(1);
+
+    const syllabus = rows[0];
+
+    if (!syllabus) return null;
+
+    return {
+        ...syllabus,
+        fileUrl: normalizeGcsUrl(syllabus.fileUrl) ?? syllabus.fileUrl,
+    };
 }

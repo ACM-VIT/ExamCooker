@@ -1,9 +1,9 @@
 import { PostHog } from "posthog-node";
+import { getPostHogHost, getPostHogProjectKey } from "@/lib/posthog/shared";
 
 const posthogApiKey =
-    process.env.POSTHOG_API_KEY || process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const posthogHost =
-    process.env.POSTHOG_HOST || process.env.NEXT_PUBLIC_POSTHOG_HOST;
+    process.env.POSTHOG_API_KEY || getPostHogProjectKey();
+const posthogHost = getPostHogHost();
 
 export function createPostHogServer() {
     if (!posthogApiKey) return null;

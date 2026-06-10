@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "@/app/components/common/AppImage";
-import LogoIcon from "@/public/assets/LogoIcon.svg";
+import Image from "@/app/components/common/app-image";
 
 export function SidebarWordmark({
     href = "/home",
@@ -20,7 +19,7 @@ export function SidebarWordmark({
             ].join(" ")}
             aria-label="ExamCooker home"
         >
-            <Image src={LogoIcon} alt="" width={22} height={22} className="shrink-0" />
+            <Image src="/assets/logo-icon.svg" alt="" width={22} height={22} className="shrink-0" />
             <span
                 className={[
                     "truncate text-[15px] font-extrabold leading-none text-black dark:text-[#D5D5D5]",

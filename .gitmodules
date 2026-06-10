@@ -1,0 +1,3 @@
+[submodule "packages/capacitor-native-tab"]
+	path = packages/capacitor-native-tab
+	url = https://github.com/ACM-VIT/capacitor-native-tab.git

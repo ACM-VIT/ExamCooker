@@ -1,108 +1,288 @@
-import React, { Suspense } from 'react';
-import { redirect } from 'next/navigation';
+import React, { Suspense } from "react";
+import Link from "next/link";
 import type { Metadata } from "next";
-import Pagination from "../../components/Pagination";
-import NotesCard from "../../components/NotesCard";
-import SearchBar from "../../components/SearchBar";
-import Dropdown from "../../components/FilterComponent";
-import UploadButtonNotes from "../../components/UploadButtonNotes";
-import { getNotesCount, getNotesPage } from "@/lib/data/notes";
+import { redirect } from "next/navigation";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import { GradientText } from "@/app/components/landing/landing";
+import NotesCourseGridCard from "@/app/components/notes/notes-course-grid-card";
+import NotesCourseSearch from "@/app/components/notes/notes-course-search";
+import UploadButtonNotes from "@/app/components/upload-button-notes";
+import {
+    getNotesCourseGrid,
+    getNotesStats,
+    getSearchableNoteCourses,
+    searchNotesCourseGrid,
+    type NotesCourseGridItem,
+} from "@/lib/data/notes";
 import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
 
-function validatePage(page: number, totalPages: number): number {
-    if (isNaN(page) || page < 1) {
-        return 1;
-    }
-    if (page > totalPages && totalPages > 0) {
-        return totalPages;
-    }
-    return page;
+const PAGE_SIZE = 24;
+const POPULAR_LIMIT = 6;
+const COURSE_GRID_CLASS =
+    "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
+type NotesSearchParams = { page?: string; search?: string };
+
+function formatNumber(n: number) {
+    return n.toLocaleString("en-US");
 }
 
-function NotesSkeleton() {
+function HeroStats({
+    stats,
+}: {
+    stats: { noteCount: number; courseCount: number };
+}) {
+    const items = [
+        { label: "notes", value: stats.noteCount },
+        { label: "courses", value: stats.courseCount },
+    ];
     return (
-        <div className="flex justify-center">
-            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 p-2 sm:p-4 lg:p-6 place-content-center">
-                {Array.from({ length: 9 }).map((_, index) => (
-                    <div key={index} className="max-w-sm w-full h-full">
-                        <div className="hover:shadow-xl px-5 py-6 w-full text-center bg-[#5FC4E7]/40 dark:bg-[#ffffff]/5 lg:dark:bg-[#0C1222] dark:border-b-[#3BF4C7] dark:lg:border-b-[#ffffff]/20 dark:border-[#ffffff]/20 border-2 border-transparent transition duration-200 transform max-w-96">
-                            <div className="bg-[#d9d9d9]/70 w-full h-44 relative overflow-hidden animate-pulse" />
-                            <div className="flex justify-between items-center mt-3">
-                                <div />
-                                <div className="h-4 w-2/3 bg-black/10 dark:bg-white/10 rounded animate-pulse" />
-                                <div className="h-4 w-4 bg-black/10 dark:bg-white/10 rounded-full animate-pulse" />
+        <div className="grid grid-cols-2 gap-2 text-black/70 dark:text-[#D5D5D5]/70 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-5 sm:gap-y-1">
+            {items.map((item, idx) => (
+                <div
+                    key={item.label}
+                    className="flex min-w-0 flex-col items-start gap-0.5 text-left sm:flex-row sm:items-baseline sm:gap-1.5"
+                >
+                    <span className="text-[1.7rem] font-black leading-none text-black dark:text-[#D5D5D5] sm:text-xl">
+                        {formatNumber(item.value)}
+                    </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-xs sm:tracking-wider">
+                        {item.label}
+                    </span>
+                    {idx < items.length - 1 && (
+                        <span
+                            aria-hidden="true"
+                            className="ml-3 hidden text-black dark:text-white sm:inline"
+                        >
+                            ·
+                        </span>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function CourseGridShell() {
+    return (
+        <section className="flex flex-col gap-4">
+            <header className="flex items-end justify-between gap-3">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                    All courses
+                </h2>
+                <span className="text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                    &nbsp;
+                </span>
+            </header>
+            <div className={COURSE_GRID_CLASS} aria-hidden="true">
+                {Array.from({ length: PAGE_SIZE }).map((_, index) => (
+                    <div
+                        key={index}
+                        className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]"
+                    >
+                        <span className="font-mono text-xs font-bold uppercase tracking-wide text-black/75 dark:text-[#D5D5D5]/70">
+                            <span className="block h-[1em] w-20 bg-black/10 dark:bg-white/10" />
+                        </span>
+                        <h3 className="line-clamp-3 text-base font-bold leading-snug text-black dark:text-[#D5D5D5]">
+                            <span className="block h-[1em] w-full bg-black/10 dark:bg-white/10" />
+                            <span className="mt-1.5 block h-[1em] w-4/5 bg-black/10 dark:bg-white/10" />
+                        </h3>
+                        <div className="mt-auto flex items-end pt-1">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-3xl font-bold leading-none text-black dark:text-[#D5D5D5]">
+                                    <span className="block h-[1em] w-10 bg-black/10 dark:bg-white/10" />
+                                </span>
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
+                                    <span className="block h-[1em] w-10 bg-black/10 dark:bg-white/10" />
+                                </span>
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
-        </div>
+        </section>
     );
 }
 
-async function NotesResults({ params }: { params: { page?: string; search?: string; tags?: string | string[] } }) {
-    const pageSize = 9;
-    const search = params.search || '';
-    const page = parseInt(params.page || '1', 10);
-    const tags: string[] = Array.isArray(params.tags)
-        ? params.tags
-        : (params.tags ? params.tags.split(',') : []);
-    const normalizedTags = [...tags].sort();
+function validatePage(page: number, totalPages: number): number {
+    if (Number.isNaN(page) || page < 1) return 1;
+    if (totalPages > 0 && page > totalPages) return totalPages;
+    return page;
+}
 
-    const [totalCount, paginatedNotes] = await Promise.all([
-        getNotesCount({
-            search,
-            tags: normalizedTags,
-        }),
-        getNotesPage({
-            search,
-            tags: normalizedTags,
-            page: page > 0 ? page : 1,
-            pageSize,
-        }),
-    ]);
-    const totalPages = Math.ceil(totalCount / pageSize);
-    const validatedPage = validatePage(page, totalPages);
+async function CourseGridSection({
+    searchParamsPromise,
+}: {
+    searchParamsPromise: Promise<NotesSearchParams> | undefined;
+}) {
+    const params = (await searchParamsPromise) ?? {};
+    const search = params.search?.trim() || "";
+    const rawPage = Number.parseInt(params.page || "1", 10) || 1;
 
-    if (validatedPage !== page) {
-        const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
-        const tagsQuery = tags.length > 0 ? `&tags=${encodeURIComponent(tags.join(','))}` : '';
-        redirect(`/notes?page=${validatedPage}${searchQuery}${tagsQuery}`);
+    const courses: NotesCourseGridItem[] = search
+        ? await searchNotesCourseGrid(search)
+        : await getNotesCourseGrid();
+
+    let popular: NotesCourseGridItem[] = [];
+    let rest = courses;
+    if (!search) {
+        popular = [...courses]
+            .sort((a, b) => b.noteCount - a.noteCount)
+            .slice(0, POPULAR_LIMIT);
+        const popularIds = new Set(popular.map((c) => c.id));
+        rest = courses.filter((c) => !popularIds.has(c.id));
+    }
+
+    const totalPages = Math.max(1, Math.ceil(rest.length / PAGE_SIZE));
+    const page = validatePage(rawPage, totalPages);
+    if (page !== rawPage) {
+        const qs = new URLSearchParams();
+        if (search) qs.set("search", search);
+        if (page > 1) qs.set("page", String(page));
+        const query = qs.toString();
+        redirect(`/notes${query ? `?${query}` : ""}`);
+    }
+
+    const start = (page - 1) * PAGE_SIZE;
+    const slice = rest.slice(start, start + PAGE_SIZE);
+
+    if (courses.length === 0) {
+        return (
+            <div className="border-2 border-dashed border-black/30 p-10 text-center dark:border-[#D5D5D5]/30">
+                <p className="text-sm text-black/70 dark:text-[#D5D5D5]/70">
+                    {search
+                        ? `No courses match "${search}".`
+                        : "No courses with notes yet."}
+                </p>
+            </div>
+        );
     }
 
     return (
         <>
-            <div className='flex justify-center'>
-                <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 p-2 sm:p-4 lg:p-6 place-content-center">
-                    {paginatedNotes.length > 0 ? (
-                        paginatedNotes.map((eachNote, index) => (
-                            <NotesCard
-                                key={eachNote.id}
-                                note={eachNote}
-                                index={index}
-                            />
-                        ))
-                    ) : (
-                        <p className="col-span-3 text-center">
-                            {search || tags.length > 0
-                                ? "No notes found matching your search or selected tags."
-                                : "No notes found."}
-                        </p>
-                    )}
-                </div>
-            </div>
-
-            {totalPages > 1 && (
-                <div className="mt-auto">
-                    <Pagination
-                        currentPage={validatedPage}
-                        totalPages={totalPages}
-                        basePath="/notes"
-                        searchQuery={search}
-                        tagsQuery={tags.join(',')}
-                    />
-                </div>
+            {page === 1 && popular.length > 0 && (
+                <section className="flex flex-col gap-4">
+                    <header className="flex items-end justify-between">
+                        <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                            Popular courses
+                        </h2>
+                    </header>
+                    <div className={COURSE_GRID_CLASS}>
+                        {popular.map((course) => (
+                            <NotesCourseGridCard key={course.id} course={course} />
+                        ))}
+                    </div>
+                </section>
             )}
+
+            <section className="flex flex-col gap-4">
+                <header className="flex items-end justify-between gap-3">
+                    <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
+                        {search
+                            ? `${courses.length} match${courses.length === 1 ? "" : "es"}`
+                            : "All courses"}
+                    </h2>
+                    {!search && (
+                        <span className="text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                            {rest.length} more
+                        </span>
+                    )}
+                </header>
+                <div className={COURSE_GRID_CLASS}>
+                    {slice.map((course) => (
+                        <NotesCourseGridCard key={course.id} course={course} />
+                    ))}
+                </div>
+                {totalPages > 1 && (
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                        {page > 1 && (
+                            <Link
+                                href={`/notes?page=${page - 1}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+                                transitionTypes={["nav-back"]}
+                                className="inline-flex h-9 items-center border-2 border-[#5FC4E7] bg-[#5FC4E7]/40 px-3 text-sm font-semibold transition hover:bg-[#5FC4E7]/60 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:hover:bg-[#ffffff]/15"
+                            >
+                                ← Prev
+                            </Link>
+                        )}
+                        <span className="text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                            {page} / {totalPages}
+                        </span>
+                        {page < totalPages && (
+                            <Link
+                                href={`/notes?page=${page + 1}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
+                                transitionTypes={["nav-forward"]}
+                                className="inline-flex h-9 items-center border-2 border-[#5FC4E7] bg-[#5FC4E7]/40 px-3 text-sm font-semibold transition hover:bg-[#5FC4E7]/60 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:hover:bg-[#ffffff]/15"
+                            >
+                                Next →
+                            </Link>
+                        )}
+                    </div>
+                )}
+            </section>
+        </>
+    );
+}
+
+function SearchControls({
+    search,
+    searchable,
+}: {
+    search: string;
+    searchable: Awaited<ReturnType<typeof getSearchableNoteCourses>>;
+}) {
+    return (
+        <div className="flex w-full items-stretch gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
+                <NotesCourseSearch
+                    key={search}
+                    courses={searchable}
+                    initialQuery={search}
+                />
+            </div>
+            <div className="shrink-0">
+                <UploadButtonNotes />
+            </div>
+        </div>
+    );
+}
+
+function SearchControlsShell() {
+    return (
+        <div
+            className="flex w-full items-stretch gap-2 sm:gap-3"
+            aria-hidden="true"
+        >
+            <div className="h-12 min-w-0 flex-1 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11" />
+            <div className="h-12 w-12 shrink-0 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11 sm:w-11" />
+        </div>
+    );
+}
+
+function DynamicSectionsShell() {
+    return (
+        <>
+            <SearchControlsShell />
+            <CourseGridShell />
+        </>
+    );
+}
+
+async function DynamicSections({
+    searchParamsPromise,
+    searchable,
+}: {
+    searchParamsPromise: Promise<NotesSearchParams> | undefined;
+    searchable: Awaited<ReturnType<typeof getSearchableNoteCourses>>;
+}) {
+    const params = (await searchParamsPromise) ?? {};
+    const search = params.search || "";
+
+    return (
+        <>
+            <SearchControls search={search} searchable={searchable} />
+
+            <Suspense fallback={<CourseGridShell />}>
+                <CourseGridSection searchParamsPromise={searchParamsPromise} />
+            </Suspense>
         </>
     );
 }
@@ -110,65 +290,56 @@ async function NotesResults({ params }: { params: { page?: string; search?: stri
 export default async function NotesPage({
     searchParams,
 }: {
-    searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+    searchParams?: Promise<NotesSearchParams>;
 }) {
-    const params = (await searchParams) ?? {};
-    const search = params.search || '';
-    return (
-        <div className="p-2 sm:p-4 lg:p-8 transition-colors flex flex-col min-h-screen items-center text-black dark:text-[#D5D5D5]">
-            <h1 className="text-center mb-4">Notes</h1>
-            <div className="hidden w-5/6 lg:w-1/2 md:flex items-center justify-center p-4 space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
-                <Dropdown pageType='notes' />
-                <SearchBar pageType="notes" initialQuery={search} />
-                <UploadButtonNotes />
-            </div>
+    const [stats, searchable] = await Promise.all([
+        getNotesStats(),
+        getSearchableNoteCourses(),
+    ]);
 
-            <div className='w-5/6 space-y-4 md:hidden'>
-                <SearchBar pageType="notes" initialQuery={search} />
-                <div className='grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-3'>
-                    <div className='min-w-0'>
-                        <Dropdown pageType='notes' />
-                    </div>
-                    <div className='shrink-0 self-stretch'>
-                        <UploadButtonNotes />
-                    </div>
+    return (
+        <DirectionalTransition>
+            <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
+                    <section className="flex flex-col gap-5">
+                        <h1 className="whitespace-nowrap text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
+                            Every note.{" "}
+                            <GradientText>Every course.</GradientText>
+                        </h1>
+
+                        <HeroStats stats={stats} />
+                    </section>
+
+                    <Suspense fallback={<DynamicSectionsShell />}>
+                        <DynamicSections
+                            searchParamsPromise={searchParams}
+                            searchable={searchable}
+                        />
+                    </Suspense>
                 </div>
             </div>
-
-            <Suspense fallback={<NotesSkeleton />}>
-                <NotesResults params={params} />
-            </Suspense>
-        </div>
+        </DirectionalTransition>
     );
 }
 
 export async function generateMetadata({
     searchParams,
 }: {
-    searchParams?: Promise<{ page?: string; search?: string; tags?: string | string[] }>;
+    searchParams?: Promise<{ page?: string; search?: string }>;
 }): Promise<Metadata> {
     const params = (await searchParams) ?? {};
-    const search = params.search || "";
+    const search = params.search?.trim() || "";
     const page = Number.parseInt(params.page || "1", 10) || 1;
-    const tags: string[] = Array.isArray(params.tags)
-        ? params.tags
-        : (params.tags ? params.tags.split(",") : []);
-    const normalizedTags = tags.map((tag) => tag.trim()).filter(Boolean);
-    const isIndexable = !search && normalizedTags.length === 0 && page <= 1;
-
-    const titleParts = ["Notes"];
-    if (normalizedTags.length) titleParts.push(normalizedTags.join(", "));
-    if (search) titleParts.push(`matching "${search}"`);
-
-    const title = titleParts.join(" - ");
-    const description = normalizedTags.length || search
-        ? `Browse notes ${normalizedTags.length ? `tagged ${normalizedTags.join(", ")}` : ""}${search ? ` matching ${search}` : ""}.`
-        : "Browse VIT notes and study material on ExamCooker.";
+    const isIndexable = !search && page <= 1;
+    const title = search ? `Notes matching "${search}"` : "Notes";
+    const description = search
+        ? `Courses matching ${search} on ExamCooker.`
+        : "Browse VIT notes by course on ExamCooker. Find lecture notes, study material, and revision PDFs for every course.";
 
     return {
         title,
         description,
-        keywords: buildKeywords(DEFAULT_KEYWORDS, normalizedTags),
+        keywords: buildKeywords(DEFAULT_KEYWORDS, search ? [search] : []),
         alternates: { canonical: "/notes" },
         robots: { index: isIndexable, follow: true },
     };

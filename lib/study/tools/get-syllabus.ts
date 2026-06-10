@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { getSyllabusByCourseCode, getSyllabusPage } from "@/lib/data/syllabus";
-import { normalizeCourseCode } from "@/lib/courseTags";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { getCourseSyllabusPath } from "@/lib/seo";
 import type { ScopeContext } from "@/lib/study/scope";
 
 export function createGetSyllabusTool(context: ScopeContext | null) {
@@ -31,7 +32,7 @@ export function createGetSyllabusTool(context: ScopeContext | null) {
                         syllabus: {
                             id: syllabus.id,
                             name: syllabus.name,
-                            href: `/syllabus/${syllabus.id}`,
+                            href: getCourseSyllabusPath(code),
                         },
                     };
                 }

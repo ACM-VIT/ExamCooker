@@ -1,8 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { getNotesPage } from "@/lib/data/notes";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import type { ScopeContext } from "@/lib/study/scope";
 
 export function createSearchNotesTool(context: ScopeContext | null) {

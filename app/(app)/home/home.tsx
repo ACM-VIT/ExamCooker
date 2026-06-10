@@ -1,140 +1,99 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { auth } from "@/app/auth";
-import CommonResource from "@/app/components/CommonResource";
-import UserName from "./display_username";
-import { GradientText } from "@/app/components/landing_page/landing";
-import GuestHomeSections from "./GuestHomeSections";
-import NothingViewedOrFav from "./NothingViewedOrFav";
-import { getHomeFavorites, getHomeRecentViews, type HomeItem } from "@/lib/data/home";
-import { getCoursesWithCounts } from "@/lib/data/courses";
-import CourseSearch from "./CourseSearch";
+import { GradientText } from "@/app/components/landing/landing";
+import ExamCookerLogo from "@/app/components/common/exam-cooker-logo";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import ExamsMarquee, { ExamsMarqueeFallback } from "./exams-marquee";
+import { getSearchableCourses } from "@/lib/data/course-catalog";
+import { getUpcomingExams } from "@/lib/data/upcoming-exams";
+import CourseSearch from "./course-search";
+import HomeMarketingSections from "./home-marketing-sections";
+import WelcomeBackSubtitle from "./welcome-back-subtitle";
+import HeroFrame from "./hero-frame";
+import { getDisplayUserName } from "./display-name";
 
-function getQuirkyLine() {
-    const collection: string[] = [
-        "You've got this! Even if 'this' means a borderline psychotic level of caffeine consumption.",
-        "They laughed when I said I'd learn a semester's worth of material in one night. Now they're asking for my notes. #Who'sLaughingNow?",
-        "Sleep is for the victors... of tomorrow's nap.",
-        "Sleep is optional, caffeine is mandatory",
-        "You might not feel like a genius now, but you will after this exam.",
-        "Practice makes progress... and hopefully, perfection.",
-        "Share your knowledge, save a life (or at least a grade)",
-        "I'm not lazy, I'm just selectively productive.",
-        "Coffee is my superpower.",
-        "This coffee is keeping my sanity intact."
-    ]
+const HOME_SUBTITLE = "Your one-stop solution to cram before exams.";
 
-    return collection[Math.floor(Math.random() * collection.length)];
+async function HomeSearchSection() {
+    const courses = await getSearchableCourses();
+
+    return (
+        <div className="ec-home-search-shell mx-auto w-full max-w-4xl px-4 sm:px-0">
+            <CourseSearch courses={courses} />
+        </div>
+    );
 }
 
-const Home = async () => {
-    const session = await auth();
-    const userId = session?.user?.id;
+async function HomeMarqueeSection() {
+    const upcomingExams = await getUpcomingExams(16);
+    return <ExamsMarquee items={upcomingExams} />;
+}
 
-    let recentlyViewedItems: HomeItem[] = [];
-    let favoriteItems: HomeItem[] = [];
-    const isAuthed = Boolean(userId);
+const subtitleClass =
+    "ec-home-subtitle text-sm sm:text-base lg:text-xl text-black/70 dark:text-[#D5D5D5]/70 md:text-white/85 dark:md:text-white/85 mb-6 sm:mb-8 lg:mb-10 max-w-2xl mx-auto";
 
-    // Fetch courses for search - available to all users
-    const courses = await getCoursesWithCounts();
-
-    if (userId) {
-        recentlyViewedItems = await getHomeRecentViews(userId);
-        favoriteItems = await getHomeFavorites(userId);
+function HomeSubtitle({ userName }: { userName: string | null }) {
+    if (!userName) {
+        return <p className={subtitleClass}>{HOME_SUBTITLE}</p>;
     }
-
-    const emptyFav: boolean = favoriteItems.length === 0;
-    const emptyRecentlyViewed: boolean = recentlyViewedItems.length === 0;
-
-    const getTitle = (item: HomeItem['item']) => {
-        if ('title' in item) {
-            return item.title;
-        } else if ('name' in item) {
-            return item.name;
-        }
-        return 'Untitled';
-    };
     return (
-        <div className="bg-[#C2E6EC] dark:bg-[hsl(224,48%,9%)] min-h-screen text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
-            {/* <Link 
-  href="https://os.acmvit.in/" 
-  target="_blank" 
-  rel="noopener noreferrer"
->
-  <div className="bg-[#5FC4E7] dark:bg-gradient-to-tr to-[#27BAEC] from-[#253EE0] dark:text-white text-center py-2 text-sm">
-   Want to know what goes behind this cool website? Join our chapter to find out!
-  </div>
-</Link>  */}
-            <div className="container mx-auto px-4 py-8 max-w-7xl">
-                <header className="text-center mb-8">
-                    <h1 className="text-4xl md:text-6xl font-bold mb-4">Welcome <GradientText><UserName /></GradientText></h1>
-                    <p className="text-base md:text-xl text-black/70 dark:text-[#D5D5D5]/70 mb-8">{getQuirkyLine()}</p>
+        <WelcomeBackSubtitle className={subtitleClass}>
+            Welcome back, {userName}
+        </WelcomeBackSubtitle>
+    );
+}
 
-                    <div className="max-w-3xl mx-auto">
-                        <h2 className="text-base sm:text-lg font-bold mb-3 text-black dark:text-[#D5D5D5]">
-                            Find resources for your course
-                        </h2>
-                        <CourseSearch courses={courses} />
-                    </div>
-                </header>
+async function PersonalizedHomeSubtitle() {
+    const session = await auth();
+    const userName = session?.user?.name
+        ? getDisplayUserName(session.user.name)
+        : null;
 
-                <main>
-                    {isAuthed ? (
-                        <div className="mt-10 lg:mt-25 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <section>
-                                <div className="flex items-center text-xl sm:text-2xl font-bold mb-6">
-                                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                                    <span className="mx-4 whitespace-nowrap">Recently Viewed</span>
-                                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                                </div>
-                                {emptyRecentlyViewed ? (
-                                    <div className="flex justify-center">
-                                        <NothingViewedOrFav sectionName="RecentlyViewed" />
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col gap-4">
-                                        {recentlyViewedItems.map((item) => (
-                                            <CommonResource
-                                                key={item.item.id}
-                                                category={item.type}
-                                                title={getTitle(item.item)}
-                                                thing={item.item}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </section>
+    return <HomeSubtitle userName={userName} />;
+}
 
-                            {/* Favourites */}
-                            <section>
-                                <div className="flex items-center text-xl sm:text-2xl font-bold mb-6">
-                                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                                    <span className="mx-4 whitespace-nowrap">Favourites</span>
-                                    <div className="flex-grow border-t border-black dark:border-[#D5D5D5]"></div>
-                                </div>
-                                {emptyFav ? (
-                                    <div className="flex justify-center">
-                                        <NothingViewedOrFav sectionName="Favourites" />
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col gap-4">
-                                        {favoriteItems.slice(0, 3).map((item) => (
-                                            <CommonResource
-                                                key={item.item.id}
-                                                category={item.type}
-                                                title={getTitle(item.item)}
-                                                thing={item.item}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </section>
+async function PersonalizedMarketingSections() {
+    const session = await auth();
+    return <HomeMarketingSections isAuthed={Boolean(session?.user)} />;
+}
+
+const Home = () => {
+    return (
+        <DirectionalTransition>
+            <div className="overflow-x-clip bg-[#C2E6EC] dark:bg-[hsl(224,48%,9%)] text-black dark:text-[#D5D5D5] flex flex-col transition-colors">
+                <HeroFrame>
+                    <section className="ec-home-hero-shell relative z-10 container mx-auto px-4 max-w-7xl min-h-[100svh] flex flex-col">
+                        <div className="ec-home-hero-stack flex flex-1 flex-col justify-center text-center py-6 sm:py-8 md:py-10 lg:py-14">
+                            <div className="ec-home-hero-brand mb-6 sm:mb-8 lg:mb-12 flex flex-col items-center">
+                                <ExamCookerLogo />
+                            </div>
+
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold leading-[1.02] drop-shadow-[0px_2px_rgba(59,244,199,1)]">
+                                <GradientText>Cramming,</GradientText>
+                            </h1>
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold leading-[1.02] mb-4 sm:mb-5 lg:mb-6">
+                                Made Easy.
+                            </h1>
+                            <Suspense fallback={<HomeSubtitle userName={null} />}>
+                                <PersonalizedHomeSubtitle />
+                            </Suspense>
+
+                            <HomeSearchSection />
                         </div>
-                    ) : (
-                        <GuestHomeSections />
-                    )}
-                </main>
+
+                        <div className="ec-home-marquee-offset pb-4 md:pb-6 lg:pb-8">
+                            <Suspense fallback={<ExamsMarqueeFallback />}>
+                                <HomeMarqueeSection />
+                            </Suspense>
+                        </div>
+                    </section>
+                </HeroFrame>
+
+                <Suspense fallback={<HomeMarketingSections isAuthed />}>
+                    <PersonalizedMarketingSections />
+                </Suspense>
             </div>
-        </div>
+        </DirectionalTransition>
     );
 };
 

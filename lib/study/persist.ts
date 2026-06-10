@@ -1,4 +1,5 @@
-import prisma from "@/lib/prisma";
+import { and, desc, eq } from "drizzle-orm";
+import { db, studyChat, studyMessage } from "@/db";
 import type { StudyScope } from "./scope";
 import type { UIMessage } from "ai";
 
@@ -16,9 +17,11 @@ export async function ensureStudyChat({
     firstUserText,
 }: EnsureChatInput) {
     if (chatId) {
-        const existing = await prisma.studyChat.findFirst({
-            where: { id: chatId, userId },
-        });
+        const [existing] = await db
+            .select()
+            .from(studyChat)
+            .where(and(eq(studyChat.id, chatId), eq(studyChat.userId, userId)))
+            .limit(1);
         if (existing) return existing;
     }
 
@@ -28,17 +31,20 @@ export async function ensureStudyChat({
             ? `${scope.code} study`
             : "study chat";
 
-    return prisma.studyChat.create({
-        data: {
-            id: chatId,
+    const [created] = await db
+        .insert(studyChat)
+        .values({
+            ...(chatId ? { id: chatId } : {}),
             userId,
             scope: scope.type,
             noteId: scope.type === "NOTE" ? scope.id : null,
             pastPaperId: scope.type === "PAST_PAPER" ? scope.id : null,
             courseCode: scope.type === "COURSE" ? scope.code : null,
             title,
-        },
-    });
+        })
+        .returning();
+
+    return created;
 }
 
 export async function loadStudyChatMessages({
@@ -50,22 +56,19 @@ export async function loadStudyChatMessages({
     userId: string;
     take?: number;
 }): Promise<UIMessage[]> {
-    const chat = await prisma.studyChat.findFirst({
-        where: { id: chatId, userId },
-        select: {
-            messages: {
-                orderBy: { createdAt: "desc" },
-                take,
-                select: {
-                    id: true,
-                    role: true,
-                    parts: true,
-                },
-            },
-        },
-    });
+    const rows = await db
+        .select({
+            id: studyMessage.id,
+            role: studyMessage.role,
+            parts: studyMessage.parts,
+        })
+        .from(studyMessage)
+        .innerJoin(studyChat, eq(studyMessage.chatId, studyChat.id))
+        .where(and(eq(studyChat.id, chatId), eq(studyChat.userId, userId)))
+        .orderBy(desc(studyMessage.createdAt))
+        .limit(take);
 
-    return (chat?.messages ?? [])
+    return rows
         .reverse()
         .map((message) => ({
             id: message.id,
@@ -84,33 +87,32 @@ export async function persistStudyTurn({
     assistantMessage?: { id: string; parts: unknown };
 }) {
     if (userMessage) {
-        await prisma.studyMessage.upsert({
-            where: { id: userMessage.id },
-            create: {
+        await db
+            .insert(studyMessage)
+            .values({
                 id: userMessage.id,
                 chatId,
                 role: "user",
-                parts: userMessage.parts as never,
-            },
-            update: {},
-        });
+                parts: userMessage.parts,
+            })
+            .onConflictDoNothing({ target: studyMessage.id });
     }
     if (assistantMessage) {
-        await prisma.studyMessage.upsert({
-            where: { id: assistantMessage.id },
-            create: {
+        await db
+            .insert(studyMessage)
+            .values({
                 id: assistantMessage.id,
                 chatId,
                 role: "assistant",
-                parts: assistantMessage.parts as never,
-            },
-            update: {
-                parts: assistantMessage.parts as never,
-            },
-        });
+                parts: assistantMessage.parts,
+            })
+            .onConflictDoUpdate({
+                target: studyMessage.id,
+                set: { parts: assistantMessage.parts },
+            });
     }
-    await prisma.studyChat.update({
-        where: { id: chatId },
-        data: { updatedAt: new Date() },
-    });
+    await db
+        .update(studyChat)
+        .set({ updatedAt: new Date() })
+        .where(eq(studyChat.id, chatId));
 }

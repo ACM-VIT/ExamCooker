@@ -15,15 +15,10 @@ declare module "next-auth" {
     }
 }
 
-declare module "@auth/core/types" {
-    interface User {
+declare module "next-auth/jwt" {
+    interface JWT {
+        id?: string;
         role?: AppRole;
-    }
-
-    interface Session {
-        user?: (DefaultSession["user"] & {
-            id?: string;
-            role?: AppRole;
-        });
+        roleSyncedAt?: number;
     }
 }

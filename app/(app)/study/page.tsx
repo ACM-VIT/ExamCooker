@@ -1,6 +1,7 @@
 import { auth } from "@/app/auth";
 import { redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, note, pastPaper } from "@/db";
 import type { Metadata } from "next";
 import { StudyApp } from "@/app/components/study-assistant/StudyApp";
 import type { StudyScope } from "@/lib/study/scope";
@@ -30,23 +31,25 @@ async function resolveScopeAndContext(
 }> {
     const { scope, id, code } = params;
     if (scope === "NOTE" && id) {
-        const note = await prisma.note.findUnique({
-            where: { id },
-            select: { id: true, title: true },
-        });
-        if (note) {
+        const [noteRow] = await db
+            .select({ id: note.id, title: note.title })
+            .from(note)
+            .where(eq(note.id, id))
+            .limit(1);
+        if (noteRow) {
             return {
-                scope: { type: "NOTE", id: note.id },
-                label: note.title.replace(/\.pdf$/i, ""),
+                scope: { type: "NOTE", id: noteRow.id },
+                label: noteRow.title.replace(/\.pdf$/i, ""),
                 subtitle: "from your notes",
             };
         }
     }
     if (scope === "PAST_PAPER" && id) {
-        const paper = await prisma.pastPaper.findUnique({
-            where: { id },
-            select: { id: true, title: true },
-        });
+        const [paper] = await db
+            .select({ id: pastPaper.id, title: pastPaper.title })
+            .from(pastPaper)
+            .where(eq(pastPaper.id, id))
+            .limit(1);
         if (paper) {
             return {
                 scope: { type: "PAST_PAPER", id: paper.id },

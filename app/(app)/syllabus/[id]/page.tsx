@@ -1,17 +1,20 @@
-import React from 'react';
-import PDFViewerClient from '@/app/components/PDFViewerClient';
-import { notFound } from "next/navigation";
-import ViewTracker from "@/app/components/ViewTracker";
-import { getSyllabusDetail } from "@/lib/data/syllabusDetail";
+import React, { Suspense } from 'react';
+import PDFViewerClient from '@/app/components/pdf-viewer-client';
+import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
+import { notFound, permanentRedirect } from "next/navigation";
+import ViewTracker from "@/app/components/view-tracker";
+import DirectionalTransition from "@/app/components/common/directional-transition";
+import { LazySyllabusInlineEditor } from "@/app/components/moderation/lazy-editors";
+import { getSyllabusDetail } from "@/lib/data/syllabus-detail";
 import type { Metadata } from "next";
-import { buildKeywords, DEFAULT_KEYWORDS } from "@/lib/seo";
-
-function processSyllabusName(input: string): string {
-    return input
-      .slice(9) 
-      .replace(/\.pdf$/, '') 
-      .replace(/_/g, ' '); 
-  }
+import {
+    buildKeywords,
+    DEFAULT_KEYWORDS,
+    formatSyllabusDisplayName,
+    getCourseSyllabusPath,
+    parseSyllabusName,
+} from "@/lib/seo";
+import { buildSyllabusPdfFileName } from "@/lib/downloads/resource-names";
 
 export async function generateMetadata({
     params,
@@ -20,26 +23,52 @@ export async function generateMetadata({
 }): Promise<Metadata> {
     const { id } = await params;
     const syllabus = await getSyllabusDetail(id);
-    if (!syllabus) return {};
-    const title = processSyllabusName(syllabus.name);
+    if (!syllabus) return { robots: { index: false, follow: true } };
+    const parsed = parseSyllabusName(syllabus.name);
+    const title = parsed.displayName;
     const description = `View ${title} syllabus on ExamCooker.`;
+    const canonical = parsed.courseCode
+        ? getCourseSyllabusPath(parsed.courseCode)
+        : `/syllabus/${syllabus.id}`;
 
     return {
         title,
         description,
-        keywords: buildKeywords(DEFAULT_KEYWORDS, [title]),
-        alternates: { canonical: `/syllabus/${syllabus.id}` },
+        keywords: buildKeywords(DEFAULT_KEYWORDS, [
+            title,
+            parsed.courseCode ?? "",
+            parsed.courseName ?? "",
+        ]),
+        alternates: { canonical },
         openGraph: {
             title,
             description,
-            url: `/syllabus/${syllabus.id}`,
+            url: canonical,
         },
+        robots: { index: true, follow: true },
     };
 }
 
-async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> }) {
+function SyllabusViewerShell() {
+    return (
+        <div
+            className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10"
+            aria-hidden="true"
+        >
+            <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
+            <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+            <div className="h-[70dvh] border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]" />
+        </div>
+    );
+}
+
+async function SyllabusViewerContent({
+    paramsPromise,
+}: {
+    paramsPromise: Promise<{ id: string }>;
+}) {
     let syllabus;
-    const { id } = await params;
+    const { id } = await paramsPromise;
 
     try {
         syllabus = await getSyllabusDetail(id);
@@ -60,36 +89,89 @@ async function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> 
     if (!syllabus) {
         return notFound();
     }
+    const parsed = parseSyllabusName(syllabus.name);
+    const title = formatSyllabusDisplayName(syllabus.name);
+    const backHref = parsed.courseCode ? getCourseSyllabusPath(parsed.courseCode) : "/syllabus";
+    const backLabel = parsed.courseCode ?? "Syllabus";
+    const downloadFileName = buildSyllabusPdfFileName({
+        courseCode: parsed.courseCode,
+        courseTitle: parsed.courseName ?? title,
+    });
+
+    if (parsed.courseCode) {
+        permanentRedirect(getCourseSyllabusPath(parsed.courseCode));
+    }
 
     //const postTime: string = syllabus.createdAt.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
 
     return (
-        <div className="flex flex-col lg:flex-row h-screen text-black dark:text-[#D5D5D5]">
+        <>
             <ViewTracker
                 id={syllabus.id}
                 type="syllabus"
-                title={processSyllabusName(syllabus.name)}
+                title={title}
             />
-            <div className="lg:w-1/2 flex flex-col overflow-hidden">
-                <div className="flex-grow overflow-y-auto p-2 sm:p-4 lg:p-8">
-                    <div className="max-w-2xl mx-auto">
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6">{processSyllabusName(syllabus.name)}</h1>
-                        <div className="space-y-2 sm:space-y-3">
-                            <div className="flex gap-2 items-center">
-                                {/* {syllabus.author?.id === userId &&
-                                    <DeleteButton itemID={syllabus.id} activeTab='syllabi'/>
-                                } */}
-                            </div>
+
+                <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 pb-10 pt-4 sm:gap-5 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10">
+                    <PageBreadcrumbRow
+                        items={[{ href: backHref, label: backLabel }]}
+                    />
+
+                    <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
+                                {title}
+                                <LazySyllabusInlineEditor
+                                    syllabusId={syllabus.id}
+                                    initialCourseCode={parsed.courseCode}
+                                    initialTitle={title}
+                                />
+                            </h1>
+                            {parsed.courseCode || parsed.courseName ? (
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                    {parsed.courseCode && (
+                                        <span className="inline-flex items-center gap-1.5 border border-black/15 bg-white px-2.5 py-1 text-xs font-semibold text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]">
+                                            <span className="text-[10px] uppercase tracking-wider text-black/45 dark:text-[#D5D5D5]/45">
+                                                Course
+                                            </span>
+                                            <span>{parsed.courseCode}</span>
+                                        </span>
+                                    )}
+                                    {parsed.courseName && (
+                                        <span className="inline-flex items-center gap-1.5 border border-black/15 bg-white px-2.5 py-1 text-xs font-semibold text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]">
+                                            <span className="text-[10px] uppercase tracking-wider text-black/45 dark:text-[#D5D5D5]/45">
+                                                Syllabus
+                                            </span>
+                                            <span>{parsed.courseName}</span>
+                                        </span>
+                                    )}
+                                </div>
+                            ) : null}
+                        </div>
+                    </header>
+
+                    <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
+                        <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
+                            <PDFViewerClient
+                                fileUrl={syllabus.fileUrl}
+                                fileName={downloadFileName}
+                            />
                         </div>
                     </div>
                 </div>
+        </>
+    );
+}
+
+function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> }) {
+    return (
+        <DirectionalTransition>
+            <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
+                <Suspense fallback={<SyllabusViewerShell />}>
+                    <SyllabusViewerContent paramsPromise={params} />
+                </Suspense>
             </div>
-            <div className="flex-1 lg:w-1/2 overflow-hidden lg:border-l lg:border-black dark:lg:border-[#D5D5D5] p-2 sm:p-4">
-                <div className="h-full overflow-auto">
-                    <PDFViewerClient fileUrl={syllabus.fileUrl} />
-                </div>
-            </div>
-        </div>
+        </DirectionalTransition>
     );
 }
 

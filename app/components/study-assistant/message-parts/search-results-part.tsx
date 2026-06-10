@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import Image from "@/app/components/common/AppImage";
+import Image from "@/app/components/common/app-image";
 import { ArrowUpRight, BookOpen, FileText } from "lucide-react";
 import { ToolShell, type ToolState } from "./tool-shell";
 import { ToolLoading } from "./tool-loading";

@@ -1,39 +1,24 @@
 import React from "react";
-import {SessionProvider} from "next-auth/react";
-import ClientSide from "./clientSide";
-import PostHogIdentify from "@/app/components/PostHogIdentify";
+import ClientSide from "./client-side";
+import PostHogIdentify from "@/app/components/post-hog-identify";
+import HomeFooter from "@/app/(app)/home/home-footer";
 
 export default function Layout({
                                          children,
                                      }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const initialBookmarks: Array<{
-        id: string;
-        type: "note" | "pastpaper" | "forumpost" | "subject";
-        title: string;
-        thumbNailUrl?: string | null;
-        upvoteCount?: number;
-        createdAt?: Date;
-        downvoteCount?: number;
-        votes?: Array<{type: string}>;
-        author?: {name: string | null};
-        tags?: Array<{id: string; name: string}>;
-        comments?: Array<{
-            id: string;
-            content: string;
-            createdAt: Date;
-            updatedAt: Date;
-            author?: {name: string | null};
-        }>;
-    }> = [];
-
     return (
-        <SessionProvider>
+        <>
             <PostHogIdentify />
-            <ClientSide initialBookmarks={initialBookmarks}>
-                {children}
+            <ClientSide>
+                <div className="flex min-h-screen min-w-0 flex-col">
+                    <div className="min-h-screen min-w-0">
+                        {children}
+                    </div>
+                    <HomeFooter />
+                </div>
             </ClientSide>
-        </SessionProvider>
+        </>
     );
 }

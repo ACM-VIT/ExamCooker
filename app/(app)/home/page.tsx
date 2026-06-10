@@ -1,5 +1,5 @@
-import Home from "@/app/(app)/home/home";
+import { redirect } from "next/navigation";
 
-export default async function Page() {
-    return <Home />;
+export default function Page() {
+    redirect("/");
 }

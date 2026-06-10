@@ -1,10 +1,17 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { getCourseByCodeAny } from "@/lib/data/courses";
-import { getCourseExamCounts } from "@/lib/data/courseExams";
+import { and, count, desc, eq, isNotNull } from "drizzle-orm";
+import { db, note, pastPaper } from "@/db";
+import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import prisma from "@/lib/prisma";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { examTypeLabel, examTypeToSlug } from "@/lib/exam-slug";
+import {
+    getCourseNotesPath,
+    getCoursePath,
+    getCourseSyllabusPath,
+    getPastPaperDetailPath,
+} from "@/lib/seo";
 import type { ScopeContext } from "@/lib/study/scope";
 
 export function createGetCourseOverviewTool(context: ScopeContext | null) {
@@ -25,47 +32,58 @@ export function createGetCourseOverviewTool(context: ScopeContext | null) {
                 return { error: "No course code in scope. Ask the user for one." };
             }
 
-            const course = await getCourseByCodeAny(code);
+            const course = await getCourseDetailByCode(code);
             if (!course) {
                 return { error: `No course found for '${code}'.` };
             }
 
             const [examCounts, syllabus, notes, papers] = await Promise.all([
-                getCourseExamCounts(course.tagIds),
+                db
+                    .select({
+                        examType: pastPaper.examType,
+                        total: count(),
+                    })
+                    .from(pastPaper)
+                    .where(
+                        and(
+                            eq(pastPaper.courseId, course.id),
+                            eq(pastPaper.isClear, true),
+                            isNotNull(pastPaper.examType),
+                        ),
+                    )
+                    .groupBy(pastPaper.examType),
                 getSyllabusByCourseCode(course.code),
-                prisma.note.findMany({
-                    where: {
-                        isClear: true,
-                        tags: { some: { id: { in: course.tagIds } } },
-                    },
-                    orderBy: { createdAt: "desc" },
-                    take: 5,
-                    select: { id: true, title: true },
-                }),
-                prisma.pastPaper.findMany({
-                    where: {
-                        isClear: true,
-                        tags: { some: { id: { in: course.tagIds } } },
-                    },
-                    orderBy: { createdAt: "desc" },
-                    take: 5,
-                    select: { id: true, title: true },
-                }),
+                db
+                    .select({ id: note.id, title: note.title })
+                    .from(note)
+                    .where(and(eq(note.courseId, course.id), eq(note.isClear, true)))
+                    .orderBy(desc(note.createdAt))
+                    .limit(5),
+                db
+                    .select({ id: pastPaper.id, title: pastPaper.title })
+                    .from(pastPaper)
+                    .where(and(eq(pastPaper.courseId, course.id), eq(pastPaper.isClear, true)))
+                    .orderBy(desc(pastPaper.createdAt))
+                    .limit(5),
             ]);
 
             return {
                 course: {
                     code: course.code,
                     title: course.title,
-                    href: `/courses/${course.code}`,
+                    href: getCoursePath(course.code),
                 },
-                examCounts: examCounts.map((e) => ({
-                    slug: e.slug,
-                    label: e.label,
-                    count: e.count,
-                })),
+                examCounts: examCounts.flatMap((e) =>
+                    e.examType
+                        ? [{
+                            slug: examTypeToSlug(e.examType),
+                            label: examTypeLabel(e.examType),
+                            count: e.total,
+                        }]
+                        : [],
+                ),
                 syllabus: syllabus
-                    ? { id: syllabus.id, name: syllabus.name, href: `/syllabus/${syllabus.id}` }
+                    ? { id: syllabus.id, name: syllabus.name, href: getCourseSyllabusPath(course.code) }
                     : null,
                 recentNotes: notes.map((n) => ({
                     id: n.id,
@@ -75,8 +93,12 @@ export function createGetCourseOverviewTool(context: ScopeContext | null) {
                 recentPapers: papers.map((p) => ({
                     id: p.id,
                     title: p.title,
-                    href: `/past_papers/${p.id}`,
+                    href: getPastPaperDetailPath(p.id, course.code),
                 })),
+                hrefs: {
+                    notes: getCourseNotesPath(course.code),
+                    papers: getCoursePath(course.code),
+                },
             };
         },
     });

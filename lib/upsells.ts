@@ -1,5 +1,3 @@
-export type UpsellAccent = "mint" | "blue" | "peach";
-
 export type Upsell = {
     id: string;
     eyebrow?: string;
@@ -7,10 +5,9 @@ export type Upsell = {
     description: string;
     cta: {
         label: string;
-        href: string;
+        href?: string;
         external?: boolean;
     };
-    accent?: UpsellAccent;
 };
 
 export const UPSELLS: Upsell[] = [
@@ -25,20 +22,38 @@ export const UPSELLS: Upsell[] = [
             href: "https://www.instagram.com/acmvit/",
             external: true,
         },
-        accent: "mint",
     },
     {
         id: "examcooker-github-v1",
         eyebrow: "Open source",
         title: "ExamCooker is built by students",
         description:
-            "Spot a bug or have an idea? Star the repo or open an issue — contributions welcome.",
+            "Spot a bug or have an idea? Star the repo or open an issue. Contributions welcome.",
         cta: {
             label: "Star on GitHub",
             href: "https://github.com/ACM-VIT/ExamCooker-2024",
             external: true,
         },
-        accent: "blue",
+    },
+    {
+        id: "resource-repo-launch-v1",
+        eyebrow: "New feature",
+        title: "Resource Repository is here",
+        description:
+            "Structured video lectures, key takeaways, and practice questions. All organized by module and topic.",
+        cta: {
+            label: "Explore resources",
+            href: "/resources",
+        },
+    },
+    {
+        id: "examcooker-cli-v1",
+        eyebrow: "CLI",
+        title: "ExamCooker in your terminal",
+        description: "",
+        cta: {
+            label: "npx examcooker",
+        },
     },
 ];
 

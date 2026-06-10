@@ -11,6 +11,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  BUILD_DIR: .appservice-build
 
 concurrency:
   group: deploy-appservice-production
@@ -23,6 +24,17 @@ jobs:
     environment:
       name: production
       url: https://exam-cooker.acmvit.in
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AUTH_SECRET: ci-auth-secret-for-build-only
+      NEXTAUTH_SECRET: ci-auth-secret-for-build-only
+      AUTH_GOOGLE_ID: ci-google-id.apps.googleusercontent.com
+      AUTH_GOOGLE_SECRET: ci-google-secret
+      NEXT_PUBLIC_BASE_URL: https://examcooker.acmvit.in
+      NEXT_PUBLIC_MICROSERVICE_URL: https://upload.examcooker.acmvit.in
+      NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
+      NEXT_PUBLIC_POSTHOG_HOST: ${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
+      NEXT_PUBLIC_POSTHOG_PROXY_PATH: ${{ vars.NEXT_PUBLIC_POSTHOG_PROXY_PATH }}
 
     steps:
       - name: Checkout
@@ -32,20 +44,36 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
+
+      - name: Prepare build workspace
+        run: |
+          set -eux
+          rm -rf "${BUILD_DIR}"
+          mkdir -p "${BUILD_DIR}"
+          rsync -a \
+            --delete \
+            --exclude .git \
+            --exclude node_modules \
+            --exclude .next \
+            --exclude .turbo \
+            --exclude .appservice-build \
+            --exclude .DS_Store \
+            ./ "${BUILD_DIR}/"
 
       - name: Restore Next.js build cache
         uses: actions/cache@v4
         with:
-          path: .next/cache
-          key: ${{ runner.os }}-next-${{ hashFiles('package-lock.json') }}-${{ hashFiles('next.config.ts', 'tsconfig.json', 'tailwind.config.ts', 'postcss.config.mjs') }}
+          path: ${{ env.BUILD_DIR }}/.next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('package.json', 'next.config.ts', 'tsconfig.json', 'tailwind.config.ts', 'postcss.config.mjs', 'prisma/schema.prisma') }}
           restore-keys: |
-            ${{ runner.os }}-next-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-next-
 
       - name: Install dependencies
-        run: npm ci --no-audit --prefer-offline
+        working-directory: ${{ env.BUILD_DIR }}
+        run: npm install --no-fund --no-audit
 
       - name: Build application
+        working-directory: ${{ env.BUILD_DIR }}
         run: npm run build
 
       - name: Package deployment payload
@@ -54,22 +82,23 @@ jobs:
           rm -rf deploy
           mkdir -p deploy
 
-          rsync -a .next/standalone/ deploy/
+          rsync -a "${BUILD_DIR}/.next/standalone/" deploy/
           mkdir -p deploy/.next
-          rsync -a .next/static/ deploy/.next/static/
-          cp startup.sh deploy/startup.sh
+          rsync -a "${BUILD_DIR}/.next/static/" deploy/.next/static/
 
-          if [ -d public ]; then
-            rsync -a public/ deploy/public/
+          if [ -d "${BUILD_DIR}/prisma" ]; then
+            rsync -a "${BUILD_DIR}/prisma/" deploy/prisma/
           fi
 
-          if [ -d src/generated ]; then
-            mkdir -p deploy/src/generated
-            rsync -a src/generated/ deploy/src/generated/
+          if [ -d "${BUILD_DIR}/lib/generated" ]; then
+            mkdir -p deploy/lib/generated
+            rsync -a "${BUILD_DIR}/lib/generated/" deploy/lib/generated/
           fi
 
-          if [ -d prisma ]; then
-            rsync -a prisma/ deploy/prisma/
+          cp "${BUILD_DIR}/startup.sh" deploy/startup.sh
+
+          if [ -d "${BUILD_DIR}/public" ]; then
+            rsync -a "${BUILD_DIR}/public/" deploy/public/
           fi
 
           cd deploy

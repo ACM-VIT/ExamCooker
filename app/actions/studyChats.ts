@@ -1,7 +1,8 @@
 "use server";
 
 import { auth } from "@/app/auth";
-import prisma from "@/lib/prisma";
+import { and, asc, desc, eq } from "drizzle-orm";
+import { course, db, note, pastPaper, studyChat, studyMessage } from "@/db";
 
 export interface StudyChatSummaryDTO {
     id: string;
@@ -27,23 +28,27 @@ export async function listStudyChatsAction(limit = 80): Promise<StudyChatSummary
     if (!session?.user?.id) return [];
 
     const safeLimit = Math.min(Math.max(limit, 1), 100);
-    const chats = await prisma.studyChat.findMany({
-        where: { userId: session.user.id },
-        orderBy: { updatedAt: "desc" },
-        take: safeLimit,
-        select: {
-            id: true,
-            title: true,
-            scope: true,
-            noteId: true,
-            pastPaperId: true,
-            courseCode: true,
-            createdAt: true,
-            updatedAt: true,
-            note: { select: { id: true, title: true } },
-            pastPaper: { select: { id: true, title: true } },
-        },
-    });
+    const chats = await db
+        .select({
+            id: studyChat.id,
+            title: studyChat.title,
+            scope: studyChat.scope,
+            noteId: studyChat.noteId,
+            pastPaperId: studyChat.pastPaperId,
+            courseCode: studyChat.courseCode,
+            createdAt: studyChat.createdAt,
+            updatedAt: studyChat.updatedAt,
+            noteTitle: note.title,
+            pastPaperTitle: pastPaper.title,
+            courseTitle: course.title,
+        })
+        .from(studyChat)
+        .leftJoin(note, eq(studyChat.noteId, note.id))
+        .leftJoin(pastPaper, eq(studyChat.pastPaperId, pastPaper.id))
+        .leftJoin(course, eq(studyChat.courseCode, course.code))
+        .where(eq(studyChat.userId, session.user.id))
+        .orderBy(desc(studyChat.updatedAt))
+        .limit(safeLimit);
 
     return chats.map((c) => ({
         id: c.id,
@@ -53,10 +58,10 @@ export async function listStudyChatsAction(limit = 80): Promise<StudyChatSummary
         updatedAt: c.updatedAt.toISOString(),
         context:
             c.scope === "NOTE"
-                ? { type: "NOTE", id: c.noteId, title: c.note?.title }
+                ? { type: "NOTE", id: c.noteId, title: c.noteTitle }
                 : c.scope === "PAST_PAPER"
-                    ? { type: "PAST_PAPER", id: c.pastPaperId, title: c.pastPaper?.title }
-                    : { type: "COURSE", code: c.courseCode, title: c.courseCode },
+                    ? { type: "PAST_PAPER", id: c.pastPaperId, title: c.pastPaperTitle }
+                    : { type: "COURSE", code: c.courseCode, title: c.courseTitle ?? c.courseCode },
     }));
 }
 
@@ -64,13 +69,19 @@ export async function getStudyChatMessagesAction(chatId: string): Promise<StudyC
     const session = await auth();
     if (!session?.user?.id) return [];
 
-    const chat = await prisma.studyChat.findFirst({
-        where: { id: chatId, userId: session.user.id },
-        include: { messages: { orderBy: { createdAt: "asc" } } },
-    });
-    if (!chat) return [];
+    const messages = await db
+        .select({
+            id: studyMessage.id,
+            role: studyMessage.role,
+            parts: studyMessage.parts,
+            createdAt: studyMessage.createdAt,
+        })
+        .from(studyMessage)
+        .innerJoin(studyChat, eq(studyMessage.chatId, studyChat.id))
+        .where(and(eq(studyChat.id, chatId), eq(studyChat.userId, session.user.id)))
+        .orderBy(asc(studyMessage.createdAt));
 
-    return chat.messages.map((m) => ({
+    return messages.map((m) => ({
         id: m.id,
         role: m.role as "user" | "assistant",
         parts: m.parts,
@@ -85,19 +96,23 @@ export async function renameStudyChatAction(chatId: string, title: string): Prom
     const nextTitle = title.trim();
     if (!nextTitle || nextTitle.length > 100) return { ok: false };
 
-    const updated = await prisma.studyChat.updateMany({
-        where: { id: chatId, userId: session.user.id },
-        data: { title: nextTitle },
-    });
-    return { ok: updated.count > 0 };
+    const updated = await db
+        .update(studyChat)
+        .set({ title: nextTitle, updatedAt: new Date() })
+        .where(and(eq(studyChat.id, chatId), eq(studyChat.userId, session.user.id)))
+        .returning({ id: studyChat.id });
+
+    return { ok: updated.length > 0 };
 }
 
 export async function deleteStudyChatAction(chatId: string): Promise<{ ok: boolean }> {
     const session = await auth();
     if (!session?.user?.id) return { ok: false };
 
-    await prisma.studyChat.deleteMany({
-        where: { id: chatId, userId: session.user.id },
-    });
-    return { ok: true };
+    const deleted = await db
+        .delete(studyChat)
+        .where(and(eq(studyChat.id, chatId), eq(studyChat.userId, session.user.id)))
+        .returning({ id: studyChat.id });
+
+    return { ok: deleted.length > 0 };
 }

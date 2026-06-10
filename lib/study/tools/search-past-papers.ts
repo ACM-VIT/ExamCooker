@@ -1,10 +1,26 @@
 import { tool } from "ai";
 import { z } from "zod";
-import prisma from "@/lib/prisma";
-import { normalizeCourseCode } from "@/lib/courseTags";
-import { normalizeGcsUrl } from "@/lib/normalizeGcsUrl";
+import {
+    and,
+    arrayContains,
+    desc,
+    eq,
+    exists,
+    ilike,
+    or,
+} from "drizzle-orm";
+import {
+    course,
+    db,
+    pastPaper,
+    pastPaperToTag,
+    tag,
+} from "@/db";
+import { normalizeCourseCode } from "@/lib/course-tags";
+import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
+import { getPastPaperDetailPath } from "@/lib/seo";
+import { parseExamTypeInput } from "@/lib/exam-slug";
 import type { ScopeContext } from "@/lib/study/scope";
-import type { Prisma } from "@/src/generated/prisma";
 
 const EXAM_TYPES = ["CAT-1", "CAT-2", "FAT"] as const;
 const SLOTS = ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2", "E1", "E2", "F1", "F2", "G1", "G2"] as const;
@@ -45,100 +61,77 @@ export function createSearchPastPapersTool(context: ScopeContext | null) {
                 : context?.courseCode ?? null;
             const normalizedSlot = slot?.toUpperCase();
             const trimmedQuery = query?.trim() ?? "";
+            const parsedExamType = examType ? parseExamTypeInput(examType) : null;
 
             const runSearch = async (options: {
                 includeExamFilters: boolean;
                 includeQuery: boolean;
             }) => {
-                const andConditions: Prisma.PastPaperWhereInput[] = [];
+                const conditions = [eq(pastPaper.isClear, true)];
 
                 const courseVariants = buildCourseCodeVariants(normalizedCourse);
                 if (courseVariants.length > 0) {
-                    andConditions.push({
-                        OR: courseVariants.flatMap((variant) => [
-                            { title: { contains: variant, mode: "insensitive" } },
-                            {
-                                tags: {
-                                    some: {
-                                        name: { contains: variant, mode: "insensitive" },
-                                    },
-                                },
-                            },
+                    const courseCondition = or(
+                        eq(course.code, normalizeCourseCode(courseVariants[0] ?? "")),
+                        arrayContains(course.aliases, [normalizeCourseCode(courseVariants[0] ?? "")]),
+                        ...courseVariants.flatMap((variant) => [
+                            ilike(pastPaper.title, `%${variant}%`),
+                            tagNameMatches(variant, "contains"),
                         ]),
-                    });
+                    );
+                    if (courseCondition) conditions.push(courseCondition);
                 }
 
                 if (options.includeQuery && trimmedQuery) {
-                    andConditions.push({
-                        OR: [
-                            { title: { contains: trimmedQuery, mode: "insensitive" } },
-                            {
-                                tags: {
-                                    some: {
-                                        name: { contains: trimmedQuery, mode: "insensitive" },
-                                    },
-                                },
-                            },
-                        ],
-                    });
+                    const queryCondition = or(
+                        ilike(pastPaper.title, `%${trimmedQuery}%`),
+                        tagNameMatches(trimmedQuery, "contains"),
+                    );
+                    if (queryCondition) conditions.push(queryCondition);
                 }
 
                 if (options.includeExamFilters) {
-                    if (examType) {
-                        andConditions.push({
-                            OR: [
-                                { title: { contains: examType, mode: "insensitive" } },
-                                {
-                                    tags: {
-                                        some: { name: { equals: examType, mode: "insensitive" } },
-                                    },
-                                },
-                            ],
-                        });
+                    if (examType && parsedExamType) {
+                        const examCondition = or(
+                            eq(pastPaper.examType, parsedExamType),
+                            ilike(pastPaper.title, `%${examType}%`),
+                            tagNameMatches(examType, "equals"),
+                        );
+                        if (examCondition) conditions.push(examCondition);
                     }
 
                     if (normalizedSlot) {
-                        andConditions.push({
-                            OR: [
-                                { title: { contains: normalizedSlot, mode: "insensitive" } },
-                                {
-                                    tags: {
-                                        some: { name: { equals: normalizedSlot, mode: "insensitive" } },
-                                    },
-                                },
-                            ],
-                        });
+                        const slotCondition = or(
+                            eq(pastPaper.slot, normalizedSlot),
+                            ilike(pastPaper.title, `%${normalizedSlot}%`),
+                            tagNameMatches(normalizedSlot, "equals"),
+                        );
+                        if (slotCondition) conditions.push(slotCondition);
                     }
 
                     if (year) {
-                        andConditions.push({
-                            OR: [
-                                { title: { contains: year, mode: "insensitive" } },
-                                {
-                                    tags: {
-                                        some: { name: { contains: year, mode: "insensitive" } },
-                                    },
-                                },
-                            ],
-                        });
+                        const numericYear = Number.parseInt(year, 10);
+                        const yearCondition = or(
+                            eq(pastPaper.year, numericYear),
+                            ilike(pastPaper.title, `%${year}%`),
+                            tagNameMatches(year, "contains"),
+                        );
+                        if (yearCondition) conditions.push(yearCondition);
                     }
                 }
 
-                const where: Prisma.PastPaperWhereInput = {
-                    isClear: true,
-                    ...(andConditions.length ? { AND: andConditions } : {}),
-                };
-
-                return prisma.pastPaper.findMany({
-                    where,
-                    orderBy: { createdAt: "desc" },
-                    take: limit,
-                    select: {
-                        id: true,
-                        title: true,
-                        thumbNailUrl: true,
-                    },
-                });
+                return db
+                    .select({
+                        id: pastPaper.id,
+                        title: pastPaper.title,
+                        thumbNailUrl: pastPaper.thumbNailUrl,
+                        courseCode: course.code,
+                    })
+                    .from(pastPaper)
+                    .leftJoin(course, eq(pastPaper.courseId, course.id))
+                    .where(and(...conditions))
+                    .orderBy(desc(pastPaper.createdAt))
+                    .limit(limit);
             };
 
             let items = await runSearch({
@@ -175,7 +168,7 @@ export function createSearchPastPapersTool(context: ScopeContext | null) {
                 items: items.map((p) => ({
                     id: p.id,
                     title: p.title,
-                    href: `/past_papers/${p.id}`,
+                    href: getPastPaperDetailPath(p.id, p.courseCode),
                     thumbnail: normalizeGcsUrl(p.thumbNailUrl) ?? p.thumbNailUrl ?? null,
                     type: "past_paper" as const,
                 })),
@@ -184,6 +177,22 @@ export function createSearchPastPapersTool(context: ScopeContext | null) {
             };
         },
     });
+}
+
+function tagNameMatches(value: string, mode: "contains" | "equals") {
+    const pattern = mode === "equals" ? value : `%${value}%`;
+    return exists(
+        db
+            .select({ id: pastPaperToTag.a })
+            .from(pastPaperToTag)
+            .innerJoin(tag, eq(pastPaperToTag.b, tag.id))
+            .where(
+                and(
+                    eq(pastPaperToTag.a, pastPaper.id),
+                    mode === "equals" ? ilike(tag.name, value) : ilike(tag.name, pattern),
+                ),
+            ),
+    );
 }
 
 function buildCourseCodeVariants(code: string | null): string[] {
