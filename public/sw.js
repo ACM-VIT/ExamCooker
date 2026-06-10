@@ -25,6 +25,7 @@ const NO_CACHE_PATH_PREFIXES = [
   "/_next/image",
   "/signin",
   "/ecp/",
+  "/mod",
 ];
 
 function isSameOrigin(url) {
