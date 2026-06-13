@@ -265,6 +265,7 @@ export default function CoursePaperGrid({
             fileName: getPaperFileName(paper),
             courseCode,
             courseTitle,
+            pageEdits: paper.pageEdits,
             meta: [
                 paper.examType ? examTypeLabel(paper.examType) : null,
                 paper.slot,
