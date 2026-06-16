@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const STATIC_CACHE = `examcooker-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `examcooker-pages-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `examcooker-runtime-${CACHE_VERSION}`;
@@ -143,6 +143,28 @@ async function staleWhileRevalidate(event, cacheName) {
   return offline || Response.error();
 }
 
+async function networkFirst(event, cacheName) {
+  const cache = await caches.open(cacheName);
+  const preloadResponse =
+    "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
+
+  try {
+    const response = preloadResponse || (await fetch(event.request));
+    if (response && response.ok && response.type !== "opaque") {
+      cache.put(event.request, response.clone()).catch(() => undefined);
+    }
+    return response;
+  } catch {
+    // Offline (or the network failed): fall back to the last cached document.
+    // After a deploy the server is reachable, so we always fetch fresh HTML and
+    // its current chunk hashes stay in sync — avoiding stale-HTML ChunkLoadErrors.
+    const cached = await cache.match(event.request, { ignoreSearch: false });
+    if (cached) return cached;
+    const offline = await caches.match("/offline.html");
+    return offline || Response.error();
+  }
+}
+
 async function networkOnly(event) {
   const preloadResponse =
     "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
@@ -196,7 +218,7 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     if (isUncacheable(url)) return;
-    event.respondWith(staleWhileRevalidate(event, PAGE_CACHE));
+    event.respondWith(networkFirst(event, PAGE_CACHE));
     return;
   }
 
@@ -218,7 +240,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isHtmlAccept(request)) {
-    event.respondWith(staleWhileRevalidate(event, PAGE_CACHE));
+    event.respondWith(networkFirst(event, PAGE_CACHE));
     return;
   }
 
