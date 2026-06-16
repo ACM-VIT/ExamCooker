@@ -1,6 +1,40 @@
-import type { PostHogConfig } from "posthog-js";
+import type { CaptureResult, PostHogConfig } from "posthog-js";
 
 const DEFAULT_POSTHOG_HOST = "https://eu.i.posthog.com";
+
+// Browsers emit a generic "Script error." with no stack trace when a
+// cross-origin script throws without CORS headers + crossorigin="anonymous"
+// (e.g. the Facebook in-app browser injection, browser extensions, third-party
+// tags). These exceptions carry no actionable detail, so drop them client-side
+// before they reach error tracking and bury real issues.
+const SCRIPT_ERROR_VALUES = new Set(["Script error.", "Script error"]);
+
+function isScriptErrorNoise(event: CaptureResult): boolean {
+    if (event.event !== "$exception") {
+        return false;
+    }
+
+    const exceptionList = event.properties?.$exception_list;
+    if (!Array.isArray(exceptionList)) {
+        return false;
+    }
+
+    return exceptionList.some(
+        (exception) =>
+            typeof exception?.value === "string" &&
+            SCRIPT_ERROR_VALUES.has(exception.value.trim()),
+    );
+}
+
+function dropScriptErrorNoise(
+    event: CaptureResult | null,
+): CaptureResult | null {
+    if (event && isScriptErrorNoise(event)) {
+        return null;
+    }
+
+    return event;
+}
 
 function readEnv(value?: string | null) {
     const trimmed = value?.trim();
@@ -63,5 +97,6 @@ export function getPostHogClientConfig(): Partial<PostHogConfig> {
         capture_pageleave: true,
         capture_pageview: "history_change",
         person_profiles: "identified_only",
+        before_send: dropScriptErrorNoise,
     };
 }
