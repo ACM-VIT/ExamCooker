@@ -150,7 +150,6 @@ type PdfViewerProps = {
 };
 
 type SavedPageEditsState = {
-  sourceKey: string;
   value: PdfPageEdits | null;
 };
 
@@ -2016,7 +2015,6 @@ export default function PDFViewer({
   const [isPdfDarkMode, setIsPdfDarkMode] = useState(false);
   const [savedPageEditsState, setSavedPageEditsState] =
     useState<SavedPageEditsState>({
-      sourceKey: normalizedInitialPageEditsKey,
       value: normalizedInitialPageEdits,
     });
   const [bufferLifecycleState, dispatchBufferLifecycle] = useReducer(
@@ -2029,14 +2027,10 @@ export default function PDFViewer({
     retryNonce,
     showSlowLoadFallback,
   } = bufferLifecycleState;
-  const savedPageEdits =
-    savedPageEditsState.sourceKey === normalizedInitialPageEditsKey
-      ? savedPageEditsState.value
-      : normalizedInitialPageEdits;
+  const savedPageEdits = savedPageEditsState.value;
   const setSavedPageEdits = (nextPageEdits: PdfPageEdits | null) => {
     const normalizedNextPageEdits = normalizePdfPageEdits(nextPageEdits);
     setSavedPageEditsState({
-      sourceKey: serializePdfPageEdits(normalizedNextPageEdits),
       value: normalizedNextPageEdits,
     });
   };
@@ -2046,6 +2040,12 @@ export default function PDFViewer({
     [deferredPageEdits],
   );
   const engineState = usePreloadedPdfiumEngine(retryNonce);
+
+  useEffect(() => {
+    setSavedPageEditsState({
+      value: normalizedInitialPageEdits,
+    });
+  }, [normalizedInitialPageEdits, normalizedInitialPageEditsKey]);
 
   const retryViewerLoad = useCallback(() => {
     dispatchBufferLifecycle({ type: "retry" });

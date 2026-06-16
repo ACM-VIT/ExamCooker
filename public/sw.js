@@ -156,6 +156,18 @@ async function networkOnly(event) {
   }
 }
 
+async function networkDocument(event) {
+  const preloadResponse =
+    "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
+
+  try {
+    return preloadResponse || (await fetch(event.request));
+  } catch {
+    const offline = await caches.match("/offline.html");
+    return offline || Response.error();
+  }
+}
+
 async function cacheFirst(event) {
   const cache = await caches.open(STATIC_CACHE);
   const cached = await cache.match(event.request);
@@ -196,7 +208,7 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     if (isUncacheable(url)) return;
-    event.respondWith(staleWhileRevalidate(event, PAGE_CACHE));
+    event.respondWith(networkDocument(event));
     return;
   }
 
@@ -218,7 +230,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isHtmlAccept(request)) {
-    event.respondWith(staleWhileRevalidate(event, PAGE_CACHE));
+    event.respondWith(networkDocument(event));
     return;
   }
 
