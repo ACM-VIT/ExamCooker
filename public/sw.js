@@ -120,8 +120,7 @@ self.addEventListener("message", (event) => {
 async function staleWhileRevalidate(event, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(event.request, { ignoreSearch: false });
-  const preloadResponse =
-    "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
+  const preloadResponse = await readPreloadResponse(event);
 
   const networkFetch = (preloadResponse ? Promise.resolve(preloadResponse) : fetch(event.request))
     .then((response) => {
@@ -144,8 +143,7 @@ async function staleWhileRevalidate(event, cacheName) {
 }
 
 async function networkOnly(event) {
-  const preloadResponse =
-    "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
+  const preloadResponse = await readPreloadResponse(event);
 
   if (preloadResponse) return preloadResponse;
 
@@ -157,8 +155,7 @@ async function networkOnly(event) {
 }
 
 async function networkDocument(event) {
-  const preloadResponse =
-    "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
+  const preloadResponse = await readPreloadResponse(event);
 
   try {
     return preloadResponse || (await fetch(event.request));
@@ -166,6 +163,14 @@ async function networkDocument(event) {
     const offline = await caches.match("/offline.html");
     return offline || Response.error();
   }
+}
+
+async function readPreloadResponse(event) {
+  if (!("preloadResponse" in event) || !event.preloadResponse) {
+    return undefined;
+  }
+
+  return event.preloadResponse.catch(() => undefined);
 }
 
 async function cacheFirst(event) {
