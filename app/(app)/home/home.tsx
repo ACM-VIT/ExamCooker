@@ -89,7 +89,7 @@ const Home = () => {
                     </section>
                 </HeroFrame>
 
-                <Suspense fallback={<HomeMarketingSections isAuthed />}>
+                <Suspense fallback={<HomeMarketingSections isAuthed={false} />}>
                     <PersonalizedMarketingSections />
                 </Suspense>
             </div>
