@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const STATIC_CACHE = `examcooker-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `examcooker-pages-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `examcooker-runtime-${CACHE_VERSION}`;
@@ -99,14 +99,12 @@ self.addEventListener("message", (event) => {
   if (event.data.type === "PREFETCH_ROUTES" && Array.isArray(event.data.routes)) {
     event.waitUntil(
       (async () => {
-        const cache = await caches.open(PAGE_CACHE);
         for (const route of event.data.routes) {
           if (typeof route !== "string" || !route.startsWith("/")) continue;
           try {
-            const response = await fetch(route, { credentials: "same-origin" });
-            if (response && response.ok) {
-              await cache.put(route, response.clone());
-            }
+            const url = new URL(route, self.location.origin);
+            if (isUncacheable(url)) continue;
+            await fetch(route, { credentials: "same-origin" });
           } catch {
             // Prefetching is best-effort.
           }
@@ -156,6 +154,13 @@ async function networkOnly(event) {
   }
 }
 
+async function networkOnlyWithOfflineFallback(event) {
+  const response = await networkOnly(event);
+  if (response && response.type !== "error") return response;
+  const offline = await caches.match("/offline.html");
+  return offline || response;
+}
+
 async function cacheFirst(event) {
   const cache = await caches.open(STATIC_CACHE);
   const cached = await cache.match(event.request);
@@ -196,7 +201,7 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     if (isUncacheable(url)) return;
-    event.respondWith(staleWhileRevalidate(event, PAGE_CACHE));
+    event.respondWith(networkOnlyWithOfflineFallback(event));
     return;
   }
 
@@ -218,7 +223,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isHtmlAccept(request)) {
-    event.respondWith(staleWhileRevalidate(event, PAGE_CACHE));
+    event.respondWith(networkOnlyWithOfflineFallback(event));
     return;
   }
 
