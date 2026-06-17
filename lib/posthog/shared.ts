@@ -55,6 +55,14 @@ export function getPostHogUiHost(posthogHost = getPostHogHost()) {
 // YouTube iframe embedded on past-paper pages. The iframe load itself is unaffected,
 // but `capture_exceptions` reports the swallowed throw as an error-tracking issue.
 // This is SDK noise, not an app bug, so drop it before it leaves the browser.
+//
+// Matches the browser-specific cross-origin access messages only. We deliberately
+// do NOT drop on the recorder frame alone, so genuine recorder-side DOMExceptions
+// (AbortError, NotAllowedError, QuotaExceededError, InvalidStateError, ...) still
+// reach error tracking.
+const CROSS_ORIGIN_SECURITY_ERROR =
+    /SecurityError|cross-origin|Permission denied to access property|Blocked a frame with origin/i;
+
 function isRrwebCrossOriginIframeException(result: CaptureResult): boolean {
     if (result.event !== "$exception") return false;
 
@@ -63,6 +71,18 @@ function isRrwebCrossOriginIframeException(result: CaptureResult): boolean {
 
     return exceptionList.some((exception) => {
         if (exception?.type !== "DOMException") return false;
+
+        // Require the specific cross-origin SecurityError signature, not just a
+        // DOMException. The browser-sanitized name can surface in either the
+        // exception type or its message, so check both.
+        const value = typeof exception?.value === "string" ? exception.value : "";
+        const type = typeof exception?.type === "string" ? exception.type : "";
+        if (
+            !CROSS_ORIGIN_SECURITY_ERROR.test(value) &&
+            !CROSS_ORIGIN_SECURITY_ERROR.test(type)
+        ) {
+            return false;
+        }
 
         const frames = exception?.stacktrace?.frames;
         if (!Array.isArray(frames)) return false;
