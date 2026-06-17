@@ -1,6 +1,5 @@
 const CACHE_VERSION = "v3";
 const STATIC_CACHE = `examcooker-static-${CACHE_VERSION}`;
-const PAGE_CACHE = `examcooker-pages-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `examcooker-runtime-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
@@ -12,7 +11,10 @@ const PRECACHE_ASSETS = [
   "/icons/apple-touch-icon.png",
 ];
 
-const KNOWN_CACHES = new Set([STATIC_CACHE, PAGE_CACHE, RUNTIME_CACHE]);
+// No PAGE_CACHE: navigation/HTML requests are network-only (networkDocument),
+// so a page bucket is never read. Leaving it out of KNOWN_CACHES makes the
+// activate sweep evict any orphaned examcooker-pages-* bucket from older SWs.
+const KNOWN_CACHES = new Set([STATIC_CACHE, RUNTIME_CACHE]);
 
 const STATIC_PATH_PREFIXES = ["/_next/static/", "/icons/", "/assets/", "/vendor/"];
 const STATIC_PATH_EXACT = new Set(["/manifest.webmanifest", "/offline.html", "/sw.js"]);
@@ -99,14 +101,16 @@ self.addEventListener("message", (event) => {
   if (event.data.type === "PREFETCH_ROUTES" && Array.isArray(event.data.routes)) {
     event.waitUntil(
       (async () => {
-        const cache = await caches.open(PAGE_CACHE);
         for (const route of event.data.routes) {
           if (typeof route !== "string" || !route.startsWith("/")) continue;
           try {
-            const response = await fetch(route, { credentials: "same-origin" });
-            if (response && response.ok) {
-              await cache.put(route, response.clone());
-            }
+            const url = new URL(route, self.location.origin);
+            if (isUncacheable(url)) continue;
+            // Navigation/HTML requests are network-only, so there is no page
+            // cache to populate. This fetch only warms the browser HTTP cache;
+            // omit credentials so we never round-trip (or store) a personalized
+            // private response that can't be reused anyway.
+            await fetch(route, { credentials: "omit" });
           } catch {
             // Prefetching is best-effort.
           }

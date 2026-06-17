@@ -151,6 +151,12 @@ type PdfViewerProps = {
 
 type SavedPageEditsState = {
   value: PdfPageEdits | null;
+  // Serialized key of the server `pageEdits` prop generation this value was last
+  // reconciled against.
+  propKey: string;
+  // Serialized key of the most recent local save while we are waiting for
+  // server props to catch up. Older delayed refreshes must not overwrite it.
+  pendingValueKey: string | null;
 };
 
 type PdfBufferLifecycleState = {
@@ -2016,6 +2022,8 @@ export default function PDFViewer({
   const [savedPageEditsState, setSavedPageEditsState] =
     useState<SavedPageEditsState>({
       value: normalizedInitialPageEdits,
+      propKey: normalizedInitialPageEditsKey,
+      pendingValueKey: null,
     });
   const [bufferLifecycleState, dispatchBufferLifecycle] = useReducer(
     pdfBufferLifecycleReducer,
@@ -2030,9 +2038,15 @@ export default function PDFViewer({
   const savedPageEdits = savedPageEditsState.value;
   const setSavedPageEdits = (nextPageEdits: PdfPageEdits | null) => {
     const normalizedNextPageEdits = normalizePdfPageEdits(nextPageEdits);
-    setSavedPageEditsState({
+    const normalizedNextPageEditsKey = serializePdfPageEdits(
+      normalizedNextPageEdits,
+    );
+
+    setSavedPageEditsState((prev) => ({
       value: normalizedNextPageEdits,
-    });
+      propKey: prev.propKey,
+      pendingValueKey: normalizedNextPageEditsKey,
+    }));
   };
   const deferredPageEdits = useDeferredValue(savedPageEdits);
   const deferredPageEditsKey = useMemo(
@@ -2042,8 +2056,25 @@ export default function PDFViewer({
   const engineState = usePreloadedPdfiumEngine(retryNonce);
 
   useEffect(() => {
-    setSavedPageEditsState({
-      value: normalizedInitialPageEdits,
+    setSavedPageEditsState((prev) => {
+      // Server props match the generation we last reconciled (or saved)
+      // against — e.g. a refresh() that returned the same, possibly stale,
+      // value. Keep the locally-saved edits instead of clobbering them.
+      if (prev.propKey === normalizedInitialPageEditsKey) {
+        return prev;
+      }
+      if (
+        prev.pendingValueKey &&
+        prev.pendingValueKey !== normalizedInitialPageEditsKey
+      ) {
+        return prev;
+      }
+      // A genuinely new server generation arrived; adopt it as authoritative.
+      return {
+        value: normalizedInitialPageEdits,
+        propKey: normalizedInitialPageEditsKey,
+        pendingValueKey: null,
+      };
     });
   }, [normalizedInitialPageEdits, normalizedInitialPageEditsKey]);
 
