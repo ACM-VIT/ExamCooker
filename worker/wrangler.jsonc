@@ -9,6 +9,10 @@
       {
         "name": "ExamCookerCommandAgent",
         "class_name": "ExamCookerCommandAgent"
+      },
+      {
+        "name": "ExamCookerStudyBrainAgent",
+        "class_name": "ExamCookerStudyBrainAgent"
       }
     ]
   },
@@ -16,6 +20,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["ExamCookerCommandAgent"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["ExamCookerStudyBrainAgent"]
     }
   ],
   "vars": {

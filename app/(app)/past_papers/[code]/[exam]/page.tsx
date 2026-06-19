@@ -21,6 +21,7 @@ import {
     getCourseSyllabusPath,
 } from "@/lib/seo";
 import CourseHeader from "@/app/components/past_papers/course-header";
+import StudyPlanCta from "@/app/components/study-brain/study-plan-cta";
 import CoursePaperGrid from "@/app/components/past_papers/course-paper-grid";
 import {
     DESKTOP_SELECT_ALL_HOST_ID,
@@ -191,7 +192,9 @@ async function CourseExamContent({
                         ]}
                     />
 
-                <section className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]">
+                    <StudyPlanCta courseCode={course.code} examType={examType} />
+
+                    <section className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]">
                     <p className="sr-only">
                         Open the dedicated {label} collection for {course.code} when you want a
                         focused set of papers for one exam pattern instead of the full course list.

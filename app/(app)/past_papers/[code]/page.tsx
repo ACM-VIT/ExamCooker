@@ -34,6 +34,7 @@ import {
 } from "@/app/components/past_papers/course-paper-grid-controls";
 import CoursePagination from "@/app/components/past_papers/course-pagination";
 import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
+import StudyPlanCta from "@/app/components/study-brain/study-plan-cta";
 import {
     campusValues,
     course as courseTable,
@@ -602,6 +603,7 @@ async function CoursePastPapersPageContent({
                     noteCount={course.noteCount}
                     syllabusId={null}
                 >
+                    <StudyPlanCta courseCode={course.code} variant="compact" />
                     <Suspense fallback={null}>
                         <CourseHeaderSyllabusAction
                             code={course.code}
@@ -609,6 +611,8 @@ async function CoursePastPapersPageContent({
                         />
                     </Suspense>
                 </CourseHeader>
+
+                <StudyPlanCta courseCode={course.code} />
 
                 <Suspense fallback={<CoursePastPapersSectionsShell />}>
                     <CoursePastPapersContent

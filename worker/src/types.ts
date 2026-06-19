@@ -8,6 +8,7 @@ export type CommandResolver = "openai" | "local" | "semantic-cache";
 
 export type Env = {
   ExamCookerCommandAgent: DurableObjectNamespace;
+  ExamCookerStudyBrainAgent: DurableObjectNamespace;
   CLOUDFLARE_COMMAND_AGENT_ADMIN_TOKEN?: string;
   OPENAI_API_KEY?: string;
   OPENAI_COMMAND_MODEL?: string;
@@ -89,6 +90,30 @@ export type TrustedCommandUserContext = {
   userKey: string;
   authenticated: boolean;
   role: "user" | "moderator" | null;
+};
+
+export type StudyBrainAgentState = {
+  runsCreated: number;
+  lastRunId: string | null;
+  lastStatus: string | null;
+  updatedAt: string | null;
+};
+
+export type StudyBrainPlanRunInput = {
+  userKey?: string;
+  userToken?: string | null;
+  courseCode?: string;
+  examType?: string | null;
+  semester?: string;
+  campus?: string;
+  slot?: string | null;
+  syllabusId?: string | null;
+  selectedTopics?: Array<{
+    topicId?: string | null;
+    title: string;
+    rawText?: string;
+  }>;
+  preferences?: string[];
 };
 
 export type CommandPreferenceRequestInput = {
