@@ -2,9 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Clock3, FileText, Search, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { CourseSearchRecord } from "@/lib/data/course-catalog";
 import { examTypeValues } from "@/db/enums";
+import { examTypeLabel } from "@/lib/exam-slug";
+import { getCoursePastPapersPath } from "@/lib/seo";
+import { GradientText } from "@/app/components/landing/landing";
 import type { StudyPreferenceMode } from "@/lib/study-brain/schemas";
 
 type Props = {
@@ -17,19 +20,28 @@ type Props = {
 const preferenceOptions: Array<{
   id: StudyPreferenceMode;
   label: string;
-  description: string;
 }> = [
-  { id: "past_papers", label: "Past-paper practice", description: "Prioritize questions and patterns." },
-  { id: "videos", label: "Video explanations", description: "Use good lectures when they save time." },
-  { id: "notes", label: "Notes and reading", description: "Keep it text-first and skimmable." },
-  { id: "solved_examples", label: "Solved examples", description: "Work through examples before papers." },
-  { id: "quick_summaries", label: "Quick summaries", description: "Fast revision blocks first." },
-  { id: "mixed", label: "Mixed mode", description: "Let ExamCooker balance the queue." },
+  { id: "past_papers", label: "Past papers" },
+  { id: "videos", label: "Videos" },
+  { id: "notes", label: "Notes" },
+  { id: "solved_examples", label: "Solved examples" },
+  { id: "quick_summaries", label: "Quick summaries" },
+  { id: "mixed", label: "Mixed" },
 ];
 
 function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
+
+const chipBase =
+  "inline-flex h-9 shrink-0 items-center gap-1.5 border px-3 text-sm font-semibold transition";
+const chipActive =
+  "border-[#5FC4E7] bg-[#5FC4E7]/25 text-black dark:border-[#3BF4C7]/60 dark:bg-[#3BF4C7]/15 dark:text-[#3BF4C7]";
+const chipIdle =
+  "border-black/15 bg-white text-black hover:border-black/30 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/40";
+
+const sectionLabel =
+  "text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl";
 
 export default function StudyPlanBuilder({
   courses,
@@ -37,11 +49,17 @@ export default function StudyPlanBuilder({
   initialExam = "",
   initialSlot = "",
 }: Props) {
+  const { prefetch } = useRouter();
   const [courseQuery, setCourseQuery] = useState(initialCourse);
-  const [selectedCourseCode, setSelectedCourseCode] = useState(initialCourse.toUpperCase());
+  const [selectedCourseCode, setSelectedCourseCode] = useState(
+    initialCourse.toUpperCase(),
+  );
   const [examType, setExamType] = useState(initialExam.toUpperCase());
   const [slot, setSlot] = useState(initialSlot.toUpperCase());
-  const [preferences, setPreferences] = useState<StudyPreferenceMode[]>(["past_papers", "mixed"]);
+  const [preferences, setPreferences] = useState<StudyPreferenceMode[]>([
+    "past_papers",
+    "mixed",
+  ]);
 
   const selectedCourse = useMemo(
     () => courses.find((course) => course.code.toUpperCase() === selectedCourseCode),
@@ -50,13 +68,15 @@ export default function StudyPlanBuilder({
 
   const matches = useMemo(() => {
     const query = normalize(courseQuery);
-    if (!query) return courses.slice(0, 8);
+    if (!query) return courses.slice(0, 6);
     return courses
       .filter((course) => {
-        const haystack = normalize(`${course.code} ${course.title} ${course.aliases.join(" ")}`);
+        const haystack = normalize(
+          `${course.code} ${course.title} ${course.aliases.join(" ")}`,
+        );
         return haystack.includes(query);
       })
-      .slice(0, 8);
+      .slice(0, 6);
   }, [courseQuery, courses]);
 
   const togglePreference = (id: StudyPreferenceMode) => {
@@ -67,108 +87,117 @@ export default function StudyPlanBuilder({
     );
   };
 
+  const readyToContinue = Boolean(selectedCourse && examType);
+
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
-      <section className="border border-black/15 bg-white p-4 shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)] sm:p-5">
-        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-black/45 dark:text-[#D5D5D5]/45">
-          <Sparkles className="size-4" aria-hidden />
-          Study Brain
-        </div>
-        <h1 className="mt-3 text-pretty text-3xl font-black leading-none text-black dark:text-[#D5D5D5] sm:text-5xl">
-          Build the queue that makes sense for your exam.
+    <div className="flex flex-col gap-8 sm:gap-10">
+      <section className="flex flex-col gap-4">
+        <span className="font-mono text-xs font-bold uppercase tracking-wider text-black/70 dark:text-[#D5D5D5]/70">
+          Study plan
+        </span>
+        <h1 className="text-[1.5rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[400px]:text-3xl sm:text-5xl lg:text-6xl">
+          What do you wanna <GradientText>study?</GradientText>
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-black/65 dark:text-[#D5D5D5]/65 sm:text-base">
-          Choose the course, exam, slot, and how you actually study. ExamCooker
-          will use syllabus topics, previous papers, slot reports, and web research
-          without making it feel like AI homework.
+        <p className="max-w-2xl text-xs leading-5 text-black/65 dark:text-[#D5D5D5]/65 sm:text-base sm:leading-6">
+          Pick the course, exam, and slot. ExamCooker uses the syllabus, previous
+          papers, and earlier-slot reports to line up a queue with time estimates —
+          high-yield first, skip-if-cooked last.
         </p>
+      </section>
 
-        <div className="mt-6 grid gap-4">
-          <label className="grid gap-2">
-            <span className="text-xs font-black uppercase tracking-[0.18em] text-black/50 dark:text-[#D5D5D5]/50">
-              What do you wanna study?
-            </span>
-            <div className="flex items-center gap-2 border border-black/15 bg-[#F6FBFC] px-3 py-2 dark:border-[#D5D5D5]/15 dark:bg-[#08111F]">
-              <Search className="size-4 shrink-0 text-black/45 dark:text-[#D5D5D5]/45" aria-hidden />
-              <input
-                value={courseQuery}
-                onChange={(event) => {
-                  setCourseQuery(event.target.value);
-                  setSelectedCourseCode("");
-                }}
-                placeholder="Mechanics, BCME102L, DSA..."
-                className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-black outline-none placeholder:text-black/35 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/35"
-              />
-            </div>
-          </label>
+      <section className="flex flex-col gap-4">
+        <h2 className={sectionLabel}>Course</h2>
+        <div className="ec-focus-ring flex h-12 items-center border border-black/15 bg-white px-1 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11">
+          <input
+            type="text"
+            inputMode="search"
+            autoCapitalize="off"
+            autoCorrect="off"
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="Search for a course"
+            value={courseQuery}
+            onChange={(event) => {
+              setCourseQuery(event.target.value);
+              setSelectedCourseCode("");
+            }}
+            placeholder="Mechanics, BCME102L, DSA..."
+            className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm text-black focus:outline-none placeholder:text-black/50 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60 sm:text-base"
+          />
+        </div>
 
-          <div className="grid gap-2">
+        {matches.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             {matches.map((course) => {
               const active = course.code.toUpperCase() === selectedCourseCode;
               return (
                 <button
                   key={course.id}
                   type="button"
+                  onPointerEnter={() => prefetch(getCoursePastPapersPath(course.code))}
                   onClick={() => {
                     setSelectedCourseCode(course.code.toUpperCase());
-                    setCourseQuery(`${course.code} · ${course.title}`);
+                    setCourseQuery(`${course.code} ${course.title}`);
                   }}
-                  className={`flex items-center justify-between gap-3 border px-3 py-2 text-left transition-colors ${
+                  className={`ec-press flex h-full flex-col gap-2 border-2 p-4 text-left transition ${
                     active
-                      ? "border-black bg-black text-white dark:border-[#3BF4C7] dark:bg-[#3BF4C7] dark:text-[#06101F]"
-                      : "border-black/10 bg-white hover:border-black/25 hover:bg-black/5 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222] dark:hover:border-[#3BF4C7]/40 dark:hover:bg-white/5"
+                      ? "border-black bg-[#5FC4E7] text-black dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/20 dark:text-[#D5D5D5]"
+                      : "border-[#5FC4E7] bg-[#5FC4E7] text-black hover:scale-[1.02] dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7]"
                   }`}
                 >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-black">{course.code}</span>
-                    <span className="block truncate text-xs opacity-70">{course.title}</span>
+                  <span className="font-mono text-xs font-bold uppercase tracking-wide text-black/75 dark:text-[#D5D5D5]/70">
+                    {course.code}
                   </span>
-                  {active && <Check className="size-4 shrink-0" aria-hidden />}
+                  <span className="line-clamp-2 text-sm font-bold leading-snug text-black dark:text-[#D5D5D5]">
+                    {course.title}
+                  </span>
+                  <span className="mt-auto pt-1 text-[10px] font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
+                    {course.paperCount} paper{course.paperCount === 1 ? "" : "s"}
+                  </span>
                 </button>
               );
             })}
           </div>
+        )}
+      </section>
 
-          <div className="grid gap-3 sm:grid-cols-[1fr_0.55fr]">
-            <label className="grid gap-2">
-              <span className="text-xs font-black uppercase tracking-[0.18em] text-black/50 dark:text-[#D5D5D5]/50">
-                Exam type
-              </span>
-              <select
-                value={examType}
-                onChange={(event) => setExamType(event.target.value)}
-                className="h-11 border border-black/15 bg-white px-3 text-sm font-bold text-black outline-none dark:border-[#D5D5D5]/15 dark:bg-[#08111F] dark:text-[#D5D5D5]"
-              >
-                <option value="">Pick exam</option>
-                {examTypeValues.map((value) => (
-                  <option key={value} value={value}>
-                    {value.replaceAll("_", " ")}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2">
-              <span className="text-xs font-black uppercase tracking-[0.18em] text-black/50 dark:text-[#D5D5D5]/50">
-                Slot
-              </span>
+      <div className="grid gap-8 sm:gap-10 lg:grid-cols-2">
+        <section className="flex flex-col gap-4">
+          <h2 className={sectionLabel}>Exam &amp; slot</h2>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {examTypeValues.map((value) => {
+              const active = examType === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setExamType(active ? "" : value)}
+                  className={`${chipBase} ${active ? chipActive : chipIdle}`}
+                >
+                  {examTypeLabel(value)}
+                </button>
+              );
+            })}
+          </div>
+          <label className="flex flex-col gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
+              Slot
+            </span>
+            <div className="ec-focus-ring flex h-11 w-full items-center border border-black/15 bg-white px-1 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:w-40">
               <input
                 value={slot}
                 onChange={(event) => setSlot(event.target.value.toUpperCase())}
                 placeholder="A1, G2..."
-                className="h-11 border border-black/15 bg-white px-3 text-sm font-bold text-black outline-none placeholder:text-black/35 dark:border-[#D5D5D5]/15 dark:bg-[#08111F] dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/35"
+                aria-label="Exam slot"
+                className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm font-semibold text-black focus:outline-none placeholder:text-black/45 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/45"
               />
-            </label>
-          </div>
-        </div>
-      </section>
+            </div>
+          </label>
+        </section>
 
-      <aside className="flex flex-col gap-5">
-        <section className="border border-black/15 bg-white p-4 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:p-5">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-black/45 dark:text-[#D5D5D5]/45">
-            <Clock3 className="size-4" aria-hidden />
-            Study style
-          </div>
-          <div className="mt-4 grid gap-2">
+        <section className="flex flex-col gap-4">
+          <h2 className={sectionLabel}>How you study</h2>
+          <div className="flex flex-wrap items-center gap-1.5">
             {preferenceOptions.map((option) => {
               const active = preferences.includes(option.id);
               return (
@@ -176,45 +205,55 @@ export default function StudyPlanBuilder({
                   key={option.id}
                   type="button"
                   onClick={() => togglePreference(option.id)}
-                  className={`border px-3 py-3 text-left transition-colors ${
-                    active
-                      ? "border-black bg-black text-white dark:border-[#3BF4C7] dark:bg-[#3BF4C7] dark:text-[#06101F]"
-                      : "border-black/10 bg-white hover:border-black/25 hover:bg-black/5 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222] dark:hover:border-[#3BF4C7]/40 dark:hover:bg-white/5"
-                  }`}
+                  className={`${chipBase} ${active ? chipActive : chipIdle}`}
                 >
-                  <span className="flex items-start justify-between gap-3">
-                    <span>
-                      <span className="block text-sm font-black">{option.label}</span>
-                      <span className="mt-0.5 block text-xs opacity-70">{option.description}</span>
-                    </span>
-                    {active && <Check className="size-4 shrink-0" aria-hidden />}
-                  </span>
+                  {option.label}
                 </button>
               );
             })}
           </div>
+          <p className="text-xs leading-5 text-black/55 dark:text-[#D5D5D5]/55">
+            Pick as many as you like. ExamCooker weights the queue toward what you
+            actually want to do at 2am.
+          </p>
         </section>
+      </div>
 
-        <section className="border border-black/15 bg-[#E7F8F8] p-4 dark:border-[#3BF4C7]/20 dark:bg-[#081A24] sm:p-5">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-black/45 dark:text-[#D5D5D5]/45">
-            <FileText className="size-4" aria-hidden />
-            What happens next
-          </div>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-black/70 dark:text-[#D5D5D5]/70">
-            <li>Confirm the matched syllabus instead of trusting filename magic.</li>
-            <li>Pick exact topics from extracted modules, plus custom topics if needed.</li>
-            <li>Use earlier-slot reports and past papers before external research.</li>
-            <li>Get a prioritized queue with clocks, evidence, and skip-if-cooked labels.</li>
-          </ul>
+      <section className="flex flex-col gap-4 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] sm:p-5">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-black/70 dark:text-[#D5D5D5]/70">
+          What happens next
+        </span>
+        <ol className="grid gap-2 text-xs leading-5 text-black/75 dark:text-[#D5D5D5]/75 sm:text-sm sm:leading-6">
+          <li>1. Confirm the matched syllabus instead of trusting filename guesses.</li>
+          <li>2. Pick the exact topics coming for your exam, plus custom ones.</li>
+          <li>3. Earlier-slot reports and past papers come before any web research.</li>
+          <li>4. Get a prioritized queue with clocks, evidence, and skip labels.</li>
+        </ol>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           <Link
-            href={selectedCourse ? `/past_papers/${selectedCourse.code}` : "/past_papers"}
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-sm font-black text-white transition-colors hover:bg-[#0D5875] dark:border-[#3BF4C7] dark:bg-[#3BF4C7] dark:text-[#06101F] dark:hover:bg-[#7fffe0]"
+            href={
+              selectedCourse
+                ? getCoursePastPapersPath(selectedCourse.code)
+                : "/past_papers"
+            }
+            prefetch
+            aria-disabled={!readyToContinue}
+            className={`ec-press inline-flex h-11 items-center justify-center gap-2 border px-4 text-sm font-bold transition ${
+              readyToContinue
+                ? "border-black bg-white text-black hover:bg-black hover:text-white dark:border-[#3BF4C7] dark:bg-transparent dark:text-[#3BF4C7] dark:hover:bg-[#3BF4C7] dark:hover:text-[#0C1222]"
+                : "pointer-events-none border-black/20 bg-white/60 text-black/40 dark:border-[#D5D5D5]/20 dark:bg-transparent dark:text-[#D5D5D5]/40"
+            }`}
           >
-            Continue from course context
-            <ArrowRight className="size-4" aria-hidden />
+            Continue
+            <span aria-hidden>→</span>
           </Link>
-        </section>
-      </aside>
+          {!readyToContinue && (
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-black/50 dark:text-[#D5D5D5]/50">
+              Pick a course and exam to continue
+            </span>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

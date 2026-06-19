@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowRight, Clock3, Sparkles } from "lucide-react";
 
 type Props = {
   courseCode?: string;
@@ -29,42 +28,39 @@ export default function StudyPlanCta({
     return (
       <Link
         href={href}
-        className="inline-flex h-9 items-center justify-center gap-1.5 border border-black/15 bg-black px-3 text-xs font-semibold text-white transition-colors hover:bg-[#0D5875] dark:border-[#3BF4C7]/40 dark:bg-[#3BF4C7] dark:text-[#06101F] dark:hover:bg-[#7fffe0] sm:h-8"
+        prefetch
+        className="ec-press inline-flex h-9 items-center justify-center gap-1.5 border border-[#5FC4E7] bg-[#5FC4E7]/25 px-3 text-sm font-semibold text-black transition hover:border-black/30 hover:bg-[#5FC4E7]/40 dark:border-[#3BF4C7]/60 dark:bg-[#3BF4C7]/15 dark:text-[#3BF4C7] dark:hover:border-[#3BF4C7] sm:h-8"
       >
-        <Clock3 className="size-3.5" aria-hidden />
         Plan study
       </Link>
     );
   }
 
   return (
-    <section className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
-      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div className="flex min-w-0 gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center border border-black/10 bg-[#C2E6EC] text-black dark:border-[#3BF4C7]/30 dark:bg-[#0A1A2A] dark:text-[#3BF4C7]">
-            <Sparkles className="size-5" aria-hidden />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-black/45 dark:text-[#D5D5D5]/45">
-              Exam soon?
-            </p>
-            <h2 className="mt-1 text-xl font-black leading-tight text-black dark:text-[#D5D5D5]">
-              Build a plan from your syllabus, slot intel, and papers.
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-black/65 dark:text-[#D5D5D5]/65">
-              Pick what is coming, choose how you study, and let ExamCooker line up
-              the high-yield stuff first. No calendar cosplay required.
-            </p>
-          </div>
-        </div>
-        <Link
-          href={href}
-          className="inline-flex shrink-0 items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-sm font-black text-white transition-colors hover:bg-[#0D5875] dark:border-[#3BF4C7] dark:bg-[#3BF4C7] dark:text-[#06101F] dark:hover:bg-[#7fffe0]"
-        >
-          Plan my study
-          <ArrowRight className="size-4" aria-hidden />
-        </Link>
+    <Link
+      href={href}
+      prefetch
+      transitionTypes={["nav-forward"]}
+      className="ec-card-lift group flex flex-col gap-4 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] sm:flex-row sm:items-center sm:justify-between sm:p-5"
+    >
+      <div className="min-w-0">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-black/70 dark:text-[#D5D5D5]/70">
+          Study plan
+        </span>
+        <h3 className="mt-1.5 text-base font-bold leading-snug text-black dark:text-[#D5D5D5] sm:text-lg">
+          Exam soon? Build a plan from the syllabus, slot reports, and papers.
+        </h3>
+        <p className="mt-1 max-w-2xl text-xs leading-5 text-black/65 dark:text-[#D5D5D5]/65 sm:text-sm">
+          Pick what is coming, choose how you study, and ExamCooker lines up the
+          high-yield work first. It is not too late.
+        </p>
       </div>
-    </section>
+      <span className="inline-flex h-10 shrink-0 items-center justify-center gap-2 self-start border border-black bg-white px-4 text-sm font-bold text-black transition group-hover:bg-black group-hover:text-white dark:border-[#3BF4C7] dark:bg-transparent dark:text-[#3BF4C7] dark:group-hover:bg-[#3BF4C7] dark:group-hover:text-[#0C1222] sm:self-auto">
+        Plan my study
+        <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+          →
+        </span>
+      </span>
+    </Link>
   );
 }
