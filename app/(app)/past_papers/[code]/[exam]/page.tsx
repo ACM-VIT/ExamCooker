@@ -21,7 +21,7 @@ import {
     getCourseSyllabusPath,
 } from "@/lib/seo";
 import CourseHeader from "@/app/components/past_papers/course-header";
-import StudyPlanCta from "@/app/components/study-brain/study-plan-cta";
+import StudyPlanCta from "@/app/components/study-plan/plan-cta";
 import CoursePaperGrid from "@/app/components/past_papers/course-paper-grid";
 import {
     DESKTOP_SELECT_ALL_HOST_ID,

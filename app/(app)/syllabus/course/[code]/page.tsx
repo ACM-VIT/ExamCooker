@@ -9,7 +9,7 @@ import ViewTracker from "@/app/components/view-tracker";
 import { LazySyllabusInlineEditor } from "@/app/components/moderation/lazy-editors";
 import StructuredData from "@/app/components/seo/structured-data";
 import DirectionalTransition from "@/app/components/common/directional-transition";
-import StudyPlanCta from "@/app/components/study-brain/study-plan-cta";
+import StudyPlanCta from "@/app/components/study-plan/plan-cta";
 import { getCourseByCodeAny } from "@/lib/data/courses";
 import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import { getSubjectByCourseCode } from "@/lib/data/resources";

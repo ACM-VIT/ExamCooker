@@ -224,6 +224,101 @@
     overflow: hidden;
 }
 
+/* ── Study plan surface ──────────────────────────────────────────────── */
+@keyframes sp-rise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Staggered page-load reveal. Drive cascade with `--sp-i` per element. */
+.sp-rise {
+    animation: sp-rise 560ms var(--ec-ease-out-soft) both;
+    animation-delay: calc(var(--sp-i, 0) * 70ms);
+}
+
+@keyframes sp-fade {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Phase transition (compose → building → plan). */
+.sp-fade {
+    animation: sp-fade 440ms var(--ec-ease-out-soft) both;
+}
+
+/* Brand-blue focus ring — keeps the accent off the mint used app-wide. */
+.sp-focus {
+    transition: box-shadow 220ms var(--ec-ease-out-soft), border-color 220ms ease;
+}
+
+.sp-focus:focus-within {
+    box-shadow: 0 0 0 2px rgb(39 186 236 / 0.42);
+    border-color: rgb(39 186 236 / 0.60);
+}
+
+/* Soft brand-blue aura for atmosphere behind the hero block. */
+.sp-aura {
+    position: relative;
+    isolation: isolate;
+}
+
+.sp-aura::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    left: -6%;
+    top: -60%;
+    width: min(540px, 96%);
+    height: 320px;
+    background: radial-gradient(56% 56% at 26% 44%, rgb(39 186 236 / 0.16), transparent 72%);
+    filter: blur(22px);
+    pointer-events: none;
+}
+
+.dark .sp-aura::before {
+    background: radial-gradient(56% 56% at 26% 44%, rgb(39 186 236 / 0.20), transparent 72%);
+}
+
+/* Signature gradient hairline. */
+.sp-rule {
+    height: 2px;
+    width: 56px;
+    border-radius: 2px;
+    background: linear-gradient(to right, #253ee0, #27baec);
+}
+
+/* Gradient sweep that wipes across the build CTA on hover. */
+.sp-cta-sheen {
+    position: relative;
+    overflow: hidden;
+}
+
+.sp-cta-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 20%, rgb(255 255 255 / 0.35) 50%, transparent 80%);
+    transform: translateX(-120%);
+    transition: transform 620ms var(--ec-ease-out-soft);
+    pointer-events: none;
+}
+
+@media (hover: hover) {
+    .sp-cta-sheen:hover::after {
+        transform: translateX(120%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-rise,
+    .sp-fade {
+        animation: none;
+    }
+    .sp-cta-sheen::after {
+        display: none;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .ec-press,
     .ec-card-lift,

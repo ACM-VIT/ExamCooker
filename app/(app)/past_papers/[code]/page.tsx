@@ -34,7 +34,7 @@ import {
 } from "@/app/components/past_papers/course-paper-grid-controls";
 import CoursePagination from "@/app/components/past_papers/course-pagination";
 import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
-import StudyPlanCta from "@/app/components/study-brain/study-plan-cta";
+import StudyPlanCta from "@/app/components/study-plan/plan-cta";
 import {
     campusValues,
     course as courseTable,
