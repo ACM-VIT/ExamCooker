@@ -827,11 +827,13 @@ async function promptForQuery(input: {
       placeholder: input.placeholder,
       initialValue: input.initialValue,
       validate: (value) => {
-        if (!value.trim()) {
+        const normalized = value?.trim() ?? "";
+
+        if (!normalized) {
           return "Enter a search query.";
         }
 
-        if (value.trim().length < 2) {
+        if (normalized.length < 2) {
           return "Use at least 2 characters.";
         }
 
@@ -849,7 +851,7 @@ async function promptForYear(initialValue?: string) {
       placeholder: "2025",
       initialValue,
       validate: (value) => {
-        const normalized = value.trim();
+        const normalized = value?.trim() ?? "";
         if (!/^\d{4}$/.test(normalized)) {
           return "Enter a 4-digit year like 2025.";
         }
@@ -1925,7 +1927,7 @@ async function runPaperUpload(args: string[]) {
         message: "Title",
         initialValue: title,
         validate: (value) =>
-          value.trim() ? undefined : "Enter a title for this upload.",
+          value?.trim() ? undefined : "Enter a title for this upload.",
       }),
       "Canceled.",
     ).trim();
