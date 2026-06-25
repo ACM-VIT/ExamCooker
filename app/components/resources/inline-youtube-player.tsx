@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer, useRef } from "react";
+import { type SyntheticEvent, useEffect, useReducer, useRef } from "react";
 import ReactPlayer from "react-player";
 import { Pause, Play, Volume1, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,13 +9,6 @@ type InlineYouTubePlayerProps = {
     videoId: string;
     title?: string;
     autoplay?: boolean;
-};
-
-type ProgressState = {
-    played: number;
-    playedSeconds: number;
-    loaded: number;
-    loadedSeconds: number;
 };
 
 type PlayerState = {
@@ -177,7 +170,7 @@ function InlineYouTubePlayerInner({
     title,
     autoplay = false,
 }: InlineYouTubePlayerProps) {
-    const playerRef = useRef<ReactPlayer | null>(null);
+    const playerRef = useRef<HTMLVideoElement | null>(null);
     const lastVolumeRef = useRef(1);
     const [
         {
@@ -245,11 +238,17 @@ function InlineYouTubePlayerInner({
         }
     };
 
-    const handleProgress = (state: ProgressState) => {
+    const handleTimeUpdate = (event: SyntheticEvent<HTMLVideoElement>) => {
+        const media = event.currentTarget;
+        const currentTime = Number.isFinite(media.currentTime)
+            ? media.currentTime
+            : 0;
+        const nextDuration = Number.isFinite(media.duration) ? media.duration : duration;
+
         dispatch({
             type: "progress",
-            currentTime: state.playedSeconds,
-            progress: state.played * 100,
+            currentTime,
+            progress: nextDuration > 0 ? (currentTime / nextDuration) * 100 : 0,
         });
     };
 
@@ -260,7 +259,7 @@ function InlineYouTubePlayerInner({
         }
 
         const playedFraction = clampPercentage(nextValue) / 100;
-        player.seekTo(playedFraction, "fraction");
+        player.currentTime = playedFraction * duration;
         dispatch({
             type: "seek",
             currentTime: playedFraction * duration,
@@ -299,7 +298,7 @@ function InlineYouTubePlayerInner({
                 <ReactPlayer
                     ref={playerRef}
                     key={`${videoId}-${autoplay ? "a" : "p"}-${useNativeControls ? "native" : "custom"}`}
-                    url={url}
+                    src={url}
                     playing={isPlaying}
                     controls={useNativeControls}
                     width="100%"
@@ -307,26 +306,25 @@ function InlineYouTubePlayerInner({
                     volume={volume}
                     muted={isMuted}
                     playbackRate={playbackSpeed}
-                    playsinline
+                    playsInline
                     onPlay={() => dispatch({ type: "playing", playing: true })}
                     onPause={() => dispatch({ type: "playing", playing: false })}
                     onEnded={() => dispatch({ type: "playing", playing: false })}
-                    onProgress={handleProgress}
-                    onDuration={(nextDuration) =>
-                        dispatch({ type: "duration", duration: nextDuration })
+                    onTimeUpdate={handleTimeUpdate}
+                    onDurationChange={(event) =>
+                        dispatch({
+                            type: "duration",
+                            duration: Number.isFinite(event.currentTarget.duration)
+                                ? event.currentTarget.duration
+                                : 0,
+                        })
                     }
                     config={{
                         youtube: {
-                            playerVars: {
-                                autoplay: autoplay ? 1 : 0,
-                                controls: useNativeControls ? 1 : 0,
-                                disablekb: useNativeControls ? 0 : 1,
-                                fs: 1,
-                                iv_load_policy: 3,
-                                modestbranding: 1,
-                                playsinline: 1,
-                                rel: 0,
-                            },
+                            disablekb: useNativeControls ? 0 : 1,
+                            fs: 1,
+                            iv_load_policy: 3,
+                            rel: 0,
                         },
                     }}
                 />

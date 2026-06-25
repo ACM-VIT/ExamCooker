@@ -7,7 +7,6 @@ import {
 } from "@/lib/og";
 import { stripPdfExtension } from "@/lib/pdf";
 
-export const runtime = "nodejs";
 export const alt = OG_ALT;
 export const size = OG_IMAGE_SIZE;
 export const contentType = OG_CONTENT_TYPE;
