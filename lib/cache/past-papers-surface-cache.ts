@@ -38,6 +38,28 @@ function hashText(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function formatRecoverableCacheError(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+}
+
+const loggedRecoverableCacheWarnings = new Set<string>();
+
+function warnRecoverableCacheError(label: string, error: unknown) {
+  const message = formatRecoverableCacheError(error);
+  const warningKey = `${label}: ${message}`;
+
+  if (loggedRecoverableCacheWarnings.has(warningKey)) {
+    return;
+  }
+
+  loggedRecoverableCacheWarnings.add(warningKey);
+  console.warn(`[past-papers-surface-cache] ${warningKey}`);
+}
+
 function normalizeStableValue(value: unknown): unknown {
   if (value instanceof Date) {
     return value.toISOString();
@@ -131,7 +153,7 @@ async function releaseCacheLock(redis: Redis, cacheKey: string, token: string | 
   try {
     await redis.eval(RELEASE_LOCK_SCRIPT, [lockKey], [token]);
   } catch (error) {
-    console.error("[past-papers-surface-cache] lock release failed", error);
+    warnRecoverableCacheError("lock release failed", error);
   }
 }
 
@@ -160,7 +182,7 @@ async function waitForCacheEntry<T>(input: {
         return cachedValue;
       }
     } catch (error) {
-      console.error("[past-papers-surface-cache] wait read failed", error);
+      warnRecoverableCacheError("wait read failed", error);
       return { type: "miss" };
     }
   }
@@ -195,7 +217,7 @@ async function readNamespaceVersion() {
     const parsedValue = Number(rawValue);
     return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 0;
   } catch (error) {
-    console.error("[past-papers-surface-cache] namespace read failed", error);
+    warnRecoverableCacheError("namespace read failed", error);
     return 0;
   }
 }
@@ -226,7 +248,7 @@ export async function withPastPapersSurfaceRedisCache<T>(
       return cachedValue.value;
     }
   } catch (error) {
-    console.error("[past-papers-surface-cache] cache read failed", error);
+    warnRecoverableCacheError("cache read failed", error);
     return loader();
   }
 
@@ -235,7 +257,7 @@ export async function withPastPapersSurfaceRedisCache<T>(
   try {
     lockToken = await tryAcquireCacheLock(redis, cacheKey);
   } catch (error) {
-    console.error("[past-papers-surface-cache] lock acquire failed", error);
+    warnRecoverableCacheError("lock acquire failed", error);
   }
 
   if (!lockToken) {
@@ -259,7 +281,7 @@ export async function withPastPapersSurfaceRedisCache<T>(
         value,
       });
     } catch (error) {
-      console.error("[past-papers-surface-cache] fallback write failed", error);
+      warnRecoverableCacheError("fallback write failed", error);
     }
 
     return value;
@@ -285,7 +307,7 @@ export async function withPastPapersSurfaceRedisCache<T>(
         value,
       });
     } catch (error) {
-      console.error("[past-papers-surface-cache] cache write failed", error);
+      warnRecoverableCacheError("cache write failed", error);
     }
 
     return value;
@@ -303,7 +325,7 @@ export async function invalidatePastPapersSurfaceCache() {
   try {
     return await redis.incr(NAMESPACE_VERSION_KEY);
   } catch (error) {
-    console.error("[past-papers-surface-cache] namespace bump failed", error);
+    warnRecoverableCacheError("namespace bump failed", error);
     return null;
   }
 }

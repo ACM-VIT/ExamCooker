@@ -1,18 +1,20 @@
 import React, { Suspense } from "react";
-import { auth } from "@/app/auth";
 import { GradientText } from "@/app/components/landing/landing";
+import Image from "@/app/components/common/app-image";
 import ExamCookerLogo from "@/app/components/common/exam-cooker-logo";
 import DirectionalTransition from "@/app/components/common/directional-transition";
+import SearchIcon from "@/app/components/assets/seacrh.svg";
 import ExamsMarquee, { ExamsMarqueeFallback } from "./exams-marquee";
 import { getSearchableCourses } from "@/lib/data/course-catalog";
 import { getUpcomingExams } from "@/lib/data/upcoming-exams";
 import CourseSearch from "./course-search";
 import HomeMarketingSections from "./home-marketing-sections";
-import WelcomeBackSubtitle from "./welcome-back-subtitle";
+import HomeAuthSubtitle from "./home-auth-subtitle";
+import HomeAuthSignInCta from "./home-auth-sign-in-cta";
 import HeroFrame from "./hero-frame";
-import { getDisplayUserName } from "./display-name";
 
-const HOME_SUBTITLE = "Your one-stop solution to cram before exams.";
+const subtitleClass =
+    "ec-home-subtitle text-sm sm:text-base lg:text-xl text-black/70 dark:text-[#D5D5D5]/70 md:text-white/85 dark:md:text-white/85 mb-6 sm:mb-8 lg:mb-10 max-w-2xl mx-auto";
 
 async function HomeSearchSection() {
     const courses = await getSearchableCourses();
@@ -24,37 +26,33 @@ async function HomeSearchSection() {
     );
 }
 
-async function HomeMarqueeSection() {
-    const upcomingExams = await getUpcomingExams(16);
-    return <ExamsMarquee items={upcomingExams} />;
-}
-
-const subtitleClass =
-    "ec-home-subtitle text-sm sm:text-base lg:text-xl text-black/70 dark:text-[#D5D5D5]/70 md:text-white/85 dark:md:text-white/85 mb-6 sm:mb-8 lg:mb-10 max-w-2xl mx-auto";
-
-function HomeSubtitle({ userName }: { userName: string | null }) {
-    if (!userName) {
-        return <p className={subtitleClass}>{HOME_SUBTITLE}</p>;
-    }
+function HomeSearchFallback() {
     return (
-        <WelcomeBackSubtitle className={subtitleClass}>
-            Welcome back, {userName}
-        </WelcomeBackSubtitle>
+        <div className="ec-home-search-shell mx-auto w-full max-w-4xl px-4 sm:px-0">
+            <div className="mx-auto w-full min-w-0 text-left">
+                <div className="relative">
+                    <div className="ec-focus-ring relative flex h-12 w-full min-w-0 items-center overflow-hidden border border-black/25 bg-white pl-4 pr-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E] sm:h-14 lg:h-16">
+                        <Image
+                            src={SearchIcon}
+                            alt=""
+                            width={24}
+                            height={24}
+                            className="size-5 shrink-0 dark:invert-[.835] sm:size-6"
+                        />
+                        <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap px-3 text-sm text-black/50 dark:text-[#D5D5D5]/60 sm:px-4 sm:text-base lg:text-lg">
+                            Search for a course...
+                        </span>
+                    </div>
+                </div>
+                <div className="mt-4 h-[10.75rem] sm:mt-6 sm:h-[8.75rem]" />
+            </div>
+        </div>
     );
 }
 
-async function PersonalizedHomeSubtitle() {
-    const session = await auth();
-    const userName = session?.user?.name
-        ? getDisplayUserName(session.user.name)
-        : null;
-
-    return <HomeSubtitle userName={userName} />;
-}
-
-async function PersonalizedMarketingSections() {
-    const session = await auth();
-    return <HomeMarketingSections isAuthed={Boolean(session?.user)} />;
+async function HomeMarqueeSection() {
+    const upcomingExams = await getUpcomingExams(16);
+    return <ExamsMarquee items={upcomingExams} />;
 }
 
 const Home = () => {
@@ -74,11 +72,11 @@ const Home = () => {
                             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold leading-[1.02] mb-4 sm:mb-5 lg:mb-6">
                                 Made Easy.
                             </h1>
-                            <Suspense fallback={<HomeSubtitle userName={null} />}>
-                                <PersonalizedHomeSubtitle />
-                            </Suspense>
+                            <HomeAuthSubtitle className={subtitleClass} />
 
-                            <HomeSearchSection />
+                            <Suspense fallback={<HomeSearchFallback />}>
+                                <HomeSearchSection />
+                            </Suspense>
                         </div>
 
                         <div className="ec-home-marquee-offset pb-4 md:pb-6 lg:pb-8">
@@ -89,9 +87,7 @@ const Home = () => {
                     </section>
                 </HeroFrame>
 
-                <Suspense fallback={<HomeMarketingSections />}>
-                    <PersonalizedMarketingSections />
-                </Suspense>
+                <HomeMarketingSections authSlot={<HomeAuthSignInCta />} />
             </div>
         </DirectionalTransition>
     );

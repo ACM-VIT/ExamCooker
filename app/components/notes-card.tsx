@@ -46,7 +46,6 @@ function NotesCard({
         <div className="size-full max-w-sm text-black dark:text-[#D5D5D5]">
             <Link
                 href={`/notes/${note.id}`}
-                prefetch={index < 3}
                 transitionTypes={openInNewTab ? undefined : ["nav-forward"]}
                 target={openInNewTab ? "_blank" : undefined}
                 className={`ec-card-lift ec-press group block max-w-96 cursor-pointer border-2 text-center hover:border-b-2 hover:border-b-[#ffffff] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 lg:dark:bg-[#0C1222] ${selected
