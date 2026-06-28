@@ -74,8 +74,8 @@ CREATE TABLE IF NOT EXISTS "CanonicalTopic" (
 CREATE INDEX IF NOT EXISTS "CanonicalTopic_courseId_idx"
   ON "CanonicalTopic" ("courseId");
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "CanonicalTopic_title_trgm_idx"
-  ON "CanonicalTopic" USING gin ("title");
+CREATE INDEX IF NOT EXISTS "CanonicalTopic_title_idx"
+  ON "CanonicalTopic" ("title");
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "ExamSignal" (
   "id" STRING PRIMARY KEY,

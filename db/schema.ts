@@ -695,7 +695,7 @@ export const canonicalTopic = cockroachTable(
   },
   (table) => [
     index("CanonicalTopic_courseId_idx").using("btree", table.courseId.asc()),
-    index("CanonicalTopic_title_trgm_idx").using("gin", table.title.asc()),
+    index("CanonicalTopic_title_idx").using("btree", table.title.asc()),
   ],
 );
 

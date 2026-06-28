@@ -1,5 +1,11 @@
 import { Agent, callable } from "agents";
-import { emptyResponse, jsonResponse, readJsonPayload } from "./http";
+import { getTrustedUserFromCommandToken } from "./command-agent";
+import {
+  emptyResponse,
+  jsonResponse,
+  readBearerToken,
+  readJsonPayload,
+} from "./http";
 import type {
   Env,
   StudyBrainAgentState,
@@ -17,6 +23,13 @@ type StudyBrainRunRow = {
 };
 
 const STUDY_BRAIN_RUN_LIMIT = 2000;
+
+class UnauthorizedStudyBrainAgentRequestError extends Error {
+  constructor() {
+    super("Valid signed study brain user token required.");
+    this.name = "UnauthorizedStudyBrainAgentRequestError";
+  }
+}
 
 function ensureStudyBrainSchema(agent: Agent<Env, StudyBrainAgentState>) {
   agent.sql`
@@ -109,9 +122,7 @@ export class ExamCookerStudyBrainAgent extends Agent<Env, StudyBrainAgentState> 
 
   async onStart() {
     ensureStudyBrainSchema(this);
-    await this.scheduleEvery(86_400, "pruneRuns", undefined, {
-      _idempotent: true,
-    });
+    await this.scheduleEvery(86_400, "pruneRuns");
   }
 
   async onRequest(request: Request) {
@@ -138,10 +149,32 @@ export class ExamCookerStudyBrainAgent extends Agent<Env, StudyBrainAgentState> 
     pruneStudyBrainRuns(this);
   }
 
+  private async getTrustedUser(input: {
+    userKey?: unknown;
+    userToken?: unknown;
+  }) {
+    const userKey = typeof input.userKey === "string" ? input.userKey.trim() : "";
+    const userToken =
+      typeof input.userToken === "string" ? input.userToken.trim() : "";
+    const secret = this.env.CLOUDFLARE_COMMAND_AGENT_ADMIN_TOKEN?.trim();
+
+    if (!userKey || !userToken || !secret) return null;
+
+    return getTrustedUserFromCommandToken({ userKey, userToken, secret });
+  }
+
   @callable()
   async createPlanRun(input: StudyBrainPlanRunInput) {
     ensureStudyBrainSchema(this);
-    const normalized = normalizePlanInput(input);
+    const trustedUser = await this.getTrustedUser(input);
+    if (!trustedUser) {
+      throw new UnauthorizedStudyBrainAgentRequestError();
+    }
+
+    const normalized = normalizePlanInput({
+      ...input,
+      userKey: trustedUser.userKey,
+    });
     const timestamp = Date.now();
     const id = crypto.randomUUID();
 
@@ -197,8 +230,17 @@ export class ExamCookerStudyBrainAgent extends Agent<Env, StudyBrainAgentState> 
   }
 
   @callable()
-  async getPlanRun(input: { id?: string }) {
+  async getPlanRun(input: {
+    id?: string;
+    userKey?: string;
+    userToken?: string | null;
+  }) {
     ensureStudyBrainSchema(this);
+    const trustedUser = await this.getTrustedUser(input);
+    if (!trustedUser) {
+      throw new UnauthorizedStudyBrainAgentRequestError();
+    }
+
     const id = normalizeString(input.id);
     if (!id) return null;
 
@@ -212,7 +254,7 @@ export class ExamCookerStudyBrainAgent extends Agent<Env, StudyBrainAgentState> 
         created_at AS createdAt,
         updated_at AS updatedAt
       FROM study_brain_runs
-      WHERE id = ${id}
+      WHERE id = ${id} AND user_key = ${trustedUser.userKey}
       LIMIT 1
     `;
 
@@ -232,10 +274,21 @@ export class ExamCookerStudyBrainAgent extends Agent<Env, StudyBrainAgentState> 
 
   private async handleCreateRun(request: Request) {
     const payload = (await readJsonPayload(request)) as StudyBrainPlanRunInput | null;
+    const bearerToken = readBearerToken(request.headers.get("Authorization"));
+    const payloadToken =
+      typeof payload?.userToken === "string" ? payload.userToken.trim() : "";
+    const input = {
+      ...(payload ?? {}),
+      userToken: payloadToken || bearerToken,
+    };
 
     try {
-      return jsonResponse(await this.createPlanRun(payload ?? {}));
+      return jsonResponse(await this.createPlanRun(input));
     } catch (error) {
+      if (error instanceof UnauthorizedStudyBrainAgentRequestError) {
+        return jsonResponse({ error: error.message }, { status: 401 });
+      }
+
       return jsonResponse(
         { error: error instanceof Error ? error.message : "Invalid study brain run." },
         { status: 400 },
@@ -245,7 +298,22 @@ export class ExamCookerStudyBrainAgent extends Agent<Env, StudyBrainAgentState> 
 
   private async handleListRuns(request: Request) {
     ensureStudyBrainSchema(this);
-    const userKey = new URL(request.url).searchParams.get("userKey")?.trim() || null;
+    const userKey = new URL(request.url).searchParams.get("userKey")?.trim() || "";
+    if (!userKey) {
+      return jsonResponse({ error: "userKey is required." }, { status: 400 });
+    }
+
+    const trustedUser = await this.getTrustedUser({
+      userKey,
+      userToken: readBearerToken(request.headers.get("Authorization")),
+    });
+    if (!trustedUser) {
+      return jsonResponse(
+        { error: "Valid signed study brain user token required." },
+        { status: 401 },
+      );
+    }
+
     const rows = this.sql<StudyBrainRunRow>`
       SELECT
         id,
@@ -256,7 +324,7 @@ export class ExamCookerStudyBrainAgent extends Agent<Env, StudyBrainAgentState> 
         created_at AS createdAt,
         updated_at AS updatedAt
       FROM study_brain_runs
-      WHERE ${userKey} IS NULL OR user_key = ${userKey}
+      WHERE user_key = ${trustedUser.userKey}
       ORDER BY updated_at DESC
       LIMIT 20
     `;
