@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const STATIC_CACHE = `examcooker-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `examcooker-pages-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `examcooker-runtime-${CACHE_VERSION}`;
@@ -17,6 +17,7 @@ const KNOWN_CACHES = new Set([STATIC_CACHE, PAGE_CACHE, RUNTIME_CACHE]);
 const STATIC_PATH_PREFIXES = ["/_next/static/", "/icons/", "/assets/", "/vendor/"];
 const STATIC_PATH_EXACT = new Set(["/manifest.webmanifest", "/offline.html", "/sw.js"]);
 const FONT_HOSTS = new Set(["fonts.googleapis.com", "fonts.gstatic.com"]);
+const NO_CACHE_PATHS = new Set(["/", "/auth"]);
 const NO_CACHE_PATH_PREFIXES = [
   "/api/",
   "/auth/",
@@ -42,7 +43,17 @@ function isStaticAsset(url) {
 }
 
 function isUncacheable(url) {
-  return NO_CACHE_PATH_PREFIXES.some((prefix) => url.pathname.startsWith(prefix));
+  return (
+    NO_CACHE_PATHS.has(url.pathname) ||
+    NO_CACHE_PATH_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))
+  );
+}
+
+function isCacheableResponse(response) {
+  if (!response || !response.ok || response.type === "opaque") return false;
+
+  const cacheControl = response.headers.get("cache-control") || "";
+  return !/(^|,\s*)(no-store|no-cache|private)(\s|,|=|$)/i.test(cacheControl);
 }
 
 function isHtmlAccept(request) {
@@ -103,8 +114,11 @@ self.addEventListener("message", (event) => {
         for (const route of event.data.routes) {
           if (typeof route !== "string" || !route.startsWith("/")) continue;
           try {
+            const url = new URL(route, self.location.origin);
+            if (isUncacheable(url)) continue;
+
             const response = await fetch(route, { credentials: "same-origin" });
-            if (response && response.ok) {
+            if (isCacheableResponse(response)) {
               await cache.put(route, response.clone());
             }
           } catch {
@@ -125,7 +139,7 @@ async function staleWhileRevalidate(event, cacheName) {
 
   const networkFetch = (preloadResponse ? Promise.resolve(preloadResponse) : fetch(event.request))
     .then((response) => {
-      if (response && response.ok && response.type !== "opaque") {
+      if (isCacheableResponse(response)) {
         cache.put(event.request, response.clone()).catch(() => undefined);
       }
       return response;
@@ -163,7 +177,7 @@ async function cacheFirst(event) {
     event.waitUntil(
       fetch(event.request)
         .then((response) => {
-          if (response && response.ok && response.type !== "opaque") {
+          if (isCacheableResponse(response)) {
             return cache.put(event.request, response.clone());
           }
           return undefined;
@@ -174,7 +188,7 @@ async function cacheFirst(event) {
   }
   try {
     const response = await fetch(event.request);
-    if (response && response.ok && response.type !== "opaque") {
+    if (isCacheableResponse(response)) {
       cache.put(event.request, response.clone()).catch(() => undefined);
     }
     return response;
