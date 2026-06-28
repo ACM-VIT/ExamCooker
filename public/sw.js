@@ -53,6 +53,12 @@ function isCacheableResponse(response) {
   if (!response || !response.ok || response.type === "opaque") return false;
 
   const cacheControl = response.headers.get("cache-control") || "";
+  // `no-store` and `private` must never be stored. We also decline `no-cache`
+  // intentionally: per RFC 9111 it permits storage but requires revalidation
+  // *before* serving, and our handlers are stale-while-revalidate (they serve
+  // the cached copy first, then revalidate in the background). Serving a stored
+  // `no-cache` response without first revalidating would violate that
+  // directive, so we treat it as uncacheable rather than serve it stale.
   return !/(^|,\s*)(no-store|no-cache|private)(\s|,|=|$)/i.test(cacheControl);
 }
 
