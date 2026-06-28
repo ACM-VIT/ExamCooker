@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v6";
 const STATIC_CACHE = `examcooker-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `examcooker-pages-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `examcooker-runtime-${CACHE_VERSION}`;
@@ -119,10 +119,8 @@ self.addEventListener("message", (event) => {
 async function staleWhileRevalidate(event, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(event.request, { ignoreSearch: false });
-  const preloadResponse =
-    "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
 
-  const networkFetch = (preloadResponse ? Promise.resolve(preloadResponse) : fetch(event.request))
+  const networkFetch = fetch(event.request)
     .then((response) => {
       if (response && response.ok && response.type !== "opaque") {
         cache.put(event.request, response.clone()).catch(() => undefined);
@@ -142,10 +140,15 @@ async function staleWhileRevalidate(event, cacheName) {
   return offline || Response.error();
 }
 
-async function networkOnly(event) {
-  const preloadResponse =
-    "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
+function getNavigationPreload(event) {
+  if (!("preloadResponse" in event)) return null;
+  const preloadResponse = event.preloadResponse.catch(() => undefined);
+  event.waitUntil(preloadResponse.then(() => undefined));
+  return preloadResponse;
+}
 
+async function networkOnly(event, preloadResponsePromise = null) {
+  const preloadResponse = preloadResponsePromise ? await preloadResponsePromise : undefined;
   if (preloadResponse) return preloadResponse;
 
   try {
@@ -155,8 +158,8 @@ async function networkOnly(event) {
   }
 }
 
-async function networkOnlyWithOfflineFallback(event) {
-  const response = await networkOnly(event);
+async function networkOnlyWithOfflineFallback(event, preloadResponsePromise = null) {
+  const response = await networkOnly(event, preloadResponsePromise);
   if (response && response.type !== "error") return response;
   const offline = await caches.match("/offline.html");
   return offline || response;
@@ -201,8 +204,12 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    if (isUncacheable(url)) return;
-    event.respondWith(networkOnlyWithOfflineFallback(event));
+    const preloadResponsePromise = getNavigationPreload(event);
+    event.respondWith(
+      isUncacheable(url)
+        ? networkOnly(event, preloadResponsePromise)
+        : networkOnlyWithOfflineFallback(event, preloadResponsePromise),
+    );
     return;
   }
 
