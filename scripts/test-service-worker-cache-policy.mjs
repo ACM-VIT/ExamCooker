@@ -66,14 +66,17 @@ function makeServiceWorkerHarness({ fetchImpl, offlineResponse = null } = {}) {
   };
 }
 
-function makeFetchEvent(request) {
+function makeFetchEvent(request, options = {}) {
   const waitUntilPromises = [];
   let responsePromise = null;
 
-  return {
+  const event = {
     request,
     get responsePromise() {
       return responsePromise;
+    },
+    get waitUntilCount() {
+      return waitUntilPromises.length;
     },
     waitUntil(promise) {
       waitUntilPromises.push(promise);
@@ -85,6 +88,12 @@ function makeFetchEvent(request) {
       await Promise.all(waitUntilPromises);
     },
   };
+
+  if ("preloadResponse" in options) {
+    event.preloadResponse = options.preloadResponse;
+  }
+
+  return event;
 }
 
 function makeRequest(url, options = {}) {
@@ -147,6 +156,36 @@ async function testHtmlNavigationKeepsOfflineFallback() {
   assert.equal(harness.cachePuts.length, 0, "offline fallback should not cache failed HTML");
 }
 
+async function testUncacheableNavigationConsumesPreloadWithoutCaching() {
+  let fetchCalls = 0;
+  const harness = makeServiceWorkerHarness({
+    fetchImpl: async () => {
+      fetchCalls += 1;
+      return new Response("network", { status: 200 });
+    },
+  });
+  await loadServiceWorker(harness);
+
+  const event = makeFetchEvent(
+    makeRequest("https://examcooker.test/signin", {
+      headers: { accept: "text/html" },
+      mode: "navigate",
+    }),
+    {
+      preloadResponse: Promise.resolve(new Response("preloaded signin", { status: 200 })),
+    },
+  );
+  harness.listeners.get("fetch")(event);
+
+  assert.ok(event.responsePromise, "uncacheable navigations should still be handled network-only");
+  assert.equal(event.waitUntilCount, 1, "navigation preload should be retained with waitUntil");
+  const response = await event.responsePromise;
+  assert.equal(await response.text(), "preloaded signin");
+  await event.settleWaitUntil();
+  assert.equal(fetchCalls, 0, "preloaded navigation response should avoid a duplicate fetch");
+  assert.equal(harness.cachePuts.length, 0, "uncacheable navigations must not be cached");
+}
+
 async function testNativePrefetchDoesNotPersistPages() {
   const fetchedRoutes = [];
   const harness = makeServiceWorkerHarness({
@@ -192,6 +231,7 @@ async function testEmbedPdfVendorAssetsBypassServiceWorkerCache() {
 
 await testHtmlNavigationIsNetworkOnly();
 await testHtmlNavigationKeepsOfflineFallback();
+await testUncacheableNavigationConsumesPreloadWithoutCaching();
 await testNativePrefetchDoesNotPersistPages();
 await testEmbedPdfVendorAssetsBypassServiceWorkerCache();
 
