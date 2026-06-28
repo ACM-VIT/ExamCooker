@@ -150,7 +150,7 @@ type PdfViewerProps = {
 };
 
 type SavedPageEditsState = {
-  sourceKey: string;
+  propKey: string;
   value: PdfPageEdits | null;
 };
 
@@ -2016,7 +2016,7 @@ export default function PDFViewer({
   const [isPdfDarkMode, setIsPdfDarkMode] = useState(false);
   const [savedPageEditsState, setSavedPageEditsState] =
     useState<SavedPageEditsState>({
-      sourceKey: normalizedInitialPageEditsKey,
+      propKey: normalizedInitialPageEditsKey,
       value: normalizedInitialPageEdits,
     });
   const [bufferLifecycleState, dispatchBufferLifecycle] = useReducer(
@@ -2030,13 +2030,13 @@ export default function PDFViewer({
     showSlowLoadFallback,
   } = bufferLifecycleState;
   const savedPageEdits =
-    savedPageEditsState.sourceKey === normalizedInitialPageEditsKey
+    savedPageEditsState.propKey === normalizedInitialPageEditsKey
       ? savedPageEditsState.value
       : normalizedInitialPageEdits;
   const setSavedPageEdits = (nextPageEdits: PdfPageEdits | null) => {
     const normalizedNextPageEdits = normalizePdfPageEdits(nextPageEdits);
     setSavedPageEditsState({
-      sourceKey: serializePdfPageEdits(normalizedNextPageEdits),
+      propKey: normalizedInitialPageEditsKey,
       value: normalizedNextPageEdits,
     });
   };
