@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const STATIC_CACHE = `examcooker-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `examcooker-pages-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `examcooker-runtime-${CACHE_VERSION}`;
@@ -20,6 +20,7 @@ const FONT_HOSTS = new Set(["fonts.googleapis.com", "fonts.gstatic.com"]);
 const NO_CACHE_PATH_PREFIXES = [
   "/api/",
   "/auth/",
+  "/vendor/embedpdf/",
   "/native-auth/",
   "/_next/data/",
   "/_next/image",
