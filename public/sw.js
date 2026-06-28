@@ -1,6 +1,5 @@
 const CACHE_VERSION = "v4";
 const STATIC_CACHE = `examcooker-static-${CACHE_VERSION}`;
-const PAGE_CACHE = `examcooker-pages-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `examcooker-runtime-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
@@ -12,7 +11,10 @@ const PRECACHE_ASSETS = [
   "/icons/apple-touch-icon.png",
 ];
 
-const KNOWN_CACHES = new Set([STATIC_CACHE, PAGE_CACHE, RUNTIME_CACHE]);
+// PAGE_CACHE was removed: navigation/HTML requests are now network-only, so no
+// page bucket is written. It is intentionally absent from KNOWN_CACHES so the
+// activate sweep evicts any orphaned examcooker-pages-* bucket left by older SWs.
+const KNOWN_CACHES = new Set([STATIC_CACHE, RUNTIME_CACHE]);
 
 const STATIC_PATH_PREFIXES = ["/_next/static/", "/icons/", "/assets/", "/vendor/"];
 const STATIC_PATH_EXACT = new Set(["/manifest.webmanifest", "/offline.html", "/sw.js"]);
@@ -104,7 +106,11 @@ self.addEventListener("message", (event) => {
           try {
             const url = new URL(route, self.location.origin);
             if (isUncacheable(url)) continue;
-            await fetch(route, { credentials: "same-origin" });
+            // The response is discarded — this only warms the browser HTTP cache,
+            // so we omit credentials. A personalized (private) response can't be
+            // reused anyway; this avoids a pointless credentialed round-trip and
+            // only warms publicly-cacheable variants.
+            await fetch(route, { credentials: "omit" });
           } catch {
             // Prefetching is best-effort.
           }
