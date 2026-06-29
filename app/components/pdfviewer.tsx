@@ -150,7 +150,7 @@ type PdfViewerProps = {
 };
 
 type SavedPageEditsState = {
-  sourceKey: string;
+  propKey: string;
   value: PdfPageEdits | null;
 };
 
@@ -1348,6 +1348,8 @@ function ViewerToolbar({
 
   const isMarkdownBusy = paperStatus === "loading";
   const isPdfMode = viewMode === "pdf";
+  const pagesKnown = (scrollState.totalPages ?? 0) > 0;
+  const isMultiPage = pagesKnown && totalPages > 1;
 
   return (
       <div className="flex h-12 shrink-0 items-center justify-between gap-1 border-b border-black/10 bg-white px-2 dark:border-white/10 dark:bg-gray-800 sm:gap-2 sm:px-3">
@@ -1452,7 +1454,7 @@ function ViewerToolbar({
               <FileText className="size-4" aria-hidden="true" />
               <span>PDF</span>
             </button>
-          ) : (
+          ) : isMultiPage ? (
             <>
           <button
             type="button"
@@ -1494,7 +1496,14 @@ function ViewerToolbar({
             <ChevronRight className="size-4" aria-hidden="true" />
           </button>
             </>
-          )}
+          ) : pagesKnown ? (
+            // Single-page document: no paging is possible, so show a static
+            // indicator instead of permanently disabled prev/next buttons that
+            // look clickable but do nothing.
+            <span className="whitespace-nowrap px-1 text-sm tabular-nums text-gray-500 dark:text-gray-400">
+              1 page
+            </span>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
@@ -2016,7 +2025,7 @@ export default function PDFViewer({
   const [isPdfDarkMode, setIsPdfDarkMode] = useState(false);
   const [savedPageEditsState, setSavedPageEditsState] =
     useState<SavedPageEditsState>({
-      sourceKey: normalizedInitialPageEditsKey,
+      propKey: normalizedInitialPageEditsKey,
       value: normalizedInitialPageEdits,
     });
   const [bufferLifecycleState, dispatchBufferLifecycle] = useReducer(
@@ -2030,13 +2039,13 @@ export default function PDFViewer({
     showSlowLoadFallback,
   } = bufferLifecycleState;
   const savedPageEdits =
-    savedPageEditsState.sourceKey === normalizedInitialPageEditsKey
+    savedPageEditsState.propKey === normalizedInitialPageEditsKey
       ? savedPageEditsState.value
       : normalizedInitialPageEdits;
   const setSavedPageEdits = (nextPageEdits: PdfPageEdits | null) => {
     const normalizedNextPageEdits = normalizePdfPageEdits(nextPageEdits);
     setSavedPageEditsState({
-      sourceKey: serializePdfPageEdits(normalizedNextPageEdits),
+      propKey: normalizedInitialPageEditsKey,
       value: normalizedNextPageEdits,
     });
   };

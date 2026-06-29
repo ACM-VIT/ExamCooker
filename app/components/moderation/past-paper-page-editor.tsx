@@ -40,7 +40,7 @@ type PastPaperPageEditorProps = {
 };
 
 type PageEditorDraftState = {
-  sourceKey: string;
+  propKey: string;
   baseline: PdfPageEdits | null;
   draft: PdfPageEdits | null;
 };
@@ -157,7 +157,7 @@ export default function PastPaperPageEditor({
     [normalizedSavedPageEdits, totalPages],
   );
   const [pageEditState, setPageEditState] = useState<PageEditorDraftState>({
-    sourceKey: normalizedSavedKey,
+    propKey: normalizedSavedKey,
     baseline: normalizedSavedPageEdits,
     draft: normalizedSavedPageEdits,
   });
@@ -165,26 +165,26 @@ export default function PastPaperPageEditor({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const baselinePageEdits =
-    pageEditState.sourceKey === normalizedSavedKey
+    pageEditState.propKey === normalizedSavedKey
       ? pageEditState.baseline
       : normalizedSavedPageEdits;
   const draftPageEdits =
-    pageEditState.sourceKey === normalizedSavedKey
+    pageEditState.propKey === normalizedSavedKey
       ? pageEditState.draft
       : normalizedSavedPageEdits;
   const setDraftPageEdits = (nextDraft: PageEditsUpdate) => {
     setPageEditState((currentState) => {
       const currentBaseline =
-        currentState.sourceKey === normalizedSavedKey
+        currentState.propKey === normalizedSavedKey
           ? currentState.baseline
           : normalizedSavedPageEdits;
       const currentDraft =
-        currentState.sourceKey === normalizedSavedKey
+        currentState.propKey === normalizedSavedKey
           ? currentState.draft
           : normalizedSavedPageEdits;
 
       return {
-        sourceKey: normalizedSavedKey,
+        propKey: normalizedSavedKey,
         baseline: currentBaseline,
         draft:
           typeof nextDraft === "function" ? nextDraft(currentDraft) : nextDraft,
@@ -198,7 +198,7 @@ export default function PastPaperPageEditor({
     );
 
     setPageEditState({
-      sourceKey: serializePdfPageEdits(normalizedNextPageEdits, totalPages),
+      propKey: normalizedSavedKey,
       baseline: normalizedNextPageEdits,
       draft: normalizedNextPageEdits,
     });

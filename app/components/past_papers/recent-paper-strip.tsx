@@ -40,7 +40,6 @@ export default function RecentPaperStrip({
                         <Link
                             key={item.id}
                             href={href}
-                            prefetch={i < 3}
                             transitionTypes={["nav-forward"]}
                             className="group relative flex w-40 shrink-0 snap-start flex-col overflow-hidden border-2 border-[#5FC4E7] bg-[#5FC4E7] text-black transition duration-200 hover:scale-[1.02] hover:border-b-white hover:shadow-xl dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 sm:w-44"
                         >
