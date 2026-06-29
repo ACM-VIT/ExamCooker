@@ -13,6 +13,11 @@ const PRECACHE_ASSETS = [
 ];
 
 const KNOWN_CACHES = new Set([STATIC_CACHE, PAGE_CACHE, RUNTIME_CACHE]);
+const EXAMCOOKER_CACHE_PREFIXES = [
+  "examcooker-static-",
+  "examcooker-pages-",
+  "examcooker-runtime-",
+];
 
 const STATIC_PATH_PREFIXES = ["/_next/static/", "/icons/", "/assets/", "/vendor/"];
 const STATIC_PATH_EXACT = new Set(["/manifest.webmanifest", "/offline.html", "/sw.js"]);
@@ -51,6 +56,10 @@ function isHtmlAccept(request) {
   return accept.includes("text/html");
 }
 
+function isExamCookerCache(name) {
+  return EXAMCOOKER_CACHE_PREFIXES.some((prefix) => name.startsWith(prefix));
+}
+
 function isRoutePayloadRequest(request, url) {
   const accept = request.headers.get("accept") || "";
   return isSameOrigin(url) && (url.searchParams.has("_rsc") || accept.includes("text/x-component"));
@@ -75,7 +84,7 @@ self.addEventListener("activate", (event) => {
       const names = await caches.keys();
       const staleCacheDeletes = [];
       for (const name of names) {
-        if (!KNOWN_CACHES.has(name)) {
+        if (isExamCookerCache(name) && !KNOWN_CACHES.has(name)) {
           staleCacheDeletes.push(caches.delete(name));
         }
       }
@@ -160,7 +169,7 @@ async function networkOnly(event, preloadResponsePromise = null) {
 
 async function networkOnlyWithOfflineFallback(event, preloadResponsePromise = null) {
   const response = await networkOnly(event, preloadResponsePromise);
-  if (response && response.type !== "error") return response;
+  if (response && response.type !== "error" && response.ok) return response;
   const offline = await caches.match("/offline.html");
   return offline || response;
 }

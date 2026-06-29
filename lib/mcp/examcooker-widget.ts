@@ -5,49 +5,55 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <style>
   :root {
     color-scheme: light dark;
-    --ec-bg: #C2E6EC;
-    --ec-tile: #5FC4E7;
-    --ec-tile-border: #5FC4E7;
-    --ec-tile-accent: #ffffff;
-    --ec-text: #000000;
-    --ec-text-soft: rgba(0,0,0,0.65);
-    --ec-text-muted: rgba(0,0,0,0.52);
-    --ec-divider: rgba(0,0,0,0.15);
+    --ec-bg: #EAF6F8;
+    --ec-surface: #ffffff;
+    --ec-surface-hover: #ffffff;
+    --ec-border: rgba(13,88,117,0.13);
+    --ec-border-hover: rgba(13,148,136,0.45);
+    --ec-text: #0A2A36;
+    --ec-text-soft: rgba(10,42,54,0.70);
+    --ec-text-muted: rgba(10,42,54,0.50);
+    --ec-divider: rgba(10,42,54,0.10);
     --ec-link: #0D5875;
     --ec-link-strong: #06384b;
-    --ec-shadow-xl: 0 22px 44px -22px rgba(13,88,117,0.45);
-    /* Brutalist button */
-    --ec-btn-bg: #3BF4C7;
-    --ec-btn-fg: #000000;
-    --ec-btn-border: #000000;
-    --ec-btn-shadow: #3BF4C7;       /* offset accent behind, light mode = same as bg so no visible shadow */
-    --ec-btn-hover-fg: #000000;
-    --ec-btn-secondary-border: rgba(0,0,0,0.85);
+    --ec-accent: #0D9488;
+    --ec-chip-bg: rgba(13,148,136,0.12);
+    --ec-chip-fg: #0B6B62;
+    --ec-shadow: 0 12px 30px -18px rgba(13,88,117,0.40);
+    --ec-radius: 16px;
+    --ec-radius-sm: 12px;
+    --ec-btn-bg: #14B8A6;
+    --ec-btn-fg: #ffffff;
+    --ec-btn-hover-bg: #0D9488;
+    --ec-btn-secondary-fg: var(--ec-text);
+    --ec-btn-secondary-border: rgba(10,42,54,0.22);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ec-bg: #0C1222;
-      --ec-tile: #0C1222;              /* desktop variant: same as body */
-      --ec-tile-border: rgba(213,213,213,0.18);
-      --ec-tile-accent: #3BF4C7;
-      --ec-text: #D5D5D5;
-      --ec-text-soft: rgba(213,213,213,0.72);
-      --ec-text-muted: rgba(213,213,213,0.50);
-      --ec-divider: rgba(213,213,213,0.14);
+      --ec-bg: #0B1120;
+      --ec-surface: rgba(255,255,255,0.035);
+      --ec-surface-hover: rgba(255,255,255,0.07);
+      --ec-border: rgba(255,255,255,0.09);
+      --ec-border-hover: rgba(59,244,199,0.5);
+      --ec-text: #E6EAF0;
+      --ec-text-soft: rgba(230,234,240,0.72);
+      --ec-text-muted: rgba(230,234,240,0.48);
+      --ec-divider: rgba(255,255,255,0.10);
       --ec-link: #3BF4C7;
       --ec-link-strong: #6BFADB;
-      --ec-shadow-xl: 0 24px 48px -24px rgba(0,0,0,0.6);
-      /* Dark brutalist button: navy body, light gray border, cyan offset square behind */
-      --ec-btn-bg: #0C1222;
-      --ec-btn-fg: #D5D5D5;
-      --ec-btn-border: #D5D5D5;
-      --ec-btn-shadow: #3BF4C7;       /* cyan square shows on hover when button translates */
-      --ec-btn-hover-fg: #3BF4C7;
-      --ec-btn-secondary-border: rgba(213,213,213,0.55);
+      --ec-accent: #3BF4C7;
+      --ec-chip-bg: rgba(59,244,199,0.12);
+      --ec-chip-fg: #6BFADB;
+      --ec-shadow: 0 16px 36px -20px rgba(0,0,0,0.65);
+      --ec-btn-bg: #3BF4C7;
+      --ec-btn-fg: #04241d;
+      --ec-btn-hover-bg: #6BFADB;
+      --ec-btn-secondary-fg: var(--ec-text);
+      --ec-btn-secondary-border: rgba(230,234,240,0.28);
     }
   }
   * { box-sizing: border-box; }
@@ -61,16 +67,18 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     font-size: 14px;
     line-height: 1.5;
   }
-  /* Generous outer margin so the widget reads as a self-contained surface inside ChatGPT.
-     ChatGPT renders the widget edge-to-edge inside its sandbox iframe with no outer chrome,
-     so we need to provide all of the breathing room ourselves. */
-  body { padding: 36px 40px 40px; }
-  .root { max-width: 1100px; margin: 0 auto; padding: 0; }
+  /* Gutter lives on .root, NOT on body. The host (ChatGPT) renders the widget
+     edge-to-edge in a sandbox iframe and resets body margin/padding, so any
+     gutter set on body silently vanishes and content collides with the host's
+     rounded panel mask. Padding on the inner wrapper survives the host reset,
+     so the breathing room actually reflects. */
+  body { margin: 0; padding: 0; }
+  .root { max-width: 1080px; margin: 0 auto; padding: 32px 34px 36px; }
   @media (max-width: 720px) {
-    body { padding: 24px 22px 28px; }
+    .root { padding: 24px 22px 28px; }
   }
   @media (max-width: 480px) {
-    body { padding: 20px 16px 24px; }
+    .root { padding: 20px 16px 24px; }
   }
 
   .status { display: flex; align-items: center; justify-content: center; padding: 56px 16px; color: var(--ec-text-muted); font-size: 13px; font-weight: 500; gap: 10px; }
@@ -79,43 +87,48 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
 
   /* Header bar */
   .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-  .bar-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
-  .bar-title { font-size: 13px; font-weight: 600; color: var(--ec-text-soft); letter-spacing: -0.005em; }
-  .bar-count { font-size: 12px; font-weight: 600; color: var(--ec-text-muted); }
+  .bar-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .bar-title { font-size: 13.5px; font-weight: 600; color: var(--ec-text-soft); letter-spacing: -0.005em; }
+  .bar-count { font-size: 12.5px; font-weight: 600; color: var(--ec-text-muted); }
 
-  /* Back button — uses the brutalist outlined style */
+  /* Back button */
   .back {
     display: inline-flex; align-items: center; gap: 6px;
-    height: 36px; padding: 0 14px;
+    height: 34px; padding: 0 14px;
     font: 600 12.5px/1 inherit;
-    color: var(--ec-text);
-    background: transparent;
-    border: 2px solid var(--ec-tile-border);
+    color: var(--ec-text-soft);
+    background: var(--ec-surface);
+    border: 1px solid var(--ec-border);
+    border-radius: 999px;
     cursor: pointer;
-    transition: transform 160ms cubic-bezier(0.22,1,0.36,1), border-color 180ms ease, color 180ms ease;
+    transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
   }
-  .back:hover { border-color: var(--ec-tile-accent); color: var(--ec-link); transform: translateX(-2px); }
+  .back:hover { border-color: var(--ec-border-hover); color: var(--ec-text); }
 
-  /* Search grid: chunky flat tiles, no rounded corners */
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 14px; }
+  /* Search grid: soft elevated cards */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(244px, 1fr)); gap: 14px; }
   .tile {
     display: flex; flex-direction: column; gap: 14px;
-    background: var(--ec-tile);
-    border: 2px solid var(--ec-tile-border);
+    background: var(--ec-surface);
+    border: 1px solid var(--ec-border);
+    border-radius: var(--ec-radius);
     padding: 18px;
     text-align: left;
     text-decoration: none; color: var(--ec-text);
     font-family: inherit; font-size: inherit; line-height: inherit;
     cursor: pointer;
-    min-height: 156px;
-    transition: transform 220ms cubic-bezier(0.22,1,0.36,1), box-shadow 220ms cubic-bezier(0.22,1,0.36,1), border-color 180ms ease;
+    min-height: 150px;
+    transition: border-color 180ms ease, background 180ms ease, box-shadow 220ms cubic-bezier(0.22,1,0.36,1);
   }
-  .tile:hover { transform: scale(1.03); box-shadow: var(--ec-shadow-xl); border-bottom-color: var(--ec-tile-accent); }
-  .tile:active { transform: scale(0.99); }
+  .tile:hover { border-color: var(--ec-border-hover); background: var(--ec-surface-hover); box-shadow: var(--ec-shadow); }
   .tile-code {
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
-    color: var(--ec-text-soft);
+    align-self: flex-start;
+    font-family: inherit;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.01em;
+    color: var(--ec-chip-fg);
+    background: var(--ec-chip-bg);
+    padding: 4px 10px; border-radius: 999px;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .tile-title {
     font-size: 15.5px; font-weight: 700; line-height: 1.34;
@@ -123,8 +136,8 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
     word-break: break-word;
   }
-  .tile-foot { margin-top: auto; display: flex; align-items: baseline; gap: 8px; padding-top: 4px; }
-  .tile-stat { font-size: 30px; font-weight: 800; line-height: 1; color: var(--ec-text); letter-spacing: -0.02em; }
+  .tile-foot { margin-top: auto; display: flex; align-items: baseline; gap: 7px; padding-top: 4px; }
+  .tile-stat { font-size: 28px; font-weight: 800; line-height: 1; color: var(--ec-text); letter-spacing: -0.02em; }
   .tile-stat-label { font-size: 11.5px; font-weight: 600; color: var(--ec-text-muted); }
   .tile-stat-sub { font-size: 11.5px; font-weight: 500; color: var(--ec-text-muted); margin-left: auto; }
   .tile-kind { font-size: 11.5px; font-weight: 600; color: var(--ec-text-muted); }
@@ -133,98 +146,87 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
   .tile:hover .tile-cta-arrow { transform: translateX(3px); }
 
   /* Detail view */
-  .detail { display: flex; flex-direction: column; gap: 20px; }
+  .detail { display: flex; flex-direction: column; gap: 18px; }
   .hero {
-    background: var(--ec-tile);
-    border: 2px solid var(--ec-tile-border);
+    background: var(--ec-surface);
+    border: 1px solid var(--ec-border);
+    border-radius: var(--ec-radius);
     padding: 24px 26px 22px;
   }
   .hero-eyebrow {
-    display: inline-block;
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12.5px; font-weight: 700; letter-spacing: 0.01em;
-    color: var(--ec-text-soft);
-    margin-bottom: 14px;
+    display: inline-flex; align-items: center;
+    font-family: inherit;
+    font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
+    color: var(--ec-chip-fg);
+    background: var(--ec-chip-bg);
+    padding: 5px 11px; border-radius: 999px;
+    margin-bottom: 16px;
   }
   .hero-title {
     margin: 0;
-    font-size: 30px; font-weight: 800; line-height: 1.12; letter-spacing: -0.02em;
+    font-size: 28px; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em;
     color: var(--ec-text);
   }
-  .hero-stats { display: flex; flex-wrap: wrap; gap: 32px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--ec-divider); }
+  .hero-stats { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--ec-divider); }
   .hero-stat { display: flex; align-items: baseline; gap: 8px; }
-  .hero-stat-num { font-size: 34px; font-weight: 800; line-height: 1; color: var(--ec-text); letter-spacing: -0.02em; }
+  .hero-stat-num { font-size: 32px; font-weight: 800; line-height: 1; color: var(--ec-text); letter-spacing: -0.02em; }
   .hero-stat-label { font-size: 12.5px; font-weight: 600; color: var(--ec-text-muted); }
 
   /* Section heads — plain title case, not uppercase */
-  .section { display: flex; flex-direction: column; gap: 12px; }
+  .section { display: flex; flex-direction: column; gap: 10px; }
   .section-head {
-    font-size: 13px; font-weight: 600; color: var(--ec-text-soft); letter-spacing: -0.005em;
-    padding-bottom: 10px; border-bottom: 1px solid var(--ec-divider);
+    font-size: 13px; font-weight: 700; color: var(--ec-text-soft); letter-spacing: -0.005em;
+    padding: 0 2px 2px;
   }
   .row-list { display: flex; flex-direction: column; gap: 8px; }
   .row {
     display: flex; align-items: center; justify-content: space-between; gap: 14px;
-    background: var(--ec-tile);
-    border: 2px solid var(--ec-tile-border);
-    padding: 14px 18px;
+    background: var(--ec-surface);
+    border: 1px solid var(--ec-border);
+    border-radius: var(--ec-radius-sm);
+    padding: 14px 16px;
     text-align: left; text-decoration: none; color: var(--ec-text);
     font: inherit; cursor: pointer;
-    transition: transform 180ms cubic-bezier(0.22,1,0.36,1), box-shadow 180ms cubic-bezier(0.22,1,0.36,1), border-color 180ms ease;
+    transition: border-color 180ms ease, background 180ms ease, box-shadow 200ms cubic-bezier(0.22,1,0.36,1);
   }
-  .row:hover { transform: scale(1.01); box-shadow: var(--ec-shadow-xl); border-bottom-color: var(--ec-tile-accent); }
+  .row:hover { border-color: var(--ec-border-hover); background: var(--ec-surface-hover); box-shadow: var(--ec-shadow); }
   .row-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
   .row-title { font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--ec-text); word-break: break-word; }
   .row-sub { font-size: 12px; font-weight: 500; color: var(--ec-text-muted); }
-  .row-arrow { color: var(--ec-text-muted); flex-shrink: 0; opacity: 0.5; transition: transform 200ms cubic-bezier(0.22,1,0.36,1), opacity 180ms ease; }
+  .row-arrow { color: var(--ec-text-muted); flex-shrink: 0; opacity: 0.55; transition: transform 200ms cubic-bezier(0.22,1,0.36,1), opacity 180ms ease; }
   .row:hover .row-arrow { opacity: 1; transform: translateX(3px); }
 
   /* Free-form text block */
-  .prose { color: var(--ec-text-soft); font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+  .prose { color: var(--ec-text-soft); font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; padding: 0 2px; }
   .prose a { color: var(--ec-link); text-decoration: none; font-weight: 600; word-break: break-word; }
   .prose a:hover { color: var(--ec-link-strong); text-decoration: underline; }
 
-  /* === Brutalist offset-shadow button (faithful to upload-button-notes pattern) ===
-     Wrapper holds an absolute cyan square behind. On hover the button (the relative
-     anchor) translates -1/-1 to reveal the cyan square as an offset accent shadow. */
-  .actions { display: flex; flex-wrap: wrap; gap: 14px; padding-top: 6px; }
-  .btn-wrap { position: relative; display: inline-flex; height: 48px; }
-  .btn-shadow {
-    position: absolute; inset: 0;
-    background: var(--ec-btn-shadow);
-    /* In light mode the bg matches the button face, so it's invisible by default;
-       in dark mode it's cyan and revealed only when the face translates on hover */
-    pointer-events: none;
-  }
+  /* Action buttons — clean pill buttons, no overflow tricks */
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 6px; }
+  .btn-wrap { display: inline-flex; }
+  .btn-shadow { display: none; }
   .btn {
-    position: relative;
     display: inline-flex; align-items: center; gap: 8px;
-    height: 100%; padding: 0 18px;
+    height: 44px; padding: 0 20px;
     background: var(--ec-btn-bg);
     color: var(--ec-btn-fg);
-    border: 2px solid var(--ec-btn-border);
+    border: 1px solid transparent;
+    border-radius: 999px;
     text-decoration: none;
     font: 700 13px/1 inherit;
     letter-spacing: 0.005em;
     cursor: pointer;
-    transition: transform 180ms cubic-bezier(0.22,1,0.36,1), color 180ms ease, border-color 180ms ease;
+    transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
   }
-  .btn:hover { color: var(--ec-btn-hover-fg); }
-  @media (prefers-color-scheme: dark) {
-    .btn:hover { border-color: #3BF4C7; transform: translate(-4px, -4px); }
-  }
-  @media (prefers-color-scheme: light) {
-    .btn:hover { transform: translate(-2px, -2px); }
-  }
+  .btn:hover { background: var(--ec-btn-hover-bg); }
 
-  /* Secondary (outline only): same brutalist shape, no cyan offset behind */
-  .btn-wrap.secondary .btn-shadow { display: none; }
+  /* Secondary (outline only) */
   .btn.secondary {
     background: transparent;
-    color: var(--ec-text);
+    color: var(--ec-btn-secondary-fg);
     border-color: var(--ec-btn-secondary-border);
   }
-  .btn.secondary:hover { color: var(--ec-link); border-color: var(--ec-link); }
+  .btn.secondary:hover { background: transparent; color: var(--ec-link); border-color: var(--ec-link); }
 </style>
 </head>
 <body>
@@ -308,6 +310,14 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
       sendSize();
     } catch (e) { /* fall back to passive */ }
   })();
+
+  // Re-measure once webfonts have loaded — metrics shift after swap and the
+  // last row would otherwise be clipped by an under-measured iframe height.
+  try {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => sendSize());
+    }
+  } catch (e) { /* ignore */ }
 
   Promise.resolve().then(() => {
     try {
