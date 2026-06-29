@@ -1455,6 +1455,19 @@ class VoiceControlControllerImpl implements VoiceControlController {
       hasMediaDevices: Boolean(navigator.mediaDevices?.getUserMedia),
       isSecureContext: window.isSecureContext,
     });
+
+    // Some browsers (notably iOS Safari in non-secure or embedded-WebView
+    // contexts) leave `navigator.mediaDevices` undefined, so dereferencing
+    // `.getUserMedia` would throw a raw TypeError. Feature-detect first and
+    // surface a friendly, actionable error instead.
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error(
+        window.isSecureContext
+          ? "Voice guide isn't supported on this browser. Try the latest Chrome or Safari."
+          : "Voice guide needs a secure (https) connection to access your microphone.",
+      );
+    }
+
     const mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: captureConstraints ?? true,
     });

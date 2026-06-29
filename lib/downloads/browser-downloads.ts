@@ -149,14 +149,29 @@ function makeEndOfCentralDirectory(input: {
     return bytes;
 }
 
-async function fetchPdfBlob(fileUrl: string) {
-    const response = await fetch(fileUrl, { cache: "force-cache" });
+const PDF_FETCH_TIMEOUT_MS = 30_000;
 
-    if (!response.ok) {
-        throw new Error(`Failed to fetch PDF: ${response.status}`);
+async function fetchPdfBlob(
+    fileUrl: string,
+    timeoutMs: number = PDF_FETCH_TIMEOUT_MS,
+) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(fileUrl, {
+            cache: "force-cache",
+            signal: controller.signal,
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch PDF: ${response.status}`);
+        }
+
+        return await response.blob();
+    } finally {
+        window.clearTimeout(timeoutId);
     }
-
-    return response.blob();
 }
 
 async function saveBlob(blob: Blob, fileName: string) {
@@ -241,20 +256,51 @@ export async function downloadPdfFile({ fileUrl, fileName }: DownloadablePdf) {
     }
 }
 
+export type ZipDownloadResult = {
+    requested: number;
+    succeeded: number;
+    failed: string[];
+};
+
 export async function downloadPdfZip(input: {
     files: DownloadablePdf[];
     zipFileName: string;
-}) {
-    if (!input.files.length) return;
+}): Promise<ZipDownloadResult> {
+    if (!input.files.length) {
+        return { requested: 0, succeeded: 0, failed: [] };
+    }
 
     const dedupedNames = dedupeFileNames(input.files.map((file) => file.fileName));
-    const entries = await Promise.all(
-        input.files.map(async (file, index) => ({
-            fileName: dedupedNames[index],
-            blob: await fetchPdfBlob(file.fileUrl),
-        })),
+
+    // Settle every fetch independently so a single failed/hanging request can't
+    // abort the whole batch. A timeout guarantees stalled fetches reject instead
+    // of leaving the zip — and the caller's "Zipping..." state — pending forever.
+    const settled = await Promise.allSettled(
+        input.files.map((file) => fetchPdfBlob(file.fileUrl)),
     );
+
+    const entries: ZipEntry[] = [];
+    const failed: string[] = [];
+
+    settled.forEach((result, index) => {
+        const fileName = dedupedNames[index];
+        if (result.status === "fulfilled") {
+            entries.push({ fileName, blob: result.value });
+        } else {
+            failed.push(fileName);
+        }
+    });
+
+    if (!entries.length) {
+        throw new Error("Every PDF download failed; the zip was not created.");
+    }
 
     const zipBlob = await createZipBlob(entries);
     await saveBlob(zipBlob, ensureZipFileName(input.zipFileName));
+
+    return {
+        requested: input.files.length,
+        succeeded: entries.length,
+        failed,
+    };
 }
