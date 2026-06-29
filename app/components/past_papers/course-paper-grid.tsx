@@ -21,6 +21,11 @@ import {
 } from "@/lib/downloads/resource-names";
 import { examTypeLabel } from "@/lib/exam-slug";
 import {
+    captureBulkPapersDownloadCompleted,
+    captureBulkPapersDownloadFailed,
+    captureBulkPapersDownloadStarted,
+} from "@/lib/posthog/client";
+import {
     usePaperSplitView,
     type PaperSplitItem,
     type PaperSplitSide,
@@ -216,8 +221,12 @@ export default function CoursePaperGrid({
         if (!selectedPapers.length) return;
 
         dispatch({ type: "downloading", value: true });
+        captureBulkPapersDownloadStarted({
+            courseCode,
+            fileCount: selectedPapers.length,
+        });
         try {
-            await downloadPdfZip({
+            const result = await downloadPdfZip({
                 zipFileName: buildPastPaperZipFileName({ courseCode, courseTitle }),
                 files: selectedPapers.map((paper) => ({
                     fileUrl: paper.fileUrl,
@@ -232,7 +241,32 @@ export default function CoursePaperGrid({
                     }),
                 })),
             });
-        } catch {
+
+            captureBulkPapersDownloadCompleted({
+                courseCode,
+                requested: result.requested,
+                succeeded: result.succeeded,
+                failed: result.failed.length,
+            });
+
+            if (result.failed.length > 0) {
+                toast({
+                    title: `Downloaded ${result.succeeded} of ${result.requested} papers.`,
+                    description:
+                        "Some papers could not be fetched and were skipped from the zip.",
+                });
+            } else {
+                toast({
+                    title: `Downloaded ${result.succeeded} ${result.succeeded === 1 ? "paper" : "papers"}.`,
+                });
+            }
+        } catch (error) {
+            captureBulkPapersDownloadFailed({
+                courseCode,
+                requested: selectedPapers.length,
+                errorMessage:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
             toast({
                 title: "Could not create the zip file.",
                 variant: "destructive",
@@ -265,6 +299,7 @@ export default function CoursePaperGrid({
             fileName: getPaperFileName(paper),
             courseCode,
             courseTitle,
+            pageEdits: paper.pageEdits,
             meta: [
                 paper.examType ? examTypeLabel(paper.examType) : null,
                 paper.slot,
@@ -670,16 +705,20 @@ export default function CoursePaperGrid({
                             type="button"
                             onClick={downloadSelected}
                             disabled={isDownloading}
-                            className="inline-flex h-8 items-center gap-1.5 rounded border border-black/20 bg-[#5FC4E7]/90 px-3 text-xs font-semibold text-black transition hover:bg-[#5FC4E7] dark:border-[#3BF4C7]/40 dark:bg-[#3BF4C7]/20 dark:text-[#3BF4C7] dark:hover:bg-[#3BF4C7]/30 sm:text-sm"
+                            className="inline-flex h-8 items-center gap-1.5 rounded border border-black/20 bg-[#5FC4E7]/90 px-3 text-xs font-semibold text-black transition hover:bg-[#5FC4E7] disabled:cursor-not-allowed disabled:opacity-70 dark:border-[#3BF4C7]/40 dark:bg-[#3BF4C7]/20 dark:text-[#3BF4C7] dark:hover:bg-[#3BF4C7]/30 sm:text-sm"
                         >
                             <Download className="size-3.5" aria-hidden />
                             {isDownloading ? "Zipping..." : "Download"}
                         </button>
+                        <span
+                            aria-hidden
+                            className="ml-1 h-5 w-px bg-black/10 dark:bg-[#D5D5D5]/15"
+                        />
                         <button
                             type="button"
                             onClick={clear}
                             aria-label="Clear selection"
-                            className="inline-flex size-8 items-center justify-center rounded text-black/50 transition hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/50 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
+                            className="ml-1 inline-flex size-8 items-center justify-center rounded text-black/50 transition hover:bg-black/5 hover:text-black dark:text-[#D5D5D5]/50 dark:hover:bg-white/5 dark:hover:text-[#D5D5D5]"
                         >
                             <X className="size-3.5" aria-hidden />
                         </button>

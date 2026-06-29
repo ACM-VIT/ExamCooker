@@ -15,6 +15,7 @@ import { buildPastPaperPdfFileName } from "@/lib/downloads/resource-names";
 import { preloadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import { preloadPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
 import type { ExamType } from "@/db";
+import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 
 type Paper = {
     id: string;
@@ -25,6 +26,7 @@ type Paper = {
     slot: string | null;
     year: number | null;
     hasAnswerKey: boolean;
+    pageEdits: PdfPageEdits | null;
 };
 
 type Props = {
@@ -242,7 +244,6 @@ function CoursePaperCard({
             <Link
                 href={href}
                 draggable={false}
-                prefetch={index < 3}
                 transitionTypes={["nav-forward"]}
                 aria-label={linkAriaLabel}
                 onClickCapture={handleClickCapture}

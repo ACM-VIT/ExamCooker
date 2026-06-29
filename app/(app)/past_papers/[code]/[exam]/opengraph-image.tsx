@@ -5,7 +5,6 @@ import { getCoursePapers } from "@/lib/data/course-papers";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
 import { formatCountChip, OG_ALT, OG_CONTENT_TYPE, OG_IMAGE_SIZE, renderExamCookerOgImage } from "@/lib/og";
 
-export const runtime = "nodejs";
 export const alt = OG_ALT;
 export const size = OG_IMAGE_SIZE;
 export const contentType = OG_CONTENT_TYPE;

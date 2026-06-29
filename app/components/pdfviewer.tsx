@@ -150,12 +150,8 @@ type PdfViewerProps = {
 };
 
 type SavedPageEditsState = {
-  value: PdfPageEdits | null;
-  // Serialized key of the server `pageEdits` prop generation this value was last
-  // reconciled against.
   propKey: string;
-  // Serialized key of the most recent local save while we are waiting for
-  // server props to catch up. Older delayed refreshes must not overwrite it.
+  value: PdfPageEdits | null;
   pendingValueKey: string | null;
 };
 
@@ -1353,6 +1349,8 @@ function ViewerToolbar({
 
   const isMarkdownBusy = paperStatus === "loading";
   const isPdfMode = viewMode === "pdf";
+  const pagesKnown = (scrollState.totalPages ?? 0) > 0;
+  const isMultiPage = pagesKnown && totalPages > 1;
 
   return (
       <div className="flex h-12 shrink-0 items-center justify-between gap-1 border-b border-black/10 bg-white px-2 dark:border-white/10 dark:bg-gray-800 sm:gap-2 sm:px-3">
@@ -1457,7 +1455,7 @@ function ViewerToolbar({
               <FileText className="size-4" aria-hidden="true" />
               <span>PDF</span>
             </button>
-          ) : (
+          ) : isMultiPage ? (
             <>
           <button
             type="button"
@@ -1499,7 +1497,14 @@ function ViewerToolbar({
             <ChevronRight className="size-4" aria-hidden="true" />
           </button>
             </>
-          )}
+          ) : pagesKnown ? (
+            // Single-page document: no paging is possible, so show a static
+            // indicator instead of permanently disabled prev/next buttons that
+            // look clickable but do nothing.
+            <span className="whitespace-nowrap px-1 text-sm tabular-nums text-gray-500 dark:text-gray-400">
+              1 page
+            </span>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
@@ -2021,8 +2026,8 @@ export default function PDFViewer({
   const [isPdfDarkMode, setIsPdfDarkMode] = useState(false);
   const [savedPageEditsState, setSavedPageEditsState] =
     useState<SavedPageEditsState>({
-      value: normalizedInitialPageEdits,
       propKey: normalizedInitialPageEditsKey,
+      value: normalizedInitialPageEdits,
       pendingValueKey: null,
     });
   const [bufferLifecycleState, dispatchBufferLifecycle] = useReducer(
@@ -2043,8 +2048,8 @@ export default function PDFViewer({
     );
 
     setSavedPageEditsState((prev) => ({
-      value: normalizedNextPageEdits,
       propKey: prev.propKey,
+      value: normalizedNextPageEdits,
       pendingValueKey: normalizedNextPageEditsKey,
     }));
   };
@@ -2057,22 +2062,20 @@ export default function PDFViewer({
 
   useEffect(() => {
     setSavedPageEditsState((prev) => {
-      // Server props match the generation we last reconciled (or saved)
-      // against — e.g. a refresh() that returned the same, possibly stale,
-      // value. Keep the locally-saved edits instead of clobbering them.
       if (prev.propKey === normalizedInitialPageEditsKey) {
         return prev;
       }
+
       if (
         prev.pendingValueKey &&
         prev.pendingValueKey !== normalizedInitialPageEditsKey
       ) {
         return prev;
       }
-      // A genuinely new server generation arrived; adopt it as authoritative.
+
       return {
-        value: normalizedInitialPageEdits,
         propKey: normalizedInitialPageEditsKey,
+        value: normalizedInitialPageEdits,
         pendingValueKey: null,
       };
     });
