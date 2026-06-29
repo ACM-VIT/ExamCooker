@@ -376,3 +376,40 @@ export function capturePdfDownloaded(input: {
         file_url: input.fileUrl,
     });
 }
+
+export function captureBulkPapersDownloadStarted(input: {
+    courseCode: string;
+    fileCount: number;
+}) {
+    capturePostHogEvent("bulk_papers_download_started", {
+        course_code: input.courseCode,
+        file_count: input.fileCount,
+    });
+}
+
+export function captureBulkPapersDownloadCompleted(input: {
+    courseCode: string;
+    requested: number;
+    succeeded: number;
+    failed: number;
+}) {
+    capturePostHogEvent("bulk_papers_download_completed", {
+        course_code: input.courseCode,
+        requested: input.requested,
+        succeeded: input.succeeded,
+        failed: input.failed,
+        partial: input.failed > 0,
+    });
+}
+
+export function captureBulkPapersDownloadFailed(input: {
+    courseCode: string;
+    requested: number;
+    errorMessage: string;
+}) {
+    capturePostHogEvent("bulk_papers_download_failed", {
+        course_code: input.courseCode,
+        requested: input.requested,
+        error_message: input.errorMessage.slice(0, 200),
+    });
+}

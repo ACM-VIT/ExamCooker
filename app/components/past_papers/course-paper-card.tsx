@@ -242,7 +242,6 @@ function CoursePaperCard({
             <Link
                 href={href}
                 draggable={false}
-                prefetch={index < 3}
                 transitionTypes={["nav-forward"]}
                 aria-label={linkAriaLabel}
                 onClickCapture={handleClickCapture}
