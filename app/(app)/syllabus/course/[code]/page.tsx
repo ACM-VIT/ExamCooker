@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import PDFViewerClient from "@/app/components/pdf-viewer-client";
 import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
 import ViewTracker from "@/app/components/view-tracker";
@@ -201,11 +202,15 @@ async function CourseSyllabusContent({
     );
 }
 
-export default function CourseSyllabusPage({
+export default async function CourseSyllabusPage({
     params,
 }: {
     params: Promise<{ code: string }>;
 }) {
+    // Render dynamically: under `cacheComponents` a prerendered static shell
+    // would serve the Suspense skeleton fallback as the document, which then
+    // mismatches the resolved syllabus content the client hydrates (React #418).
+    await connection();
     return (
         <DirectionalTransition>
             <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">

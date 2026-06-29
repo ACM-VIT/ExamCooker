@@ -5,6 +5,7 @@ import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import PDFViewerClient from '@/app/components/pdf-viewer-client';
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
+import { connection } from "next/server";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
 import ShareLink from '@/app/components/share-link';
@@ -316,7 +317,11 @@ async function PaperViewerContent({
     );
 }
 
-function PdfViewerPage({ params }: { params: Promise<{ code: string; id: string }> }) {
+async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: string }> }) {
+    // Render dynamically: under `cacheComponents` a prerendered static shell
+    // would serve the Suspense skeleton fallback as the document, which then
+    // mismatches the resolved viewer content the client hydrates (React #418).
+    await connection();
     return (
         <DirectionalTransition>
             <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">

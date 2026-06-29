@@ -1,5 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { cache } from "react";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { course, db, note, noteToTag, tag, user } from "@/db";
@@ -28,7 +28,7 @@ const loadNoteDetail = cache(async (id: string) => {
         .leftJoin(course, eq(note.courseId, course.id))
         .leftJoin(noteToTag, eq(noteToTag.a, note.id))
         .leftJoin(tag, eq(noteToTag.b, tag.id))
-        .where(eq(note.id, id))
+        .where(and(eq(note.id, id), eq(note.isClear, true)))
         .orderBy(asc(tag.name));
 
     const firstRow = rows[0];
