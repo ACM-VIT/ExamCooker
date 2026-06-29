@@ -9,7 +9,6 @@ import PwaServiceWorker from "@/app/components/pwa-service-worker";
 import CapacitorBridge from "@/app/components/capacitor-bridge";
 import NativeIosTabSync from "@/app/components/native-ios-tab-sync";
 import AndroidInstallBanner from "@/app/components/android-install-banner";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
 import StructuredData from "@/app/components/seo/structured-data";
@@ -45,8 +44,18 @@ export const metadata: Metadata = {
         title: "ExamCooker",
         statusBarStyle: "black-translucent",
     },
+    // Disable Safari/iOS Data Detectors entirely. When left on, Safari rewrites
+    // matched text (dates, times, addresses, emails, phone numbers) into <a>
+    // wrappers *before* React hydrates, which mutates the server-rendered DOM and
+    // triggers a React #418 hydration mismatch — observed only on Safari/iOS as a
+    // flash of the homepage and resource pages. Turning all detectors off keeps
+    // the pre-hydration markup identical to what the server rendered.
     formatDetection: {
         telephone: false,
+        date: false,
+        address: false,
+        email: false,
+        url: false,
     },
     icons: {
         icon: [
@@ -74,6 +83,23 @@ export const metadata: Metadata = {
     },
 };
 const plus_jakarta_sans = Plus_Jakarta_Sans({ subsets: ["latin"] });
+
+function GoogleAnalytics({ gaId }: { gaId: string }) {
+    return (
+        <>
+            <Script
+                src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`}
+                strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+                {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', ${JSON.stringify(gaId)});`}
+            </Script>
+        </>
+    );
+}
 
 export default function RootLayout({
     children,
