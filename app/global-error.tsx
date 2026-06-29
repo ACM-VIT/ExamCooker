@@ -3,6 +3,18 @@
 import { useEffect } from "react";
 
 const RELOAD_FLAG = "examcooker:chunk-reload";
+const RELOAD_GUARD_TTL_MS = 60_000;
+
+type ReloadGuard = {
+    key: string;
+    timestamp: number;
+};
+
+type GlobalErrorProps = {
+    error: Error & { digest?: string };
+    unstable_retry?: () => void;
+    reset?: () => void;
+};
 
 function isChunkLoadError(error: unknown): boolean {
   if (!error) return false;
@@ -17,40 +29,81 @@ function isChunkLoadError(error: unknown): boolean {
   );
 }
 
+function getChunkErrorKey(error: Error & { digest?: string }): string {
+    return [
+        error.name || "Error",
+        error.message || "",
+        error.digest || "",
+    ].join(":");
+}
+
+function readReloadGuard(): ReloadGuard | null {
+    try {
+        const rawGuard = window.sessionStorage.getItem(RELOAD_FLAG);
+        if (!rawGuard) return null;
+
+        const guard = JSON.parse(rawGuard) as Partial<ReloadGuard>;
+        if (typeof guard.key !== "string" || typeof guard.timestamp !== "number") {
+            return null;
+        }
+        return { key: guard.key, timestamp: guard.timestamp };
+    } catch {
+        return null;
+    }
+}
+
+function writeReloadGuard(key: string) {
+    try {
+        window.sessionStorage.setItem(
+            RELOAD_FLAG,
+            JSON.stringify({ key, timestamp: Date.now() }),
+        );
+    } catch {
+        // sessionStorage may be unavailable (private mode); ignore it.
+    }
+}
+
+function clearReloadGuard() {
+    try {
+        window.sessionStorage.removeItem(RELOAD_FLAG);
+    } catch {
+        // Ignore storage access errors.
+    }
+}
+
+function hasFreshReloadGuard(key: string): boolean {
+    const guard = readReloadGuard();
+    if (!guard) return false;
+    return guard.key === key && Date.now() - guard.timestamp < RELOAD_GUARD_TTL_MS;
+}
+
 export default function GlobalError({
   error,
+  unstable_retry,
   reset,
-}: {
-    error: Error & { digest?: string };
-    reset: () => void;
-}) {
+}: GlobalErrorProps) {
+    const retry = unstable_retry ?? reset;
+    const isChunkError = isChunkLoadError(error);
+
     useEffect(() => {
-        if (!isChunkLoadError(error)) return;
+        if (!isChunkError) return;
         // After a deploy, content-hashed chunk filenames change and the old
         // chunks are removed from the server, so a client holding stale HTML
         // requests chunk URLs that 404 and `next/dynamic` throws. Force a
-        // one-time reload to pull a fresh HTML document and current chunks.
-        let alreadyReloaded = false;
-        try {
-            alreadyReloaded = window.sessionStorage.getItem(RELOAD_FLAG) === "1";
-            window.sessionStorage.setItem(RELOAD_FLAG, "1");
-        } catch {
-            // sessionStorage may be unavailable (private mode); fall through.
-        }
+        // guarded reload to pull a fresh HTML document and current chunks.
+        const guardKey = getChunkErrorKey(error);
+        const alreadyReloaded = hasFreshReloadGuard(guardKey);
 
         if (!alreadyReloaded) {
+            writeReloadGuard(guardKey);
             window.location.reload();
         }
-    }, [error]);
+    }, [error, isChunkError]);
 
     useEffect(() => {
-        if (isChunkLoadError(error)) return;
-        try {
-            window.sessionStorage.removeItem(RELOAD_FLAG);
-        } catch {
-            // Ignore storage access errors.
-        }
-    }, [error]);
+        if (isChunkError) return;
+        clearReloadGuard();
+    }, [isChunkError]);
 
     return (
         <html lang="en" className="dark">
@@ -80,12 +133,16 @@ export default function GlobalError({
                     <button
                         type="button"
                         onClick={() => {
-                            try {
-                                window.sessionStorage.removeItem(RELOAD_FLAG);
-                            } catch {
-                                // Ignore storage access errors.
+                            clearReloadGuard();
+                            if (isChunkError) {
+                                window.location.reload();
+                                return;
                             }
-                            reset();
+                            if (retry) {
+                                retry();
+                                return;
+                            }
+                            window.location.reload();
                         }}
                         style={{
                             cursor: "pointer",
