@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v6";
 const STATIC_CACHE = `examcooker-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `examcooker-pages-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `examcooker-runtime-${CACHE_VERSION}`;
@@ -13,6 +13,11 @@ const PRECACHE_ASSETS = [
 ];
 
 const KNOWN_CACHES = new Set([STATIC_CACHE, PAGE_CACHE, RUNTIME_CACHE]);
+const EXAMCOOKER_CACHE_PREFIXES = [
+  "examcooker-static-",
+  "examcooker-pages-",
+  "examcooker-runtime-",
+];
 
 const STATIC_PATH_PREFIXES = ["/_next/static/", "/icons/", "/assets/", "/vendor/"];
 const STATIC_PATH_EXACT = new Set(["/manifest.webmanifest", "/offline.html", "/sw.js"]);
@@ -51,6 +56,10 @@ function isHtmlAccept(request) {
   return accept.includes("text/html");
 }
 
+function isExamCookerCache(name) {
+  return EXAMCOOKER_CACHE_PREFIXES.some((prefix) => name.startsWith(prefix));
+}
+
 function isRoutePayloadRequest(request, url) {
   const accept = request.headers.get("accept") || "";
   return isSameOrigin(url) && (url.searchParams.has("_rsc") || accept.includes("text/x-component"));
@@ -75,7 +84,7 @@ self.addEventListener("activate", (event) => {
       const names = await caches.keys();
       const staleCacheDeletes = [];
       for (const name of names) {
-        if (!KNOWN_CACHES.has(name)) {
+        if (isExamCookerCache(name) && !KNOWN_CACHES.has(name)) {
           staleCacheDeletes.push(caches.delete(name));
         }
       }
@@ -119,10 +128,8 @@ self.addEventListener("message", (event) => {
 async function staleWhileRevalidate(event, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(event.request, { ignoreSearch: false });
-  const preloadResponse =
-    "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
 
-  const networkFetch = (preloadResponse ? Promise.resolve(preloadResponse) : fetch(event.request))
+  const networkFetch = fetch(event.request)
     .then((response) => {
       if (response && response.ok && response.type !== "opaque") {
         cache.put(event.request, response.clone()).catch(() => undefined);
@@ -142,10 +149,15 @@ async function staleWhileRevalidate(event, cacheName) {
   return offline || Response.error();
 }
 
-async function networkOnly(event) {
-  const preloadResponse =
-    "preloadResponse" in event ? await event.preloadResponse.catch(() => undefined) : undefined;
+function getNavigationPreload(event) {
+  if (!("preloadResponse" in event)) return null;
+  const preloadResponse = event.preloadResponse.catch(() => undefined);
+  event.waitUntil(preloadResponse.then(() => undefined));
+  return preloadResponse;
+}
 
+async function networkOnly(event, preloadResponsePromise = null) {
+  const preloadResponse = preloadResponsePromise ? await preloadResponsePromise : undefined;
   if (preloadResponse) return preloadResponse;
 
   try {
@@ -155,9 +167,9 @@ async function networkOnly(event) {
   }
 }
 
-async function networkOnlyWithOfflineFallback(event) {
-  const response = await networkOnly(event);
-  if (response && response.type !== "error") return response;
+async function networkOnlyWithOfflineFallback(event, preloadResponsePromise = null) {
+  const response = await networkOnly(event, preloadResponsePromise);
+  if (response && response.type !== "error" && response.ok) return response;
   const offline = await caches.match("/offline.html");
   return offline || response;
 }
@@ -202,7 +214,9 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     if (isUncacheable(url)) return;
-    event.respondWith(networkOnlyWithOfflineFallback(event));
+
+    const preloadResponsePromise = getNavigationPreload(event);
+    event.respondWith(networkOnlyWithOfflineFallback(event, preloadResponsePromise));
     return;
   }
 
