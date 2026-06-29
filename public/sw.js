@@ -13,6 +13,11 @@ const PRECACHE_ASSETS = [
 ];
 
 const KNOWN_CACHES = new Set([STATIC_CACHE, PAGE_CACHE, RUNTIME_CACHE]);
+const EXAMCOOKER_CACHE_PREFIXES = [
+  "examcooker-static-",
+  "examcooker-pages-",
+  "examcooker-runtime-",
+];
 
 const STATIC_PATH_PREFIXES = ["/_next/static/", "/icons/", "/assets/", "/vendor/"];
 const STATIC_PATH_EXACT = new Set(["/manifest.webmanifest", "/offline.html", "/sw.js"]);
@@ -50,6 +55,10 @@ function isHtmlAccept(request) {
   return accept.includes("text/html");
 }
 
+function isExamCookerCache(name) {
+  return EXAMCOOKER_CACHE_PREFIXES.some((prefix) => name.startsWith(prefix));
+}
+
 function isRoutePayloadRequest(request, url) {
   const accept = request.headers.get("accept") || "";
   return isSameOrigin(url) && (url.searchParams.has("_rsc") || accept.includes("text/x-component"));
@@ -74,7 +83,7 @@ self.addEventListener("activate", (event) => {
       const names = await caches.keys();
       const staleCacheDeletes = [];
       for (const name of names) {
-        if (!KNOWN_CACHES.has(name)) {
+        if (isExamCookerCache(name) && !KNOWN_CACHES.has(name)) {
           staleCacheDeletes.push(caches.delete(name));
         }
       }
@@ -143,6 +152,13 @@ async function staleWhileRevalidate(event, cacheName) {
   return offline || Response.error();
 }
 
+async function documentFallback(cache, request, fallbackResponse) {
+  const cached = await cache.match(request, { ignoreSearch: false });
+  if (cached) return cached;
+  const offline = await caches.match("/offline.html");
+  return offline || fallbackResponse || Response.error();
+}
+
 async function networkFirst(event, cacheName) {
   const cache = await caches.open(cacheName);
   const preloadResponse =
@@ -152,16 +168,17 @@ async function networkFirst(event, cacheName) {
     const response = preloadResponse || (await fetch(event.request));
     if (response && response.ok && response.type !== "opaque") {
       cache.put(event.request, response.clone()).catch(() => undefined);
+      return response;
     }
-    return response;
+    if (response && !response.ok) {
+      return documentFallback(cache, event.request, response);
+    }
+    return response || documentFallback(cache, event.request);
   } catch {
     // Offline (or the network failed): fall back to the last cached document.
     // After a deploy the server is reachable, so we always fetch fresh HTML and
     // its current chunk hashes stay in sync — avoiding stale-HTML ChunkLoadErrors.
-    const cached = await cache.match(event.request, { ignoreSearch: false });
-    if (cached) return cached;
-    const offline = await caches.match("/offline.html");
-    return offline || Response.error();
+    return documentFallback(cache, event.request);
   }
 }
 
