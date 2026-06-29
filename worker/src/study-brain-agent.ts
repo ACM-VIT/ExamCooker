@@ -122,7 +122,9 @@ export class ExamCookerStudyBrainAgent extends Agent<Env, StudyBrainAgentState> 
 
   async onStart() {
     ensureStudyBrainSchema(this);
-    await this.scheduleEvery(86_400, "pruneRuns");
+    await this.scheduleEvery(86_400, "pruneRuns", undefined, {
+      _idempotent: true,
+    });
   }
 
   async onRequest(request: Request) {
