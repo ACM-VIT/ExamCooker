@@ -11,9 +11,8 @@ import {
     LandingPageCard,
     WordBetweenLine,
 } from "@/app/components/landing/landing";
-import { SignIn } from "@/app/components/sign-in";
 
-export default function HomeMarketingSections({ isAuthed }: { isAuthed: boolean }) {
+export default function HomeMarketingSections({ authSlot }: { authSlot?: React.ReactNode }) {
     return (
         <div className="space-y-24 bg-[#C2E6EC] pt-24 text-black transition-colors dark:bg-[#0C1222] dark:text-[#D5D5D5] md:space-y-40 lg:space-y-[18vh] lg:pt-40">
             <section className="min-h-screen bg-[#C2E6EC] dark:bg-[#0C1222] flex flex-col justify-center gap-10 px-4 py-16 md:gap-12 md:py-24 lg:min-h-screen lg:py-12 lg:sticky lg:top-[-50px]">
@@ -74,24 +73,7 @@ export default function HomeMarketingSections({ isAuthed }: { isAuthed: boolean 
                 </h4>
             </section>
 
-            {!isAuthed && (
-                <section className="relative z-20 min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] overflow-hidden flex flex-col justify-center gap-8 px-4 py-16 md:py-24 lg:min-h-screen lg:py-12 lg:sticky lg:top-0">
-                    <div className="pointer-events-none absolute -top-32 -right-32 size-[22rem] rounded-full bg-[#3BF4C7]/25 blur-[140px] dark:bg-[#3BF4C7]/20" />
-                    <div className="pointer-events-none absolute -bottom-32 -left-32 size-[22rem] rounded-full bg-[#253EE0]/20 blur-[140px] dark:bg-[#27BAEC]/25" />
-
-                    <div className="mx-auto w-full max-w-6xl xl:max-w-7xl">
-                        <WordBetweenLine>
-                            <div className="text-center">
-                                Start <GradientText>Cooking</GradientText> Your
-                                <br /> Academic <GradientText>Success</GradientText> Today
-                            </div>
-                        </WordBetweenLine>
-                    </div>
-                    <div className="relative grid gap-8 justify-center">
-                        <SignIn displayText="Sign In" />
-                    </div>
-                </section>
-            )}
+            {authSlot}
 
             <section className="relative z-30 min-h-screen bg-[#8DCAE9] dark:bg-[#0C1222] flex flex-col justify-center gap-6 px-4 py-16 md:py-24 lg:min-h-screen lg:py-12 lg:sticky lg:top-0">
                 <div className="mx-auto w-full max-w-6xl xl:max-w-7xl">

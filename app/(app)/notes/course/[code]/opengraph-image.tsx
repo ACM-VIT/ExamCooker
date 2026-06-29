@@ -11,7 +11,6 @@ import {
     renderExamCookerOgImage,
 } from "@/lib/og";
 
-export const runtime = "nodejs";
 export const alt = OG_ALT;
 export const size = OG_IMAGE_SIZE;
 export const contentType = OG_CONTENT_TYPE;
