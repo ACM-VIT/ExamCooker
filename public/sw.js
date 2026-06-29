@@ -204,12 +204,10 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
+    if (isUncacheable(url)) return;
+
     const preloadResponsePromise = getNavigationPreload(event);
-    event.respondWith(
-      isUncacheable(url)
-        ? networkOnly(event, preloadResponsePromise)
-        : networkOnlyWithOfflineFallback(event, preloadResponsePromise),
-    );
+    event.respondWith(networkOnlyWithOfflineFallback(event, preloadResponsePromise));
     return;
   }
 
