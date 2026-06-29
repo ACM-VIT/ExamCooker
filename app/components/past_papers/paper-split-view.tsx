@@ -24,6 +24,7 @@ import {
     type PointerEvent as ReactPointerEvent,
     type ReactNode,
 } from "react";
+import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 
 const PDFViewerClient = dynamic(
     () => import("@/app/components/pdf-viewer-client"),
@@ -48,6 +49,7 @@ export type PaperSplitItem = {
     courseCode: string;
     courseTitle: string;
     meta: string[];
+    pageEdits: PdfPageEdits | null;
 };
 
 type PaperSplitContextValue = {
@@ -311,6 +313,7 @@ function PaperSplitPanel({
                     enableQuestionMarkdown
                     fileUrl={paper.fileUrl}
                     fileName={paper.fileName}
+                    pageEdits={paper.pageEdits}
                 />
             </div>
         </aside>

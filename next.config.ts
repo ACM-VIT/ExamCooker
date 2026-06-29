@@ -94,6 +94,7 @@ const configuredRemotePatterns = Array.from(
 const nextConfig: NextConfig = {
     output: "standalone",
     cacheComponents: true,
+    partialPrefetching: true,
     compiler: {
         removeConsole:
             process.env.NODE_ENV === "production"
