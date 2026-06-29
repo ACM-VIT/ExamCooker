@@ -16,6 +16,7 @@ import {
     pastPaper,
     semesterValues,
 } from "@/db";
+import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 
 export type CoursePaperFilters = {
     examTypes?: ExamType[];
@@ -37,6 +38,7 @@ export type CoursePaperListItem = {
     slot: string | null;
     year: number | null;
     hasAnswerKey: boolean;
+    pageEdits: PdfPageEdits | null;
 };
 
 export type CoursePaperFilterOptions = {
@@ -84,7 +86,7 @@ async function getCoursePaperRows(courseId: string): Promise<CoursePaperRow[]> {
 
     return withPastPapersSurfaceRedisCache(
         {
-            keyParts: ["course-paper-rows", { courseId }],
+            keyParts: ["course-paper-rows-v2", { courseId }],
         },
         async () => {
             const rows = await db
@@ -99,6 +101,7 @@ async function getCoursePaperRows(courseId: string): Promise<CoursePaperRow[]> {
                     semester: pastPaper.semester,
                     campus: pastPaper.campus,
                     hasAnswerKey: pastPaper.hasAnswerKey,
+                    pageEdits: pastPaper.pageEdits,
                     createdAt: pastPaper.createdAt,
                 })
                 .from(pastPaper)
@@ -115,6 +118,7 @@ async function getCoursePaperRows(courseId: string): Promise<CoursePaperRow[]> {
                 semester: paper.semester,
                 campus: paper.campus,
                 hasAnswerKey: paper.hasAnswerKey,
+                pageEdits: paper.pageEdits ?? null,
                 createdAtTime: paper.createdAt.getTime(),
             }));
         },
@@ -187,6 +191,7 @@ function toCoursePaperListItem(row: CoursePaperRow): CoursePaperListItem {
         slot: row.slot,
         year: row.year,
         hasAnswerKey: row.hasAnswerKey,
+        pageEdits: row.pageEdits ?? null,
     };
 }
 
