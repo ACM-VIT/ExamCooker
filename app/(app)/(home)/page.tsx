@@ -6,6 +6,6 @@ export const metadata: Metadata = {
     robots: { index: true, follow: true },
 };
 
-export default async function Page() {
+export default function Page() {
     return <Home />;
 }
