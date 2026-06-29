@@ -7,7 +7,6 @@ import {
 } from "@/lib/og";
 import { getCatalogStats } from "@/lib/data/course-catalog";
 
-export const runtime = "nodejs";
 export const alt = OG_ALT;
 export const size = OG_IMAGE_SIZE;
 export const contentType = OG_CONTENT_TYPE;

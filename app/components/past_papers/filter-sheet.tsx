@@ -58,6 +58,24 @@ function readList(raw: string | null): string[] {
     return raw.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+type SelectedFilters = {
+    exams: ExamType[];
+    slots: string[];
+    years: number[];
+    semesters: Semester[];
+    campuses: Campus[];
+    sort: string;
+};
+
+const EMPTY_SELECTED: SelectedFilters = {
+    exams: [],
+    slots: [],
+    years: [],
+    semesters: [],
+    campuses: [],
+    sort: "year_desc",
+};
+
 export default function FilterSheet({
     basePath,
     options,
@@ -71,11 +89,11 @@ export default function FilterSheet({
     const [open, setOpen] = useState(false);
 
     const searchParams = useMemo(
-        () => new URLSearchParams(searchString),
+        () => new URLSearchParams(searchString ?? ""),
         [searchString],
     );
 
-    const selected = useMemo(
+    const selected = useMemo<SelectedFilters>(
         () => ({
             exams: readList(searchParams.get("exam"))
                 .map((s) => examSlugToType(s))
@@ -95,12 +113,16 @@ export default function FilterSheet({
         [searchParams],
     );
 
+    // `selected` should always be a populated object, but guard against it
+    // ever being undefined during a render so reads below can't crash the tree.
+    const sel = selected ?? EMPTY_SELECTED;
+
     const activeCount =
-        selected.exams.length +
-        selected.slots.length +
-        selected.years.length +
-        selected.semesters.length +
-        selected.campuses.length;
+        sel.exams.length +
+        sel.slots.length +
+        sel.years.length +
+        sel.semesters.length +
+        sel.campuses.length;
 
     const pushParams = useCallback(
         (next: URLSearchParams) => {
@@ -166,7 +188,7 @@ export default function FilterSheet({
         [options.semesters],
     );
     const showCampusFilters =
-        options.campuses.length > 1 || selected.campuses.length > 0;
+        options.campuses.length > 1 || sel.campuses.length > 0;
 
     return (
         <Drawer.Root open={open} onOpenChange={setOpen}>
@@ -246,11 +268,11 @@ export default function FilterSheet({
                                         <SheetChip
                                             label="All"
                                             count={options.totalPapers}
-                                            active={selected.exams.length === 0}
+                                            active={sel.exams.length === 0}
                                             onClick={clearExamFilters}
                                         />
                                         {options.examTypes.map((type) => {
-                                            const active = selected.exams.includes(type);
+                                            const active = sel.exams.includes(type);
                                             return (
                                                 <SheetChip
                                                     key={type}
@@ -273,7 +295,7 @@ export default function FilterSheet({
                                                 key={y}
                                                 label={String(y)}
                                                 count={yearCounts[y] ?? 0}
-                                                active={selected.years.includes(y)}
+                                                active={sel.years.includes(y)}
                                                 onClick={() => toggleIn("year", String(y))}
                                             />
                                         ))}
@@ -289,7 +311,7 @@ export default function FilterSheet({
                                                 key={s}
                                                 label={s}
                                                 count={slotCounts[s] ?? 0}
-                                                active={selected.slots.includes(s)}
+                                                active={sel.slots.includes(s)}
                                                 onClick={() => toggleIn("slot", s)}
                                             />
                                         ))}
@@ -304,7 +326,7 @@ export default function FilterSheet({
                                             <SheetChip
                                                 key={sem}
                                                 label={SEMESTER_LABEL[sem]}
-                                                active={selected.semesters.includes(sem)}
+                                                active={sel.semesters.includes(sem)}
                                                 onClick={() =>
                                                     toggleIn("semester", sem.toLowerCase())
                                                 }
@@ -321,7 +343,7 @@ export default function FilterSheet({
                                             <SheetChip
                                                 key={c}
                                                 label={CAMPUS_LABEL[c]}
-                                                active={selected.campuses.includes(c)}
+                                                active={sel.campuses.includes(c)}
                                                 onClick={() =>
                                                     toggleIn("campus", c.toLowerCase())
                                                 }
@@ -334,7 +356,7 @@ export default function FilterSheet({
                             <Section title="Sort by">
                                 <div className="grid grid-cols-3 border border-black/15 dark:border-[#D5D5D5]/15">
                                     {SORT_OPTIONS.map((opt, idx) => {
-                                        const active = selected.sort === opt.value;
+                                        const active = sel.sort === opt.value;
                                         return (
                                             <button
                                                 key={opt.value}

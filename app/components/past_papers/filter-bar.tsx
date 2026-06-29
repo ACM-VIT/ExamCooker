@@ -44,6 +44,22 @@ function readList(raw: string | null): string[] {
     return raw.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+type SelectedFilters = {
+    exams: ExamType[];
+    slots: string[];
+    years: number[];
+    semesters: Semester[];
+    campuses: Campus[];
+};
+
+const EMPTY_SELECTED: SelectedFilters = {
+    exams: [],
+    slots: [],
+    years: [],
+    semesters: [],
+    campuses: [],
+};
+
 export default function FilterBar({
     basePath,
     options,
@@ -55,11 +71,11 @@ export default function FilterBar({
     const { replace } = useRouter();
     const [pending, startTransition] = useTransition();
     const searchParams = useMemo(
-        () => new URLSearchParams(searchString),
+        () => new URLSearchParams(searchString ?? ""),
         [searchString],
     );
 
-    const selected = useMemo(
+    const selected = useMemo<SelectedFilters>(
         () => ({
             exams: readList(searchParams.get("exam"))
                 .map((s) => examSlugToType(s))
@@ -77,6 +93,10 @@ export default function FilterBar({
         }),
         [searchParams],
     );
+
+    // `selected` should always be a populated object, but guard against it
+    // ever being undefined during a render so reads below can't crash the tree.
+    const sel = selected ?? EMPTY_SELECTED;
 
     const pushParams = useCallback((next: URLSearchParams) => {
         next.delete("page");
@@ -115,11 +135,11 @@ export default function FilterBar({
             type,
             label: examTypeLabel(type),
             count: examCounts[type] ?? 0,
-            active: selected.exams.includes(type),
+            active: sel.exams.includes(type),
         })),
-        [examCounts, options.examTypes, selected.exams],
+        [examCounts, options.examTypes, sel.exams],
     );
-    const allActive = selected.exams.length === 0;
+    const allActive = sel.exams.length === 0;
 
     const visibleSemesters = useMemo(
         () => options.semesters.filter((s) => s !== "UNKNOWN"),
@@ -131,16 +151,16 @@ export default function FilterBar({
         options.years.length > 0 ||
         visibleSemesters.length > 0 ||
         options.campuses.length > 1 ||
-        selected.campuses.length > 0;
+        sel.campuses.length > 0;
 
     const yearItems = useMemo(
         () => options.years.map((y) => ({
             value: String(y),
             label: String(y),
             count: yearCounts[y] ?? 0,
-            active: selected.years.includes(y),
+            active: sel.years.includes(y),
         })),
-        [options.years, selected.years, yearCounts],
+        [options.years, sel.years, yearCounts],
     );
 
     const slotItems = useMemo(
@@ -148,27 +168,27 @@ export default function FilterBar({
             value: s,
             label: s,
             count: slotCounts[s] ?? 0,
-            active: selected.slots.includes(s),
+            active: sel.slots.includes(s),
         })),
-        [options.slots, selected.slots, slotCounts],
+        [options.slots, sel.slots, slotCounts],
     );
 
     const semesterItems = useMemo(
         () => visibleSemesters.map((sem) => ({
             value: sem.toLowerCase(),
             label: SEMESTER_LABEL[sem],
-            active: selected.semesters.includes(sem),
+            active: sel.semesters.includes(sem),
         })),
-        [selected.semesters, visibleSemesters],
+        [sel.semesters, visibleSemesters],
     );
 
     const campusItems = useMemo(
         () => options.campuses.map((c) => ({
             value: c.toLowerCase(),
             label: CAMPUS_LABEL[c],
-            active: selected.campuses.includes(c),
+            active: sel.campuses.includes(c),
         })),
-        [options.campuses, selected.campuses],
+        [options.campuses, sel.campuses],
     );
 
     const toggleYear = useCallback((value: string) => toggleIn("year", value), [toggleIn]);
@@ -221,7 +241,7 @@ export default function FilterBar({
                             onToggle={toggleSemester}
                         />
                     )}
-                    {(options.campuses.length > 1 || selected.campuses.length > 0) && (
+                    {(options.campuses.length > 1 || sel.campuses.length > 0) && (
                         <ChipRow
                             items={campusItems}
                             onToggle={toggleCampus}
