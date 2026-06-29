@@ -13,10 +13,30 @@ export type PdfPageDisplayEntry = {
   rotation: PdfPageRotation;
 };
 
+export type PdfPageRenderEntry = {
+  pageIndex: number;
+  rotation: PdfPageRotation;
+};
+
 const PDF_PAGE_ROTATION_SET = new Set<number>(PDF_PAGE_ROTATIONS);
 
 function isInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value);
+}
+
+function toPdfPageRotation(value: number): PdfPageRotation {
+  const normalizedRotation = ((value % 360) + 360) % 360;
+
+  switch (normalizedRotation) {
+    case 90:
+    case 180:
+    case 270:
+      return normalizedRotation;
+    case 0:
+      return 0;
+    default:
+      return 0;
+  }
 }
 
 function toArrayBuffer(buffer: ArrayBuffer | Uint8Array): ArrayBuffer {
@@ -164,6 +184,23 @@ export function getPdfPageDisplayEntries(
     originalIndex,
     rotation: pageRotations?.[String(originalIndex)] ?? 0,
   }));
+}
+
+export function getPdfPageRenderEntry(input: {
+  baselineEdits: PdfPageEdits | null | undefined;
+  entry: PdfPageDisplayEntry;
+  totalPages: number;
+}): PdfPageRenderEntry {
+  const baselineEntry = getPdfPageDisplayEntries(
+    input.totalPages,
+    input.baselineEdits,
+  ).find((entry) => entry.originalIndex === input.entry.originalIndex);
+  const baselineRotation = baselineEntry?.rotation ?? 0;
+
+  return {
+    pageIndex: baselineEntry?.displayIndex ?? input.entry.originalIndex,
+    rotation: toPdfPageRotation(input.entry.rotation - baselineRotation),
+  };
 }
 
 export function applyPdfPageEditsLocally(
