@@ -150,8 +150,9 @@ type PdfViewerProps = {
 };
 
 type SavedPageEditsState = {
-  sourceKey: string;
+  propKey: string;
   value: PdfPageEdits | null;
+  pendingValueKey: string | null;
 };
 
 type PdfBufferLifecycleState = {
@@ -2025,8 +2026,9 @@ export default function PDFViewer({
   const [isPdfDarkMode, setIsPdfDarkMode] = useState(false);
   const [savedPageEditsState, setSavedPageEditsState] =
     useState<SavedPageEditsState>({
-      sourceKey: normalizedInitialPageEditsKey,
+      propKey: normalizedInitialPageEditsKey,
       value: normalizedInitialPageEdits,
+      pendingValueKey: null,
     });
   const [bufferLifecycleState, dispatchBufferLifecycle] = useReducer(
     pdfBufferLifecycleReducer,
@@ -2038,16 +2040,18 @@ export default function PDFViewer({
     retryNonce,
     showSlowLoadFallback,
   } = bufferLifecycleState;
-  const savedPageEdits =
-    savedPageEditsState.sourceKey === normalizedInitialPageEditsKey
-      ? savedPageEditsState.value
-      : normalizedInitialPageEdits;
+  const savedPageEdits = savedPageEditsState.value;
   const setSavedPageEdits = (nextPageEdits: PdfPageEdits | null) => {
     const normalizedNextPageEdits = normalizePdfPageEdits(nextPageEdits);
-    setSavedPageEditsState({
-      sourceKey: serializePdfPageEdits(normalizedNextPageEdits),
+    const normalizedNextPageEditsKey = serializePdfPageEdits(
+      normalizedNextPageEdits,
+    );
+
+    setSavedPageEditsState((prev) => ({
+      propKey: prev.propKey,
       value: normalizedNextPageEdits,
-    });
+      pendingValueKey: normalizedNextPageEditsKey,
+    }));
   };
   const deferredPageEdits = useDeferredValue(savedPageEdits);
   const deferredPageEditsKey = useMemo(
@@ -2055,6 +2059,27 @@ export default function PDFViewer({
     [deferredPageEdits],
   );
   const engineState = usePreloadedPdfiumEngine(retryNonce);
+
+  useEffect(() => {
+    setSavedPageEditsState((prev) => {
+      if (prev.propKey === normalizedInitialPageEditsKey) {
+        return prev;
+      }
+
+      if (
+        prev.pendingValueKey &&
+        prev.pendingValueKey !== normalizedInitialPageEditsKey
+      ) {
+        return prev;
+      }
+
+      return {
+        propKey: normalizedInitialPageEditsKey,
+        value: normalizedInitialPageEdits,
+        pendingValueKey: null,
+      };
+    });
+  }, [normalizedInitialPageEdits, normalizedInitialPageEditsKey]);
 
   const retryViewerLoad = useCallback(() => {
     dispatchBufferLifecycle({ type: "retry" });

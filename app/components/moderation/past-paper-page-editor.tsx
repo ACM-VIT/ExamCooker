@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import {
   arePdfPageEditsEqual,
   getPdfPageDisplayEntries,
+  getPdfPageRenderEntry,
   hasPdfPageEdits,
   normalizePdfPageEdits,
   serializePdfPageEdits,
@@ -39,7 +40,7 @@ type PastPaperPageEditorProps = {
 };
 
 type PageEditorDraftState = {
-  sourceKey: string;
+  propKey: string;
   baseline: PdfPageEdits | null;
   draft: PdfPageEdits | null;
 };
@@ -156,7 +157,7 @@ export default function PastPaperPageEditor({
     [normalizedSavedPageEdits, totalPages],
   );
   const [pageEditState, setPageEditState] = useState<PageEditorDraftState>({
-    sourceKey: normalizedSavedKey,
+    propKey: normalizedSavedKey,
     baseline: normalizedSavedPageEdits,
     draft: normalizedSavedPageEdits,
   });
@@ -164,26 +165,26 @@ export default function PastPaperPageEditor({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const baselinePageEdits =
-    pageEditState.sourceKey === normalizedSavedKey
+    pageEditState.propKey === normalizedSavedKey
       ? pageEditState.baseline
       : normalizedSavedPageEdits;
   const draftPageEdits =
-    pageEditState.sourceKey === normalizedSavedKey
+    pageEditState.propKey === normalizedSavedKey
       ? pageEditState.draft
       : normalizedSavedPageEdits;
   const setDraftPageEdits = (nextDraft: PageEditsUpdate) => {
     setPageEditState((currentState) => {
       const currentBaseline =
-        currentState.sourceKey === normalizedSavedKey
+        currentState.propKey === normalizedSavedKey
           ? currentState.baseline
           : normalizedSavedPageEdits;
       const currentDraft =
-        currentState.sourceKey === normalizedSavedKey
+        currentState.propKey === normalizedSavedKey
           ? currentState.draft
           : normalizedSavedPageEdits;
 
       return {
-        sourceKey: normalizedSavedKey,
+        propKey: normalizedSavedKey,
         baseline: currentBaseline,
         draft:
           typeof nextDraft === "function" ? nextDraft(currentDraft) : nextDraft,
@@ -197,7 +198,7 @@ export default function PastPaperPageEditor({
     );
 
     setPageEditState({
-      sourceKey: serializePdfPageEdits(normalizedNextPageEdits, totalPages),
+      propKey: normalizedSavedKey,
       baseline: normalizedNextPageEdits,
       draft: normalizedNextPageEdits,
     });
@@ -290,6 +291,7 @@ export default function PastPaperPageEditor({
         )}
       >
         <PageEditorPanel
+          baselinePageEdits={baselinePageEdits}
           documentId={documentId}
           entries={entries}
           hasAnyEdits={hasAnyEdits}
@@ -331,6 +333,7 @@ export default function PastPaperPageEditor({
 }
 
 type PageEditorPanelProps = {
+  baselinePageEdits: PdfPageEdits | null;
   currentDisplayPage: number;
   documentId: string;
   entries: PdfPageDisplayEntry[];
@@ -350,6 +353,7 @@ type PageEditorPanelProps = {
 };
 
 function PageEditorPanel({
+  baselinePageEdits,
   currentDisplayPage,
   documentId,
   entries,
@@ -433,6 +437,7 @@ function PageEditorPanel({
           {entries.map((entry) => (
             <PageEntryCard
               key={`${entry.originalIndex}`}
+              baselinePageEdits={baselinePageEdits}
               documentId={documentId}
               entry={entry}
               isCurrent={entry.displayIndex + 1 === currentDisplayPage}
@@ -466,6 +471,7 @@ function PageEditorPanel({
 }
 
 type PageEntryCardProps = {
+  baselinePageEdits: PdfPageEdits | null;
   documentId: string;
   entry: PdfPageDisplayEntry;
   isCurrent: boolean;
@@ -479,6 +485,7 @@ type PageEntryCardProps = {
 };
 
 function PageEntryCard({
+  baselinePageEdits,
   documentId,
   entry,
   isCurrent,
@@ -493,6 +500,15 @@ function PageEntryCard({
   const cardRef = useRef<HTMLElement>(null);
   const isReordered = entry.displayIndex !== entry.originalIndex;
   const rotationLabel = describeRotation(entry.rotation);
+  const thumbnailEntry = useMemo(
+    () =>
+      getPdfPageRenderEntry({
+        baselineEdits: baselinePageEdits,
+        entry,
+        totalPages,
+      }),
+    [baselinePageEdits, entry, totalPages],
+  );
 
   useEffect(() => {
     if (!isCurrent || !cardRef.current) return;
@@ -524,8 +540,8 @@ function PageEntryCard({
         >
           <PdfPageThumbnail
             documentId={documentId}
-            pageIndex={entry.originalIndex}
-            rotation={entry.rotation}
+            pageIndex={thumbnailEntry.pageIndex}
+            rotation={thumbnailEntry.rotation}
           />
         </button>
 
