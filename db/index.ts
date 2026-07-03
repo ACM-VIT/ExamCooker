@@ -43,11 +43,15 @@ const TRANSIENT_DB_ERROR_CODES = new Set([
 ]);
 
 const TRANSIENT_DB_ERROR_MESSAGES = [
+  "connection terminated due to connection timeout",
   "connection terminated unexpectedly",
   "query read timeout",
   "read econnreset",
   "read etimedout",
   "socket hang up",
+  // pg-pool acquisition timeout (connectionTimeoutMillis) — the query never
+  // reached the server, so retrying is always safe.
+  "timeout exceeded when trying to connect",
 ];
 
 type RetryableDbError = Error & {

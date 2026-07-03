@@ -73,12 +73,12 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
      rounded panel mask. Padding on the inner wrapper survives the host reset,
      so the breathing room actually reflects. */
   body { margin: 0; padding: 0; }
-  .root { max-width: 1080px; margin: 0 auto; padding: 32px 34px 36px; }
+  .root { max-width: 1080px; margin: 0 auto; padding: 44px 40px 40px; }
   @media (max-width: 720px) {
-    .root { padding: 24px 22px 28px; }
+    .root { padding: 32px 24px 30px; }
   }
   @media (max-width: 480px) {
-    .root { padding: 20px 16px 24px; }
+    .root { padding: 26px 18px 26px; }
   }
 
   .status { display: flex; align-items: center; justify-content: center; padding: 56px 16px; color: var(--ec-text-muted); font-size: 13px; font-weight: 500; gap: 10px; }
