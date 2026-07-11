@@ -20,30 +20,34 @@ const pageEdits: PdfPageEdits = {
   },
 };
 
-const sourceBytes = await createSourcePdf();
-const sourceBlob = new Blob([sourceBytes], { type: "application/pdf" });
+async function main() {
+  const sourceBytes = await createSourcePdf();
+  const sourceBlob = new Blob([sourceBytes], { type: "application/pdf" });
 
-assert.equal(
-  await preparePdfDownloadBlob(sourceBlob, null),
-  sourceBlob,
-  "Unedited PDFs should keep the original download blob",
-);
+  assert.equal(
+    await preparePdfDownloadBlob(sourceBlob, null),
+    sourceBlob,
+    "Unedited PDFs should keep the original download blob",
+  );
 
-const editedBlob = await preparePdfDownloadBlob(sourceBlob, pageEdits);
-const editedDocument = await PDFDocument.load(await editedBlob.arrayBuffer());
+  const editedBlob = await preparePdfDownloadBlob(sourceBlob, pageEdits);
+  const editedDocument = await PDFDocument.load(await editedBlob.arrayBuffer());
 
-assert.equal(editedDocument.getPageCount(), 3);
+  assert.equal(editedDocument.getPageCount(), 3);
 
-const firstPage = editedDocument.getPage(0);
-assert.equal(firstPage.getWidth(), 600);
-assert.equal(firstPage.getRotation().angle, 180);
+  const firstPage = editedDocument.getPage(0);
+  assert.equal(firstPage.getWidth(), 600);
+  assert.equal(firstPage.getRotation().angle, 180);
 
-const secondPage = editedDocument.getPage(1);
-assert.equal(secondPage.getWidth(), 200);
-assert.equal(secondPage.getRotation().angle, 90);
+  const secondPage = editedDocument.getPage(1);
+  assert.equal(secondPage.getWidth(), 200);
+  assert.equal(secondPage.getRotation().angle, 90);
 
-const thirdPage = editedDocument.getPage(2);
-assert.equal(thirdPage.getWidth(), 400);
-assert.equal(thirdPage.getRotation().angle, 0);
+  const thirdPage = editedDocument.getPage(2);
+  assert.equal(thirdPage.getWidth(), 400);
+  assert.equal(thirdPage.getRotation().angle, 0);
 
-console.log("PDF download page edits are preserved.");
+  console.log("PDF download page edits are preserved.");
+}
+
+void main();
