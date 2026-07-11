@@ -9,10 +9,13 @@ import {
     canUseNativeFileDownload,
     shareBlobWithNativeDownloads,
 } from "@/lib/native-downloads";
+import { applyPdfPageEditsToBuffer } from "@/lib/pdf/page-edits";
+import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 
 export type DownloadablePdf = {
     fileUrl: string;
     fileName: string;
+    pageEdits?: PdfPageEdits | null;
 };
 
 type ZipEntry = {
@@ -153,6 +156,7 @@ const PDF_FETCH_TIMEOUT_MS = 30_000;
 
 async function fetchPdfBlob(
     fileUrl: string,
+    pageEdits?: PdfPageEdits | null,
     timeoutMs: number = PDF_FETCH_TIMEOUT_MS,
 ) {
     const controller = new AbortController();
@@ -168,10 +172,26 @@ async function fetchPdfBlob(
             throw new Error(`Failed to fetch PDF: ${response.status}`);
         }
 
-        return await response.blob();
+        return await preparePdfDownloadBlob(await response.blob(), pageEdits);
     } finally {
         window.clearTimeout(timeoutId);
     }
+}
+
+export async function preparePdfDownloadBlob(
+    blob: Blob,
+    pageEdits?: PdfPageEdits | null,
+) {
+    if (!pageEdits) {
+        return blob;
+    }
+
+    const editedBuffer = await applyPdfPageEditsToBuffer(
+        await blob.arrayBuffer(),
+        pageEdits,
+    );
+
+    return new Blob([editedBuffer], { type: blob.type || "application/pdf" });
 }
 
 async function saveBlob(blob: Blob, fileName: string) {
@@ -241,11 +261,16 @@ async function createZipBlob(entries: ZipEntry[]) {
     );
 }
 
-export async function downloadPdfFile({ fileUrl, fileName }: DownloadablePdf) {
+export async function downloadPdfFile({ fileUrl, fileName, pageEdits }: DownloadablePdf) {
     try {
-        const blob = await fetchPdfBlob(fileUrl);
+        const blob = await fetchPdfBlob(fileUrl, pageEdits);
         await saveBlob(blob, ensurePdfFileName(fileName));
     } catch {
+        if (pageEdits) {
+            window.alert("Could not prepare the edited PDF for download. Please try again.");
+            return;
+        }
+
         const fallbackLink = document.createElement("a");
         fallbackLink.href = fileUrl;
         fallbackLink.target = "_blank";
@@ -276,7 +301,7 @@ export async function downloadPdfZip(input: {
     // abort the whole batch. A timeout guarantees stalled fetches reject instead
     // of leaving the zip — and the caller's "Zipping..." state — pending forever.
     const settled = await Promise.allSettled(
-        input.files.map((file) => fetchPdfBlob(file.fileUrl)),
+        input.files.map((file) => fetchPdfBlob(file.fileUrl, file.pageEdits)),
     );
 
     const entries: ZipEntry[] = [];
