@@ -12,6 +12,12 @@ async function createSourcePdf() {
   return document.save();
 }
 
+function toArrayBuffer(bytes: Uint8Array) {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 const pageEdits: PdfPageEdits = {
   pageOrder: [2, 0, 1],
   pageRotations: {
@@ -22,7 +28,9 @@ const pageEdits: PdfPageEdits = {
 
 async function main() {
   const sourceBytes = await createSourcePdf();
-  const sourceBlob = new Blob([sourceBytes], { type: "application/pdf" });
+  const sourceBlob = new Blob([toArrayBuffer(sourceBytes)], {
+    type: "application/pdf",
+  });
 
   assert.equal(
     await preparePdfDownloadBlob(sourceBlob, null),
