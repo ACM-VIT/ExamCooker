@@ -119,6 +119,7 @@ function CoursePaperCard({
                 year: paper.year,
                 hasAnswerKey: paper.hasAnswerKey,
             }),
+            pageEdits: paper.pageEdits,
         });
     }, [courseCode, courseTitle, paper]);
 
