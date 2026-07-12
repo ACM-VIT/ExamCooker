@@ -1131,6 +1131,10 @@ function AiPaperView({
 
 }
 
+function blobToObjectUrl(blob: Blob) {
+  return URL.createObjectURL(blob);
+}
+
 function PageRenderLayer({
   documentId,
   isPdfDarkMode,
@@ -1143,13 +1147,16 @@ function PageRenderLayer({
   const { provides: renderProvides } = useRenderCapability();
   const documentState = useDocumentState(documentId);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const imageUrlRef = useRef<string | null>(null);
+  const [hasRenderError, setHasRenderError] = useState(false);
+  const [retryVersion, setRetryVersion] = useState(0);
   const refreshVersion = documentState?.pageRefreshVersions[pageIndex] ?? 0;
 
   useEffect(() => {
     if (!renderProvides || documentState?.status !== "loaded") return;
 
     let isCurrentRender = true;
+    setHasRenderError(false);
+
     const task = renderProvides.forDocument(documentId).renderPage({
       pageIndex,
       options: {
@@ -1162,14 +1169,17 @@ function PageRenderLayer({
     task
       .toPromise()
       .then((blob) => {
-        if (!isCurrentRender) return;
-
-        const nextImageUrl = URL.createObjectURL(blob);
-        if (imageUrlRef.current) {
-          URL.revokeObjectURL(imageUrlRef.current);
+        const nextImageUrl = blobToObjectUrl(blob);
+        if (!isCurrentRender) {
+          URL.revokeObjectURL(nextImageUrl);
+          return;
         }
-        imageUrlRef.current = nextImageUrl;
-        setImageUrl(nextImageUrl);
+        setImageUrl((previousImageUrl) => {
+          if (previousImageUrl && previousImageUrl !== nextImageUrl) {
+            URL.revokeObjectURL(previousImageUrl);
+          }
+          return nextImageUrl;
+        });
       })
       .catch((renderError) => {
         if (!isCurrentRender) return;
@@ -1178,6 +1188,7 @@ function PageRenderLayer({
           pageIndex,
           renderError,
         });
+        setHasRenderError(true);
       });
 
     return () => {
@@ -1190,19 +1201,29 @@ function PageRenderLayer({
     documentState?.status,
     pageIndex,
     refreshVersion,
+    retryVersion,
     renderProvides,
-    imageUrlRef,
   ]);
 
   useEffect(
     () => () => {
-      if (imageUrlRef.current) {
-        URL.revokeObjectURL(imageUrlRef.current);
-        imageUrlRef.current = null;
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
       }
     },
-    [imageUrlRef]
+    [imageUrl],
   );
+
+  const handleRetry = useCallback(() => {
+    setHasRenderError(false);
+    setRetryVersion((version) => version + 1);
+  }, []);
+
+  // A page render can genuinely fail (e.g. "Error creating WebGL context.").
+  // Surface a recoverable fallback instead of a silent blank page.
+  if (hasRenderError) {
+    return <PageRenderError isPdfDarkMode={isPdfDarkMode} onRetry={handleRetry} />;
+  }
 
   if (!imageUrl) return null;
 
@@ -1223,11 +1244,39 @@ function PageRenderLayer({
   );
 }
 
+function PageRenderError({
+  isPdfDarkMode,
+  onRetry,
+}: {
+  isPdfDarkMode: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className={`absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center text-sm ${
+        isPdfDarkMode ? "bg-black text-gray-300" : "bg-white text-gray-600"
+      }`}
+      data-ec-pdf-page-error="true"
+    >
+      <AlertCircle className="size-6 text-red-500" aria-hidden="true" />
+      <p>This page couldn&apos;t be rendered.</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded border border-black/15 bg-white px-3 py-1.5 font-semibold text-black transition hover:border-black/30 dark:border-white/15 dark:bg-gray-900 dark:text-gray-100 dark:hover:border-white/30"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
 function ViewerToolbar({
   documentId,
   enableQuestionMarkdown,
   fileUrl,
   fileName,
+  pageEdits,
   isFullScreen,
   isPdfDarkMode,
   viewMode,
@@ -1243,6 +1292,7 @@ function ViewerToolbar({
   enableQuestionMarkdown: boolean;
   fileUrl: string;
   fileName: string;
+  pageEdits: PdfPageEdits | null;
   isFullScreen: boolean;
   isPdfDarkMode: boolean;
   viewMode: PaperViewMode;
@@ -1331,11 +1381,11 @@ function ViewerToolbar({
     setIsDownloading(true);
     capturePdfDownloaded({ fileName, fileUrl });
     try {
-      await downloadPdfFile({ fileUrl, fileName });
+      await downloadPdfFile({ fileUrl, fileName, pageEdits });
     } finally {
       setIsDownloading(false);
     }
-  }, [fileName, fileUrl, isDownloading]);
+  }, [fileName, fileUrl, isDownloading, pageEdits]);
 
   const handleViewMarkdown = useCallback(() => {
     setIsMarkdownMenuOpen(false);
@@ -1874,6 +1924,7 @@ function LoadedDocumentSurface({
             enableQuestionMarkdown={enableQuestionMarkdown}
             fileUrl={fileUrl}
             fileName={fileName}
+            pageEdits={pageEdits}
             isFullScreen={isFullScreen}
             isPdfDarkMode={isPdfDarkMode}
             viewMode={viewMode}

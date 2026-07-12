@@ -239,6 +239,7 @@ export default function CoursePaperGrid({
                         year: paper.year,
                         hasAnswerKey: paper.hasAnswerKey,
                     }),
+                    pageEdits: paper.pageEdits,
                 })),
             });
 
@@ -350,6 +351,7 @@ export default function CoursePaperGrid({
         void downloadPdfFile({
             fileUrl: paper.fileUrl,
             fileName: getPaperFileName(paper),
+            pageEdits: paper.pageEdits,
         });
         closeContextMenu();
     }, [closeContextMenu, getPaperFileName]);
