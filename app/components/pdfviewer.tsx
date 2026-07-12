@@ -1271,6 +1271,7 @@ function ViewerToolbar({
   enableQuestionMarkdown,
   fileUrl,
   fileName,
+  pageEdits,
   isFullScreen,
   isPdfDarkMode,
   viewMode,
@@ -1286,6 +1287,7 @@ function ViewerToolbar({
   enableQuestionMarkdown: boolean;
   fileUrl: string;
   fileName: string;
+  pageEdits: PdfPageEdits | null;
   isFullScreen: boolean;
   isPdfDarkMode: boolean;
   viewMode: PaperViewMode;
@@ -1374,11 +1376,11 @@ function ViewerToolbar({
     setIsDownloading(true);
     capturePdfDownloaded({ fileName, fileUrl });
     try {
-      await downloadPdfFile({ fileUrl, fileName });
+      await downloadPdfFile({ fileUrl, fileName, pageEdits });
     } finally {
       setIsDownloading(false);
     }
-  }, [fileName, fileUrl, isDownloading]);
+  }, [fileName, fileUrl, isDownloading, pageEdits]);
 
   const handleViewMarkdown = useCallback(() => {
     setIsMarkdownMenuOpen(false);
@@ -1917,6 +1919,7 @@ function LoadedDocumentSurface({
             enableQuestionMarkdown={enableQuestionMarkdown}
             fileUrl={fileUrl}
             fileName={fileName}
+            pageEdits={pageEdits}
             isFullScreen={isFullScreen}
             isPdfDarkMode={isPdfDarkMode}
             viewMode={viewMode}
