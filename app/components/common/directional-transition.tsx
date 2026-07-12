@@ -3,6 +3,16 @@
 import React, { ViewTransition, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
+// `<ViewTransition>` is an experimental React API. On interrupted navigations it
+// can read `_retryCache` off a null Offscreen instance and throw an unhandled
+// `TypeError` when `<Suspense>` boundaries are torn down mid-transition (which they
+// are on every app route, since pages nest Suspense inside this keyed transition).
+// Keep it behind an opt-in flag so we can validate the experimental path before
+// enabling it broadly; when disabled we render children directly with no animation.
+function pageViewTransitionsEnabled() {
+    return process.env.NEXT_PUBLIC_ENABLE_VIEW_TRANSITIONS === "true";
+}
+
 function hasNativeShellAttributes() {
     if (typeof document === "undefined") return false;
     const root = document.documentElement;
@@ -41,7 +51,7 @@ export default function DirectionalTransition({
     const pathname = usePathname();
     const disablePageViewTransitions = useDisablePageViewTransitions();
 
-    if (disablePageViewTransitions) {
+    if (!pageViewTransitionsEnabled() || disablePageViewTransitions) {
         return <>{children}</>;
     }
 
