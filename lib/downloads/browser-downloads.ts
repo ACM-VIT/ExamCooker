@@ -9,10 +9,13 @@ import {
     canUseNativeFileDownload,
     shareBlobWithNativeDownloads,
 } from "@/lib/native-downloads";
+import { applyPdfPageEditsToBuffer, hasPdfPageEdits } from "@/lib/pdf/page-edits";
+import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 
 export type DownloadablePdf = {
     fileUrl: string;
     fileName: string;
+    pageEdits?: PdfPageEdits | null;
 };
 
 type ZipEntry = {
@@ -153,6 +156,7 @@ const PDF_FETCH_TIMEOUT_MS = 30_000;
 
 async function fetchPdfBlob(
     fileUrl: string,
+    pageEdits?: PdfPageEdits | null,
     timeoutMs: number = PDF_FETCH_TIMEOUT_MS,
 ) {
     const controller = new AbortController();
@@ -168,18 +172,30 @@ async function fetchPdfBlob(
             throw new Error(`Failed to fetch PDF: ${response.status}`);
         }
 
-        return await response.blob();
+        return await preparePdfDownloadBlob(await response.blob(), pageEdits);
     } finally {
         window.clearTimeout(timeoutId);
     }
 }
 
-async function saveBlob(blob: Blob, fileName: string) {
-    if (canUseNativeFileDownload()) {
-        await shareBlobWithNativeDownloads(blob, fileName);
-        return;
+export async function preparePdfDownloadBlob(
+    blob: Blob,
+    pageEdits?: PdfPageEdits | null,
+) {
+    const effectivePageEdits = hasPdfPageEdits(pageEdits) ? pageEdits : null;
+    if (!effectivePageEdits) {
+        return blob;
     }
 
+    const editedBuffer = await applyPdfPageEditsToBuffer(
+        await blob.arrayBuffer(),
+        effectivePageEdits,
+    );
+
+    return new Blob([editedBuffer], { type: blob.type || "application/pdf" });
+}
+
+function saveBlobWithBrowserDownload(blob: Blob, fileName: string) {
     const objectUrl = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
 
@@ -190,6 +206,19 @@ async function saveBlob(blob: Blob, fileName: string) {
     link.remove();
 
     window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
+}
+
+async function saveBlob(blob: Blob, fileName: string) {
+    if (canUseNativeFileDownload()) {
+        try {
+            await shareBlobWithNativeDownloads(blob, fileName);
+            return;
+        } catch {
+            // Fall back to browser download when native bridge fails.
+        }
+    }
+
+    saveBlobWithBrowserDownload(blob, fileName);
 }
 
 async function createZipBlob(entries: ZipEntry[]) {
@@ -241,11 +270,18 @@ async function createZipBlob(entries: ZipEntry[]) {
     );
 }
 
-export async function downloadPdfFile({ fileUrl, fileName }: DownloadablePdf) {
+export async function downloadPdfFile({ fileUrl, fileName, pageEdits }: DownloadablePdf) {
+    const hasMeaningfulPageEdits = hasPdfPageEdits(pageEdits);
+    let blob: Blob;
+
     try {
-        const blob = await fetchPdfBlob(fileUrl);
-        await saveBlob(blob, ensurePdfFileName(fileName));
+        blob = await fetchPdfBlob(fileUrl, hasMeaningfulPageEdits ? pageEdits : null);
     } catch {
+        if (hasMeaningfulPageEdits) {
+            window.alert("Could not prepare the edited PDF for download. Please try again.");
+            return;
+        }
+
         const fallbackLink = document.createElement("a");
         fallbackLink.href = fileUrl;
         fallbackLink.target = "_blank";
@@ -253,6 +289,13 @@ export async function downloadPdfFile({ fileUrl, fileName }: DownloadablePdf) {
         document.body.appendChild(fallbackLink);
         fallbackLink.click();
         fallbackLink.remove();
+        return;
+    }
+
+    try {
+        await saveBlob(blob, ensurePdfFileName(fileName));
+    } catch {
+        window.alert("Could not save the PDF for download. Please try again.");
     }
 }
 
@@ -276,7 +319,7 @@ export async function downloadPdfZip(input: {
     // abort the whole batch. A timeout guarantees stalled fetches reject instead
     // of leaving the zip — and the caller's "Zipping..." state — pending forever.
     const settled = await Promise.allSettled(
-        input.files.map((file) => fetchPdfBlob(file.fileUrl)),
+        input.files.map((file) => fetchPdfBlob(file.fileUrl, file.pageEdits)),
     );
 
     const entries: ZipEntry[] = [];
