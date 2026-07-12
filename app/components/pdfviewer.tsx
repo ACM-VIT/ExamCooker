@@ -1131,6 +1131,22 @@ function AiPaperView({
 
 }
 
+// Rasterized PDF pages are shown as images. We deliberately use a data: URL
+// rather than URL.createObjectURL(blob): blob: URLs are scoped to the live
+// document and cannot be serialized by session-replay tooling (rrweb), so every
+// page shows as a broken/blank image during replay playback even though the
+// user saw it fine. A data: URL embeds the pixels inline, so it is
+// replay-recordable.
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("Failed to read rendered page blob."));
+    reader.readAsDataURL(blob);
+  });
+}
+
 function PageRenderLayer({
   documentId,
   isPdfDarkMode,
@@ -1143,13 +1159,16 @@ function PageRenderLayer({
   const { provides: renderProvides } = useRenderCapability();
   const documentState = useDocumentState(documentId);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const imageUrlRef = useRef<string | null>(null);
+  const [hasRenderError, setHasRenderError] = useState(false);
+  const [retryVersion, setRetryVersion] = useState(0);
   const refreshVersion = documentState?.pageRefreshVersions[pageIndex] ?? 0;
 
   useEffect(() => {
     if (!renderProvides || documentState?.status !== "loaded") return;
 
     let isCurrentRender = true;
+    setHasRenderError(false);
+
     const task = renderProvides.forDocument(documentId).renderPage({
       pageIndex,
       options: {
@@ -1161,15 +1180,10 @@ function PageRenderLayer({
 
     task
       .toPromise()
-      .then((blob) => {
+      .then((blob) => blobToDataUrl(blob))
+      .then((dataUrl) => {
         if (!isCurrentRender) return;
-
-        const nextImageUrl = URL.createObjectURL(blob);
-        if (imageUrlRef.current) {
-          URL.revokeObjectURL(imageUrlRef.current);
-        }
-        imageUrlRef.current = nextImageUrl;
-        setImageUrl(nextImageUrl);
+        setImageUrl(dataUrl);
       })
       .catch((renderError) => {
         if (!isCurrentRender) return;
@@ -1178,6 +1192,7 @@ function PageRenderLayer({
           pageIndex,
           renderError,
         });
+        setHasRenderError(true);
       });
 
     return () => {
@@ -1190,19 +1205,20 @@ function PageRenderLayer({
     documentState?.status,
     pageIndex,
     refreshVersion,
+    retryVersion,
     renderProvides,
-    imageUrlRef,
   ]);
 
-  useEffect(
-    () => () => {
-      if (imageUrlRef.current) {
-        URL.revokeObjectURL(imageUrlRef.current);
-        imageUrlRef.current = null;
-      }
-    },
-    [imageUrlRef]
-  );
+  const handleRetry = useCallback(() => {
+    setHasRenderError(false);
+    setRetryVersion((version) => version + 1);
+  }, []);
+
+  // A page render can genuinely fail (e.g. "Error creating WebGL context.").
+  // Surface a recoverable fallback instead of a silent blank page.
+  if (hasRenderError) {
+    return <PageRenderError isPdfDarkMode={isPdfDarkMode} onRetry={handleRetry} />;
+  }
 
   if (!imageUrl) return null;
 
@@ -1220,6 +1236,33 @@ function PageRenderLayer({
       draggable={false}
       style={isPdfDarkMode ? { filter: PDF_DARK_MODE_FILTER } : undefined}
     />
+  );
+}
+
+function PageRenderError({
+  isPdfDarkMode,
+  onRetry,
+}: {
+  isPdfDarkMode: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className={`absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center text-sm ${
+        isPdfDarkMode ? "bg-black text-gray-300" : "bg-white text-gray-600"
+      }`}
+      data-ec-pdf-page-error="true"
+    >
+      <AlertCircle className="size-6 text-red-500" aria-hidden="true" />
+      <p>This page couldn&apos;t be rendered.</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded border border-black/15 bg-white px-3 py-1.5 font-semibold text-black transition hover:border-black/30 dark:border-white/15 dark:bg-gray-900 dark:text-gray-100 dark:hover:border-white/30"
+      >
+        Retry
+      </button>
+    </div>
   );
 }
 
