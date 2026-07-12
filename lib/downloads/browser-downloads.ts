@@ -9,7 +9,7 @@ import {
     canUseNativeFileDownload,
     shareBlobWithNativeDownloads,
 } from "@/lib/native-downloads";
-import { applyPdfPageEditsToBuffer } from "@/lib/pdf/page-edits";
+import { applyPdfPageEditsToBuffer, hasPdfPageEdits } from "@/lib/pdf/page-edits";
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 
 export type DownloadablePdf = {
@@ -182,24 +182,20 @@ export async function preparePdfDownloadBlob(
     blob: Blob,
     pageEdits?: PdfPageEdits | null,
 ) {
-    if (!pageEdits) {
+    const effectivePageEdits = hasPdfPageEdits(pageEdits) ? pageEdits : null;
+    if (!effectivePageEdits) {
         return blob;
     }
 
     const editedBuffer = await applyPdfPageEditsToBuffer(
         await blob.arrayBuffer(),
-        pageEdits,
+        effectivePageEdits,
     );
 
     return new Blob([editedBuffer], { type: blob.type || "application/pdf" });
 }
 
-async function saveBlob(blob: Blob, fileName: string) {
-    if (canUseNativeFileDownload()) {
-        await shareBlobWithNativeDownloads(blob, fileName);
-        return;
-    }
-
+function saveBlobWithBrowserDownload(blob: Blob, fileName: string) {
     const objectUrl = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
 
@@ -210,6 +206,19 @@ async function saveBlob(blob: Blob, fileName: string) {
     link.remove();
 
     window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
+}
+
+async function saveBlob(blob: Blob, fileName: string) {
+    if (canUseNativeFileDownload()) {
+        try {
+            await shareBlobWithNativeDownloads(blob, fileName);
+            return;
+        } catch {
+            // Fall back to browser download when native bridge fails.
+        }
+    }
+
+    saveBlobWithBrowserDownload(blob, fileName);
 }
 
 async function createZipBlob(entries: ZipEntry[]) {
@@ -262,11 +271,13 @@ async function createZipBlob(entries: ZipEntry[]) {
 }
 
 export async function downloadPdfFile({ fileUrl, fileName, pageEdits }: DownloadablePdf) {
+    const hasMeaningfulPageEdits = hasPdfPageEdits(pageEdits);
+    let blob: Blob;
+
     try {
-        const blob = await fetchPdfBlob(fileUrl, pageEdits);
-        await saveBlob(blob, ensurePdfFileName(fileName));
+        blob = await fetchPdfBlob(fileUrl, hasMeaningfulPageEdits ? pageEdits : null);
     } catch {
-        if (pageEdits) {
+        if (hasMeaningfulPageEdits) {
             window.alert("Could not prepare the edited PDF for download. Please try again.");
             return;
         }
@@ -278,6 +289,13 @@ export async function downloadPdfFile({ fileUrl, fileName, pageEdits }: Download
         document.body.appendChild(fallbackLink);
         fallbackLink.click();
         fallbackLink.remove();
+        return;
+    }
+
+    try {
+        await saveBlob(blob, ensurePdfFileName(fileName));
+    } catch {
+        window.alert("Could not save the PDF for download. Please try again.");
     }
 }
 
