@@ -1131,20 +1131,8 @@ function AiPaperView({
 
 }
 
-// Rasterized PDF pages are shown as images. We deliberately use a data: URL
-// rather than URL.createObjectURL(blob): blob: URLs are scoped to the live
-// document and cannot be serialized by session-replay tooling (rrweb), so every
-// page shows as a broken/blank image during replay playback even though the
-// user saw it fine. A data: URL embeds the pixels inline, so it is
-// replay-recordable.
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () =>
-      reject(reader.error ?? new Error("Failed to read rendered page blob."));
-    reader.readAsDataURL(blob);
-  });
+function blobToObjectUrl(blob: Blob) {
+  return URL.createObjectURL(blob);
 }
 
 function PageRenderLayer({
@@ -1180,10 +1168,18 @@ function PageRenderLayer({
 
     task
       .toPromise()
-      .then((blob) => blobToDataUrl(blob))
-      .then((dataUrl) => {
-        if (!isCurrentRender) return;
-        setImageUrl(dataUrl);
+      .then((blob) => {
+        const nextImageUrl = blobToObjectUrl(blob);
+        if (!isCurrentRender) {
+          URL.revokeObjectURL(nextImageUrl);
+          return;
+        }
+        setImageUrl((previousImageUrl) => {
+          if (previousImageUrl && previousImageUrl !== nextImageUrl) {
+            URL.revokeObjectURL(previousImageUrl);
+          }
+          return nextImageUrl;
+        });
       })
       .catch((renderError) => {
         if (!isCurrentRender) return;
@@ -1208,6 +1204,15 @@ function PageRenderLayer({
     retryVersion,
     renderProvides,
   ]);
+
+  useEffect(
+    () => () => {
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    },
+    [imageUrl],
+  );
 
   const handleRetry = useCallback(() => {
     setHasRenderError(false);
