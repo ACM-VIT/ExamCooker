@@ -11,11 +11,25 @@ const MAX_CACHE_ENTRIES = 8;
 const PDF_DOWNLOAD_STALL_TIMEOUT_MS = 15000;
 const pdfBufferCache = new Map<string, PdfBufferCacheEntry>();
 
+function evictPdfBufferEntry(fileUrl: string, entry: PdfBufferCacheEntry) {
+  pdfBufferCache.delete(fileUrl);
+
+  if (entry.listeners.size === 0) {
+    entry.abort?.();
+  }
+}
+
 function trimCache() {
   while (pdfBufferCache.size > MAX_CACHE_ENTRIES) {
     const oldestKey = pdfBufferCache.keys().next().value as string | undefined;
     if (!oldestKey) return;
-    pdfBufferCache.delete(oldestKey);
+    const oldestEntry = pdfBufferCache.get(oldestKey);
+    if (!oldestEntry) {
+      pdfBufferCache.delete(oldestKey);
+      continue;
+    }
+
+    evictPdfBufferEntry(oldestKey, oldestEntry);
   }
 }
 
