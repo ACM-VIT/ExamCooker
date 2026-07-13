@@ -147,6 +147,16 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
         });
     }, [query, syllabi]);
 
+    // Reset the window synchronously whenever the result set changes (e.g. on
+    // search) — doing this during render (rather than in an effect) means the
+    // new results are never committed with a stale, large visibleCount, which
+    // would briefly mount hundreds of rows and recreate the main-thread stall.
+    const [windowedQuery, setWindowedQuery] = useState(query);
+    if (windowedQuery !== query) {
+        setWindowedQuery(query);
+        setVisibleCount(INITIAL_VISIBLE_COUNT);
+    }
+
     // Only render a window of the (possibly huge) result set so the main thread
     // isn't blocked hydrating thousands of rows at once. More rows reveal as the
     // sentinel scrolls into view.
@@ -156,15 +166,18 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     );
     const hasMore = visibleCount < filtered.length;
 
-    // Reset the window whenever the result set changes (e.g. on search).
-    useEffect(() => {
-        setVisibleCount(INITIAL_VISIBLE_COUNT);
-    }, [query]);
-
     useEffect(() => {
         if (!hasMore) return;
         const sentinel = sentinelRef.current;
         if (!sentinel) return;
+
+        // Environments without IntersectionObserver (older embedded WebViews)
+        // can't lazily reveal rows, so fall back to rendering everything rather
+        // than leaving the catalog truncated at the initial window.
+        if (typeof IntersectionObserver === "undefined") {
+            setVisibleCount(filtered.length);
+            return;
+        }
 
         const observer = new IntersectionObserver(
             (entries) => {
@@ -177,7 +190,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-    }, [hasMore, visible.length]);
+    }, [hasMore, visible.length, filtered.length]);
 
     const clear = () => {
         setQuery("");
