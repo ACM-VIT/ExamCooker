@@ -10,7 +10,10 @@ import { usePathname } from "next/navigation";
 // Keep it behind an opt-in flag so we can validate the experimental path before
 // enabling it broadly; when disabled we render children directly with no animation.
 function pageViewTransitionsEnabled() {
-    return process.env.NEXT_PUBLIC_ENABLE_VIEW_TRANSITIONS === "true";
+    return (
+        process.env.NEXT_PUBLIC_ENABLE_VIEW_TRANSITIONS === "true" &&
+        typeof ViewTransition === "function"
+    );
 }
 
 function hasNativeShellAttributes() {

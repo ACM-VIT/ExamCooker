@@ -105,6 +105,32 @@ type ContextMenuState = {
     y: number;
 } | null;
 
+function PaperCardTransition({ children }: { children: React.ReactNode }) {
+    if (typeof ViewTransition !== "function") {
+        return <>{children}</>;
+    }
+
+    return (
+        <ViewTransition
+            enter={{
+                "filter-results": "paper-card-enter",
+                default: "none",
+            }}
+            exit={{
+                "filter-results": "paper-card-exit",
+                default: "none",
+            }}
+            update={{
+                "filter-results": "paper-card-move",
+                default: "none",
+            }}
+            default="none"
+        >
+            {children}
+        </ViewTransition>
+    );
+}
+
 type CoursePaperGridState = {
     contextMenu: ContextMenuState;
     isDownloading: boolean;
@@ -655,22 +681,7 @@ export default function CoursePaperGrid({
 
             <div className="course-paper-grid flex flex-wrap gap-3">
                 {papers.map((paper, index) => (
-                    <ViewTransition
-                        key={paper.id}
-                        enter={{
-                            "filter-results": "paper-card-enter",
-                            default: "none",
-                        }}
-                        exit={{
-                            "filter-results": "paper-card-exit",
-                            default: "none",
-                        }}
-                        update={{
-                            "filter-results": "paper-card-move",
-                            default: "none",
-                        }}
-                        default="none"
-                    >
+                    <PaperCardTransition key={paper.id}>
                         <div
                             className={`course-paper-grid-item min-w-0 basis-[calc((100%-0.75rem)/2)] sm:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-2.25rem)/4)] xl:basis-[calc((100%-3rem)/5)] ${wideStretchClass}`}
                         >
@@ -689,7 +700,7 @@ export default function CoursePaperGrid({
                                 onContextMenuOpen={openContextMenu}
                             />
                         </div>
-                    </ViewTransition>
+                    </PaperCardTransition>
                 ))}
             </div>
 
