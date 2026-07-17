@@ -27,6 +27,19 @@ const SCRIPT_ERROR_SENTINEL = "Script error.";
 const EXTENSION_RPC_REJECTION_SIGNATURE =
     /^Non-Error promise rejection captured with value: Object Not Found Matching Id:\d+, MethodName:update, ParamCount:4$/;
 
+// Browser extensions (commonly on Mobile Safari) that message their background
+// page after their tab has gone away throw "Invalid call to
+// runtime.sendMessage(). Tab not found." posthog-js captures the extension's
+// synthetic, unhandled Error and wraps it, so the value looks like
+// "'Error' captured as exception with message: 'Invalid call to
+// runtime.sendMessage(). Tab not found.'". It carries no stack and no examcooker
+// code, so it is pure noise we drop before it reaches error tracking.
+//
+// Match the exact wrapped extension message so a genuine app error that happens
+// to mention runtime.sendMessage still surfaces.
+const EXTENSION_SENDMESSAGE_SIGNATURE =
+    /^'Error' captured as exception with message: 'Invalid call to runtime\.sendMessage\(\)\. Tab not found\.'$/;
+
 function hasNoFrames(entry: { stacktrace?: { frames?: unknown[] } | null }) {
     // A genuinely sanitized/synthetic exception carries no usable stack. If the
     // entry has frames, it is a real, actionable exception that merely happens
@@ -72,10 +85,31 @@ function isUnactionableExtensionRejection(exception: unknown): boolean {
     return hasNoFrames(entry);
 }
 
+function isUnactionableExtensionSendMessage(exception: unknown): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as {
+        value?: unknown;
+        stacktrace?: { frames?: unknown[] } | null;
+    };
+
+    if (
+        typeof entry.value !== "string" ||
+        !EXTENSION_SENDMESSAGE_SIGNATURE.test(entry.value)
+    ) {
+        return false;
+    }
+
+    return hasNoFrames(entry);
+}
+
 function isUnactionableEntry(exception: unknown): boolean {
     return (
         isUnactionableScriptError(exception) ||
-        isUnactionableExtensionRejection(exception)
+        isUnactionableExtensionRejection(exception) ||
+        isUnactionableExtensionSendMessage(exception)
     );
 }
 
