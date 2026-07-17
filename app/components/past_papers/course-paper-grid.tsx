@@ -35,6 +35,10 @@ import {
     MOBILE_SELECT_ALL_HOST_ID,
 } from "./course-paper-grid-controls";
 
+type PaperCardTransitionProps = {
+    children: React.ReactNode;
+};
+
 type Props = {
     papers: CoursePaperListItem[];
     courseCode: string;
@@ -50,6 +54,32 @@ const WIDE_STRETCH_CLASS_BY_REMAINDER: Partial<Record<number, string>> = {
 const CONTEXT_MENU_WIDTH = 236;
 const CONTEXT_MENU_HEIGHT = 286;
 const CONTEXT_MENU_MARGIN = 10;
+
+function PaperCardTransition({ children }: PaperCardTransitionProps) {
+    if (typeof ViewTransition !== "function") {
+        return <>{children}</>;
+    }
+
+    return (
+        <ViewTransition
+            enter={{
+                "filter-results": "paper-card-enter",
+                default: "none",
+            }}
+            exit={{
+                "filter-results": "paper-card-exit",
+                default: "none",
+            }}
+            update={{
+                "filter-results": "paper-card-move",
+                default: "none",
+            }}
+            default="none"
+        >
+            {children}
+        </ViewTransition>
+    );
+}
 
 function clampContextMenuPoint(point: { x: number; y: number }) {
     if (typeof window === "undefined") return point;
@@ -655,22 +685,7 @@ export default function CoursePaperGrid({
 
             <div className="course-paper-grid flex flex-wrap gap-3">
                 {papers.map((paper, index) => (
-                    <ViewTransition
-                        key={paper.id}
-                        enter={{
-                            "filter-results": "paper-card-enter",
-                            default: "none",
-                        }}
-                        exit={{
-                            "filter-results": "paper-card-exit",
-                            default: "none",
-                        }}
-                        update={{
-                            "filter-results": "paper-card-move",
-                            default: "none",
-                        }}
-                        default="none"
-                    >
+                    <PaperCardTransition key={paper.id}>
                         <div
                             className={`course-paper-grid-item min-w-0 basis-[calc((100%-0.75rem)/2)] sm:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-2.25rem)/4)] xl:basis-[calc((100%-3rem)/5)] ${wideStretchClass}`}
                         >
@@ -689,7 +704,7 @@ export default function CoursePaperGrid({
                                 onContextMenuOpen={openContextMenu}
                             />
                         </div>
-                    </ViewTransition>
+                    </PaperCardTransition>
                 ))}
             </div>
 
