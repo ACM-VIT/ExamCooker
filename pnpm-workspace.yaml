@@ -3,8 +3,11 @@ packages:
 
 allowBuilds:
   '@mongodb-js/zstd': true
+  core-js: false
+  core-js-pure: false
   esbuild: true
-  node-liblzma: true
+  node-liblzma: false
+  sharp: true
   workerd: true
 
 overrides:
