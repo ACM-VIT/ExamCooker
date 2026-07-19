@@ -91,8 +91,15 @@ const configuredRemotePatterns = Array.from(
     ).values(),
 ).filter((pattern): pattern is RemotePattern => pattern !== null);
 
+// Emit browser source maps only when we intend to upload them to PostHog error
+// tracking (set by the deploy workflow when the PostHog CLI secrets are present).
+// The upload step strips the `.map` files back out before packaging, so they are
+// never served publicly. Off by default, so ordinary builds are unaffected.
+const uploadSourceMaps = process.env.POSTHOG_SOURCEMAP_UPLOAD === "true";
+
 const nextConfig: NextConfig = {
     output: "standalone",
+    productionBrowserSourceMaps: uploadSourceMaps,
     cacheComponents: true,
     partialPrefetching: true,
     compiler: {
