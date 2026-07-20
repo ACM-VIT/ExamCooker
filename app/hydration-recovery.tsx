@@ -52,16 +52,24 @@ export default function HydrationRecovery() {
         getRecoveryKey(event.error ?? { message }, "hydration"),
       );
 
-      captureHydrationMismatchRecovered({
+      const telemetry = captureHydrationMismatchRecovered({
         path,
         reactErrorNumber: extractReactErrorNumber(message),
         errorMessage: message,
         reloadTriggered,
       });
 
-      if (reloadTriggered) {
-        window.location.reload();
+      if (!reloadTriggered) {
+        return;
       }
+
+      // Give the telemetry a chance to flush (it sends via `sendBeacon`, which
+      // survives navigation) before we reload, but never let a stalled capture
+      // block recovery — reload after 1s regardless.
+      void Promise.race([
+        telemetry,
+        new Promise<void>((resolve) => window.setTimeout(resolve, 1000)),
+      ]).finally(() => window.location.reload());
     };
 
     window.addEventListener("error", handleError);
