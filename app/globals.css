@@ -874,16 +874,23 @@ html[data-native-tabs-pending="true"] .ec-mobile-tab-bar {
     animation: none;
 }
 
+/* `.nav-lateral-enter` / `.nav-lateral-exit` are the legacy keyed enter/exit
+   classes; `.nav-lateral` is the single class used by the persistent
+   ViewTransition's `update` path, where one group carries both the old and new
+   snapshots. All three are kept so the animation plays regardless of path. */
 ::view-transition-image-pair(.nav-lateral-enter),
-::view-transition-image-pair(.nav-lateral-exit) {
+::view-transition-image-pair(.nav-lateral-exit),
+::view-transition-image-pair(.nav-lateral) {
     overflow: clip;
 }
 
-::view-transition-old(.nav-lateral-exit) {
+::view-transition-old(.nav-lateral-exit),
+::view-transition-old(.nav-lateral) {
     animation: nav-lateral-hold 90ms linear both;
 }
 
-::view-transition-new(.nav-lateral-enter) {
+::view-transition-new(.nav-lateral-enter),
+::view-transition-new(.nav-lateral) {
     animation: nav-lateral-snap-in 90ms cubic-bezier(0.2, 0, 0, 1) both;
     z-index: 2;
 }
