@@ -241,6 +241,82 @@ function isRrwebCrossOriginIframeException(result: CaptureResult): boolean {
     });
 }
 
+// On iOS, Capacitor's injected `native-bridge.js` registers a `pagehide`
+// listener (`sendPageHideMessage`) that funnels through `sendDataToNative`,
+// which posts to `window.webkit.messageHandlers.bridge`. While the WKWebView is
+// tearing down during navigation, `window.webkit.messageHandlers` is already
+// `undefined`, so the access throws
+// `TypeError: undefined is not an object (evaluating 'window.webkit.messageHandlers')`.
+// posthog-js (running inside the WebView) then captures it as an unhandled
+// exception. The page is already unloading, so nothing user-facing breaks — it
+// is pure teardown-race noise from a third-party bridge, not our code.
+//
+// We match narrowly: the exact `window.webkit.messageHandlers` access message
+// AND a Capacitor bridge frame (`sendPageHideMessage` / `sendDataToNative`).
+// Neither symbol exists anywhere in examcooker's own code, and requiring the
+// bridge frame keeps any unrelated future `webkit.messageHandlers` throw
+// visible.
+const CAPACITOR_WEBKIT_HANDLER_MESSAGE = "window.webkit.messageHandlers";
+const CAPACITOR_BRIDGE_FRAME_FUNCTIONS = new Set([
+    "sendPageHideMessage",
+    "sendDataToNative",
+]);
+
+function hasCapacitorBridgeFrame(exception: {
+    stacktrace?: { frames?: unknown[] } | null;
+}): boolean {
+    const frames = exception.stacktrace?.frames;
+    if (!Array.isArray(frames)) return false;
+
+    return frames.some((frame) => {
+        const fn =
+            frame && typeof frame === "object"
+                ? (frame as { function?: unknown }).function
+                : undefined;
+        return typeof fn === "string" && CAPACITOR_BRIDGE_FRAME_FUNCTIONS.has(fn);
+    });
+}
+
+function isCapacitorTeardownException(exception: unknown): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as {
+        type?: unknown;
+        value?: unknown;
+        stacktrace?: { frames?: unknown[] } | null;
+    };
+
+    if (entry.type !== "TypeError") {
+        return false;
+    }
+
+    if (
+        typeof entry.value !== "string" ||
+        !entry.value.includes(CAPACITOR_WEBKIT_HANDLER_MESSAGE)
+    ) {
+        return false;
+    }
+
+    return hasCapacitorBridgeFrame(entry);
+}
+
+function isCapacitorBridgeTeardownNoise(event: CaptureResult): boolean {
+    if (event.event !== "$exception") {
+        return false;
+    }
+
+    const exceptionList = event.properties?.$exception_list;
+    if (!Array.isArray(exceptionList) || exceptionList.length === 0) {
+        return false;
+    }
+
+    // Only drop when EVERY entry is the benign Capacitor teardown throw, so an
+    // event chaining it with a genuine exception keeps its actionable detail.
+    return exceptionList.every(isCapacitorTeardownException);
+}
+
 function beforeSend(result: CaptureResult | null): CaptureResult | null {
     const filteredResult = dropScriptErrorNoise(result);
     if (!filteredResult) {
@@ -250,6 +326,11 @@ function beforeSend(result: CaptureResult | null): CaptureResult | null {
     if (isRrwebCrossOriginIframeException(filteredResult)) {
         return null;
     }
+
+    if (isCapacitorBridgeTeardownNoise(filteredResult)) {
+        return null;
+    }
+
     return filteredResult;
 }
 
