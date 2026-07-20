@@ -415,12 +415,12 @@ export function capturePdfPageRenderFailed(input: {
     capturePostHogException(error, properties);
 }
 
-export async function captureHydrationMismatchRecovered(input: {
+export function captureHydrationMismatchRecovered(input: {
     path: string;
     reactErrorNumber: number | null;
     errorMessage?: string | null;
     reloadTriggered: boolean;
-}): Promise<void> {
+}) {
     const properties: AnalyticsProperties = {
         path: input.path,
         react_error_number: input.reactErrorNumber,
@@ -428,46 +428,26 @@ export async function captureHydrationMismatchRecovered(input: {
         reload_triggered: input.reloadTriggered,
     };
 
-    // The recovery path reloads the document immediately after this call, which
-    // cancels any in-flight request — and on the first hydration failure
-    // `posthog-js` may not even be loaded yet. So await the client here (the
-    // caller awaits us before reloading) and, when a reload is imminent, send
-    // via `sendBeacon` so the event survives navigation. Otherwise the very
-    // events this is meant to measure would be dropped on the recovery path.
-    try {
-        const client = await initializePostHogClient();
-        if (!client) {
-            return;
-        }
+    // Detection and the guarded reload happen in an inline `beforeInteractive`
+    // script (see `app/layout.tsx`); this only reports the recorded incident
+    // once the page is stable (after any reload has already completed), so the
+    // capture never races the navigation that would otherwise drop it.
 
-        // Custom event so hydration-driven blank viewers are measurable in
-        // funnels and dashboards. The failing sessions emit no
-        // `pdf_page_render_failed` (the failure never reaches the render catch)
-        // and, until now, nothing that pinpointed a hydration mismatch — so the
-        // true rate was undercounted.
-        client.capture(
-            "hydration_mismatch_recovered",
-            properties,
-            input.reloadTriggered
-                ? { send_instantly: true, transport: "sendBeacon" }
-                : undefined,
-        );
+    // Custom event so hydration-driven blank viewers are measurable in funnels
+    // and dashboards. The failing sessions emit no `pdf_page_render_failed`
+    // (the failure never reaches the render catch) and, until now, nothing that
+    // pinpointed a hydration mismatch — so the true rate was undercounted.
+    capturePostHogEvent("hydration_mismatch_recovered", properties);
 
-        // Also surface it as a `$exception` in Error Tracking so it shows up
-        // alongside other client errors with the recovery context attached.
-        const error = new Error(
-            `Hydration mismatch recovered${
-                input.reactErrorNumber ? ` (React #${input.reactErrorNumber})` : ""
-            } on ${input.path}${input.reloadTriggered ? " — reloaded" : ""}`,
-        );
-        error.name = "HydrationMismatchRecovered";
-        // `captureException` takes no transport option, but awaiting the client
-        // above guarantees `posthog-js` is loaded, so its own page-unload
-        // handler beacons this queued event out when the reload fires.
-        client.captureException(error, properties);
-    } catch {
-        // Telemetry is best-effort; never block recovery on it.
-    }
+    // Also surface it as a `$exception` in Error Tracking so it shows up
+    // alongside other client errors with the recovery context attached.
+    const error = new Error(
+        `Hydration mismatch recovered${
+            input.reactErrorNumber ? ` (React #${input.reactErrorNumber})` : ""
+        } on ${input.path}${input.reloadTriggered ? " — reloaded" : ""}`,
+    );
+    error.name = "HydrationMismatchRecovered";
+    capturePostHogException(error, properties);
 }
 
 export function capturePdfDownloaded(input: {
