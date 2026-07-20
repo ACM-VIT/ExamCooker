@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useCallback, useRef, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "@/app/components/common/app-image";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useToast } from "@/app/components/ui/use-toast";
@@ -30,16 +31,18 @@ function getSyllabusFileName(syllabus: SyllabusItem) {
     });
 }
 
-function SyllabusRow({
+const SyllabusRow = React.memo(function SyllabusRow({
     syllabus,
     selected,
     onToggleSelect,
     onDownload,
+    onPrefetch,
 }: {
     syllabus: SyllabusItem;
     selected: boolean;
     onToggleSelect: (id: string) => void;
     onDownload: (id: string) => void;
+    onPrefetch: (href: string) => void;
 }) {
     const parsed = parseSyllabusName(syllabus.name);
     const displayName = parsed.courseName || formatSyllabusDisplayName(syllabus.name);
@@ -47,6 +50,8 @@ function SyllabusRow({
     const href = parsed.courseCode
         ? getCourseSyllabusPath(parsed.courseCode)
         : `/syllabus/${syllabus.id}`;
+
+    const handlePrefetch = () => onPrefetch(href);
 
     const handleToggleSelect = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -63,8 +68,10 @@ function SyllabusRow({
     return (
         <Link
             href={href}
-            prefetch
+            prefetch={false}
             transitionTypes={["nav-forward"]}
+            onPointerEnter={handlePrefetch}
+            onFocus={handlePrefetch}
             className={`ec-press group flex min-w-0 items-center gap-3 border-2 px-3 py-2.5 transition-[background-color,border-color,transform] duration-200 hover:border-b-white hover:bg-[#5FC4E7]/10 dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 ${selected
                     ? "border-black bg-[#5FC4E7] dark:border-[#3BF4C7] dark:bg-[#0C1222]"
                     : "border-[#5FC4E7] bg-white dark:border-[#ffffff]/20 dark:bg-[#0C1222]"
@@ -98,18 +105,31 @@ function SyllabusRow({
             </button>
         </Link>
     );
-}
+});
 
 function normalize(s: string) {
     return s.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+const INITIAL_VISIBLE_COUNT = 48;
+const LOAD_MORE_STEP = 48;
+
 export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     const [query, setQuery] = useState("");
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [isDownloading, setIsDownloading] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
     const inputRef = useRef<HTMLInputElement>(null);
+    const sentinelRef = useRef<HTMLDivElement>(null);
+    const { prefetch } = useRouter();
     const { toast } = useToast();
+
+    const prefetchHref = useCallback(
+        (href: string) => {
+            prefetch(href);
+        },
+        [prefetch],
+    );
 
     const syllabusById = useMemo(
         () => new Map(syllabi.map((syllabus) => [syllabus.id, syllabus])),
@@ -126,6 +146,51 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
             return code.includes(q) || name.includes(q);
         });
     }, [query, syllabi]);
+
+    // Reset the window synchronously whenever the result set changes (e.g. on
+    // search) — doing this during render (rather than in an effect) means the
+    // new results are never committed with a stale, large visibleCount, which
+    // would briefly mount hundreds of rows and recreate the main-thread stall.
+    const [windowedQuery, setWindowedQuery] = useState(query);
+    if (windowedQuery !== query) {
+        setWindowedQuery(query);
+        setVisibleCount(INITIAL_VISIBLE_COUNT);
+    }
+
+    // Only render a window of the (possibly huge) result set so the main thread
+    // isn't blocked hydrating thousands of rows at once. More rows reveal as the
+    // sentinel scrolls into view.
+    const visible = useMemo(
+        () => filtered.slice(0, visibleCount),
+        [filtered, visibleCount],
+    );
+    const hasMore = visibleCount < filtered.length;
+
+    useEffect(() => {
+        if (!hasMore) return;
+        const sentinel = sentinelRef.current;
+        if (!sentinel) return;
+
+        // Environments without IntersectionObserver (older embedded WebViews)
+        // can't lazily reveal rows, so fall back to rendering everything rather
+        // than leaving the catalog truncated at the initial window.
+        if (typeof IntersectionObserver === "undefined") {
+            setVisibleCount(filtered.length);
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    setVisibleCount((prev) => prev + LOAD_MORE_STEP);
+                }
+            },
+            { rootMargin: "600px 0px" },
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [hasMore, visible.length, filtered.length]);
 
     const clear = () => {
         setQuery("");
@@ -227,16 +292,24 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                         </p>
                     )}
                     <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                        {filtered.map((s) => (
+                        {visible.map((s) => (
                             <SyllabusRow
                                 key={s.id}
                                 syllabus={s}
                                 selected={selected.has(s.id)}
                                 onToggleSelect={toggle}
                                 onDownload={downloadSyllabus}
+                                onPrefetch={prefetchHref}
                             />
                         ))}
                     </div>
+                    {hasMore && (
+                        <div
+                            ref={sentinelRef}
+                            aria-hidden="true"
+                            className="h-8 w-full"
+                        />
+                    )}
                 </div>
             )}
             {count > 0 && (
