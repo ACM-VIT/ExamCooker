@@ -22,6 +22,7 @@ import { createPostHogServer } from "@/lib/posthog-server";
 
 const adapter = createAuthAdapter();
 const ROLE_REFRESH_INTERVAL_SECONDS = 5 * 60;
+const DELETED_ACCOUNT_EMAIL_DOMAIN = "@deleted.examcooker.local";
 const useSecureAuthCookies =
   (process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "").startsWith(
     "https://",
@@ -53,6 +54,17 @@ type SessionCallbackParams = {
   session: Session;
   token: AuthToken;
 };
+
+class DeletedAccountSessionError extends Error {
+  constructor() {
+    super("Session user has been deleted");
+    this.name = "DeletedAccountSessionError";
+  }
+}
+
+function isDeletedAccountEmail(email: string | null | undefined) {
+  return email?.endsWith(DELETED_ACCOUNT_EMAIL_DOMAIN) ?? false;
+}
 
 function requiredEnv(name: "AUTH_GOOGLE_ID" | "AUTH_GOOGLE_SECRET") {
   const value = process.env[name];
@@ -452,22 +464,31 @@ export const authConfig = {
         return token;
       }
 
-      const lastSyncedAt = Number(token.roleSyncedAt ?? 0);
       const userId = typeof token.id === "string" ? token.id : null;
-      if (
-        userId &&
-        (!lastSyncedAt || now - lastSyncedAt > ROLE_REFRESH_INTERVAL_SECONDS)
-      ) {
+      if (userId) {
+        const lastSyncedAt = Number(token.roleSyncedAt ?? 0);
+        const shouldRefreshRole =
+          !lastSyncedAt || now - lastSyncedAt > ROLE_REFRESH_INTERVAL_SECONDS;
+
         try {
           const dbUsers = await db
-            .select({ role: userTable.role })
+            .select({ email: userTable.email, role: userTable.role })
             .from(userTable)
             .where(eq(userTable.id, userId));
           const dbUser = dbUsers[0] ?? null;
 
-          if (dbUser?.role) token.role = dbUser.role;
-          token.roleSyncedAt = now;
+          if (!dbUser || isDeletedAccountEmail(dbUser.email)) {
+            throw new DeletedAccountSessionError();
+          }
+
+          if (shouldRefreshRole) {
+            if (dbUser.role) token.role = dbUser.role;
+            token.roleSyncedAt = now;
+          }
         } catch (error) {
+          if (error instanceof DeletedAccountSessionError) {
+            throw error;
+          }
           console.error("[auth] role refresh failed", error);
         }
       }

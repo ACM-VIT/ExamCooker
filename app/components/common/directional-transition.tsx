@@ -1,17 +1,23 @@
 "use client";
 
 import React, { ViewTransition, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import type { ViewTransitionClass } from "react";
 
-// `<ViewTransition>` is an experimental React API. On interrupted navigations it
-// can read `_retryCache` off a null Offscreen instance and throw an unhandled
-// `TypeError` when `<Suspense>` boundaries are torn down mid-transition (which they
-// are on every app route, since pages nest Suspense inside this keyed transition).
-// Keep it behind an opt-in flag so we can validate the experimental path before
-// enabling it broadly; when disabled we render children directly with no animation.
-function pageViewTransitionsEnabled() {
-    return process.env.NEXT_PUBLIC_ENABLE_VIEW_TRANSITIONS === "true";
-}
+// `<ViewTransition>` is an experimental React API. It used to be keyed on
+// `pathname`, which forced the whole page subtree to remount on every
+// navigation. Because pages stream their content behind nested `<Suspense>`
+// boundaries, interrupting a navigation tore down the exit-side Offscreen
+// instance while a suspended resource was still pending — React's retry path
+// then read `_retryCache` off a null Offscreen `stateNode` and threw an
+// unhandled `TypeError`.
+//
+// The directional animation never depended on that key: the forward / back /
+// lateral direction comes from React transition *types* (`transitionTypes` on
+// `<Link>` and `addTransitionType(...)` on programmatic navigations), which are
+// mapped to CSS classes below. So we keep a single, persistent `<ViewTransition>`
+// (no `key`) that is never remounted, and animate route changes through the
+// `update` path instead of key-driven enter/exit. Suspense boundaries are no
+// longer torn down mid-transition, which removes the crash at its root.
 
 function hasNativeShellAttributes() {
     if (typeof document === "undefined") return false;
@@ -43,33 +49,30 @@ function useDisablePageViewTransitions() {
     return disabled;
 }
 
+// Transition-type → CSS class mappings, shared by the enter (first mount) and
+// update (route-to-route) paths so both play the same directional animation.
+const NAV_TRANSITION_CLASSES: ViewTransitionClass = {
+    "nav-forward": "nav-forward",
+    "nav-back": "nav-back",
+    "nav-lateral": "nav-lateral",
+    default: "none",
+};
+
 export default function DirectionalTransition({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const pathname = usePathname();
     const disablePageViewTransitions = useDisablePageViewTransitions();
 
-    if (!pageViewTransitionsEnabled() || disablePageViewTransitions) {
+    if (disablePageViewTransitions) {
         return <>{children}</>;
     }
 
     return (
         <ViewTransition
-            key={pathname}
-            enter={{
-                "nav-forward": "nav-forward",
-                "nav-back": "nav-back",
-                "nav-lateral": "nav-lateral-enter",
-                default: "none",
-            }}
-            exit={{
-                "nav-forward": "nav-forward",
-                "nav-back": "nav-back",
-                "nav-lateral": "nav-lateral-exit",
-                default: "none",
-            }}
+            enter={NAV_TRANSITION_CLASSES}
+            update={NAV_TRANSITION_CLASSES}
             default="none"
         >
             {children}
