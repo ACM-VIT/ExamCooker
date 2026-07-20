@@ -106,6 +106,17 @@ function capturePostHogEvent(
         .catch(() => undefined);
 }
 
+function capturePostHogException(
+    error: Error,
+    properties?: AnalyticsProperties,
+) {
+    void initializePostHogClient()
+        .then((client) => {
+            client?.captureException(error, properties);
+        })
+        .catch(() => undefined);
+}
+
 function getQueryMetrics(query: string) {
     const trimmedQuery = query.trim();
     const queryTerms = trimmedQuery.split(/\s+/).filter(Boolean);
@@ -365,6 +376,43 @@ export function captureQuizSubmitted(input: {
                 ? Math.round((input.score / input.totalQuestions) * 100)
                 : 0,
     });
+}
+
+export type PdfPageRenderFailureReason =
+    | "render_error"
+    | "render_timeout"
+    | "empty_blob";
+
+export function capturePdfPageRenderFailed(input: {
+    documentId: string;
+    pageIndex: number;
+    reason: PdfPageRenderFailureReason;
+    timeoutMs?: number;
+    errorMessage?: string | null;
+}) {
+    const properties: AnalyticsProperties = {
+        pdf_document_id: input.documentId,
+        pdf_page_index: input.pageIndex,
+        pdf_page_number: input.pageIndex + 1,
+        failure_reason: input.reason,
+        timeout_ms: input.timeoutMs,
+        error_message: input.errorMessage?.slice(0, 500),
+    };
+
+    // Custom event so the blank-viewer failure rate is measurable in funnels
+    // and dashboards alongside the `content_viewed` event.
+    capturePostHogEvent("pdf_page_render_failed", properties);
+
+    // Also surface it as a `$exception` in Error Tracking. The render catch
+    // previously only `console.error`-ed, so these failures never reached
+    // PostHog and the true failure rate was invisible.
+    const error = new Error(
+        `PDF page render ${input.reason} (document ${input.documentId}, page ${
+            input.pageIndex + 1
+        })${input.errorMessage ? `: ${input.errorMessage}` : ""}`,
+    );
+    error.name = "PdfPageRenderError";
+    capturePostHogException(error, properties);
 }
 
 export function capturePdfDownloaded(input: {

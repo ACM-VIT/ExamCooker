@@ -35,6 +35,11 @@ jobs:
       NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
       NEXT_PUBLIC_POSTHOG_HOST: ${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
       NEXT_PUBLIC_POSTHOG_PROXY_PATH: ${{ vars.NEXT_PUBLIC_POSTHOG_PROXY_PATH }}
+      # Source-map upload is opt-in: it only runs once POSTHOG_CLI_TOKEN (a
+      # personal API key) and the POSTHOG_CLI_ENV_ID project id are configured.
+      # Until then this evaluates to "false" and the build behaves exactly as
+      # before (no source maps emitted, no upload step).
+      POSTHOG_SOURCEMAP_UPLOAD: ${{ secrets.POSTHOG_CLI_TOKEN != '' && vars.POSTHOG_CLI_ENV_ID != '' }}
 
     steps:
       - name: Checkout
@@ -75,6 +80,25 @@ jobs:
       - name: Build application
         working-directory: ${{ env.BUILD_DIR }}
         run: npm run build
+
+      # Symbolicate client stack traces in PostHog error tracking. Injects a chunk
+      # id into each built JS chunk, uploads the matching source maps, then strips
+      # the `.map` files so they are never served publicly. Gated on the CLI
+      # secrets and best-effort (continue-on-error) so it can never block a deploy.
+      - name: Upload source maps to PostHog
+        if: ${{ env.POSTHOG_SOURCEMAP_UPLOAD == 'true' }}
+        continue-on-error: true
+        working-directory: ${{ env.BUILD_DIR }}
+        env:
+          POSTHOG_CLI_TOKEN: ${{ secrets.POSTHOG_CLI_TOKEN }}
+          POSTHOG_CLI_ENV_ID: ${{ vars.POSTHOG_CLI_ENV_ID }}
+          # PostHog region host for the CLI; defaults to EU to match this project.
+          POSTHOG_CLI_HOST: ${{ vars.POSTHOG_CLI_HOST || 'https://eu.posthog.com' }}
+        run: |
+          set -eux
+          npx --yes @posthog/cli@latest --host "${POSTHOG_CLI_HOST}" sourcemap inject --directory .next/static
+          npx --yes @posthog/cli@latest --host "${POSTHOG_CLI_HOST}" sourcemap upload --directory .next/static
+          find .next/static -name '*.map' -type f -delete
 
       - name: Package deployment payload
         run: |

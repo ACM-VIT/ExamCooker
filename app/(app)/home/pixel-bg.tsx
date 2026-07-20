@@ -1,7 +1,7 @@
 "use client";
 
 import { Effect, EffectComposer, EffectPass, RenderPass } from 'postprocessing';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 type PixelBlastVariant = 'square' | 'circle' | 'triangle' | 'diamond';
@@ -425,6 +425,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     resizeObserver?: ResizeObserver;
     raf?: number;
     cleanupPointerEvents?: () => void;
+    cleanupContextEvents?: () => void;
     quad?: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
     timeOffset?: number;
     composer?: EffectComposer;
@@ -432,6 +433,9 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     liquidEffect?: Effect;
   } | null>(null);
   const prevConfigRef = useRef<ReinitConfig | null>(null);
+  // Bumped when the WebGL context is restored so the setup effect re-runs and
+  // rebuilds the renderer from scratch instead of drawing into a dead context.
+  const [reinitToken, setReinitToken] = useState(0);
 
   useEffect(() => {
     if (!autoPauseOffscreen) {
@@ -484,6 +488,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
       if (threeRef.current) {
         const t = threeRef.current;
         t.cleanupPointerEvents?.();
+        t.cleanupContextEvents?.();
         t.resizeObserver?.disconnect();
         cancelAnimationFrame(t.raf!);
         t.quad?.geometry.dispose();
@@ -635,8 +640,29 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
         onPointerDown,
         onPointerMove,
       );
+      const onContextLost = (event: Event) => {
+        // preventDefault lets the browser attempt to restore the context and
+        // fire webglcontextrestored; also stop the render loop immediately.
+        event.preventDefault();
+        if (threeRef.current?.raf != null) cancelAnimationFrame(threeRef.current.raf);
+        cancelAnimationFrame(raf);
+      };
+      const onContextRestored = () => {
+        // Rebuild the renderer from scratch on the next effect run.
+        setReinitToken(n => n + 1);
+      };
+      renderer.domElement.addEventListener('webglcontextlost', onContextLost, false);
+      renderer.domElement.addEventListener('webglcontextrestored', onContextRestored, false);
+      const cleanupContextEvents = () => {
+        renderer.domElement.removeEventListener('webglcontextlost', onContextLost, false);
+        renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored, false);
+      };
       let raf = 0;
       const animate = () => {
+        // Never feed draw calls into a lost context: Three.js would try to
+        // re-acquire the program and pass a null shader into gl.shaderSource().
+        // The loop is restarted by the webglcontextrestored handler below.
+        if (renderer.getContext().isContextLost()) return;
         if (autoPauseOffscreen && !visibilityRef.current.visible) {
           raf = requestAnimationFrame(animate);
           return;
@@ -674,6 +700,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
         resizeObserver: ro,
         raf,
         cleanupPointerEvents,
+        cleanupContextEvents,
         quad,
         timeOffset,
         composer,
@@ -709,6 +736,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
       if (!threeRef.current) return;
       const t = threeRef.current;
       t.cleanupPointerEvents?.();
+      t.cleanupContextEvents?.();
       t.resizeObserver?.disconnect();
       cancelAnimationFrame(t.raf!);
       t.quad?.geometry.dispose();
@@ -739,7 +767,8 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     autoPauseOffscreen,
     variant,
     color,
-    speed
+    speed,
+    reinitToken
   ]);
 
   return (

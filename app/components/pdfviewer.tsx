@@ -2,6 +2,7 @@
 
 import { createPluginRegistration } from "@embedpdf/core";
 import { EmbedPDF, useDocumentState } from "@embedpdf/core/react";
+import { PdfErrorCode } from "@embedpdf/models";
 import Image from "next/image";
 import {
   DocumentContent,
@@ -76,7 +77,11 @@ import {
   normalizePdfPageEdits,
   serializePdfPageEdits,
 } from "@/lib/pdf/page-edits";
-import { capturePdfDownloaded, getPostHogSessionId } from "@/lib/posthog/client";
+import {
+  capturePdfDownloaded,
+  capturePdfPageRenderFailed,
+  getPostHogSessionId,
+} from "@/lib/posthog/client";
 import {
   clearActivePdfSnapshot,
   setActivePdfSnapshot,
@@ -93,6 +98,9 @@ const PAGE_INPUT_CLASS =
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 3;
 const SLOW_LOAD_NOTICE_MS = 3500;
+// Promote an indefinitely-hung (or empty-blob) page render into the visible,
+// recoverable retry UI instead of leaving a silent blank page.
+const PAGE_RENDER_TIMEOUT_MS = 20000;
 const PDF_DARK_MODE_FILTER =
   "invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95)";
 const PDF_MARKDOWN_ENDPOINT = "/api/pdf/markdown";
@@ -1155,6 +1163,7 @@ function PageRenderLayer({
     if (!renderProvides || documentState?.status !== "loaded") return;
 
     let isCurrentRender = true;
+    let didSettle = false;
     setHasRenderError(false);
 
     const task = renderProvides.forDocument(documentId).renderPage({
@@ -1166,14 +1175,62 @@ function PageRenderLayer({
       },
     });
 
+    // A render that hangs indefinitely, rejects, or resolves with an empty
+    // blob all leave a silent blank page today. Funnel every one of them into
+    // the same recoverable retry UI and report it so the failure is visible in
+    // analytics instead of only reaching `console.error`.
+    const failRender = (
+      reason: "render_error" | "render_timeout" | "empty_blob",
+      errorMessage?: string | null,
+    ) => {
+      if (!isCurrentRender || didSettle) return;
+      didSettle = true;
+      capturePdfPageRenderFailed({
+        documentId,
+        pageIndex,
+        reason,
+        timeoutMs: reason === "render_timeout" ? PAGE_RENDER_TIMEOUT_MS : undefined,
+        errorMessage,
+      });
+      setHasRenderError(true);
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      if (!isCurrentRender || didSettle) return;
+      console.error("[PDFViewer] Page render timed out", {
+        documentId,
+        pageIndex,
+        timeoutMs: PAGE_RENDER_TIMEOUT_MS,
+      });
+      failRender("render_timeout");
+      // Best-effort: stop the underlying pdfium work so a hung render does not
+      // keep consuming resources after we have given up on it.
+      try {
+        task.abort({
+          code: PdfErrorCode.Cancelled,
+          message: "Page render timed out",
+        });
+      } catch {
+        // Aborting is best-effort; the error UI is already showing.
+      }
+    }, PAGE_RENDER_TIMEOUT_MS);
+
     task
       .toPromise()
       .then((blob) => {
-        const nextImageUrl = blobToObjectUrl(blob);
-        if (!isCurrentRender) {
-          URL.revokeObjectURL(nextImageUrl);
+        if (!isCurrentRender || didSettle) return;
+        // An empty blob paints nothing, so treat it as a recoverable failure
+        // rather than rendering a silent blank page.
+        if (!blob || blob.size === 0) {
+          console.error("[PDFViewer] Page render produced an empty blob", {
+            documentId,
+            pageIndex,
+          });
+          failRender("empty_blob");
           return;
         }
+        didSettle = true;
+        const nextImageUrl = blobToObjectUrl(blob);
         setImageUrl((previousImageUrl) => {
           if (previousImageUrl && previousImageUrl !== nextImageUrl) {
             URL.revokeObjectURL(previousImageUrl);
@@ -1182,17 +1239,29 @@ function PageRenderLayer({
         });
       })
       .catch((renderError) => {
-        if (!isCurrentRender) return;
+        if (!isCurrentRender || didSettle) return;
         console.error("[PDFViewer] Page render failed", {
           documentId,
           pageIndex,
           renderError,
         });
-        setHasRenderError(true);
+        failRender(
+          "render_error",
+          renderError instanceof Error
+            ? renderError.message
+            : typeof renderError === "string"
+              ? renderError
+              : (renderError as { reason?: { message?: string } } | null)?.reason
+                  ?.message,
+        );
+      })
+      .finally(() => {
+        window.clearTimeout(timeoutId);
       });
 
     return () => {
       isCurrentRender = false;
+      window.clearTimeout(timeoutId);
     };
   }, [
     documentId,
