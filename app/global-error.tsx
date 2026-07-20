@@ -5,7 +5,9 @@ import {
   claimChunkReload,
   clearReloadGuard,
   getChunkErrorKey,
+  getRecoveryKey,
   isChunkLoadError,
+  isHydrationError,
 } from "./global-error-reload-guard";
 
 type GlobalErrorProps = {
@@ -21,22 +23,32 @@ export default function GlobalError({
 }: GlobalErrorProps) {
     const retry = unstable_retry ?? reset;
     const isChunkError = isChunkLoadError(error);
+    const isHydrationMismatch = !isChunkError && isHydrationError(error);
+    const isReloadRecoverable = isChunkError || isHydrationMismatch;
 
     useEffect(() => {
-        if (!isChunkError) return;
-        // After a deploy, content-hashed chunk filenames change and the old
-        // chunks are removed from the server, so a client holding stale HTML
-        // requests chunk URLs that 404 and `next/dynamic` throws. Force a
-        // guarded reload to pull a fresh HTML document and current chunks.
-        if (claimChunkReload(getChunkErrorKey(error))) {
+        if (!isReloadRecoverable) return;
+        // Chunk errors: after a deploy, content-hashed chunk filenames change and
+        // the old chunks are removed from the server, so a client holding stale
+        // HTML requests chunk URLs that 404 and `next/dynamic` throws.
+        // Hydration errors (React #418/#419): a server/client render divergence
+        // corrupts the DOM. Most are recoverable and caught before the boundary
+        // by `HydrationRecovery`, but if one escalates to a fatal boundary error
+        // it lands here. Either way, force a guarded reload to pull a fresh HTML
+        // document and hydrate cleanly. The guard bounds us to one reload per
+        // signature, so a deterministic failure won't loop.
+        const key = isChunkError
+            ? getChunkErrorKey(error)
+            : getRecoveryKey(error, "hydration");
+        if (claimChunkReload(key)) {
             window.location.reload();
         }
-    }, [error, isChunkError]);
+    }, [error, isChunkError, isReloadRecoverable]);
 
     useEffect(() => {
-        if (isChunkError) return;
+        if (isReloadRecoverable) return;
         clearReloadGuard();
-    }, [isChunkError]);
+    }, [isReloadRecoverable]);
 
     return (
         <html lang="en" className="dark">
@@ -67,7 +79,7 @@ export default function GlobalError({
                         type="button"
                         onClick={() => {
                             clearReloadGuard();
-                            if (isChunkError) {
+                            if (isReloadRecoverable) {
                                 window.location.reload();
                                 return;
                             }

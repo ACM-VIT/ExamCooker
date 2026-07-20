@@ -415,6 +415,36 @@ export function capturePdfPageRenderFailed(input: {
     capturePostHogException(error, properties);
 }
 
+export function captureHydrationMismatchRecovered(input: {
+    path: string;
+    reactErrorNumber: number | null;
+    errorMessage?: string | null;
+    reloadTriggered: boolean;
+}) {
+    const properties: AnalyticsProperties = {
+        path: input.path,
+        react_error_number: input.reactErrorNumber,
+        error_message: input.errorMessage?.slice(0, 500),
+        reload_triggered: input.reloadTriggered,
+    };
+
+    // Custom event so hydration-driven blank viewers are measurable in funnels
+    // and dashboards. The failing sessions emit no `pdf_page_render_failed`
+    // (the failure never reaches the render catch) and, until now, nothing that
+    // pinpointed a hydration mismatch — so the true rate was undercounted.
+    capturePostHogEvent("hydration_mismatch_recovered", properties);
+
+    // Also surface it as a `$exception` in Error Tracking so it shows up
+    // alongside other client errors with the recovery context attached.
+    const error = new Error(
+        `Hydration mismatch recovered${
+            input.reactErrorNumber ? ` (React #${input.reactErrorNumber})` : ""
+        } on ${input.path}${input.reloadTriggered ? " — reloaded" : ""}`,
+    );
+    error.name = "HydrationMismatchRecovered";
+    capturePostHogException(error, properties);
+}
+
 export function capturePdfDownloaded(input: {
     fileName: string;
     fileUrl: string;
