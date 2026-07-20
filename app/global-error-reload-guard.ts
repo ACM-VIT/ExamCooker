@@ -1,5 +1,10 @@
-const RELOAD_FLAG = "examcooker:chunk-reload";
-const RELOAD_GUARD_TTL_MS = 60_000;
+export const RELOAD_FLAG = "examcooker:chunk-reload";
+export const RELOAD_GUARD_TTL_MS = 60_000;
+
+// Where the pre-hydration inline script (see `app/layout.tsx`) records a
+// detected hydration mismatch so the `HydrationRecovery` reporter can send its
+// telemetry once the page is stable.
+export const HYDRATION_RECOVERY_INCIDENT_KEY = "examcooker:hydration-recovery";
 
 type ReloadGuard = {
   key: string;
