@@ -6,6 +6,7 @@ import "@/app/globals.css";
 import UpsellToast from "@/app/components/ui/upsell-toast";
 import UpsellModal from "@/app/components/ui/upsell-modal";
 import PwaServiceWorker from "@/app/components/pwa-service-worker";
+import HydrationRecovery from "@/app/hydration-recovery";
 import CapacitorBridge from "@/app/components/capacitor-bridge";
 import NativeIosTabSync from "@/app/components/native-ios-tab-sync";
 import AndroidInstallBanner from "@/app/components/android-install-banner";
@@ -143,6 +144,7 @@ export default function RootLayout({
                     backgroundColor: "var(--ec-app-bg, #0C1222)",
                 }}
             >
+                <HydrationRecovery />
                 {children}
                 <Toaster />
                 <Suspense fallback={null}>
