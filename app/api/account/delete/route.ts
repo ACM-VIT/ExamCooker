@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { eq, sql } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import { type Database, db } from "@/db";
@@ -18,6 +19,13 @@ import {
   viewHistory,
   vote,
 } from "@/db/schema";
+
+const SESSION_COOKIE_BASE_NAMES = [
+  "authjs.session-token",
+  "__Secure-authjs.session-token",
+  "next-auth.session-token",
+  "__Secure-next-auth.session-token",
+];
 
 async function tableExists(tableName: string) {
   const result = await db.execute<{ exists: boolean }>(sql`
@@ -98,7 +106,32 @@ export async function POST() {
       .where(eq(user.id, userId));
   });
 
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true });
+  const cookieStore = await cookies();
+  const sessionCookieNames = new Set(SESSION_COOKIE_BASE_NAMES);
+
+  for (const cookie of cookieStore.getAll()) {
+    if (
+      SESSION_COOKIE_BASE_NAMES.some(
+        (baseName) =>
+          cookie.name === baseName || cookie.name.startsWith(`${baseName}.`),
+      )
+    ) {
+      sessionCookieNames.add(cookie.name);
+    }
+  }
+
+  for (const name of sessionCookieNames) {
+    response.cookies.set(name, "", {
+      httpOnly: true,
+      maxAge: 0,
+      path: "/",
+      sameSite: "lax",
+      secure: name.startsWith("__Secure-"),
+    });
+  }
+
+  return response;
 }
 
 async function deleteCliAccess(
