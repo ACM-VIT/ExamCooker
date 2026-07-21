@@ -381,7 +381,8 @@ export function captureQuizSubmitted(input: {
 export type PdfPageRenderFailureReason =
     | "render_error"
     | "render_timeout"
-    | "empty_blob";
+    | "empty_blob"
+    | "image_decode";
 
 export function capturePdfPageRenderFailed(input: {
     documentId: string;
