@@ -1158,6 +1158,11 @@ function PageRenderLayer({
   const [hasRenderError, setHasRenderError] = useState(false);
   const [retryVersion, setRetryVersion] = useState(0);
   const refreshVersion = documentState?.pageRefreshVersions[pageIndex] ?? 0;
+  // Guards against reporting the same page failure twice. `setHasRenderError`
+  // is async, so a browser that fires `onerror` more than once on the broken
+  // <Image> before the component re-renders would otherwise double-count the
+  // telemetry. Reset per render attempt below so a fresh failure still reports.
+  const didReportRenderErrorRef = useRef(false);
 
   useEffect(() => {
     if (!renderProvides || documentState?.status !== "loaded") return;
@@ -1165,6 +1170,7 @@ function PageRenderLayer({
     let isCurrentRender = true;
     let didSettle = false;
     setHasRenderError(false);
+    didReportRenderErrorRef.current = false;
 
     const task = renderProvides.forDocument(documentId).renderPage({
       pageIndex,
@@ -1298,6 +1304,8 @@ function PageRenderLayer({
   // this handler that failure was silent: no retry UI and no telemetry. Route
   // it into the same recoverable path as every other render failure.
   const handleImageError = useCallback(() => {
+    if (didReportRenderErrorRef.current) return;
+    didReportRenderErrorRef.current = true;
     console.error("[PDFViewer] Page image failed to decode or paint", {
       documentId,
       pageIndex,
