@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useReducer, useRef } from "react";
 import { useDocumentState } from "@embedpdf/core/react";
-import { Rotation } from "@embedpdf/models";
+import { PdfErrorCode, Rotation } from "@embedpdf/models";
 import { useRenderCapability } from "@embedpdf/plugin-render/react";
 import type { PdfPageRotation } from "@/lib/pdf/page-edits";
 
@@ -75,6 +75,7 @@ export default function PdfPageThumbnail({
     }
 
     let cancelled = false;
+    let didSettle = false;
     dispatchPreview({ type: "loading" });
 
     const task = renderProvides.forDocument(documentId).renderPage({
@@ -90,6 +91,7 @@ export default function PdfPageThumbnail({
       .toPromise()
       .then((blob) => {
         if (cancelled) return;
+        didSettle = true;
         const nextImageUrl = URL.createObjectURL(blob);
         if (imageUrlRef.current) {
           URL.revokeObjectURL(imageUrlRef.current);
@@ -99,11 +101,22 @@ export default function PdfPageThumbnail({
       })
       .catch(() => {
         if (cancelled) return;
+        didSettle = true;
         dispatchPreview({ type: "error" });
       });
 
     return () => {
       cancelled = true;
+      if (!didSettle) {
+        try {
+          task.abort({
+            code: PdfErrorCode.Cancelled,
+            message: "Thumbnail render cancelled",
+          });
+        } catch {
+          // Aborting is best-effort; cleanup should not throw during unmount.
+        }
+      }
     };
   }, [documentId, documentState?.status, pageIndex, renderProvides, rotation]);
 

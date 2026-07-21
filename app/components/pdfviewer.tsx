@@ -1268,6 +1268,16 @@ function PageRenderLayer({
     return () => {
       isCurrentRender = false;
       window.clearTimeout(timeoutId);
+      if (!didSettle) {
+        try {
+          task.abort({
+            code: PdfErrorCode.Cancelled,
+            message: "Page render cancelled",
+          });
+        } catch {
+          // Aborting is best-effort; cleanup should not throw during unmount.
+        }
+      }
     };
   }, [
     documentId,
