@@ -1285,8 +1285,30 @@ function PageRenderLayer({
 
   const handleRetry = useCallback(() => {
     setHasRenderError(false);
+    // Drop any stale blob (e.g. one that failed to decode) so the fresh render
+    // starts from a blank page instead of re-painting — and re-firing onError
+    // on — the broken image before the new blob resolves. The imageUrl cleanup
+    // effect revokes the old object URL.
+    setImageUrl(null);
     setRetryVersion((version) => version + 1);
   }, []);
+
+  // The render task can resolve with a perfectly good blob that the browser
+  // then fails to decode or paint — the broken-image-icon blank page. Without
+  // this handler that failure was silent: no retry UI and no telemetry. Route
+  // it into the same recoverable path as every other render failure.
+  const handleImageError = useCallback(() => {
+    console.error("[PDFViewer] Page image failed to decode or paint", {
+      documentId,
+      pageIndex,
+    });
+    capturePdfPageRenderFailed({
+      documentId,
+      pageIndex,
+      reason: "image_decode",
+    });
+    setHasRenderError(true);
+  }, [documentId, pageIndex]);
 
   // A page render can genuinely fail (e.g. "Error creating WebGL context.").
   // Surface a recoverable fallback instead of a silent blank page.
@@ -1308,6 +1330,7 @@ function PageRenderLayer({
       data-ec-pdf-page-index={pageIndex}
       data-ec-pdf-page-number={pageIndex + 1}
       draggable={false}
+      onError={handleImageError}
       style={isPdfDarkMode ? { filter: PDF_DARK_MODE_FILTER } : undefined}
     />
   );
