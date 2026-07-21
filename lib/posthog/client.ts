@@ -381,7 +381,8 @@ export function captureQuizSubmitted(input: {
 export type PdfPageRenderFailureReason =
     | "render_error"
     | "render_timeout"
-    | "empty_blob";
+    | "empty_blob"
+    | "image_decode";
 
 export function capturePdfPageRenderFailed(input: {
     documentId: string;
@@ -412,6 +413,41 @@ export function capturePdfPageRenderFailed(input: {
         })${input.errorMessage ? `: ${input.errorMessage}` : ""}`,
     );
     error.name = "PdfPageRenderError";
+    capturePostHogException(error, properties);
+}
+
+export function captureHydrationMismatchRecovered(input: {
+    path: string;
+    reactErrorNumber: number | null;
+    errorMessage?: string | null;
+    reloadTriggered: boolean;
+}) {
+    const properties: AnalyticsProperties = {
+        path: input.path,
+        react_error_number: input.reactErrorNumber,
+        error_message: input.errorMessage?.slice(0, 500),
+        reload_triggered: input.reloadTriggered,
+    };
+
+    // Detection and the guarded reload happen in an inline `beforeInteractive`
+    // script (see `app/layout.tsx`); this only reports the recorded incident
+    // once the page is stable (after any reload has already completed), so the
+    // capture never races the navigation that would otherwise drop it.
+
+    // Custom event so hydration-driven blank viewers are measurable in funnels
+    // and dashboards. The failing sessions emit no `pdf_page_render_failed`
+    // (the failure never reaches the render catch) and, until now, nothing that
+    // pinpointed a hydration mismatch — so the true rate was undercounted.
+    capturePostHogEvent("hydration_mismatch_recovered", properties);
+
+    // Also surface it as a `$exception` in Error Tracking so it shows up
+    // alongside other client errors with the recovery context attached.
+    const error = new Error(
+        `Hydration mismatch recovered${
+            input.reactErrorNumber ? ` (React #${input.reactErrorNumber})` : ""
+        } on ${input.path}${input.reloadTriggered ? " — reloaded" : ""}`,
+    );
+    error.name = "HydrationMismatchRecovered";
     capturePostHogException(error, properties);
 }
 
