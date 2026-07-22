@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   claimChunkReload,
   clearReloadGuard,
   getChunkErrorKey,
+  getRecoveryKey,
   hasFreshReloadGuard,
   isChunkLoadError,
 } from "../app/global-error-reload-guard";
@@ -63,6 +65,16 @@ try {
 
   assert.equal(isChunkLoadError(chunkError), true);
   assert.equal(isChunkLoadError(new Error("ordinary failure")), false);
+  assert.equal(
+    getRecoveryKey(new Error("Minified React error #418"), "hydration"),
+    "hydration:Error:Minified React error #418:",
+    "hydration recovery keys include the trailing digest field used by the inline guard",
+  );
+  assert.match(
+    readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    /\+':'\+\(\(err&&err\.digest\)\|\|''\)/,
+    "the pre-hydration inline guard must use the same digest-aware key shape",
+  );
 
   installWindow(createMemoryStorage());
   assert.equal(claimChunkReload(key), true, "first chunk error claims a guarded reload");
