@@ -348,8 +348,11 @@ function InlineYouTubePlayerInner({
         try {
             player.currentTime = nextTime;
         } catch {
-            // Some embed states reject direct time assignment; keep the UI in
-            // sync anyway so the slider does not appear frozen.
+            // Some embed states reject direct time assignment. Bail without
+            // committing the requested position so the slider/timestamp keep
+            // reflecting where the video actually is rather than a spot it
+            // never reached.
+            return;
         }
 
         dispatch({
