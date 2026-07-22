@@ -59,6 +59,7 @@ import {
   useReducer,
   useRef,
   useState,
+  type SyntheticEvent,
 } from "react";
 import {
   Streamdown,
@@ -1158,6 +1159,7 @@ function PageRenderLayer({
   const [hasRenderError, setHasRenderError] = useState(false);
   const [retryVersion, setRetryVersion] = useState(0);
   const refreshVersion = documentState?.pageRefreshVersions[pageIndex] ?? 0;
+  const activeImageUrlRef = useRef<string | null>(null);
   // Guards against reporting the same page failure twice. `setHasRenderError`
   // is async, so a browser that fires `onerror` more than once on the broken
   // <Image> before the component re-renders would otherwise double-count the
@@ -1237,6 +1239,9 @@ function PageRenderLayer({
         }
         didSettle = true;
         const nextImageUrl = blobToObjectUrl(blob);
+        activeImageUrlRef.current = nextImageUrl;
+        didReportRenderErrorRef.current = false;
+        setHasRenderError(false);
         setImageUrl((previousImageUrl) => {
           if (previousImageUrl && previousImageUrl !== nextImageUrl) {
             URL.revokeObjectURL(previousImageUrl);
@@ -1293,6 +1298,9 @@ function PageRenderLayer({
   useEffect(
     () => () => {
       if (imageUrl) {
+        if (activeImageUrlRef.current === imageUrl) {
+          activeImageUrlRef.current = null;
+        }
         URL.revokeObjectURL(imageUrl);
       }
     },
@@ -1301,6 +1309,7 @@ function PageRenderLayer({
 
   const handleRetry = useCallback(() => {
     setHasRenderError(false);
+    activeImageUrlRef.current = null;
     // Drop any stale blob (e.g. one that failed to decode) so the fresh render
     // starts from a blank page instead of re-painting — and re-firing onError
     // on — the broken image before the new blob resolves. The imageUrl cleanup
@@ -1313,7 +1322,15 @@ function PageRenderLayer({
   // then fails to decode or paint — the broken-image-icon blank page. Without
   // this handler that failure was silent: no retry UI and no telemetry. Route
   // it into the same recoverable path as every other render failure.
-  const handleImageError = useCallback(() => {
+  const handleImageError = useCallback((event: SyntheticEvent<HTMLImageElement>) => {
+    const failedImageUrl = event.currentTarget.currentSrc || event.currentTarget.src;
+    if (
+      activeImageUrlRef.current &&
+      failedImageUrl &&
+      failedImageUrl !== activeImageUrlRef.current
+    ) {
+      return;
+    }
     if (didReportRenderErrorRef.current) return;
     didReportRenderErrorRef.current = true;
     console.error("[PDFViewer] Page image failed to decode or paint", {
