@@ -64,10 +64,9 @@ export function getChunkErrorKey(error: Error & { digest?: string }): string {
 }
 
 export function getRecoveryKey(error: unknown, prefix: string): string {
-  const candidate = (error ?? {}) as { name?: unknown; digest?: unknown };
+  const candidate = (error ?? {}) as { name?: unknown };
   const name = typeof candidate.name === "string" ? candidate.name : "Error";
-  const digest = typeof candidate.digest === "string" ? candidate.digest : "";
-  return [prefix, name, getErrorMessage(error), digest].join(":");
+  return [prefix, name, getErrorMessage(error)].join(":");
 }
 
 function readReloadGuard(): ReloadGuard | null {
