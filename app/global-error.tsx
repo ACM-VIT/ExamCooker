@@ -6,6 +6,7 @@ import {
   clearReloadGuard,
   getChunkErrorKey,
   getRecoveryKey,
+  HYDRATION_RECOVERY_KEY_PREFIX,
   isChunkLoadError,
   isHydrationError,
 } from "./global-error-reload-guard";
@@ -39,7 +40,7 @@ export default function GlobalError({
         // signature, so a deterministic failure won't loop.
         const key = isChunkError
             ? getChunkErrorKey(error)
-            : getRecoveryKey(error, "hydration");
+            : getRecoveryKey(error, HYDRATION_RECOVERY_KEY_PREFIX);
         if (claimChunkReload(key)) {
             window.location.reload();
         }

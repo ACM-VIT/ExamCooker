@@ -1,13 +1,19 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   claimChunkReload,
   clearReloadGuard,
   getChunkErrorKey,
+  getRecoveryKey,
   hasFreshReloadGuard,
+  HYDRATION_RECOVERY_KEY_PREFIX,
   isChunkLoadError,
 } from "../app/global-error-reload-guard";
 
 const RELOAD_FLAG = "examcooker:chunk-reload";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = __filename.slice(0, __filename.lastIndexOf("/"));
 
 type SessionStorageStub = {
   getItem(key: string): string | null;
@@ -73,6 +79,39 @@ try {
     [RELOAD_FLAG]: JSON.stringify({ key, timestamp: now - 60_001 }),
   }));
   assert.equal(claimChunkReload(key), true, "stale guard allows a later reload");
+
+  const hydrationError = Object.assign(
+    new Error("Minified React error #418; visit https://react.dev/errors/418"),
+    {
+      digest: "hydration-digest",
+      name: "Error",
+    },
+  );
+  const hydrationKey = getRecoveryKey(
+    hydrationError,
+    HYDRATION_RECOVERY_KEY_PREFIX,
+  );
+
+  installWindow(createMemoryStorage({
+    [RELOAD_FLAG]: JSON.stringify({ key: hydrationKey, timestamp: now }),
+  }));
+  assert.equal(
+    claimChunkReload(hydrationKey),
+    false,
+    "early hydration recovery guard must block the fatal boundary path",
+  );
+
+  const layoutSource = readFileSync(`${__dirname}/../app/layout.tsx`, "utf8");
+  assert.match(
+    layoutSource,
+    /HYDRATION_RECOVERY_KEY_PREFIX/,
+    "inline hydration script must use the shared hydration key prefix",
+  );
+  assert.match(
+    layoutSource,
+    /var key=PREFIX\+'\:'\+\(\(err&&err\.name\)\|\|'Error'\)\+'\:'\+msg\+'\:'\+digest/,
+    "inline hydration script key must include the digest segment used by getRecoveryKey",
+  );
 
   installWindow(createThrowingStorage());
   assert.equal(
