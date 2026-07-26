@@ -3,8 +3,10 @@ import {
   claimChunkReload,
   clearReloadGuard,
   getChunkErrorKey,
+  getHydrationRecoveryKey,
   hasFreshReloadGuard,
   isChunkLoadError,
+  isHydrationError,
 } from "../app/global-error-reload-guard";
 
 const RELOAD_FLAG = "examcooker:chunk-reload";
@@ -68,6 +70,29 @@ try {
   assert.equal(claimChunkReload(key), true, "first chunk error claims a guarded reload");
   assert.equal(hasFreshReloadGuard(key), true, "claim writes a fresh reload guard");
   assert.equal(claimChunkReload(key), false, "fresh guard blocks repeated reloads");
+
+  const hydrationError = new Error("Minified React error #418");
+  const hydrationErrorWithDigest = Object.assign(
+    new Error("Minified React error #418"),
+    { digest: "NEXT_BOUNDARY_DIGEST" },
+  );
+  const hydrationKey = getHydrationRecoveryKey(hydrationError);
+
+  assert.equal(isHydrationError(hydrationError), true);
+  assert.equal(
+    getHydrationRecoveryKey(hydrationErrorWithDigest),
+    hydrationKey,
+    "hydration reload keys must not depend on boundary-only digests",
+  );
+
+  installWindow(createMemoryStorage({
+    [RELOAD_FLAG]: JSON.stringify({ key: hydrationKey, timestamp: now }),
+  }));
+  assert.equal(
+    claimChunkReload(getHydrationRecoveryKey(hydrationErrorWithDigest)),
+    false,
+    "a pre-hydration guard blocks a later global-error hydration reload",
+  );
 
   installWindow(createMemoryStorage({
     [RELOAD_FLAG]: JSON.stringify({ key, timestamp: now - 60_001 }),

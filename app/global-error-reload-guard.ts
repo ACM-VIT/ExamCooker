@@ -1,5 +1,6 @@
 export const RELOAD_FLAG = "examcooker:chunk-reload";
 export const RELOAD_GUARD_TTL_MS = 60_000;
+export const HYDRATION_RECOVERY_KEY_PREFIX = "hydration";
 
 // Where the pre-hydration inline script (see `app/layout.tsx`) records a
 // detected hydration mismatch so the `HydrationRecovery` reporter can send its
@@ -63,11 +64,10 @@ export function getChunkErrorKey(error: Error & { digest?: string }): string {
   ].join(":");
 }
 
-export function getRecoveryKey(error: unknown, prefix: string): string {
-  const candidate = (error ?? {}) as { name?: unknown; digest?: unknown };
+export function getHydrationRecoveryKey(error: unknown): string {
+  const candidate = (error ?? {}) as { name?: unknown };
   const name = typeof candidate.name === "string" ? candidate.name : "Error";
-  const digest = typeof candidate.digest === "string" ? candidate.digest : "";
-  return [prefix, name, getErrorMessage(error), digest].join(":");
+  return [HYDRATION_RECOVERY_KEY_PREFIX, name, getErrorMessage(error)].join(":");
 }
 
 function readReloadGuard(): ReloadGuard | null {
