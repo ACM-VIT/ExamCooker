@@ -58,7 +58,7 @@ export default function HydrationRecovery() {
     const path =
       typeof incident.path === "string"
         ? incident.path
-        : window.location.pathname + window.location.search;
+        : window.location.pathname;
 
     captureHydrationMismatchRecovered({
       path,

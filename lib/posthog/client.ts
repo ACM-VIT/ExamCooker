@@ -422,8 +422,9 @@ export function captureHydrationMismatchRecovered(input: {
     errorMessage?: string | null;
     reloadTriggered: boolean;
 }) {
+    const safePath = input.path.split(/[?#]/, 1)[0] || "/";
     const properties: AnalyticsProperties = {
-        path: input.path,
+        path: safePath,
         react_error_number: input.reactErrorNumber,
         error_message: input.errorMessage?.slice(0, 500),
         reload_triggered: input.reloadTriggered,
@@ -445,7 +446,7 @@ export function captureHydrationMismatchRecovered(input: {
     const error = new Error(
         `Hydration mismatch recovered${
             input.reactErrorNumber ? ` (React #${input.reactErrorNumber})` : ""
-        } on ${input.path}${input.reloadTriggered ? " — reloaded" : ""}`,
+        } on ${safePath}${input.reloadTriggered ? " — reloaded" : ""}`,
     );
     error.name = "HydrationMismatchRecovered";
     capturePostHogException(error, properties);
