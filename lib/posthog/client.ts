@@ -434,6 +434,45 @@ export function capturePdfPageRenderFailed(input: {
     capturePostHogException(error, properties);
 }
 
+export type PdfDocumentLoadFailureReason = "load_timeout" | "load_error";
+
+export function capturePdfDocumentLoadFailed(input: {
+    documentId: string;
+    reason: PdfDocumentLoadFailureReason;
+    timeoutMs?: number;
+    loadingProgress?: number | null;
+    errorMessage?: string | null;
+}) {
+    const properties: AnalyticsProperties = {
+        pdf_document_id: input.documentId,
+        failure_reason: input.reason,
+        timeout_ms: input.timeoutMs,
+        loading_progress:
+            typeof input.loadingProgress === "number"
+                ? Math.round(input.loadingProgress)
+                : undefined,
+        error_message: input.errorMessage?.slice(0, 500),
+    };
+
+    // Custom event so the silent "Loading PDF…" placeholder failure rate is
+    // measurable alongside `content_viewed`. The document-load phase previously
+    // had no timeout and emitted no telemetry, so a stalled buffer left the
+    // viewer on the placeholder forever with nothing captured — the sibling of
+    // `pdf_page_render_failed`, but for the load phase instead of the render one.
+    capturePostHogEvent("pdf_document_load_failed", properties);
+
+    // Also surface it as a `$exception` in Error Tracking, matching the
+    // page-render failure path, so document-load stalls show up alongside
+    // other client errors with the load context attached.
+    const error = new Error(
+        `PDF document load ${input.reason} (document ${input.documentId})${
+            input.errorMessage ? `: ${input.errorMessage}` : ""
+        }`,
+    );
+    error.name = "PdfDocumentLoadError";
+    capturePostHogException(error, properties);
+}
+
 export function captureHydrationMismatchRecovered(input: {
     path: string;
     reactErrorNumber: number | null;
