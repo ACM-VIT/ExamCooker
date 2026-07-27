@@ -317,6 +317,55 @@ function isCapacitorBridgeTeardownNoise(event: CaptureResult): boolean {
     return exceptionList.every(isCapacitorTeardownException);
 }
 
+// The app runs View Transitions in a few spots: the persistent React
+// `<ViewTransition>` that animates every route change, another in the past-paper
+// grid, and the manual `document.startViewTransition()` on the dark-mode toggle.
+// When a transition is initiated while the tab is hidden — e.g. a navigation that
+// resolves after the user has switched away — the browser intentionally skips it
+// and throws `DOMException: InvalidStateError: Skipped ViewTransition due to
+// document being hidden`. Nothing breaks for the user: the underlying route or
+// theme change still applies, only the animation is dropped. The declarative
+// React `<ViewTransition>` sites can't be guarded at the call site (React starts
+// the transition internally), so we drop this expected browser behavior here
+// before it reaches error tracking as noise.
+//
+// Match the skip-because-hidden signature on a DOMException so a genuine
+// InvalidStateError from other code still surfaces.
+const VIEW_TRANSITION_HIDDEN_SIGNATURE =
+    /Skipped\s+view\s*transition\b[\s\S]*\bhidden\b/i;
+
+function isViewTransitionHiddenSkip(exception: unknown): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as { type?: unknown; value?: unknown };
+
+    if (entry.type !== "DOMException") {
+        return false;
+    }
+
+    return (
+        typeof entry.value === "string" &&
+        VIEW_TRANSITION_HIDDEN_SIGNATURE.test(entry.value)
+    );
+}
+
+function isViewTransitionHiddenNoise(event: CaptureResult): boolean {
+    if (event.event !== "$exception") {
+        return false;
+    }
+
+    const exceptionList = event.properties?.$exception_list;
+    if (!Array.isArray(exceptionList) || exceptionList.length === 0) {
+        return false;
+    }
+
+    // Only drop when EVERY entry is the benign hidden-tab skip, so an event that
+    // chains it with a genuine exception keeps its actionable detail.
+    return exceptionList.every(isViewTransitionHiddenSkip);
+}
+
 function beforeSend(result: CaptureResult | null): CaptureResult | null {
     const filteredResult = dropScriptErrorNoise(result);
     if (!filteredResult) {
@@ -328,6 +377,10 @@ function beforeSend(result: CaptureResult | null): CaptureResult | null {
     }
 
     if (isCapacitorBridgeTeardownNoise(filteredResult)) {
+        return null;
+    }
+
+    if (isViewTransitionHiddenNoise(filteredResult)) {
         return null;
     }
 
