@@ -52,8 +52,13 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
         const button = buttonRef.current;
         const supportsViewTransitions = "startViewTransition" in document;
         const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        // A View Transition started while the tab is hidden is skipped by the
+        // browser (its `ready` promise rejects with an InvalidStateError
+        // DOMException), so fall back to an un-animated theme change when we're
+        // not visible rather than surfacing that expected rejection.
+        const isDocumentVisible = document.visibilityState === "visible";
 
-        if (!supportsViewTransitions || prefersReducedMotion || !button) {
+        if (!supportsViewTransitions || prefersReducedMotion || !button || !isDocumentVisible) {
             applyTheme(next);
             return;
         }
@@ -68,16 +73,19 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
 
         document.documentElement.classList.add("theme-transition");
 
-        const transition = (document as Document & {
-            startViewTransition: (callback: () => void) => {
-                ready: Promise<void>;
-                finished: Promise<void>;
-            };
-        }).startViewTransition(() => {
-            applyTheme(next);
-        });
-
         try {
+            // Kept inside the try so a synchronous throw or a rejected transition
+            // (e.g. the tab is hidden between the guard above and this call) falls
+            // back to an un-animated theme change instead of escaping unhandled.
+            const transition = (document as Document & {
+                startViewTransition: (callback: () => void) => {
+                    ready: Promise<void>;
+                    finished: Promise<void>;
+                };
+            }).startViewTransition(() => {
+                applyTheme(next);
+            });
+
             await transition.ready;
             document.documentElement.animate(
                 {
