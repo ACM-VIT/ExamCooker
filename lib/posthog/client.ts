@@ -181,6 +181,24 @@ export function captureCourseSearchSubmitted(input: {
     });
 }
 
+export function captureCourseSearchNoResults(input: {
+    context: CourseSearchContext;
+    query: string;
+}) {
+    const trimmedQuery = input.query.trim();
+    if (!trimmedQuery) return;
+
+    // Capture the raw query so we can finally see what people search for and
+    // don't find. Failed searches while typing previously fired nothing, and
+    // the query text was never in the taxonomy, so the true zero-result volume
+    // was undercounted.
+    capturePostHogEvent("course_search_no_results", {
+        search_context: input.context,
+        search_query: trimmedQuery.slice(0, 200),
+        ...getQueryMetrics(trimmedQuery),
+    });
+}
+
 export function captureCourseSearchSelection(input: {
     context: CourseSearchContext;
     interaction: CourseSearchInteraction;
@@ -413,6 +431,45 @@ export function capturePdfPageRenderFailed(input: {
         })${input.errorMessage ? `: ${input.errorMessage}` : ""}`,
     );
     error.name = "PdfPageRenderError";
+    capturePostHogException(error, properties);
+}
+
+export type PdfDocumentLoadFailureReason = "load_timeout" | "load_error";
+
+export function capturePdfDocumentLoadFailed(input: {
+    documentId: string;
+    reason: PdfDocumentLoadFailureReason;
+    timeoutMs?: number;
+    loadingProgress?: number | null;
+    errorMessage?: string | null;
+}) {
+    const properties: AnalyticsProperties = {
+        pdf_document_id: input.documentId,
+        failure_reason: input.reason,
+        timeout_ms: input.timeoutMs,
+        loading_progress:
+            typeof input.loadingProgress === "number"
+                ? Math.round(input.loadingProgress)
+                : undefined,
+        error_message: input.errorMessage?.slice(0, 500),
+    };
+
+    // Custom event so the silent "Loading PDF…" placeholder failure rate is
+    // measurable alongside `content_viewed`. The document-load phase previously
+    // had no timeout and emitted no telemetry, so a stalled buffer left the
+    // viewer on the placeholder forever with nothing captured — the sibling of
+    // `pdf_page_render_failed`, but for the load phase instead of the render one.
+    capturePostHogEvent("pdf_document_load_failed", properties);
+
+    // Also surface it as a `$exception` in Error Tracking, matching the
+    // page-render failure path, so document-load stalls show up alongside
+    // other client errors with the load context attached.
+    const error = new Error(
+        `PDF document load ${input.reason} (document ${input.documentId})${
+            input.errorMessage ? `: ${input.errorMessage}` : ""
+        }`,
+    );
+    error.name = "PdfDocumentLoadError";
     capturePostHogException(error, properties);
 }
 
