@@ -181,6 +181,24 @@ export function captureCourseSearchSubmitted(input: {
     });
 }
 
+export function captureCourseSearchNoResults(input: {
+    context: CourseSearchContext;
+    query: string;
+}) {
+    const trimmedQuery = input.query.trim();
+    if (!trimmedQuery) return;
+
+    // Capture the raw query so we can finally see what people search for and
+    // don't find. Failed searches while typing previously fired nothing, and
+    // the query text was never in the taxonomy, so the true zero-result volume
+    // was undercounted.
+    capturePostHogEvent("course_search_no_results", {
+        search_context: input.context,
+        search_query: trimmedQuery.slice(0, 200),
+        ...getQueryMetrics(trimmedQuery),
+    });
+}
+
 export function captureCourseSearchSelection(input: {
     context: CourseSearchContext;
     interaction: CourseSearchInteraction;

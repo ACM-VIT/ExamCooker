@@ -1,6 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
-import Fuse from "fuse.js";
 import { cache } from "react";
+import { createCourseFuse } from "@/lib/course-search-fuse";
 import {
     and,
     count,
@@ -201,16 +201,7 @@ export async function getCoursePickerRecords(): Promise<CourseSearchRecord[]> {
 const getCourseSearchIndex = cache(async () => {
     const records = await getCourseSearchRecords();
 
-    return new Fuse(records, {
-        keys: [
-            { name: "title", weight: 0.6 },
-            { name: "code", weight: 0.3 },
-            { name: "aliases", weight: 0.1 },
-        ],
-        threshold: 0.3,
-        ignoreLocation: true,
-        minMatchCharLength: 3,
-    });
+    return createCourseFuse(records);
 });
 
 export async function getCourseGrid(): Promise<CourseGridItem[]> {
@@ -392,8 +383,13 @@ export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> 
     cacheTag("courses", "notes", "past_papers", "syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
+    // Search the full course catalog, not just courses that already have
+    // content. Gating this list to courses with papers/notes/syllabus made real
+    // but empty courses invisible from the homepage, so searching for them
+    // dead-ended on "No courses found". Content-rich courses still rank first
+    // (below), and their destination pages handle the empty state gracefully.
     const [courses, syllabusIdByCode] = await Promise.all([
-        getCourseSearchRecords(),
+        getCourseCatalogRows(),
         getSyllabusIdByCourseCode(),
     ]);
 
@@ -407,8 +403,12 @@ export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> 
             noteCount: c.noteCount,
             syllabusId: syllabusIdByCode[c.code] ?? null,
         }))
-        .filter((c) => c.paperCount > 0 || c.noteCount > 0 || c.syllabusId)
-        .sort((a, b) => b.paperCount - a.paperCount);
+        .sort(
+            (a, b) =>
+                b.paperCount - a.paperCount ||
+                b.noteCount - a.noteCount ||
+                a.title.localeCompare(b.title, "en", { sensitivity: "base" }),
+        );
 }
 
 export async function getCatalogStats(): Promise<CatalogStats> {
