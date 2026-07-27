@@ -7,8 +7,10 @@ import { useRouter } from "next/navigation";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import VoiceAgentButton from "@/app/components/voice/voice-agent-button";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
+import { createCourseFuse } from "@/lib/course-search-fuse";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import {
+    captureCourseSearchNoResults,
     captureCourseSearchSelection,
     captureCourseSearchSubmitted,
     type CourseSearchInteraction,
@@ -28,26 +30,13 @@ export type CourseResult = {
     noteCount: number;
     paperCount: number;
     syllabusId: string | null;
+    aliases?: string[];
 };
+
+const MAX_RESULTS = 8;
 
 interface CourseSearchProps {
     courses: CourseResult[];
-}
-
-function normalizeSearchInput(value: string) {
-    return value
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-}
-
-function includesAllTerms(value: string, terms: string[]) {
-    for (const term of terms) {
-        if (!value.includes(term)) return false;
-    }
-
-    return true;
 }
 
 function runAfterCurrentTask(callback: () => void) {
@@ -89,17 +78,11 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
         });
     };
 
-    const searchableCourses = useMemo(
-        () =>
-            courses.map((course) => ({
-                course,
-                codeUpper: course.code.toUpperCase(),
-                normalizedSearchable: normalizeSearchInput(
-                    `${course.code} ${course.title}`,
-                ),
-            })),
-        [courses],
-    );
+    // Fuzzy index shared with the command palette / voice search and the notes
+    // and past-papers grids (same weights + threshold via `createCourseFuse`),
+    // so typos and word-order variations ("engineering economics") match here
+    // too instead of dead-ending on the old exact-substring logic.
+    const courseFuse = useMemo(() => createCourseFuse(courses), [courses]);
 
     const filteredCourses = useMemo(() => {
         const trimmed = deferredQuery.trim();
@@ -107,23 +90,41 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
         const aliasCodes = getAliasCourseCodes(trimmed);
         const aliasSet = new Set(aliasCodes.map((code) => code.toUpperCase()));
         const normalizedCodeQuery = normalizeCourseCode(trimmed);
-        const normalizedQuery = normalizeSearchInput(trimmed);
-        const queryTerms = normalizedQuery.split(" ").filter(Boolean);
 
         const matches: CourseResult[] = [];
-        for (const { course, codeUpper, normalizedSearchable } of searchableCourses) {
-            if (
-                aliasSet.has(codeUpper) ||
-                codeUpper === normalizedCodeQuery ||
-                includesAllTerms(normalizedSearchable, queryTerms)
-            ) {
-                matches.push(course);
-                if (matches.length === 8) break;
+        const seen = new Set<string>();
+        const pushCourse = (course: CourseResult) => {
+            if (seen.has(course.code)) return;
+            seen.add(course.code);
+            matches.push(course);
+        };
+
+        // 1. Exact code + acronym/alias matches — highest confidence, always first.
+        for (const course of courses) {
+            const codeUpper = course.code.toUpperCase();
+            if (aliasSet.has(codeUpper) || codeUpper === normalizedCodeQuery) {
+                pushCourse(course);
             }
         }
 
-        return matches;
-    }, [deferredQuery, searchableCourses]);
+        // 2. Course-code prefixes (e.g. typing "BCSE20" before finishing the code).
+        if (normalizedCodeQuery.length >= 2) {
+            for (const course of courses) {
+                if (matches.length >= MAX_RESULTS) break;
+                if (course.code.toUpperCase().startsWith(normalizedCodeQuery)) {
+                    pushCourse(course);
+                }
+            }
+        }
+
+        // 3. Fuzzy relevance ranking for everything else (typos, word order, titles).
+        for (const { item } of courseFuse.search(trimmed, { limit: MAX_RESULTS })) {
+            if (matches.length >= MAX_RESULTS) break;
+            pushCourse(item);
+        }
+
+        return matches.slice(0, MAX_RESULTS);
+    }, [deferredQuery, courses, courseFuse]);
     const dropdownVisible =
         !nativeSearchAvailable && isOpen && (filteredCourses.length > 0 || query.trim().length > 0);
 
@@ -138,6 +139,23 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
 
         return () => window.clearTimeout(timeoutId);
     }, [dropdownVisible, filteredCourses, prefetch]);
+
+    // Report queries that settle on zero results so we can finally see what
+    // people search for and can't find. Debounced and de-duplicated so a single
+    // failed search fires one event rather than one per keystroke.
+    const lastNoResultQuery = useRef<string | null>(null);
+    useEffect(() => {
+        const trimmed = deferredQuery.trim();
+        if (trimmed.length < 2 || filteredCourses.length > 0) return;
+        if (lastNoResultQuery.current === trimmed) return;
+
+        const timeoutId = window.setTimeout(() => {
+            lastNoResultQuery.current = trimmed;
+            captureCourseSearchNoResults({ context: "home", query: trimmed });
+        }, 600);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [deferredQuery, filteredCourses]);
 
     const alignSearchInputForNativeAndroid = () => {
         if (
