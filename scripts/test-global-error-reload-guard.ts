@@ -71,7 +71,7 @@ try {
     "hydration recovery keys include the trailing digest field used by the inline guard",
   );
   assert.match(
-    readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFileSync(new URL("../app/hydration-recovery-script.ts", import.meta.url), "utf8"),
     /\+':'\+\(\(err&&err\.digest\)\|\|''\)/,
     "the pre-hydration inline guard must use the same digest-aware key shape",
   );
