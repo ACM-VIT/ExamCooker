@@ -11,7 +11,10 @@ import {
     or,
 } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
+import { createCourseFuse } from "@/lib/course-search-fuse";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
+    getCoursePickerRecords,
     getCourseSearchRecords,
     type CourseSearchRecord,
 } from "@/lib/data/course-catalog";
@@ -186,6 +189,8 @@ export async function getCourseNotesPage(input: {
     }));
 }
 
+// Courses that already have notes — used for the default browse grid and the
+// hero stats, where surfacing empty courses would only add noise.
 async function getNoteCourseRecords(): Promise<CourseSearchRecord[]> {
     "use cache";
     cacheTag("courses", "notes", "past_papers");
@@ -194,6 +199,24 @@ async function getNoteCourseRecords(): Promise<CourseSearchRecord[]> {
     return (await getCourseSearchRecords())
         .filter((courseRow) => courseRow.noteCount > 0)
         .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base" }));
+}
+
+// The full course catalog, used for notes *search* (the dropdown and the
+// `/notes?search=` grid). Gating search on `noteCount > 0` made real but empty
+// courses (e.g. BHUM104L "Macro Economics") invisible, so searching for them
+// dead-ended on "No courses found". Content-rich courses still rank first
+// (below); the course notes page renders a "no notes yet" upload prompt for the
+// empty ones instead of 404-ing.
+async function getNoteSearchRecords(): Promise<CourseSearchRecord[]> {
+    "use cache";
+    cacheTag("courses", "notes", "past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    return [...(await getCoursePickerRecords())].sort(
+        (a, b) =>
+            b.noteCount - a.noteCount ||
+            a.title.localeCompare(b.title, "en", { sensitivity: "base" }),
+    );
 }
 
 /* ─── Notes course grid (mirrors courseCatalog pattern) ─── */
@@ -222,42 +245,44 @@ export async function getNotesCourseGrid(): Promise<NotesCourseGridItem[]> {
     }));
 }
 
+function toNotesCourseGridItem(record: CourseSearchRecord): NotesCourseGridItem {
+    return {
+        id: record.id,
+        code: record.code,
+        title: record.title,
+        noteCount: record.noteCount,
+        paperCount: record.paperCount,
+    };
+}
+
 export async function searchNotesCourseGrid(
     query: string,
 ): Promise<NotesCourseGridItem[]> {
-    const grid = await getNotesCourseGrid();
+    const records = await getNoteSearchRecords();
     const trimmed = query.trim();
-    if (!trimmed) return grid;
+    if (!trimmed) return records.map(toNotesCourseGridItem);
 
-    const upper = trimmed.toUpperCase().replace(/\s+/g, "");
-    const exact = grid.filter((c) => c.code === upper);
-    if (exact.length) return exact;
+    const upper = normalizeCourseCode(trimmed);
+    const exact = records.filter((c) => c.code === upper);
+    if (exact.length) return exact.map(toNotesCourseGridItem);
 
-    const prefix = grid.filter((c) => c.code.startsWith(upper));
-    if (prefix.length > 0 && prefix.length <= 50) return prefix;
+    const prefix = records.filter((c) => c.code.startsWith(upper));
+    if (prefix.length > 0 && prefix.length <= 50) {
+        return prefix.map(toNotesCourseGridItem);
+    }
 
     const lower = trimmed.toLowerCase();
-    const substring = grid.filter((c) => {
-        if (c.code.toLowerCase().includes(lower)) return true;
-        if (c.title.toLowerCase().includes(lower)) return true;
-        return false;
-    });
+    const substring = records.filter(
+        (c) =>
+            c.code.toLowerCase().includes(lower) ||
+            c.title.toLowerCase().includes(lower) ||
+            c.aliases.some((a) => a.toLowerCase().includes(lower)),
+    );
+    if (substring.length > 0) return substring.map(toNotesCourseGridItem);
 
-    if (substring.length > 0) return substring;
-
-    // fuzzy fallback
-    const Fuse = (await import("fuse.js")).default;
-    const fuse = new Fuse(grid, {
-        keys: [
-            { name: "title", weight: 0.6 },
-            { name: "code", weight: 0.4 },
-        ],
-        threshold: 0.3,
-        ignoreLocation: true,
-        minMatchCharLength: 3,
-    });
-
-    return fuse.search(trimmed).map(({ item }) => item);
+    // Fuzzy fallback shares the homepage weights + threshold via createCourseFuse.
+    const fuse = createCourseFuse(records);
+    return fuse.search(trimmed).map(({ item }) => toNotesCourseGridItem(item));
 }
 
 export type NotesStats = {
@@ -293,18 +318,16 @@ export async function getSearchableNoteCourses(): Promise<
     cacheTag("notes", "courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await getNoteCourseRecords();
+    const courses = await getNoteSearchRecords();
 
-    return courses
-        .map((c) => ({
-            id: c.id,
-            code: c.code,
-            title: c.title,
-            aliases: c.aliases,
-            noteCount: c.noteCount,
-            paperCount: c.paperCount,
-        }))
-        .sort((a, b) => b.noteCount - a.noteCount);
+    return courses.map((c) => ({
+        id: c.id,
+        code: c.code,
+        title: c.title,
+        aliases: c.aliases,
+        noteCount: c.noteCount,
+        paperCount: c.paperCount,
+    }));
 }
 
 export type RecentNote = {
