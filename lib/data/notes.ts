@@ -11,6 +11,7 @@ import {
     or,
 } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
+import { createCourseFuse } from "@/lib/course-search-fuse";
 import {
     getCourseSearchRecords,
     type CourseSearchRecord,
@@ -191,9 +192,25 @@ async function getNoteCourseRecords(): Promise<CourseSearchRecord[]> {
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
+    // Search the full course catalog, not just courses that already have notes.
+    // Gating this list to `noteCount > 0` made real but empty courses (e.g.
+    // BACHY105 "Applied Chemistry", which has papers but no notes yet) invisible
+    // from the notes search, so searching for them dead-ended on "No courses
+    // found" — the same mistake `getSearchableCourses` fixed for the homepage.
+    // The default browse grid and hero stats re-apply the notes gate below;
+    // search paths use the full set and the course page handles the empty state.
     return (await getCourseSearchRecords())
-        .filter((courseRow) => courseRow.noteCount > 0)
         .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base" }));
+}
+
+function toNotesGridItem(courseRow: CourseSearchRecord): NotesCourseGridItem {
+    return {
+        id: courseRow.id,
+        code: courseRow.code,
+        title: courseRow.title,
+        noteCount: courseRow.noteCount,
+        paperCount: courseRow.paperCount,
+    };
 }
 
 /* ─── Notes course grid (mirrors courseCatalog pattern) ─── */
@@ -211,23 +228,25 @@ export async function getNotesCourseGrid(): Promise<NotesCourseGridItem[]> {
     cacheTag("notes", "courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
+    // The default browse grid only lists courses that actually have notes.
     const courses = await getNoteCourseRecords();
 
-    return courses.map((c) => ({
-        id: c.id,
-        code: c.code,
-        title: c.title,
-        noteCount: c.noteCount,
-        paperCount: c.paperCount,
-    }));
+    return courses
+        .filter((c) => c.noteCount > 0)
+        .map(toNotesGridItem);
 }
 
 export async function searchNotesCourseGrid(
     query: string,
 ): Promise<NotesCourseGridItem[]> {
-    const grid = await getNotesCourseGrid();
     const trimmed = query.trim();
-    if (!trimmed) return grid;
+    // No query → fall back to the gated browse grid (courses with notes only).
+    if (!trimmed) return getNotesCourseGrid();
+
+    // Search across the full catalog so real-but-empty courses (e.g. BACHY105
+    // "Applied Chemistry") are findable instead of dead-ending on "No courses
+    // found". The course page handles the empty state gracefully.
+    const grid = (await getNoteCourseRecords()).map(toNotesGridItem);
 
     const upper = trimmed.toUpperCase().replace(/\s+/g, "");
     const exact = grid.filter((c) => c.code === upper);
@@ -245,17 +264,9 @@ export async function searchNotesCourseGrid(
 
     if (substring.length > 0) return substring;
 
-    // fuzzy fallback
-    const Fuse = (await import("fuse.js")).default;
-    const fuse = new Fuse(grid, {
-        keys: [
-            { name: "title", weight: 0.6 },
-            { name: "code", weight: 0.4 },
-        ],
-        threshold: 0.3,
-        ignoreLocation: true,
-        minMatchCharLength: 3,
-    });
+    // Fuzzy fallback shared with the homepage / notes dropdown so typos and
+    // word-order variations resolve identically everywhere.
+    const fuse = createCourseFuse(grid);
 
     return fuse.search(trimmed).map(({ item }) => item);
 }
@@ -270,7 +281,10 @@ export async function getNotesStats(): Promise<NotesStats> {
     cacheTag("notes", "courses");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await getNoteCourseRecords();
+    // Hero stats count only courses that actually have notes.
+    const courses = (await getNoteCourseRecords()).filter(
+        (courseRow) => courseRow.noteCount > 0,
+    );
     const noteCount = courses.reduce((sum, courseRow) => sum + courseRow.noteCount, 0);
     const courseCount = courses.length;
 
