@@ -512,10 +512,22 @@ export function captureHydrationMismatchRecovered(input: {
 export function capturePdfDownloaded(input: {
     fileName: string;
     fileUrl: string;
+    totalPages?: number | null;
+    rendered?: boolean | null;
 }) {
     capturePostHogEvent("pdf_downloaded", {
         file_name: input.fileName,
         file_url: input.fileUrl,
+        // A burst of downloads with `pdf_rendered: false` is the blank-viewer
+        // workaround — users bailing to the raw file because nothing painted in
+        // the in-app viewer. Without this flag that burst is indistinguishable
+        // from happy downloads of a working viewer, so the real failure rate of
+        // the core "read a past paper" flow stays invisible. `pdf_total_pages`
+        // adds the paging context (e.g. a multi-page doc that rendered nothing).
+        pdf_total_pages:
+            typeof input.totalPages === "number" ? input.totalPages : undefined,
+        pdf_rendered:
+            typeof input.rendered === "boolean" ? input.rendered : undefined,
     });
 }
 

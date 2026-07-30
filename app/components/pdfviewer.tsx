@@ -103,11 +103,16 @@ const SLOW_LOAD_NOTICE_MS = 3500;
 // Promote an indefinitely-hung (or empty-blob) page render into the visible,
 // recoverable retry UI instead of leaving a silent blank page.
 const PAGE_RENDER_TIMEOUT_MS = 20000;
-// The document-load phase (buffer -> opened document) had no equivalent guard:
-// a load that never progresses left the viewer on "Loading PDF…" forever with
-// nothing captured. Treat "no load progress for this window" as a stall and
-// promote it into the same recoverable retry UI, mirroring the render timeout.
-const DOCUMENT_LOAD_TIMEOUT_MS = 20000;
+// The document-load phase (buffer -> opened document) sat on a bare
+// "Loading PDF…" placeholder with *no* escape hatch until a flat 20s timeout —
+// far longer than the 5–12s users actually wait before bouncing, so the retry
+// UI and the load-failure telemetry effectively never reached them and the
+// viewer just stayed silently blank. Surface the recoverable stalled/retry
+// affordances quickly (mirroring the buffer/engine slow-load notice), and
+// hard-fail a load that makes *no* progress at all on a much shorter,
+// progress-aware window so the failure is both visible and captured.
+const DOCUMENT_LOAD_STALL_NOTICE_MS = 4000;
+const DOCUMENT_LOAD_TIMEOUT_MS = 10000;
 const PDF_DARK_MODE_FILTER =
   "invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95)";
 const PDF_MARKDOWN_ENDPOINT = "/api/pdf/markdown";
@@ -1150,6 +1155,19 @@ function blobToObjectUrl(blob: Blob) {
   return URL.createObjectURL(blob);
 }
 
+// Whether the in-app viewer has actually painted a PDF page. `PageRenderLayer`
+// tags every successfully rendered page image with `data-ec-pdf-page-image`;
+// when a render fails it swaps in an error placeholder with no such image. So
+// the absence of any tagged image at download time means the user is looking
+// at a blank (or all-error) viewer — the exact state that drives the
+// mass-download workaround this flag makes measurable.
+function hasRenderedPdfPage() {
+  if (typeof document === "undefined") return false;
+  return (
+    document.querySelector("img[data-ec-pdf-page-image='true']") !== null
+  );
+}
+
 function PageRenderLayer({
   documentId,
   isPdfDarkMode,
@@ -1512,13 +1530,18 @@ function ViewerToolbar({
     if (isDownloading) return;
 
     setIsDownloading(true);
-    capturePdfDownloaded({ fileName, fileUrl });
+    capturePdfDownloaded({
+      fileName,
+      fileUrl,
+      totalPages: scrollState.totalPages ?? null,
+      rendered: hasRenderedPdfPage(),
+    });
     try {
       await downloadPdfFile({ fileUrl, fileName, pageEdits });
     } finally {
       setIsDownloading(false);
     }
-  }, [fileName, fileUrl, isDownloading, pageEdits]);
+  }, [fileName, fileUrl, isDownloading, pageEdits, scrollState.totalPages]);
 
   const handleViewMarkdown = useCallback(() => {
     setIsMarkdownMenuOpen(false);
@@ -2140,6 +2163,7 @@ function DocumentLoadPhase({
   onRetry: () => void;
 }) {
   const [hasTimedOut, setHasTimedOut] = useState(false);
+  const [hasStalled, setHasStalled] = useState(false);
   // `capturePdfDocumentLoadFailed` fires from an effect that re-runs on every
   // progress update; guard against reporting the same stall more than once.
   const didReportRef = useRef(false);
@@ -2147,11 +2171,18 @@ function DocumentLoadPhase({
   useEffect(() => {
     if (isError || hasTimedOut) return;
 
-    // Reset the stall timer on each fresh load-progress update. A document that
-    // never starts loading OR stalls part-way through both leave the "Loading
-    // PDF…" placeholder up indefinitely today; treat "no progress for the whole
-    // window" as a failure while letting a genuinely slow-but-advancing load
-    // keep going.
+    // Re-arm both watchdogs on every fresh load-progress update. A document
+    // that never starts opening OR stalls part-way through both used to leave
+    // the "Loading PDF…" placeholder up with no way out. Surface the
+    // recoverable stalled/retry affordances quickly, then promote a load that
+    // makes *no* progress at all into the error UI — while letting a genuinely
+    // slow-but-advancing load keep going.
+    setHasStalled(false);
+
+    const stallNoticeId = window.setTimeout(() => {
+      setHasStalled(true);
+    }, DOCUMENT_LOAD_STALL_NOTICE_MS);
+
     const timeoutId = window.setTimeout(() => {
       console.error("[PDFViewer] Document load timed out", {
         documentId,
@@ -2161,7 +2192,10 @@ function DocumentLoadPhase({
       setHasTimedOut(true);
     }, DOCUMENT_LOAD_TIMEOUT_MS);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      window.clearTimeout(stallNoticeId);
+      window.clearTimeout(timeoutId);
+    };
   }, [documentId, hasTimedOut, isError, loadingProgress]);
 
   useEffect(() => {
@@ -2199,7 +2233,15 @@ function DocumentLoadPhase({
       ? ` ${Math.round(loadingProgress)}%`
       : "";
 
-  return <LoadingState label={`Loading PDF${progress}`} />;
+  return (
+    <LoadingState
+      label={`Loading PDF${progress}`}
+      fileUrl={fileUrl}
+      progress={loadingProgress}
+      showFallback={hasStalled}
+      onRetry={onRetry}
+    />
+  );
 }
 
 function DocumentViewport({
