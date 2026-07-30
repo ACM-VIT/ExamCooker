@@ -3,6 +3,7 @@ import {
     getPostHogClientConfig,
     getPostHogProjectKey,
 } from "@/lib/posthog/shared";
+import { toRouteTemplate } from "@/lib/posthog/route-template";
 import { captureVoiceRealtimeAnalyticsAction } from "@/app/components/voice/voice-agent-actions";
 
 export type VoiceAgentEntryPoint = "nav" | "home_search";
@@ -480,11 +481,22 @@ export function captureHydrationMismatchRecovered(input: {
     reloadTriggered: boolean;
 }) {
     const safePath = input.path.split(/[?#]/, 1)[0] || "/";
+    const routeTemplate = toRouteTemplate(safePath);
     const properties: AnalyticsProperties = {
+        // Keep the full (query/fragment-stripped) path for drill-down, but note
+        // it is deliberately NOT part of the exception message below.
         path: safePath,
+        route: routeTemplate,
         react_error_number: input.reactErrorNumber,
         error_message: input.errorMessage?.slice(0, 500),
         reload_triggered: input.reloadTriggered,
+        // Pin every hydration-recovery incident to a single Error Tracking
+        // issue. Baking the concrete path (with its resource CUID) into the
+        // message previously minted a brand-new issue — and a duplicate
+        // "new issue" alert — for every newly visited note/paper/syllabus page.
+        // A constant fingerprint also stops React #418-vs-#419 and
+        // reloaded-vs-not from splitting the same underlying bug.
+        $exception_fingerprint: "HydrationMismatchRecovered",
     };
 
     // Detection and the guarded reload happen in an inline `beforeInteractive`
@@ -503,7 +515,7 @@ export function captureHydrationMismatchRecovered(input: {
     const error = new Error(
         `Hydration mismatch recovered${
             input.reactErrorNumber ? ` (React #${input.reactErrorNumber})` : ""
-        } on ${safePath}${input.reloadTriggered ? " — reloaded" : ""}`,
+        } on ${routeTemplate}${input.reloadTriggered ? " — reloaded" : ""}`,
     );
     error.name = "HydrationMismatchRecovered";
     capturePostHogException(error, properties);

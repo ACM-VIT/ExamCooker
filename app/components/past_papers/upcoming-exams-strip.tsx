@@ -9,18 +9,27 @@ type Props = {
     emptyPrompt?: string | null;
 };
 
-function formatWhen(date: Date | null): string | null {
+// Pin the locale and timezone (matching the rest of the app, e.g. the notes
+// `POSTED_AT_FORMATTER`) instead of `toLocaleDateString(undefined, …)`, whose
+// output depends on the runtime's default locale — a classic source of
+// server/browser text-content mismatches.
+const WHEN_FORMATTER = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    month: "short",
+    day: "numeric",
+});
+
+// `now` is passed in (captured once by the caller) rather than read from the
+// clock per card, so the relative label is computed from a single deterministic
+// reference instant.
+function formatWhen(date: Date | null, now: Date): string | null {
     if (!date) return null;
-    const now = new Date();
     const diffMs = date.getTime() - now.getTime();
     const days = Math.round(diffMs / (1000 * 60 * 60 * 24));
     if (days === 0) return "Today";
     if (days === 1) return "Tomorrow";
     if (days > 1 && days <= 14) return `In ${days} days`;
-    return date.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-    });
+    return WHEN_FORMATTER.format(date);
 }
 
 function CompactExamCard({
@@ -95,10 +104,19 @@ export default function UpcomingExamsStrip({
                 ) : null
             ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {items.map((item) => {
-                        const when = formatWhen(item.scheduledAt);
-                        return <CompactExamCard key={item.id} item={item} when={when} />;
-                    })}
+                    {(() => {
+                        const now = new Date();
+                        return items.map((item) => {
+                            const when = formatWhen(item.scheduledAt, now);
+                            return (
+                                <CompactExamCard
+                                    key={item.id}
+                                    item={item}
+                                    when={when}
+                                />
+                            );
+                        });
+                    })()}
                 </div>
             )}
         </section>
