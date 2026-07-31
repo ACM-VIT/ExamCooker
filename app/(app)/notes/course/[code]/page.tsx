@@ -147,11 +147,6 @@ async function CourseNotesContent({
         getSubjectByCourseCode(course.code),
     ]);
 
-    // The course is real but has no notes yet. Course search now surfaces empty
-    // courses (so searching "Macro" finds BHUM104L instead of dead-ending on
-    // "No courses found"), so render a "no notes yet" state with an upload
-    // prompt here rather than a hard 404. The page stays noindex via
-    // `generateMetadata` while it has no content.
     if (!noteCount) {
         return (
             <>
