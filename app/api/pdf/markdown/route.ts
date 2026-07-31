@@ -637,7 +637,7 @@ export async function POST(request: NextRequest) {
 
     const result = streamText({
       model,
-      system: PDF_MARKDOWN_SYSTEM_PROMPT,
+      instructions: PDF_MARKDOWN_SYSTEM_PROMPT,
       messages: [
         {
           role: "user",
@@ -663,7 +663,7 @@ export async function POST(request: NextRequest) {
       }),
       abortSignal: request.signal,
       maxOutputTokens: PDF_MARKDOWN_MAX_OUTPUT_TOKENS,
-      experimental_include: {
+      include: {
         requestBody: false,
       },
       onError: ({ error }) => {
@@ -756,7 +756,7 @@ export async function POST(request: NextRequest) {
             modelId,
             provider,
             questionCount: paper.questions.length,
-            response: result.response,
+            response: result.finalStep.then((step) => step.response),
             sessionId: parsedBody.posthogSessionId ?? undefined,
             spanId,
             timeToFirstQuestionSeconds:
@@ -764,7 +764,7 @@ export async function POST(request: NextRequest) {
                 ? undefined
                 : Math.max(firstQuestionAt - llmStartedAt, 0) / 1000,
             traceId,
-            usage: result.totalUsage,
+            usage: result.usage,
             userPrompt,
           });
         } catch (error) {
