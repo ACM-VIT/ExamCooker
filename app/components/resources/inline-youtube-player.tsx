@@ -19,11 +19,14 @@ import {
     Volume2,
     VolumeX,
 } from "lucide-react";
+import {
+    type InlineYouTubePlaybackStatus,
+    shouldArmStuckLoadTimeout,
+} from "@/lib/media/inline-youtube-watchdog";
 import { cn } from "@/lib/utils";
 
-// If the player never becomes ready (or stays buffering) for this long we assume
-// the embed is wedged and surface a recoverable error state instead of a
-// perpetual black screen / spinner.
+// If the player never becomes ready for this long we assume the embed is wedged
+// and surface a recoverable error state instead of a perpetual black screen.
 const STUCK_TIMEOUT_MS = 20000;
 
 type InlineYouTubePlayerProps = {
@@ -32,7 +35,7 @@ type InlineYouTubePlayerProps = {
     autoplay?: boolean;
 };
 
-type PlaybackStatus = "loading" | "ready" | "error";
+type PlaybackStatus = InlineYouTubePlaybackStatus;
 
 type PlayerState = {
     currentTime: number;
@@ -280,18 +283,19 @@ function InlineYouTubePlayerInner({
         };
     }, []);
 
-    // If the embed never reports ready, or gets stuck buffering, treat it as a
-    // failed load so the viewer gets a retry/fallback instead of a dead frame.
+    // If the embed never reports ready, treat it as a failed load so the viewer
+    // gets a retry/fallback instead of a dead frame. Ready-state buffering can
+    // legitimately last on slow connections, so it should not become a hard
+    // player error.
     useEffect(() => {
-        if (status === "error") return;
-        if (status === "ready" && !isBuffering) return;
+        if (!shouldArmStuckLoadTimeout(status)) return;
 
         const timeout = window.setTimeout(() => {
             dispatch({ type: "error" });
         }, STUCK_TIMEOUT_MS);
 
         return () => window.clearTimeout(timeout);
-    }, [status, isBuffering, reloadKey]);
+    }, [status, reloadKey]);
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
 
