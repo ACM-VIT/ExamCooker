@@ -81,8 +81,10 @@ import {
 import {
   capturePdfDocumentLoadFailed,
   capturePdfDownloaded,
+  capturePdfOriginalOpened,
   capturePdfPageRenderFailed,
   getPostHogSessionId,
+  type PdfOriginalOpenContext,
 } from "@/lib/posthog/client";
 import {
   clearActivePdfSnapshot,
@@ -103,11 +105,16 @@ const SLOW_LOAD_NOTICE_MS = 3500;
 // Promote an indefinitely-hung (or empty-blob) page render into the visible,
 // recoverable retry UI instead of leaving a silent blank page.
 const PAGE_RENDER_TIMEOUT_MS = 20000;
-// The document-load phase (buffer -> opened document) had no equivalent guard:
-// a load that never progresses left the viewer on "Loading PDF…" forever with
-// nothing captured. Treat "no load progress for this window" as a stall and
-// promote it into the same recoverable retry UI, mirroring the render timeout.
-const DOCUMENT_LOAD_TIMEOUT_MS = 20000;
+// The document-load phase (buffer -> opened document) sat on a bare
+// "Loading PDF…" placeholder with *no* escape hatch until a flat 20s timeout —
+// far longer than the 5–12s users actually wait before bouncing, so the retry
+// UI and the load-failure telemetry effectively never reached them and the
+// viewer just stayed silently blank. Surface the recoverable stalled/retry
+// affordances quickly (mirroring the buffer/engine slow-load notice), and
+// hard-fail a load that makes *no* progress at all on a much shorter,
+// progress-aware window so the failure is both visible and captured.
+const DOCUMENT_LOAD_STALL_NOTICE_MS = 4000;
+const DOCUMENT_LOAD_TIMEOUT_MS = 10000;
 const PDF_DARK_MODE_FILTER =
   "invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95)";
 const PDF_MARKDOWN_ENDPOINT = "/api/pdf/markdown";
@@ -683,12 +690,14 @@ function LoadingState({
   fileUrl,
   progress,
   showFallback = false,
+  onOpenOriginal,
   onRetry,
 }: {
   label: string;
   fileUrl?: string;
   progress?: number | null;
   showFallback?: boolean;
+  onOpenOriginal?: () => void;
   onRetry?: () => void;
 }) {
   return (
@@ -728,6 +737,7 @@ function LoadingState({
               href={fileUrl}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={onOpenOriginal}
               className="rounded bg-[#0A0F1C] px-3 py-1.5 font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
             >
               Open original
@@ -742,10 +752,12 @@ function LoadingState({
 function ErrorState({
   fileUrl,
   message = "PDF viewer failed to load.",
+  onOpenOriginal,
   onRetry,
 }: {
   fileUrl: string;
   message?: string;
+  onOpenOriginal?: () => void;
   onRetry?: () => void;
 }) {
   return (
@@ -765,6 +777,7 @@ function ErrorState({
           href={fileUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={onOpenOriginal}
           className="rounded bg-[#0A0F1C] px-3 py-1.5 font-semibold text-white transition hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
         >
           Open original
@@ -1150,13 +1163,18 @@ function blobToObjectUrl(blob: Blob) {
   return URL.createObjectURL(blob);
 }
 
+// Report a successful browser paint to the owning viewer instance. Keeping this
+// as component state scopes download telemetry to this PDF even when another
+// retained/split viewer is mounted elsewhere in the document.
 function PageRenderLayer({
   documentId,
   isPdfDarkMode,
+  onRendered,
   pageIndex,
 }: {
   documentId: string;
   isPdfDarkMode: boolean;
+  onRendered: () => void;
   pageIndex: number;
 }) {
   const { provides: renderProvides } = useRenderCapability();
@@ -1372,6 +1390,7 @@ function PageRenderLayer({
       data-ec-pdf-page-number={pageIndex + 1}
       draggable={false}
       onError={handleImageError}
+      onLoad={onRendered}
       style={isPdfDarkMode ? { filter: PDF_DARK_MODE_FILTER } : undefined}
     />
   );
@@ -1412,6 +1431,7 @@ function ViewerToolbar({
   pageEdits,
   isFullScreen,
   isPdfDarkMode,
+  hasRenderedPdfPage,
   viewMode,
   paperStatus,
   copyStatus,
@@ -1428,6 +1448,7 @@ function ViewerToolbar({
   pageEdits: PdfPageEdits | null;
   isFullScreen: boolean;
   isPdfDarkMode: boolean;
+  hasRenderedPdfPage: boolean;
   viewMode: PaperViewMode;
   paperStatus: PaperStatus;
   copyStatus: CopyStatus;
@@ -1512,13 +1533,27 @@ function ViewerToolbar({
     if (isDownloading) return;
 
     setIsDownloading(true);
-    capturePdfDownloaded({ fileName, fileUrl });
+    capturePdfDownloaded({
+      fileName,
+      fileUrl,
+      totalPages: scrollState.totalPages ?? null,
+      rendered: viewMode === "pdf" ? hasRenderedPdfPage : null,
+      viewMode,
+    });
     try {
       await downloadPdfFile({ fileUrl, fileName, pageEdits });
     } finally {
       setIsDownloading(false);
     }
-  }, [fileName, fileUrl, isDownloading, pageEdits]);
+  }, [
+    fileName,
+    fileUrl,
+    hasRenderedPdfPage,
+    isDownloading,
+    pageEdits,
+    scrollState.totalPages,
+    viewMode,
+  ]);
 
   const handleViewMarkdown = useCallback(() => {
     setIsMarkdownMenuOpen(false);
@@ -1857,6 +1892,7 @@ function LoadedDocumentSurface({
   } = paperState;
   const paperAbortRef = useRef<AbortController | null>(null);
   const copyResetTimerRef = useRef<number | null>(null);
+  const [hasRenderedPdfPage, setHasRenderedPdfPage] = useState(false);
   const { state: scrollState } = useScroll(documentId);
   const totalPages = Math.max(scrollState.totalPages || 0, 0);
   const pageEditsKey = useMemo(
@@ -1866,9 +1902,14 @@ function LoadedDocumentSurface({
 
   useEffect(() => {
     dispatchPaper({ type: "resetDocument" });
+    setHasRenderedPdfPage(false);
     paperAbortRef.current?.abort();
     paperAbortRef.current = null;
-  }, [fileName, fileUrl, pageEditsKey]);
+  }, [documentId, fileName, fileUrl, pageEditsKey]);
+
+  const handlePdfPageRendered = useCallback(() => {
+    setHasRenderedPdfPage(true);
+  }, []);
 
   useEffect(
     () => () => {
@@ -2060,6 +2101,7 @@ function LoadedDocumentSurface({
             pageEdits={pageEdits}
             isFullScreen={isFullScreen}
             isPdfDarkMode={isPdfDarkMode}
+            hasRenderedPdfPage={hasRenderedPdfPage}
             viewMode={viewMode}
             paperStatus={paperStatus}
             copyStatus={copyStatus}
@@ -2103,6 +2145,7 @@ function LoadedDocumentSurface({
                     <PageRenderLayer
                       documentId={documentId}
                       isPdfDarkMode={isPdfDarkMode}
+                      onRendered={handlePdfPageRendered}
                       pageIndex={pageIndex}
                     />
                   </div>
@@ -2140,6 +2183,7 @@ function DocumentLoadPhase({
   onRetry: () => void;
 }) {
   const [hasTimedOut, setHasTimedOut] = useState(false);
+  const [hasStalled, setHasStalled] = useState(false);
   // `capturePdfDocumentLoadFailed` fires from an effect that re-runs on every
   // progress update; guard against reporting the same stall more than once.
   const didReportRef = useRef(false);
@@ -2147,11 +2191,18 @@ function DocumentLoadPhase({
   useEffect(() => {
     if (isError || hasTimedOut) return;
 
-    // Reset the stall timer on each fresh load-progress update. A document that
-    // never starts loading OR stalls part-way through both leave the "Loading
-    // PDF…" placeholder up indefinitely today; treat "no progress for the whole
-    // window" as a failure while letting a genuinely slow-but-advancing load
-    // keep going.
+    // Re-arm both watchdogs on every fresh load-progress update. A document
+    // that never starts opening OR stalls part-way through both used to leave
+    // the "Loading PDF…" placeholder up with no way out. Surface the
+    // recoverable stalled/retry affordances quickly, then promote a load that
+    // makes *no* progress at all into the error UI — while letting a genuinely
+    // slow-but-advancing load keep going.
+    setHasStalled(false);
+
+    const stallNoticeId = window.setTimeout(() => {
+      setHasStalled(true);
+    }, DOCUMENT_LOAD_STALL_NOTICE_MS);
+
     const timeoutId = window.setTimeout(() => {
       console.error("[PDFViewer] Document load timed out", {
         documentId,
@@ -2161,8 +2212,23 @@ function DocumentLoadPhase({
       setHasTimedOut(true);
     }, DOCUMENT_LOAD_TIMEOUT_MS);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      window.clearTimeout(stallNoticeId);
+      window.clearTimeout(timeoutId);
+    };
   }, [documentId, hasTimedOut, isError, loadingProgress]);
+
+  const handleOpenOriginal = useCallback(
+    (context: PdfOriginalOpenContext) => {
+      capturePdfOriginalOpened({
+        context,
+        documentId,
+        fileUrl,
+        loadingProgress,
+      });
+    },
+    [documentId, fileUrl, loadingProgress],
+  );
 
   useEffect(() => {
     if (!isError && !hasTimedOut) return;
@@ -2189,6 +2255,11 @@ function DocumentLoadPhase({
             ? "This PDF is taking too long to open."
             : "PDF viewer failed to load."
         }
+        onOpenOriginal={() =>
+          handleOpenOriginal(
+            hasTimedOut ? "document_load_timeout" : "document_load_error",
+          )
+        }
         onRetry={onRetry}
       />
     );
@@ -2199,7 +2270,16 @@ function DocumentLoadPhase({
       ? ` ${Math.round(loadingProgress)}%`
       : "";
 
-  return <LoadingState label={`Loading PDF${progress}`} />;
+  return (
+    <LoadingState
+      label={`Loading PDF${progress}`}
+      fileUrl={fileUrl}
+      progress={loadingProgress}
+      showFallback={hasStalled}
+      onOpenOriginal={() => handleOpenOriginal("document_load_stall")}
+      onRetry={onRetry}
+    />
+  );
 }
 
 function DocumentViewport({
