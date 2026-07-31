@@ -7,6 +7,7 @@ import { toRouteTemplate } from "../lib/posthog/route-template";
 // template; these cases lock in that no per-resource identifier survives.
 const cases: Array<[string, string]> = [
     ["/notes/clz19jxuv000ez14te8ntkgxz", "/notes/[id]"],
+    ["/notes/create", "/notes/create"],
     ["/notes/course/BCSE302L", "/notes/course/[code]"],
     [
         "/past_papers/CSE1001/paper/clz19jxuv000ez14te8ntkgxz",
@@ -15,6 +16,7 @@ const cases: Array<[string, string]> = [
     ["/past_papers/exam/theory", "/past_papers/exam/[exam]"],
     ["/past_papers/CSE1001/cat1", "/past_papers/[code]/[exam]"],
     ["/past_papers/CSE1001", "/past_papers/[code]"],
+    ["/past_papers/create", "/past_papers/create"],
     ["/past_papers", "/past_papers"],
     ["/syllabus/course/BCSE302L", "/syllabus/course/[code]"],
     ["/syllabus/clz19jxuv000ez14te8ntkgxz", "/syllabus/[id]"],

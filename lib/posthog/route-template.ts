@@ -9,8 +9,10 @@
 // priority) so ambiguous shapes like `/past_papers/exam/theory` resolve to the
 // route with the matching static segment rather than a same-length sibling.
 const ROUTE_TEMPLATES: readonly (readonly string[])[] = [
+    ["notes", "create"],
     ["notes", "course", ":code"],
     ["notes", ":id"],
+    ["past_papers", "create"],
     ["past_papers", "exam", ":exam"],
     ["past_papers", ":code", "paper", ":id"],
     ["past_papers", ":code", ":exam"],
