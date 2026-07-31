@@ -44,6 +44,7 @@ export default function NotesCourseSearch({
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const hasSearchInteraction = useRef(false);
     const nativeCourseSearchAvailable = useNativeCourseSearchAvailable();
     const [nativeSearchUnavailable, setNativeSearchUnavailable] = useState(false);
     const nativeSearchAvailable =
@@ -107,6 +108,8 @@ export default function NotesCourseSearch({
     // failed search fires one event rather than one per keystroke.
     const lastNoResultQuery = useRef<string | null>(null);
     useEffect(() => {
+        if (!hasSearchInteraction.current) return;
+
         const trimmed = deferredQuery.trim();
         if (trimmed.length < 2 || filtered.length > 0) return;
         if (lastNoResultQuery.current === trimmed) return;
@@ -260,6 +263,9 @@ export default function NotesCourseSearch({
                 resultCount: result.resultCount,
                 exactMatchFound: Boolean(exact),
             });
+            if (result.resultCount === 0) {
+                captureCourseSearchNoResults({ context: "notes", query: trimmed });
+            }
             if (exact) {
                 captureCourseSearchSelection({
                     context: "notes",
@@ -311,6 +317,7 @@ export default function NotesCourseSearch({
                         placeholder="Search course or code..."
                         value={query}
                         onChange={(e) => {
+                            hasSearchInteraction.current = true;
                             setQuery(e.target.value);
                             setIsOpen(e.target.value.trim().length > 0);
                             setHighlightedIndex(-1);
