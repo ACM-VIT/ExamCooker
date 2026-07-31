@@ -79,9 +79,10 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     };
 
     // Fuzzy index shared with the command palette / voice search and the notes
-    // and past-papers grids (same weights + threshold via `createCourseFuse`),
-    // so typos and word-order variations ("engineering economics") match here
-    // too instead of dead-ending on the old exact-substring logic.
+    // and past-papers grids (same per-token coverage ranking via
+    // `createCourseFuse`), so typos, word-order variations, partial multi-word
+    // queries ("forensic science") and short prefixes ("mu") all match here too
+    // instead of dead-ending on whole-query matching or the old substring logic.
     const courseFuse = useMemo(() => createCourseFuse(courses), [courses]);
 
     const filteredCourses = useMemo(() => {

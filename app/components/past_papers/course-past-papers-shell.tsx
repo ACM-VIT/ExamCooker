@@ -1,9 +1,9 @@
 import React from "react";
 
-// Skeleton placeholders for the course past-papers page, shared by the page's
-// in-flight `<Suspense>` fallback and the route-level `loading.tsx`. Keeping a
-// single source of truth means the instant navigation skeleton and the
-// streaming fallback stay visually identical.
+// Skeleton placeholders for the course past-papers page's local `<Suspense>`
+// boundaries. With Cache Components and partial prefetching enabled, the root
+// fallback becomes the App Shell prefetched by links to this route without a
+// segment-wide `loading.tsx` that would also affect nested paper routes.
 
 const SHELL_EXAM_TABS = [
     { labelW: "w-6", countW: "w-5" },

@@ -1,14 +1,16 @@
 "use client";
 
-import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Image from "@/app/components/common/app-image";
-import Link from "next/link";
-import { useLinkStatus } from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
+import { getAliasCourseCodes } from "@/lib/course-aliases";
+import { createCourseFuse } from "@/lib/course-search-fuse";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { getCoursePastPapersPath } from "@/lib/seo";
 import {
+    captureCourseSearchNoResults,
     captureCourseSearchSelection,
     captureCourseSearchSubmitted,
     type CourseSearchInteraction,
@@ -18,27 +20,26 @@ import {
     useNativeCourseSearchAvailable,
 } from "@/lib/native-course-search";
 
-function runAfterCurrentTask(callback: () => void) {
-    if (typeof window === "undefined") {
-        callback();
-        return;
-    }
-    window.setTimeout(callback, 0);
-}
+// Subtle per-row spinner driven by the clicked `<Link>` or a keyboard-triggered
+// navigation. When the destination App Shell is already prefetched, the link's
+// pending phase is skipped, so this only appears when the route is genuinely
+// cold and the current page still needs to acknowledge the selection.
+function RowPendingIndicator({
+    programmaticPending,
+}: {
+    programmaticPending: boolean;
+}) {
+    const { pending: linkPending } = useLinkStatus();
+    const pending = linkPending || programmaticPending;
 
-// Subtle per-row spinner driven by the clicked `<Link>`'s pending state. When
-// the destination is already prefetched (or `loading.tsx` kicks in) the pending
-// phase is skipped, so this only appears when the route is genuinely cold —
-// giving the click visible feedback instead of a silently frozen dropdown.
-function RowPendingIndicator() {
-    const { pending } = useLinkStatus();
-    if (!pending) return null;
     return (
         <span
             aria-hidden="true"
-            className="absolute inset-y-0 right-3 flex items-center"
+            className="flex size-4 shrink-0 items-center justify-center"
         >
-            <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent text-black/50 dark:text-[#3BF4C7]" />
+            {pending ? (
+                <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent text-black/50 dark:text-[#3BF4C7]" />
+            ) : null}
         </span>
     );
 }
@@ -57,15 +58,8 @@ type Props = {
     initialQuery?: string;
 };
 
-function normalizeSearchInput(value: string) {
-    return value
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-}
-
 const MAX_RESULTS = 8;
+const EAGER_PREFETCH_RESULTS = 4;
 
 export default function PastPapersCourseSearch({
     courses,
@@ -76,48 +70,66 @@ export default function PastPapersCourseSearch({
     const [query, setQuery] = useState(initialQueryRef.current);
     const [isOpen, setIsOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const [pendingCourseCode, setPendingCourseCode] = useState<string | null>(null);
+    const [isProgrammaticNavigationPending, startProgrammaticNavigation] =
+        useTransition();
     const nativeCourseSearchAvailable = useNativeCourseSearchAvailable();
     const [nativeSearchUnavailable, setNativeSearchUnavailable] = useState(false);
     const nativeSearchAvailable =
         nativeCourseSearchAvailable && !nativeSearchUnavailable;
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const hasSearchInteraction = useRef(false);
     const deferredQuery = useDeferredValue(query);
 
-    const searchableCourses = useMemo(
-        () =>
-            courses.map((course) => ({
-                course,
-                code: course.code,
-                normalizedHaystack: normalizeSearchInput(
-                    `${course.code} ${course.title} ${(course.aliases ?? []).join(" ")}`,
-                ),
-            })),
-        [courses],
-    );
+    // Fuzzy index shared with the homepage and notes dropdowns (same weights +
+    // threshold via `createCourseFuse`), so typos and word-order variations
+    // match here too instead of dead-ending on the old exact / prefix /
+    // substring logic.
+    const courseFuse = useMemo(() => createCourseFuse(courses), [courses]);
 
     const filtered = useMemo(() => {
         const trimmed = deferredQuery.trim();
         if (!trimmed) return [];
 
-        const codeQuery = normalizeCourseCode(trimmed);
-        const normalized = normalizeSearchInput(trimmed);
-        const terms = normalized.split(" ").filter(Boolean);
+        const aliasCodes = getAliasCourseCodes(trimmed);
+        const aliasSet = new Set(aliasCodes.map((code) => code.toUpperCase()));
+        const normalizedCodeQuery = normalizeCourseCode(trimmed);
 
         const matches: SearchableCourse[] = [];
-        for (const { course, code, normalizedHaystack } of searchableCourses) {
-            if (
-                course.code === codeQuery ||
-                (code.startsWith(codeQuery) && codeQuery.length >= 2) ||
-                terms.every((term) => normalizedHaystack.includes(term))
-            ) {
-                matches.push(course);
-                if (matches.length === MAX_RESULTS) break;
+        const seen = new Set<string>();
+        const pushCourse = (course: SearchableCourse) => {
+            if (seen.has(course.code)) return;
+            seen.add(course.code);
+            matches.push(course);
+        };
+
+        // 1. Exact code + acronym/alias matches — highest confidence, always first.
+        for (const course of courses) {
+            const codeUpper = course.code.toUpperCase();
+            if (aliasSet.has(codeUpper) || codeUpper === normalizedCodeQuery) {
+                pushCourse(course);
             }
         }
 
-        return matches;
-    }, [deferredQuery, searchableCourses]);
+        // 2. Course-code prefixes (e.g. typing "BCSE20" before finishing the code).
+        if (normalizedCodeQuery.length >= 2) {
+            for (const course of courses) {
+                if (matches.length >= MAX_RESULTS) break;
+                if (course.code.toUpperCase().startsWith(normalizedCodeQuery)) {
+                    pushCourse(course);
+                }
+            }
+        }
+
+        // 3. Fuzzy relevance ranking for everything else (typos, word order, titles).
+        for (const { item } of courseFuse.search(trimmed, { limit: MAX_RESULTS })) {
+            if (matches.length >= MAX_RESULTS) break;
+            pushCourse(item);
+        }
+
+        return matches.slice(0, MAX_RESULTS);
+    }, [deferredQuery, courses, courseFuse]);
     const dropdownVisible =
         !nativeSearchAvailable && isOpen && (filtered.length > 0 || query.trim().length > 0);
 
@@ -129,13 +141,46 @@ export default function PastPapersCourseSearch({
         if (!dropdownVisible || filtered.length === 0) return;
 
         const timeoutId = window.setTimeout(() => {
-            for (const course of filtered.slice(0, 4)) {
+            for (const course of filtered.slice(0, EAGER_PREFETCH_RESULTS)) {
                 prefetch(getCoursePastPapersPath(course.code));
             }
         }, 50);
 
         return () => window.clearTimeout(timeoutId);
     }, [dropdownVisible, filtered, prefetch]);
+
+    useEffect(() => {
+        if (!dropdownVisible) return;
+
+        const highlightedCourse = filtered[highlightedIndex];
+        if (!highlightedCourse) return;
+
+        prefetch(getCoursePastPapersPath(highlightedCourse.code));
+    }, [dropdownVisible, filtered, highlightedIndex, prefetch]);
+
+    useEffect(() => {
+        if (isProgrammaticNavigationPending || pendingCourseCode === null) return;
+        setPendingCourseCode(null);
+    }, [isProgrammaticNavigationPending, pendingCourseCode]);
+
+    // Report queries that settle on zero results so past-papers-search failures
+    // stop being replay-only findings. Debounced and de-duplicated so a single
+    // failed search fires one event rather than one per keystroke.
+    const lastNoResultQuery = useRef<string | null>(null);
+    useEffect(() => {
+        if (!hasSearchInteraction.current) return;
+
+        const trimmed = deferredQuery.trim();
+        if (trimmed.length < 2 || filtered.length > 0) return;
+        if (lastNoResultQuery.current === trimmed) return;
+
+        const timeoutId = window.setTimeout(() => {
+            lastNoResultQuery.current = trimmed;
+            captureCourseSearchNoResults({ context: "past_papers", query: trimmed });
+        }, 600);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [deferredQuery, filtered]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -182,11 +227,11 @@ export default function PastPapersCourseSearch({
         },
     ) => {
         recordSelection(course, options);
-        startTransition(() => {
+        setPendingCourseCode(course.code);
+        startProgrammaticNavigation(() => {
             addTransitionType("nav-forward");
             push(getCoursePastPapersPath(course.code));
         });
-        setIsOpen(false);
     };
 
     const submitFreeText = () => {
@@ -285,6 +330,12 @@ export default function PastPapersCourseSearch({
                 resultCount: result.resultCount,
                 exactMatchFound: Boolean(exact),
             });
+            if (result.resultCount === 0) {
+                captureCourseSearchNoResults({
+                    context: "past_papers",
+                    query: trimmed,
+                });
+            }
             if (exact) {
                 captureCourseSearchSelection({
                     context: "past_papers",
@@ -335,6 +386,7 @@ export default function PastPapersCourseSearch({
                         placeholder="Search course or code..."
                         value={query}
                         onChange={(e) => {
+                            hasSearchInteraction.current = true;
                             setQuery(e.target.value);
                             setIsOpen(e.target.value.trim().length > 0);
                             setHighlightedIndex(-1);
@@ -375,7 +427,9 @@ export default function PastPapersCourseSearch({
                             <Link
                                 key={course.id}
                                 href={getCoursePastPapersPath(course.code)}
-                                prefetch
+                                prefetch={
+                                    index < EAGER_PREFETCH_RESULTS ? true : null
+                                }
                                 transitionTypes={["nav-forward"]}
                                 onFocus={() =>
                                     prefetch(getCoursePastPapersPath(course.code))
@@ -389,9 +443,8 @@ export default function PastPapersCourseSearch({
                                         interaction: "click",
                                         resultIndex: index,
                                     });
-                                    runAfterCurrentTask(() => setIsOpen(false));
                                 }}
-                                className={`relative flex w-full items-center justify-between gap-3 border-b border-black/10 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/15 dark:hover:bg-[#3BF4C7]/10 ${
+                                className={`flex w-full items-center justify-between gap-3 border-b border-black/10 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/15 dark:hover:bg-[#3BF4C7]/10 ${
                                     highlightedIndex === index
                                         ? "bg-[#5FC4E7]/25 dark:bg-[#3BF4C7]/10"
                                         : ""
@@ -417,7 +470,11 @@ export default function PastPapersCourseSearch({
                                         </span>
                                     )}
                                 </div>
-                                <RowPendingIndicator />
+                                <RowPendingIndicator
+                                    programmaticPending={
+                                        pendingCourseCode === course.code
+                                    }
+                                />
                             </Link>
                         ))
                     ) : query.trim() ? (
