@@ -1,8 +1,8 @@
 "use client";
 
-import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Image from "@/app/components/common/app-image";
-import Link, { useLinkStatus } from "next/link";
+import Link from "next/link";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
@@ -19,30 +19,6 @@ import {
     presentNativeCourseSearch,
     useNativeCourseSearchAvailable,
 } from "@/lib/native-course-search";
-
-// Subtle per-row spinner driven by the clicked `<Link>` or a keyboard-triggered
-// navigation. When the destination App Shell is already prefetched, the link's
-// pending phase is skipped, so this only appears when the route is genuinely
-// cold and the current page still needs to acknowledge the selection.
-function RowPendingIndicator({
-    programmaticPending,
-}: {
-    programmaticPending: boolean;
-}) {
-    const { pending: linkPending } = useLinkStatus();
-    const pending = linkPending || programmaticPending;
-
-    return (
-        <span
-            aria-hidden="true"
-            className="flex size-4 shrink-0 items-center justify-center"
-        >
-            {pending ? (
-                <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent text-black/50 dark:text-[#3BF4C7]" />
-            ) : null}
-        </span>
-    );
-}
 
 export type SearchableCourse = {
     id: string;
@@ -70,9 +46,6 @@ export default function PastPapersCourseSearch({
     const [query, setQuery] = useState(initialQueryRef.current);
     const [isOpen, setIsOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
-    const [pendingCourseCode, setPendingCourseCode] = useState<string | null>(null);
-    const [isProgrammaticNavigationPending, startProgrammaticNavigation] =
-        useTransition();
     const nativeCourseSearchAvailable = useNativeCourseSearchAvailable();
     const [nativeSearchUnavailable, setNativeSearchUnavailable] = useState(false);
     const nativeSearchAvailable =
@@ -158,11 +131,6 @@ export default function PastPapersCourseSearch({
         prefetch(getCoursePastPapersPath(highlightedCourse.code));
     }, [dropdownVisible, filtered, highlightedIndex, prefetch]);
 
-    useEffect(() => {
-        if (isProgrammaticNavigationPending || pendingCourseCode === null) return;
-        setPendingCourseCode(null);
-    }, [isProgrammaticNavigationPending, pendingCourseCode]);
-
     // Report queries that settle on zero results so past-papers-search failures
     // stop being replay-only findings. Debounced and de-duplicated so a single
     // failed search fires one event rather than one per keystroke.
@@ -227,8 +195,7 @@ export default function PastPapersCourseSearch({
         },
     ) => {
         recordSelection(course, options);
-        setPendingCourseCode(course.code);
-        startProgrammaticNavigation(() => {
+        startTransition(() => {
             addTransitionType("nav-forward");
             push(getCoursePastPapersPath(course.code));
         });
@@ -470,11 +437,6 @@ export default function PastPapersCourseSearch({
                                         </span>
                                     )}
                                 </div>
-                                <RowPendingIndicator
-                                    programmaticPending={
-                                        pendingCourseCode === course.code
-                                    }
-                                />
                             </Link>
                         ))
                     ) : query.trim() ? (
