@@ -366,6 +366,97 @@ function isViewTransitionHiddenNoise(event: CaptureResult): boolean {
     return exceptionList.every(isViewTransitionHiddenSkip);
 }
 
+// Firefox for iOS injects a private `__firefox__` namespace for its own user
+// scripts. Its Reader Mode bootstrap dereferences that namespace at document
+// scope before it has been installed, so the browser throws before any
+// examcooker code runs:
+//   ReferenceError: Can't find variable: __firefox__
+//   TypeError: undefined is not an object (evaluating 'window.__firefox__.reader')
+// posthog-js (loaded on the page) captures these as unhandled exceptions. The
+// throw comes entirely from the browser's own injected script — `__firefox__`
+// appears nowhere in examcooker — and the page keeps working, so it is pure
+// third-party noise, not our code. Because each throw carries one document-level
+// frame, the existing `hasNoFrames()`-based guards let it through.
+//
+// We match narrowly: EVERY exception value mentions `__firefox__` AND every
+// frame is document-level — the browser's `global code` pseudo-frame, or a frame
+// whose filename is the page document itself. A genuine app-code error that
+// merely mentioned `__firefox__` would carry a real bundle frame and still
+// surface.
+const FIREFOX_IOS_NAMESPACE_SIGNATURE = /__firefox__/;
+const DOCUMENT_LEVEL_FRAME_FUNCTION = "global code";
+
+function isDocumentLevelFrame(
+    frame: unknown,
+    pageUrl: string | undefined,
+): boolean {
+    if (!frame || typeof frame !== "object") {
+        return false;
+    }
+
+    const fn = (frame as { function?: unknown }).function;
+    if (fn === DOCUMENT_LEVEL_FRAME_FUNCTION) {
+        return true;
+    }
+
+    const filename = (frame as { filename?: unknown }).filename;
+    return (
+        typeof filename === "string" &&
+        pageUrl !== undefined &&
+        filename === pageUrl
+    );
+}
+
+function isFirefoxIosReaderException(
+    exception: unknown,
+    pageUrl: string | undefined,
+): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as {
+        value?: unknown;
+        stacktrace?: { frames?: unknown[] } | null;
+    };
+
+    if (
+        typeof entry.value !== "string" ||
+        !FIREFOX_IOS_NAMESPACE_SIGNATURE.test(entry.value)
+    ) {
+        return false;
+    }
+
+    const frames = entry.stacktrace?.frames;
+    if (!Array.isArray(frames)) {
+        // A sanitized/synthetic throw with no stack still fits the injected-script
+        // profile once its value matches the `__firefox__` signature.
+        return true;
+    }
+
+    return frames.every((frame) => isDocumentLevelFrame(frame, pageUrl));
+}
+
+function isFirefoxIosReaderNoise(event: CaptureResult): boolean {
+    if (event.event !== "$exception") {
+        return false;
+    }
+
+    const exceptionList = event.properties?.$exception_list;
+    if (!Array.isArray(exceptionList) || exceptionList.length === 0) {
+        return false;
+    }
+
+    const currentUrl = event.properties?.$current_url;
+    const pageUrl = typeof currentUrl === "string" ? currentUrl : undefined;
+
+    // Only drop when EVERY entry is the browser's injected-script throw, so an
+    // event chaining it with a genuine exception keeps its actionable detail.
+    return exceptionList.every((exception) =>
+        isFirefoxIosReaderException(exception, pageUrl),
+    );
+}
+
 function beforeSend(result: CaptureResult | null): CaptureResult | null {
     const filteredResult = dropScriptErrorNoise(result);
     if (!filteredResult) {
@@ -381,6 +472,10 @@ function beforeSend(result: CaptureResult | null): CaptureResult | null {
     }
 
     if (isViewTransitionHiddenNoise(filteredResult)) {
+        return null;
+    }
+
+    if (isFirefoxIosReaderNoise(filteredResult)) {
         return null;
     }
 
