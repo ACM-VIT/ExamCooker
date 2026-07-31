@@ -1,12 +1,14 @@
 "use client";
 
-import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Image from "@/app/components/common/app-image";
+import Link, { useLinkStatus } from "next/link";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { createCourseFuse } from "@/lib/course-search-fuse";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { getCoursePastPapersPath } from "@/lib/seo";
 import {
     captureCourseSearchNoResults,
     captureCourseSearchSelection,
@@ -17,6 +19,30 @@ import {
     presentNativeCourseSearch,
     useNativeCourseSearchAvailable,
 } from "@/lib/native-course-search";
+
+// Subtle per-row spinner driven by the clicked `<Link>` or a keyboard-triggered
+// navigation. When the destination App Shell is already prefetched, the link's
+// pending phase is skipped, so this only appears when the route is genuinely
+// cold and the current page still needs to acknowledge the selection.
+function RowPendingIndicator({
+    programmaticPending,
+}: {
+    programmaticPending: boolean;
+}) {
+    const { pending: linkPending } = useLinkStatus();
+    const pending = linkPending || programmaticPending;
+
+    return (
+        <span
+            aria-hidden="true"
+            className="flex size-4 shrink-0 items-center justify-center"
+        >
+            {pending ? (
+                <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent text-black/50 dark:text-[#3BF4C7]" />
+            ) : null}
+        </span>
+    );
+}
 
 export type SearchableCourse = {
     id: string;
@@ -33,16 +59,20 @@ type Props = {
 };
 
 const MAX_RESULTS = 8;
+const EAGER_PREFETCH_RESULTS = 4;
 
 export default function PastPapersCourseSearch({
     courses,
     initialQuery = "",
 }: Props) {
-    const { push } = useRouter();
+    const { prefetch, push } = useRouter();
     const initialQueryRef = useRef(initialQuery);
     const [query, setQuery] = useState(initialQueryRef.current);
     const [isOpen, setIsOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const [pendingCourseCode, setPendingCourseCode] = useState<string | null>(null);
+    const [isProgrammaticNavigationPending, startProgrammaticNavigation] =
+        useTransition();
     const nativeCourseSearchAvailable = useNativeCourseSearchAvailable();
     const [nativeSearchUnavailable, setNativeSearchUnavailable] = useState(false);
     const nativeSearchAvailable =
@@ -103,6 +133,36 @@ export default function PastPapersCourseSearch({
     const dropdownVisible =
         !nativeSearchAvailable && isOpen && (filtered.length > 0 || query.trim().length > 0);
 
+    // Warm the router cache for the top results as soon as the dropdown opens so
+    // the common case (clicking one of the first few matches) navigates
+    // instantly instead of stalling on a cold server render. Mirrors the home
+    // search's prefetch-on-open behaviour.
+    useEffect(() => {
+        if (!dropdownVisible || filtered.length === 0) return;
+
+        const timeoutId = window.setTimeout(() => {
+            for (const course of filtered.slice(0, EAGER_PREFETCH_RESULTS)) {
+                prefetch(getCoursePastPapersPath(course.code));
+            }
+        }, 50);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [dropdownVisible, filtered, prefetch]);
+
+    useEffect(() => {
+        if (!dropdownVisible) return;
+
+        const highlightedCourse = filtered[highlightedIndex];
+        if (!highlightedCourse) return;
+
+        prefetch(getCoursePastPapersPath(highlightedCourse.code));
+    }, [dropdownVisible, filtered, highlightedIndex, prefetch]);
+
+    useEffect(() => {
+        if (isProgrammaticNavigationPending || pendingCourseCode === null) return;
+        setPendingCourseCode(null);
+    }, [isProgrammaticNavigationPending, pendingCourseCode]);
+
     // Report queries that settle on zero results so past-papers-search failures
     // stop being replay-only findings. Debounced and de-duplicated so a single
     // failed search fires one event rather than one per keystroke.
@@ -137,7 +197,7 @@ export default function PastPapersCourseSearch({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const navigate = (
+    const recordSelection = (
         course: SearchableCourse,
         options?: {
             interaction?: CourseSearchInteraction;
@@ -154,12 +214,24 @@ export default function PastPapersCourseSearch({
             noteCount: course.noteCount,
             hasSyllabus: false,
         });
+    };
 
-        startTransition(() => {
+    // Programmatic navigation for the keyboard and free-text-submit paths, which
+    // don't go through a `<Link>` click. Dropdown row clicks navigate natively
+    // via `<Link>` instead so they benefit from prefetching.
+    const navigate = (
+        course: SearchableCourse,
+        options?: {
+            interaction?: CourseSearchInteraction;
+            resultIndex?: number;
+        },
+    ) => {
+        recordSelection(course, options);
+        setPendingCourseCode(course.code);
+        startProgrammaticNavigation(() => {
             addTransitionType("nav-forward");
-            push(`/past_papers/${encodeURIComponent(course.code)}`);
+            push(getCoursePastPapersPath(course.code));
         });
-        setIsOpen(false);
     };
 
     const submitFreeText = () => {
@@ -352,17 +424,26 @@ export default function PastPapersCourseSearch({
                 >
                     {filtered.length > 0 ? (
                         filtered.map((course, index) => (
-                            <button
+                            <Link
                                 key={course.id}
-                                type="button"
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    navigate(course, {
+                                href={getCoursePastPapersPath(course.code)}
+                                prefetch={
+                                    index < EAGER_PREFETCH_RESULTS ? true : null
+                                }
+                                transitionTypes={["nav-forward"]}
+                                onFocus={() =>
+                                    prefetch(getCoursePastPapersPath(course.code))
+                                }
+                                onPointerEnter={() =>
+                                    prefetch(getCoursePastPapersPath(course.code))
+                                }
+                                onMouseEnter={() => setHighlightedIndex(index)}
+                                onClick={() => {
+                                    recordSelection(course, {
                                         interaction: "click",
                                         resultIndex: index,
                                     });
                                 }}
-                                onMouseEnter={() => setHighlightedIndex(index)}
                                 className={`flex w-full items-center justify-between gap-3 border-b border-black/10 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/15 dark:hover:bg-[#3BF4C7]/10 ${
                                     highlightedIndex === index
                                         ? "bg-[#5FC4E7]/25 dark:bg-[#3BF4C7]/10"
@@ -389,7 +470,12 @@ export default function PastPapersCourseSearch({
                                         </span>
                                     )}
                                 </div>
-                            </button>
+                                <RowPendingIndicator
+                                    programmaticPending={
+                                        pendingCourseCode === course.code
+                                    }
+                                />
+                            </Link>
                         ))
                     ) : query.trim() ? (
                         <div className="px-4 py-4 text-center text-sm text-black/60 dark:text-[#D5D5D5]/60">
