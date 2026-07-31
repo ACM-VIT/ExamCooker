@@ -34,6 +34,16 @@ const PAGE_SIZE = 24;
 const COURSE_GRID_CLASS =
     "past-papers-course-grid grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6";
 type PastPapersSearchParams = { search?: string; page?: string };
+const FAQ_ITEMS = [
+    {
+        question: "Where can I find VIT past papers by exam type?",
+        answer: "Use the links on this page to browse CAT-1, CAT-2, FAT, quiz, and other paper collections across all indexed courses.",
+    },
+    {
+        question: "Can I browse papers course by course?",
+        answer: "Yes. The course grid on this page links directly into a canonical paper collection for each course, with additional exam filters inside the course page.",
+    },
+];
 
 function buildSearchString(params: PastPapersSearchParams) {
     const searchParams = new URLSearchParams();
@@ -110,6 +120,25 @@ function HeroStats({
                             ·
                         </span>
                     )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function HeroStatsShell() {
+    return (
+        <div
+            className="past-papers-hero-stats grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-1"
+            aria-hidden="true"
+        >
+            {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                    key={index}
+                    className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-baseline sm:gap-1.5"
+                >
+                    <span className="block h-7 w-12 bg-black/10 dark:bg-white/10 sm:h-5" />
+                    <span className="block h-2.5 w-14 bg-black/10 dark:bg-white/10 sm:h-3" />
                 </div>
             ))}
         </div>
@@ -386,6 +415,20 @@ function DynamicHomeSectionsShell({ popularCount }: { popularCount: number }) {
     );
 }
 
+function PastPapersContentShell() {
+    return (
+        <>
+            <section className="flex flex-col gap-5">
+                <h1 className="past-papers-home-title text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
+                    Every paper. <GradientText>Every course.</GradientText>
+                </h1>
+                <HeroStatsShell />
+            </section>
+            <DynamicHomeSectionsShell popularCount={6} />
+        </>
+    );
+}
+
 async function DynamicHomeSections({
     searchParamsPromise,
     searchable,
@@ -423,7 +466,7 @@ async function DynamicHomeSections({
     );
 }
 
-export default async function PastPapersPage({
+async function PastPapersContent({
     searchParams,
 }: {
     searchParams?: Promise<PastPapersSearchParams>;
@@ -433,17 +476,33 @@ export default async function PastPapersPage({
         getCourseSearchRecords(),
         getUpcomingExamsCourseGridCount(),
     ]);
-    const faq = [
-        {
-            question: "Where can I find VIT past papers by exam type?",
-            answer: "Use the links on this page to browse CAT-1, CAT-2, FAT, quiz, and other paper collections across all indexed courses.",
-        },
-        {
-            question: "Can I browse papers course by course?",
-            answer: "Yes. The course grid on this page links directly into a canonical paper collection for each course, with additional exam filters inside the course page.",
-        },
-    ];
 
+    return (
+        <>
+            <section className="flex flex-col gap-5">
+                <h1 className="past-papers-home-title text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
+                    Every paper. <GradientText>Every course.</GradientText>
+                </h1>
+
+                <HeroStats stats={stats} />
+            </section>
+
+            <Suspense fallback={<DynamicHomeSectionsShell popularCount={popularCount} />}>
+                <DynamicHomeSections
+                    searchParamsPromise={searchParams}
+                    searchable={searchable}
+                    popularCount={popularCount}
+                />
+            </Suspense>
+        </>
+    );
+}
+
+export default function PastPapersPage({
+    searchParams,
+}: {
+    searchParams?: Promise<PastPapersSearchParams>;
+}) {
     return (
         <DirectionalTransition>
             <div className="min-h-screen bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
@@ -457,29 +516,16 @@ export default async function PastPapersPage({
                             keywords: DEFAULT_KEYWORDS,
                             about: "VIT past papers",
                         }),
-                        buildFaqPage(faq),
+                        buildFaqPage(FAQ_ITEMS),
                     ]}
                 />
                 <div className="past-papers-home-shell mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:gap-10 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
-                    <section className="flex flex-col gap-5">
-                        <h1 className="past-papers-home-title text-[1.35rem] font-black leading-none text-black dark:text-[#D5D5D5] min-[360px]:text-[1.45rem] min-[400px]:text-2xl sm:text-5xl lg:text-6xl">
-                            Every paper.{" "}
-                            <GradientText>Every course.</GradientText>
-                        </h1>
-
-                        <HeroStats stats={stats} />
-                    </section>
-
-                    <Suspense fallback={<DynamicHomeSectionsShell popularCount={popularCount} />}>
-                        <DynamicHomeSections
-                            searchParamsPromise={searchParams}
-                            searchable={searchable}
-                            popularCount={popularCount}
-                        />
+                    <Suspense fallback={<PastPapersContentShell />}>
+                        <PastPapersContent searchParams={searchParams} />
                     </Suspense>
 
                     <section className="sr-only">
-                        {faq.map((item) => (
+                        {FAQ_ITEMS.map((item) => (
                             <article
                                 key={item.question}
                                 className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"

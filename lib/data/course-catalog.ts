@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
+import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { createCourseFuse } from "@/lib/course-search-fuse";
 import {
     and,
@@ -333,9 +334,14 @@ export async function searchCourseGrid(query: string): Promise<CourseGridItem[]>
     const trimmed = query.trim();
     if (!trimmed) return grid;
 
-    // Exact + prefix code match first.
+    // Exact code and shared acronym/alias matches first so free-text submissions
+    // return the same courses that the client-side dropdown previews.
     const upperQuery = normalizeCourseCode(trimmed);
-    const exact = grid.filter((c) => c.code === upperQuery);
+    const aliasCodes = new Set(getAliasCourseCodes(trimmed));
+    const exact = grid.filter(
+        (courseRow) =>
+            courseRow.code === upperQuery || aliasCodes.has(courseRow.code),
+    );
     if (exact.length) return exact;
 
     const prefix = grid.filter((c) => c.code.startsWith(upperQuery));
