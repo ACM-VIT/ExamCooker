@@ -44,16 +44,17 @@ export default function NotesCourseSearch({
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const hasSearchInteraction = useRef(false);
     const nativeCourseSearchAvailable = useNativeCourseSearchAvailable();
     const [nativeSearchUnavailable, setNativeSearchUnavailable] = useState(false);
     const nativeSearchAvailable =
         nativeCourseSearchAvailable && !nativeSearchUnavailable;
     const deferredQuery = useDeferredValue(query);
 
-    // Fuzzy index shared with the homepage and past-papers dropdowns (same
-    // weights + threshold via `createCourseFuse`), so typos and word-order
-    // variations ("BAMAT" → BMAT101L, "engineering economics") match here too
-    // instead of dead-ending on the old exact / prefix / substring logic.
+    // Fuzzy index shared with the homepage / past-papers dropdowns (same weights
+    // and threshold via `createCourseFuse`), so typos and word-order variations
+    // ("applied chemistry") match here instead of dead-ending on the old
+    // exact-substring logic.
     const courseFuse = useMemo(() => createCourseFuse(courses), [courses]);
 
     const filtered = useMemo(() => {
@@ -80,7 +81,7 @@ export default function NotesCourseSearch({
             }
         }
 
-        // 2. Course-code prefixes (e.g. typing "BMAT10" before finishing the code).
+        // 2. Course-code prefixes (e.g. typing "BCSE20" before finishing the code).
         if (normalizedCodeQuery.length >= 2) {
             for (const course of courses) {
                 if (matches.length >= MAX_RESULTS) break;
@@ -101,11 +102,14 @@ export default function NotesCourseSearch({
     const dropdownVisible =
         !nativeSearchAvailable && isOpen && (filtered.length > 0 || query.trim().length > 0);
 
-    // Report queries that settle on zero results so notes-search failures stop
-    // being replay-only findings. Debounced and de-duplicated so a single failed
-    // search fires one event rather than one per keystroke.
+    // Report queries that settle on zero results so failed notes searches stop
+    // being invisible in analytics (previously `course_search_no_results` only
+    // ever fired from the homepage). Debounced and de-duplicated so a single
+    // failed search fires one event rather than one per keystroke.
     const lastNoResultQuery = useRef<string | null>(null);
     useEffect(() => {
+        if (!hasSearchInteraction.current) return;
+
         const trimmed = deferredQuery.trim();
         if (trimmed.length < 2 || filtered.length > 0) return;
         if (lastNoResultQuery.current === trimmed) return;
@@ -259,6 +263,9 @@ export default function NotesCourseSearch({
                 resultCount: result.resultCount,
                 exactMatchFound: Boolean(exact),
             });
+            if (result.resultCount === 0) {
+                captureCourseSearchNoResults({ context: "notes", query: trimmed });
+            }
             if (exact) {
                 captureCourseSearchSelection({
                     context: "notes",
@@ -310,6 +317,7 @@ export default function NotesCourseSearch({
                         placeholder="Search course or code..."
                         value={query}
                         onChange={(e) => {
+                            hasSearchInteraction.current = true;
                             setQuery(e.target.value);
                             setIsOpen(e.target.value.trim().length > 0);
                             setHighlightedIndex(-1);

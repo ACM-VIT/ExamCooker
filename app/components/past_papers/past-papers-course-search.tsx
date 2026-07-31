@@ -49,6 +49,7 @@ export default function PastPapersCourseSearch({
         nativeCourseSearchAvailable && !nativeSearchUnavailable;
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const hasSearchInteraction = useRef(false);
     const deferredQuery = useDeferredValue(query);
 
     // Fuzzy index shared with the homepage and notes dropdowns (same weights +
@@ -107,6 +108,8 @@ export default function PastPapersCourseSearch({
     // failed search fires one event rather than one per keystroke.
     const lastNoResultQuery = useRef<string | null>(null);
     useEffect(() => {
+        if (!hasSearchInteraction.current) return;
+
         const trimmed = deferredQuery.trim();
         if (trimmed.length < 2 || filtered.length > 0) return;
         if (lastNoResultQuery.current === trimmed) return;
@@ -255,6 +258,12 @@ export default function PastPapersCourseSearch({
                 resultCount: result.resultCount,
                 exactMatchFound: Boolean(exact),
             });
+            if (result.resultCount === 0) {
+                captureCourseSearchNoResults({
+                    context: "past_papers",
+                    query: trimmed,
+                });
+            }
             if (exact) {
                 captureCourseSearchSelection({
                     context: "past_papers",
@@ -305,6 +314,7 @@ export default function PastPapersCourseSearch({
                         placeholder="Search course or code..."
                         value={query}
                         onChange={(e) => {
+                            hasSearchInteraction.current = true;
                             setQuery(e.target.value);
                             setIsOpen(e.target.value.trim().length > 0);
                             setHighlightedIndex(-1);
