@@ -11,8 +11,11 @@ import {
     or,
 } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
+import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { createCourseFuse } from "@/lib/course-search-fuse";
+import { normalizeCourseCode } from "@/lib/course-tags";
 import {
+    getCoursePickerRecords,
     getCourseSearchRecords,
     type CourseSearchRecord,
 } from "@/lib/data/course-catalog";
@@ -192,15 +195,23 @@ async function getNoteCourseRecords(): Promise<CourseSearchRecord[]> {
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    // Search the full course catalog, not just courses that already have notes.
-    // Gating this list to `noteCount > 0` made real but empty courses (e.g.
-    // BACHY105 "Applied Chemistry", which has papers but no notes yet) invisible
-    // from the notes search, so searching for them dead-ended on "No courses
-    // found" — the same mistake `getSearchableCourses` fixed for the homepage.
-    // The default browse grid and hero stats re-apply the notes gate below;
-    // search paths use the full set and the course page handles the empty state.
     return (await getCourseSearchRecords())
+        .filter((courseRow) => courseRow.noteCount > 0)
         .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base" }));
+}
+
+// Notes search intentionally sees the full catalog. Empty courses lead to a
+// real upload-prompt page, while the default browse grid remains content-only.
+async function getNoteSearchRecords(): Promise<CourseSearchRecord[]> {
+    "use cache";
+    cacheTag("courses", "notes", "past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    return [...(await getCoursePickerRecords())].sort(
+        (a, b) =>
+            b.noteCount - a.noteCount ||
+            a.title.localeCompare(b.title, "en", { sensitivity: "base" }),
+    );
 }
 
 function toNotesGridItem(courseRow: CourseSearchRecord): NotesCourseGridItem {
@@ -228,47 +239,52 @@ export async function getNotesCourseGrid(): Promise<NotesCourseGridItem[]> {
     cacheTag("notes", "courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    // The default browse grid only lists courses that actually have notes.
     const courses = await getNoteCourseRecords();
 
-    return courses
-        .filter((c) => c.noteCount > 0)
-        .map(toNotesGridItem);
+    return courses.map(toNotesGridItem);
 }
 
 export async function searchNotesCourseGrid(
     query: string,
 ): Promise<NotesCourseGridItem[]> {
     const trimmed = query.trim();
-    // No query → fall back to the gated browse grid (courses with notes only).
     if (!trimmed) return getNotesCourseGrid();
 
-    // Search across the full catalog so real-but-empty courses (e.g. BACHY105
-    // "Applied Chemistry") are findable instead of dead-ending on "No courses
-    // found". The course page handles the empty state gracefully.
-    const grid = (await getNoteCourseRecords()).map(toNotesGridItem);
+    const records = await getNoteSearchRecords();
 
-    const upper = trimmed.toUpperCase().replace(/\s+/g, "");
-    const exact = grid.filter((c) => c.code === upper);
-    if (exact.length) return exact;
+    const upper = normalizeCourseCode(trimmed);
+    const aliasCodes = new Set(getAliasCourseCodes(trimmed));
+    const exact = records.filter(
+        (courseRow) =>
+            courseRow.code === upper || aliasCodes.has(courseRow.code),
+    );
+    if (exact.length) return exact.map(toNotesGridItem);
 
-    const prefix = grid.filter((c) => c.code.startsWith(upper));
-    if (prefix.length > 0 && prefix.length <= 50) return prefix;
+    const prefix =
+        upper.length >= 2
+            ? records.filter((courseRow) => courseRow.code.startsWith(upper))
+            : [];
+    if (prefix.length > 0 && prefix.length <= 50) {
+        return prefix.map(toNotesGridItem);
+    }
 
     const lower = trimmed.toLowerCase();
-    const substring = grid.filter((c) => {
-        if (c.code.toLowerCase().includes(lower)) return true;
-        if (c.title.toLowerCase().includes(lower)) return true;
-        return false;
-    });
+    const substring = records.filter(
+        (courseRow) =>
+            courseRow.code.toLowerCase().includes(lower) ||
+            courseRow.title.toLowerCase().includes(lower) ||
+            courseRow.aliases.some((alias) =>
+                alias.toLowerCase().includes(lower),
+            ),
+    );
 
-    if (substring.length > 0) return substring;
+    if (substring.length > 0) return substring.map(toNotesGridItem);
 
     // Fuzzy fallback shared with the homepage / notes dropdown so typos and
     // word-order variations resolve identically everywhere.
-    const fuse = createCourseFuse(grid);
+    const fuse = createCourseFuse(records);
 
-    return fuse.search(trimmed).map(({ item }) => item);
+    return fuse.search(trimmed).map(({ item }) => toNotesGridItem(item));
 }
 
 export type NotesStats = {
@@ -281,10 +297,7 @@ export async function getNotesStats(): Promise<NotesStats> {
     cacheTag("notes", "courses");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    // Hero stats count only courses that actually have notes.
-    const courses = (await getNoteCourseRecords()).filter(
-        (courseRow) => courseRow.noteCount > 0,
-    );
+    const courses = await getNoteCourseRecords();
     const noteCount = courses.reduce((sum, courseRow) => sum + courseRow.noteCount, 0);
     const courseCount = courses.length;
 
@@ -307,7 +320,7 @@ export async function getSearchableNoteCourses(): Promise<
     cacheTag("notes", "courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const courses = await getNoteCourseRecords();
+    const courses = await getNoteSearchRecords();
 
     return courses
         .map((c) => ({
