@@ -539,20 +539,46 @@ export function capturePdfDownloaded(input: {
     fileUrl: string;
     totalPages?: number | null;
     rendered?: boolean | null;
+    viewMode?: "paper" | "pdf" | null;
 }) {
     capturePostHogEvent("pdf_downloaded", {
         file_name: input.fileName,
         file_url: input.fileUrl,
-        // A burst of downloads with `pdf_rendered: false` is the blank-viewer
-        // workaround — users bailing to the raw file because nothing painted in
-        // the in-app viewer. Without this flag that burst is indistinguishable
-        // from happy downloads of a working viewer, so the real failure rate of
-        // the core "read a past paper" flow stays invisible. `pdf_total_pages`
-        // adds the paging context (e.g. a multi-page doc that rendered nothing).
+        // In PDF mode, `pdf_rendered: false` means this specific viewer never
+        // painted a page. Questions view deliberately omits that flag and uses
+        // `pdf_view_mode: "paper"`, so an intentional non-PDF view is not
+        // misclassified as a blank viewer. `pdf_total_pages` adds paging context.
         pdf_total_pages:
             typeof input.totalPages === "number" ? input.totalPages : undefined,
         pdf_rendered:
             typeof input.rendered === "boolean" ? input.rendered : undefined,
+        pdf_view_mode: input.viewMode ?? undefined,
+    });
+}
+
+export type PdfOriginalOpenContext =
+    | "document_load_stall"
+    | "document_load_timeout"
+    | "document_load_error";
+
+export function capturePdfOriginalOpened(input: {
+    context: PdfOriginalOpenContext;
+    documentId: string;
+    fileUrl: string;
+    loadingProgress?: number | null;
+}) {
+    capturePostHogEvent("pdf_original_opened", {
+        file_url: input.fileUrl,
+        pdf_document_id: input.documentId,
+        viewer_phase: input.context,
+        loading_progress:
+            typeof input.loadingProgress === "number"
+                ? Math.round(input.loadingProgress)
+                : undefined,
+        // The document has not reached the page-rendering phase in any of these
+        // contexts. Keep the workaround event directly queryable alongside the
+        // toolbar download telemetry without mislabeling this click as a download.
+        pdf_rendered: false,
     });
 }
 
