@@ -114,7 +114,7 @@ const nextConfig: NextConfig = {
         serverActions: {
             bodySizeLimit: "10mb",
         },
-        viewTransition: true,
+        useTypeScriptCli: true,
     },
     turbopack: {
         root: __dirname,
