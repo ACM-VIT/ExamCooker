@@ -3,6 +3,7 @@ import {
     getPostHogClientConfig,
     getPostHogProjectKey,
 } from "@/lib/posthog/shared";
+import { toRouteTemplate } from "@/lib/posthog/route-template";
 import { captureVoiceRealtimeAnalyticsAction } from "@/app/components/voice/voice-agent-actions";
 
 export type VoiceAgentEntryPoint = "nav" | "home_search";
@@ -410,12 +411,22 @@ export function capturePdfPageRenderFailed(input: {
     errorMessage?: string | null;
 }) {
     const properties: AnalyticsProperties = {
+        // Keep the document ID and page number for drill-down, but note they are
+        // deliberately NOT part of the exception message below.
         pdf_document_id: input.documentId,
         pdf_page_index: input.pageIndex,
         pdf_page_number: input.pageIndex + 1,
         failure_reason: input.reason,
         timeout_ms: input.timeoutMs,
         error_message: input.errorMessage?.slice(0, 500),
+        // Pin every page-render failure to a single Error Tracking issue. Baking
+        // the concrete document ID and page number into the message previously
+        // minted a brand-new issue — and a duplicate "new issue" alert — for
+        // every document/page combination, so a real regression spanning many
+        // documents would arrive as dozens of one-occurrence issues instead of
+        // one with a true occurrence count. The `failure_reason` property keeps
+        // the render_error/timeout/empty_blob/image_decode split for drill-down.
+        $exception_fingerprint: "PdfPageRenderError",
     };
 
     // Custom event so the blank-viewer failure rate is measurable in funnels
@@ -424,12 +435,10 @@ export function capturePdfPageRenderFailed(input: {
 
     // Also surface it as a `$exception` in Error Tracking. The render catch
     // previously only `console.error`-ed, so these failures never reached
-    // PostHog and the true failure rate was invisible.
-    const error = new Error(
-        `PDF page render ${input.reason} (document ${input.documentId}, page ${
-            input.pageIndex + 1
-        })${input.errorMessage ? `: ${input.errorMessage}` : ""}`,
-    );
+    // PostHog and the true failure rate was invisible. The message stays free of
+    // the per-document/page identifiers (they live on the properties above) so
+    // the pinned fingerprint collapses all occurrences into one issue.
+    const error = new Error(`PDF page render ${input.reason}`);
     error.name = "PdfPageRenderError";
     capturePostHogException(error, properties);
 }
@@ -444,6 +453,8 @@ export function capturePdfDocumentLoadFailed(input: {
     errorMessage?: string | null;
 }) {
     const properties: AnalyticsProperties = {
+        // Keep the document ID for drill-down, but note it is deliberately NOT
+        // part of the exception message below.
         pdf_document_id: input.documentId,
         failure_reason: input.reason,
         timeout_ms: input.timeoutMs,
@@ -452,6 +463,11 @@ export function capturePdfDocumentLoadFailed(input: {
                 ? Math.round(input.loadingProgress)
                 : undefined,
         error_message: input.errorMessage?.slice(0, 500),
+        // Pin every document-load failure to a single Error Tracking issue,
+        // mirroring the page-render path. The concrete document ID in the
+        // message previously fragmented one failure class into a fresh issue —
+        // and a duplicate "new issue" alert — per document.
+        $exception_fingerprint: "PdfDocumentLoadError",
     };
 
     // Custom event so the silent "Loading PDF…" placeholder failure rate is
@@ -463,12 +479,10 @@ export function capturePdfDocumentLoadFailed(input: {
 
     // Also surface it as a `$exception` in Error Tracking, matching the
     // page-render failure path, so document-load stalls show up alongside
-    // other client errors with the load context attached.
-    const error = new Error(
-        `PDF document load ${input.reason} (document ${input.documentId})${
-            input.errorMessage ? `: ${input.errorMessage}` : ""
-        }`,
-    );
+    // other client errors with the load context attached. The message stays
+    // free of the per-document identifier (it lives on the properties above) so
+    // the pinned fingerprint collapses all occurrences into one issue.
+    const error = new Error(`PDF document load ${input.reason}`);
     error.name = "PdfDocumentLoadError";
     capturePostHogException(error, properties);
 }
@@ -480,11 +494,22 @@ export function captureHydrationMismatchRecovered(input: {
     reloadTriggered: boolean;
 }) {
     const safePath = input.path.split(/[?#]/, 1)[0] || "/";
+    const routeTemplate = toRouteTemplate(safePath);
     const properties: AnalyticsProperties = {
+        // Keep the full (query/fragment-stripped) path for drill-down, but note
+        // it is deliberately NOT part of the exception message below.
         path: safePath,
+        route: routeTemplate,
         react_error_number: input.reactErrorNumber,
         error_message: input.errorMessage?.slice(0, 500),
         reload_triggered: input.reloadTriggered,
+        // Pin every hydration-recovery incident to a single Error Tracking
+        // issue. Baking the concrete path (with its resource CUID) into the
+        // message previously minted a brand-new issue — and a duplicate
+        // "new issue" alert — for every newly visited note/paper/syllabus page.
+        // A constant fingerprint also stops React #418-vs-#419 and
+        // reloaded-vs-not from splitting the same underlying bug.
+        $exception_fingerprint: "HydrationMismatchRecovered",
     };
 
     // Detection and the guarded reload happen in an inline `beforeInteractive`
@@ -503,7 +528,7 @@ export function captureHydrationMismatchRecovered(input: {
     const error = new Error(
         `Hydration mismatch recovered${
             input.reactErrorNumber ? ` (React #${input.reactErrorNumber})` : ""
-        } on ${safePath}${input.reloadTriggered ? " — reloaded" : ""}`,
+        } on ${routeTemplate}${input.reloadTriggered ? " — reloaded" : ""}`,
     );
     error.name = "HydrationMismatchRecovered";
     capturePostHogException(error, properties);
@@ -512,10 +537,48 @@ export function captureHydrationMismatchRecovered(input: {
 export function capturePdfDownloaded(input: {
     fileName: string;
     fileUrl: string;
+    totalPages?: number | null;
+    rendered?: boolean | null;
+    viewMode?: "paper" | "pdf" | null;
 }) {
     capturePostHogEvent("pdf_downloaded", {
         file_name: input.fileName,
         file_url: input.fileUrl,
+        // In PDF mode, `pdf_rendered: false` means this specific viewer never
+        // painted a page. Questions view deliberately omits that flag and uses
+        // `pdf_view_mode: "paper"`, so an intentional non-PDF view is not
+        // misclassified as a blank viewer. `pdf_total_pages` adds paging context.
+        pdf_total_pages:
+            typeof input.totalPages === "number" ? input.totalPages : undefined,
+        pdf_rendered:
+            typeof input.rendered === "boolean" ? input.rendered : undefined,
+        pdf_view_mode: input.viewMode ?? undefined,
+    });
+}
+
+export type PdfOriginalOpenContext =
+    | "document_load_stall"
+    | "document_load_timeout"
+    | "document_load_error";
+
+export function capturePdfOriginalOpened(input: {
+    context: PdfOriginalOpenContext;
+    documentId: string;
+    fileUrl: string;
+    loadingProgress?: number | null;
+}) {
+    capturePostHogEvent("pdf_original_opened", {
+        file_url: input.fileUrl,
+        pdf_document_id: input.documentId,
+        viewer_phase: input.context,
+        loading_progress:
+            typeof input.loadingProgress === "number"
+                ? Math.round(input.loadingProgress)
+                : undefined,
+        // The document has not reached the page-rendering phase in any of these
+        // contexts. Keep the workaround event directly queryable alongside the
+        // toolbar download telemetry without mislabeling this click as a download.
+        pdf_rendered: false,
     });
 }
 

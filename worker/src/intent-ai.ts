@@ -1,5 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateText, Output, stepCountIs } from "ai";
+import { generateText, isStepCount, Output } from "ai";
 import { z } from "zod";
 import {
   getCommandActionCapability,
@@ -159,7 +159,7 @@ export async function resolveCommandIntentWithAI(
       tools: {
         getCommandSurface: createCommandSurfaceTool(surfaceContext),
       },
-      stopWhen: stepCountIs(2),
+      stopWhen: isStepCount(2),
       prepareStep: ({ stepNumber }) =>
         stepNumber === 0
           ? {
@@ -180,7 +180,7 @@ export async function resolveCommandIntentWithAI(
           textVerbosity: "low",
         },
       },
-      system:
+      instructions:
         "Classify an ExamCooker command palette query. Return only fields matching the schema. " +
         "resource is the user's target: notes, syllabus, papers, or course. " +
         "Use papers when the query asks for previous papers, pyqs, exams, CAT/FAT/MID/QUIZ/CIA, or a model paper. " +
