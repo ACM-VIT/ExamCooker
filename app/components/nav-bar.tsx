@@ -1,5 +1,5 @@
 "use client";
-import React, { addTransitionType, startTransition, useCallback, useEffect, useEffectEvent, useReducer, useRef, useSyncExternalStore } from "react";
+import React, { startTransition, useCallback, useEffect, useEffectEvent, useReducer, useRef, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { createPortal } from "react-dom";
@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import ThemeToggleSwitch from "@/app/components/common/theme-toggle";
 import { SignOut } from "@/app/components/sign-out";
 import VoiceAgentButton from "@/app/components/voice/voice-agent-button";
+import { addReactTransitionType } from "@/lib/react-transition-types";
 import { useGuestPrompt } from "@/app/components/auth-gate";
 import {
   captureVoiceAgentRequested,
@@ -296,7 +297,7 @@ const NavBar: React.FC<Props> = ({
     event.preventDefault();
     setNavTransitionOrigin(event.currentTarget);
     startTransition(() => {
-      addTransitionType("nav-lateral");
+      addReactTransitionType("nav-lateral");
       push(href);
     });
   };

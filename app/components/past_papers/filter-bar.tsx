@@ -1,8 +1,9 @@
 "use client";
 
-import React, { addTransitionType, memo, useCallback, useMemo, useTransition } from "react";
+import React, { memo, useCallback, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/exam-slug";
+import { addReactTransitionType } from "@/lib/react-transition-types";
 import type { Campus, ExamType, Semester } from "@/db";
 
 type Props = {
@@ -102,7 +103,7 @@ export default function FilterBar({
         next.delete("page");
         const qs = next.toString();
         startTransition(() => {
-            addTransitionType("filter-results");
+            addReactTransitionType("filter-results");
             replace(qs ? `${basePath}?${qs}` : basePath);
         });
     }, [basePath, replace, startTransition]);

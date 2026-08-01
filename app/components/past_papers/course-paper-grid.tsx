@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ViewTransition, useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
     Check,
@@ -12,6 +12,7 @@ import {
     X,
 } from "lucide-react";
 import { useToast } from "@/app/components/ui/use-toast";
+import OptionalViewTransition from "@/app/components/common/optional-view-transition";
 import CoursePaperCard from "./course-paper-card";
 import type { CoursePaperListItem } from "@/lib/data/course-papers";
 import { downloadPdfFile, downloadPdfZip } from "@/lib/downloads/browser-downloads";
@@ -655,7 +656,7 @@ export default function CoursePaperGrid({
 
             <div className="course-paper-grid flex flex-wrap gap-3">
                 {papers.map((paper, index) => (
-                    <ViewTransition
+                    <OptionalViewTransition
                         key={paper.id}
                         enter={{
                             "filter-results": "paper-card-enter",
@@ -689,7 +690,7 @@ export default function CoursePaperGrid({
                                 onContextMenuOpen={openContextMenu}
                             />
                         </div>
-                    </ViewTransition>
+                    </OptionalViewTransition>
                 ))}
             </div>
 

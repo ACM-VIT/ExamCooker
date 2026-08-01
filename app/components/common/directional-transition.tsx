@@ -1,7 +1,8 @@
 "use client";
 
-import React, { ViewTransition, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { ViewTransitionClass } from "react";
+import OptionalViewTransition from "@/app/components/common/optional-view-transition";
 
 // `<ViewTransition>` is an experimental React API. It used to be keyed on
 // `pathname`, which forced the whole page subtree to remount on every
@@ -70,12 +71,12 @@ export default function DirectionalTransition({
     }
 
     return (
-        <ViewTransition
+        <OptionalViewTransition
             enter={NAV_TRANSITION_CLASSES}
             update={NAV_TRANSITION_CLASSES}
             default="none"
         >
             {children}
-        </ViewTransition>
+        </OptionalViewTransition>
     );
 }
