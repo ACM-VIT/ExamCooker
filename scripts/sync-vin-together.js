@@ -2,7 +2,10 @@
 
 const fs = require("fs");
 const path = require("path");
-const ts = require("typescript");
+// TypeScript 7's root export is the native CLI and does not expose the legacy
+// compiler JavaScript API used by this source-map parser. Keep that API isolated
+// behind an npm alias while the application itself continues to compile with 7.
+const ts = require("typescript-api");
 
 const SITE_ORIGIN = "https://v-in-together.vercel.app";
 const COURSES_URL = `${SITE_ORIGIN}/courses`;
