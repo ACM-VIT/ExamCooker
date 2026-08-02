@@ -188,57 +188,119 @@ export function getPostHogUiHost(posthogHost = getPostHogHost()) {
     return undefined;
 }
 
-// Firefox throws a cross-origin `SecurityError` DOMException inside PostHog's own
-// rrweb session recorder when it tries to read the contents of the cross-origin
-// YouTube iframe embedded on past-paper pages. The iframe load itself is unaffected,
-// but `capture_exceptions` reports the swallowed throw as an error-tracking issue.
-// This is SDK noise, not an app bug, so drop it before it leaves the browser.
+// PostHog's own rrweb session recorder throws a cross-origin denial while it
+// walks the cross-origin YouTube iframe embedded on past-paper pages. The iframe
+// load itself is unaffected, but `capture_exceptions` reports the swallowed throw
+// as an error-tracking issue. This is SDK noise, not an app bug, so drop it
+// before it leaves the browser.
 //
-// Matches the browser-specific cross-origin access messages only. We deliberately
-// do NOT drop on the recorder frame alone, so genuine recorder-side DOMExceptions
-// (AbortError, NotAllowedError, QuotaExceededError, InvalidStateError, ...) still
-// reach error tracking.
+// The denial arrives with a browser-specific shape:
+//   - Chromium reports a `SecurityError` DOMException.
+//   - Firefox reports a plain `Error` whose message is
+//     `Permission denied to access property "nodeType"` — the property rrweb's
+//     serializer reads while walking the iframe's DOM.
+// so we accept both `DOMException` and `Error`, but ONLY when the value (or type)
+// carries a cross-origin access signature. That keeps genuine recorder-side
+// DOMExceptions (AbortError, NotAllowedError, QuotaExceededError,
+// InvalidStateError, ...) reaching error tracking.
+//
+// For recorder attribution we prefer a recorder frame on the entry, but Firefox
+// reports this throw with no usable frames, so we fall back to the event-level
+// `$exception_sources`, which still names the recorder bundle
+// (`../../rrweb/record/dist/rrweb-record.js`). We never drop a cross-origin error
+// that can't be attributed to the recorder, so a genuine `Permission denied`
+// raised by our own iframe access would still surface.
 const CROSS_ORIGIN_SECURITY_ERROR =
     /SecurityError|cross-origin|Permission denied to access property|Blocked a frame with origin/i;
 
-function isPostHogRecorderFrame(filename: string): boolean {
+const RRWEB_CROSS_ORIGIN_EXCEPTION_TYPES = new Set(["DOMException", "Error"]);
+
+function isPostHogRecorderSource(source: string): boolean {
     return (
-        filename.includes("posthog-recorder") ||
-        filename.includes("lazy-recorder") ||
-        filename.includes("rrweb")
+        source.includes("posthog-recorder") ||
+        source.includes("lazy-recorder") ||
+        source.includes("rrweb")
     );
 }
 
-function isRrwebCrossOriginIframeException(result: CaptureResult): boolean {
-    if (result.event !== "$exception") return false;
+function hasPostHogRecorderFrame(exception: {
+    stacktrace?: { frames?: unknown[] } | null;
+}): boolean {
+    const frames = exception.stacktrace?.frames;
+    if (!Array.isArray(frames)) return false;
 
-    const exceptionList = result.properties?.$exception_list;
-    if (!Array.isArray(exceptionList)) return false;
-
-    return exceptionList.some((exception) => {
-        if (exception?.type !== "DOMException") return false;
-
-        // Require the specific cross-origin SecurityError signature, not just a
-        // DOMException. The browser-sanitized name can surface in either the
-        // exception type or its message, so check both.
-        const value = typeof exception?.value === "string" ? exception.value : "";
-        const type = typeof exception?.type === "string" ? exception.type : "";
-        if (
-            !CROSS_ORIGIN_SECURITY_ERROR.test(value) &&
-            !CROSS_ORIGIN_SECURITY_ERROR.test(type)
-        ) {
-            return false;
-        }
-
-        const frames = exception?.stacktrace?.frames;
-        if (!Array.isArray(frames)) return false;
-
-        return frames.some((frame) => {
-            const filename =
-                typeof frame?.filename === "string" ? frame.filename : "";
-            return isPostHogRecorderFrame(filename);
-        });
+    return frames.some((frame) => {
+        const filename =
+            frame && typeof frame === "object"
+                ? (frame as { filename?: unknown }).filename
+                : undefined;
+        return (
+            typeof filename === "string" && isPostHogRecorderSource(filename)
+        );
     });
+}
+
+function isRrwebCrossOriginException(
+    exception: unknown,
+    eventSources: string[],
+): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as {
+        type?: unknown;
+        value?: unknown;
+        stacktrace?: { frames?: unknown[] } | null;
+    };
+
+    const type = typeof entry.type === "string" ? entry.type : "";
+    if (!RRWEB_CROSS_ORIGIN_EXCEPTION_TYPES.has(type)) {
+        return false;
+    }
+
+    // Require the specific cross-origin signature, not just the type. The
+    // browser-sanitized name can surface in either the exception value or its
+    // type, so check both.
+    const value = typeof entry.value === "string" ? entry.value : "";
+    if (
+        !CROSS_ORIGIN_SECURITY_ERROR.test(value) &&
+        !CROSS_ORIGIN_SECURITY_ERROR.test(type)
+    ) {
+        return false;
+    }
+
+    // Attribute the throw to the recorder. A recorder frame on the entry is the
+    // strongest signal; when Firefox strips the frames, fall back to the
+    // event-level exception source, which still names the recorder bundle.
+    return (
+        hasPostHogRecorderFrame(entry) ||
+        eventSources.some(isPostHogRecorderSource)
+    );
+}
+
+function isRrwebCrossOriginIframeNoise(event: CaptureResult): boolean {
+    if (event.event !== "$exception") {
+        return false;
+    }
+
+    const exceptionList = event.properties?.$exception_list;
+    if (!Array.isArray(exceptionList) || exceptionList.length === 0) {
+        return false;
+    }
+
+    const sources = event.properties?.$exception_sources;
+    const eventSources = Array.isArray(sources)
+        ? sources.filter(
+              (source): source is string => typeof source === "string",
+          )
+        : [];
+
+    // Only drop when EVERY entry is the benign recorder cross-origin throw, so an
+    // event chaining it with a genuine exception keeps its actionable detail.
+    return exceptionList.every((exception) =>
+        isRrwebCrossOriginException(exception, eventSources),
+    );
 }
 
 // On iOS, Capacitor's injected `native-bridge.js` registers a `pagehide`
@@ -463,7 +525,7 @@ function beforeSend(result: CaptureResult | null): CaptureResult | null {
         return null;
     }
 
-    if (isRrwebCrossOriginIframeException(filteredResult)) {
+    if (isRrwebCrossOriginIframeNoise(filteredResult)) {
         return null;
     }
 
