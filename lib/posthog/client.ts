@@ -451,6 +451,9 @@ export function capturePdfDocumentLoadFailed(input: {
     timeoutMs?: number;
     loadingProgress?: number | null;
     errorMessage?: string | null;
+    // pdfium's `PdfErrorCode` for the underlying rejection (e.g. WrongFormat,
+    // NotFound) so a load failure says what pdfium refused, not just that it did.
+    errorCode?: number | null;
 }) {
     const properties: AnalyticsProperties = {
         // Keep the document ID for drill-down, but note it is deliberately NOT
@@ -463,6 +466,8 @@ export function capturePdfDocumentLoadFailed(input: {
                 ? Math.round(input.loadingProgress)
                 : undefined,
         error_message: input.errorMessage?.slice(0, 500),
+        error_code:
+            typeof input.errorCode === "number" ? input.errorCode : undefined,
         // Pin every document-load failure to a single Error Tracking issue,
         // mirroring the page-render path. The concrete document ID in the
         // message previously fragmented one failure class into a fresh issue —
