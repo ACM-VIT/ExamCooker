@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+// Same constant the sync script emits asset URLs against, so the allowlist
+// below can never drift away from the host those URLs actually use.
+import { SITE_ORIGIN as VIN_TOGETHER_ORIGIN } from "./scripts/vin-together-site.js";
 
 type RemotePattern = NonNullable<NonNullable<NextConfig["images"]>["remotePatterns"]>[number];
 
@@ -82,6 +85,11 @@ const fallbackAzureBaseUrls = [
     "https://examcookerprodsi.blob.core.windows.net/exam-assets",
 ];
 
+// VInTogether course assets (topic "Visual" diagrams, PDFs) are served from
+// this origin. Without it in the allowlist next/image rejects every optimizer
+// request and diagram-only blocks render as an empty box.
+const vinTogetherRemotePattern = buildRemotePattern(VIN_TOGETHER_ORIGIN);
+
 const configuredRemotePatterns = Array.from(
     new Map(
         [configuredAzureBaseUrl, ...fallbackAzureBaseUrls]
@@ -146,6 +154,7 @@ const nextConfig: NextConfig = {
                 hostname: "www.everything-assistant.com",
                 pathname: "/onboarding-artwork/**",
             },
+            ...(vinTogetherRemotePattern ? [vinTogetherRemotePattern] : []),
             ...configuredRemotePatterns,
         ],
     },
