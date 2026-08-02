@@ -18,6 +18,9 @@ import {
 } from "@/app/components/past_papers/paper-split-view";
 import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
+import { installReactTransitionTypeFallback } from "@/lib/react-transition-types";
+
+installReactTransitionTypeFallback();
 
 const CommandPalette = dynamic(() => import("@/app/components/command-palette"), {
     ssr: false,
