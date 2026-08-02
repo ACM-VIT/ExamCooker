@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict";
-import * as React from "react";
+import React from "react";
 import { installReactTransitionTypeFallback } from "@/lib/react-transition-types";
 
 type ReactWithTransitionTypes = typeof React & {
