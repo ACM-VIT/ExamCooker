@@ -7,7 +7,7 @@ import { toRouteTemplate } from "@/lib/posthog/route-template";
 import { captureVoiceRealtimeAnalyticsAction } from "@/app/components/voice/voice-agent-actions";
 
 export type VoiceAgentEntryPoint = "nav" | "home_search";
-export type CourseSearchContext = "home" | "notes" | "past_papers";
+export type CourseSearchContext = "home" | "notes" | "past_papers" | "syllabus";
 export type CourseSearchInteraction =
     | "click"
     | "keyboard"
@@ -198,6 +198,31 @@ export function captureCourseSearchNoResults(input: {
         search_query: trimmedQuery.slice(0, 200),
         ...getQueryMetrics(trimmedQuery),
     });
+}
+
+export function captureCourseSearchAbandoned(input: {
+    context: CourseSearchContext;
+    query: string;
+    resultCount: number;
+}) {
+    const trimmedQuery = input.query.trim();
+    if (!trimmedQuery) return;
+
+    // A search that returned rows but never got a click is otherwise invisible:
+    // `course_search_no_results` only covers empty results, so a session that
+    // matched on every query yet never opened a result (the exact pattern seen
+    // in the syllabus recordings) would leave no trace. sendBeacon because this
+    // fires as the user leaves the search — on clear, unmount, or page unload.
+    capturePostHogEvent(
+        "course_search_abandoned",
+        {
+            search_context: input.context,
+            search_query: trimmedQuery.slice(0, 200),
+            result_count: input.resultCount,
+            ...getQueryMetrics(trimmedQuery),
+        },
+        { transport: "sendBeacon" },
+    );
 }
 
 export function captureCourseSearchSelection(input: {
