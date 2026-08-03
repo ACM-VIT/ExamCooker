@@ -487,6 +487,83 @@ export function capturePdfDocumentLoadFailed(input: {
     capturePostHogException(error, properties);
 }
 
+export type PdfEngineLoadFailureReason = "engine_error" | "engine_timeout";
+
+export function capturePdfEngineLoadFailed(input: {
+    fileUrl: string;
+    reason: PdfEngineLoadFailureReason;
+    timeoutMs?: number;
+    errorMessage?: string | null;
+}) {
+    const properties: AnalyticsProperties = {
+        // No document ID exists yet — pdfium has not opened anything; the engine
+        // itself failed to start. Key on the file URL for drill-down instead.
+        file_url: input.fileUrl,
+        failure_reason: input.reason,
+        timeout_ms: input.timeoutMs,
+        error_message: input.errorMessage?.slice(0, 500),
+        // Pin every engine-start failure to a single Error Tracking issue,
+        // mirroring the document-load and page-render paths.
+        $exception_fingerprint: "PdfEngineLoadError",
+    };
+
+    // Custom event so the "Loading PDF engine" placeholder failure rate is
+    // measurable alongside `content_viewed`. This phase previously had no
+    // timeout and emitted no telemetry, so a hung `createPdfiumEngine` left the
+    // viewer blank forever with nothing captured.
+    capturePostHogEvent("pdf_engine_load_failed", properties);
+
+    // Also surface it as a `$exception` so engine-start stalls show up in Error
+    // Tracking. The message stays free of the per-file identifier (it lives on
+    // the properties above) so the pinned fingerprint collapses occurrences.
+    const error = new Error(`PDF engine load ${input.reason}`);
+    error.name = "PdfEngineLoadError";
+    capturePostHogException(error, properties);
+}
+
+export function capturePdfBufferLoadFailed(input: {
+    fileUrl: string;
+    errorMessage?: string | null;
+}) {
+    const properties: AnalyticsProperties = {
+        file_url: input.fileUrl,
+        failure_reason: "buffer_error",
+        error_message: input.errorMessage?.slice(0, 500),
+        // Pin every buffer-download failure to a single Error Tracking issue.
+        $exception_fingerprint: "PdfBufferLoadError",
+    };
+
+    // Custom event so the "Downloading PDF" phase failure rate is measurable.
+    // The buffer-download error branch previously rendered its `ErrorState`
+    // without a single capture, so a failed download looked identical to a
+    // successful render in analytics.
+    capturePostHogEvent("pdf_buffer_load_failed", properties);
+
+    const error = new Error("PDF buffer download failed");
+    error.name = "PdfBufferLoadError";
+    capturePostHogException(error, properties);
+}
+
+export function capturePdfViewerRendered(input: {
+    documentId: string;
+    fileUrl: string;
+    totalPages?: number | null;
+}) {
+    // The success counterpart the viewer never had. Without it a perfectly
+    // rendered PDF and a silently blank viewer looked identical in analytics —
+    // both emitted `content_viewed` and nothing else. Fired once per document,
+    // when the first page actually paints, this is the denominator that turns
+    // the blank-viewer rate into a number we can watch alongside the
+    // `pdf_engine_load_failed` / `pdf_buffer_load_failed` /
+    // `pdf_document_load_failed` / `pdf_page_render_failed` events.
+    capturePostHogEvent("pdf_viewer_rendered", {
+        pdf_document_id: input.documentId,
+        file_url: input.fileUrl,
+        pdf_total_pages:
+            typeof input.totalPages === "number" ? input.totalPages : undefined,
+    });
+}
+
 export function captureHydrationMismatchRecovered(input: {
     path: string;
     reactErrorNumber: number | null;
@@ -557,19 +634,24 @@ export function capturePdfDownloaded(input: {
 }
 
 export type PdfOriginalOpenContext =
+    | "engine_load_error"
+    | "engine_load_timeout"
+    | "buffer_load_error"
     | "document_load_stall"
     | "document_load_timeout"
     | "document_load_error";
 
 export function capturePdfOriginalOpened(input: {
     context: PdfOriginalOpenContext;
-    documentId: string;
+    // Absent for the engine-start and buffer-download phases: pdfium has not
+    // opened a document yet, so there is no document ID to attach.
+    documentId?: string | null;
     fileUrl: string;
     loadingProgress?: number | null;
 }) {
     capturePostHogEvent("pdf_original_opened", {
         file_url: input.fileUrl,
-        pdf_document_id: input.documentId,
+        pdf_document_id: input.documentId ?? undefined,
         viewer_phase: input.context,
         loading_progress:
             typeof input.loadingProgress === "number"
