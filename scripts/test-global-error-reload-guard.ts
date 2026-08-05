@@ -66,14 +66,18 @@ try {
   assert.equal(isChunkLoadError(chunkError), true);
   assert.equal(isChunkLoadError(new Error("ordinary failure")), false);
   assert.equal(
-    getRecoveryKey(new Error("Minified React error #418"), "hydration"),
-    "hydration:Error:Minified React error #418:",
-    "hydration recovery keys include the trailing digest field used by the inline guard",
+    getRecoveryKey(
+      new Error("Minified React error #418"),
+      "hydration",
+      "/past_papers/paper-1",
+    ),
+    "hydration:/past_papers/paper-1:Error:Minified React error #418:",
+    "hydration recovery keys include the path and trailing digest used by the inline guard",
   );
   assert.match(
     readFileSync(new URL("../app/hydration-recovery-script.ts", import.meta.url), "utf8"),
-    /\+':'\+\(\(err&&err\.digest\)\|\|''\)/,
-    "the pre-hydration inline guard must use the same digest-aware key shape",
+    /'hydration:'\+location\.pathname\+':'/,
+    "the pre-hydration inline guard must use the same path-scoped key shape",
   );
 
   installWindow(createMemoryStorage());

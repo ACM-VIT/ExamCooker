@@ -39,7 +39,7 @@ export default function GlobalError({
         // signature, so a deterministic failure won't loop.
         const key = isChunkError
             ? getChunkErrorKey(error)
-            : getRecoveryKey(error, "hydration");
+            : getRecoveryKey(error, "hydration", window.location.pathname);
         if (claimChunkReload(key)) {
             window.location.reload();
         }
