@@ -548,19 +548,26 @@ export function capturePdfPageRenderFailed(input: {
     capturePostHogException(error, properties);
 }
 
-export type PdfDocumentLoadFailureReason = "load_timeout" | "load_error";
+export type PdfDocumentLoadFailureReason =
+    | "load_timeout"
+    | "load_error"
+    | "empty_buffer";
 
 export function capturePdfDocumentLoadFailed(input: {
-    documentId: string;
+    documentId?: string | null;
     reason: PdfDocumentLoadFailureReason;
     timeoutMs?: number;
     loadingProgress?: number | null;
     errorMessage?: string | null;
+    // pdfium's `PdfErrorCode` for the underlying rejection (e.g. WrongFormat,
+    // NotFound) so a load failure says what pdfium refused, not just that it did.
+    errorCode?: number | null;
 }) {
     const properties: AnalyticsProperties = {
-        // Keep the document ID for drill-down, but note it is deliberately NOT
-        // part of the exception message below.
-        pdf_document_id: input.documentId,
+        // Keep the document ID for drill-down when PDFium created one, but note
+        // it is deliberately NOT part of the exception message below. An empty
+        // downloaded buffer fails before a document ID exists.
+        pdf_document_id: input.documentId ?? undefined,
         failure_reason: input.reason,
         timeout_ms: input.timeoutMs,
         loading_progress:
@@ -568,6 +575,8 @@ export function capturePdfDocumentLoadFailed(input: {
                 ? Math.round(input.loadingProgress)
                 : undefined,
         error_message: input.errorMessage?.slice(0, 500),
+        error_code:
+            typeof input.errorCode === "number" ? input.errorCode : undefined,
         // Pin every document-load failure to a single Error Tracking issue,
         // mirroring the page-render path. The concrete document ID in the
         // message previously fragmented one failure class into a fresh issue —
