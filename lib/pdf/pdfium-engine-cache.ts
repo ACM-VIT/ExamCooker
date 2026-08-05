@@ -37,6 +37,26 @@ type PdfiumEngineAttempt = {
   promise: Promise<PdfiumEngine>;
 };
 
+export type PdfiumEngineWatchdogOutcome =
+  | "loaded"
+  | "watch_replacement"
+  | "timeout";
+
+export function getPdfiumEngineWatchdogOutcome(input: {
+  hasCachedEngine: boolean;
+  currentGeneration: number | null;
+  watchedGeneration: number;
+}): PdfiumEngineWatchdogOutcome {
+  if (input.hasCachedEngine) return "loaded";
+  if (
+    input.currentGeneration !== null &&
+    input.currentGeneration !== input.watchedGeneration
+  ) {
+    return "watch_replacement";
+  }
+  return "timeout";
+}
+
 class StalePdfiumEngineAttemptError extends Error {
   constructor() {
     super("PDF engine attempt was superseded");
@@ -209,7 +229,19 @@ export function usePreloadedPdfiumEngine(retryKey = 0): PdfiumEngineState {
         if (!isActive || version !== watchVersion) return;
         timeoutId = null;
 
-        if (!invalidatePdfiumEngineAttempt(attempt.generation)) {
+        invalidatePdfiumEngineAttempt(attempt.generation);
+        const outcome = getPdfiumEngineWatchdogOutcome({
+          hasCachedEngine: cachedEngine !== null,
+          currentGeneration: currentAttempt?.generation ?? null,
+          watchedGeneration: attempt.generation,
+        });
+
+        if (outcome === "loaded" && cachedEngine) {
+          dispatch({ type: "loaded", engine: cachedEngine });
+          return;
+        }
+
+        if (outcome === "watch_replacement") {
           watchCurrentAttempt();
           return;
         }
