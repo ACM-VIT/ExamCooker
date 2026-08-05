@@ -1899,7 +1899,12 @@ function LoadedDocumentSurface({
   } = paperState;
   const paperAbortRef = useRef<AbortController | null>(null);
   const copyResetTimerRef = useRef<number | null>(null);
-  const [hasRenderedPdfPage, setHasRenderedPdfPage] = useState(false);
+  const [renderedDocumentId, setRenderedDocumentId] = useState<string | null>(
+    null,
+  );
+  const hasRenderedPdfPage = renderedDocumentId === documentId;
+  const activeDocumentIdRef = useRef(documentId);
+  activeDocumentIdRef.current = documentId;
   const { state: scrollState } = useScroll(documentId);
   const totalPages = Math.max(scrollState.totalPages || 0, 0);
   const pageEditsKey = useMemo(
@@ -1907,20 +1912,19 @@ function LoadedDocumentSurface({
     [pageEdits],
   );
   // Report the viewer-success event at most once per opened document.
-  const didReportRenderedRef = useRef(false);
+  const didReportRenderedDocumentRef = useRef<string | null>(null);
 
   useEffect(() => {
     dispatchPaper({ type: "resetDocument" });
-    setHasRenderedPdfPage(false);
-    didReportRenderedRef.current = false;
+    setRenderedDocumentId(null);
     paperAbortRef.current?.abort();
     paperAbortRef.current = null;
   }, [documentId, fileName, fileUrl, pageEditsKey]);
 
   useEffect(() => {
-    if (!hasRenderedPdfPage) return;
-    if (didReportRenderedRef.current) return;
-    didReportRenderedRef.current = true;
+    if (renderedDocumentId !== documentId) return;
+    if (didReportRenderedDocumentRef.current === documentId) return;
+    didReportRenderedDocumentRef.current = documentId;
 
     // The success signal the viewer never emitted: the first page has actually
     // painted, so this session is a rendered PDF, not a silently blank box.
@@ -1929,11 +1933,12 @@ function LoadedDocumentSurface({
       fileUrl,
       totalPages,
     });
-  }, [documentId, fileUrl, hasRenderedPdfPage, totalPages]);
+  }, [documentId, fileUrl, renderedDocumentId, totalPages]);
 
   const handlePdfPageRendered = useCallback(() => {
-    setHasRenderedPdfPage(true);
-  }, []);
+    if (activeDocumentIdRef.current !== documentId) return;
+    setRenderedDocumentId(documentId);
+  }, [documentId]);
 
   useEffect(
     () => () => {

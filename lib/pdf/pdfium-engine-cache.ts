@@ -30,37 +30,93 @@ type PdfiumEngineState =
       reason: PdfiumEngineErrorReason;
     };
 
-let enginePromise: Promise<PdfiumEngine> | null = null;
 let cachedEngine: PdfiumEngine | null = null;
-let cachedError: unknown = null;
+
+type PdfiumEngineAttempt = {
+  generation: number;
+  promise: Promise<PdfiumEngine>;
+};
+
+class StalePdfiumEngineAttemptError extends Error {
+  constructor() {
+    super("PDF engine attempt was superseded");
+    this.name = "StalePdfiumEngineAttemptError";
+  }
+}
+
+let nextAttemptGeneration = 0;
+let currentAttempt: PdfiumEngineAttempt | null = null;
+
+function destroyPdfiumEngine(engine: PdfiumEngine) {
+  try {
+    const task = engine.destroy?.();
+    void task?.toPromise().catch(() => undefined);
+  } catch {
+    // A superseded engine must never interfere with the active retry.
+  }
+}
+
+function createPdfiumEngineAttempt(): PdfiumEngineAttempt {
+  const generation = ++nextAttemptGeneration;
+  const promise = import("@embedpdf/engines/pdfium-direct-engine")
+    .then(({ createPdfiumEngine }) =>
+      createPdfiumEngine(PDFIUM_WASM_URL, {
+        fontFallback: { fonts: {} },
+      }),
+    )
+    .then((engine) => {
+      if (currentAttempt?.generation !== generation) {
+        destroyPdfiumEngine(engine);
+        throw new StalePdfiumEngineAttemptError();
+      }
+
+      cachedEngine = engine;
+      currentAttempt = null;
+      return engine;
+    })
+    .catch((error) => {
+      if (error instanceof StalePdfiumEngineAttemptError) {
+        throw error;
+      }
+
+      // A superseded attempt is stale whether it eventually resolves or rejects.
+      // Do not let its late rejection surface as the active retry's failure.
+      if (currentAttempt?.generation !== generation) {
+        throw new StalePdfiumEngineAttemptError();
+      }
+
+      currentAttempt = null;
+      throw error;
+    });
+
+  const attempt = { generation, promise };
+  currentAttempt = attempt;
+  return attempt;
+}
+
+function getOrCreatePdfiumEngineAttempt() {
+  return currentAttempt ?? createPdfiumEngineAttempt();
+}
+
+function invalidatePdfiumEngineAttempt(expectedGeneration?: number) {
+  if (!currentAttempt) return false;
+  if (
+    expectedGeneration !== undefined &&
+    currentAttempt.generation !== expectedGeneration
+  ) {
+    return false;
+  }
+
+  currentAttempt = null;
+  return true;
+}
 
 export function preloadPdfiumEngine() {
   if (cachedEngine) {
     return Promise.resolve(cachedEngine);
   }
 
-  if (enginePromise) {
-    return enginePromise;
-  }
-
-  cachedError = null;
-  enginePromise = import("@embedpdf/engines/pdfium-direct-engine")
-    .then(({ createPdfiumEngine }) =>
-      createPdfiumEngine(PDFIUM_WASM_URL, {
-        fontFallback: { fonts: {} },
-      })
-    )
-    .then((engine) => {
-      cachedEngine = engine;
-      return engine;
-    })
-    .catch((error) => {
-      cachedError = error;
-      enginePromise = null;
-      throw error;
-    });
-
-  return enginePromise;
+  return getOrCreatePdfiumEngineAttempt().promise;
 }
 
 type PdfiumEngineAction =
@@ -71,15 +127,6 @@ type PdfiumEngineAction =
 function getInitialPdfiumEngineState(): PdfiumEngineState {
   if (cachedEngine) {
     return { status: "loaded", engine: cachedEngine, error: null };
-  }
-
-  if (cachedError) {
-    return {
-      status: "error",
-      engine: null,
-      error: cachedError,
-      reason: "engine_error",
-    };
   }
 
   return { status: "loading", engine: null, error: null };
@@ -116,6 +163,14 @@ export function usePreloadedPdfiumEngine(retryKey = 0): PdfiumEngineState {
 
   useEffect(() => {
     let isActive = true;
+    let watchVersion = 0;
+    let timeoutId: number | null = null;
+
+    const clearWatchdog = () => {
+      if (timeoutId === null) return;
+      window.clearTimeout(timeoutId);
+      timeoutId = null;
+    };
 
     if (cachedEngine) {
       dispatch({ type: "loaded", engine: cachedEngine });
@@ -127,43 +182,72 @@ export function usePreloadedPdfiumEngine(retryKey = 0): PdfiumEngineState {
     // On an explicit retry, drop a stale in-flight or previously-failed attempt
     // so we actually re-create the engine instead of re-awaiting a promise that
     // may already be hung — otherwise "Retry viewer" could never recover an
-    // engine timeout. (A normal rejection already nulls `enginePromise`, but a
-    // timed-out promise is still pending, so reset it explicitly here.)
+    // engine timeout. Attempt generations ensure the abandoned promise cannot
+    // later overwrite this retry or populate the shared cache.
     if (retryKey > 0) {
-      enginePromise = null;
-      cachedError = null;
+      invalidatePdfiumEngineAttempt();
     }
 
     dispatch({ type: "loading" });
 
-    // Hard deadline mirroring the viewer's document-load watchdog: a
-    // `createPdfiumEngine` promise that never settles used to hang the viewer on
-    // "Loading PDF engine" indefinitely. Promote the hang into the recoverable
-    // error UI so the failure is both visible and reportable.
-    const timeoutId = window.setTimeout(() => {
+    const watchCurrentAttempt = () => {
       if (!isActive) return;
-      dispatch({
-        type: "error",
-        error: new Error("PDF engine load timed out"),
-        reason: "engine_timeout",
-      });
-    }, PDFIUM_ENGINE_LOAD_TIMEOUT_MS);
+      if (cachedEngine) {
+        clearWatchdog();
+        dispatch({ type: "loaded", engine: cachedEngine });
+        return;
+      }
 
-    preloadPdfiumEngine()
-      .then((engine) => {
-        if (!isActive) return;
-        window.clearTimeout(timeoutId);
-        dispatch({ type: "loaded", engine });
-      })
-      .catch((error) => {
-        if (!isActive) return;
-        window.clearTimeout(timeoutId);
-        dispatch({ type: "error", error, reason: "engine_error" });
-      });
+      const version = ++watchVersion;
+      const attempt = getOrCreatePdfiumEngineAttempt();
+      clearWatchdog();
+
+      // Hard deadline mirroring the viewer's document-load watchdog: invalidate
+      // only this exact attempt. If another consumer already started a newer
+      // generation, join that generation instead of timing it out early.
+      timeoutId = window.setTimeout(() => {
+        if (!isActive || version !== watchVersion) return;
+        timeoutId = null;
+
+        if (!invalidatePdfiumEngineAttempt(attempt.generation)) {
+          watchCurrentAttempt();
+          return;
+        }
+
+        // Make the timed-out promise's eventual resolution/rejection inert for
+        // this hook. Its module-level completion path will destroy a late engine.
+        watchVersion += 1;
+        dispatch({
+          type: "error",
+          error: new Error("PDF engine load timed out"),
+          reason: "engine_timeout",
+        });
+      }, PDFIUM_ENGINE_LOAD_TIMEOUT_MS);
+
+      attempt.promise
+        .then((engine) => {
+          if (!isActive || version !== watchVersion) return;
+          clearWatchdog();
+          dispatch({ type: "loaded", engine });
+        })
+        .catch((error) => {
+          if (!isActive || version !== watchVersion) return;
+          if (error instanceof StalePdfiumEngineAttemptError) {
+            watchCurrentAttempt();
+            return;
+          }
+
+          clearWatchdog();
+          dispatch({ type: "error", error, reason: "engine_error" });
+        });
+    };
+
+    watchCurrentAttempt();
 
     return () => {
       isActive = false;
-      window.clearTimeout(timeoutId);
+      watchVersion += 1;
+      clearWatchdog();
     };
   }, [retryKey]);
 
