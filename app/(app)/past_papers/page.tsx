@@ -1,5 +1,6 @@
 import React, { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import UploadButtonPaper from "@/app/components/upload-button-paper";
 import StructuredData from "@/app/components/seo/structured-data";
@@ -9,10 +10,11 @@ import SmartCourseGrid from "@/app/components/past_papers/smart-course-grid";
 import CoursePagination from "@/app/components/past_papers/course-pagination";
 import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
 import PastPapersCourseSearch from "@/app/components/past_papers/past-papers-course-search";
+import SearchNoResultsBeacon from "@/app/components/past_papers/search-no-results-beacon";
 import UpcomingExamsStrip from "@/app/components/past_papers/upcoming-exams-strip";
 import {
     getCatalogStats,
-    getCourseSearchRecords,
+    getSearchableCourseRecords,
     getCourseGrid,
     getRecentPapers,
     getUpcomingExamsCourseGrid,
@@ -314,12 +316,31 @@ async function CourseGridSection({
 
     if (courses.length === 0) {
         return (
-            <div className="border-2 border-dashed border-black/30 p-10 text-center dark:border-[#D5D5D5]/30">
-                <p className="text-sm text-black/70 dark:text-[#D5D5D5]/70">
-                    {search
-                        ? `No courses match "${search}".`
-                        : "No courses with papers or notes yet."}
-                </p>
+            <div className="flex flex-col gap-8 sm:gap-10">
+                {search && <SearchNoResultsBeacon query={search} />}
+                <div className="flex flex-col items-center gap-4 border-2 border-dashed border-black/30 p-10 text-center dark:border-[#D5D5D5]/30">
+                    <p className="text-sm text-black/70 dark:text-[#D5D5D5]/70">
+                        {search
+                            ? `No courses match "${search}".`
+                            : "No courses with papers or notes yet."}
+                    </p>
+                    {search && (
+                        <Link
+                            href="/past_papers"
+                            className="inline-flex items-center border-2 border-black bg-[#5FC4E7] px-4 py-2 text-sm font-bold uppercase tracking-wide text-black transition hover:bg-[#3BF4C7] dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/20 dark:text-[#3BF4C7] dark:hover:bg-[#3BF4C7]/30"
+                        >
+                            Clear search
+                        </Link>
+                    )}
+                </div>
+
+                {/* Never strip everything browsable away at the one moment the
+                    search has nothing to offer — keep upcoming exams in reach. */}
+                {search && (
+                    <Suspense fallback={<PopularCoursesShell count={6} />}>
+                        <PopularCoursesSection />
+                    </Suspense>
+                )}
             </div>
         );
     }
@@ -375,7 +396,7 @@ function SearchControls({
     searchable,
 }: {
     search: string;
-    searchable: Awaited<ReturnType<typeof getCourseSearchRecords>>;
+    searchable: Awaited<ReturnType<typeof getSearchableCourseRecords>>;
 }) {
     return (
         <div className="past-papers-search-controls flex w-full items-stretch gap-2 sm:gap-3">
@@ -435,7 +456,7 @@ async function DynamicHomeSections({
     popularCount,
 }: {
     searchParamsPromise: Promise<PastPapersSearchParams> | undefined;
-    searchable: Awaited<ReturnType<typeof getCourseSearchRecords>>;
+    searchable: Awaited<ReturnType<typeof getSearchableCourseRecords>>;
     popularCount: number;
 }) {
     const params = (await searchParamsPromise) ?? {};
@@ -473,7 +494,7 @@ async function PastPapersContent({
 }) {
     const [stats, searchable, popularCount] = await Promise.all([
         getCatalogStats(),
-        getCourseSearchRecords(),
+        getSearchableCourseRecords(),
         getUpcomingExamsCourseGridCount(),
     ]);
 
