@@ -2263,12 +2263,19 @@ function DocumentLoadPhase({
   documentId,
   fileUrl,
   isError,
+  errorMessage,
+  errorCode,
   loadingProgress,
   onRetry,
 }: {
   documentId: string;
   fileUrl: string;
   isError: boolean;
+  // The embedpdf failure behind `isError`: `documentState.error` is pdfium's
+  // message and `errorCode` its `PdfErrorCode`. Carried through to telemetry so
+  // a document-load failure records *why* pdfium rejected the buffer.
+  errorMessage: string | null | undefined;
+  errorCode: number | null | undefined;
   loadingProgress: number | null | undefined;
   onRetry: () => void;
 }) {
@@ -2330,8 +2337,18 @@ function DocumentLoadPhase({
       reason: isError ? "load_error" : "load_timeout",
       timeoutMs: hasTimedOut ? DOCUMENT_LOAD_TIMEOUT_MS : undefined,
       loadingProgress,
+      // Only the embedpdf error path carries a cause; a timeout has none.
+      errorMessage: isError ? errorMessage : undefined,
+      errorCode: isError ? errorCode : undefined,
     });
-  }, [documentId, hasTimedOut, isError, loadingProgress]);
+  }, [
+    documentId,
+    errorCode,
+    errorMessage,
+    hasTimedOut,
+    isError,
+    loadingProgress,
+  ]);
 
   // A stalled or failed load used to sit on the placeholder forever with no
   // way out. Promote it into the recoverable error UI so users can retry the
@@ -2425,6 +2442,8 @@ function DocumentViewport({
             documentId={documentId}
             fileUrl={fileUrl}
             isError={isError}
+            errorMessage={documentState.error}
+            errorCode={documentState.errorCode}
             loadingProgress={documentState.loadingProgress}
             onRetry={onRetry}
           />
@@ -2571,11 +2590,29 @@ export default function PDFViewer({
   }, [bufferState.status, engineState.status, retryNonce]);
 
   const activeBuffer = bufferState.status === "loaded" ? bufferState.buffer : null;
+  const lastEmptyBufferReportKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (activeBuffer === null || activeBuffer.byteLength > 0) return;
+
+    const reportKey = `${fileUrl}::${bufferVersion}`;
+    if (lastEmptyBufferReportKeyRef.current === reportKey) return;
+    lastEmptyBufferReportKeyRef.current = reportKey;
+    capturePdfDocumentLoadFailed({
+      reason: "empty_buffer",
+      loadingProgress: 0,
+      errorMessage: "PDF download produced an empty buffer",
+    });
+  }, [activeBuffer, bufferVersion, fileUrl]);
+
   const plugins = useMemo(
     () => [
       createPluginRegistration(DocumentManagerPluginPackage, {
         initialDocuments: [
           {
+            // The direct engine copies this view into PDFium's WASM heap; it does
+            // not transfer or detach the source buffer. Avoid duplicating an
+            // entire PDF in browser memory before opening it.
             buffer: activeBuffer ?? new ArrayBuffer(0),
             name: downloadFileName,
             autoActivate: true,
@@ -2657,6 +2694,20 @@ export default function PDFViewer({
         fileUrl={fileUrl}
         progress={bufferState.progress}
         showFallback={showSlowLoadFallback}
+        onRetry={retryViewerLoad}
+      />
+    );
+  }
+
+  // A loaded-but-empty buffer never opens: pdfium rejects a 0-byte document
+  // before parsing and the viewer would sit on "Loading PDF…" forever (the
+  // observed loading_progress-0 failure). Feed the error UI directly instead of
+  // handing the engine a buffer it cannot open.
+  if (activeBuffer !== null && activeBuffer.byteLength === 0) {
+    return (
+      <ErrorState
+        fileUrl={fileUrl}
+        message="This PDF could not be opened."
         onRetry={retryViewerLoad}
       />
     );
