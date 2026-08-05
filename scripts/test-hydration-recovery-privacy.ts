@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  getRecoveryKey,
   HYDRATION_RECOVERY_INCIDENT_KEY,
   RELOAD_FLAG,
 } from "../app/global-error-reload-guard";
@@ -63,14 +64,21 @@ try {
   new Function(hydrationRecoveryInitScript)();
 
   assert.equal(errorHandlers.length, 1, "script installs one error listener");
-  errorHandlers[0]({
-    error: new Error("Minified React error #418; see https://react.dev/errors/418"),
-  });
+  const hydrationError = new Error(
+    "Minified React error #418; see https://react.dev/errors/418",
+  );
+  errorHandlers[0]({ error: hydrationError });
 
   assert.equal(reloadCount, 1, "hydration recovery still triggers guarded reload");
   assert.ok(
     storage.getItem(RELOAD_FLAG),
     "hydration recovery still writes the reload guard",
+  );
+  const reloadGuard = JSON.parse(storage.getItem(RELOAD_FLAG) ?? "null");
+  assert.equal(
+    reloadGuard?.key,
+    getRecoveryKey(hydrationError, "hydration", "/native-auth/complete"),
+    "the inline script and global error boundary use the same path-scoped key",
   );
 
   const rawIncident = storage.getItem(HYDRATION_RECOVERY_INCIDENT_KEY);

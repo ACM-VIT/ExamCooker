@@ -6,8 +6,10 @@ const path = require("path");
 // compiler JavaScript API used by this source-map parser. Keep that API isolated
 // behind an npm alias while the application itself continues to compile with 7.
 const ts = require("typescript-api");
+// Shared with next.config.ts so the allowlisted image host and the host these
+// URLs are emitted on can't silently drift apart.
+const { SITE_ORIGIN } = require("./vin-together-site");
 
-const SITE_ORIGIN = "https://v-in-together.vercel.app";
 const COURSES_URL = `${SITE_ORIGIN}/courses`;
 const OUTPUT_PATH = path.join(
     __dirname,
