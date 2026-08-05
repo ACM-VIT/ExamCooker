@@ -457,10 +457,13 @@ export function capturePdfPageRenderFailed(input: {
     capturePostHogException(error, properties);
 }
 
-export type PdfDocumentLoadFailureReason = "load_timeout" | "load_error";
+export type PdfDocumentLoadFailureReason =
+    | "load_timeout"
+    | "load_error"
+    | "empty_buffer";
 
 export function capturePdfDocumentLoadFailed(input: {
-    documentId: string;
+    documentId?: string | null;
     reason: PdfDocumentLoadFailureReason;
     timeoutMs?: number;
     loadingProgress?: number | null;
@@ -470,9 +473,10 @@ export function capturePdfDocumentLoadFailed(input: {
     errorCode?: number | null;
 }) {
     const properties: AnalyticsProperties = {
-        // Keep the document ID for drill-down, but note it is deliberately NOT
-        // part of the exception message below.
-        pdf_document_id: input.documentId,
+        // Keep the document ID for drill-down when PDFium created one, but note
+        // it is deliberately NOT part of the exception message below. An empty
+        // downloaded buffer fails before a document ID exists.
+        pdf_document_id: input.documentId ?? undefined,
         failure_reason: input.reason,
         timeout_ms: input.timeoutMs,
         loading_progress:
