@@ -1304,6 +1304,9 @@ function PageRenderLayer({
           return;
         }
         promotedError = true;
+        // Claim the shared reporting guard before scheduling React's error UI.
+        // An image error can fire in the same turn, before that fallback commits.
+        didReportRenderErrorRef.current = true;
         firstPaintTimeoutRef.current = null;
         console.error("[PDFViewer] Page image stalled before first paint", {
           documentId,

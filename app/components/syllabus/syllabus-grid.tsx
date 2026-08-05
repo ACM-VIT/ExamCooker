@@ -318,17 +318,20 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
 
     const clearSelection = useCallback(() => setSelected(new Set()), []);
 
+    const markSearchConverted = useCallback(() => {
+        if (!query.trim()) return false;
+        converted.current = true;
+        pendingSearch.current = null;
+        return true;
+    }, [query]);
+
     // Opening a syllabus from a search: record the click (the positive signal the
     // abandoned event is measured against) and mark the search converted so
     // leaving no longer counts as abandonment. Only search-driven clicks count —
     // browsing the full catalog without a query is not a search result.
     const recordSearchConversion = useCallback(
         (id: string, interaction: CourseSearchInteraction) => {
-            const trimmed = query.trim();
-            if (!trimmed) return;
-
-            converted.current = true;
-            pendingSearch.current = null;
+            if (!markSearchConverted()) return;
 
             const syllabus = syllabusById.get(id);
             const courseCode = syllabus
@@ -349,7 +352,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                 hasSyllabus: true,
             });
         },
-        [query, filtered, syllabusById],
+        [filtered, markSearchConverted, syllabusById],
     );
 
     const handleSelect = useCallback(
@@ -390,6 +393,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                     fileName: getSyllabusFileName(syllabus),
                 })),
             });
+            markSearchConverted();
         } catch {
             toast({
                 title: "Could not create the syllabus zip file.",
@@ -398,7 +402,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
         } finally {
             setIsDownloading(false);
         }
-    }, [isDownloading, selected, syllabusById, toast]);
+    }, [isDownloading, markSearchConverted, selected, syllabusById, toast]);
 
     const count = selected.size;
 

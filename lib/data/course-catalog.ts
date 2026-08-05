@@ -103,8 +103,21 @@ async function getSyllabusIdByCourseCode() {
 
 // Words that never contribute a meaningful initial to a derived acronym.
 const ACRONYM_STOPWORDS = new Set([
-    "and", "of", "the", "for", "to", "in", "on", "a", "an", "with", "using",
-    "its", "or", "de", "&",
+    "and",
+    "of",
+    "the",
+    "for",
+    "to",
+    "in",
+    "on",
+    "a",
+    "an",
+    "with",
+    "using",
+    "its",
+    "or",
+    "de",
+    "&",
 ]);
 const ROMAN_NUMERAL = /^[ivx]+$/i;
 
@@ -126,10 +139,10 @@ function deriveCourseAcronym(title: string): string | null {
             return true;
         });
 
-    if (words.length < 2 || words.length > 6) return null;
+    if (words.length < 3 || words.length > 6) return null;
 
     const acronym = words.map((word) => word[0]).join("").toUpperCase();
-    if (acronym.length < 2 || acronym.length > 6) return null;
+    if (acronym.length < 3 || acronym.length > 6) return null;
     return acronym;
 }
 

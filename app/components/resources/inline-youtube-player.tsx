@@ -399,7 +399,10 @@ function InlineYouTubePlayerInner({
 
     const togglePlay = () => {
         if (status === "error") return;
-        if (isPlaying || playbackRequested) {
+        // The button reflects confirmed media state. In particular, an autoplay
+        // request may still be pending/rejected while the control says "Play";
+        // that first user gesture must issue play() instead of cancelling intent.
+        if (isPlaying) {
             pauseMedia();
         } else {
             playMedia();
