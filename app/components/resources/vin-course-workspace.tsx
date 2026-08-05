@@ -6,6 +6,7 @@ import {
     ChevronLeft,
     ChevronRight,
     FileText,
+    ImageOff,
     ListVideo,
     MessageSquareQuote,
     Play,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import AppImage from "@/app/components/common/app-image";
 import InlineYouTubePlayer from "@/app/components/resources/inline-youtube-player";
+import { captureResourceVisualFailed } from "@/lib/posthog/client";
 import { cn } from "@/lib/utils";
 import type {
     VinCourse,
@@ -140,7 +142,17 @@ function createTopicViewState(topic: VinSubtopic | null): TopicViewState {
     };
 }
 
-function RichBlock({ item, index }: { item: VinRichItem; index: number }) {
+function RichBlock({
+    item,
+    index,
+    context,
+}: {
+    item: VinRichItem;
+    index: number;
+    context: "notes" | "practice";
+}) {
+    const [imageFailed, setImageFailed] = useState(false);
+
     return (
         <div className="flex gap-3 py-3 first:pt-0 last:pb-0">
             <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-black/10 text-[11px] font-bold text-black/55 dark:bg-[#D5D5D5]/10 dark:text-[#D5D5D5]/55">
@@ -153,15 +165,35 @@ function RichBlock({ item, index }: { item: VinRichItem; index: number }) {
                     </p>
                 ) : null}
                 {item.image ? (
-                    <div className="relative overflow-hidden border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0A0F1C]">
-                        <AppImage
-                            src={item.image}
-                            alt={`Visual ${index + 1}`}
-                            width={1200}
-                            height={800}
-                            className="h-auto w-full object-contain"
-                        />
-                    </div>
+                    imageFailed ? (
+                        // Degrade a failed visual to a labelled placeholder so a
+                        // diagram-only block never collapses to an empty tab body.
+                        <div className="flex flex-col items-center justify-center gap-2 border border-dashed border-black/15 bg-black/[0.02] px-4 py-8 text-center dark:border-[#D5D5D5]/15 dark:bg-white/[0.02]">
+                            <ImageOff className="size-6 text-black/35 dark:text-[#D5D5D5]/35" />
+                            <p className="text-[13px] font-semibold text-black/55 dark:text-[#D5D5D5]/55">
+                                Visual {index + 1} couldn&apos;t load
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="relative overflow-hidden border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0A0F1C]">
+                            <AppImage
+                                src={item.image}
+                                alt={`Visual ${index + 1}`}
+                                width={1200}
+                                height={800}
+                                className="h-auto w-full object-contain"
+                                onError={() => {
+                                    if (item.image) {
+                                        captureResourceVisualFailed({
+                                            imageUrl: item.image,
+                                            context,
+                                        });
+                                    }
+                                    setImageFailed(true);
+                                }}
+                            />
+                        </div>
+                    )
                 ) : null}
             </div>
         </div>
@@ -783,6 +815,7 @@ function TopicWorkspace({
                                         key={getRichItemKey(`${topic.id}-takeaway`, item)}
                                         item={item}
                                         index={i}
+                                        context="notes"
                                     />
                                 ))}
                             </div>
@@ -794,6 +827,7 @@ function TopicWorkspace({
                                         key={getRichItemKey(`${topic.id}-question`, item)}
                                         item={item}
                                         index={i}
+                                        context="practice"
                                     />
                                 ))}
                             </div>
