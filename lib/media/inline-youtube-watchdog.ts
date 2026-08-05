@@ -12,9 +12,9 @@ export const STUCK_TIMEOUT_BASE_MS = 20000;
 // distinction the fixed-from-mount timer was missing.
 export function shouldArmStuckLoadTimeout(
   status: InlineYouTubePlaybackStatus,
-  isPlaying: boolean,
+  hasPlaybackIntent: boolean,
 ) {
-  return status === "loading" && isPlaying;
+  return status === "loading" && hasPlaybackIntent;
 }
 
 // Each retry gets a longer budget instead of replaying the same 20s over a slow
