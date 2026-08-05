@@ -414,6 +414,7 @@ export function captureQuizSubmitted(input: {
 export type PdfPageRenderFailureReason =
     | "render_error"
     | "render_timeout"
+    | "render_stalled"
     | "empty_blob"
     | "image_decode";
 
@@ -439,7 +440,8 @@ export function capturePdfPageRenderFailed(input: {
         // every document/page combination, so a real regression spanning many
         // documents would arrive as dozens of one-occurrence issues instead of
         // one with a true occurrence count. The `failure_reason` property keeps
-        // the render_error/timeout/empty_blob/image_decode split for drill-down.
+        // the render_error/timeout/stalled/empty_blob/image_decode split for
+        // drill-down.
         $exception_fingerprint: "PdfPageRenderError",
     };
 
