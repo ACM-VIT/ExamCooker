@@ -188,57 +188,129 @@ export function getPostHogUiHost(posthogHost = getPostHogHost()) {
     return undefined;
 }
 
-// Firefox throws a cross-origin `SecurityError` DOMException inside PostHog's own
-// rrweb session recorder when it tries to read the contents of the cross-origin
-// YouTube iframe embedded on past-paper pages. The iframe load itself is unaffected,
-// but `capture_exceptions` reports the swallowed throw as an error-tracking issue.
-// This is SDK noise, not an app bug, so drop it before it leaves the browser.
+// PostHog's own rrweb session recorder throws a cross-origin denial while it
+// walks the cross-origin YouTube iframe embedded on past-paper pages. The iframe
+// load itself is unaffected, but `capture_exceptions` reports the swallowed throw
+// as an error-tracking issue. This is SDK noise, not an app bug, so drop it
+// before it leaves the browser.
 //
-// Matches the browser-specific cross-origin access messages only. We deliberately
-// do NOT drop on the recorder frame alone, so genuine recorder-side DOMExceptions
-// (AbortError, NotAllowedError, QuotaExceededError, InvalidStateError, ...) still
-// reach error tracking.
+// The denial arrives with a browser-specific shape. Chromium includes rrweb in
+// the stack, while Firefox strips the stack and reports the exact message below.
+// Keep the frame-less fallback deliberately exact: `before_send` receives the
+// SDK's raw event before ingestion attribution such as `$exception_sources` is
+// added, so there is no reliable source field available at this point.
 const CROSS_ORIGIN_SECURITY_ERROR =
     /SecurityError|cross-origin|Permission denied to access property|Blocked a frame with origin/i;
+const FIREFOX_RRWEB_NODE_TYPE_DENIAL =
+    'Permission denied to access property "nodeType"';
 
-function isPostHogRecorderFrame(filename: string): boolean {
+const RRWEB_CROSS_ORIGIN_EXCEPTION_TYPES = new Set(["DOMException", "Error"]);
+
+function isPostHogRecorderSource(source: string): boolean {
     return (
-        filename.includes("posthog-recorder") ||
-        filename.includes("lazy-recorder") ||
-        filename.includes("rrweb")
+        source.includes("posthog-recorder") ||
+        source.includes("lazy-recorder") ||
+        source.includes("rrweb")
     );
 }
 
-function isRrwebCrossOriginIframeException(result: CaptureResult): boolean {
-    if (result.event !== "$exception") return false;
+function hasPostHogRecorderFrame(exception: {
+    stacktrace?: { frames?: unknown[] } | null;
+}): boolean {
+    const frames = exception.stacktrace?.frames;
+    if (!Array.isArray(frames)) return false;
 
-    const exceptionList = result.properties?.$exception_list;
-    if (!Array.isArray(exceptionList)) return false;
-
-    return exceptionList.some((exception) => {
-        if (exception?.type !== "DOMException") return false;
-
-        // Require the specific cross-origin SecurityError signature, not just a
-        // DOMException. The browser-sanitized name can surface in either the
-        // exception type or its message, so check both.
-        const value = typeof exception?.value === "string" ? exception.value : "";
-        const type = typeof exception?.type === "string" ? exception.type : "";
-        if (
-            !CROSS_ORIGIN_SECURITY_ERROR.test(value) &&
-            !CROSS_ORIGIN_SECURITY_ERROR.test(type)
-        ) {
-            return false;
-        }
-
-        const frames = exception?.stacktrace?.frames;
-        if (!Array.isArray(frames)) return false;
-
-        return frames.some((frame) => {
-            const filename =
-                typeof frame?.filename === "string" ? frame.filename : "";
-            return isPostHogRecorderFrame(filename);
-        });
+    return frames.some((frame) => {
+        const filename =
+            frame && typeof frame === "object"
+                ? (frame as { filename?: unknown }).filename
+                : undefined;
+        return (
+            typeof filename === "string" && isPostHogRecorderSource(filename)
+        );
     });
+}
+
+function hasUsableFrames(exception: {
+    stacktrace?: { frames?: unknown[] } | null;
+}): boolean {
+    const frames = exception.stacktrace?.frames;
+    if (!Array.isArray(frames)) return false;
+
+    return frames.some((frame) => {
+        if (!frame || typeof frame !== "object") return false;
+
+        const candidate = frame as {
+            filename?: unknown;
+            function?: unknown;
+            lineno?: unknown;
+            colno?: unknown;
+        };
+        return (
+            (typeof candidate.filename === "string" &&
+                candidate.filename.length > 0) ||
+            (typeof candidate.function === "string" &&
+                candidate.function.length > 0) ||
+            typeof candidate.lineno === "number" ||
+            typeof candidate.colno === "number"
+        );
+    });
+}
+
+function isRrwebCrossOriginException(
+    exception: unknown,
+): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as {
+        type?: unknown;
+        value?: unknown;
+        stacktrace?: { frames?: unknown[] } | null;
+    };
+
+    const type = typeof entry.type === "string" ? entry.type : "";
+    if (!RRWEB_CROSS_ORIGIN_EXCEPTION_TYPES.has(type)) {
+        return false;
+    }
+
+    // Require the specific cross-origin signature, not just the type. The
+    // browser-sanitized name can surface in either the exception value or its
+    // type, so check both.
+    const value = typeof entry.value === "string" ? entry.value : "";
+    if (
+        !CROSS_ORIGIN_SECURITY_ERROR.test(value) &&
+        !CROSS_ORIGIN_SECURITY_ERROR.test(type)
+    ) {
+        return false;
+    }
+
+    // Never let event-level attribution hide a real application stack. When a
+    // usable stack exists, the exception itself must contain an rrweb frame.
+    if (hasUsableFrames(entry)) {
+        return hasPostHogRecorderFrame(entry);
+    }
+
+    // Firefox's rrweb denial has no usable frames or pre-ingestion source
+    // metadata. Suppress only its exact known type/message pair so unrelated
+    // application iframe errors continue to reach error tracking.
+    return type === "Error" && value === FIREFOX_RRWEB_NODE_TYPE_DENIAL;
+}
+
+function isRrwebCrossOriginIframeNoise(event: CaptureResult): boolean {
+    if (event.event !== "$exception") {
+        return false;
+    }
+
+    const exceptionList = event.properties?.$exception_list;
+    if (!Array.isArray(exceptionList) || exceptionList.length === 0) {
+        return false;
+    }
+
+    // Only drop when EVERY entry is the benign recorder cross-origin throw, so an
+    // event chaining it with a genuine exception keeps its actionable detail.
+    return exceptionList.every(isRrwebCrossOriginException);
 }
 
 // On iOS, Capacitor's injected `native-bridge.js` registers a `pagehide`
@@ -457,13 +529,95 @@ function isFirefoxIosReaderNoise(event: CaptureResult): boolean {
     );
 }
 
+// Meta's Instagram in-app browser (Android System WebView; user agent contains
+// `... Instagram <version> Android (...; IABMV/1)`) injects its own
+// JS-blocking-time telemetry into every page it renders. That instrumentation
+// posts through a `@JavascriptInterface`-bridged Java object via
+// `sendJsBlockingTimeMessage` → `sendDataToNative`. During page teardown the
+// Java object is destroyed before its listener finishes, so the next
+// `postMessage` call into it throws Android System WebView's
+// `Error: Error invoking postMessage: Java object is gone`. posthog-js (running
+// on the page) captures it as an unhandled exception. The throw comes entirely
+// from Instagram's injected bridge — neither symbol exists anywhere in
+// examcooker — and the page is already unloading, so nothing user-facing breaks;
+// it is pure third-party teardown-race noise.
+//
+// This is distinct from the Capacitor iOS teardown filter above: that one is a
+// `TypeError` about `window.webkit.messageHandlers` from a Capacitor bridge
+// frame, whereas this is a plain `Error` with the Java-object message from an
+// Instagram bridge frame — the Capacitor predicate never matches it.
+//
+// We match narrowly: type `Error`, the exact Java-object message, AND an
+// Instagram bridge frame (`sendJsBlockingTimeMessage` / `sendDataToNative`), so
+// any unrelated future postMessage failure stays visible.
+const INSTAGRAM_POSTMESSAGE_MESSAGE =
+    "Error invoking postMessage: Java object is gone";
+const INSTAGRAM_BRIDGE_FRAME_FUNCTIONS = new Set([
+    "sendJsBlockingTimeMessage",
+    "sendDataToNative",
+]);
+
+function hasInstagramBridgeFrame(exception: {
+    stacktrace?: { frames?: unknown[] } | null;
+}): boolean {
+    const frames = exception.stacktrace?.frames;
+    if (!Array.isArray(frames)) return false;
+
+    return frames.some((frame) => {
+        const fn =
+            frame && typeof frame === "object"
+                ? (frame as { function?: unknown }).function
+                : undefined;
+        return (
+            typeof fn === "string" && INSTAGRAM_BRIDGE_FRAME_FUNCTIONS.has(fn)
+        );
+    });
+}
+
+function isInstagramPostMessageTeardownException(exception: unknown): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as {
+        type?: unknown;
+        value?: unknown;
+        stacktrace?: { frames?: unknown[] } | null;
+    };
+
+    if (entry.type !== "Error") {
+        return false;
+    }
+
+    if (entry.value !== INSTAGRAM_POSTMESSAGE_MESSAGE) {
+        return false;
+    }
+
+    return hasInstagramBridgeFrame(entry);
+}
+
+function isInstagramPostMessageTeardownNoise(event: CaptureResult): boolean {
+    if (event.event !== "$exception") {
+        return false;
+    }
+
+    const exceptionList = event.properties?.$exception_list;
+    if (!Array.isArray(exceptionList) || exceptionList.length === 0) {
+        return false;
+    }
+
+    // Only drop when EVERY entry is the benign Instagram teardown throw, so an
+    // event chaining it with a genuine exception keeps its actionable detail.
+    return exceptionList.every(isInstagramPostMessageTeardownException);
+}
+
 function beforeSend(result: CaptureResult | null): CaptureResult | null {
     const filteredResult = dropScriptErrorNoise(result);
     if (!filteredResult) {
         return null;
     }
 
-    if (isRrwebCrossOriginIframeException(filteredResult)) {
+    if (isRrwebCrossOriginIframeNoise(filteredResult)) {
         return null;
     }
 
@@ -476,6 +630,10 @@ function beforeSend(result: CaptureResult | null): CaptureResult | null {
     }
 
     if (isFirefoxIosReaderNoise(filteredResult)) {
+        return null;
+    }
+
+    if (isInstagramPostMessageTeardownNoise(filteredResult)) {
         return null;
     }
 
