@@ -109,9 +109,9 @@ const PAGE_RENDER_TIMEOUT_MS = 20000;
 // settles — and 20s already outlasts the 5–12s users actually wait before
 // bouncing. It also misses the render that resolves a blob which then silently
 // never paints: with no `onLoad` and no `onerror`, the `<Image>` stays blank
-// and nothing reports it. Watch the whole load-to-first-paint window on a much
-// shorter deadline instead and promote a stall into the same recoverable retry
-// UI + telemetry, so a quietly blank page becomes both recoverable and visible.
+// and nothing reports it. Once the blob exists, watch browser decode-to-paint on
+// a shorter deadline and promote a stall into the same recoverable retry UI +
+// telemetry, so a quietly blank page becomes both recoverable and visible.
 const PAGE_FIRST_PAINT_TIMEOUT_MS = 6000;
 // The document-load phase (buffer -> opened document) sat on a bare
 // "Loading PDF…" placeholder with *no* escape hatch until a flat 20s timeout —
@@ -1284,47 +1284,34 @@ function PageRenderLayer({
       }
     }, PAGE_RENDER_TIMEOUT_MS);
 
-    // First-paint watchdog. Unlike the render-task timeout above, this fires on
-    // the absence of an actual paint, so it also catches the task that resolves
-    // a blob which then never paints (no `onLoad`, no `onerror`) — the silent
-    // blank page the `onError` handler can never reach because the <Image> is
-    // painted-but-invisible rather than errored. It is deliberately NOT gated on
-    // `didSettle`: a resolved-but-unpainted render must still be promoted.
-    firstPaintTimeoutRef.current = window.setTimeout(() => {
-      if (
-        !isCurrentRender ||
-        hasPaintedRef.current ||
-        promotedError ||
-        didReportRenderErrorRef.current
-      ) {
-        return;
-      }
-      didSettle = true;
-      promotedError = true;
-      firstPaintTimeoutRef.current = null;
-      window.clearTimeout(timeoutId);
-      console.error("[PDFViewer] Page render stalled before first paint", {
-        documentId,
-        pageIndex,
-        timeoutMs: PAGE_FIRST_PAINT_TIMEOUT_MS,
-      });
-      capturePdfPageRenderFailed({
-        documentId,
-        pageIndex,
-        reason: "render_stalled",
-        timeoutMs: PAGE_FIRST_PAINT_TIMEOUT_MS,
-      });
-      setHasRenderError(true);
-      // Best-effort: stop the underlying pdfium work behind the stalled render.
-      try {
-        task.abort({
-          code: PdfErrorCode.Cancelled,
-          message: "Page render stalled before first paint",
+    const armFirstPaintWatchdog = (expectedImageUrl: string) => {
+      clearFirstPaintWatchdog();
+      firstPaintTimeoutRef.current = window.setTimeout(() => {
+        if (
+          !isCurrentRender ||
+          activeImageUrlRef.current !== expectedImageUrl ||
+          hasPaintedRef.current ||
+          promotedError ||
+          didReportRenderErrorRef.current
+        ) {
+          return;
+        }
+        promotedError = true;
+        firstPaintTimeoutRef.current = null;
+        console.error("[PDFViewer] Page image stalled before first paint", {
+          documentId,
+          pageIndex,
+          timeoutMs: PAGE_FIRST_PAINT_TIMEOUT_MS,
         });
-      } catch {
-        // Aborting is best-effort; the error UI is already showing.
-      }
-    }, PAGE_FIRST_PAINT_TIMEOUT_MS);
+        capturePdfPageRenderFailed({
+          documentId,
+          pageIndex,
+          reason: "render_stalled",
+          timeoutMs: PAGE_FIRST_PAINT_TIMEOUT_MS,
+        });
+        setHasRenderError(true);
+      }, PAGE_FIRST_PAINT_TIMEOUT_MS);
+    };
 
     task
       .toPromise()
@@ -1345,6 +1332,10 @@ function PageRenderLayer({
         activeImageUrlRef.current = nextImageUrl;
         didReportRenderErrorRef.current = false;
         setHasRenderError(false);
+        // Start the paint deadline only after PDFium has successfully produced
+        // the blob. This keeps the independent 20s render-task timeout reachable
+        // and measures browser decode/paint rather than PDF render time.
+        armFirstPaintWatchdog(nextImageUrl);
         setImageUrl((previousImageUrl) => {
           if (previousImageUrl && previousImageUrl !== nextImageUrl) {
             URL.revokeObjectURL(previousImageUrl);
@@ -1428,11 +1419,8 @@ function PageRenderLayer({
   // it into the same recoverable path as every other render failure.
   const handleImageError = useCallback((event: SyntheticEvent<HTMLImageElement>) => {
     const failedImageUrl = event.currentTarget.currentSrc || event.currentTarget.src;
-    if (
-      activeImageUrlRef.current &&
-      failedImageUrl &&
-      failedImageUrl !== activeImageUrlRef.current
-    ) {
+    const activeImageUrl = activeImageUrlRef.current;
+    if (!activeImageUrl || !failedImageUrl || failedImageUrl !== activeImageUrl) {
       return;
     }
     if (didReportRenderErrorRef.current) return;
@@ -1456,7 +1444,12 @@ function PageRenderLayer({
   // The <Image> painting is the only signal that the page actually became
   // visible, so it also disarms the first-paint watchdog. Without this a
   // successfully painted page would still be judged a stall at the deadline.
-  const handleImageLoad = useCallback(() => {
+  const handleImageLoad = useCallback((event: SyntheticEvent<HTMLImageElement>) => {
+    const loadedImageUrl = event.currentTarget.currentSrc || event.currentTarget.src;
+    const activeImageUrl = activeImageUrlRef.current;
+    if (!activeImageUrl || !loadedImageUrl || loadedImageUrl !== activeImageUrl) {
+      return;
+    }
     hasPaintedRef.current = true;
     if (firstPaintTimeoutRef.current !== null) {
       window.clearTimeout(firstPaintTimeoutRef.current);
@@ -1485,6 +1478,7 @@ function PageRenderLayer({
       data-ec-pdf-page-index={pageIndex}
       data-ec-pdf-page-number={pageIndex + 1}
       draggable={false}
+      loading="eager"
       onError={handleImageError}
       onLoad={handleImageLoad}
       style={isPdfDarkMode ? { filter: PDF_DARK_MODE_FILTER } : undefined}
