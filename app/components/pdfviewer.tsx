@@ -72,18 +72,25 @@ import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
-import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
+import {
+  PDFIUM_ENGINE_LOAD_TIMEOUT_MS,
+  usePreloadedPdfiumEngine,
+} from "@/lib/pdf/pdfium-engine-cache";
 import {
   applyPdfPageEditsToBuffer,
   normalizePdfPageEdits,
   serializePdfPageEdits,
 } from "@/lib/pdf/page-edits";
 import {
+  capturePdfBufferLoadFailed,
   capturePdfDocumentLoadFailed,
   capturePdfDownloaded,
+  capturePdfEngineLoadFailed,
   capturePdfOriginalOpened,
   capturePdfPageRenderFailed,
+  capturePdfViewerRendered,
   getPostHogSessionId,
+  type PdfEngineLoadFailureReason,
   type PdfOriginalOpenContext,
 } from "@/lib/posthog/client";
 import {
@@ -1982,24 +1989,46 @@ function LoadedDocumentSurface({
   } = paperState;
   const paperAbortRef = useRef<AbortController | null>(null);
   const copyResetTimerRef = useRef<number | null>(null);
-  const [hasRenderedPdfPage, setHasRenderedPdfPage] = useState(false);
+  const [renderedDocumentId, setRenderedDocumentId] = useState<string | null>(
+    null,
+  );
+  const hasRenderedPdfPage = renderedDocumentId === documentId;
+  const activeDocumentIdRef = useRef(documentId);
+  activeDocumentIdRef.current = documentId;
   const { state: scrollState } = useScroll(documentId);
   const totalPages = Math.max(scrollState.totalPages || 0, 0);
   const pageEditsKey = useMemo(
     () => serializePdfPageEdits(pageEdits),
     [pageEdits],
   );
+  // Report the viewer-success event at most once per opened document.
+  const didReportRenderedDocumentRef = useRef<string | null>(null);
 
   useEffect(() => {
     dispatchPaper({ type: "resetDocument" });
-    setHasRenderedPdfPage(false);
+    setRenderedDocumentId(null);
     paperAbortRef.current?.abort();
     paperAbortRef.current = null;
   }, [documentId, fileName, fileUrl, pageEditsKey]);
 
+  useEffect(() => {
+    if (renderedDocumentId !== documentId) return;
+    if (didReportRenderedDocumentRef.current === documentId) return;
+    didReportRenderedDocumentRef.current = documentId;
+
+    // The success signal the viewer never emitted: the first page has actually
+    // painted, so this session is a rendered PDF, not a silently blank box.
+    capturePdfViewerRendered({
+      documentId,
+      fileUrl,
+      totalPages,
+    });
+  }, [documentId, fileUrl, renderedDocumentId, totalPages]);
+
   const handlePdfPageRendered = useCallback(() => {
-    setHasRenderedPdfPage(true);
-  }, []);
+    if (activeDocumentIdRef.current !== documentId) return;
+    setRenderedDocumentId(documentId);
+  }, [documentId]);
 
   useEffect(
     () => () => {
@@ -2453,6 +2482,90 @@ function DocumentViewport({
   );
 }
 
+// The engine-start error/timeout branch used to render `ErrorState` inline with
+// no `posthog.capture`, so a viewer that never got past "Loading PDF engine"
+// looked identical to a healthy one in analytics. Reporting from a mount effect
+// (guarded against re-render double-fires) mirrors `DocumentLoadPhase`.
+function EngineErrorState({
+  fileUrl,
+  reason,
+  errorMessage,
+  onRetry,
+}: {
+  fileUrl: string;
+  reason: PdfEngineLoadFailureReason;
+  errorMessage?: string | null;
+  onRetry: () => void;
+}) {
+  const didReportRef = useRef(false);
+
+  useEffect(() => {
+    if (didReportRef.current) return;
+    didReportRef.current = true;
+
+    capturePdfEngineLoadFailed({
+      fileUrl,
+      reason,
+      timeoutMs:
+        reason === "engine_timeout" ? PDFIUM_ENGINE_LOAD_TIMEOUT_MS : undefined,
+      errorMessage,
+    });
+  }, [errorMessage, fileUrl, reason]);
+
+  return (
+    <ErrorState
+      fileUrl={fileUrl}
+      message={
+        reason === "engine_timeout"
+          ? "The fast PDF engine is taking too long to start."
+          : "The fast PDF engine could not start."
+      }
+      onOpenOriginal={() =>
+        capturePdfOriginalOpened({
+          context:
+            reason === "engine_timeout"
+              ? "engine_load_timeout"
+              : "engine_load_error",
+          fileUrl,
+        })
+      }
+      onRetry={onRetry}
+    />
+  );
+}
+
+// Same silent-failure gap for the buffer-download phase: the error branch
+// rendered `ErrorState` with no capture, so a failed download was invisible.
+function BufferErrorState({
+  fileUrl,
+  message,
+  onRetry,
+}: {
+  fileUrl: string;
+  message: string;
+  onRetry: () => void;
+}) {
+  const didReportRef = useRef(false);
+
+  useEffect(() => {
+    if (didReportRef.current) return;
+    didReportRef.current = true;
+
+    capturePdfBufferLoadFailed({ fileUrl, errorMessage: message });
+  }, [fileUrl, message]);
+
+  return (
+    <ErrorState
+      fileUrl={fileUrl}
+      message={message}
+      onOpenOriginal={() =>
+        capturePdfOriginalOpened({ context: "buffer_load_error", fileUrl })
+      }
+      onRetry={onRetry}
+    />
+  );
+}
+
 export default function PDFViewer({
   enableQuestionMarkdown = false,
   fileUrl,
@@ -2653,9 +2766,12 @@ export default function PDFViewer({
 
   if (engineState.status === "error") {
     return (
-      <ErrorState
+      <EngineErrorState
         fileUrl={fileUrl}
-        message="The fast PDF engine could not start."
+        reason={engineState.reason}
+        errorMessage={
+          engineState.error instanceof Error ? engineState.error.message : null
+        }
         onRetry={retryViewerLoad}
       />
     );
@@ -2674,7 +2790,7 @@ export default function PDFViewer({
 
   if (bufferState.status === "error") {
     return (
-      <ErrorState
+      <BufferErrorState
         fileUrl={fileUrl}
         message={bufferState.message}
         onRetry={retryViewerLoad}
