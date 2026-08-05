@@ -194,24 +194,15 @@ export function getPostHogUiHost(posthogHost = getPostHogHost()) {
 // as an error-tracking issue. This is SDK noise, not an app bug, so drop it
 // before it leaves the browser.
 //
-// The denial arrives with a browser-specific shape:
-//   - Chromium reports a `SecurityError` DOMException.
-//   - Firefox reports a plain `Error` whose message is
-//     `Permission denied to access property "nodeType"` — the property rrweb's
-//     serializer reads while walking the iframe's DOM.
-// so we accept both `DOMException` and `Error`, but ONLY when the value (or type)
-// carries a cross-origin access signature. That keeps genuine recorder-side
-// DOMExceptions (AbortError, NotAllowedError, QuotaExceededError,
-// InvalidStateError, ...) reaching error tracking.
-//
-// For recorder attribution we prefer a recorder frame on the entry, but Firefox
-// reports this throw with no usable frames, so we fall back to the event-level
-// `$exception_sources`, which still names the recorder bundle
-// (`../../rrweb/record/dist/rrweb-record.js`). We never drop a cross-origin error
-// that can't be attributed to the recorder, so a genuine `Permission denied`
-// raised by our own iframe access would still surface.
+// The denial arrives with a browser-specific shape. Chromium includes rrweb in
+// the stack, while Firefox strips the stack and reports the exact message below.
+// Keep the frame-less fallback deliberately exact: `before_send` receives the
+// SDK's raw event before ingestion attribution such as `$exception_sources` is
+// added, so there is no reliable source field available at this point.
 const CROSS_ORIGIN_SECURITY_ERROR =
     /SecurityError|cross-origin|Permission denied to access property|Blocked a frame with origin/i;
+const FIREFOX_RRWEB_NODE_TYPE_DENIAL =
+    'Permission denied to access property "nodeType"';
 
 const RRWEB_CROSS_ORIGIN_EXCEPTION_TYPES = new Set(["DOMException", "Error"]);
 
@@ -240,9 +231,34 @@ function hasPostHogRecorderFrame(exception: {
     });
 }
 
+function hasUsableFrames(exception: {
+    stacktrace?: { frames?: unknown[] } | null;
+}): boolean {
+    const frames = exception.stacktrace?.frames;
+    if (!Array.isArray(frames)) return false;
+
+    return frames.some((frame) => {
+        if (!frame || typeof frame !== "object") return false;
+
+        const candidate = frame as {
+            filename?: unknown;
+            function?: unknown;
+            lineno?: unknown;
+            colno?: unknown;
+        };
+        return (
+            (typeof candidate.filename === "string" &&
+                candidate.filename.length > 0) ||
+            (typeof candidate.function === "string" &&
+                candidate.function.length > 0) ||
+            typeof candidate.lineno === "number" ||
+            typeof candidate.colno === "number"
+        );
+    });
+}
+
 function isRrwebCrossOriginException(
     exception: unknown,
-    eventSources: string[],
 ): boolean {
     if (!exception || typeof exception !== "object") {
         return false;
@@ -270,13 +286,16 @@ function isRrwebCrossOriginException(
         return false;
     }
 
-    // Attribute the throw to the recorder. A recorder frame on the entry is the
-    // strongest signal; when Firefox strips the frames, fall back to the
-    // event-level exception source, which still names the recorder bundle.
-    return (
-        hasPostHogRecorderFrame(entry) ||
-        eventSources.some(isPostHogRecorderSource)
-    );
+    // Never let event-level attribution hide a real application stack. When a
+    // usable stack exists, the exception itself must contain an rrweb frame.
+    if (hasUsableFrames(entry)) {
+        return hasPostHogRecorderFrame(entry);
+    }
+
+    // Firefox's rrweb denial has no usable frames or pre-ingestion source
+    // metadata. Suppress only its exact known type/message pair so unrelated
+    // application iframe errors continue to reach error tracking.
+    return type === "Error" && value === FIREFOX_RRWEB_NODE_TYPE_DENIAL;
 }
 
 function isRrwebCrossOriginIframeNoise(event: CaptureResult): boolean {
@@ -289,18 +308,9 @@ function isRrwebCrossOriginIframeNoise(event: CaptureResult): boolean {
         return false;
     }
 
-    const sources = event.properties?.$exception_sources;
-    const eventSources = Array.isArray(sources)
-        ? sources.filter(
-              (source): source is string => typeof source === "string",
-          )
-        : [];
-
     // Only drop when EVERY entry is the benign recorder cross-origin throw, so an
     // event chaining it with a genuine exception keeps its actionable detail.
-    return exceptionList.every((exception) =>
-        isRrwebCrossOriginException(exception, eventSources),
-    );
+    return exceptionList.every(isRrwebCrossOriginException);
 }
 
 // On iOS, Capacitor's injected `native-bridge.js` registers a `pagehide`
