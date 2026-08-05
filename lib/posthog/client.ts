@@ -200,6 +200,20 @@ export function captureCourseSearchNoResults(input: {
     });
 }
 
+export function captureCourseSearchFocused(input: {
+    context: CourseSearchContext;
+    suggestionCount: number;
+}) {
+    // Fired when someone focuses the search field without having typed anything.
+    // This dead-ends silently in session replay otherwise (the empty-focus case
+    // used to render nothing and emit no event), so capture it to size how many
+    // people open search, see the suggested courses, and where they go next.
+    capturePostHogEvent("course_search_focused", {
+        search_context: input.context,
+        suggestion_count: input.suggestionCount,
+    });
+}
+
 export function captureCourseSearchSelection(input: {
     context: CourseSearchContext;
     interaction: CourseSearchInteraction;
@@ -686,6 +700,49 @@ export function captureBulkPapersDownloadCompleted(input: {
         succeeded: input.succeeded,
         failed: input.failed,
         partial: input.failed > 0,
+    });
+}
+
+export type InlineVideoFailureTrigger = "watchdog" | "player_error";
+
+export function captureInlineVideoLoadFailed(input: {
+    videoId: string;
+    trigger: InlineVideoFailureTrigger;
+    autoplay: boolean;
+    attempt: number;
+}) {
+    // The inline YouTube player surfaced "This video didn't load" with no
+    // telemetry, so the true failure rate was invisible and both this and the
+    // sibling image break reached us only through session recordings. `trigger`
+    // separates a real react-player `onError` from a watchdog timeout (a slow
+    // load we gave up on), and `attempt` shows how many retries preceded it.
+    capturePostHogEvent("inline_video_load_failed", {
+        video_id: input.videoId,
+        trigger: input.trigger,
+        autoplay: input.autoplay,
+        attempt: input.attempt,
+    });
+}
+
+export function captureResourceVisualFailed(input: {
+    imageUrl: string;
+    context: "notes" | "practice";
+}) {
+    let imageHost: string | undefined;
+
+    try {
+        imageHost = new URL(input.imageUrl).host;
+    } catch {
+        imageHost = undefined;
+    }
+
+    // Topic "Visual" diagrams silently collapsed to an empty box when the host
+    // wasn't allowlisted for next/image. Capturing the failure keeps the
+    // now-degraded-to-placeholder case measurable instead of invisible.
+    capturePostHogEvent("resource_visual_failed", {
+        image_host: imageHost,
+        image_url: input.imageUrl,
+        visual_context: input.context,
     });
 }
 
