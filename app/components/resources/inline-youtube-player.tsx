@@ -20,14 +20,12 @@ import {
     VolumeX,
 } from "lucide-react";
 import {
+    getStuckTimeoutMs,
     type InlineYouTubePlaybackStatus,
     shouldArmStuckLoadTimeout,
 } from "@/lib/media/inline-youtube-watchdog";
+import { captureInlineVideoLoadFailed } from "@/lib/posthog/client";
 import { cn } from "@/lib/utils";
-
-// If the player never becomes ready for this long we assume the embed is wedged
-// and surface a recoverable error state instead of a perpetual black screen.
-const STUCK_TIMEOUT_MS = 20000;
 
 type InlineYouTubePlayerProps = {
     videoId: string;
@@ -230,6 +228,12 @@ function InlineYouTubePlayerInner({
     // Bumping this remounts the underlying iframe, which is how we retry a
     // wedged embed without forcing the user to switch videos.
     const [reloadKey, setReloadKey] = useState(0);
+    // Retry count. Each retry escalates the watchdog budget (see
+    // getStuckTimeoutMs) instead of replaying the same 20s over and over.
+    const [attempt, setAttempt] = useState(0);
+    // Ensures we report a given failed attempt at most once, even if both the
+    // watchdog and react-player's onError fire for the same load.
+    const reportedErrorRef = useRef(false);
     const [
         {
             currentTime,
@@ -283,24 +287,51 @@ function InlineYouTubePlayerInner({
         };
     }, []);
 
-    // If the embed never reports ready, treat it as a failed load so the viewer
-    // gets a retry/fallback instead of a dead frame. Ready-state buffering can
-    // legitimately last on slow connections, so it should not become a hard
-    // player error.
+    // If a play attempt never reaches ready, treat it as a failed load so the
+    // viewer gets a retry/fallback instead of a dead frame. The watchdog is
+    // measured from an actual play attempt (isPlaying), not from mount, so a
+    // healthy embed the user simply hasn't pressed play on is never failed on
+    // elapsed time. Ready-state buffering can legitimately last on slow
+    // connections, so it should not become a hard player error either.
     useEffect(() => {
-        if (!shouldArmStuckLoadTimeout(status)) return;
+        if (!shouldArmStuckLoadTimeout(status, isPlaying)) return;
 
         const timeout = window.setTimeout(() => {
+            reportedErrorRef.current = true;
+            captureInlineVideoLoadFailed({
+                videoId,
+                trigger: "watchdog",
+                autoplay,
+                attempt,
+            });
             dispatch({ type: "error" });
-        }, STUCK_TIMEOUT_MS);
+        }, getStuckTimeoutMs(attempt));
 
         return () => window.clearTimeout(timeout);
-    }, [status, reloadKey]);
+    }, [status, isPlaying, attempt, reloadKey, videoId, autoplay]);
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
 
+    const handlePlayerError = () => {
+        if (!reportedErrorRef.current) {
+            reportedErrorRef.current = true;
+            captureInlineVideoLoadFailed({
+                videoId,
+                trigger: "player_error",
+                autoplay,
+                attempt,
+            });
+        }
+        dispatch({ type: "error" });
+    };
+
     const handleRetry = () => {
-        dispatch({ type: "reload", playing: autoplay });
+        // Clear the one-shot guard, escalate the watchdog budget, and force a
+        // real play attempt so the longer timer measures from the retry rather
+        // than replaying the same failed 20s.
+        reportedErrorRef.current = false;
+        setAttempt((value) => value + 1);
+        dispatch({ type: "reload", playing: true });
         setReloadKey((value) => value + 1);
     };
 
@@ -411,7 +442,7 @@ function InlineYouTubePlayerInner({
                     playbackRate={playbackSpeed}
                     playsInline
                     onReady={() => dispatch({ type: "ready" })}
-                    onError={() => dispatch({ type: "error" })}
+                    onError={handlePlayerError}
                     onWaiting={() => dispatch({ type: "buffering", buffering: true })}
                     onPlaying={() => {
                         dispatch({ type: "ready" });
