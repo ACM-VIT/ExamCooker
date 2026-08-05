@@ -10,6 +10,7 @@ export type VoiceAgentEntryPoint = "nav" | "home_search";
 export type CourseSearchContext = "home" | "notes" | "past_papers" | "syllabus";
 export type CourseSearchInteraction =
     | "click"
+    | "download"
     | "keyboard"
     | "mobile_tap"
     | "submit_exact_match";
@@ -100,6 +101,16 @@ function capturePostHogEvent(
     properties?: AnalyticsProperties,
     options?: CaptureOptions,
 ) {
+    const loadedClient = getLoadedClient();
+    if (loadedClient) {
+        try {
+            loadedClient.capture(event, properties, options);
+        } catch {
+            // Analytics must never interrupt the user action being measured.
+        }
+        return;
+    }
+
     void initializePostHogClient()
         .then((client) => {
             client?.capture(event, properties, options);

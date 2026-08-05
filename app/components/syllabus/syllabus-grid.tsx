@@ -14,6 +14,8 @@ import {
     captureCourseSearchAbandoned,
     captureCourseSearchNoResults,
     captureCourseSearchSelection,
+    initializePostHogClient,
+    type CourseSearchInteraction,
 } from "@/lib/posthog/client";
 import {
     downloadPdfFile,
@@ -300,6 +302,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     }, [flushAbandoned]);
 
     const clear = () => {
+        flushAbandoned();
         setQuery("");
         inputRef.current?.focus();
     };
@@ -319,13 +322,13 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     // abandoned event is measured against) and mark the search converted so
     // leaving no longer counts as abandonment. Only search-driven clicks count —
     // browsing the full catalog without a query is not a search result.
-    const handleSelect = useCallback(
-        (id: string) => {
-            converted.current = true;
-            pendingSearch.current = null;
-
+    const recordSearchConversion = useCallback(
+        (id: string, interaction: CourseSearchInteraction) => {
             const trimmed = query.trim();
             if (!trimmed) return;
+
+            converted.current = true;
+            pendingSearch.current = null;
 
             const syllabus = syllabusById.get(id);
             const courseCode = syllabus
@@ -337,7 +340,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
 
             captureCourseSearchSelection({
                 context: "syllabus",
-                interaction: "click",
+                interaction,
                 courseCode,
                 resultCount: filtered.length,
                 resultIndex: resultIndex >= 0 ? resultIndex : undefined,
@@ -349,17 +352,24 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
         [query, filtered, syllabusById],
     );
 
+    const handleSelect = useCallback(
+        (id: string) => recordSearchConversion(id, "click"),
+        [recordSearchConversion],
+    );
+
     const downloadSyllabus = useCallback(
         (id: string) => {
             const syllabus = syllabusById.get(id);
             if (!syllabus) return;
+
+            recordSearchConversion(id, "download");
 
             void downloadPdfFile({
                 fileUrl: syllabus.fileUrl,
                 fileName: getSyllabusFileName(syllabus),
             });
         },
-        [syllabusById],
+        [recordSearchConversion, syllabusById],
     );
 
     const downloadSelected = useCallback(async () => {
@@ -400,7 +410,11 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                         ref={inputRef}
                         type="text"
                         value={query}
+                        onFocus={() => void initializePostHogClient()}
                         onChange={(e) => {
+                            if (!hasInteracted.current) {
+                                void initializePostHogClient();
+                            }
                             hasInteracted.current = true;
                             converted.current = false;
                             setQuery(e.target.value);
