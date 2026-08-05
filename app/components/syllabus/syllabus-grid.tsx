@@ -9,6 +9,14 @@ import { useToast } from "@/app/components/ui/use-toast";
 import { formatSyllabusDisplayName, getCourseSyllabusPath, parseSyllabusName } from "@/lib/seo";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { createCourseFuse } from "@/lib/course-search-fuse";
+import {
+    captureCourseSearchAbandoned,
+    captureCourseSearchNoResults,
+    captureCourseSearchSelection,
+    initializePostHogClient,
+    type CourseSearchInteraction,
+} from "@/lib/posthog/client";
 import {
     downloadPdfFile,
     downloadPdfZip,
@@ -37,12 +45,14 @@ const SyllabusRow = React.memo(function SyllabusRow({
     onToggleSelect,
     onDownload,
     onPrefetch,
+    onSelect,
 }: {
     syllabus: SyllabusItem;
     selected: boolean;
     onToggleSelect: (id: string) => void;
     onDownload: (id: string) => void;
     onPrefetch: (href: string) => void;
+    onSelect: (id: string) => void;
 }) {
     const parsed = parseSyllabusName(syllabus.name);
     const displayName = parsed.courseName || formatSyllabusDisplayName(syllabus.name);
@@ -52,6 +62,8 @@ const SyllabusRow = React.memo(function SyllabusRow({
         : `/syllabus/${syllabus.id}`;
 
     const handlePrefetch = () => onPrefetch(href);
+
+    const handleSelect = () => onSelect(syllabus.id);
 
     const handleToggleSelect = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -72,6 +84,7 @@ const SyllabusRow = React.memo(function SyllabusRow({
             transitionTypes={["nav-forward"]}
             onPointerEnter={handlePrefetch}
             onFocus={handlePrefetch}
+            onClick={handleSelect}
             className={`ec-press group flex min-w-0 items-center gap-3 border-2 px-3 py-2.5 transition-[background-color,border-color,transform] duration-200 hover:border-b-white hover:bg-[#5FC4E7]/10 dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10 ${selected
                     ? "border-black bg-[#5FC4E7] dark:border-[#3BF4C7] dark:bg-[#0C1222]"
                     : "border-[#5FC4E7] bg-white dark:border-[#ffffff]/20 dark:bg-[#0C1222]"
@@ -107,12 +120,18 @@ const SyllabusRow = React.memo(function SyllabusRow({
     );
 });
 
-function normalize(s: string) {
-    return s.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
+type SyllabusFuseRecord = {
+    code: string;
+    title: string;
+    syllabus: SyllabusItem;
+};
 
 const INITIAL_VISIBLE_COUNT = 48;
 const LOAD_MORE_STEP = 48;
+
+// Debounce before reporting a settled search so a single query fires one
+// analytics event rather than one per keystroke.
+const SEARCH_REPORT_DELAY_MS = 600;
 
 export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     const [query, setQuery] = useState("");
@@ -124,6 +143,19 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     const { prefetch } = useRouter();
     const { toast } = useToast();
 
+    // Search-analytics bookkeeping. `hasInteracted` gates reporting until the
+    // user actually types; `pendingSearch` holds the last result-bearing query
+    // the user was looking at (fired as "abandoned" if they leave without
+    // clicking); `converted` records that a result was opened so leaving no
+    // longer counts as abandonment; the last-query refs de-duplicate events.
+    const hasInteracted = useRef(false);
+    const pendingSearch = useRef<{ query: string; resultCount: number } | null>(
+        null,
+    );
+    const converted = useRef(false);
+    const lastNoResultQuery = useRef<string | null>(null);
+    const lastAbandonedQuery = useRef<string | null>(null);
+
     const prefetchHref = useCallback(
         (href: string) => {
             prefetch(href);
@@ -131,21 +163,49 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
         [prefetch],
     );
 
+    // Report the last result-bearing query as abandoned when the user leaves the
+    // search without opening a result. No-op if they converted or if it was
+    // already reported.
+    const flushAbandoned = useCallback(() => {
+        const pending = pendingSearch.current;
+        pendingSearch.current = null;
+        if (!pending || converted.current) return;
+        if (lastAbandonedQuery.current === pending.query) return;
+        lastAbandonedQuery.current = pending.query;
+        captureCourseSearchAbandoned({
+            context: "syllabus",
+            query: pending.query,
+            resultCount: pending.resultCount,
+        });
+    }, []);
+
     const syllabusById = useMemo(
         () => new Map(syllabi.map((syllabus) => [syllabus.id, syllabus])),
         [syllabi],
     );
 
-    const filtered = useMemo(() => {
-        const q = normalize(query);
-        if (!q) return syllabi;
-        return syllabi.filter((s) => {
-            const parsed = parseSyllabusName(s.name);
-            const code = normalize(parsed.courseCode ?? "");
-            const name = normalize(parsed.courseName ?? formatSyllabusDisplayName(s.name));
-            return code.includes(q) || name.includes(q);
+    // Shared fuzzy searcher (same weights/threshold as the homepage, notes, and
+    // past-papers surfaces) so typos like "mulyi" still surface Multivariable
+    // Calculus instead of dead-ending on the old exact-substring filter.
+    const courseFuse = useMemo(() => {
+        const records: SyllabusFuseRecord[] = syllabi.map((syllabus) => {
+            const parsed = parseSyllabusName(syllabus.name);
+            return {
+                code: parsed.courseCode ?? syllabus.name.split("_")[0] ?? "",
+                title: parsed.courseName ?? formatSyllabusDisplayName(syllabus.name),
+                syllabus,
+            };
         });
-    }, [query, syllabi]);
+        return createCourseFuse(records);
+    }, [syllabi]);
+
+    // Rank matches by the searcher's score so the 48-row window holds the best
+    // matches, not the alphabetically-first ones the old in-place filter kept.
+    const filtered = useMemo(() => {
+        const trimmed = query.trim();
+        if (!trimmed) return syllabi;
+        return courseFuse.search(trimmed).map((result) => result.item.syllabus);
+    }, [query, syllabi, courseFuse]);
 
     // Reset the window synchronously whenever the result set changes (e.g. on
     // search) — doing this during render (rather than in an effect) means the
@@ -192,7 +252,57 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
         return () => observer.disconnect();
     }, [hasMore, visible.length, filtered.length]);
 
+    // Report a settled search once it stops changing: fire
+    // `course_search_no_results` on empty results (this surface previously
+    // emitted nothing, so failed syllabus searches were invisible), and remember
+    // a result-bearing query so it can be flagged abandoned if the user leaves
+    // without opening anything.
+    useEffect(() => {
+        if (!hasInteracted.current) return;
+        const trimmed = query.trim();
+
+        const timeoutId = window.setTimeout(() => {
+            if (!trimmed) {
+                flushAbandoned();
+                return;
+            }
+            if (filtered.length === 0) {
+                pendingSearch.current = null;
+                if (trimmed.length >= 2 && lastNoResultQuery.current !== trimmed) {
+                    lastNoResultQuery.current = trimmed;
+                    captureCourseSearchNoResults({
+                        context: "syllabus",
+                        query: trimmed,
+                    });
+                }
+                return;
+            }
+            // Results present: track as the active search. Refining from one
+            // result-bearing query to another just replaces this (no event);
+            // only leaving the search entirely reports abandonment.
+            pendingSearch.current = {
+                query: trimmed,
+                resultCount: filtered.length,
+            };
+            lastAbandonedQuery.current = null;
+        }, SEARCH_REPORT_DELAY_MS);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [query, filtered, flushAbandoned]);
+
+    // Flush a pending abandonment when the user leaves the page (tab close /
+    // client navigation away) so a give-up that never clears the box still
+    // reports.
+    useEffect(() => {
+        window.addEventListener("pagehide", flushAbandoned);
+        return () => {
+            window.removeEventListener("pagehide", flushAbandoned);
+            flushAbandoned();
+        };
+    }, [flushAbandoned]);
+
     const clear = () => {
+        flushAbandoned();
         setQuery("");
         inputRef.current?.focus();
     };
@@ -208,17 +318,58 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
 
     const clearSelection = useCallback(() => setSelected(new Set()), []);
 
+    // Opening a syllabus from a search: record the click (the positive signal the
+    // abandoned event is measured against) and mark the search converted so
+    // leaving no longer counts as abandonment. Only search-driven clicks count —
+    // browsing the full catalog without a query is not a search result.
+    const recordSearchConversion = useCallback(
+        (id: string, interaction: CourseSearchInteraction) => {
+            const trimmed = query.trim();
+            if (!trimmed) return;
+
+            converted.current = true;
+            pendingSearch.current = null;
+
+            const syllabus = syllabusById.get(id);
+            const courseCode = syllabus
+                ? parseSyllabusName(syllabus.name).courseCode ??
+                  syllabus.name.split("_")[0] ??
+                  ""
+                : "";
+            const resultIndex = filtered.findIndex((s) => s.id === id);
+
+            captureCourseSearchSelection({
+                context: "syllabus",
+                interaction,
+                courseCode,
+                resultCount: filtered.length,
+                resultIndex: resultIndex >= 0 ? resultIndex : undefined,
+                paperCount: 0,
+                noteCount: 0,
+                hasSyllabus: true,
+            });
+        },
+        [query, filtered, syllabusById],
+    );
+
+    const handleSelect = useCallback(
+        (id: string) => recordSearchConversion(id, "click"),
+        [recordSearchConversion],
+    );
+
     const downloadSyllabus = useCallback(
         (id: string) => {
             const syllabus = syllabusById.get(id);
             if (!syllabus) return;
+
+            recordSearchConversion(id, "download");
 
             void downloadPdfFile({
                 fileUrl: syllabus.fileUrl,
                 fileName: getSyllabusFileName(syllabus),
             });
         },
-        [syllabusById],
+        [recordSearchConversion, syllabusById],
     );
 
     const downloadSelected = useCallback(async () => {
@@ -259,7 +410,15 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                         ref={inputRef}
                         type="text"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onFocus={() => void initializePostHogClient()}
+                        onChange={(e) => {
+                            if (!hasInteracted.current) {
+                                void initializePostHogClient();
+                            }
+                            hasInteracted.current = true;
+                            converted.current = false;
+                            setQuery(e.target.value);
+                        }}
                         aria-label="Search syllabus"
                         placeholder="Search by code or name..."
                         className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 outline-none focus:outline-none focus-visible:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"
@@ -300,6 +459,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                                 onToggleSelect={toggle}
                                 onDownload={downloadSyllabus}
                                 onPrefetch={prefetchHref}
+                                onSelect={handleSelect}
                             />
                         ))}
                     </div>
