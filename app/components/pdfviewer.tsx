@@ -72,18 +72,25 @@ import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
-import { usePreloadedPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
+import {
+  PDFIUM_ENGINE_LOAD_TIMEOUT_MS,
+  usePreloadedPdfiumEngine,
+} from "@/lib/pdf/pdfium-engine-cache";
 import {
   applyPdfPageEditsToBuffer,
   normalizePdfPageEdits,
   serializePdfPageEdits,
 } from "@/lib/pdf/page-edits";
 import {
+  capturePdfBufferLoadFailed,
   capturePdfDocumentLoadFailed,
   capturePdfDownloaded,
+  capturePdfEngineLoadFailed,
   capturePdfOriginalOpened,
   capturePdfPageRenderFailed,
+  capturePdfViewerRendered,
   getPostHogSessionId,
+  type PdfEngineLoadFailureReason,
   type PdfOriginalOpenContext,
 } from "@/lib/posthog/client";
 import {
@@ -105,6 +112,14 @@ const SLOW_LOAD_NOTICE_MS = 3500;
 // Promote an indefinitely-hung (or empty-blob) page render into the visible,
 // recoverable retry UI instead of leaving a silent blank page.
 const PAGE_RENDER_TIMEOUT_MS = 20000;
+// The 20s render timeout above only trips when the render *task* itself never
+// settles — and 20s already outlasts the 5–12s users actually wait before
+// bouncing. It also misses the render that resolves a blob which then silently
+// never paints: with no `onLoad` and no `onerror`, the `<Image>` stays blank
+// and nothing reports it. Once the blob exists, watch browser decode-to-paint on
+// a shorter deadline and promote a stall into the same recoverable retry UI +
+// telemetry, so a quietly blank page becomes both recoverable and visible.
+const PAGE_FIRST_PAINT_TIMEOUT_MS = 6000;
 // The document-load phase (buffer -> opened document) sat on a bare
 // "Loading PDF…" placeholder with *no* escape hatch until a flat 20s timeout —
 // far longer than the 5–12s users actually wait before bouncing, so the retry
@@ -1189,14 +1204,41 @@ function PageRenderLayer({
   // <Image> before the component re-renders would otherwise double-count the
   // telemetry. Reset per render attempt below so a fresh failure still reports.
   const didReportRenderErrorRef = useRef(false);
+  // Tracks whether the current render attempt has actually painted, so the
+  // first-paint watchdog can tell a blank page apart from a rendered one.
+  const hasPaintedRef = useRef(false);
+  const firstPaintTimeoutRef = useRef<number | null>(null);
+
+  // Reset the "already reported" guard whenever this slot starts showing a new
+  // document or page. The render effect below also resets it, but only once the
+  // document reaches "loaded" — a viewer reused across client-side navigation
+  // (same component instance, new documentId) would otherwise keep a guard
+  // tripped by the previous document and silently swallow the first image error
+  // of the next one. Running on mount and on identity change re-arms reporting.
+  useEffect(() => {
+    didReportRenderErrorRef.current = false;
+  }, [documentId, pageIndex]);
 
   useEffect(() => {
     if (!renderProvides || documentState?.status !== "loaded") return;
 
     let isCurrentRender = true;
     let didSettle = false;
+    // `didSettle` marks the render *task* as resolved/rejected/timed-out; a
+    // resolved task still has to paint. `promotedError` marks that an error UI
+    // has already been shown, so the first-paint watchdog does not double-report
+    // a failure the task handlers already surfaced.
+    let promotedError = false;
     setHasRenderError(false);
     didReportRenderErrorRef.current = false;
+    hasPaintedRef.current = false;
+
+    const clearFirstPaintWatchdog = () => {
+      if (firstPaintTimeoutRef.current !== null) {
+        window.clearTimeout(firstPaintTimeoutRef.current);
+        firstPaintTimeoutRef.current = null;
+      }
+    };
 
     const task = renderProvides.forDocument(documentId).renderPage({
       pageIndex,
@@ -1217,6 +1259,8 @@ function PageRenderLayer({
     ) => {
       if (!isCurrentRender || didSettle) return;
       didSettle = true;
+      promotedError = true;
+      clearFirstPaintWatchdog();
       capturePdfPageRenderFailed({
         documentId,
         pageIndex,
@@ -1247,6 +1291,38 @@ function PageRenderLayer({
       }
     }, PAGE_RENDER_TIMEOUT_MS);
 
+    const armFirstPaintWatchdog = (expectedImageUrl: string) => {
+      clearFirstPaintWatchdog();
+      firstPaintTimeoutRef.current = window.setTimeout(() => {
+        if (
+          !isCurrentRender ||
+          activeImageUrlRef.current !== expectedImageUrl ||
+          hasPaintedRef.current ||
+          promotedError ||
+          didReportRenderErrorRef.current
+        ) {
+          return;
+        }
+        promotedError = true;
+        // Claim the shared reporting guard before scheduling React's error UI.
+        // An image error can fire in the same turn, before that fallback commits.
+        didReportRenderErrorRef.current = true;
+        firstPaintTimeoutRef.current = null;
+        console.error("[PDFViewer] Page image stalled before first paint", {
+          documentId,
+          pageIndex,
+          timeoutMs: PAGE_FIRST_PAINT_TIMEOUT_MS,
+        });
+        capturePdfPageRenderFailed({
+          documentId,
+          pageIndex,
+          reason: "render_stalled",
+          timeoutMs: PAGE_FIRST_PAINT_TIMEOUT_MS,
+        });
+        setHasRenderError(true);
+      }, PAGE_FIRST_PAINT_TIMEOUT_MS);
+    };
+
     task
       .toPromise()
       .then((blob) => {
@@ -1266,6 +1342,10 @@ function PageRenderLayer({
         activeImageUrlRef.current = nextImageUrl;
         didReportRenderErrorRef.current = false;
         setHasRenderError(false);
+        // Start the paint deadline only after PDFium has successfully produced
+        // the blob. This keeps the independent 20s render-task timeout reachable
+        // and measures browser decode/paint rather than PDF render time.
+        armFirstPaintWatchdog(nextImageUrl);
         setImageUrl((previousImageUrl) => {
           if (previousImageUrl && previousImageUrl !== nextImageUrl) {
             URL.revokeObjectURL(previousImageUrl);
@@ -1297,6 +1377,7 @@ function PageRenderLayer({
     return () => {
       isCurrentRender = false;
       window.clearTimeout(timeoutId);
+      clearFirstPaintWatchdog();
       if (!didSettle) {
         try {
           task.abort({
@@ -1348,15 +1429,16 @@ function PageRenderLayer({
   // it into the same recoverable path as every other render failure.
   const handleImageError = useCallback((event: SyntheticEvent<HTMLImageElement>) => {
     const failedImageUrl = event.currentTarget.currentSrc || event.currentTarget.src;
-    if (
-      activeImageUrlRef.current &&
-      failedImageUrl &&
-      failedImageUrl !== activeImageUrlRef.current
-    ) {
+    const activeImageUrl = activeImageUrlRef.current;
+    if (!activeImageUrl || !failedImageUrl || failedImageUrl !== activeImageUrl) {
       return;
     }
     if (didReportRenderErrorRef.current) return;
     didReportRenderErrorRef.current = true;
+    if (firstPaintTimeoutRef.current !== null) {
+      window.clearTimeout(firstPaintTimeoutRef.current);
+      firstPaintTimeoutRef.current = null;
+    }
     console.error("[PDFViewer] Page image failed to decode or paint", {
       documentId,
       pageIndex,
@@ -1368,6 +1450,23 @@ function PageRenderLayer({
     });
     setHasRenderError(true);
   }, [documentId, pageIndex]);
+
+  // The <Image> painting is the only signal that the page actually became
+  // visible, so it also disarms the first-paint watchdog. Without this a
+  // successfully painted page would still be judged a stall at the deadline.
+  const handleImageLoad = useCallback((event: SyntheticEvent<HTMLImageElement>) => {
+    const loadedImageUrl = event.currentTarget.currentSrc || event.currentTarget.src;
+    const activeImageUrl = activeImageUrlRef.current;
+    if (!activeImageUrl || !loadedImageUrl || loadedImageUrl !== activeImageUrl) {
+      return;
+    }
+    hasPaintedRef.current = true;
+    if (firstPaintTimeoutRef.current !== null) {
+      window.clearTimeout(firstPaintTimeoutRef.current);
+      firstPaintTimeoutRef.current = null;
+    }
+    onRendered();
+  }, [onRendered]);
 
   // A page render can genuinely fail (e.g. "Error creating WebGL context.").
   // Surface a recoverable fallback instead of a silent blank page.
@@ -1389,8 +1488,9 @@ function PageRenderLayer({
       data-ec-pdf-page-index={pageIndex}
       data-ec-pdf-page-number={pageIndex + 1}
       draggable={false}
+      loading="eager"
       onError={handleImageError}
-      onLoad={onRendered}
+      onLoad={handleImageLoad}
       style={isPdfDarkMode ? { filter: PDF_DARK_MODE_FILTER } : undefined}
     />
   );
@@ -1892,24 +1992,46 @@ function LoadedDocumentSurface({
   } = paperState;
   const paperAbortRef = useRef<AbortController | null>(null);
   const copyResetTimerRef = useRef<number | null>(null);
-  const [hasRenderedPdfPage, setHasRenderedPdfPage] = useState(false);
+  const [renderedDocumentId, setRenderedDocumentId] = useState<string | null>(
+    null,
+  );
+  const hasRenderedPdfPage = renderedDocumentId === documentId;
+  const activeDocumentIdRef = useRef(documentId);
+  activeDocumentIdRef.current = documentId;
   const { state: scrollState } = useScroll(documentId);
   const totalPages = Math.max(scrollState.totalPages || 0, 0);
   const pageEditsKey = useMemo(
     () => serializePdfPageEdits(pageEdits),
     [pageEdits],
   );
+  // Report the viewer-success event at most once per opened document.
+  const didReportRenderedDocumentRef = useRef<string | null>(null);
 
   useEffect(() => {
     dispatchPaper({ type: "resetDocument" });
-    setHasRenderedPdfPage(false);
+    setRenderedDocumentId(null);
     paperAbortRef.current?.abort();
     paperAbortRef.current = null;
   }, [documentId, fileName, fileUrl, pageEditsKey]);
 
+  useEffect(() => {
+    if (renderedDocumentId !== documentId) return;
+    if (didReportRenderedDocumentRef.current === documentId) return;
+    didReportRenderedDocumentRef.current = documentId;
+
+    // The success signal the viewer never emitted: the first page has actually
+    // painted, so this session is a rendered PDF, not a silently blank box.
+    capturePdfViewerRendered({
+      documentId,
+      fileUrl,
+      totalPages,
+    });
+  }, [documentId, fileUrl, renderedDocumentId, totalPages]);
+
   const handlePdfPageRendered = useCallback(() => {
-    setHasRenderedPdfPage(true);
-  }, []);
+    if (activeDocumentIdRef.current !== documentId) return;
+    setRenderedDocumentId(documentId);
+  }, [documentId]);
 
   useEffect(
     () => () => {
@@ -2173,12 +2295,19 @@ function DocumentLoadPhase({
   documentId,
   fileUrl,
   isError,
+  errorMessage,
+  errorCode,
   loadingProgress,
   onRetry,
 }: {
   documentId: string;
   fileUrl: string;
   isError: boolean;
+  // The embedpdf failure behind `isError`: `documentState.error` is pdfium's
+  // message and `errorCode` its `PdfErrorCode`. Carried through to telemetry so
+  // a document-load failure records *why* pdfium rejected the buffer.
+  errorMessage: string | null | undefined;
+  errorCode: number | null | undefined;
   loadingProgress: number | null | undefined;
   onRetry: () => void;
 }) {
@@ -2240,8 +2369,18 @@ function DocumentLoadPhase({
       reason: isError ? "load_error" : "load_timeout",
       timeoutMs: hasTimedOut ? DOCUMENT_LOAD_TIMEOUT_MS : undefined,
       loadingProgress,
+      // Only the embedpdf error path carries a cause; a timeout has none.
+      errorMessage: isError ? errorMessage : undefined,
+      errorCode: isError ? errorCode : undefined,
     });
-  }, [documentId, hasTimedOut, isError, loadingProgress]);
+  }, [
+    documentId,
+    errorCode,
+    errorMessage,
+    hasTimedOut,
+    isError,
+    loadingProgress,
+  ]);
 
   // A stalled or failed load used to sit on the placeholder forever with no
   // way out. Promote it into the recoverable error UI so users can retry the
@@ -2335,12 +2474,98 @@ function DocumentViewport({
             documentId={documentId}
             fileUrl={fileUrl}
             isError={isError}
+            errorMessage={documentState.error}
+            errorCode={documentState.errorCode}
             loadingProgress={documentState.loadingProgress}
             onRetry={onRetry}
           />
         );
       }}
     </DocumentContent>
+  );
+}
+
+// The engine-start error/timeout branch used to render `ErrorState` inline with
+// no `posthog.capture`, so a viewer that never got past "Loading PDF engine"
+// looked identical to a healthy one in analytics. Reporting from a mount effect
+// (guarded against re-render double-fires) mirrors `DocumentLoadPhase`.
+function EngineErrorState({
+  fileUrl,
+  reason,
+  errorMessage,
+  onRetry,
+}: {
+  fileUrl: string;
+  reason: PdfEngineLoadFailureReason;
+  errorMessage?: string | null;
+  onRetry: () => void;
+}) {
+  const didReportRef = useRef(false);
+
+  useEffect(() => {
+    if (didReportRef.current) return;
+    didReportRef.current = true;
+
+    capturePdfEngineLoadFailed({
+      fileUrl,
+      reason,
+      timeoutMs:
+        reason === "engine_timeout" ? PDFIUM_ENGINE_LOAD_TIMEOUT_MS : undefined,
+      errorMessage,
+    });
+  }, [errorMessage, fileUrl, reason]);
+
+  return (
+    <ErrorState
+      fileUrl={fileUrl}
+      message={
+        reason === "engine_timeout"
+          ? "The fast PDF engine is taking too long to start."
+          : "The fast PDF engine could not start."
+      }
+      onOpenOriginal={() =>
+        capturePdfOriginalOpened({
+          context:
+            reason === "engine_timeout"
+              ? "engine_load_timeout"
+              : "engine_load_error",
+          fileUrl,
+        })
+      }
+      onRetry={onRetry}
+    />
+  );
+}
+
+// Same silent-failure gap for the buffer-download phase: the error branch
+// rendered `ErrorState` with no capture, so a failed download was invisible.
+function BufferErrorState({
+  fileUrl,
+  message,
+  onRetry,
+}: {
+  fileUrl: string;
+  message: string;
+  onRetry: () => void;
+}) {
+  const didReportRef = useRef(false);
+
+  useEffect(() => {
+    if (didReportRef.current) return;
+    didReportRef.current = true;
+
+    capturePdfBufferLoadFailed({ fileUrl, errorMessage: message });
+  }, [fileUrl, message]);
+
+  return (
+    <ErrorState
+      fileUrl={fileUrl}
+      message={message}
+      onOpenOriginal={() =>
+        capturePdfOriginalOpened({ context: "buffer_load_error", fileUrl })
+      }
+      onRetry={onRetry}
+    />
   );
 }
 
@@ -2481,11 +2706,29 @@ export default function PDFViewer({
   }, [bufferState.status, engineState.status, retryNonce]);
 
   const activeBuffer = bufferState.status === "loaded" ? bufferState.buffer : null;
+  const lastEmptyBufferReportKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (activeBuffer === null || activeBuffer.byteLength > 0) return;
+
+    const reportKey = `${fileUrl}::${bufferVersion}`;
+    if (lastEmptyBufferReportKeyRef.current === reportKey) return;
+    lastEmptyBufferReportKeyRef.current = reportKey;
+    capturePdfDocumentLoadFailed({
+      reason: "empty_buffer",
+      loadingProgress: 0,
+      errorMessage: "PDF download produced an empty buffer",
+    });
+  }, [activeBuffer, bufferVersion, fileUrl]);
+
   const plugins = useMemo(
     () => [
       createPluginRegistration(DocumentManagerPluginPackage, {
         initialDocuments: [
           {
+            // The direct engine copies this view into PDFium's WASM heap; it does
+            // not transfer or detach the source buffer. Avoid duplicating an
+            // entire PDF in browser memory before opening it.
             buffer: activeBuffer ?? new ArrayBuffer(0),
             name: downloadFileName,
             autoActivate: true,
@@ -2526,9 +2769,12 @@ export default function PDFViewer({
 
   if (engineState.status === "error") {
     return (
-      <ErrorState
+      <EngineErrorState
         fileUrl={fileUrl}
-        message="The fast PDF engine could not start."
+        reason={engineState.reason}
+        errorMessage={
+          engineState.error instanceof Error ? engineState.error.message : null
+        }
         onRetry={retryViewerLoad}
       />
     );
@@ -2547,7 +2793,7 @@ export default function PDFViewer({
 
   if (bufferState.status === "error") {
     return (
-      <ErrorState
+      <BufferErrorState
         fileUrl={fileUrl}
         message={bufferState.message}
         onRetry={retryViewerLoad}
@@ -2567,6 +2813,20 @@ export default function PDFViewer({
         fileUrl={fileUrl}
         progress={bufferState.progress}
         showFallback={showSlowLoadFallback}
+        onRetry={retryViewerLoad}
+      />
+    );
+  }
+
+  // A loaded-but-empty buffer never opens: pdfium rejects a 0-byte document
+  // before parsing and the viewer would sit on "Loading PDF…" forever (the
+  // observed loading_progress-0 failure). Feed the error UI directly instead of
+  // handing the engine a buffer it cannot open.
+  if (activeBuffer !== null && activeBuffer.byteLength === 0) {
+    return (
+      <ErrorState
+        fileUrl={fileUrl}
+        message="This PDF could not be opened."
         onRetry={retryViewerLoad}
       />
     );
