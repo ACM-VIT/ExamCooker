@@ -80,7 +80,15 @@ export default function PastPapersCourseSearch({
         // 1. Exact code + acronym/alias matches — highest confidence, always first.
         for (const course of courses) {
             const codeUpper = course.code.toUpperCase();
-            if (aliasSet.has(codeUpper) || codeUpper === normalizedCodeQuery) {
+            const hasExactCatalogAlias = course.aliases?.some(
+                (alias) =>
+                    normalizeCourseCode(alias) === normalizedCodeQuery,
+            );
+            if (
+                aliasSet.has(codeUpper) ||
+                codeUpper === normalizedCodeQuery ||
+                hasExactCatalogAlias
+            ) {
                 pushCourse(course);
             }
         }

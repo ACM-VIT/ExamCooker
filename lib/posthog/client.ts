@@ -7,9 +7,10 @@ import { toRouteTemplate } from "@/lib/posthog/route-template";
 import { captureVoiceRealtimeAnalyticsAction } from "@/app/components/voice/voice-agent-actions";
 
 export type VoiceAgentEntryPoint = "nav" | "home_search";
-export type CourseSearchContext = "home" | "notes" | "past_papers";
+export type CourseSearchContext = "home" | "notes" | "past_papers" | "syllabus";
 export type CourseSearchInteraction =
     | "click"
+    | "download"
     | "keyboard"
     | "mobile_tap"
     | "submit_exact_match";
@@ -100,6 +101,16 @@ function capturePostHogEvent(
     properties?: AnalyticsProperties,
     options?: CaptureOptions,
 ) {
+    const loadedClient = getLoadedClient();
+    if (loadedClient) {
+        try {
+            loadedClient.capture(event, properties, options);
+        } catch {
+            // Analytics must never interrupt the user action being measured.
+        }
+        return;
+    }
+
     void initializePostHogClient()
         .then((client) => {
             client?.capture(event, properties, options);
@@ -126,6 +137,48 @@ function getQueryMetrics(query: string) {
         query_length: trimmedQuery.length,
         query_word_count: queryTerms.length,
     };
+}
+
+const COURSE_SEARCH_NO_RESULTS_DEDUPE_MS = 5_000;
+const recentCourseSearchNoResults = new Map<string, number>();
+
+function getCourseSearchNoResultsKey(
+    context: CourseSearchContext,
+    query: string,
+) {
+    return `${context}:${query.toLocaleLowerCase()}`;
+}
+
+function readLastCourseSearchNoResultsAt(key: string) {
+    const inMemory = recentCourseSearchNoResults.get(key);
+    if (typeof window === "undefined") return inMemory;
+
+    try {
+        const stored = window.sessionStorage.getItem(
+            `examcooker:course-search-no-results:${key}`,
+        );
+        const parsed = stored ? Number(stored) : Number.NaN;
+        return Number.isFinite(parsed)
+            ? Math.max(inMemory ?? 0, parsed)
+            : inMemory;
+    } catch {
+        return inMemory;
+    }
+}
+
+function recordCourseSearchNoResultsAt(key: string, capturedAt: number) {
+    recentCourseSearchNoResults.set(key, capturedAt);
+    if (typeof window === "undefined") return;
+
+    try {
+        window.sessionStorage.setItem(
+            `examcooker:course-search-no-results:${key}`,
+            String(capturedAt),
+        );
+    } catch {
+        // Storage can be unavailable in private browsing. The in-memory marker
+        // still deduplicates captures during the current page lifetime.
+    }
 }
 
 function getSessionDurationMs(startedAt: number | null) {
@@ -189,6 +242,17 @@ export function captureCourseSearchNoResults(input: {
     const trimmedQuery = input.query.trim();
     if (!trimmedQuery) return;
 
+    const dedupeKey = getCourseSearchNoResultsKey(input.context, trimmedQuery);
+    const capturedAt = Date.now();
+    const previousCaptureAt = readLastCourseSearchNoResultsAt(dedupeKey);
+    if (
+        previousCaptureAt !== undefined &&
+        capturedAt - previousCaptureAt < COURSE_SEARCH_NO_RESULTS_DEDUPE_MS
+    ) {
+        return;
+    }
+    recordCourseSearchNoResultsAt(dedupeKey, capturedAt);
+
     // Capture the raw query so we can finally see what people search for and
     // don't find. Failed searches while typing previously fired nothing, and
     // the query text was never in the taxonomy, so the true zero-result volume
@@ -198,6 +262,31 @@ export function captureCourseSearchNoResults(input: {
         search_query: trimmedQuery.slice(0, 200),
         ...getQueryMetrics(trimmedQuery),
     });
+}
+
+export function captureCourseSearchAbandoned(input: {
+    context: CourseSearchContext;
+    query: string;
+    resultCount: number;
+}) {
+    const trimmedQuery = input.query.trim();
+    if (!trimmedQuery) return;
+
+    // A search that returned rows but never got a click is otherwise invisible:
+    // `course_search_no_results` only covers empty results, so a session that
+    // matched on every query yet never opened a result (the exact pattern seen
+    // in the syllabus recordings) would leave no trace. sendBeacon because this
+    // fires as the user leaves the search — on clear, unmount, or page unload.
+    capturePostHogEvent(
+        "course_search_abandoned",
+        {
+            search_context: input.context,
+            search_query: trimmedQuery.slice(0, 200),
+            result_count: input.resultCount,
+            ...getQueryMetrics(trimmedQuery),
+        },
+        { transport: "sendBeacon" },
+    );
 }
 
 export function captureCourseSearchFocused(input: {
