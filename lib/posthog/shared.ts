@@ -519,6 +519,88 @@ function isFirefoxIosReaderNoise(event: CaptureResult): boolean {
     );
 }
 
+// Meta's Instagram in-app browser (Android System WebView; user agent contains
+// `... Instagram <version> Android (...; IABMV/1)`) injects its own
+// JS-blocking-time telemetry into every page it renders. That instrumentation
+// posts through a `@JavascriptInterface`-bridged Java object via
+// `sendJsBlockingTimeMessage` → `sendDataToNative`. During page teardown the
+// Java object is destroyed before its listener finishes, so the next
+// `postMessage` call into it throws Android System WebView's
+// `Error: Error invoking postMessage: Java object is gone`. posthog-js (running
+// on the page) captures it as an unhandled exception. The throw comes entirely
+// from Instagram's injected bridge — neither symbol exists anywhere in
+// examcooker — and the page is already unloading, so nothing user-facing breaks;
+// it is pure third-party teardown-race noise.
+//
+// This is distinct from the Capacitor iOS teardown filter above: that one is a
+// `TypeError` about `window.webkit.messageHandlers` from a Capacitor bridge
+// frame, whereas this is a plain `Error` with the Java-object message from an
+// Instagram bridge frame — the Capacitor predicate never matches it.
+//
+// We match narrowly: type `Error`, the exact Java-object message, AND an
+// Instagram bridge frame (`sendJsBlockingTimeMessage` / `sendDataToNative`), so
+// any unrelated future postMessage failure stays visible.
+const INSTAGRAM_POSTMESSAGE_MESSAGE =
+    "Error invoking postMessage: Java object is gone";
+const INSTAGRAM_BRIDGE_FRAME_FUNCTIONS = new Set([
+    "sendJsBlockingTimeMessage",
+    "sendDataToNative",
+]);
+
+function hasInstagramBridgeFrame(exception: {
+    stacktrace?: { frames?: unknown[] } | null;
+}): boolean {
+    const frames = exception.stacktrace?.frames;
+    if (!Array.isArray(frames)) return false;
+
+    return frames.some((frame) => {
+        const fn =
+            frame && typeof frame === "object"
+                ? (frame as { function?: unknown }).function
+                : undefined;
+        return (
+            typeof fn === "string" && INSTAGRAM_BRIDGE_FRAME_FUNCTIONS.has(fn)
+        );
+    });
+}
+
+function isInstagramPostMessageTeardownException(exception: unknown): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as {
+        type?: unknown;
+        value?: unknown;
+        stacktrace?: { frames?: unknown[] } | null;
+    };
+
+    if (entry.type !== "Error") {
+        return false;
+    }
+
+    if (entry.value !== INSTAGRAM_POSTMESSAGE_MESSAGE) {
+        return false;
+    }
+
+    return hasInstagramBridgeFrame(entry);
+}
+
+function isInstagramPostMessageTeardownNoise(event: CaptureResult): boolean {
+    if (event.event !== "$exception") {
+        return false;
+    }
+
+    const exceptionList = event.properties?.$exception_list;
+    if (!Array.isArray(exceptionList) || exceptionList.length === 0) {
+        return false;
+    }
+
+    // Only drop when EVERY entry is the benign Instagram teardown throw, so an
+    // event chaining it with a genuine exception keeps its actionable detail.
+    return exceptionList.every(isInstagramPostMessageTeardownException);
+}
+
 function beforeSend(result: CaptureResult | null): CaptureResult | null {
     const filteredResult = dropScriptErrorNoise(result);
     if (!filteredResult) {
@@ -538,6 +620,10 @@ function beforeSend(result: CaptureResult | null): CaptureResult | null {
     }
 
     if (isFirefoxIosReaderNoise(filteredResult)) {
+        return null;
+    }
+
+    if (isInstagramPostMessageTeardownNoise(filteredResult)) {
         return null;
     }
 
