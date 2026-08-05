@@ -200,6 +200,20 @@ export function captureCourseSearchNoResults(input: {
     });
 }
 
+export function captureCourseSearchFocused(input: {
+    context: CourseSearchContext;
+    suggestionCount: number;
+}) {
+    // Fired when someone focuses the search field without having typed anything.
+    // This dead-ends silently in session replay otherwise (the empty-focus case
+    // used to render nothing and emit no event), so capture it to size how many
+    // people open search, see the suggested courses, and where they go next.
+    capturePostHogEvent("course_search_focused", {
+        search_context: input.context,
+        suggestion_count: input.suggestionCount,
+    });
+}
+
 export function captureCourseSearchSelection(input: {
     context: CourseSearchContext;
     interaction: CourseSearchInteraction;
