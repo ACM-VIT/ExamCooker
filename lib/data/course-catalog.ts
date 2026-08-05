@@ -414,11 +414,20 @@ export async function searchCourseGrid(query: string): Promise<CourseGridItem[]>
     // return the same courses that the client-side dropdown previews.
     const upperQuery = normalizeCourseCode(trimmed);
     const aliasCodes = new Set(getAliasCourseCodes(trimmed));
-    const exact = grid.filter(
+    const exact = records.filter(
         (courseRow) =>
-            courseRow.code === upperQuery || aliasCodes.has(courseRow.code),
+            courseRow.code === upperQuery ||
+            aliasCodes.has(courseRow.code) ||
+            courseRow.aliases.some(
+                (alias) => normalizeCourseCode(alias) === upperQuery,
+            ),
     );
-    if (exact.length) return exact;
+    if (exact.length) {
+        return exact.map(({ aliases: _aliases, ...courseRow }) => ({
+            ...courseRow,
+            viewCount: 0,
+        }));
+    }
 
     const prefix = grid.filter((c) => c.code.startsWith(upperQuery));
     if (prefix.length > 0 && prefix.length <= 50) {
