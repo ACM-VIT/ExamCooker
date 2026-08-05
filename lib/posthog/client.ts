@@ -128,6 +128,48 @@ function getQueryMetrics(query: string) {
     };
 }
 
+const COURSE_SEARCH_NO_RESULTS_DEDUPE_MS = 5_000;
+const recentCourseSearchNoResults = new Map<string, number>();
+
+function getCourseSearchNoResultsKey(
+    context: CourseSearchContext,
+    query: string,
+) {
+    return `${context}:${query.toLocaleLowerCase()}`;
+}
+
+function readLastCourseSearchNoResultsAt(key: string) {
+    const inMemory = recentCourseSearchNoResults.get(key);
+    if (typeof window === "undefined") return inMemory;
+
+    try {
+        const stored = window.sessionStorage.getItem(
+            `examcooker:course-search-no-results:${key}`,
+        );
+        const parsed = stored ? Number(stored) : Number.NaN;
+        return Number.isFinite(parsed)
+            ? Math.max(inMemory ?? 0, parsed)
+            : inMemory;
+    } catch {
+        return inMemory;
+    }
+}
+
+function recordCourseSearchNoResultsAt(key: string, capturedAt: number) {
+    recentCourseSearchNoResults.set(key, capturedAt);
+    if (typeof window === "undefined") return;
+
+    try {
+        window.sessionStorage.setItem(
+            `examcooker:course-search-no-results:${key}`,
+            String(capturedAt),
+        );
+    } catch {
+        // Storage can be unavailable in private browsing. The in-memory marker
+        // still deduplicates captures during the current page lifetime.
+    }
+}
+
 function getSessionDurationMs(startedAt: number | null) {
     if (startedAt === null) {
         return undefined;
@@ -188,6 +230,17 @@ export function captureCourseSearchNoResults(input: {
 }) {
     const trimmedQuery = input.query.trim();
     if (!trimmedQuery) return;
+
+    const dedupeKey = getCourseSearchNoResultsKey(input.context, trimmedQuery);
+    const capturedAt = Date.now();
+    const previousCaptureAt = readLastCourseSearchNoResultsAt(dedupeKey);
+    if (
+        previousCaptureAt !== undefined &&
+        capturedAt - previousCaptureAt < COURSE_SEARCH_NO_RESULTS_DEDUPE_MS
+    ) {
+        return;
+    }
+    recordCourseSearchNoResultsAt(dedupeKey, capturedAt);
 
     // Capture the raw query so we can finally see what people search for and
     // don't find. Failed searches while typing previously fired nothing, and
