@@ -63,11 +63,15 @@ export function getChunkErrorKey(error: Error & { digest?: string }): string {
   ].join(":");
 }
 
-export function getRecoveryKey(error: unknown, prefix: string): string {
+export function getRecoveryKey(
+  error: unknown,
+  prefix: string,
+  pathname = "",
+): string {
   const candidate = (error ?? {}) as { name?: unknown; digest?: unknown };
   const name = typeof candidate.name === "string" ? candidate.name : "Error";
   const digest = typeof candidate.digest === "string" ? candidate.digest : "";
-  return [prefix, name, getErrorMessage(error), digest].join(":");
+  return [prefix, pathname, name, getErrorMessage(error), digest].join(":");
 }
 
 function readReloadGuard(): ReloadGuard | null {
