@@ -2500,19 +2500,30 @@ export default function PDFViewer({
   }, [bufferState.status, engineState.status, retryNonce]);
 
   const activeBuffer = bufferState.status === "loaded" ? bufferState.buffer : null;
+  const lastEmptyBufferReportKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (activeBuffer === null || activeBuffer.byteLength > 0) return;
+
+    const reportKey = `${fileUrl}::${bufferVersion}`;
+    if (lastEmptyBufferReportKeyRef.current === reportKey) return;
+    lastEmptyBufferReportKeyRef.current = reportKey;
+    capturePdfDocumentLoadFailed({
+      reason: "empty_buffer",
+      loadingProgress: 0,
+      errorMessage: "PDF download produced an empty buffer",
+    });
+  }, [activeBuffer, bufferVersion, fileUrl]);
+
   const plugins = useMemo(
     () => [
       createPluginRegistration(DocumentManagerPluginPackage, {
         initialDocuments: [
           {
-            // Hand pdfium its own copy, never the buffer we hold in state. The
-            // engine transfers the buffer it opens to its WASM worker, which
-            // *detaches* it (zeroing byteLength). If we passed `activeBuffer`
-            // itself, the shared cache instance behind it would come back empty
-            // for the next consumer (a retry, a re-navigation, a second viewer)
-            // and pdfium would reject it before parsing starts — the observed
-            // loading_progress-0 failure. `.slice(0)` keeps our copy intact.
-            buffer: activeBuffer ? activeBuffer.slice(0) : new ArrayBuffer(0),
+            // The direct engine copies this view into PDFium's WASM heap; it does
+            // not transfer or detach the source buffer. Avoid duplicating an
+            // entire PDF in browser memory before opening it.
+            buffer: activeBuffer ?? new ArrayBuffer(0),
             name: downloadFileName,
             autoActivate: true,
           },
