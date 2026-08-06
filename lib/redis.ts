@@ -3,6 +3,7 @@ import "server-only";
 import { createClient, type RedisClientOptions } from "redis";
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 5_000;
+const DEFAULT_READY_TIMEOUT_MS = 10_000;
 const DEFAULT_COMMAND_TIMEOUT_MS = 2_000;
 const DEFAULT_PING_INTERVAL_MS = 5 * 60_000;
 
@@ -180,21 +181,42 @@ async function getConnectedClient() {
 async function withCommandTimeout<T>(
   operation: (client: RawRedisClient) => Promise<T>,
 ) {
+  const readyTimeoutMs = readPositiveIntegerEnv(
+    "REDIS_READY_TIMEOUT_MS",
+    DEFAULT_READY_TIMEOUT_MS,
+  );
   const timeoutMs = readPositiveIntegerEnv(
     "REDIS_COMMAND_TIMEOUT_MS",
     DEFAULT_COMMAND_TIMEOUT_MS,
   );
+  let readyTimeout: NodeJS.Timeout | undefined;
+
+  const client = await Promise.race([
+    getConnectedClient(),
+    new Promise<never>((_, reject) => {
+      readyTimeout = setTimeout(() => {
+        reject(
+          new Error(
+            `Redis connection was not ready after ${readyTimeoutMs}ms`,
+          ),
+        );
+      }, readyTimeoutMs);
+    }),
+  ]).finally(() => {
+    if (readyTimeout) {
+      clearTimeout(readyTimeout);
+    }
+  });
+
   const abortController = new AbortController();
   let timeout: NodeJS.Timeout | undefined;
 
   try {
     return await Promise.race([
-      getConnectedClient().then((client) =>
-        operation(
-          client.withCommandOptions({
-            abortSignal: abortController.signal,
-          }) as RawRedisClient,
-        ),
+      operation(
+        client.withCommandOptions({
+          abortSignal: abortController.signal,
+        }) as RawRedisClient,
       ),
       new Promise<never>((_, reject) => {
         timeout = setTimeout(() => {
