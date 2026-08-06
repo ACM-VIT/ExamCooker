@@ -1,10 +1,5 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
-
-const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 const WELL_KNOWN_JSON_HEADERS = {
   "Content-Type": "application/json",
@@ -23,17 +18,6 @@ function readEnvList(...names: string[]) {
     ),
   );
 }
-
-const ratelimit =
-  redisUrl && redisToken
-    ? new Ratelimit({
-        redis: new Redis({
-          url: redisUrl,
-          token: redisToken,
-        }),
-        limiter: Ratelimit.slidingWindow(20, "10 s"),
-      })
-    : null;
 
 function getClientIp(req: NextRequest): string | null {
   const xff = req.headers.get("x-forwarded-for");
@@ -125,11 +109,19 @@ export default async function proxy(request: NextRequest) {
     !isPrefetchRequest(request) &&
     !hasSessionCookie(request);
 
-  if (shouldRateLimit && ratelimit) {
+  if (shouldRateLimit) {
     const ip = getClientIp(request);
     if (ip) {
       try {
-        const { success } = await ratelimit.limit(ip);
+        const { checkSlidingWindowRateLimit } = await import(
+          "@/lib/redis-rate-limit"
+        );
+        const { success } = await checkSlidingWindowRateLimit({
+          identifier: ip,
+          limit: 20,
+          prefix: "ec:rate-limit:anonymous-create",
+          windowMs: 10_000,
+        });
         if (!success) {
           return NextResponse.redirect(new URL("/blocked", request.url));
         }

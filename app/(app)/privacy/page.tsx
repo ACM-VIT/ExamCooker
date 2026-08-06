@@ -117,7 +117,7 @@ const sections: LegalSection[] = [
             },
             {
                 label: "Security, cache, and rate-limit providers.",
-                text: "Upstash Redis may process IP addresses, request metadata, timestamps, counters, cached values, and abuse-prevention or rate-limit signals when Redis-backed security, cache, or rate-limit features are configured.",
+                text: "Microsoft Azure Managed Redis may process pseudonymized network identifiers, request metadata, timestamps, counters, cached values, and abuse-prevention or rate-limit signals when Redis-backed security, cache, or rate-limit features are configured.",
             },
         ],
     },

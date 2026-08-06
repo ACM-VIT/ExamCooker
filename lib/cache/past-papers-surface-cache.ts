@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { Redis } from "@upstash/redis";
+import type { AppRedisClient } from "@/lib/redis";
 import { getOptionalRedis } from "@/lib/redis";
 
 const CACHE_KEY_PREFIX = "ec:past-papers-surface-cache";
@@ -118,7 +118,7 @@ function parseRedisValue<T>(
 async function readCacheEntry<T>(input: {
   cacheKey: string;
   deserialize?: DeserializeValue<T>;
-  redis: Redis;
+  redis: AppRedisClient;
 }): Promise<CacheReadResult<T>> {
   const rawValue = await input.redis.get<unknown>(input.cacheKey);
   const parsedValue = parseRedisValue(rawValue, input.deserialize);
@@ -130,7 +130,7 @@ async function readCacheEntry<T>(input: {
   return parsedValue;
 }
 
-async function tryAcquireCacheLock(redis: Redis, cacheKey: string) {
+async function tryAcquireCacheLock(redis: AppRedisClient, cacheKey: string) {
   const token = randomUUID();
   const result = await redis.set(buildLockKey(cacheKey), token, {
     ex: parsePositiveIntegerEnv(
@@ -143,7 +143,11 @@ async function tryAcquireCacheLock(redis: Redis, cacheKey: string) {
   return result === "OK" ? token : null;
 }
 
-async function releaseCacheLock(redis: Redis, cacheKey: string, token: string | null) {
+async function releaseCacheLock(
+  redis: AppRedisClient,
+  cacheKey: string,
+  token: string | null,
+) {
   if (!token) {
     return;
   }
@@ -160,7 +164,7 @@ async function releaseCacheLock(redis: Redis, cacheKey: string, token: string | 
 async function waitForCacheEntry<T>(input: {
   cacheKey: string;
   deserialize?: DeserializeValue<T>;
-  redis: Redis;
+  redis: AppRedisClient;
 }): Promise<CacheReadResult<T>> {
   const deadline =
     Date.now() +
@@ -192,7 +196,7 @@ async function waitForCacheEntry<T>(input: {
 
 async function storeCacheEntry<T>(input: {
   cacheKey: string;
-  redis: Redis;
+  redis: AppRedisClient;
   ttlSeconds?: number;
   value: T;
 }) {
