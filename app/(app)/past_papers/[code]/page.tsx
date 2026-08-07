@@ -2,8 +2,10 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { eq } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { getExamFocusForDate } from "@/lib/exam-focus";
 import { examSlugToType } from "@/lib/exam-slug";
 import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import {
@@ -125,7 +127,9 @@ function parseYears(raw: string | undefined): number[] {
 function parseSearchParams(raw: SearchParamsRaw): ParsedFilters {
     const sortParam = raw.sort?.toLowerCase();
     const sort: CoursePaperSort =
-        sortParam === "year_asc" || sortParam === "recent" ? sortParam : "year_desc";
+        sortParam === "year_desc" || sortParam === "year_asc" || sortParam === "recent"
+            ? sortParam
+            : "seasonal";
     const page = Math.max(1, Number.parseInt(raw.page || "1", 10) || 1);
 
     return {
@@ -237,8 +241,11 @@ async function CoursePastPapersContent({
     course: NonNullable<Awaited<ReturnType<typeof getCourseDetailByCode>>>;
     searchParamsPromise: Promise<SearchParamsRaw> | undefined;
 }) {
+    await connection();
+
     const raw = (await searchParamsPromise) ?? {};
     const filters = parseSearchParams(raw);
+    const examFocus = getExamFocusForDate(new Date());
     const searchString = buildSearchString(raw);
     const basePath = getCoursePastPapersPath(course.code);
     const [options, { papers, totalCount }] = await Promise.all([
@@ -261,6 +268,7 @@ async function CoursePastPapersContent({
                 hasAnswerKey: filters.hasAnswerKey || undefined,
             },
             sort: filters.sort,
+            examFocus,
             page: filters.page,
             pageSize: PAGE_SIZE,
         }),

@@ -27,7 +27,7 @@ export type CoursePaperFilters = {
     hasAnswerKey?: boolean;
 };
 
-export type CoursePaperSort = "year_desc" | "year_asc" | "recent";
+export type CoursePaperSort = "seasonal" | "year_desc" | "year_asc" | "recent";
 
 export type CoursePaperListItem = {
     id: string;
@@ -164,10 +164,16 @@ function rowMatchesFilters(
     return true;
 }
 
-function comparePaperRows(sort: CoursePaperSort) {
+function comparePaperRows(sort: CoursePaperSort, examFocus: ExamType) {
     return (a: CoursePaperRow, b: CoursePaperRow) => {
         if (sort === "recent") {
             return b.createdAtTime - a.createdAtTime;
+        }
+
+        if (sort === "seasonal") {
+            const aIsExamFocus = a.examType === examFocus;
+            const bIsExamFocus = b.examType === examFocus;
+            if (aIsExamFocus !== bIsExamFocus) return aIsExamFocus ? -1 : 1;
         }
 
         if (a.year === null && b.year === null) {
@@ -199,6 +205,7 @@ export async function getCoursePapers(input: {
     courseId: string;
     filters: CoursePaperFilters;
     sort: CoursePaperSort;
+    examFocus: ExamType;
     page: number;
     pageSize: number;
 }): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
@@ -214,7 +221,7 @@ export async function getCoursePapers(input: {
         if (rowMatchesFilters(row, filterSets)) filteredRows.push(row);
     }
 
-    filteredRows.sort(comparePaperRows(input.sort));
+    filteredRows.sort(comparePaperRows(input.sort, input.examFocus));
 
     const skip = Math.max(0, (input.page - 1) * input.pageSize);
     const visibleRows = filteredRows.slice(skip, skip + input.pageSize);
