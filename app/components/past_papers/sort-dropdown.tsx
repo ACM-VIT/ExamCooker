@@ -4,6 +4,7 @@ import React, { addTransitionType, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 const OPTIONS = [
+    { value: "seasonal", label: "Current exam first" },
     { value: "year_desc", label: "Year (newest first)" },
     { value: "year_asc", label: "Year (oldest first)" },
     { value: "recent", label: "Recently uploaded" },
@@ -25,7 +26,7 @@ export default function SortDropdown({
 
     const onChange = (next: string) => {
         const params = new URLSearchParams(searchString);
-        if (next === "year_desc") {
+        if (next === "seasonal") {
             params.delete("sort");
         } else {
             params.set("sort", next);
