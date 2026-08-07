@@ -5,6 +5,7 @@ export type AzureMonitorRange = (typeof AZURE_MONITOR_RANGES)[number];
 export type AzureMonitorPoint = {
   timestamp: string;
   rps: number | null;
+  rpm: number | null;
   requests: number | null;
   cpuPercent: number | null;
   memoryPercent: number | null;
@@ -14,6 +15,8 @@ export type AzureMonitorPoint = {
   errorRatePercent: number | null;
   queueLength: number | null;
   workingSetGiB: number | null;
+  bytesReceivedMiB: number | null;
+  bytesSentMiB: number | null;
 };
 
 export type AzureMonitorSnapshot = {
@@ -37,6 +40,8 @@ export type AzureMonitorSnapshot = {
     totalRequests: number;
     averageRps: number;
     peakRps: number;
+    averageRpm: number;
+    peakRpm: number;
     averageCpuPercent: number;
     peakCpuPercent: number;
     averageMemoryPercent: number;
@@ -45,12 +50,21 @@ export type AzureMonitorSnapshot = {
     peakResponseTimeMs: number;
     serverErrors: number;
     serverErrorRatePercent: number;
+    successfulRequests: number;
+    redirects: number;
     clientErrors: number;
+    clientErrorRatePercent: number;
     successRatePercent: number;
     maxQueueLength: number;
+    averageWorkingSetGiB: number;
+    peakWorkingSetGiB: number;
+    bytesReceivedGiB: number;
+    bytesSentGiB: number;
     currentRps: number;
+    currentRpm: number;
     currentCpuPercent: number;
     currentMemoryPercent: number;
+    currentQueueLength: number;
   };
   series: AzureMonitorPoint[];
 };
