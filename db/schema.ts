@@ -614,6 +614,227 @@ export const upcomingExam = cockroachTable(
       table.scheduledAt.asc(),
     ),
   ],
+  );
+
+export const examInstance = cockroachTable(
+  "ExamInstance",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    courseId: string()
+      .notNull()
+      .references(() => course.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    courseCode: string().notNull(),
+    examType: examType(),
+    semester: semester().default("UNKNOWN").notNull(),
+    campus: campus().default("VELLORE").notNull(),
+    slot: string(),
+    scheduledAt: timestamp({ mode: "date", precision: 3 }),
+    status: string().default("upcoming").notNull(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    index("ExamInstance_courseId_idx").using("btree", table.courseId.asc()),
+    index("ExamInstance_course_exam_slot_idx").using(
+      "btree",
+      table.courseCode.asc(),
+      table.examType.asc(),
+      table.semester.asc(),
+      table.campus.asc(),
+      table.slot.asc(),
+    ),
+    index("ExamInstance_scheduledAt_idx").using("btree", table.scheduledAt.asc()),
+  ],
+);
+
+export const syllabusTopicExtraction = cockroachTable(
+  "SyllabusTopicExtraction",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    syllabusId: string()
+      .notNull()
+      .references(() => syllabi.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    sourceHash: string().notNull(),
+    model: string().notNull(),
+    promptVersion: string().notNull(),
+    status: string().default("queued").notNull(),
+    topics: jsonb().$type<unknown>(),
+    error: string(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    index("SyllabusTopicExtraction_syllabusId_idx").using("btree", table.syllabusId.asc()),
+    uniqueIndex("SyllabusTopicExtraction_source_key").using(
+      "btree",
+      table.syllabusId.asc(),
+      table.sourceHash.asc(),
+      table.model.asc(),
+      table.promptVersion.asc(),
+    ),
+  ],
+);
+
+export const canonicalTopic = cockroachTable(
+  "CanonicalTopic",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    courseId: string()
+      .notNull()
+      .references(() => course.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    syllabusId: string().references(() => syllabi.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    moduleLabel: string(),
+    title: string().notNull(),
+    aliases: string().array().$defaultFn(() => []),
+    embedding: jsonb().$type<number[]>(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    index("CanonicalTopic_courseId_idx").using("btree", table.courseId.asc()),
+    index("CanonicalTopic_title_idx").using("btree", table.title.asc()),
+  ],
+);
+
+export const examSignal = cockroachTable(
+  "ExamSignal",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    examInstanceId: string().references(() => examInstance.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    userId: string().references(() => user.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    topicId: string().references(() => canonicalTopic.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    signalType: string().notNull(),
+    source: string().notNull(),
+    rawText: string(),
+    confidence: int4().default(1).notNull(),
+    metadata: jsonb().$type<Record<string, unknown>>(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    index("ExamSignal_examInstanceId_idx").using("btree", table.examInstanceId.asc()),
+    index("ExamSignal_topicId_idx").using("btree", table.topicId.asc()),
+    index("ExamSignal_userId_idx").using("btree", table.userId.asc()),
+    index("ExamSignal_type_createdAt_idx").using(
+      "btree",
+      table.signalType.asc(),
+      table.createdAt.asc(),
+    ),
+  ],
+);
+
+export const studyPlanRun = cockroachTable(
+  "StudyPlanRun",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    userId: string()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    courseId: string().references(() => course.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    examInstanceId: string().references(() => examInstance.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    courseCode: string().notNull(),
+    examType: examType(),
+    syllabusId: string().references(() => syllabi.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    selectedTopics: jsonb().$type<unknown>().notNull(),
+    studyPreferences: jsonb().$type<unknown>().notNull(),
+    status: string().default("queued").notNull(),
+    plan: jsonb().$type<unknown>(),
+    error: string(),
+    cost: jsonb().$type<Record<string, unknown>>(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    index("StudyPlanRun_userId_updatedAt_idx").using(
+      "btree",
+      table.userId.asc(),
+      table.updatedAt.asc(),
+    ),
+    index("StudyPlanRun_course_exam_idx").using(
+      "btree",
+      table.courseCode.asc(),
+      table.examType.asc(),
+    ),
+    index("StudyPlanRun_status_idx").using("btree", table.status.asc()),
+  ],
+);
+
+export const slotIntelligenceSummary = cockroachTable(
+  "SlotIntelligenceSummary",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    courseId: string()
+      .notNull()
+      .references(() => course.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    examType: examType(),
+    semester: semester().default("UNKNOWN").notNull(),
+    campus: campus().default("VELLORE").notNull(),
+    slot: string(),
+    summary: jsonb().$type<unknown>().notNull(),
+    confidence: int4().default(1).notNull(),
+    generatedAt: timestamp({ mode: "date", precision: 3 }).$defaultFn(now).notNull(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("SlotIntelligenceSummary_scope_key").using(
+      "btree",
+      table.courseId.asc(),
+      table.examType.asc(),
+      table.semester.asc(),
+      table.campus.asc(),
+      table.slot.asc(),
+    ),
+  ],
+);
+
+export const contributionLedger = cockroachTable(
+  "ContributionLedger",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    userId: string()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    signalId: string().references(() => examSignal.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    creditDelta: int4().default(0).notNull(),
+    reputationDelta: int4().default(0).notNull(),
+    reason: string().notNull(),
+    status: string().default("pending").notNull(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    index("ContributionLedger_userId_createdAt_idx").using(
+      "btree",
+      table.userId.asc(),
+      table.createdAt.asc(),
+    ),
+    index("ContributionLedger_signalId_idx").using("btree", table.signalId.asc()),
+  ],
 );
 
 export const viewHistory = cockroachTable(

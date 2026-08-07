@@ -46,7 +46,7 @@ export async function readJsonPayload(request: Request) {
   return (await request.json().catch(() => null)) as Record<string, unknown> | null;
 }
 
-function readBearerToken(value: string | null) {
+export function readBearerToken(value: string | null) {
   const match = value?.match(/^\s*Bearer\s+(.+?)\s*$/i);
   return match?.[1]?.trim() ?? "";
 }

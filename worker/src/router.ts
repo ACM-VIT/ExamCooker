@@ -14,9 +14,10 @@ export async function routeWorkerRequest(request: Request, env: Env) {
   if (pathname === "/health") {
     return jsonResponse({
       ok: true,
-      service: "examcooker-command-agent",
+      service: "examcooker-agent-worker",
       routes: [
         "/agents/ExamCookerCommandAgent/global",
+        "/agents/ExamCookerStudyBrainAgent/global",
       ],
     });
   }

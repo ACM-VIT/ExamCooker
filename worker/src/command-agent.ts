@@ -170,7 +170,7 @@ function getTrustedUserContext(
   };
 }
 
-async function getTrustedUserFromCommandToken(input: {
+export async function getTrustedUserFromCommandToken(input: {
   userKey: string;
   userToken: string;
   secret: string;

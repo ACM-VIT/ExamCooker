@@ -9,6 +9,7 @@ import ViewTracker from "@/app/components/view-tracker";
 import { LazySyllabusInlineEditor } from "@/app/components/moderation/lazy-editors";
 import StructuredData from "@/app/components/seo/structured-data";
 import DirectionalTransition from "@/app/components/common/directional-transition";
+import StudyPlanCta from "@/app/components/study-plan/plan-cta";
 import { getCourseByCodeAny } from "@/lib/data/courses";
 import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import { getSubjectByCourseCode } from "@/lib/data/resources";
@@ -188,6 +189,8 @@ async function CourseSyllabusContent({
                             </div>
                         </div>
                     </header>
+
+                    <StudyPlanCta courseCode={context.code} />
 
                     <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
                         <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
