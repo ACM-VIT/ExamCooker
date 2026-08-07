@@ -17,6 +17,10 @@ export type AzureMonitorPoint = {
   workingSetGiB: number | null;
   bytesReceivedMiB: number | null;
   bytesSentMiB: number | null;
+  cpuTimeSeconds: number | null;
+  ioReadMiBPerSecond: number | null;
+  ioWriteKiBPerSecond: number | null;
+  diskQueueLength: number | null;
 };
 
 export type AzureMonitorSnapshot = {
@@ -60,6 +64,16 @@ export type AzureMonitorSnapshot = {
     peakWorkingSetGiB: number;
     bytesReceivedGiB: number;
     bytesSentGiB: number;
+    totalCpuTimeSeconds: number;
+    cpuTimePerRequestMs: number;
+    currentIoReadMiBPerSecond: number;
+    peakIoReadMiBPerSecond: number;
+    currentIoWriteKiBPerSecond: number;
+    peakIoWriteKiBPerSecond: number;
+    fileSystemUsageGiB: number;
+    peakFileSystemUsageGiB: number;
+    currentDiskQueueLength: number;
+    maxDiskQueueLength: number;
     currentRps: number;
     currentRpm: number;
     currentCpuPercent: number;

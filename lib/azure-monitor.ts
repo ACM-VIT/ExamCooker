@@ -261,7 +261,7 @@ export async function getAzureMonitorSnapshot(
   const token = await getCredential().getToken(ARM_SCOPE);
   if (!token?.token) throw new Error("Azure identity did not return an access token");
 
-  const [appMetrics, planMetrics] = await Promise.all([
+  const [appMetrics, planMetrics, fileSystemMetrics] = await Promise.all([
     fetchAzureMetrics({
       accessToken: token.token,
       aggregation: "Total,Average,Maximum",
@@ -277,6 +277,9 @@ export async function getAzureMonitorSnapshot(
         "MemoryWorkingSet",
         "BytesReceived",
         "BytesSent",
+        "CpuTime",
+        "IoReadBytesPerSecond",
+        "IoWriteBytesPerSecond",
       ],
       resourceId: config.appResourceId,
       start,
@@ -286,9 +289,23 @@ export async function getAzureMonitorSnapshot(
       aggregation: "Average,Maximum",
       end,
       interval: rangeConfig.interval,
-      metricNames: ["CpuPercentage", "MemoryPercentage", "HttpQueueLength"],
+      metricNames: [
+        "CpuPercentage",
+        "MemoryPercentage",
+        "HttpQueueLength",
+        "DiskQueueLength",
+      ],
       resourceId: config.planResourceId,
       start,
+    }),
+    fetchAzureMetrics({
+      accessToken: token.token,
+      aggregation: "Average,Maximum",
+      end,
+      interval: "PT6H",
+      metricNames: ["FileSystemUsage"],
+      resourceId: config.appResourceId,
+      start: new Date(end.getTime() - 7 * 24 * 60 * 60 * 1_000),
     }),
   ]);
 
@@ -303,12 +320,41 @@ export async function getAzureMonitorSnapshot(
   const workingSetPeaks = metricValues(appMetrics, "MemoryWorkingSet", "maximum");
   const bytesReceived = metricValues(appMetrics, "BytesReceived", "total");
   const bytesSent = metricValues(appMetrics, "BytesSent", "total");
+  const cpuTime = metricValues(appMetrics, "CpuTime", "total");
+  const ioRead = metricValues(appMetrics, "IoReadBytesPerSecond", "average");
+  const ioReadPeaks = metricValues(
+    appMetrics,
+    "IoReadBytesPerSecond",
+    "maximum",
+  );
+  const ioWrite = metricValues(appMetrics, "IoWriteBytesPerSecond", "average");
+  const ioWritePeaks = metricValues(
+    appMetrics,
+    "IoWriteBytesPerSecond",
+    "maximum",
+  );
   const cpu = metricValues(planMetrics, "CpuPercentage", "average");
   const cpuPeaks = metricValues(planMetrics, "CpuPercentage", "maximum");
   const memory = metricValues(planMetrics, "MemoryPercentage", "average");
   const memoryPeaks = metricValues(planMetrics, "MemoryPercentage", "maximum");
   const queue = metricValues(planMetrics, "HttpQueueLength", "average");
   const queuePeaks = metricValues(planMetrics, "HttpQueueLength", "maximum");
+  const diskQueue = metricValues(planMetrics, "DiskQueueLength", "average");
+  const diskQueuePeaks = metricValues(
+    planMetrics,
+    "DiskQueueLength",
+    "maximum",
+  );
+  const fileSystemUsage = metricValues(
+    fileSystemMetrics,
+    "FileSystemUsage",
+    "average",
+  );
+  const fileSystemUsagePeaks = metricValues(
+    fileSystemMetrics,
+    "FileSystemUsage",
+    "maximum",
+  );
 
   const timestamps = Array.from(
     new Set([
@@ -319,6 +365,9 @@ export async function getAzureMonitorSnapshot(
       ...cpu.keys(),
       ...memory.keys(),
       ...responseTimes.keys(),
+      ...cpuTime.keys(),
+      ...ioRead.keys(),
+      ...ioWrite.keys(),
     ]),
   ).sort();
 
@@ -363,12 +412,23 @@ export async function getAzureMonitorSnapshot(
         bytesSent.has(timestamp)
           ? (bytesSent.get(timestamp) ?? 0) / 1_048_576
           : null,
+      cpuTimeSeconds: cpuTime.get(timestamp) ?? null,
+      ioReadMiBPerSecond:
+        ioRead.has(timestamp)
+          ? (ioRead.get(timestamp) ?? 0) / 1_048_576
+          : null,
+      ioWriteKiBPerSecond:
+        ioWrite.has(timestamp)
+          ? (ioWrite.get(timestamp) ?? 0) / 1_024
+          : null,
+      diskQueueLength: diskQueue.get(timestamp) ?? null,
     };
   });
 
   const totalRequests = total(series.map((point) => point.requests));
   const totalServerErrors = total(series.map((point) => point.serverErrors));
   const totalClientErrors = total(series.map((point) => point.clientErrors));
+  const totalCpuTimeSeconds = total(Array.from(cpuTime.values()));
   const elapsedSeconds = rangeConfig.durationMs / 1_000;
   const summary: AzureMonitorSnapshot["summary"] = {
     totalRequests: round(totalRequests, 0),
@@ -426,6 +486,42 @@ export async function getAzureMonitorSnapshot(
       total(Array.from(bytesSent.values())) / 1_073_741_824,
       2,
     ),
+    totalCpuTimeSeconds: round(totalCpuTimeSeconds, 1),
+    cpuTimePerRequestMs: round(
+      totalRequests > 0
+        ? (totalCpuTimeSeconds / totalRequests) * 1_000
+        : 0,
+      2,
+    ),
+    currentIoReadMiBPerSecond: round(
+      lastValue(Array.from(ioRead.values())) / 1_048_576,
+      2,
+    ),
+    peakIoReadMiBPerSecond: round(
+      maximum(Array.from(ioReadPeaks.values())) / 1_048_576,
+      2,
+    ),
+    currentIoWriteKiBPerSecond: round(
+      lastValue(Array.from(ioWrite.values())) / 1_024,
+      2,
+    ),
+    peakIoWriteKiBPerSecond: round(
+      maximum(Array.from(ioWritePeaks.values())) / 1_024,
+      2,
+    ),
+    fileSystemUsageGiB: round(
+      lastValue(Array.from(fileSystemUsage.values())) / 1_073_741_824,
+      2,
+    ),
+    peakFileSystemUsageGiB: round(
+      maximum(Array.from(fileSystemUsagePeaks.values())) / 1_073_741_824,
+      2,
+    ),
+    currentDiskQueueLength: round(
+      lastValue(Array.from(diskQueue.values())),
+      1,
+    ),
+    maxDiskQueueLength: round(maximum(Array.from(diskQueuePeaks.values())), 1),
     currentRps: round(lastValue(series.map((point) => point.rps)), 2),
     currentRpm: round(lastValue(series.map((point) => point.rpm)), 1),
     currentCpuPercent: round(
