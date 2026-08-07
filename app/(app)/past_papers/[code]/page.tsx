@@ -2,7 +2,6 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import { connection } from "next/server";
 import { eq } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { getExamFocusForDate } from "@/lib/exam-focus";
@@ -14,6 +13,7 @@ import {
     type CoursePaperSort,
 } from "@/lib/data/course-papers";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
+import { getUpcomingExamsForCourses } from "@/lib/data/upcoming-exams";
 import StructuredData from "@/app/components/seo/structured-data";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import {
@@ -127,7 +127,12 @@ function parseYears(raw: string | undefined): number[] {
 function parseSearchParams(raw: SearchParamsRaw): ParsedFilters {
     const sortParam = raw.sort?.toLowerCase();
     const sort: CoursePaperSort =
-        sortParam === "year_desc" || sortParam === "year_asc" || sortParam === "recent" ? sortParam : "seasonal";
+        sortParam === "seasonal" ||
+        sortParam === "year_desc" ||
+        sortParam === "year_asc" ||
+        sortParam === "recent"
+            ? sortParam
+            : "seasonal";
     const page = Math.max(1, Number.parseInt(raw.page || "1", 10) || 1);
 
     return {
@@ -152,6 +157,16 @@ function buildSearchString(raw: SearchParamsRaw): string {
     }
 
     return searchParams.toString();
+}
+
+async function getCourseExamFocus(courseId: string): Promise<ExamType> {
+    const upcomingExamsByCourse = await getUpcomingExamsForCourses([courseId]);
+    return (
+        upcomingExamsByCourse
+            .get(courseId)
+            ?.find((exam) => exam.examType !== null)?.examType ??
+        getExamFocusForDate(new Date())
+    );
 }
 
 /**
@@ -239,13 +254,36 @@ async function CoursePastPapersContent({
     course: NonNullable<Awaited<ReturnType<typeof getCourseDetailByCode>>>;
     searchParamsPromise: Promise<SearchParamsRaw> | undefined;
 }) {
-    await connection();
-
     const raw = (await searchParamsPromise) ?? {};
     const filters = parseSearchParams(raw);
-    const examFocus = getExamFocusForDate(new Date());
     const searchString = buildSearchString(raw);
     const basePath = getCoursePastPapersPath(course.code);
+    const paperQuery = {
+        courseId: course.id,
+        filters: {
+            examTypes: filters.examTypes,
+            slots: filters.slots,
+            years: filters.years,
+            semesters: filters.semesters,
+            campuses: filters.campuses,
+            hasAnswerKey: filters.hasAnswerKey || undefined,
+        },
+        page: filters.page,
+        pageSize: PAGE_SIZE,
+    };
+    const papersPromise =
+        filters.sort === "seasonal"
+            ? getCourseExamFocus(course.id).then((examFocus) =>
+                  getCoursePapers({
+                      ...paperQuery,
+                      sort: "seasonal",
+                      examFocus,
+                  }),
+              )
+            : getCoursePapers({
+                  ...paperQuery,
+                  sort: filters.sort,
+              });
     const [options, { papers, totalCount }] = await Promise.all([
         getCoursePaperFilterOptions(course.id, {
             examTypes: filters.examTypes,
@@ -255,21 +293,7 @@ async function CoursePastPapersContent({
             campuses: filters.campuses,
             hasAnswerKey: filters.hasAnswerKey || undefined,
         }),
-        getCoursePapers({
-            courseId: course.id,
-            filters: {
-                examTypes: filters.examTypes,
-                slots: filters.slots,
-                years: filters.years,
-                semesters: filters.semesters,
-                campuses: filters.campuses,
-                hasAnswerKey: filters.hasAnswerKey || undefined,
-            },
-            sort: filters.sort,
-            examFocus,
-            page: filters.page,
-            pageSize: PAGE_SIZE,
-        }),
+        papersPromise,
     ]);
 
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));

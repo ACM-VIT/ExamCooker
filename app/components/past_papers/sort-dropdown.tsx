@@ -24,7 +24,7 @@ export default function SortDropdown({
     const { replace } = useRouter();
     const [, startTransition] = useTransition();
 
-    const onChange = (next: string) => {
+    const onChange = (next: SortValue) => {
         const params = new URLSearchParams(searchString);
         if (next === "seasonal") {
             params.delete("sort");
@@ -46,7 +46,7 @@ export default function SortDropdown({
             </span>
             <select
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
+                onChange={(e) => onChange(e.target.value as SortValue)}
                 className="border border-black/25 bg-white px-2 py-1 text-xs font-semibold text-black focus:border-black focus:outline-none dark:border-[#D5D5D5]/25 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:focus:border-[#D5D5D5]/60"
             >
                 {OPTIONS.map((o) => (

@@ -4,7 +4,6 @@ import Script from "next/script";
 import { Toaster } from "@/app/components/ui/toaster";
 import "@/app/globals.css";
 import UpsellToast from "@/app/components/ui/upsell-toast";
-import UpsellModal from "@/app/components/ui/upsell-modal";
 import PwaServiceWorker from "@/app/components/pwa-service-worker";
 import HydrationRecovery from "@/app/hydration-recovery";
 import { hydrationRecoveryInitScript } from "@/app/hydration-recovery-script";
@@ -153,9 +152,6 @@ export default function RootLayout({
                 <Toaster />
                 <Suspense fallback={null}>
                     <UpsellToast />
-                </Suspense>
-                <Suspense fallback={null}>
-                    <UpsellModal />
                 </Suspense>
                 <Suspense fallback={null}>
                     <AndroidInstallBanner />
