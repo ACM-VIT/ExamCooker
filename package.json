@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.29",
+    "@azure/identity": "^4.13.1",
     "@azure/storage-blob": "^12.33.0",
     "@capacitor/android": "^8.5.0",
     "@capacitor/app": "^8.1.1",
