@@ -270,10 +270,13 @@ export async function getAzureMonitorSnapshot(
       metricNames: [
         "Requests",
         "Http2xx",
+        "Http3xx",
         "Http4xx",
         "Http5xx",
         "HttpResponseTime",
         "MemoryWorkingSet",
+        "BytesReceived",
+        "BytesSent",
       ],
       resourceId: config.appResourceId,
       start,
@@ -290,11 +293,16 @@ export async function getAzureMonitorSnapshot(
   ]);
 
   const requests = metricValues(appMetrics, "Requests", "total");
+  const successfulRequests = metricValues(appMetrics, "Http2xx", "total");
+  const redirects = metricValues(appMetrics, "Http3xx", "total");
   const serverErrors = metricValues(appMetrics, "Http5xx", "total");
   const clientErrors = metricValues(appMetrics, "Http4xx", "total");
   const responseTimes = metricValues(appMetrics, "HttpResponseTime", "average");
   const responseTimePeaks = metricValues(appMetrics, "HttpResponseTime", "maximum");
   const workingSet = metricValues(appMetrics, "MemoryWorkingSet", "average");
+  const workingSetPeaks = metricValues(appMetrics, "MemoryWorkingSet", "maximum");
+  const bytesReceived = metricValues(appMetrics, "BytesReceived", "total");
+  const bytesSent = metricValues(appMetrics, "BytesSent", "total");
   const cpu = metricValues(planMetrics, "CpuPercentage", "average");
   const cpuPeaks = metricValues(planMetrics, "CpuPercentage", "maximum");
   const memory = metricValues(planMetrics, "MemoryPercentage", "average");
@@ -305,6 +313,8 @@ export async function getAzureMonitorSnapshot(
   const timestamps = Array.from(
     new Set([
       ...requests.keys(),
+      ...successfulRequests.keys(),
+      ...redirects.keys(),
       ...serverErrors.keys(),
       ...cpu.keys(),
       ...memory.keys(),
@@ -322,6 +332,10 @@ export async function getAzureMonitorSnapshot(
         requestCount === null
           ? null
           : requestCount / rangeConfig.intervalSeconds,
+      rpm:
+        requestCount === null
+          ? null
+          : requestCount / (rangeConfig.intervalSeconds / 60),
       cpuPercent: cpu.get(timestamp) ?? null,
       memoryPercent: memory.get(timestamp) ?? null,
       responseTimeMs:
@@ -341,16 +355,27 @@ export async function getAzureMonitorSnapshot(
         workingSet.has(timestamp)
           ? (workingSet.get(timestamp) ?? 0) / 1_073_741_824
           : null,
+      bytesReceivedMiB:
+        bytesReceived.has(timestamp)
+          ? (bytesReceived.get(timestamp) ?? 0) / 1_048_576
+          : null,
+      bytesSentMiB:
+        bytesSent.has(timestamp)
+          ? (bytesSent.get(timestamp) ?? 0) / 1_048_576
+          : null,
     };
   });
 
   const totalRequests = total(series.map((point) => point.requests));
   const totalServerErrors = total(series.map((point) => point.serverErrors));
+  const totalClientErrors = total(series.map((point) => point.clientErrors));
   const elapsedSeconds = rangeConfig.durationMs / 1_000;
   const summary: AzureMonitorSnapshot["summary"] = {
     totalRequests: round(totalRequests, 0),
     averageRps: round(totalRequests / elapsedSeconds, 2),
     peakRps: round(maximum(series.map((point) => point.rps)), 2),
+    averageRpm: round((totalRequests / elapsedSeconds) * 60, 1),
+    peakRpm: round(maximum(series.map((point) => point.rpm)), 1),
     averageCpuPercent: round(average(series.map((point) => point.cpuPercent)), 1),
     peakCpuPercent: round(maximum(Array.from(cpuPeaks.values())), 1),
     averageMemoryPercent: round(
@@ -371,7 +396,13 @@ export async function getAzureMonitorSnapshot(
       totalRequests > 0 ? (totalServerErrors / totalRequests) * 100 : 0,
       2,
     ),
-    clientErrors: round(total(series.map((point) => point.clientErrors)), 0),
+    successfulRequests: round(total(Array.from(successfulRequests.values())), 0),
+    redirects: round(total(Array.from(redirects.values())), 0),
+    clientErrors: round(totalClientErrors, 0),
+    clientErrorRatePercent: round(
+      totalRequests > 0 ? (totalClientErrors / totalRequests) * 100 : 0,
+      2,
+    ),
     successRatePercent: round(
       totalRequests > 0
         ? ((totalRequests - totalServerErrors) / totalRequests) * 100
@@ -379,13 +410,34 @@ export async function getAzureMonitorSnapshot(
       2,
     ),
     maxQueueLength: round(maximum(Array.from(queuePeaks.values())), 1),
+    averageWorkingSetGiB: round(
+      average(series.map((point) => point.workingSetGiB)),
+      2,
+    ),
+    peakWorkingSetGiB: round(
+      maximum(Array.from(workingSetPeaks.values())) / 1_073_741_824,
+      2,
+    ),
+    bytesReceivedGiB: round(
+      total(Array.from(bytesReceived.values())) / 1_073_741_824,
+      2,
+    ),
+    bytesSentGiB: round(
+      total(Array.from(bytesSent.values())) / 1_073_741_824,
+      2,
+    ),
     currentRps: round(lastValue(series.map((point) => point.rps)), 2),
+    currentRpm: round(lastValue(series.map((point) => point.rpm)), 1),
     currentCpuPercent: round(
       lastValue(series.map((point) => point.cpuPercent)),
       1,
     ),
     currentMemoryPercent: round(
       lastValue(series.map((point) => point.memoryPercent)),
+      1,
+    ),
+    currentQueueLength: round(
+      lastValue(series.map((point) => point.queueLength)),
       1,
     ),
   };
