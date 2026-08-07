@@ -11,7 +11,6 @@ import {
   Server,
   ShieldCheck,
   TimerReset,
-  Waves,
 } from "lucide-react";
 import {
   type ComponentType,
@@ -52,6 +51,9 @@ type MetricKey = keyof Pick<
   | "errorRatePercent"
   | "bytesReceivedMiB"
   | "bytesSentMiB"
+  | "workingSetGiB"
+  | "ioReadMiBPerSecond"
+  | "diskQueueLength"
 >;
 
 type ChartLine = {
@@ -61,10 +63,19 @@ type ChartLine = {
 };
 
 function formatCompact(value: number, digits = 1) {
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: digits,
     notation: Math.abs(value) >= 1_000 ? "compact" : "standard",
   }).format(value);
+}
+
+function formatCount(value: number) {
+  if (Math.abs(value) >= 100_000) {
+    return `${new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: Math.abs(value) >= 10_000_000 ? 1 : 2,
+    }).format(value / 1_000_000)}M`;
+  }
+  return formatCompact(value);
 }
 
 function formatDecimal(value: number, digits = 1) {
@@ -77,6 +88,16 @@ function formatDecimal(value: number, digits = 1) {
 function formatLatency(valueMs: number) {
   if (valueMs >= 1_000) return `${formatDecimal(valueMs / 1_000, 2)} s`;
   return `${formatCompact(valueMs, 0)} ms`;
+}
+
+function formatDuration(valueSeconds: number) {
+  if (valueSeconds >= 3_600) {
+    return `${formatDecimal(valueSeconds / 3_600, 1)} h`;
+  }
+  if (valueSeconds >= 60) {
+    return `${formatDecimal(valueSeconds / 60, 1)} min`;
+  }
+  return `${formatDecimal(valueSeconds, 1)} s`;
 }
 
 function formatAge(timestamp: string | null) {
@@ -179,35 +200,10 @@ function MetricCard({
           </strong>
         )}
         <p className="mt-2 text-xs leading-5 text-black/60 dark:text-[#D5D5D5]/55">
-          {loading ? "Reading Azure Monitor" : detail}
+          {loading ? "Loading" : detail}
         </p>
       </div>
     </article>
-  );
-}
-
-function InlineStat({
-  label,
-  loading,
-  value,
-}: {
-  label: string;
-  loading: boolean;
-  value: string;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col items-start gap-0.5 text-left sm:flex-row sm:items-baseline sm:gap-1.5">
-      {loading ? (
-        <span className="block h-7 w-16 animate-pulse bg-black/10 dark:bg-white/10 sm:h-5" />
-      ) : (
-        <span className="text-[1.7rem] font-black leading-none text-black dark:text-[#D5D5D5] sm:text-xl">
-          {value}
-        </span>
-      )}
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/60 dark:text-[#D5D5D5]/60 sm:text-xs sm:tracking-wider">
-        {label}
-      </span>
-    </div>
   );
 }
 
@@ -411,22 +407,21 @@ export default function AzureObservabilityDashboard({
   const data = snapshot?.range === range ? snapshot : null;
   const summary = data?.summary;
   const loading = !data;
-  const healthClasses =
+  const healthDotClass =
     data?.health.state === "degraded"
-      ? "border-red-500 bg-red-500/10"
+      ? "bg-red-500"
       : data?.health.state === "watch"
-        ? "border-amber-500 bg-amber-500/10"
-        : "border-[#253EE0] bg-[#5FC4E7]/25 dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/10";
-  const projectedDailyRequests = (summary?.averageRpm ?? 0) * 1_440;
+        ? "bg-amber-500"
+        : "bg-[#253EE0] dark:bg-[#3BF4C7]";
 
   return (
     <div className="min-h-dvh bg-[#C2E6EC] text-black transition-colors dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-3 py-6 sm:px-6 sm:py-8 lg:gap-12 lg:px-10 lg:py-12">
-        <header>
-          <div className="mb-8 flex items-center justify-between gap-3">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-3 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+        <header className="border-b-2 border-black/20 pb-5 dark:border-white/20">
+          <div className="flex items-center justify-between gap-3">
             <Link
               href="/mod"
-              className="inline-flex h-10 items-center gap-2 border-2 border-black/25 px-3 text-sm font-semibold transition hover:border-black dark:border-white/25 dark:hover:border-white"
+              className="inline-flex h-9 items-center gap-2 text-sm font-semibold text-black/65 transition hover:text-black dark:text-[#D5D5D5]/65 dark:hover:text-[#D5D5D5]"
             >
               <ArrowLeft className="size-4" aria-hidden />
               Moderator
@@ -435,7 +430,7 @@ export default function AzureObservabilityDashboard({
               type="button"
               onClick={() => void loadMetrics(range)}
               disabled={refreshing || !enabled}
-              className="inline-flex h-10 items-center gap-2 border-2 border-black bg-[#5FC4E7] px-3 text-sm font-bold text-black transition hover:bg-[#71cdec] disabled:cursor-wait disabled:opacity-60 dark:border-[#5FC4E7] dark:bg-[#5FC4E7]/15 dark:text-[#D5D5D5]"
+              className="inline-flex h-9 items-center gap-2 border border-black/30 px-3 text-xs font-bold uppercase tracking-wide transition hover:border-black disabled:cursor-wait disabled:opacity-60 dark:border-white/30 dark:hover:border-white"
             >
               <RefreshCw
                 className={`size-4 ${refreshing ? "animate-spin" : ""}`}
@@ -445,64 +440,22 @@ export default function AzureObservabilityDashboard({
             </button>
           </div>
 
-          <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
+          <div className="mt-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
-              <p className="mb-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-black/60 dark:text-[#D5D5D5]/60">
-                Production · Azure App Service
+              <p className="mb-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-[#D5D5D5]/55">
+                Production · {data?.resource.sku ?? "B2"} · {data?.resource.region ?? "South India"}
               </p>
-              <h1 className="max-w-4xl text-4xl font-extrabold leading-[1.02] sm:text-5xl md:text-6xl lg:text-7xl">
-                Production. <span className="text-[#253EE0] dark:text-[#5FC4E7]">Live.</span>
+              <h1 className="text-3xl font-extrabold leading-tight sm:text-4xl">
+                Azure metrics
               </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-black/65 dark:text-[#D5D5D5]/65 sm:text-base">
-                Requests, reliability and App Service capacity, read directly from
-                Azure Monitor. Samples refresh every 30 seconds.
-              </p>
             </div>
-
-            <div className={`border-2 p-4 ${healthClasses}`}>
-              <div className="flex items-start gap-3">
-                <Waves className="mt-0.5 size-5 shrink-0" aria-hidden />
-                <div>
-                  <span className="font-mono text-[11px] font-bold uppercase tracking-wide text-black/55 dark:text-[#D5D5D5]/55">
-                    System condition
-                  </span>
-                  <strong className="mt-1 block text-lg">
-                    {data?.health.label ?? "Establishing signal"}
-                  </strong>
-                  <p className="mt-1 text-xs leading-5 text-black/60 dark:text-[#D5D5D5]/60">
-                    {data?.health.reasons[0] ?? "Connecting to Azure Monitor"}
-                  </p>
-                </div>
-              </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span className={`size-2 shrink-0 ${healthDotClass}`} />
+              <strong>{data?.health.label ?? "Connecting"}</strong>
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-6 sm:gap-y-2">
-            <InlineStat
-              label="RPM now"
-              value={formatCompact(summary?.currentRpm ?? 0)}
-              loading={loading}
-            />
-            <InlineStat
-              label="requests"
-              value={formatCompact(summary?.totalRequests ?? 0)}
-              loading={loading}
-            />
-            <InlineStat
-              label="availability"
-              value={`${formatDecimal(summary?.successRatePercent ?? 0, 2)}%`}
-              loading={loading}
-            />
-            <InlineStat
-              label="avg CPU"
-              value={`${formatDecimal(summary?.averageCpuPercent ?? 0, 1)}%`}
-              loading={loading}
-            />
-          </div>
-        </header>
-
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-col justify-between gap-3 border-y-2 border-black/20 py-3 dark:border-white/20 sm:flex-row sm:items-center">
+          <div className="mt-5 flex flex-col justify-between gap-3 border-t border-black/15 pt-4 dark:border-white/15 sm:flex-row sm:items-center">
             <div className="flex flex-wrap gap-2" aria-label="Metric time range">
               {AZURE_MONITOR_RANGES.map((candidate) => (
                 <button
@@ -524,16 +477,15 @@ export default function AzureObservabilityDashboard({
               <Clock3 className="size-4" aria-hidden />
               {data
                 ? `Updated ${formatTime(data.fetchedAt)} · ${formatAge(data.latestMetricAt)}`
-                : `Loading ${RANGE_RESOLUTION[range]} samples`}
+                : `Loading ${RANGE_RESOLUTION[range]} data`}
             </div>
           </div>
           {error ? (
-            <div className="border-2 border-red-500 bg-red-500/10 p-4 text-sm" role="alert">
-              <strong>Azure Monitor is temporarily unavailable.</strong>{" "}
-              <span>{error}. This page will retry automatically.</span>
+            <div className="mt-4 border-l-2 border-red-500 pl-3 text-sm" role="alert">
+              <strong>Azure Monitor unavailable.</strong> <span>{error}</span>
             </div>
           ) : null}
-        </section>
+        </header>
 
         <section className="flex flex-col gap-4">
           <SectionHeading title="Traffic" detail={`${RANGE_RESOLUTION[range]} resolution`} />
@@ -541,38 +493,42 @@ export default function AzureObservabilityDashboard({
             <MetricCard
               label="Current RPM"
               value={formatCompact(summary?.currentRpm ?? 0)}
-              detail="Requests in the latest normalized minute"
+              detail="Latest sample"
               icon={Activity}
               loading={loading}
             />
             <MetricCard
               label="Average RPM"
               value={formatCompact(summary?.averageRpm ?? 0)}
-              detail={`Average across ${RANGE_LABELS[range]}`}
+              detail={`${RANGE_LABELS[range]} average`}
               loading={loading}
             />
             <MetricCard
               label="Peak RPM"
               value={formatCompact(summary?.peakRpm ?? 0)}
-              detail="Highest interval-normalized minute"
+              detail={`${RANGE_LABELS[range]} peak`}
               loading={loading}
             />
             <MetricCard
               label="Current RPS"
               value={formatDecimal(summary?.currentRps ?? 0, 2)}
-              detail={`Average ${formatDecimal(summary?.averageRps ?? 0, 2)} RPS`}
+              detail="Latest sample"
               loading={loading}
             />
             <MetricCard
               label="Total requests"
-              value={formatCompact(summary?.totalRequests ?? 0)}
-              detail={`Observed over ${RANGE_LABELS[range]}`}
+              value={formatCount(summary?.totalRequests ?? 0)}
+              detail={`${RANGE_LABELS[range]} total`}
               loading={loading}
             />
             <MetricCard
-              label="Daily run rate"
-              value={formatCompact(projectedDailyRequests)}
-              detail="Projected from this range average"
+              label="Burst factor"
+              value={`${formatDecimal(
+                (summary?.peakRpm ?? 0) /
+                  Math.max(summary?.averageRpm ?? 0, 0.01),
+                1,
+              )}×`}
+              detail="Peak / average RPM"
               loading={loading}
             />
           </div>
@@ -592,7 +548,7 @@ export default function AzureObservabilityDashboard({
             <MetricCard
               label="Server availability"
               value={`${formatDecimal(summary?.successRatePercent ?? 0, 2)}%`}
-              detail={`${formatCompact(summary?.successfulRequests ?? 0)} HTTP 2xx responses`}
+              detail={`${formatCount(summary?.successfulRequests ?? 0)} HTTP 2xx`}
               icon={ShieldCheck}
               loading={loading}
             />
@@ -617,14 +573,14 @@ export default function AzureObservabilityDashboard({
             <MetricCard
               label="Average response"
               value={formatLatency(summary?.averageResponseTimeMs ?? 0)}
-              detail="Azure backend response time"
+              detail="Mean backend time"
               icon={TimerReset}
               loading={loading}
             />
             <MetricCard
               label="Peak response"
               value={formatLatency(summary?.peakResponseTimeMs ?? 0)}
-              detail="Slowest interval maximum"
+              detail="Interval maximum"
               loading={loading}
             />
           </div>
@@ -712,39 +668,89 @@ export default function AzureObservabilityDashboard({
               </div>
             </aside>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <SectionHeading title="Runtime & storage" detail="App Service metrics" />
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <MetricCard
-              label="Peak CPU"
-              value={`${formatDecimal(summary?.peakCpuPercent ?? 0, 1)}%`}
-              detail={`${formatDecimal(100 - (summary?.averageCpuPercent ?? 0), 1)}% average headroom`}
+              label="CPU time"
+              value={formatDuration(summary?.totalCpuTimeSeconds ?? 0)}
+              detail={`${RANGE_LABELS[range]} total`}
               icon={Cpu}
               loading={loading}
             />
             <MetricCard
-              label="Peak memory"
-              value={`${formatDecimal(summary?.peakMemoryPercent ?? 0, 1)}%`}
-              detail={`${formatDecimal(100 - (summary?.averageMemoryPercent ?? 0), 1)}% average headroom`}
+              label="CPU / request"
+              value={`${formatDecimal(summary?.cpuTimePerRequestMs ?? 0, 2)} ms`}
+              detail="Mean per request"
+              loading={loading}
+            />
+            <MetricCard
+              label="File system"
+              value={`${formatDecimal(summary?.fileSystemUsageGiB ?? 0, 2)} GiB`}
+              detail="Latest 6-hour sample"
               icon={HardDrive}
               loading={loading}
             />
             <MetricCard
-              label="Data received"
-              value={`${formatDecimal(summary?.bytesReceivedGiB ?? 0, 2)} GiB`}
-              detail={`Across ${RANGE_LABELS[range]}`}
+              label="File system peak"
+              value={`${formatDecimal(summary?.peakFileSystemUsageGiB ?? 0, 2)} GiB`}
+              detail="Last 7 days"
               loading={loading}
             />
             <MetricCard
-              label="Data sent"
-              value={`${formatDecimal(summary?.bytesSentGiB ?? 0, 2)} GiB`}
-              detail={`Across ${RANGE_LABELS[range]}`}
+              label="Read throughput"
+              value={`${formatDecimal(summary?.currentIoReadMiBPerSecond ?? 0, 2)} MiB/s`}
+              detail="Latest sample"
               loading={loading}
+            />
+            <MetricCard
+              label="Peak read"
+              value={`${formatDecimal(summary?.peakIoReadMiBPerSecond ?? 0, 2)} MiB/s`}
+              detail={`${RANGE_LABELS[range]} peak`}
+              loading={loading}
+            />
+            <MetricCard
+              label="Write throughput"
+              value={`${formatDecimal(summary?.currentIoWriteKiBPerSecond ?? 0, 2)} KiB/s`}
+              detail={`${formatDecimal(summary?.peakIoWriteKiBPerSecond ?? 0, 2)} KiB/s peak`}
+              loading={loading}
+            />
+            <MetricCard
+              label="Disk queue"
+              value={formatDecimal(summary?.currentDiskQueueLength ?? 0, 0)}
+              detail={`${formatDecimal(summary?.maxDiskQueueLength ?? 0, 0)} peak`}
+              loading={loading}
+            />
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <MetricChart
+              title="Data transfer"
+              range={range}
+              series={data?.series ?? []}
+              lines={[
+                { key: "bytesReceivedMiB", label: "Received per interval", color: "#253EE0" },
+                { key: "bytesSentMiB", label: "Sent per interval", color: "#00A7D8" },
+              ]}
+              value={`${formatDecimal(summary?.bytesSentGiB ?? 0, 2)} GiB sent`}
+              empty={loading}
+            />
+            <MetricChart
+              title="Memory working set"
+              range={range}
+              series={data?.series ?? []}
+              lines={[
+                { key: "workingSetGiB", label: "Working set", color: "#F59E0B" },
+              ]}
+              value={`${formatDecimal(summary?.averageWorkingSetGiB ?? 0, 2)} GiB`}
+              empty={loading}
             />
           </div>
         </section>
 
         <footer className="border-t-2 border-black/20 pt-5 text-xs leading-5 text-black/50 dark:border-white/20 dark:text-[#D5D5D5]/50">
-          Azure Monitor platform metrics usually arrive one to three minutes late.
-          “Live” means the newest published platform sample, not request-level tracing.
+          Azure Monitor delay is usually 1–3 minutes.
         </footer>
       </div>
     </div>
