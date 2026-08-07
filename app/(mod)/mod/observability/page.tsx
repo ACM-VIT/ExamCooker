@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import ClientSide from "@/app/(app)/client-side";
 import { auth } from "@/app/auth";
 import AzureObservabilityDashboard from "./azure-observability-dashboard";
 
@@ -21,8 +22,10 @@ async function ProtectedAzureObservabilityDashboard() {
 
 export default function AzureObservabilityPage() {
   return (
-    <Suspense fallback={<AzureObservabilityDashboard enabled={false} />}>
-      <ProtectedAzureObservabilityDashboard />
-    </Suspense>
+    <ClientSide>
+      <Suspense fallback={<AzureObservabilityDashboard enabled={false} />}>
+        <ProtectedAzureObservabilityDashboard />
+      </Suspense>
+    </ClientSide>
   );
 }
