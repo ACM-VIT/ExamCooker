@@ -28,6 +28,7 @@ export type CoursePaperFilters = {
 };
 
 export type CoursePaperSort = "seasonal" | "year_desc" | "year_asc" | "recent";
+type NonSeasonalCoursePaperSort = Exclude<CoursePaperSort, "seasonal">;
 
 export type CoursePaperListItem = {
     id: string;
@@ -164,13 +165,13 @@ function rowMatchesFilters(
     return true;
 }
 
-function comparePaperRows(sort: CoursePaperSort, examFocus: ExamType) {
+function comparePaperRows(sort: CoursePaperSort, examFocus?: ExamType) {
     return (a: CoursePaperRow, b: CoursePaperRow) => {
         if (sort === "recent") {
             return b.createdAtTime - a.createdAtTime;
         }
 
-        if (sort === "seasonal") {
+        if (sort === "seasonal" && examFocus) {
             const aIsExamFocus = a.examType === examFocus;
             const bIsExamFocus = b.examType === examFocus;
             if (aIsExamFocus !== bIsExamFocus) return aIsExamFocus ? -1 : 1;
@@ -201,14 +202,19 @@ function toCoursePaperListItem(row: CoursePaperRow): CoursePaperListItem {
     };
 }
 
-export async function getCoursePapers(input: {
+type GetCoursePapersInput = {
     courseId: string;
     filters: CoursePaperFilters;
-    sort: CoursePaperSort;
-    examFocus: ExamType;
     page: number;
     pageSize: number;
-}): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
+} & (
+    | { sort: "seasonal"; examFocus: ExamType }
+    | { sort: NonSeasonalCoursePaperSort; examFocus?: never }
+);
+
+export async function getCoursePapers(
+    input: GetCoursePapersInput,
+): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
     "use cache";
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });

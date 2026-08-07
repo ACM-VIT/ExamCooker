@@ -128,7 +128,6 @@ async function CourseExamContent({
             courseId: course.id,
             filters: { examTypes: [examType] },
             sort: "year_desc",
-            examFocus: examType,
             page: 1,
             pageSize: 48,
         }),
