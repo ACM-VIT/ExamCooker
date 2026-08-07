@@ -127,9 +127,7 @@ function parseYears(raw: string | undefined): number[] {
 function parseSearchParams(raw: SearchParamsRaw): ParsedFilters {
     const sortParam = raw.sort?.toLowerCase();
     const sort: CoursePaperSort =
-        sortParam === "year_desc" || sortParam === "year_asc" || sortParam === "recent"
-            ? sortParam
-            : "seasonal";
+        sortParam === "year_desc" || sortParam === "year_asc" || sortParam === "recent" ? sortParam : "seasonal";
     const page = Math.max(1, Number.parseInt(raw.page || "1", 10) || 1);
 
     return {
