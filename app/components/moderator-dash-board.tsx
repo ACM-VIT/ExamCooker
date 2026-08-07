@@ -427,6 +427,12 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
                 >
                     Review note courses →
                 </Link>
+                <Link
+                    href="/mod/observability"
+                    className="border-2 border-black bg-[#5FC4E7] px-4 py-2 text-sm font-semibold text-black transition hover:translate-x-[-2px] hover:translate-y-[-2px] dark:border-[#3BF4C7] dark:bg-[#3BF4C7]/10 dark:text-[#3BF4C7]"
+                >
+                    Azure live metrics →
+                </Link>
             </div>
             <br />
             <div className="w-full flex justify-center mb-6">

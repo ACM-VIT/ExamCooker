@@ -54,11 +54,11 @@ const UpsellModal = () => {
     const isMobile = useIsMobile();
     const [phase, dispatchPhase] = useReducer(modalPhaseReducer, "idle");
 
-    const isCliPage = pathname === "/cli";
+    const isUtilityPage = pathname === "/cli" || pathname.startsWith("/mod");
     const isAuthPage = pathname === "/auth";
 
     useEffect(() => {
-        if (isCliPage || isAuthPage || isMobile) {
+        if (isUtilityPage || isAuthPage || isMobile) {
             dispatchPhase("closed");
             return;
         }
@@ -68,7 +68,7 @@ const UpsellModal = () => {
         }
         const timer = window.setTimeout(() => dispatchPhase("entering"), MODAL_SHOW_DELAY_MS);
         return () => window.clearTimeout(timer);
-    }, [isAuthPage, isCliPage, isMobile]);
+    }, [isAuthPage, isUtilityPage, isMobile]);
 
     useEffect(() => {
         if (phase === "entering") {
@@ -88,7 +88,7 @@ const UpsellModal = () => {
     const isVisible = phase === "open";
     const isRendered = phase !== "idle" && phase !== "closed";
 
-    if (isCliPage || isAuthPage || isMobile || !isRendered) return null;
+    if (isUtilityPage || isAuthPage || isMobile || !isRendered) return null;
 
     return (
         <div

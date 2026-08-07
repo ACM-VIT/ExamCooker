@@ -59,7 +59,7 @@ const UpsellToast = () => {
 
     upsellRef.current = upsell;
 
-    const isCliPage = pathname === "/cli";
+    const isUtilityPage = pathname === "/cli" || pathname.startsWith("/mod");
     const isAuthPage = pathname === "/auth";
 
     const hideToast = useCallback(() => {
@@ -86,14 +86,14 @@ const UpsellToast = () => {
     }, []);
 
     useEffect(() => {
-        if (isCliPage || isAuthPage || isMobile) return;
+        if (isUtilityPage || isAuthPage || isMobile) return;
         const next = pickNextUpsell();
         if (!next) return;
         const timer = window.setTimeout(() => {
             dispatch({ type: "mount", upsell: next });
         }, UPSELL_SHOW_DELAY_MS);
         return () => window.clearTimeout(timer);
-    }, [isAuthPage, isCliPage, isMobile]);
+    }, [isAuthPage, isUtilityPage, isMobile]);
 
     useEffect(() => {
         if (!mounted) return;
@@ -104,9 +104,9 @@ const UpsellToast = () => {
     }, [mounted]);
 
     useEffect(() => {
-        if (!isCliPage && !isAuthPage && !isMobile) return;
+        if (!isUtilityPage && !isAuthPage && !isMobile) return;
         dispatch({ type: "reset" });
-    }, [isAuthPage, isCliPage, isMobile]);
+    }, [isAuthPage, isUtilityPage, isMobile]);
 
     useEffect(() => {
         if (!visible || !upsell) return;
@@ -114,7 +114,7 @@ const UpsellToast = () => {
         return () => window.clearTimeout(timer);
     }, [visible, upsell?.id, hideToast]);
 
-    if (isCliPage || isAuthPage || isMobile || !mounted || !upsell) return null;
+    if (isUtilityPage || isAuthPage || isMobile || !mounted || !upsell) return null;
 
     const handleLinkCtaClick = () => {
         markUpsellDismissed(upsell.id);
