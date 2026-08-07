@@ -187,7 +187,7 @@ function MetricCard({
 }) {
   return (
     <article className="flex min-h-36 flex-col border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black dark:border-white/20 dark:bg-white/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]">
-      <div className="flex items-center justify-between gap-3 font-mono text-[11px] font-bold uppercase tracking-wide text-black/70 dark:text-[#D5D5D5]/65">
+      <div className="flex items-center justify-between gap-3 text-sm font-normal text-black/65 dark:text-[#D5D5D5]/65">
         <span>{label}</span>
         {IconComponent ? <IconComponent className="size-4" aria-hidden /> : null}
       </div>
@@ -241,7 +241,7 @@ function MetricChart({
     <article className="border-2 border-black/20 bg-transparent p-4 dark:border-white/20 sm:p-5">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <span className="font-mono text-[11px] font-bold uppercase tracking-wide text-black/55 dark:text-[#D5D5D5]/55">
+          <span className="text-xs font-normal text-black/50 dark:text-[#D5D5D5]/50">
             Azure Monitor
           </span>
           <h3 className="mt-1 text-base font-bold text-black dark:text-[#D5D5D5] sm:text-lg">
@@ -430,7 +430,7 @@ export default function AzureObservabilityDashboard({
               type="button"
               onClick={() => void loadMetrics(range)}
               disabled={refreshing || !enabled}
-              className="inline-flex h-9 items-center gap-2 border border-black/30 px-3 text-xs font-bold uppercase tracking-wide transition hover:border-black disabled:cursor-wait disabled:opacity-60 dark:border-white/30 dark:hover:border-white"
+              className="inline-flex h-9 items-center gap-2 border border-black/30 px-3 text-sm font-normal transition hover:border-black disabled:cursor-wait disabled:opacity-60 dark:border-white/30 dark:hover:border-white"
             >
               <RefreshCw
                 className={`size-4 ${refreshing ? "animate-spin" : ""}`}
@@ -442,7 +442,7 @@ export default function AzureObservabilityDashboard({
 
           <div className="mt-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
-              <p className="mb-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-black/55 dark:text-[#D5D5D5]/55">
+              <p className="mb-1 text-xs font-normal text-black/55 dark:text-[#D5D5D5]/55">
                 Production · {data?.resource.sku ?? "B2"} · {data?.resource.region ?? "South India"}
               </p>
               <h1 className="text-3xl font-extrabold leading-tight sm:text-4xl">
@@ -463,7 +463,7 @@ export default function AzureObservabilityDashboard({
                   key={candidate}
                   aria-pressed={range === candidate}
                   onClick={() => setRange(candidate)}
-                  className={`h-9 border px-3 text-xs font-bold uppercase tracking-wide transition ${
+                  className={`h-9 border px-3 text-sm font-normal transition ${
                     range === candidate
                       ? "border-black bg-black text-[#C2E6EC] dark:border-[#5FC4E7] dark:bg-[#5FC4E7] dark:text-[#0C1222]"
                       : "border-black/25 hover:border-black dark:border-white/25 dark:hover:border-white"
@@ -622,7 +622,7 @@ export default function AzureObservabilityDashboard({
             <aside className="border-2 border-black/20 p-4 dark:border-white/20 sm:p-5">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <span className="font-mono text-[11px] font-bold uppercase tracking-wide text-black/55 dark:text-[#D5D5D5]/55">
+                  <span className="text-xs font-normal text-black/55 dark:text-[#D5D5D5]/55">
                     Worker
                   </span>
                   <strong className="mt-1 block text-xl">
