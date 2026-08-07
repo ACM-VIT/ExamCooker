@@ -1,5 +1,10 @@
 import type { ExamType } from "@/db";
 
+const IST_MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
+    month: "numeric",
+    timeZone: "Asia/Kolkata",
+});
+
 const EXAM_FOCUS_BY_MONTH: readonly ExamType[] = [
     "CAT_1", // January
     "CAT_1", // February
@@ -16,12 +21,7 @@ const EXAM_FOCUS_BY_MONTH: readonly ExamType[] = [
 ];
 
 export function getExamFocusForDate(date: Date): ExamType {
-    const month = Number(
-        new Intl.DateTimeFormat("en-US", {
-            month: "numeric",
-            timeZone: "Asia/Kolkata",
-        }).format(date),
-    ) - 1;
+    const month = Number(IST_MONTH_FORMATTER.format(date)) - 1;
 
     return EXAM_FOCUS_BY_MONTH[month] ?? "CAT_1";
 }
