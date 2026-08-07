@@ -58,7 +58,7 @@ export default function AndroidInstallBanner() {
     const isMobile = useIsMobile();
     const [shouldShow, setShouldShow] = useState(false);
 
-    const isCliPage = pathname === "/cli";
+    const isUtilityPage = pathname === "/cli" || pathname.startsWith("/mod");
     const isAuthPage = pathname === "/auth";
 
     useEffect(() => {
@@ -67,7 +67,7 @@ export default function AndroidInstallBanner() {
         async function checkEligibility() {
             let nextShouldShow = false;
 
-            if (!isMobile || isCliPage || isAuthPage || !isAndroidBrowser()) {
+            if (!isMobile || isUtilityPage || isAuthPage || !isAndroidBrowser()) {
                 return nextShouldShow;
             }
 
@@ -96,7 +96,7 @@ export default function AndroidInstallBanner() {
         return () => {
             cancelled = true;
         };
-    }, [isAuthPage, isCliPage, isMobile]);
+    }, [isAuthPage, isUtilityPage, isMobile]);
 
     if (!shouldShow) return null;
 
