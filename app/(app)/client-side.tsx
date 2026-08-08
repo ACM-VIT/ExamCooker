@@ -18,6 +18,7 @@ import {
 } from "@/app/components/past_papers/paper-split-view";
 import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
+import C2CSakuraSignal from "@/app/components/c2c-sakura-signal";
 
 const CommandPalette = dynamic(() => import("@/app/components/command-palette"), {
     ssr: false,
@@ -238,6 +239,7 @@ function ClientShell({
                         />
                     ) : null}
                     <main className="ec-app-main min-w-0 flex-1 pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] lg:pb-0 lg:pl-14 lg:pt-0">
+                        <C2CSakuraSignal />
                         <PaperSplitViewProvider>
                             <Suspense fallback={null}>
                                 <MobileStaticLogo />
