@@ -75,7 +75,8 @@
     filter:
         drop-shadow(0 0.35rem 0.8rem rgb(3 16 54 / 0.32))
         drop-shadow(0 0 0.45rem rgb(255 255 255 / 0.24));
-    transform-origin: top right;
+    transform: rotate(45deg);
+    transform-origin: center;
     transition:
         width 340ms cubic-bezier(0.22, 1, 0.36, 1),
         height 340ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -97,7 +98,7 @@
         drop-shadow(0 0.45rem 1rem rgb(3 16 54 / 0.38))
         drop-shadow(0 0 1.7rem rgb(255 79 154 / 0.7))
         drop-shadow(0 0 2.5rem rgb(39 186 236 / 0.46));
-    transform: rotate(-2deg);
+    transform: rotate(0deg);
 }
 
 .revealLabel {
@@ -129,7 +130,10 @@
 .petalRain {
     position: fixed;
     z-index: 45;
-    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: clamp(13rem, 29vw, 22rem);
     overflow: hidden;
     pointer-events: none;
     opacity: 0;
@@ -199,41 +203,8 @@
 }
 
 @media (max-width: 1023px) {
-    .root {
-        --c2c-chrome-top: calc(3.25rem + env(safe-area-inset-top));
-    }
-}
-
-@media (max-width: 640px) {
-    .activationDock {
-        top: calc(var(--c2c-chrome-top) + 0.45rem);
-        right: 0.45rem;
-        width: 3.25rem;
-        height: 3.25rem;
-    }
-
-    .activationDock:hover,
-    .activationDock:focus-visible {
-        width: 8.6rem;
-        height: 7.7rem;
-    }
-
-    .logoFrame {
-        width: 3.25rem;
-        height: 3.25rem;
-    }
-
-    .activationDock:hover .logoFrame,
-    .activationDock:focus-visible .logoFrame {
-        width: 4.8rem;
-        height: 4.95rem;
-    }
-
-    .revealLabel {
-        font-size: 0.8rem;
-    }
-
-    .petal:nth-child(3n) {
+    .activationDock,
+    .petalRain {
         display: none;
     }
 }

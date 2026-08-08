@@ -6,6 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { addTransitionType, startTransition, useEffect, useReducer, type MouseEvent } from "react";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 
+const C2C_EVENT_URL =
+  "https://gravitas.vit.ac.in/events/0eba5a6f-2687-416c-acd7-c51419433366";
+
 type Props = {
   toolsSheetOpen?: boolean;
 };
@@ -265,6 +268,38 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
             </li>
           );
         })}
+        <li className="relative z-[1] min-w-0 flex-1">
+          <a
+            href={C2C_EVENT_URL}
+            aria-label="Open Code2Create 7.0 event details"
+            title="Code2Create 7.0"
+            className={`flex flex-col items-center rounded-xl font-semibold leading-tight tracking-tight ${
+              nativeAndroid
+                ? "gap-1 px-1 py-1 text-[11px] text-slate-500 transition-colors dark:text-slate-400"
+                : "gap-0.5 px-1 py-1.5 text-[11px] text-black/55 transition-[color,transform] active:scale-[0.98] dark:text-[#D5D5D5]/55 sm:text-[12px]"
+            }`}
+          >
+            <span
+              data-variant={nativeAndroid ? "android" : "web"}
+              className={`relative z-[1] flex items-center justify-center ${
+                nativeAndroid
+                  ? "h-8 min-w-[3.5rem] rounded-full px-3"
+                  : "h-10 w-10 rounded-xl"
+              }`}
+            >
+              <Image
+                src="/icons/c2clogo.png"
+                alt=""
+                width={24}
+                height={25}
+                className={`${nativeAndroid ? "h-6 w-6" : "h-6 w-6"} shrink-0 object-contain drop-shadow-[0_0_7px_rgba(255,79,154,0.32)]`}
+              />
+            </span>
+            <span className={`max-w-full truncate ${nativeAndroid ? "text-[12px]" : ""}`}>
+              C2C
+            </span>
+          </a>
+        </li>
       </ul>
     </nav>
   );
