@@ -19,44 +19,6 @@ function readEnvList(...names: string[]) {
   );
 }
 
-function getClientIp(req: NextRequest): string | null {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) {
-    const ip = xff.split(",")[0]?.trim();
-    if (ip) return ip;
-  }
-
-  const candidates = [
-    "x-real-ip",
-    "cf-connecting-ip",
-    "true-client-ip",
-    "fastly-client-ip",
-    "x-client-ip",
-  ];
-  for (const h of candidates) {
-    const v = req.headers.get(h);
-    if (v) return v;
-  }
-
-  return null;
-}
-
-function isPrefetchRequest(req: NextRequest): boolean {
-  if (req.headers.get("purpose") === "prefetch") return true;
-  if (req.headers.get("next-router-prefetch")) return true;
-  if (req.headers.get("x-middleware-prefetch")) return true;
-  return false;
-}
-
-function hasSessionCookie(req: NextRequest): boolean {
-  return (
-    Boolean(req.cookies.get("authjs.session-token")) ||
-    Boolean(req.cookies.get("__Secure-authjs.session-token")) ||
-    Boolean(req.cookies.get("next-auth.session-token")) ||
-    Boolean(req.cookies.get("__Secure-next-auth.session-token"))
-  );
-}
-
 export default async function middleware(request: NextRequest) {
   const url = new URL(request.url);
   const pathname = url.pathname;
@@ -100,35 +62,6 @@ export default async function middleware(request: NextRequest) {
       ],
       { headers: WELL_KNOWN_JSON_HEADERS },
     );
-  }
-
-  const isCreatePath = url.pathname.endsWith("/create") || url.pathname.endsWith("/create/");
-  const shouldRateLimit =
-    isCreatePath &&
-    request.method === "GET" &&
-    !isPrefetchRequest(request) &&
-    !hasSessionCookie(request);
-
-  if (shouldRateLimit) {
-    const ip = getClientIp(request);
-    if (ip) {
-      try {
-        const { checkSlidingWindowRateLimit } = await import(
-          "@/lib/redis-rate-limit"
-        );
-        const { success } = await checkSlidingWindowRateLimit({
-          identifier: ip,
-          limit: 20,
-          prefix: "ec:rate-limit:anonymous-create",
-          windowMs: 10_000,
-        });
-        if (!success) {
-          return NextResponse.redirect(new URL("/blocked", request.url));
-        }
-      } catch (error) {
-        console.error("[middleware] rate limit failed; allowing request", error);
-      }
-    }
   }
 
   const requestHeaders = new Headers(request.headers);

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import UploadFile from "@/app/components/upload-file";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import { getCoursePickerRecords } from "@/lib/data/course-catalog";
+import { enforceAnonymousCreateRateLimit } from "@/lib/enforce-anonymous-create-rate-limit";
 
 export const metadata: Metadata = {
     title: "Upload notes",
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 };
 
 async function NewNotePage() {
+    await enforceAnonymousCreateRateLimit();
     const courses = await getCoursePickerRecords();
     return (
         <DirectionalTransition>
