@@ -1,5 +1,4 @@
-import { withRuntimeIo } from "@/lib/data/runtime-io";
-import { cacheLife, cacheTag } from "next/cache";
+import { withRuntimeData } from "@/lib/data/runtime-data";
 import { and, arrayContains, count, eq, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { course, db, note, pastPaper } from "@/db";
@@ -12,10 +11,6 @@ export type CourseSummary = {
 };
 
 async function getCourseByCodeAnyCached(code: string): Promise<CourseSummary | null> {
-    "use cache";
-    cacheTag("courses");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const normalized = normalizeCourseCode(code.trim());
     const rows = await db
         .select({
@@ -55,4 +50,4 @@ async function getCourseByCodeAnyCached(code: string): Promise<CourseSummary | n
     };
 }
 
-export const getCourseByCodeAny = withRuntimeIo(getCourseByCodeAnyCached);
+export const getCourseByCodeAny = withRuntimeData(getCourseByCodeAnyCached);

@@ -1,5 +1,4 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ImageResponse } from "next/og";
 
 export const OG_ALT = "ExamCooker social preview image";
@@ -23,28 +22,62 @@ const TEXT_COLOR = "#F1F3F8";
 const MUTED_TEXT_COLOR = "rgba(241,243,248,0.78)";
 const SUBTLE_TEXT_COLOR = "rgba(241,243,248,0.62)";
 
-const logoIconPromise = readFile(
-    join(process.cwd(), "public", "assets", "logo-icon.svg"),
-    "utf8",
-).then((svg) => svgToDataUrl(svg));
+type OgAssets = {
+    logoIcon: string | null;
+    fontBold: ArrayBuffer | null;
+    fontExtraBold: ArrayBuffer | null;
+};
 
-function bufToArrayBuffer(buf: Buffer): ArrayBuffer {
-    const ab = new ArrayBuffer(buf.length);
-    new Uint8Array(ab).set(buf);
-    return ab;
+function copyToArrayBuffer(data: Uint8Array): ArrayBuffer {
+    const copy = new Uint8Array(data.byteLength);
+    copy.set(data);
+    return copy.buffer;
 }
 
-const fontBoldPromise = readFile(
-    join(process.cwd(), "public", "assets", "fonts", "plus-jakarta-sans-bold.ttf"),
-)
-    .then(bufToArrayBuffer)
-    .catch(() => null);
+async function readPublicAsset(pathname: string): Promise<ArrayBuffer | null> {
+    try {
+        const assets = getCloudflareContext().env.ASSETS;
+        if (assets) {
+            const response = await assets.fetch(
+                new Request(`https://examcooker-assets.invalid${pathname}`),
+            );
+            if (response.ok) {
+                return await response.arrayBuffer();
+            }
+        }
+    } catch {
+        // Next.js builds and local Node runs do not have a Cloudflare context.
+    }
 
-const fontExtraBoldPromise = readFile(
-    join(process.cwd(), "public", "assets", "fonts", "plus-jakarta-sans-extra-bold.ttf"),
-)
-    .then(bufToArrayBuffer)
-    .catch(() => null);
+    try {
+        const [{ readFile }, { join }] = await Promise.all([
+            import("node:fs/promises"),
+            import("node:path"),
+        ]);
+        const data = await readFile(
+            join(process.cwd(), "public", ...pathname.split("/").filter(Boolean)),
+        );
+        return copyToArrayBuffer(data);
+    } catch {
+        return null;
+    }
+}
+
+async function loadOgAssets(): Promise<OgAssets> {
+    const [logoIcon, fontBold, fontExtraBold] = await Promise.all([
+        readPublicAsset("/assets/logo-icon.svg"),
+        readPublicAsset("/assets/fonts/plus-jakarta-sans-bold.ttf"),
+        readPublicAsset("/assets/fonts/plus-jakarta-sans-extra-bold.ttf"),
+    ]);
+
+    return {
+        logoIcon: logoIcon
+            ? svgToDataUrl(new TextDecoder().decode(logoIcon))
+            : null,
+        fontBold,
+        fontExtraBold,
+    };
+}
 
 const illustrationDataUrl = svgToDataUrl(`
 <svg width="432" height="432" viewBox="0 0 432 432" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -114,11 +147,7 @@ export function formatCountChip(label: string, count: number) {
 }
 
 export async function renderExamCookerOgImage(input: OgImageInput) {
-    const [logoIcon, fontBold, fontExtraBold] = await Promise.all([
-        logoIconPromise,
-        fontBoldPromise,
-        fontExtraBoldPromise,
-    ]);
+    const { logoIcon, fontBold, fontExtraBold } = await loadOgAssets();
     const title = trimText(input.title, 72);
     const subtitle = input.subtitle ? trimText(input.subtitle, 88) : "";
     const description = input.description ? trimText(input.description, 110) : "";
@@ -250,17 +279,19 @@ export async function renderExamCookerOgImage(input: OgImageInput) {
                                 background: "rgba(22, 36, 79, 0.48)",
                             }}
                         >
-                            <img
-                                src={logoIcon}
-                                width={42}
-                                height={42}
-                                alt=""
-                                style={{ display: "flex" }}
-                            />
+                            {logoIcon ? (
+                                <img
+                                    src={logoIcon}
+                                    width={42}
+                                    height={42}
+                                    alt=""
+                                    style={{ display: "flex" }}
+                                />
+                            ) : null}
                             <div
                                 style={{
                                     display: "flex",
-                                    marginLeft: 16,
+                                    marginLeft: logoIcon ? 16 : 0,
                                     fontSize: 34,
                                     fontWeight: 800,
                                     lineHeight: 1,

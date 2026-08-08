@@ -1,5 +1,4 @@
-import { withRuntimeIo } from "@/lib/data/runtime-io";
-import { cacheLife, cacheTag } from "next/cache";
+import { withRuntimeData } from "@/lib/data/runtime-data";
 import {
     and,
     asc,
@@ -156,11 +155,6 @@ function readCachedDate(value: unknown, fieldName: string) {
 }
 
 async function getPastPaperDetailCached(id: string) {
-    "use cache";
-    cacheTag("past_papers");
-    cacheTag(`past_paper:${id}`);
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     return withPastPapersSurfaceRedisCache(
         {
             keyParts: ["published-past-paper-detail", { id }],
@@ -181,11 +175,6 @@ async function getSiblingPastPaperCached(input: {
     campus: Campus;
     hasAnswerKey: boolean;
 }) {
-    "use cache";
-    cacheTag("past_papers");
-    cacheTag(`past_paper:${input.paperId}`);
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     return withPastPapersSurfaceRedisCache(
         {
             keyParts: ["published-sibling-past-paper", input],
@@ -277,10 +266,6 @@ async function getAdjacentPapersInCourseCached(input: {
     paperId: string;
     courseId: string;
 }) {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     return withPastPapersSurfaceRedisCache(
         {
             keyParts: ["adjacent-past-papers-in-course", input],
@@ -329,10 +314,6 @@ async function getRelatedPapersForCourseCached(input: {
     examType?: ExamType | null;
     limit?: number;
 }) {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     return withPastPapersSurfaceRedisCache(
         {
             keyParts: ["related-papers-for-course", input],
@@ -378,7 +359,7 @@ async function getRelatedPapersForCourseCached(input: {
     );
 }
 
-export const getPastPaperDetail = withRuntimeIo(getPastPaperDetailCached);
-export const getSiblingPastPaper = withRuntimeIo(getSiblingPastPaperCached);
-export const getAdjacentPapersInCourse = withRuntimeIo(getAdjacentPapersInCourseCached);
-export const getRelatedPapersForCourse = withRuntimeIo(getRelatedPapersForCourseCached);
+export const getPastPaperDetail = withRuntimeData(getPastPaperDetailCached);
+export const getSiblingPastPaper = withRuntimeData(getSiblingPastPaperCached);
+export const getAdjacentPapersInCourse = withRuntimeData(getAdjacentPapersInCourseCached);
+export const getRelatedPapersForCourse = withRuntimeData(getRelatedPapersForCourseCached);

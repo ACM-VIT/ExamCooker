@@ -1,5 +1,4 @@
-import { withRuntimeIo } from "@/lib/data/runtime-io";
-import { cacheLife, cacheTag } from "next/cache";
+import { withRuntimeData } from "@/lib/data/runtime-data";
 import {
     and,
     eq,
@@ -82,10 +81,6 @@ function normalizeFiltersForCache(filters: CoursePaperFilters) {
 }
 
 async function getCoursePaperRows(courseId: string): Promise<CoursePaperRow[]> {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     return withPastPapersSurfaceRedisCache(
         {
             keyParts: ["course-paper-rows-v2", { courseId }],
@@ -216,10 +211,6 @@ type GetCoursePapersInput = {
 async function getCoursePapersCached(
     input: GetCoursePapersInput,
 ): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const rows = await getCoursePaperRows(input.courseId);
     const filterSets = buildFilterSets(input.filters);
     const filteredRows: CoursePaperRow[] = [];
@@ -243,10 +234,6 @@ async function getCoursePaperFilterOptionsCached(
     courseId: string,
     filters: CoursePaperFilters = {},
 ): Promise<CoursePaperFilterOptions> {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const rows = await getCoursePaperRows(courseId);
     const filterSets = buildFilterSets(filters);
 
@@ -367,5 +354,5 @@ async function getCoursePaperFilterOptionsCached(
     };
 }
 
-export const getCoursePapers = withRuntimeIo(getCoursePapersCached);
-export const getCoursePaperFilterOptions = withRuntimeIo(getCoursePaperFilterOptionsCached);
+export const getCoursePapers = withRuntimeData(getCoursePapersCached);
+export const getCoursePaperFilterOptions = withRuntimeData(getCoursePaperFilterOptionsCached);

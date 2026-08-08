@@ -1,5 +1,4 @@
-import { withRuntimeIo } from "@/lib/data/runtime-io";
-import { cacheLife, cacheTag } from "next/cache";
+import { withRuntimeData } from "@/lib/data/runtime-data";
 import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { withPastPapersSurfaceRedisCache } from "@/lib/cache/past-papers-surface-cache";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
@@ -41,10 +40,6 @@ export async function getCourseExamCombos() {
 }
 
 async function getExamHubSummariesCached() {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     return withPastPapersSurfaceRedisCache(
         {
             keyParts: ["exam-hub-summaries"],
@@ -88,11 +83,6 @@ async function getExamHubSummariesCached() {
 }
 
 async function getExamHubPageDataCached(examType: ExamType) {
-    "use cache";
-    cacheTag("past_papers");
-    cacheTag("courses");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     return withPastPapersSurfaceRedisCache(
         {
             keyParts: ["exam-hub-page-data", { examType }],
@@ -231,5 +221,5 @@ async function getExamHubPageDataCached(examType: ExamType) {
     );
 }
 
-export const getExamHubSummaries = withRuntimeIo(getExamHubSummariesCached);
-export const getExamHubPageData = withRuntimeIo(getExamHubPageDataCached);
+export const getExamHubSummaries = withRuntimeData(getExamHubSummariesCached);
+export const getExamHubPageData = withRuntimeData(getExamHubPageDataCached);

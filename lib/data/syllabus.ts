@@ -1,5 +1,4 @@
-import { withRuntimeIo } from "@/lib/data/runtime-io";
-import { cacheLife, cacheTag } from "next/cache";
+import { withRuntimeData } from "@/lib/data/runtime-data";
 import { asc, count, ilike, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
@@ -30,10 +29,6 @@ function buildWhere(search: string) {
 }
 
 async function getAllSyllabiCached() {
-    "use cache";
-    cacheTag("syllabus");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const items = await db
         .select({
             id: syllabi.id,
@@ -50,10 +45,6 @@ async function getAllSyllabiCached() {
 }
 
 async function getSyllabusCountCached(input: { search: string }) {
-    "use cache";
-    cacheTag("syllabus");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const where = buildWhere(input.search);
     const rows = await db
         .select({ total: count() })
@@ -68,10 +59,6 @@ async function getSyllabusPageCached(input: {
     page: number;
     pageSize: number;
 }) {
-    "use cache";
-    cacheTag("syllabus");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const where = buildWhere(input.search);
     const skip = (input.page - 1) * input.pageSize;
 
@@ -88,10 +75,6 @@ async function getSyllabusPageCached(input: {
 }
 
 async function getSyllabusByCourseCodeCached(code: string) {
-    "use cache";
-    cacheTag("syllabus");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const normalized = normalizeCourseCode(code);
     if (!normalized) return null;
 
@@ -109,10 +92,6 @@ async function getSyllabusByCourseCodeCached(code: string) {
 }
 
 async function getSyllabusDetailByCourseCodeCached(code: string) {
-    "use cache";
-    cacheTag("syllabus");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const normalized = normalizeCourseCode(code);
     if (!normalized) return null;
 
@@ -137,8 +116,8 @@ async function getSyllabusDetailByCourseCodeCached(code: string) {
     };
 }
 
-export const getAllSyllabi = withRuntimeIo(getAllSyllabiCached);
-export const getSyllabusCount = withRuntimeIo(getSyllabusCountCached);
-export const getSyllabusPage = withRuntimeIo(getSyllabusPageCached);
-export const getSyllabusByCourseCode = withRuntimeIo(getSyllabusByCourseCodeCached);
-export const getSyllabusDetailByCourseCode = withRuntimeIo(getSyllabusDetailByCourseCodeCached);
+export const getAllSyllabi = withRuntimeData(getAllSyllabiCached);
+export const getSyllabusCount = withRuntimeData(getSyllabusCountCached);
+export const getSyllabusPage = withRuntimeData(getSyllabusPageCached);
+export const getSyllabusByCourseCode = withRuntimeData(getSyllabusByCourseCodeCached);
+export const getSyllabusDetailByCourseCode = withRuntimeData(getSyllabusDetailByCourseCodeCached);

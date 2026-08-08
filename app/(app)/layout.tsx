@@ -3,7 +3,7 @@ import ClientSide from "./client-side";
 import PostHogIdentify from "@/app/components/post-hog-identify";
 import HomeFooter from "@/app/(app)/home/home-footer";
 
-export const instant = false;
+export const dynamic = "force-dynamic";
 
 export default function Layout({
                                          children,

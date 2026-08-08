@@ -1,5 +1,4 @@
-import { withRuntimeIo } from "@/lib/data/runtime-io";
-import { cacheLife, cacheTag } from "next/cache";
+import { withRuntimeData } from "@/lib/data/runtime-data";
 import {
     and,
     count,
@@ -75,10 +74,6 @@ function buildWhere(search: string, tags: string[]) {
 }
 
 async function getNotesCountCached(input: { search: string; tags: string[] }) {
-    "use cache";
-    cacheTag("notes");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const where = buildWhere(input.search, input.tags);
     const rows = await db
         .select({ total: count() })
@@ -94,10 +89,6 @@ async function getNotesPageCached(input: {
     page: number;
     pageSize: number;
 }) {
-    "use cache";
-    cacheTag("notes");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const where = buildWhere(input.search, input.tags);
     const skip = (input.page - 1) * input.pageSize;
 
@@ -131,10 +122,6 @@ export type CourseNoteListItem = {
 async function getCourseNotesCountCached(input: {
     courseId?: string | null;
 }) {
-    "use cache";
-    cacheTag("notes");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     if (!input.courseId) return 0;
 
     const rows = await db
@@ -150,10 +137,6 @@ async function getCourseNotesPageCached(input: {
     page: number;
     pageSize: number;
 }): Promise<CourseNoteListItem[]> {
-    "use cache";
-    cacheTag("notes");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     if (!input.courseId) return [];
 
     const skip = Math.max(0, (input.page - 1) * input.pageSize);
@@ -192,10 +175,6 @@ async function getCourseNotesPageCached(input: {
 }
 
 async function getNoteCourseRecords(): Promise<CourseSearchRecord[]> {
-    "use cache";
-    cacheTag("courses", "notes", "past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     return (await getCourseSearchRecords())
         .filter((courseRow) => courseRow.noteCount > 0)
         .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base" }));
@@ -204,10 +183,6 @@ async function getNoteCourseRecords(): Promise<CourseSearchRecord[]> {
 // Notes search intentionally sees the full catalog. Empty courses lead to a
 // real upload-prompt page, while the default browse grid remains content-only.
 async function getNoteSearchRecords(): Promise<CourseSearchRecord[]> {
-    "use cache";
-    cacheTag("courses", "notes", "past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     return [...(await getCoursePickerRecords())].sort(
         (a, b) =>
             b.noteCount - a.noteCount ||
@@ -236,10 +211,6 @@ export type NotesCourseGridItem = {
 };
 
 async function getNotesCourseGridCached(): Promise<NotesCourseGridItem[]> {
-    "use cache";
-    cacheTag("notes", "courses", "past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const courses = await getNoteCourseRecords();
 
     return courses.map(toNotesGridItem);
@@ -294,10 +265,6 @@ export type NotesStats = {
 };
 
 async function getNotesStatsCached(): Promise<NotesStats> {
-    "use cache";
-    cacheTag("notes", "courses");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const courses = await getNoteCourseRecords();
     const noteCount = courses.reduce((sum, courseRow) => sum + courseRow.noteCount, 0);
     const courseCount = courses.length;
@@ -317,10 +284,6 @@ export type SearchableNoteCourse = {
 async function getSearchableNoteCoursesCached(): Promise<
     SearchableNoteCourse[]
 > {
-    "use cache";
-    cacheTag("notes", "courses", "past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const courses = await getNoteSearchRecords();
 
     return courses
@@ -344,10 +307,6 @@ export type RecentNote = {
 };
 
 async function getRecentNotesCached(limit = 10): Promise<RecentNote[]> {
-    "use cache";
-    cacheTag("notes");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const notes = await db
         .select({
             id: note.id,
@@ -371,11 +330,11 @@ async function getRecentNotesCached(limit = 10): Promise<RecentNote[]> {
     }));
 }
 
-export const getNotesCount = withRuntimeIo(getNotesCountCached);
-export const getNotesPage = withRuntimeIo(getNotesPageCached);
-export const getCourseNotesCount = withRuntimeIo(getCourseNotesCountCached);
-export const getCourseNotesPage = withRuntimeIo(getCourseNotesPageCached);
-export const getNotesCourseGrid = withRuntimeIo(getNotesCourseGridCached);
-export const getNotesStats = withRuntimeIo(getNotesStatsCached);
-export const getSearchableNoteCourses = withRuntimeIo(getSearchableNoteCoursesCached);
-export const getRecentNotes = withRuntimeIo(getRecentNotesCached);
+export const getNotesCount = withRuntimeData(getNotesCountCached);
+export const getNotesPage = withRuntimeData(getNotesPageCached);
+export const getCourseNotesCount = withRuntimeData(getCourseNotesCountCached);
+export const getCourseNotesPage = withRuntimeData(getCourseNotesPageCached);
+export const getNotesCourseGrid = withRuntimeData(getNotesCourseGridCached);
+export const getNotesStats = withRuntimeData(getNotesStatsCached);
+export const getSearchableNoteCourses = withRuntimeData(getSearchableNoteCoursesCached);
+export const getRecentNotes = withRuntimeData(getRecentNotesCached);

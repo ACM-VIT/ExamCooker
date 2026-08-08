@@ -1,4 +1,3 @@
-import { cacheLife, cacheTag, io } from "next/cache";
 import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import {
     course,
@@ -23,7 +22,6 @@ function getUpcomingExamCutoffIso() {
 }
 
 export async function getUpcomingExams(limit?: number): Promise<UpcomingExamItem[]> {
-    await io();
     return getUpcomingExamsCached(limit ?? null, getUpcomingExamCutoffIso());
 }
 
@@ -31,10 +29,6 @@ async function getUpcomingExamsCached(
     limit: number | null,
     cutoffIso: string,
 ): Promise<UpcomingExamItem[]> {
-    "use cache";
-    cacheTag("upcoming_exams");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const now = new Date(cutoffIso);
     const rows = await db
         .select({
@@ -84,7 +78,6 @@ export async function getUpcomingExamsForCourses(
     courseIds: string[],
 ): Promise<Map<string, UpcomingExamItem[]>> {
     if (courseIds.length === 0) return new Map();
-    await io();
     return getUpcomingExamsForCoursesCached(
         Array.from(new Set(courseIds)).sort(),
         getUpcomingExamCutoffIso(),
@@ -95,10 +88,6 @@ async function getUpcomingExamsForCoursesCached(
     courseIds: string[],
     cutoffIso: string,
 ): Promise<Map<string, UpcomingExamItem[]>> {
-    "use cache";
-    cacheTag("upcoming_exams");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const now = new Date(cutoffIso);
     const rows = await db
         .select({

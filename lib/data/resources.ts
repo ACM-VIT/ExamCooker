@@ -1,5 +1,4 @@
-import { withRuntimeIo } from "@/lib/data/runtime-io";
-import { cacheLife, cacheTag } from "next/cache";
+import { withRuntimeData } from "@/lib/data/runtime-data";
 import { asc, count, eq, ilike, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { db, module, subject } from "@/db";
@@ -11,10 +10,6 @@ function buildWhere(search: string) {
 }
 
 async function getResourcesCountCached(input: { search: string }) {
-    "use cache";
-    cacheTag("resources");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const where = buildWhere(input.search);
     const rows = await db
         .select({ total: count() })
@@ -29,10 +24,6 @@ async function getResourcesPageCached(input: {
     page: number;
     pageSize: number;
 }) {
-    "use cache";
-    cacheTag("resources");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const where = buildWhere(input.search);
     const skip = (input.page - 1) * input.pageSize;
 
@@ -49,10 +40,6 @@ async function getResourcesPageCached(input: {
 }
 
 async function getSubjectByCourseCodeCached(code: string) {
-    "use cache";
-    cacheTag("resources");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const normalized = normalizeCourseCode(code);
     if (!normalized) return null;
 
@@ -94,11 +81,6 @@ async function getSubjectByCourseCodeCached(code: string) {
 }
 
 async function getSubjectDetailCached(id: string) {
-    "use cache";
-    cacheTag("resources");
-    cacheTag(`resource:${id}`);
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const subjectRows = await db
         .select({
             id: subject.id,
@@ -129,7 +111,7 @@ async function getSubjectDetailCached(id: string) {
     };
 }
 
-export const getResourcesCount = withRuntimeIo(getResourcesCountCached);
-export const getResourcesPage = withRuntimeIo(getResourcesPageCached);
-export const getSubjectByCourseCode = withRuntimeIo(getSubjectByCourseCodeCached);
-export const getSubjectDetail = withRuntimeIo(getSubjectDetailCached);
+export const getResourcesCount = withRuntimeData(getResourcesCountCached);
+export const getResourcesPage = withRuntimeData(getResourcesPageCached);
+export const getSubjectByCourseCode = withRuntimeData(getSubjectByCourseCodeCached);
+export const getSubjectDetail = withRuntimeData(getSubjectDetailCached);

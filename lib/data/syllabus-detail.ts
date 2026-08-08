@@ -1,15 +1,9 @@
-import { withRuntimeIo } from "@/lib/data/runtime-io";
-import { cacheLife, cacheTag } from "next/cache";
+import { withRuntimeData } from "@/lib/data/runtime-data";
 import { eq } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { db, syllabi } from "@/db";
 
 async function getSyllabusDetailCached(id: string) {
-    "use cache";
-    cacheTag("syllabus");
-    cacheTag(`syllabus:${id}`);
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const rows = await db
         .select({
             id: syllabi.id,
@@ -30,4 +24,4 @@ async function getSyllabusDetailCached(id: string) {
     };
 }
 
-export const getSyllabusDetail = withRuntimeIo(getSyllabusDetailCached);
+export const getSyllabusDetail = withRuntimeData(getSyllabusDetailCached);

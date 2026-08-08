@@ -108,8 +108,9 @@ const uploadSourceMaps = process.env.POSTHOG_SOURCEMAP_UPLOAD === "true";
 const nextConfig: NextConfig = {
     output: "standalone",
     productionBrowserSourceMaps: uploadSourceMaps,
-    cacheComponents: true,
-    partialPrefetching: true,
+    // Cache Components can deadlock concurrent requests in Workerd.
+    // https://github.com/vercel/next.js/issues/94880
+    cacheComponents: false,
     compiler: {
         removeConsole:
             process.env.NODE_ENV === "production"

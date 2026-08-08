@@ -1,5 +1,4 @@
-import { withRuntimeIo } from "@/lib/data/runtime-io";
-import { cacheLife, cacheTag } from "next/cache";
+import { withRuntimeData } from "@/lib/data/runtime-data";
 import { and, asc, eq } from "drizzle-orm";
 import { cache } from "react";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
@@ -63,12 +62,7 @@ const loadNoteDetail = cache(async (id: string) => {
 });
 
 async function getNoteDetailCached(id: string) {
-    "use cache";
-    cacheTag("notes");
-    cacheTag(`note:${id}`);
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     return loadNoteDetail(id);
 }
 
-export const getNoteDetail = withRuntimeIo(getNoteDetailCached);
+export const getNoteDetail = withRuntimeData(getNoteDetailCached);
