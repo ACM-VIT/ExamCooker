@@ -1,9 +1,10 @@
+import { withRuntimeIo } from "@/lib/data/runtime-io";
 import { cacheLife, cacheTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { db, syllabi } from "@/db";
 
-export async function getSyllabusDetail(id: string) {
+async function getSyllabusDetailCached(id: string) {
     "use cache";
     cacheTag("syllabus");
     cacheTag(`syllabus:${id}`);
@@ -28,3 +29,5 @@ export async function getSyllabusDetail(id: string) {
         fileUrl: normalizeGcsUrl(syllabus.fileUrl) ?? syllabus.fileUrl,
     };
 }
+
+export const getSyllabusDetail = withRuntimeIo(getSyllabusDetailCached);

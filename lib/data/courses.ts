@@ -1,3 +1,4 @@
+import { withRuntimeIo } from "@/lib/data/runtime-io";
 import { cacheLife, cacheTag } from "next/cache";
 import { and, arrayContains, count, eq, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
@@ -10,7 +11,7 @@ export type CourseSummary = {
     paperCount: number;
 };
 
-export async function getCourseByCodeAny(code: string): Promise<CourseSummary | null> {
+async function getCourseByCodeAnyCached(code: string): Promise<CourseSummary | null> {
     "use cache";
     cacheTag("courses");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -53,3 +54,5 @@ export async function getCourseByCodeAny(code: string): Promise<CourseSummary | 
         paperCount: paperRows[0]?.total ?? 0,
     };
 }
+
+export const getCourseByCodeAny = withRuntimeIo(getCourseByCodeAnyCached);

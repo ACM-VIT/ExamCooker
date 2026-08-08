@@ -1,3 +1,4 @@
+import { withRuntimeIo } from "@/lib/data/runtime-io";
 import { cacheLife, cacheTag } from "next/cache";
 import {
     and,
@@ -73,7 +74,7 @@ function buildWhere(search: string, tags: string[]) {
     return and(...filters);
 }
 
-export async function getNotesCount(input: { search: string; tags: string[] }) {
+async function getNotesCountCached(input: { search: string; tags: string[] }) {
     "use cache";
     cacheTag("notes");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -87,7 +88,7 @@ export async function getNotesCount(input: { search: string; tags: string[] }) {
     return rows[0]?.total ?? 0;
 }
 
-export async function getNotesPage(input: {
+async function getNotesPageCached(input: {
     search: string;
     tags: string[];
     page: number;
@@ -127,7 +128,7 @@ export type CourseNoteListItem = {
     course: { code: string; title: string } | null;
 };
 
-export async function getCourseNotesCount(input: {
+async function getCourseNotesCountCached(input: {
     courseId?: string | null;
 }) {
     "use cache";
@@ -144,7 +145,7 @@ export async function getCourseNotesCount(input: {
     return rows[0]?.total ?? 0;
 }
 
-export async function getCourseNotesPage(input: {
+async function getCourseNotesPageCached(input: {
     courseId?: string | null;
     page: number;
     pageSize: number;
@@ -234,7 +235,7 @@ export type NotesCourseGridItem = {
     paperCount: number;
 };
 
-export async function getNotesCourseGrid(): Promise<NotesCourseGridItem[]> {
+async function getNotesCourseGridCached(): Promise<NotesCourseGridItem[]> {
     "use cache";
     cacheTag("notes", "courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -292,7 +293,7 @@ export type NotesStats = {
     courseCount: number;
 };
 
-export async function getNotesStats(): Promise<NotesStats> {
+async function getNotesStatsCached(): Promise<NotesStats> {
     "use cache";
     cacheTag("notes", "courses");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -313,7 +314,7 @@ export type SearchableNoteCourse = {
     aliases: string[];
 };
 
-export async function getSearchableNoteCourses(): Promise<
+async function getSearchableNoteCoursesCached(): Promise<
     SearchableNoteCourse[]
 > {
     "use cache";
@@ -342,7 +343,7 @@ export type RecentNote = {
     courseTitle: string | null;
 };
 
-export async function getRecentNotes(limit = 10): Promise<RecentNote[]> {
+async function getRecentNotesCached(limit = 10): Promise<RecentNote[]> {
     "use cache";
     cacheTag("notes");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -369,3 +370,12 @@ export async function getRecentNotes(limit = 10): Promise<RecentNote[]> {
         courseTitle: n.courseTitle ?? null,
     }));
 }
+
+export const getNotesCount = withRuntimeIo(getNotesCountCached);
+export const getNotesPage = withRuntimeIo(getNotesPageCached);
+export const getCourseNotesCount = withRuntimeIo(getCourseNotesCountCached);
+export const getCourseNotesPage = withRuntimeIo(getCourseNotesPageCached);
+export const getNotesCourseGrid = withRuntimeIo(getNotesCourseGridCached);
+export const getNotesStats = withRuntimeIo(getNotesStatsCached);
+export const getSearchableNoteCourses = withRuntimeIo(getSearchableNoteCoursesCached);
+export const getRecentNotes = withRuntimeIo(getRecentNotesCached);

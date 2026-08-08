@@ -1,3 +1,4 @@
+import { withRuntimeIo } from "@/lib/data/runtime-io";
 import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
@@ -216,7 +217,7 @@ async function getCourseCatalogRows(): Promise<CourseCatalogRow[]> {
     );
 }
 
-export async function getCourseSearchRecords(): Promise<CourseSearchRecord[]> {
+async function getCourseSearchRecordsCached(): Promise<CourseSearchRecord[]> {
     "use cache";
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -241,7 +242,7 @@ export async function getCourseSearchRecords(): Promise<CourseSearchRecord[]> {
 // real course so acronyms and partial codes for content-less courses ("BCE",
 // "NLP") resolve to the course page instead of dead-ending on an empty results
 // page. Ranked content-first so richer courses lead the matches.
-export async function getSearchableCourseRecords(): Promise<CourseSearchRecord[]> {
+async function getSearchableCourseRecordsCached(): Promise<CourseSearchRecord[]> {
     "use cache";
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -265,7 +266,7 @@ export async function getSearchableCourseRecords(): Promise<CourseSearchRecord[]
         );
 }
 
-export async function getCoursePickerRecords(): Promise<CourseSearchRecord[]> {
+async function getCoursePickerRecordsCached(): Promise<CourseSearchRecord[]> {
     "use cache";
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -292,7 +293,7 @@ const getCourseSearchIndex = cache(async () => {
     return createCourseFuse(records);
 });
 
-export async function getCourseGrid(): Promise<CourseGridItem[]> {
+async function getCourseGridCached(): Promise<CourseGridItem[]> {
     "use cache";
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -368,7 +369,7 @@ async function loadCourseDetailByCode(normalized: string) {
     );
 }
 
-export async function getPopularCourseGrid(limit = 6): Promise<CourseGridItem[]> {
+async function getPopularCourseGridCached(limit = 6): Promise<CourseGridItem[]> {
     "use cache";
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -482,7 +483,7 @@ export type SearchableCourseRecord = {
     syllabusId: string | null;
 };
 
-export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> {
+async function getSearchableCoursesCached(): Promise<SearchableCourseRecord[]> {
     "use cache";
     cacheTag("courses", "notes", "past_papers", "syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -515,7 +516,7 @@ export async function getSearchableCourses(): Promise<SearchableCourseRecord[]> 
         );
 }
 
-export async function getCatalogStats(): Promise<CatalogStats> {
+async function getCatalogStatsCached(): Promise<CatalogStats> {
     "use cache";
     cacheTag("courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -534,7 +535,7 @@ export type RecentPaper = {
     year: number | null;
 };
 
-export async function getRecentPapers(limit = 10): Promise<RecentPaper[]> {
+async function getRecentPapersCached(limit = 10): Promise<RecentPaper[]> {
     "use cache";
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -575,7 +576,7 @@ export async function getRecentPapers(limit = 10): Promise<RecentPaper[]> {
     );
 }
 
-export async function getCourseDetailByCode(code: string): Promise<CourseDetail | null> {
+async function getCourseDetailByCodeCached(code: string): Promise<CourseDetail | null> {
     "use cache";
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -586,7 +587,7 @@ export async function getCourseDetailByCode(code: string): Promise<CourseDetail 
 }
 
 //todo: we need build a way to get upcoming exams reliably and with least maintenance overhead
-export async function getUpcomingExamsCourseGrid(): Promise<CourseGridItem[]> {
+async function getUpcomingExamsCourseGridCached(): Promise<CourseGridItem[]> {
     "use cache";
     cacheTag("courses", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -610,7 +611,7 @@ export async function getUpcomingExamsCourseGrid(): Promise<CourseGridItem[]> {
     );
 }
 
-export async function getUpcomingExamsCourseGridCount(): Promise<number> {
+async function getUpcomingExamsCourseGridCountCached(): Promise<number> {
     "use cache";
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -620,3 +621,15 @@ export async function getUpcomingExamsCourseGridCount(): Promise<number> {
         UPCOMING_EXAMS_COURSE_CODES.includes(courseRow.code),
     ).length;
 }
+
+export const getCourseSearchRecords = withRuntimeIo(getCourseSearchRecordsCached);
+export const getSearchableCourseRecords = withRuntimeIo(getSearchableCourseRecordsCached);
+export const getCoursePickerRecords = withRuntimeIo(getCoursePickerRecordsCached);
+export const getCourseGrid = withRuntimeIo(getCourseGridCached);
+export const getPopularCourseGrid = withRuntimeIo(getPopularCourseGridCached);
+export const getSearchableCourses = withRuntimeIo(getSearchableCoursesCached);
+export const getCatalogStats = withRuntimeIo(getCatalogStatsCached);
+export const getRecentPapers = withRuntimeIo(getRecentPapersCached);
+export const getCourseDetailByCode = withRuntimeIo(getCourseDetailByCodeCached);
+export const getUpcomingExamsCourseGrid = withRuntimeIo(getUpcomingExamsCourseGridCached);
+export const getUpcomingExamsCourseGridCount = withRuntimeIo(getUpcomingExamsCourseGridCountCached);

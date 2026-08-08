@@ -1,3 +1,4 @@
+import { withRuntimeIo } from "@/lib/data/runtime-io";
 import { cacheLife, cacheTag } from "next/cache";
 import { asc, count, eq, ilike, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
@@ -9,7 +10,7 @@ function buildWhere(search: string) {
     return ilike(subject.name, `%${value}%`);
 }
 
-export async function getResourcesCount(input: { search: string }) {
+async function getResourcesCountCached(input: { search: string }) {
     "use cache";
     cacheTag("resources");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -23,7 +24,7 @@ export async function getResourcesCount(input: { search: string }) {
     return rows[0]?.total ?? 0;
 }
 
-export async function getResourcesPage(input: {
+async function getResourcesPageCached(input: {
     search: string;
     page: number;
     pageSize: number;
@@ -47,7 +48,7 @@ export async function getResourcesPage(input: {
         .limit(input.pageSize);
 }
 
-export async function getSubjectByCourseCode(code: string) {
+async function getSubjectByCourseCodeCached(code: string) {
     "use cache";
     cacheTag("resources");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -92,7 +93,7 @@ export async function getSubjectByCourseCode(code: string) {
     };
 }
 
-export async function getSubjectDetail(id: string) {
+async function getSubjectDetailCached(id: string) {
     "use cache";
     cacheTag("resources");
     cacheTag(`resource:${id}`);
@@ -127,3 +128,8 @@ export async function getSubjectDetail(id: string) {
         modules,
     };
 }
+
+export const getResourcesCount = withRuntimeIo(getResourcesCountCached);
+export const getResourcesPage = withRuntimeIo(getResourcesPageCached);
+export const getSubjectByCourseCode = withRuntimeIo(getSubjectByCourseCodeCached);
+export const getSubjectDetail = withRuntimeIo(getSubjectDetailCached);

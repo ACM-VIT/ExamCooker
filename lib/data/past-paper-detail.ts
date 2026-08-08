@@ -1,3 +1,4 @@
+import { withRuntimeIo } from "@/lib/data/runtime-io";
 import { cacheLife, cacheTag } from "next/cache";
 import {
     and,
@@ -154,7 +155,7 @@ function readCachedDate(value: unknown, fieldName: string) {
     return date;
 }
 
-export async function getPastPaperDetail(id: string) {
+async function getPastPaperDetailCached(id: string) {
     "use cache";
     cacheTag("past_papers");
     cacheTag(`past_paper:${id}`);
@@ -169,7 +170,7 @@ export async function getPastPaperDetail(id: string) {
     );
 }
 
-export async function getSiblingPastPaper(input: {
+async function getSiblingPastPaperCached(input: {
     paperId: string;
     questionPaperId: string | null;
     courseId: string | null;
@@ -272,7 +273,7 @@ export async function getSiblingPastPaper(input: {
     );
 }
 
-export async function getAdjacentPapersInCourse(input: {
+async function getAdjacentPapersInCourseCached(input: {
     paperId: string;
     courseId: string;
 }) {
@@ -322,7 +323,7 @@ export async function getAdjacentPapersInCourse(input: {
     );
 }
 
-export async function getRelatedPapersForCourse(input: {
+async function getRelatedPapersForCourseCached(input: {
     paperId: string;
     courseId: string;
     examType?: ExamType | null;
@@ -376,3 +377,8 @@ export async function getRelatedPapersForCourse(input: {
         },
     );
 }
+
+export const getPastPaperDetail = withRuntimeIo(getPastPaperDetailCached);
+export const getSiblingPastPaper = withRuntimeIo(getSiblingPastPaperCached);
+export const getAdjacentPapersInCourse = withRuntimeIo(getAdjacentPapersInCourseCached);
+export const getRelatedPapersForCourse = withRuntimeIo(getRelatedPapersForCourseCached);

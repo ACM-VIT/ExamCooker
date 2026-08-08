@@ -1,3 +1,4 @@
+import { withRuntimeIo } from "@/lib/data/runtime-io";
 import { cacheLife, cacheTag } from "next/cache";
 import { asc, count, ilike, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
@@ -28,7 +29,7 @@ function buildWhere(search: string) {
     return or(...terms.map((term) => ilike(syllabi.name, `%${term}%`)));
 }
 
-export async function getAllSyllabi() {
+async function getAllSyllabiCached() {
     "use cache";
     cacheTag("syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -48,7 +49,7 @@ export async function getAllSyllabi() {
     }));
 }
 
-export async function getSyllabusCount(input: { search: string }) {
+async function getSyllabusCountCached(input: { search: string }) {
     "use cache";
     cacheTag("syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -62,7 +63,7 @@ export async function getSyllabusCount(input: { search: string }) {
     return rows[0]?.total ?? 0;
 }
 
-export async function getSyllabusPage(input: {
+async function getSyllabusPageCached(input: {
     search: string;
     page: number;
     pageSize: number;
@@ -86,7 +87,7 @@ export async function getSyllabusPage(input: {
         .limit(input.pageSize);
 }
 
-export async function getSyllabusByCourseCode(code: string) {
+async function getSyllabusByCourseCodeCached(code: string) {
     "use cache";
     cacheTag("syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -107,7 +108,7 @@ export async function getSyllabusByCourseCode(code: string) {
     return rows[0] ?? null;
 }
 
-export async function getSyllabusDetailByCourseCode(code: string) {
+async function getSyllabusDetailByCourseCodeCached(code: string) {
     "use cache";
     cacheTag("syllabus");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -135,3 +136,9 @@ export async function getSyllabusDetailByCourseCode(code: string) {
         fileUrl: normalizeGcsUrl(syllabus.fileUrl) ?? syllabus.fileUrl,
     };
 }
+
+export const getAllSyllabi = withRuntimeIo(getAllSyllabiCached);
+export const getSyllabusCount = withRuntimeIo(getSyllabusCountCached);
+export const getSyllabusPage = withRuntimeIo(getSyllabusPageCached);
+export const getSyllabusByCourseCode = withRuntimeIo(getSyllabusByCourseCodeCached);
+export const getSyllabusDetailByCourseCode = withRuntimeIo(getSyllabusDetailByCourseCodeCached);

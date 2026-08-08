@@ -1,16 +1,15 @@
 import React from "react";
-import { connection } from "next/server";
 import ClientSide from "./client-side";
 import PostHogIdentify from "@/app/components/post-hog-identify";
 import HomeFooter from "@/app/(app)/home/home-footer";
 
-export default async function Layout({
+export const instant = false;
+
+export default function Layout({
                                          children,
                                      }: Readonly<{
     children: React.ReactNode;
 }>) {
-    await connection();
-
     return (
         <>
             <PostHogIdentify />

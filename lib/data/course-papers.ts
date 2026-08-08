@@ -1,3 +1,4 @@
+import { withRuntimeIo } from "@/lib/data/runtime-io";
 import { cacheLife, cacheTag } from "next/cache";
 import {
     and,
@@ -212,7 +213,7 @@ type GetCoursePapersInput = {
     | { sort: NonSeasonalCoursePaperSort; examFocus?: never }
 );
 
-export async function getCoursePapers(
+async function getCoursePapersCached(
     input: GetCoursePapersInput,
 ): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
     "use cache";
@@ -238,7 +239,7 @@ export async function getCoursePapers(
     };
 }
 
-export async function getCoursePaperFilterOptions(
+async function getCoursePaperFilterOptionsCached(
     courseId: string,
     filters: CoursePaperFilters = {},
 ): Promise<CoursePaperFilterOptions> {
@@ -365,3 +366,6 @@ export async function getCoursePaperFilterOptions(
         slotCounts,
     };
 }
+
+export const getCoursePapers = withRuntimeIo(getCoursePapersCached);
+export const getCoursePaperFilterOptions = withRuntimeIo(getCoursePaperFilterOptionsCached);

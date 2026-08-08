@@ -68,11 +68,18 @@ function isDeletedAccountEmail(email: string | null | undefined) {
 
 function requiredEnv(name: "AUTH_GOOGLE_ID" | "AUTH_GOOGLE_SECRET") {
   const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required auth environment variable: ${name}`);
+  if (value) {
+    return value;
   }
 
-  return value;
+  // Cloudflare Worker bindings are injected only when the Worker starts. Next
+  // still imports this route while collecting build-time configuration, so use
+  // inert values for that phase and retain fail-fast validation at runtime.
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return `build-placeholder-${name.toLowerCase()}`;
+  }
+
+  throw new Error(`Missing required auth environment variable: ${name}`);
 }
 
 function optionalEnv(name: "AUTH_APPLE_ID" | "AUTH_APPLE_SECRET") {
