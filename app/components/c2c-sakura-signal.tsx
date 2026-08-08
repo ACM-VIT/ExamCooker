@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState } from "react";
+import React from "react";
 import styles from "./c2c-sakura-signal.module.css";
 
 const EVENT_URL =
@@ -67,17 +67,12 @@ function Petal({
 }
 
 export default function C2CSakuraSignal() {
-    const [isPointerActive, setIsPointerActive] = useState(false);
-
     return (
         <div className={styles.root}>
             <a
                 className={styles.activationDock}
                 href={EVENT_URL}
                 aria-label="Open Code2Create 7.0 event details"
-                data-pointer-active={isPointerActive ? "true" : undefined}
-                onPointerEnter={() => setIsPointerActive(true)}
-                onPointerLeave={() => setIsPointerActive(false)}
             >
                 <span className={styles.logoFrame} aria-hidden="true">
                     <Image
