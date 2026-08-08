@@ -75,7 +75,7 @@
     filter:
         drop-shadow(0 0.35rem 0.8rem rgb(3 16 54 / 0.32))
         drop-shadow(0 0 0.45rem rgb(255 255 255 / 0.24));
-    transform: rotate(45deg);
+    transform: rotate(60deg);
     transform-origin: center;
     transition:
         width 580ms cubic-bezier(0.22, 1, 0.36, 1),

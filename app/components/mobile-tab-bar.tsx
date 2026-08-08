@@ -5,6 +5,7 @@ import Image from "@/app/components/common/app-image";
 import { usePathname, useRouter } from "next/navigation";
 import { addTransitionType, startTransition, useEffect, useReducer, type MouseEvent } from "react";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
+import c2cStyles from "./mobile-tab-bar.module.css";
 
 const C2C_EVENT_URL =
   "https://gravitas.vit.ac.in/events/0eba5a6f-2687-416c-acd7-c51419433366";
@@ -287,13 +288,15 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
                   : "h-10 w-10 rounded-xl"
               }`}
             >
-              <Image
-                src="/icons/c2clogo.png"
-                alt=""
-                width={24}
-                height={25}
-                className={`${nativeAndroid ? "h-6 w-6" : "h-6 w-6"} shrink-0 object-contain drop-shadow-[0_0_7px_rgba(255,79,154,0.32)]`}
-              />
+              <span className={c2cStyles.c2cLogoOrbit} aria-hidden="true">
+                <Image
+                  src="/icons/c2clogo.png"
+                  alt=""
+                  width={24}
+                  height={25}
+                  className="h-6 w-6 shrink-0 object-contain"
+                />
+              </span>
             </span>
             <span className={`max-w-full truncate ${nativeAndroid ? "text-[12px]" : ""}`}>
               C2C

@@ -1,0 +1,66 @@
+.c2cLogoOrbit {
+  width: 1.5rem;
+  height: 1.5rem;
+  position: relative;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  filter: drop-shadow(0 0 0.42rem rgb(255 79 154 / 0.38));
+}
+
+.c2cLogoOrbit::before,
+.c2cLogoOrbit::after {
+  content: "";
+  width: 0.28rem;
+  height: 0.28rem;
+  position: absolute;
+  z-index: 2;
+  top: calc(50% - 0.14rem);
+  left: calc(50% - 0.14rem);
+  border-radius: 999px;
+  background: #ff62a5;
+  box-shadow:
+    0 0 0.25rem #fff,
+    0 0 0.55rem #ff4f9a,
+    0 0 0.9rem rgb(255 79 154 / 0.86);
+  pointer-events: none;
+  animation: c2cPinkOrbit 2.8s linear infinite;
+}
+
+.c2cLogoOrbit::after {
+  width: 0.2rem;
+  height: 0.2rem;
+  top: calc(50% - 0.1rem);
+  left: calc(50% - 0.1rem);
+  background: #ffb7d4;
+  animation-duration: 3.7s;
+  animation-direction: reverse;
+  animation-delay: -1.4s;
+}
+
+@keyframes c2cPinkOrbit {
+  from {
+    transform: rotate(0deg) translateX(1.08rem) rotate(0deg) scale(0.8);
+  }
+  50% {
+    transform: rotate(180deg) translateX(1.08rem) rotate(-180deg) scale(1.18);
+  }
+  to {
+    transform: rotate(360deg) translateX(1.08rem) rotate(-360deg) scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c2cLogoOrbit::before,
+  .c2cLogoOrbit::after {
+    animation: none;
+  }
+
+  .c2cLogoOrbit::before {
+    transform: translateX(1.05rem);
+  }
+
+  .c2cLogoOrbit::after {
+    transform: translateX(-1.05rem);
+  }
+}
