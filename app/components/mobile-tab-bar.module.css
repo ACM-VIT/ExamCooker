@@ -7,11 +7,29 @@
 }
 
 .c2cLogoImage {
-  animation: c2cLogoTurn 6s linear infinite;
+  animation: c2cLogoTurn 6s ease-in-out infinite;
 }
 
 @keyframes c2cLogoTurn {
-  to {
+  0% {
+    transform: rotate(0deg);
+  }
+  10%, 16.666% {
+    transform: rotate(60deg);
+  }
+  26.666%, 33.333% {
+    transform: rotate(120deg);
+  }
+  43.333%, 50% {
+    transform: rotate(180deg);
+  }
+  60%, 66.666% {
+    transform: rotate(240deg);
+  }
+  76.666%, 83.333% {
+    transform: rotate(300deg);
+  }
+  93.333%, 100% {
     transform: rotate(360deg);
   }
 }
