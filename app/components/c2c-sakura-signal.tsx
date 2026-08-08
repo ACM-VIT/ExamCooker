@@ -86,6 +86,9 @@ export default function C2CSakuraSignal() {
                     />
                 </span>
                 <span className={styles.revealLabel}>Code2Create 7.0</span>
+                <span className={styles.revealDescription}>
+                    ACM-VIT&apos;s flagship 48-hour national hackathon.
+                </span>
             </a>
 
             <div className={styles.petalRain} aria-hidden="true">
