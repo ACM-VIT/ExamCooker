@@ -8,6 +8,9 @@
     "dev": "node scripts/sync-pdfium-wasm.js && node scripts/sync-vin-together.js && next dev",
     "build": "node scripts/sync-pdfium-wasm.js && node scripts/sync-vin-together.js && next build",
     "start": "next start",
+    "cf:web:build": "opennextjs-cloudflare build",
+    "cf:web:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf:web:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:command-agent:dev": "wrangler dev --config worker/wrangler.jsonc",
     "cf:command-agent:deploy": "wrangler deploy --config worker/wrangler.jsonc",
     "cf:command-agent:typecheck": "tsc -p worker/tsconfig.json --noEmit",
@@ -112,6 +115,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.5.0",
     "@cloudflare/workers-types": "^5.20260804.1",
+    "@opennextjs/cloudflare": "^1.20.2",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "26.1.2",
     "@types/pg": "^8.20.4",

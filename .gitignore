@@ -77,4 +77,6 @@ mobile/android/keystore.properties
 mobile/android/keystores/examcooker-upload.jks
 .deepsec
 .wrangler
+.open-next/
+.dev.vars*
 .pnpm-store/
