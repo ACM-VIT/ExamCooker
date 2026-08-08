@@ -1,10 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { preconnect } from "react-dom";
 
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import { preloadPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
-import PDFViewer from "./pdfviewer";
+
+// The PDF viewer is entirely browser-side. Disabling its server prerender keeps
+// EmbedPDF, Streamdown, Shiki, and Mermaid out of the OpenNext Worker bundle.
+const PDFViewer = dynamic(() => import("./pdfviewer"), { ssr: false });
 
 if (typeof window !== "undefined") {
   void preloadPdfiumEngine().catch(() => undefined);

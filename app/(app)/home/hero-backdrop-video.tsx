@@ -2,7 +2,6 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import ReactPlayer from "react-player";
 import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 
 const PixelBlast = dynamic(() => import("./pixel-bg"), { ssr: false });

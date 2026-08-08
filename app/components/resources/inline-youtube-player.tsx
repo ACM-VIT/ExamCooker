@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
     type SyntheticEvent,
     useEffect,
@@ -7,7 +8,6 @@ import {
     useRef,
     useState,
 } from "react";
-import ReactPlayer from "react-player";
 import {
     ExternalLink,
     Loader2,
@@ -26,6 +26,10 @@ import {
 } from "@/lib/media/inline-youtube-watchdog";
 import { captureInlineVideoLoadFailed } from "@/lib/posthog/client";
 import { cn } from "@/lib/utils";
+
+// This player only runs in the browser. Avoid pulling every ReactPlayer media
+// backend (DASH, HLS, Mux, and others) into the server Worker.
+const ReactPlayer = dynamic(() => import("react-player"), { ssr: false });
 
 type InlineYouTubePlayerProps = {
     videoId: string;
