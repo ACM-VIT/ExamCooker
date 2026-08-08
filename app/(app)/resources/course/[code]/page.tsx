@@ -156,22 +156,19 @@ function CourseResourcesShell() {
                 <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
                 <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
             </div>
-            <div className="mx-auto mt-6 grid max-w-6xl grid-cols-2 gap-3 md:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, index) => (
-                    <div
+            <div className="mx-auto mt-6 flex max-w-6xl flex-wrap items-baseline gap-x-5 gap-y-1">
+                {Array.from({ length: 3 }).map((_, index) => (
+                    <span
                         key={index}
-                        className="rounded-md border border-black/10 bg-white px-4 py-3 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
-                    >
-                        <span className="block h-3 w-16 bg-black/10 dark:bg-white/10" />
-                        <span className="mt-2 block h-6 w-12 bg-black/10 dark:bg-white/10" />
-                    </div>
+                        className="block h-5 w-24 bg-black/10 dark:bg-white/10"
+                    />
                 ))}
             </div>
-            <div className="mx-auto mt-8 max-w-6xl space-y-3">
+            <div className="mx-auto mt-8 max-w-6xl space-y-2">
                 {Array.from({ length: 4 }).map((_, index) => (
                     <div
                         key={index}
-                        className="h-14 rounded-md border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                        className="h-11 bg-[#82BEE9]/60 dark:bg-[#232530]/60"
                     />
                 ))}
             </div>
@@ -286,49 +283,52 @@ async function CourseResourcesContent({
                             </div>
                         </header>
 
-                        <div className="mx-auto mt-6 grid max-w-6xl grid-cols-2 gap-3 md:grid-cols-4">
-                            <div className="rounded-md border border-black/10 bg-white px-4 py-3 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]">
-                                <div className="text-[10px] font-semibold uppercase tracking-widest text-black/55 dark:text-[#D5D5D5]/55">
-                                    Modules
-                                </div>
-                                <div className="mt-1 text-2xl font-black">
-                                    {context.legacySubject.modules.length}
-                                </div>
-                            </div>
-                            <div className="rounded-md border border-black/10 bg-white px-4 py-3 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]">
-                                <div className="text-[10px] font-semibold uppercase tracking-widest text-black/55 dark:text-[#D5D5D5]/55">
-                                    Papers
-                                </div>
-                                <div className="mt-1 text-2xl font-black">{context.paperCount}</div>
-                            </div>
-                            <div className="rounded-md border border-black/10 bg-white px-4 py-3 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]">
-                                <div className="text-[10px] font-semibold uppercase tracking-widest text-black/55 dark:text-[#D5D5D5]/55">
-                                    Notes
-                                </div>
-                                <div className="mt-1 text-2xl font-black">{context.noteCount}</div>
-                            </div>
-                            <div className="rounded-md border border-black/10 bg-white px-4 py-3 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]">
-                                <div className="text-[10px] font-semibold uppercase tracking-widest text-black/55 dark:text-[#D5D5D5]/55">
-                                    Syllabus
-                                </div>
-                                <div className="mt-1 text-2xl font-black">
-                                    {context.syllabus ? "Yes" : "No"}
-                                </div>
-                            </div>
+                        <div className="mx-auto mt-6 flex max-w-6xl flex-wrap items-baseline gap-x-5 gap-y-1 text-black/70 dark:text-[#D5D5D5]/70">
+                            {[
+                                {
+                                    label: `module${context.legacySubject.modules.length === 1 ? "" : "s"}`,
+                                    value: context.legacySubject.modules.length,
+                                },
+                                {
+                                    label: `paper${context.paperCount === 1 ? "" : "s"}`,
+                                    value: context.paperCount,
+                                },
+                                {
+                                    label: `note${context.noteCount === 1 ? "" : "s"}`,
+                                    value: context.noteCount,
+                                },
+                            ].map((item, index) => (
+                                <span key={item.label} className="flex items-baseline gap-1.5">
+                                    {index > 0 && (
+                                        <span
+                                            aria-hidden="true"
+                                            className="mr-3.5 text-black dark:text-white"
+                                        >
+                                            ·
+                                        </span>
+                                    )}
+                                    <span className="text-xl font-black leading-none text-black dark:text-[#D5D5D5]">
+                                        {item.value}
+                                    </span>
+                                    <span className="text-xs font-semibold uppercase tracking-wider">
+                                        {item.label}
+                                    </span>
+                                </span>
+                            ))}
                         </div>
 
-                        <section className="mx-auto mt-8 max-w-6xl space-y-6">
-                            <div className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222] sm:p-6">
-                                {context.legacySubject.modules.length > 0 ? (
-                                    context.legacySubject.modules.map((module) => (
-                                        <ModuleDropdown key={module.id} module={module} />
-                                    ))
-                                ) : (
+                        <section className="mx-auto mt-8 max-w-6xl">
+                            {context.legacySubject.modules.length > 0 ? (
+                                context.legacySubject.modules.map((module) => (
+                                    <ModuleDropdown key={module.id} module={module} />
+                                ))
+                            ) : (
+                                <div className="border-2 border-dashed border-black/30 p-10 text-center dark:border-[#D5D5D5]/30">
                                     <p className="text-sm text-black/70 dark:text-[#D5D5D5]/70">
                                         No module resources have been added for this course yet.
                                     </p>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </section>
                     </div>
                 </div>

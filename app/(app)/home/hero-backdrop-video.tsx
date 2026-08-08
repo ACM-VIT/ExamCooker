@@ -13,6 +13,8 @@ type LocalHeroVideo = {
     webm?: string;
     mp4: string;
     poster?: string;
+    /** Play the intro once, then loop from this timestamp instead of 0. */
+    loopStart?: number;
 };
 type PixelHeroVideo = { kind: "pixel" };
 type HeroVideo = LocalHeroVideo | PixelHeroVideo;
@@ -23,6 +25,7 @@ const VIDEOS = [
     { kind: "local", webm: "/night.webm", mp4: "/night.mp4", poster: "/night.jpg" },
     { kind: "local", webm: "/night-city.webm", mp4: "/night-city.mp4", poster: "/night-city.jpg" },
     { kind: "local", mp4: "/claude-hero.mp4" },
+    { kind: "local", webm: "/shark.webm", mp4: "/shark.mp4", poster: "/shark.jpg", loopStart: 14.5 },
     { kind: "pixel" },
     // {
     //     kind: "youtube",
@@ -221,11 +224,13 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
         { src: video.mp4, type: "video/mp4" },
     ];
 
+    const loopStart = video.loopStart;
+
     return (
         <div ref={containerRef} className="absolute inset-0" aria-hidden="true">
             <video
                 autoPlay
-                loop
+                loop={loopStart === undefined}
                 muted
                 playsInline
                 preload="metadata"
@@ -233,6 +238,15 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
                 disablePictureInPicture
                 disableRemotePlayback
                 onCanPlay={onReady}
+                onEnded={
+                    loopStart === undefined
+                        ? undefined
+                        : (event) => {
+                              const element = event.currentTarget;
+                              element.currentTime = loopStart;
+                              void element.play().catch(() => {});
+                          }
+                }
                 className="h-full w-full object-cover"
             >
                 {sources.map((source) =>
