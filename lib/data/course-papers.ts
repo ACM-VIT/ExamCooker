@@ -27,7 +27,8 @@ export type CoursePaperFilters = {
     hasAnswerKey?: boolean;
 };
 
-export type CoursePaperSort = "year_desc" | "year_asc" | "recent";
+export type CoursePaperSort = "seasonal" | "year_desc" | "year_asc" | "recent";
+type NonSeasonalCoursePaperSort = Exclude<CoursePaperSort, "seasonal">;
 
 export type CoursePaperListItem = {
     id: string;
@@ -164,10 +165,16 @@ function rowMatchesFilters(
     return true;
 }
 
-function comparePaperRows(sort: CoursePaperSort) {
+function comparePaperRows(sort: CoursePaperSort, examFocus?: ExamType) {
     return (a: CoursePaperRow, b: CoursePaperRow) => {
         if (sort === "recent") {
             return b.createdAtTime - a.createdAtTime;
+        }
+
+        if (sort === "seasonal" && examFocus) {
+            const aIsExamFocus = a.examType === examFocus;
+            const bIsExamFocus = b.examType === examFocus;
+            if (aIsExamFocus !== bIsExamFocus) return aIsExamFocus ? -1 : 1;
         }
 
         if (a.year === null && b.year === null) {
@@ -195,13 +202,19 @@ function toCoursePaperListItem(row: CoursePaperRow): CoursePaperListItem {
     };
 }
 
-export async function getCoursePapers(input: {
+type GetCoursePapersInput = {
     courseId: string;
     filters: CoursePaperFilters;
-    sort: CoursePaperSort;
     page: number;
     pageSize: number;
-}): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
+} & (
+    | { sort: "seasonal"; examFocus: ExamType }
+    | { sort: NonSeasonalCoursePaperSort; examFocus?: never }
+);
+
+export async function getCoursePapers(
+    input: GetCoursePapersInput,
+): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
     "use cache";
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -214,7 +227,7 @@ export async function getCoursePapers(input: {
         if (rowMatchesFilters(row, filterSets)) filteredRows.push(row);
     }
 
-    filteredRows.sort(comparePaperRows(input.sort));
+    filteredRows.sort(comparePaperRows(input.sort, input.examFocus));
 
     const skip = Math.max(0, (input.page - 1) * input.pageSize);
     const visibleRows = filteredRows.slice(skip, skip + input.pageSize);
