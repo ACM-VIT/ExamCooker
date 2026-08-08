@@ -36,17 +36,6 @@ export const UPSELLS: Upsell[] = [
         },
     },
     {
-        id: "resource-repo-launch-v1",
-        eyebrow: "New feature",
-        title: "Resource Repository is here",
-        description:
-            "Structured video lectures, key takeaways, and practice questions. All organized by module and topic.",
-        cta: {
-            label: "Explore resources",
-            href: "/resources",
-        },
-    },
-    {
         id: "examcooker-cli-v1",
         eyebrow: "CLI",
         title: "ExamCooker in your terminal",
