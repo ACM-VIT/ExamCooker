@@ -1,10 +1,12 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "examcooker-web",
+  "name": "examcooker",
   "main": ".open-next/worker.js",
-  "compatibility_date": "2026-08-09",
+  "compatibility_date": "2026-08-06",
   "compatibility_flags": ["nodejs_compat"],
   "keep_vars": true,
+  "workers_dev": false,
+  "preview_urls": false,
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
@@ -13,6 +15,6 @@
     "command": "corepack pnpm@10.11.1 exec opennextjs-cloudflare build --skipNextBuild"
   },
   "observability": {
-    "enabled": true
+    "enabled": false
   }
 }
