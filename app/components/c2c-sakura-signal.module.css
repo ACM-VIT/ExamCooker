@@ -1,0 +1,575 @@
+.root {
+    --c2c-chrome-top: 0px;
+    height: 0;
+    position: relative;
+    z-index: 69;
+}
+
+.activationDock {
+    width: 3.6rem;
+    height: 3.6rem;
+    position: fixed;
+    z-index: 72;
+    top: calc(var(--c2c-chrome-top) + 0.72rem);
+    right: 0.72rem;
+    display: grid;
+    place-items: center;
+    overflow: visible;
+    text-decoration: none;
+    isolation: isolate;
+    animation: c2cDockIn 420ms ease;
+    transition: transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.activationDock[data-dragging="true"] {
+    cursor: grabbing;
+}
+
+.activationDock[data-dragging="true"] .revealStack,
+.activationDock[data-dragging="true"] .bloomRing {
+    display: none;
+}
+
+.activationDock[data-pointer-active="true"],
+.activationDock:focus-visible {
+    transform: translate(-0.9rem, 0.9rem);
+}
+
+@keyframes c2cDockIn {
+    from {
+        opacity: 0;
+        transform: translateY(-0.4rem);
+    }
+}
+
+.activationDock:focus-visible {
+    outline: 2px solid rgb(255 79 154 / 0.9);
+    outline-offset: 0.25rem;
+    border-radius: 1rem;
+}
+
+.logoFrame {
+    width: 3.6rem;
+    height: 3.6rem;
+    display: grid;
+    place-items: center;
+    filter: drop-shadow(0 0.3rem 0.6rem rgb(3 16 54 / 0.3));
+    transform: rotate(60deg);
+    transform-origin: center;
+    transition:
+        transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+        filter 440ms ease;
+}
+
+.logoFrame::before,
+.logoFrame::after {
+    content: "";
+    width: 0.5rem;
+    height: 0.72rem;
+    position: absolute;
+    z-index: 2;
+    top: calc(50% - 0.36rem);
+    left: calc(50% - 0.25rem);
+    border: 1px solid rgb(255 238 247 / 0.85);
+    border-radius: 75% 24% 70% 30%;
+    background: linear-gradient(145deg, #fff1f8 4%, #ffb6d6 56%, #f27bb3 100%);
+    box-shadow: 0 0.12rem 0.3rem rgb(120 32 78 / 0.28);
+    pointer-events: none;
+    opacity: 1;
+    animation: c2cIdleOrbit 5.2s linear infinite;
+    transition: opacity 260ms ease;
+}
+
+.logoFrame::after {
+    width: 0.4rem;
+    height: 0.58rem;
+    top: calc(50% - 0.29rem);
+    left: calc(50% - 0.2rem);
+    animation-duration: 7s;
+    animation-direction: reverse;
+    animation-delay: -2.4s;
+    opacity: 0.92;
+}
+
+.activationDock[data-pointer-active="true"] .logoFrame::before,
+.activationDock:focus-visible .logoFrame::before,
+.activationDock[data-pointer-active="true"] .logoFrame::after,
+.activationDock:focus-visible .logoFrame::after {
+    opacity: 0;
+}
+
+@keyframes c2cIdleOrbit {
+    from {
+        transform: rotate(0deg) translateX(1.75rem) rotate(0deg) scale(0.85);
+    }
+    50% {
+        transform: rotate(180deg) translateX(1.75rem) rotate(-90deg) scale(1.1);
+    }
+    to {
+        transform: rotate(360deg) translateX(1.75rem) rotate(-320deg) scale(0.85);
+    }
+}
+
+.logoImage {
+    width: 92%;
+    height: 92%;
+    object-fit: contain;
+}
+
+.activationDock[data-pointer-active="true"] .logoFrame,
+.activationDock:focus-visible .logoFrame {
+    filter: drop-shadow(0 0.4rem 0.75rem rgb(3 16 54 / 0.35));
+    transform: rotate(0deg) scale(1.08);
+}
+
+.bloomRing {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.bloomPetal {
+    width: 0.68rem;
+    height: 0.98rem;
+    position: absolute;
+    top: calc(50% - 0.49rem);
+    left: calc(50% - 0.34rem);
+    border: 1px solid rgb(255 238 247 / 0.85);
+    border-radius: 75% 24% 70% 30%;
+    background: linear-gradient(145deg, #fff1f8 4%, #ffb6d6 56%, #f27bb3 100%);
+    box-shadow: 0 0.15rem 0.4rem rgb(120 32 78 / 0.22);
+    opacity: 0;
+    transform: rotate(var(--bloom-angle)) translateY(0) scale(0.2);
+    transition:
+        transform 640ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--bloom-delay),
+        opacity 280ms ease var(--bloom-delay);
+}
+
+.activationDock[data-pointer-active="true"] .bloomPetal,
+.activationDock:focus-visible .bloomPetal {
+    opacity: 1;
+    transform: rotate(var(--bloom-angle)) translateY(-2.05rem) scale(1);
+}
+
+.revealStack {
+    width: 13rem;
+    position: absolute;
+    top: calc(100% + 0.8rem);
+    right: 0.15rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.3rem;
+    text-align: right;
+    pointer-events: none;
+}
+
+.revealLabel {
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 850;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    white-space: nowrap;
+    text-shadow:
+        -1.5px -1.5px 0 #131629,
+        1.5px -1.5px 0 #131629,
+        -1.5px 1.5px 0 #131629,
+        1.5px 1.5px 0 #131629,
+        -1.5px 0 0 #131629,
+        1.5px 0 0 #131629,
+        0 -1.5px 0 #131629,
+        0 1.5px 0 #131629,
+        3.5px 3.5px 0 rgb(255 79 154 / 0.9);
+    opacity: 0;
+    transform: translateY(-0.5rem);
+    transition:
+        opacity 300ms ease 120ms,
+        transform 520ms cubic-bezier(0.22, 1, 0.36, 1) 120ms;
+}
+
+.revealDescription {
+    max-width: 10.5rem;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 650;
+    line-height: 1.45;
+    text-shadow:
+        -1px -1px 0 rgb(19 22 41 / 0.95),
+        1px -1px 0 rgb(19 22 41 / 0.95),
+        -1px 1px 0 rgb(19 22 41 / 0.95),
+        1px 1px 0 rgb(19 22 41 / 0.95),
+        -1px 0 0 rgb(19 22 41 / 0.95),
+        1px 0 0 rgb(19 22 41 / 0.95),
+        0 -1px 0 rgb(19 22 41 / 0.95),
+        0 1px 0 rgb(19 22 41 / 0.95),
+        0 0.2rem 0.5rem rgb(2 8 28 / 0.5);
+    opacity: 0;
+    transform: translateY(-0.45rem);
+    transition:
+        opacity 320ms ease 230ms,
+        transform 540ms cubic-bezier(0.22, 1, 0.36, 1) 230ms;
+}
+
+.activationDock[data-pointer-active="true"] .revealLabel,
+.activationDock:focus-visible .revealLabel,
+.activationDock[data-pointer-active="true"] .revealDescription,
+.activationDock:focus-visible .revealDescription {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.banner {
+    height: 2.5rem;
+    position: fixed;
+    z-index: 71;
+    top: 0;
+    left: 3.5rem;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-bottom: 1px solid rgb(242 123 179 / 0.45);
+    background: rgb(255 255 255 / 0.78);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    animation: c2cBannerIn 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:global(.dark) .banner {
+    border-bottom-color: rgb(255 79 154 / 0.35);
+    background: rgb(9 14 28 / 0.78);
+}
+
+@keyframes c2cBannerIn {
+    from {
+        transform: translateY(-100%);
+    }
+}
+
+.bannerPetalField {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.bannerPetal {
+    width: var(--bp-size);
+    height: calc(var(--bp-size) * 1.45);
+    position: absolute;
+    top: var(--bp-top);
+    left: var(--bp-start);
+    border: 1px solid rgb(255 238 247 / 0.75);
+    border-radius: 75% 24% 70% 30%;
+    background: linear-gradient(145deg, #fff1f8 4%, #ffb6d6 56%, #f27bb3 100%);
+    opacity: 0;
+    animation: c2cBannerDrift var(--bp-duration) linear var(--bp-delay) infinite;
+}
+
+@keyframes c2cBannerDrift {
+    0% {
+        opacity: 0;
+        transform: translate3d(0, 0, 0) rotate(var(--bp-spin));
+    }
+    10% {
+        opacity: 0.9;
+    }
+    55% {
+        transform: translate3d(7rem, 0.35rem, 0)
+            rotate(calc(var(--bp-spin) + 170deg));
+    }
+    90% {
+        opacity: 0.85;
+    }
+    100% {
+        opacity: 0;
+        transform: translate3d(14rem, -0.2rem, 0)
+            rotate(calc(var(--bp-spin) + 330deg));
+    }
+}
+
+.bannerLink {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: #131629;
+    font-size: 0.8rem;
+    text-decoration: none;
+}
+
+:global(.dark) .bannerLink {
+    color: #fff;
+}
+
+.bannerLogo {
+    width: 1.2rem;
+    height: auto;
+}
+
+.bannerTitle {
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.bannerTagline {
+    font-size: 0.76rem;
+    font-weight: 550;
+    opacity: 0.72;
+}
+
+.bannerCta {
+    margin-left: 0.35rem;
+    color: #d81b74;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+:global(.dark) .bannerCta {
+    color: #ff7ab8;
+}
+
+.bannerLink:hover .bannerCta,
+.bannerLink:focus-visible .bannerCta {
+    text-decoration: underline;
+}
+
+.bannerClose {
+    width: 1.6rem;
+    height: 1.6rem;
+    position: absolute;
+    z-index: 1;
+    right: 0.6rem;
+    top: calc(50% - 0.8rem);
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    color: inherit;
+    font-size: 1.15rem;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 160ms ease, background-color 160ms ease;
+}
+
+.bannerClose:hover,
+.bannerClose:focus-visible {
+    opacity: 1;
+    background: rgb(19 22 41 / 0.08);
+}
+
+:global(.dark) .bannerClose:hover,
+:global(.dark) .bannerClose:focus-visible {
+    background: rgb(255 255 255 / 0.12);
+}
+
+.dismissTarget {
+    width: 3.75rem;
+    height: 3.75rem;
+    position: fixed;
+    z-index: 71;
+    left: calc(50% - 1.875rem);
+    bottom: 2.5rem;
+    display: grid;
+    place-items: center;
+    border: 2px solid rgb(19 22 41 / 0.15);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.95);
+    box-shadow: 0 8px 24px rgb(2 8 28 / 0.28);
+    color: #131629;
+    pointer-events: none;
+    animation: c2cDismissIn 240ms ease;
+    transition:
+        transform 200ms ease,
+        background-color 200ms ease,
+        border-color 200ms ease,
+        color 200ms ease;
+}
+
+:global(.dark) .dismissTarget {
+    border-color: rgb(255 255 255 / 0.2);
+    background: #1a2138;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.55);
+    color: #fff;
+}
+
+.dismissTarget[data-armed="true"] {
+    border-color: #ff4f9a;
+    background: #ff4f9a;
+    color: #fff;
+    transform: scale(1.15);
+}
+
+@keyframes c2cDismissIn {
+    from {
+        opacity: 0;
+        transform: translateY(0.8rem);
+    }
+}
+
+:global(html[data-pdf-viewer-open]) .dismissTarget,
+:global(html[data-pdf-viewer-open]) .activationDock,
+:global(html[data-pdf-viewer-open]) .petalRain,
+:global(html[data-pdf-viewer-open]) .banner {
+    display: none;
+}
+
+.petalRain {
+    position: fixed;
+    z-index: 45;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+    clip-path: polygon(
+        0 99%,
+        8% 98%,
+        16% 96%,
+        24% 93%,
+        32% 89%,
+        40% 84%,
+        48% 77%,
+        56% 68%,
+        64% 57%,
+        72% 44%,
+        80% 30%,
+        88% 16%,
+        94% 7%,
+        100% 0,
+        100% 100%,
+        0 100%
+    );
+    transition: opacity 460ms ease;
+}
+
+.activationDock[data-pointer-active="true"] ~ .petalRain,
+.activationDock:focus-visible ~ .petalRain {
+    opacity: 1;
+}
+
+.petal {
+    width: var(--petal-size);
+    height: calc(var(--petal-size) * 1.45);
+    position: absolute;
+    top: -12vh;
+    left: var(--petal-left);
+    display: block;
+    border: 1px solid rgb(255 238 247 / 0.72);
+    border-radius: 75% 24% 70% 30%;
+    background: linear-gradient(145deg, #fff1f8 4%, #ffb6d6 56%, #f27bb3 100%);
+    box-shadow:
+        0 0.2rem 0.7rem rgb(34 75 146 / 0.16),
+        inset -0.12rem -0.18rem 0.3rem rgb(188 42 111 / 0.16);
+    opacity: 0;
+    transform: rotate(var(--petal-rotation));
+    animation: c2cPetalFall var(--petal-duration) linear var(--petal-delay) infinite;
+    animation-play-state: paused;
+    will-change: transform, opacity;
+}
+
+.activationDock[data-pointer-active="true"] ~ .petalRain .petal,
+.activationDock:focus-visible ~ .petalRain .petal {
+    animation-play-state: running;
+}
+
+.petal::after {
+    content: "";
+    width: 38%;
+    height: 58%;
+    position: absolute;
+    right: 12%;
+    bottom: 10%;
+    border-right: 1px solid rgb(190 69 126 / 0.22);
+    border-radius: 50%;
+}
+
+@keyframes c2cPetalFall {
+    0% {
+        opacity: 0;
+        transform: translate3d(0, -10vh, 0) rotate(var(--petal-rotation));
+    }
+    8% {
+        opacity: 0.9;
+    }
+    42% {
+        transform: translate3d(var(--petal-drift), 45vh, 0) rotate(calc(var(--petal-rotation) + 190deg));
+    }
+    72% {
+        opacity: 0.78;
+        transform: translate3d(var(--petal-end-drift), 78vh, 0) rotate(calc(var(--petal-rotation) + 360deg));
+    }
+    100% {
+        opacity: 0;
+        transform: translate3d(var(--petal-drift), 118vh, 0) rotate(calc(var(--petal-rotation) + 560deg));
+    }
+}
+
+@media (max-width: 1023px) {
+    .activationDock,
+    .petalRain,
+    .banner {
+        display: none;
+    }
+}
+
+:global(.dark) .petal {
+    border-color: rgb(255 225 240 / 0.64);
+    box-shadow:
+        0 0.2rem 0.8rem rgb(2 8 28 / 0.38),
+        0 0 1rem rgb(255 79 154 / 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .activationDock,
+    .logoFrame,
+    .revealLabel,
+    .revealDescription,
+    .bloomPetal,
+    .petalRain {
+        transition: none;
+        animation: none;
+    }
+
+    .banner,
+    .dismissTarget {
+        animation: none;
+    }
+
+    .bannerPetal {
+        animation: none;
+        opacity: 0.5;
+    }
+
+    .petal {
+        animation: none;
+    }
+
+    .logoFrame::before,
+    .logoFrame::after {
+        animation: none;
+    }
+
+    .logoFrame::before {
+        transform: translate(1.2rem, -1.15rem) rotate(24deg);
+    }
+
+    .logoFrame::after {
+        transform: translate(-1.15rem, 1.1rem) rotate(150deg);
+    }
+
+    .activationDock[data-pointer-active="true"] ~ .petalRain .petal,
+    .activationDock:focus-visible ~ .petalRain .petal {
+        opacity: 0.5;
+    }
+
+    .petal:nth-child(5n + 1) { top: 14%; }
+    .petal:nth-child(5n + 2) { top: 32%; }
+    .petal:nth-child(5n + 3) { top: 50%; }
+    .petal:nth-child(5n + 4) { top: 68%; }
+    .petal:nth-child(5n + 5) { top: 86%; }
+}
