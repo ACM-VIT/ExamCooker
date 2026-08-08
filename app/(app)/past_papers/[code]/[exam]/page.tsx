@@ -15,10 +15,8 @@ import DirectionalTransition from "@/app/components/common/directional-transitio
 import {
     buildCourseExamKeywordSet,
     getCourseExamPath,
-    getCourseNotesPath,
     getCoursePastPapersPath,
     getPastPaperDetailPath,
-    getCourseSyllabusPath,
 } from "@/lib/seo";
 import CourseHeader from "@/app/components/past_papers/course-header";
 import CoursePaperGrid from "@/app/components/past_papers/course-paper-grid";
@@ -191,30 +189,10 @@ async function CourseExamContent({
                         ]}
                     />
 
-                <section className="rounded-md border border-black/10 bg-white p-4 dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]">
-                    <p className="sr-only">
-                        Open the dedicated {label} collection for {course.code} when you want a
-                        focused set of papers for one exam pattern instead of the full course list.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        {course.noteCount > 0 && (
-                            <Link
-                                href={getCourseNotesPath(course.code)}
-                                className="inline-flex h-9 items-center border border-black/20 px-3 text-sm font-semibold transition hover:bg-black/5 dark:border-[#D5D5D5]/20 dark:hover:bg-white/5"
-                            >
-                                Notes
-                            </Link>
-                        )}
-                        {syllabus && (
-                            <Link
-                                href={getCourseSyllabusPath(course.code)}
-                                className="inline-flex h-9 items-center border border-black/20 px-3 text-sm font-semibold transition hover:bg-black/5 dark:border-[#D5D5D5]/20 dark:hover:bg-white/5"
-                            >
-                                Syllabus
-                            </Link>
-                        )}
-                    </div>
-                </section>
+                <p className="sr-only">
+                    Open the dedicated {label} collection for {course.code} when you want a
+                    focused set of papers for one exam pattern instead of the full course list.
+                </p>
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -237,7 +215,7 @@ async function CourseExamContent({
                             transitionTypes={["nav-back"]}
                             className="inline-flex h-9 items-center border border-black/60 px-3 text-sm font-semibold text-black transition hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/60 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7]/10 dark:hover:text-[#3BF4C7]"
                         >
-                            All filters →
+                            All filters
                         </Link>
                     </div>
                 </div>
