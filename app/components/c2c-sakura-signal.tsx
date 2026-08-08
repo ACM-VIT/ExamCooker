@@ -1,12 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import styles from "./c2c-sakura-signal.module.css";
 
 const EVENT_URL =
     "https://gravitas.vit.ac.in/events/0eba5a6f-2687-416c-acd7-c51419433366";
-const BANNER_DISMISSED_KEY = "examcooker:c2c-sakura-ribbon-dismissed";
 
 type PetalStyle = React.CSSProperties & {
     "--petal-left": string;
@@ -46,18 +45,6 @@ const fallingPetals = [
     { left: 85, size: 7, delay: -23, duration: 25, rotation: 236, drift: 38 },
 ] as const;
 
-function LogoMark({ className = "" }: { className?: string }) {
-    return (
-        <Image
-            src="/icons/c2clogo.png"
-            alt=""
-            width={52}
-            height={54}
-            className={className}
-        />
-    );
-}
-
 function Petal({
     left,
     size,
@@ -79,91 +66,33 @@ function Petal({
     return <span className={styles.petal} style={style} />;
 }
 
-function MarqueeSequence() {
-    return (
-        <span className={styles.marqueeSequence}>
-            <span className={styles.tickerToken}>Code2Create 7.0</span>
-            <span className={styles.tickerCopy}>
-                48 hours to turn <em>what if?</em> into what&apos;s next.
-            </span>
-            <span className={styles.tickerLogo} aria-hidden="true">
-                <LogoMark />
-            </span>
-            <span className={styles.tickerToken}>04 · 09 · 2026</span>
-            <span className={styles.tickerCopy}>ACM-VIT&apos;s flagship hackathon</span>
-            <span className={styles.tickerLogo} aria-hidden="true">
-                <LogoMark />
-            </span>
-        </span>
-    );
-}
-
 export default function C2CSakuraSignal() {
-    const [bannerDismissed, setBannerDismissed] = useState(false);
-
-    useEffect(() => {
-        try {
-            setBannerDismissed(
-                window.sessionStorage.getItem(BANNER_DISMISSED_KEY) === "true",
-            );
-        } catch {
-            // Storage can be unavailable in private or restricted browser contexts.
-        }
-    }, []);
-
-    const dismissBanner = () => {
-        setBannerDismissed(true);
-        try {
-            window.sessionStorage.setItem(BANNER_DISMISSED_KEY, "true");
-        } catch {
-            // The banner still dismisses for the current page without storage.
-        }
-    };
-
     return (
-        <div
-            className={`${styles.root} ${bannerDismissed ? styles.bannerIsDismissed : ""}`}
-        >
-            {!bannerDismissed ? (
-                <aside className={styles.banner} aria-label="Code2Create announcement">
-                    <a className={styles.marqueeLink} href={EVENT_URL}>
-                        <span className={styles.srOnly}>
-                            Code2Create 7.0 is ACM-VIT&apos;s 48-hour national
-                            hackathon, starting 4 September 2026. View event details.
-                        </span>
-                        <span className={styles.marqueeViewport} aria-hidden="true">
-                            <span className={styles.marqueeTrack}>
-                                <MarqueeSequence />
-                                <MarqueeSequence />
-                            </span>
-                        </span>
-                    </a>
-                    <button
-                        type="button"
-                        className={styles.bannerClose}
-                        onClick={dismissBanner}
-                        aria-label="Dismiss Code2Create announcement"
-                    >
-                        <span aria-hidden="true" />
-                    </button>
-                </aside>
-            ) : null}
+        <div className={styles.root}>
+            <a
+                className={styles.activationDock}
+                href={EVENT_URL}
+                aria-label="Open Code2Create 7.0 event details"
+                title="Code2Create 7.0"
+            >
+                <span className={styles.logoFrame} aria-hidden="true">
+                    <Image
+                        src="/icons/c2clogo.png"
+                        alt=""
+                        width={92}
+                        height={95}
+                        className={styles.logoImage}
+                        priority
+                    />
+                </span>
+                <span className={styles.revealLabel}>Code2Create 7.0</span>
+            </a>
 
             <div className={styles.petalRain} aria-hidden="true">
                 {fallingPetals.map((petal, index) => (
                     <Petal key={index} {...petal} />
                 ))}
             </div>
-
-            <div className={styles.cornerGlow} aria-hidden="true" />
-            <a
-                className={styles.cornerLogoReveal}
-                href={EVENT_URL}
-                aria-label="Open Code2Create 7.0 event details"
-                title="Code2Create 7.0"
-            >
-                <LogoMark className={styles.cornerLogoImage} />
-            </a>
         </div>
     );
 }
