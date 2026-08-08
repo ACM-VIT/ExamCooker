@@ -273,7 +273,6 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
           <a
             href={C2C_EVENT_URL}
             aria-label="Open Code2Create 7.0 event details"
-            title="Code2Create 7.0"
             className={`flex flex-col items-center rounded-xl font-semibold leading-tight tracking-tight ${
               nativeAndroid
                 ? "gap-1 px-1 py-1 text-[11px] text-slate-500 transition-colors dark:text-slate-400"
@@ -294,7 +293,7 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
                   alt=""
                   width={24}
                   height={25}
-                  className="h-6 w-6 shrink-0 object-contain"
+                  className={`${c2cStyles.c2cLogoImage} h-6 w-6 shrink-0 object-contain`}
                 />
               </span>
             </span>

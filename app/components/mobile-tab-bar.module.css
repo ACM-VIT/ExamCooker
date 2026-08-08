@@ -8,6 +8,10 @@
   filter: drop-shadow(0 0 0.42rem rgb(255 79 154 / 0.38));
 }
 
+.c2cLogoImage {
+  animation: c2cLogoTurn 15s steps(6, end) infinite;
+}
+
 .c2cLogoOrbit::before,
 .c2cLogoOrbit::after {
   content: "";
@@ -50,7 +54,14 @@
   }
 }
 
+@keyframes c2cLogoTurn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .c2cLogoImage,
   .c2cLogoOrbit::before,
   .c2cLogoOrbit::after {
     animation: none;
