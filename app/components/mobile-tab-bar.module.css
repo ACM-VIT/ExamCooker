@@ -9,7 +9,7 @@
 }
 
 .c2cLogoImage {
-  animation: c2cLogoTurn 15s linear infinite;
+  animation: c2cLogoTurn 6s steps(6, end) infinite;
 }
 
 .c2cLogoOrbit::before,
