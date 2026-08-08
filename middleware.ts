@@ -57,7 +57,7 @@ function hasSessionCookie(req: NextRequest): boolean {
   );
 }
 
-export default async function proxy(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const url = new URL(request.url);
   const pathname = url.pathname;
 
@@ -126,7 +126,7 @@ export default async function proxy(request: NextRequest) {
           return NextResponse.redirect(new URL("/blocked", request.url));
         }
       } catch (error) {
-        console.error("[proxy] rate limit failed; allowing request", error);
+        console.error("[middleware] rate limit failed; allowing request", error);
       }
     }
   }
