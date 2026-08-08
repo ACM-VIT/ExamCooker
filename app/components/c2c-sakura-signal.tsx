@@ -8,8 +8,7 @@ const EVENT_URL =
     "https://gravitas.vit.ac.in/events/0eba5a6f-2687-416c-acd7-c51419433366";
 
 type PetalStyle = React.CSSProperties & {
-    "--petal-right": string;
-    "--petal-lane": string;
+    "--petal-left": string;
     "--petal-size": string;
     "--petal-delay": string;
     "--petal-duration": string;
@@ -19,36 +18,35 @@ type PetalStyle = React.CSSProperties & {
 };
 
 const fallingPetals = [
-    { right: 4, lane: -10, size: 8, delay: -3, duration: 15, rotation: 24, drift: 12 },
-    { right: 17, lane: 8, size: 12, delay: -11, duration: 19, rotation: 118, drift: -16 },
-    { right: 30, lane: -22, size: 7, delay: -6, duration: 14, rotation: 210, drift: 10 },
-    { right: 44, lane: 22, size: 10, delay: -15, duration: 21, rotation: 304, drift: -13 },
-    { right: 11, lane: 34, size: 13, delay: -8, duration: 18, rotation: 56, drift: 18 },
-    { right: 26, lane: -4, size: 8, delay: -1, duration: 16, rotation: 168, drift: -11 },
-    { right: 39, lane: 14, size: 11, delay: -13, duration: 20, rotation: 242, drift: 15 },
-    { right: 53, lane: -28, size: 6, delay: -5, duration: 13, rotation: 336, drift: -9 },
-    { right: 7, lane: 19, size: 9, delay: -17, duration: 22, rotation: 82, drift: 17 },
-    { right: 21, lane: -15, size: 12, delay: -9, duration: 17, rotation: 154, drift: -18 },
-    { right: 35, lane: 29, size: 7, delay: -2, duration: 15, rotation: 268, drift: 12 },
-    { right: 48, lane: 2, size: 10, delay: -14, duration: 21, rotation: 18, drift: -16 },
-    { right: 15, lane: -32, size: 13, delay: -7, duration: 19, rotation: 126, drift: 19 },
-    { right: 29, lane: 12, size: 8, delay: -19, duration: 23, rotation: 220, drift: -11 },
-    { right: 42, lane: 38, size: 11, delay: -4, duration: 16, rotation: 312, drift: 14 },
-    { right: 56, lane: -8, size: 7, delay: -12, duration: 18, rotation: 44, drift: -17 },
-    { right: 9, lane: 4, size: 9, delay: -16, duration: 22, rotation: 176, drift: 11 },
-    { right: 24, lane: 25, size: 12, delay: -6, duration: 17, rotation: 258, drift: -15 },
-    { right: 37, lane: -19, size: 8, delay: -10, duration: 20, rotation: 348, drift: 16 },
-    { right: 51, lane: 16, size: 10, delay: -1, duration: 15, rotation: 92, drift: -12 },
-    { right: 13, lane: 42, size: 6, delay: -18, duration: 24, rotation: 196, drift: 9 },
-    { right: 32, lane: -36, size: 7, delay: -20, duration: 25, rotation: 288, drift: -9 },
-    { right: 46, lane: 7, size: 8, delay: -21, duration: 26, rotation: 32, drift: 10 },
-    { right: 20, lane: -2, size: 6, delay: -22, duration: 24, rotation: 142, drift: -10 },
-    { right: 41, lane: 31, size: 7, delay: -23, duration: 25, rotation: 236, drift: 9 },
+    { left: 10, size: 7, delay: -4, duration: 18, rotation: 24, drift: 18 },
+    { left: 27, size: 8, delay: -11, duration: 19, rotation: 118, drift: -22 },
+    { left: 40, size: 7, delay: -6, duration: 16, rotation: 210, drift: 16 },
+    { left: 50, size: 9, delay: -15, duration: 21, rotation: 304, drift: -20 },
+    { left: 58, size: 11, delay: -8, duration: 18, rotation: 56, drift: 25 },
+    { left: 63, size: 8, delay: -1, duration: 16, rotation: 168, drift: -18 },
+    { left: 67, size: 10, delay: -13, duration: 20, rotation: 242, drift: 22 },
+    { left: 70, size: 7, delay: -5, duration: 15, rotation: 336, drift: -16 },
+    { left: 73, size: 9, delay: -17, duration: 22, rotation: 82, drift: 24 },
+    { left: 76, size: 12, delay: -9, duration: 17, rotation: 154, drift: -26 },
+    { left: 78, size: 7, delay: -2, duration: 15, rotation: 268, drift: 18 },
+    { left: 80, size: 10, delay: -14, duration: 21, rotation: 18, drift: -23 },
+    { left: 82, size: 12, delay: -7, duration: 19, rotation: 126, drift: 27 },
+    { left: 84, size: 8, delay: -19, duration: 23, rotation: 220, drift: -17 },
+    { left: 86, size: 11, delay: -4, duration: 16, rotation: 312, drift: 21 },
+    { left: 88, size: 7, delay: -12, duration: 18, rotation: 44, drift: -25 },
+    { left: 89.5, size: 9, delay: -16, duration: 22, rotation: 176, drift: 17 },
+    { left: 91, size: 12, delay: -6, duration: 17, rotation: 258, drift: -22 },
+    { left: 92.5, size: 8, delay: -10, duration: 20, rotation: 348, drift: 24 },
+    { left: 94, size: 10, delay: -1, duration: 15, rotation: 92, drift: -19 },
+    { left: 95, size: 7, delay: -18, duration: 24, rotation: 196, drift: 16 },
+    { left: 96, size: 8, delay: -20, duration: 25, rotation: 288, drift: -17 },
+    { left: 97, size: 9, delay: -21, duration: 23, rotation: 32, drift: 19 },
+    { left: 98, size: 7, delay: -22, duration: 24, rotation: 142, drift: -18 },
+    { left: 99, size: 8, delay: -23, duration: 22, rotation: 236, drift: 16 },
 ] as const;
 
 function Petal({
-    right,
-    lane,
+    left,
     size,
     delay,
     duration,
@@ -56,8 +54,7 @@ function Petal({
     drift,
 }: (typeof fallingPetals)[number]) {
     const style: PetalStyle = {
-        "--petal-right": `${right}px`,
-        "--petal-lane": `${lane}px`,
+        "--petal-left": `${left}%`,
         "--petal-size": `${size}px`,
         "--petal-delay": `${delay}s`,
         "--petal-duration": `${duration}s`,

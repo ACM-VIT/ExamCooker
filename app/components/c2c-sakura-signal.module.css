@@ -158,7 +158,24 @@
     overflow: hidden;
     pointer-events: none;
     opacity: 0;
-    mask-image: linear-gradient(to bottom, transparent 0, #000 5%, #000 96%, transparent 100%);
+    clip-path: polygon(
+        0 99%,
+        8% 98%,
+        16% 96%,
+        24% 93%,
+        32% 89%,
+        40% 84%,
+        48% 77%,
+        56% 68%,
+        64% 57%,
+        72% 44%,
+        80% 30%,
+        88% 16%,
+        94% 7%,
+        100% 0,
+        100% 100%,
+        0 100%
+    );
     transition: opacity 460ms ease;
 }
 
@@ -171,8 +188,8 @@
     width: var(--petal-size);
     height: calc(var(--petal-size) * 1.45);
     position: absolute;
-    top: calc(-1.5rem + var(--petal-lane));
-    right: var(--petal-right);
+    top: -12vh;
+    left: var(--petal-left);
     display: block;
     border: 1px solid rgb(255 238 247 / 0.72);
     border-radius: 75% 24% 70% 30%;
@@ -206,33 +223,21 @@
 @keyframes c2cPetalFall {
     0% {
         opacity: 0;
-        transform: translate3d(0, 0, 0) rotate(var(--petal-rotation));
+        transform: translate3d(0, -10vh, 0) rotate(var(--petal-rotation));
     }
-    5% {
-        opacity: 0.96;
+    8% {
+        opacity: 0.9;
     }
-    28% {
-        opacity: 0.94;
-        transform: translate3d(calc(-6vw + var(--petal-drift)), 5vh, 0) rotate(calc(var(--petal-rotation) + 90deg));
+    42% {
+        transform: translate3d(var(--petal-drift), 45vh, 0) rotate(calc(var(--petal-rotation) + 190deg));
     }
-    50% {
-        opacity: 0.88;
-        transform: translate3d(calc(-17vw + var(--petal-end-drift)), 15vh, 0) rotate(calc(var(--petal-rotation) + 190deg));
-    }
-    68% {
-        opacity: 0.68;
-        transform: translate3d(calc(-36vw + var(--petal-drift)), 32vh, 0) rotate(calc(var(--petal-rotation) + 300deg));
-    }
-    82% {
-        opacity: 0.38;
-        transform: translate3d(calc(-61vw + var(--petal-end-drift)), 56vh, 0) rotate(calc(var(--petal-rotation) + 410deg));
-    }
-    92% {
-        opacity: 0.14;
+    72% {
+        opacity: 0.78;
+        transform: translate3d(var(--petal-end-drift), 78vh, 0) rotate(calc(var(--petal-rotation) + 360deg));
     }
     100% {
         opacity: 0;
-        transform: translate3d(calc(-105vw + var(--petal-drift)), 94vh, 0) rotate(calc(var(--petal-rotation) + 560deg));
+        transform: translate3d(var(--petal-drift), 118vh, 0) rotate(calc(var(--petal-rotation) + 560deg));
     }
 }
 
