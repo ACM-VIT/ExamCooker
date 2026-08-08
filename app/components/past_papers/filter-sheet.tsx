@@ -48,10 +48,13 @@ const CAMPUS_LABEL: Record<Campus, string> = {
 };
 
 const SORT_OPTIONS = [
+    { value: "seasonal", label: "Current exam first" },
     { value: "year_desc", label: "Newest" },
     { value: "year_asc", label: "Oldest" },
     { value: "recent", label: "Recently added" },
 ] as const;
+
+type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
 function readList(raw: string | null): string[] {
     if (!raw) return [];
@@ -64,7 +67,7 @@ type SelectedFilters = {
     years: number[];
     semesters: Semester[];
     campuses: Campus[];
-    sort: string;
+    sort: SortValue;
 };
 
 const EMPTY_SELECTED: SelectedFilters = {
@@ -73,7 +76,7 @@ const EMPTY_SELECTED: SelectedFilters = {
     years: [],
     semesters: [],
     campuses: [],
-    sort: "year_desc",
+    sort: "seasonal",
 };
 
 export default function FilterSheet({
@@ -108,7 +111,12 @@ export default function FilterSheet({
             campuses: readList(searchParams.get("campus")).map(
                 (c) => c.toUpperCase() as Campus,
             ),
-            sort: searchParams.get("sort") ?? "year_desc",
+            sort: (() => {
+                const sort = searchParams.get("sort");
+                return SORT_OPTIONS.some((option) => option.value === sort)
+                    ? (sort as SortValue)
+                    : "seasonal";
+            })(),
         }),
         [searchParams],
     );
@@ -169,8 +177,8 @@ export default function FilterSheet({
     }, [toggleIn]);
 
     const setSort = useCallback(
-        (value: string) => {
-            if (value === "year_desc") setSingle("sort", null);
+        (value: SortValue) => {
+            if (value === "seasonal") setSingle("sort", null);
             else setSingle("sort", value);
         },
         [setSingle],
@@ -354,7 +362,7 @@ export default function FilterSheet({
                             )}
 
                             <Section title="Sort by">
-                                <div className="grid grid-cols-3 border border-black/15 dark:border-[#D5D5D5]/15">
+                                <div className="grid grid-cols-2 border border-black/15 dark:border-[#D5D5D5]/15">
                                     {SORT_OPTIONS.map((opt, idx) => {
                                         const active = sel.sort === opt.value;
                                         return (

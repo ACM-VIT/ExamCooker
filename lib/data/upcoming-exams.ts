@@ -1,5 +1,4 @@
-import { cacheLife, cacheTag } from "next/cache";
-import { connection } from "next/server";
+import { cacheLife, cacheTag, io } from "next/cache";
 import { and, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import {
     course,
@@ -24,7 +23,7 @@ function getUpcomingExamCutoffIso() {
 }
 
 export async function getUpcomingExams(limit?: number): Promise<UpcomingExamItem[]> {
-    await connection();
+    await io();
     return getUpcomingExamsCached(limit ?? null, getUpcomingExamCutoffIso());
 }
 
@@ -85,7 +84,7 @@ export async function getUpcomingExamsForCourses(
     courseIds: string[],
 ): Promise<Map<string, UpcomingExamItem[]>> {
     if (courseIds.length === 0) return new Map();
-    await connection();
+    await io();
     return getUpcomingExamsForCoursesCached(
         Array.from(new Set(courseIds)).sort(),
         getUpcomingExamCutoffIso(),
