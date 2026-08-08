@@ -33,6 +33,7 @@ type Props = {
     paper: Paper;
     courseCode: string;
     courseTitle: string;
+    detailSearchString?: string;
     index: number;
     selected: boolean;
     onToggleSelect: (id: string) => void;
@@ -48,6 +49,7 @@ function CoursePaperCard({
     paper,
     courseCode,
     courseTitle,
+    detailSearchString,
     index,
     selected,
     onToggleSelect,
@@ -58,7 +60,8 @@ function CoursePaperCard({
     onSplitDragCancel,
     onContextMenuOpen,
 }: Props) {
-    const href = `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`;
+    const hrefBase = `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`;
+    const href = detailSearchString ? `${hrefBase}?${detailSearchString}` : hrefBase;
     const hasWarmedPdf = useRef(false);
     const splitDragRef = useRef<{
         pointerId: number;

@@ -390,6 +390,7 @@ async function CoursePastPapersContent({
                     papers={papers}
                     courseCode={course.code}
                     courseTitle={course.title}
+                        detailSearchString={searchString}
                 />
             )}
 

@@ -202,19 +202,22 @@ function toCoursePaperListItem(row: CoursePaperRow): CoursePaperListItem {
     };
 }
 
-type GetCoursePapersInput = {
+type OrderedCoursePapersInput = {
     courseId: string;
     filters: CoursePaperFilters;
-    page: number;
-    pageSize: number;
 } & (
     | { sort: "seasonal"; examFocus: ExamType }
     | { sort: NonSeasonalCoursePaperSort; examFocus?: never }
 );
 
-export async function getCoursePapers(
-    input: GetCoursePapersInput,
-): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
+type GetCoursePapersInput = {
+    page: number;
+    pageSize: number;
+} & OrderedCoursePapersInput;
+
+export async function getOrderedCoursePapers(
+    input: OrderedCoursePapersInput,
+): Promise<CoursePaperListItem[]> {
     "use cache";
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -229,12 +232,24 @@ export async function getCoursePapers(
 
     filteredRows.sort(comparePaperRows(input.sort, input.examFocus));
 
+    return filteredRows.map(toCoursePaperListItem);
+}
+
+export async function getCoursePapers(
+    input: GetCoursePapersInput,
+): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
+    "use cache";
+    cacheTag("past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const orderedRows = await getOrderedCoursePapers(input);
+
     const skip = Math.max(0, (input.page - 1) * input.pageSize);
-    const visibleRows = filteredRows.slice(skip, skip + input.pageSize);
+    const visibleRows = orderedRows.slice(skip, skip + input.pageSize);
 
     return {
-        totalCount: filteredRows.length,
-        papers: visibleRows.map(toCoursePaperListItem),
+        totalCount: orderedRows.length,
+        papers: visibleRows,
     };
 }
 

@@ -39,6 +39,7 @@ type Props = {
     papers: CoursePaperListItem[];
     courseCode: string;
     courseTitle: string;
+    detailSearchString?: string;
 };
 
 const WIDE_STRETCH_CLASS_BY_REMAINDER: Partial<Record<number, string>> = {
@@ -180,6 +181,7 @@ export default function CoursePaperGrid({
     papers,
     courseCode,
     courseTitle,
+    detailSearchString,
 }: Props) {
     const [{ contextMenu, isDownloading, portalReady, selected, splitDrag }, dispatch] =
         useReducer(coursePaperGridReducer, initialCoursePaperGridState);
@@ -678,6 +680,7 @@ export default function CoursePaperGrid({
                                 paper={paper}
                                 courseCode={courseCode}
                                 courseTitle={courseTitle}
+                                detailSearchString={detailSearchString}
                                 index={index}
                                 selected={selected.has(paper.id)}
                                 onToggleSelect={toggle}
