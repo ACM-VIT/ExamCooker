@@ -1,136 +1,123 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import React, { useEffect, useState } from "react";
 import styles from "./c2c-sakura-signal.module.css";
 
 const EVENT_URL =
     "https://gravitas.vit.ac.in/events/0eba5a6f-2687-416c-acd7-c51419433366";
-const BANNER_DISMISSED_KEY = "examcooker:c2c-sakura-banner-dismissed";
+const BANNER_DISMISSED_KEY = "examcooker:c2c-sakura-ribbon-dismissed";
 
 type PetalStyle = React.CSSProperties & {
-    "--petal-x": string;
-    "--petal-y": string;
+    "--petal-left": string;
     "--petal-size": string;
     "--petal-delay": string;
     "--petal-duration": string;
     "--petal-rotation": string;
+    "--petal-drift": string;
+    "--petal-end-drift": string;
 };
 
-const driftingPetals = [
-    { x: 4, y: 5, size: 12, delay: -2, duration: 11, rotation: 18 },
-    { x: 19, y: 14, size: 9, delay: -7, duration: 14, rotation: 72 },
-    { x: 34, y: 4, size: 14, delay: -4, duration: 13, rotation: 136 },
-    { x: 48, y: 19, size: 8, delay: -10, duration: 16, rotation: 204 },
-    { x: 61, y: 9, size: 11, delay: -1, duration: 12, rotation: 282 },
-    { x: 72, y: 23, size: 8, delay: -6, duration: 15, rotation: 330 },
-    { x: 83, y: 12, size: 13, delay: -9, duration: 14, rotation: 42 },
-    { x: 91, y: 29, size: 9, delay: -3, duration: 13, rotation: 112 },
-];
+const fallingPetals = [
+    { left: 2, size: 8, delay: -3, duration: 15, rotation: 24, drift: 52 },
+    { left: 7, size: 12, delay: -11, duration: 19, rotation: 118, drift: -64 },
+    { left: 12, size: 7, delay: -6, duration: 14, rotation: 210, drift: 42 },
+    { left: 17, size: 10, delay: -15, duration: 21, rotation: 304, drift: -52 },
+    { left: 22, size: 13, delay: -8, duration: 18, rotation: 56, drift: 70 },
+    { left: 27, size: 8, delay: -1, duration: 16, rotation: 168, drift: -45 },
+    { left: 32, size: 11, delay: -13, duration: 20, rotation: 242, drift: 58 },
+    { left: 37, size: 6, delay: -5, duration: 13, rotation: 336, drift: -38 },
+    { left: 42, size: 9, delay: -17, duration: 22, rotation: 82, drift: 66 },
+    { left: 47, size: 12, delay: -9, duration: 17, rotation: 154, drift: -72 },
+    { left: 52, size: 7, delay: -2, duration: 15, rotation: 268, drift: 48 },
+    { left: 57, size: 10, delay: -14, duration: 21, rotation: 18, drift: -62 },
+    { left: 62, size: 13, delay: -7, duration: 19, rotation: 126, drift: 74 },
+    { left: 67, size: 8, delay: -19, duration: 23, rotation: 220, drift: -44 },
+    { left: 72, size: 11, delay: -4, duration: 16, rotation: 312, drift: 54 },
+    { left: 77, size: 7, delay: -12, duration: 18, rotation: 44, drift: -68 },
+    { left: 82, size: 9, delay: -16, duration: 22, rotation: 176, drift: 46 },
+    { left: 87, size: 12, delay: -6, duration: 17, rotation: 258, drift: -58 },
+    { left: 92, size: 8, delay: -10, duration: 20, rotation: 348, drift: 62 },
+    { left: 97, size: 10, delay: -1, duration: 15, rotation: 92, drift: -48 },
+    { left: 5, size: 6, delay: -18, duration: 24, rotation: 196, drift: 34 },
+    { left: 25, size: 7, delay: -20, duration: 25, rotation: 288, drift: -36 },
+    { left: 45, size: 8, delay: -21, duration: 26, rotation: 32, drift: 40 },
+    { left: 65, size: 6, delay: -22, duration: 24, rotation: 142, drift: -42 },
+    { left: 85, size: 7, delay: -23, duration: 25, rotation: 236, drift: 38 },
+] as const;
 
-const sidePetals = [
-    { x: 20, y: 4, size: 10, delay: -4, duration: 15, rotation: 36 },
-    { x: 57, y: 17, size: 7, delay: -12, duration: 17, rotation: 118 },
-    { x: 14, y: 34, size: 12, delay: -7, duration: 19, rotation: 188 },
-    { x: 61, y: 51, size: 8, delay: -2, duration: 16, rotation: 260 },
-    { x: 23, y: 69, size: 10, delay: -10, duration: 18, rotation: 316 },
-    { x: 55, y: 87, size: 7, delay: -6, duration: 14, rotation: 76 },
-];
-
-function Blossom({ className = "" }: { className?: string }) {
+function LogoMark({ className = "" }: { className?: string }) {
     return (
-        <span className={`${styles.blossom} ${className}`}>
-            <i />
-            <i />
-            <i />
-            <i />
-            <i />
-        </span>
-    );
-}
-
-function Petal({
-    x,
-    y,
-    size,
-    delay,
-    duration,
-    rotation,
-    side = false,
-}: (typeof driftingPetals)[number] & { side?: boolean }) {
-    const style: PetalStyle = {
-        "--petal-x": `${x}%`,
-        "--petal-y": `${y}%`,
-        "--petal-size": `${size}px`,
-        "--petal-delay": `${delay}s`,
-        "--petal-duration": `${duration}s`,
-        "--petal-rotation": `${rotation}deg`,
-    };
-
-    return (
-        <span
-            className={`${styles.petal} ${side ? styles.sidePetal : ""}`}
-            style={style}
+        <Image
+            src="/icons/c2clogo.png"
+            alt=""
+            width={52}
+            height={54}
+            className={className}
         />
     );
 }
 
-function MarqueeMessage() {
+function Petal({
+    left,
+    size,
+    delay,
+    duration,
+    rotation,
+    drift,
+}: (typeof fallingPetals)[number]) {
+    const style: PetalStyle = {
+        "--petal-left": `${left}%`,
+        "--petal-size": `${size}px`,
+        "--petal-delay": `${delay}s`,
+        "--petal-duration": `${duration}s`,
+        "--petal-rotation": `${rotation}deg`,
+        "--petal-drift": `${drift}px`,
+        "--petal-end-drift": `${Math.round(drift * -0.58)}px`,
+    };
+
+    return <span className={styles.petal} style={style} />;
+}
+
+function MarqueeSequence() {
     return (
-        <span className={styles.marqueeMessage}>
-            <span className={styles.marqueeFlower} aria-hidden="true">
-                <Blossom />
+        <span className={styles.marqueeSequence}>
+            <span className={styles.tickerToken}>Code2Create 7.0</span>
+            <span className={styles.tickerCopy}>
+                48 hours to turn <em>what if?</em> into what&apos;s next.
             </span>
-            <strong>Code2Create 7.0</strong>
-            <span className={styles.marqueeDivider} aria-hidden="true" />
-            <span>48 hours to turn “what if?” into “what’s next.”</span>
-            <span className={styles.marqueeDate}>Starts 04 Sep 2026</span>
-            <span className={styles.marqueeCta}>Explore the hackathon&nbsp; →</span>
+            <span className={styles.tickerLogo} aria-hidden="true">
+                <LogoMark />
+            </span>
+            <span className={styles.tickerToken}>04 · 09 · 2026</span>
+            <span className={styles.tickerCopy}>ACM-VIT&apos;s flagship hackathon</span>
+            <span className={styles.tickerLogo} aria-hidden="true">
+                <LogoMark />
+            </span>
         </span>
     );
 }
 
 export default function C2CSakuraSignal() {
     const [bannerDismissed, setBannerDismissed] = useState(false);
-    const [panelOpen, setPanelOpen] = useState(false);
-    const panelCloseRef = useRef<HTMLButtonElement>(null);
-    const panelTriggerRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         try {
             setBannerDismissed(
-                window.localStorage.getItem(BANNER_DISMISSED_KEY) === "true",
+                window.sessionStorage.getItem(BANNER_DISMISSED_KEY) === "true",
             );
         } catch {
             // Storage can be unavailable in private or restricted browser contexts.
         }
     }, []);
 
-    useEffect(() => {
-        if (!panelOpen) return;
-
-        panelCloseRef.current?.focus();
-        const closeOnEscape = (event: KeyboardEvent) => {
-            if (event.key !== "Escape") return;
-            setPanelOpen(false);
-            window.requestAnimationFrame(() => panelTriggerRef.current?.focus());
-        };
-
-        document.addEventListener("keydown", closeOnEscape);
-        return () => document.removeEventListener("keydown", closeOnEscape);
-    }, [panelOpen]);
-
     const dismissBanner = () => {
         setBannerDismissed(true);
         try {
-            window.localStorage.setItem(BANNER_DISMISSED_KEY, "true");
+            window.sessionStorage.setItem(BANNER_DISMISSED_KEY, "true");
         } catch {
-            // The banner still dismisses for the current session without storage.
+            // The banner still dismisses for the current page without storage.
         }
-    };
-
-    const closePanel = () => {
-        setPanelOpen(false);
-        window.requestAnimationFrame(() => panelTriggerRef.current?.focus());
     };
 
     return (
@@ -146,8 +133,8 @@ export default function C2CSakuraSignal() {
                         </span>
                         <span className={styles.marqueeViewport} aria-hidden="true">
                             <span className={styles.marqueeTrack}>
-                                <MarqueeMessage />
-                                <MarqueeMessage />
+                                <MarqueeSequence />
+                                <MarqueeSequence />
                             </span>
                         </span>
                     </a>
@@ -162,85 +149,21 @@ export default function C2CSakuraSignal() {
                 </aside>
             ) : null}
 
-            <div className={styles.petalScene} aria-hidden="true">
-                <div className={styles.signalBloom}>
-                    <span className={`${styles.signalArc} ${styles.signalArcOuter}`} />
-                    <span className={`${styles.signalArc} ${styles.signalArcInner}`} />
-                    <span className={styles.signalSpark} />
-                    <Blossom className={styles.blossomOne} />
-                    <Blossom className={styles.blossomTwo} />
-                    <Blossom className={styles.blossomThree} />
-                    <div className={styles.driftField}>
-                        {driftingPetals.map((petal, index) => (
-                            <Petal key={index} {...petal} />
-                        ))}
-                    </div>
-                </div>
-                <div className={styles.sideTrail}>
-                    <span className={styles.trailLine} />
-                    {sidePetals.map((petal, index) => (
-                        <Petal key={index} {...petal} side />
-                    ))}
-                </div>
+            <div className={styles.petalRain} aria-hidden="true">
+                {fallingPetals.map((petal, index) => (
+                    <Petal key={index} {...petal} />
+                ))}
             </div>
 
-            <button
-                ref={panelTriggerRef}
-                type="button"
-                className={styles.whyButton}
-                aria-expanded={panelOpen}
-                aria-controls="c2c-sakura-panel"
-                onClick={() => setPanelOpen((open) => !open)}
+            <div className={styles.cornerGlow} aria-hidden="true" />
+            <a
+                className={styles.cornerLogoReveal}
+                href={EVENT_URL}
+                aria-label="Open Code2Create 7.0 event details"
+                title="Code2Create 7.0"
             >
-                <span className={styles.whyDot} aria-hidden="true" />
-                <span>Why the petals?</span>
-            </button>
-
-            <section
-                id="c2c-sakura-panel"
-                className={`${styles.infoPanel} ${panelOpen ? styles.infoPanelOpen : ""}`}
-                aria-labelledby="c2c-sakura-panel-title"
-                aria-hidden={!panelOpen}
-                inert={!panelOpen ? true : undefined}
-            >
-                <div className={styles.panelGlow} aria-hidden="true" />
-                <div className={styles.panelHeader}>
-                    <div>
-                        <p className={styles.eyebrow}>Sakura signal · C2C 7.0</p>
-                        <h2 id="c2c-sakura-panel-title">A bloom for bold ideas.</h2>
-                    </div>
-                    <button
-                        ref={panelCloseRef}
-                        type="button"
-                        className={styles.panelClose}
-                        onClick={closePanel}
-                        aria-label="Close Code2Create information"
-                    >
-                        <span aria-hidden="true" />
-                    </button>
-                </div>
-                <p className={styles.panelCopy}>
-                    Code2Create 7.0 is ACM-VIT&apos;s flagship 48-hour national
-                    hackathon—built for the ideas that deserve room to grow.
-                </p>
-                <div className={styles.eventDetails}>
-                    <span>
-                        <small>Begins</small>
-                        04 Sep 2026
-                    </span>
-                    <span>
-                        <small>Format</small>
-                        48 hours
-                    </span>
-                </div>
-                <p className={styles.tagline}>
-                    Turning <em>what if?</em> into <em>what&apos;s next.</em>
-                </p>
-                <a className={styles.panelCta} href={EVENT_URL}>
-                    See Code2Create
-                    <span aria-hidden="true">↗</span>
-                </a>
-            </section>
+                <LogoMark className={styles.cornerLogoImage} />
+            </a>
         </div>
     );
 }
