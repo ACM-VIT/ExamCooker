@@ -132,7 +132,10 @@ const nextConfig: NextConfig = {
             },
         },
     },
-    serverExternalPackages: ["@azure/identity", "canvas"],
+    // OpenNext uses this list to copy complete packages that expose a
+    // Workerd-specific export. Without pg-cloudflare here, Next's trace keeps
+    // its package metadata but drops dist/index.js from the Worker bundle.
+    serverExternalPackages: ["@azure/identity", "canvas", "pg-cloudflare"],
     images: {
         formats: ["image/avif", "image/webp"],
         minimumCacheTTL: 60 * 60 * 24 * 30,
