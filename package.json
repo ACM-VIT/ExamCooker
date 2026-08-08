@@ -2,6 +2,7 @@
   "name": "examcooker-web",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.11.1",
   "scripts": {
     "cli": "node ./packages/cli/dist/cli.js",
     "dev": "node scripts/sync-pdfium-wasm.js && node scripts/sync-vin-together.js && next dev",
