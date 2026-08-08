@@ -2651,6 +2651,23 @@ export default function PDFViewer({
     dispatchBufferLifecycle({ type: "retry" });
   }, []);
 
+  // Marks the document while any PDF viewer is mounted so fixed chrome that
+  // would overlap the viewer toolbar (e.g. the C2C promo) can hide itself.
+  // Counter-based because split view can mount two viewers at once.
+  useEffect(() => {
+    const root = document.documentElement;
+    const count = Number(root.dataset.pdfViewerOpen ?? "0") + 1;
+    root.dataset.pdfViewerOpen = String(count);
+    return () => {
+      const next = Number(root.dataset.pdfViewerOpen ?? "1") - 1;
+      if (next <= 0) {
+        delete root.dataset.pdfViewerOpen;
+      } else {
+        root.dataset.pdfViewerOpen = String(next);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     let isActive = true;
     dispatchBufferLifecycle({ type: "loadingStarted" });

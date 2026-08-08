@@ -4,38 +4,75 @@
   position: relative;
   display: grid;
   place-items: center;
+  isolation: isolate;
+  filter: drop-shadow(0 0 0.35rem rgb(255 79 154 / 0.4));
 }
 
 .c2cLogoImage {
-  animation: c2cLogoTurn 12s ease-in-out infinite;
+  animation: c2cLogoSway 4.2s ease-in-out infinite alternate;
 }
 
-@keyframes c2cLogoTurn {
-  0% {
-    transform: rotate(0deg);
+.c2cLogoOrbit::before,
+.c2cLogoOrbit::after {
+  content: "";
+  width: 0.32rem;
+  height: 0.46rem;
+  position: absolute;
+  z-index: 2;
+  top: calc(50% - 0.23rem);
+  left: calc(50% - 0.16rem);
+  border: 1px solid rgb(255 238 247 / 0.85);
+  border-radius: 75% 24% 70% 30%;
+  background: linear-gradient(145deg, #fff1f8 4%, #ffb6d6 56%, #f27bb3 100%);
+  box-shadow: 0 0.1rem 0.25rem rgb(120 32 78 / 0.28);
+  pointer-events: none;
+  animation: c2cPetalOrbit 3.6s linear infinite;
+}
+
+.c2cLogoOrbit::after {
+  width: 0.26rem;
+  height: 0.38rem;
+  top: calc(50% - 0.19rem);
+  left: calc(50% - 0.13rem);
+  animation-duration: 5s;
+  animation-direction: reverse;
+  animation-delay: -1.7s;
+  opacity: 0.9;
+}
+
+@keyframes c2cPetalOrbit {
+  from {
+    transform: rotate(0deg) translateX(0.88rem) rotate(0deg) scale(0.85);
   }
-  4.167%, 16.667% {
-    transform: rotate(60deg);
+  50% {
+    transform: rotate(180deg) translateX(0.88rem) rotate(-90deg) scale(1.1);
   }
-  20.833%, 33.333% {
-    transform: rotate(120deg);
+  to {
+    transform: rotate(360deg) translateX(0.88rem) rotate(-320deg) scale(0.85);
   }
-  37.5%, 50% {
-    transform: rotate(180deg);
+}
+
+@keyframes c2cLogoSway {
+  from {
+    transform: rotate(-7deg);
   }
-  54.167%, 66.667% {
-    transform: rotate(240deg);
-  }
-  70.833%, 83.333% {
-    transform: rotate(300deg);
-  }
-  87.5%, 100% {
-    transform: rotate(360deg);
+  to {
+    transform: rotate(7deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .c2cLogoImage {
+  .c2cLogoImage,
+  .c2cLogoOrbit::before,
+  .c2cLogoOrbit::after {
     animation: none;
+  }
+
+  .c2cLogoOrbit::before {
+    transform: translate(0.62rem, -0.58rem) rotate(24deg);
+  }
+
+  .c2cLogoOrbit::after {
+    transform: translate(-0.6rem, 0.55rem) rotate(150deg);
   }
 }

@@ -207,7 +207,7 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
     >
       <ul
         className={`ec-tab-bar-frame mx-auto flex max-w-lg items-stretch justify-between ${
-          nativeAndroid ? "gap-0 px-2 py-2" : "gap-1 px-1 pt-1"
+          nativeAndroid ? "gap-0 px-2 py-2" : "gap-0.5 px-0.5 pt-1"
         }`}
       >
         <span
@@ -234,7 +234,7 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
                           ? "text-[#0D5875] dark:text-[#3BF4C7]"
                           : "text-slate-500 dark:text-slate-400"
                       }`
-                    : `gap-0.5 px-1 py-1.5 text-[11px] transition-[color,transform] active:scale-[0.98] sm:text-[12px] ${
+                    : `gap-0.5 px-0.5 py-1.5 text-[11px] transition-[color,transform] active:scale-[0.98] sm:text-[12px] ${
                         isActive
                           ? "text-black dark:text-[#3BF4C7]"
                           : "text-black/55 dark:text-[#D5D5D5]/55"
@@ -272,11 +272,13 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
         <li className="relative z-[1] min-w-0 flex-1">
           <a
             href={C2C_EVENT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             aria-label="Open Code2Create 7.0 event details"
             className={`flex flex-col items-center rounded-xl font-semibold leading-tight tracking-tight ${
               nativeAndroid
                 ? "gap-1 px-1 py-1 text-[11px] text-slate-500 transition-colors dark:text-slate-400"
-                : "gap-0.5 px-1 py-1.5 text-[11px] text-black/55 transition-[color,transform] active:scale-[0.98] dark:text-[#D5D5D5]/55 sm:text-[12px]"
+                : "gap-0.5 px-0.5 py-1.5 text-[11px] text-black/55 transition-[color,transform] active:scale-[0.98] dark:text-[#D5D5D5]/55 sm:text-[12px]"
             }`}
           >
             <span
