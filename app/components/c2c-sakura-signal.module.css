@@ -154,10 +154,7 @@
 .petalRain {
     position: fixed;
     z-index: 45;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: clamp(13rem, 29vw, 22rem);
+    inset: 0;
     overflow: hidden;
     pointer-events: none;
     opacity: 0;
@@ -174,8 +171,8 @@
     width: var(--petal-size);
     height: calc(var(--petal-size) * 1.45);
     position: absolute;
-    top: -12vh;
-    left: var(--petal-left);
+    top: calc(-1.5rem + var(--petal-lane));
+    right: var(--petal-right);
     display: block;
     border: 1px solid rgb(255 238 247 / 0.72);
     border-radius: 75% 24% 70% 30%;
@@ -209,20 +206,33 @@
 @keyframes c2cPetalFall {
     0% {
         opacity: 0;
-        transform: translate3d(0, -12vh, 0) rotate(var(--petal-rotation));
+        transform: translate3d(0, 0, 0) rotate(var(--petal-rotation));
     }
-    8% {
-        opacity: 0.9;
+    5% {
+        opacity: 0.96;
     }
-    46% {
-        transform: translate3d(var(--petal-drift), 50vh, 0) rotate(calc(var(--petal-rotation) + 235deg));
+    28% {
+        opacity: 0.94;
+        transform: translate3d(calc(-6vw + var(--petal-drift)), 5vh, 0) rotate(calc(var(--petal-rotation) + 90deg));
+    }
+    50% {
+        opacity: 0.88;
+        transform: translate3d(calc(-17vw + var(--petal-end-drift)), 15vh, 0) rotate(calc(var(--petal-rotation) + 190deg));
+    }
+    68% {
+        opacity: 0.68;
+        transform: translate3d(calc(-36vw + var(--petal-drift)), 32vh, 0) rotate(calc(var(--petal-rotation) + 300deg));
     }
     82% {
-        opacity: 0.76;
+        opacity: 0.38;
+        transform: translate3d(calc(-61vw + var(--petal-end-drift)), 56vh, 0) rotate(calc(var(--petal-rotation) + 410deg));
+    }
+    92% {
+        opacity: 0.14;
     }
     100% {
         opacity: 0;
-        transform: translate3d(var(--petal-end-drift), 118vh, 0) rotate(calc(var(--petal-rotation) + 560deg));
+        transform: translate3d(calc(-105vw + var(--petal-drift)), 94vh, 0) rotate(calc(var(--petal-rotation) + 560deg));
     }
 }
 
