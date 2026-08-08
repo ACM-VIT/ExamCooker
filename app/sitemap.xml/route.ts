@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { and, count, eq, isNotNull } from "drizzle-orm";
 import { getBaseUrl } from "@/lib/seo";
 import { getCourseGrid, getCourseSearchRecords } from "@/lib/data/course-catalog";
@@ -16,6 +16,7 @@ function buildSitemapIndexXml(entries: string[]) {
 }
 
 export async function GET() {
+    await connection();
     const baseUrl = getBaseUrl();
     const [
         noteCount,

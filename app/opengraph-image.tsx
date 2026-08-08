@@ -6,12 +6,14 @@ import {
     renderExamCookerOgImage,
 } from "@/lib/og";
 import { getCatalogStats } from "@/lib/data/course-catalog";
+import { connection } from "next/server";
 
 export const alt = OG_ALT;
 export const size = OG_IMAGE_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
 export default async function Image() {
+    await connection();
     const stats = await getCatalogStats();
 
     return renderExamCookerOgImage({

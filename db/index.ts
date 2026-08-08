@@ -316,7 +316,14 @@ if (!globalThis.__examCookerDbBeforeExitHookRegistered) {
   globalThis.__examCookerDbBeforeExitHookRegistered = true;
 }
 
-export const db = getDb();
+export const db = new Proxy({} as Database, {
+  get(_target, property) {
+    const database = getDb();
+    const value = Reflect.get(database, property, database);
+
+    return typeof value === "function" ? value.bind(database) : value;
+  },
+});
 
 export type { Database };
 export * from "@/db/schema";
