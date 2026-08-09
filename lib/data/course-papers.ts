@@ -242,10 +242,11 @@ export async function getCoursePapers(
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const orderedRows = await getOrderedCoursePapers(input);
+    const { page, pageSize, ...orderedInput } = input;
+    const orderedRows = await getOrderedCoursePapers(orderedInput);
 
-    const skip = Math.max(0, (input.page - 1) * input.pageSize);
-    const visibleRows = orderedRows.slice(skip, skip + input.pageSize);
+    const skip = Math.max(0, (page - 1) * pageSize);
+    const visibleRows = orderedRows.slice(skip, skip + pageSize);
 
     return {
         totalCount: orderedRows.length,

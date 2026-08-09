@@ -2,6 +2,7 @@
 
 import React, { ViewTransition, useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import {
     Check,
     Download,
@@ -34,6 +35,7 @@ import {
     DESKTOP_SELECT_ALL_HOST_ID,
     MOBILE_SELECT_ALL_HOST_ID,
 } from "./course-paper-grid-controls";
+import { getPastPaperDetailPath } from "@/lib/seo";
 
 type Props = {
     papers: CoursePaperListItem[];
@@ -187,6 +189,7 @@ export default function CoursePaperGrid({
         useReducer(coursePaperGridReducer, initialCoursePaperGridState);
     const splitDragPaperRef = useRef<CoursePaperListItem | null>(null);
     const splitDragSideRef = useRef<PaperSplitSide | null>(null);
+    const router = useRouter();
     const { toast } = useToast();
     const { isSupported: splitViewSupported, openPaperSplit } = usePaperSplitView();
     const wideRemainder = papers.length % 5;
@@ -293,11 +296,19 @@ export default function CoursePaperGrid({
         [courseCode, courseTitle],
     );
 
+    const getPaperPageHref = useCallback(
+        (paper: CoursePaperListItem) => {
+            const href = getPastPaperDetailPath(paper.id, courseCode);
+            return detailSearchString ? `${href}?${detailSearchString}` : href;
+        },
+        [courseCode, detailSearchString],
+    );
+
     const buildSplitPaper = useCallback(
         (paper: CoursePaperListItem): PaperSplitItem => ({
             id: paper.id,
             title: paper.title,
-            href: `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`,
+            href: getPaperPageHref(paper),
             fileUrl: paper.fileUrl,
             fileName: getPaperFileName(paper),
             courseCode,
@@ -310,7 +321,7 @@ export default function CoursePaperGrid({
                 paper.hasAnswerKey ? "Answer key" : null,
             ].filter((value): value is string => Boolean(value)),
         }),
-        [courseCode, courseTitle, getPaperFileName],
+        [courseCode, courseTitle, getPaperFileName, getPaperPageHref],
     );
 
     const getSplitSideForPoint = useCallback((x: number): PaperSplitSide | null => {
@@ -340,9 +351,9 @@ export default function CoursePaperGrid({
     );
 
     const openPaperPage = useCallback((paper: CoursePaperListItem) => {
-        window.location.assign(`/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`);
+        router.push(getPaperPageHref(paper));
         closeContextMenu();
-    }, [closeContextMenu, courseCode]);
+    }, [closeContextMenu, getPaperPageHref, router]);
 
     const openPdfInNewTab = useCallback((paper: CoursePaperListItem) => {
         window.open(paper.fileUrl, "_blank", "noopener,noreferrer");
@@ -680,7 +691,7 @@ export default function CoursePaperGrid({
                                 paper={paper}
                                 courseCode={courseCode}
                                 courseTitle={courseTitle}
-                                detailSearchString={detailSearchString}
+                                href={getPaperPageHref(paper)}
                                 index={index}
                                 selected={selected.has(paper.id)}
                                 onToggleSelect={toggle}

@@ -277,13 +277,19 @@ export async function getSiblingPastPaper(input: {
     );
 }
 
-export async function getAdjacentPapersInCourse(input: {
+type AdjacentPapersInCourseInput = {
     paperId: string;
     courseId: string;
     filters: CoursePaperFilters;
-    sort: CoursePaperSort;
-    examFocus?: ExamType;
-}) {
+} & (
+    | { sort: "seasonal"; examFocus: ExamType }
+    | {
+          sort: Exclude<CoursePaperSort, "seasonal">;
+          examFocus?: never;
+      }
+);
+
+export async function getAdjacentPapersInCourse(input: AdjacentPapersInCourseInput) {
     "use cache";
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -299,7 +305,7 @@ export async function getAdjacentPapersInCourse(input: {
                           courseId: input.courseId,
                           filters: input.filters,
                           sort: "seasonal",
-                          examFocus: input.examFocus!,
+                          examFocus: input.examFocus,
                       })
                     : await getOrderedCoursePapers({
                           courseId: input.courseId,

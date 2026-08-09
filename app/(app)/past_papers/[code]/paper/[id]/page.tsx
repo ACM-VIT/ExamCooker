@@ -5,7 +5,6 @@ import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import PDFViewerClient from '@/app/components/pdf-viewer-client';
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { connection } from "next/server";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
 import ShareLink from '@/app/components/share-link';
@@ -20,28 +19,19 @@ import {
 // import PastPaperTagEditor from "@/app/components/past-paper-tag-editor";
 import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } from "@/lib/seo";
 import { normalizeCourseCode } from "@/lib/course-tags";
-import { examSlugToType } from "@/lib/exam-slug";
 import { examTypeLabel } from "@/lib/exam-slug";
 import { buildPastPaperPdfFileName } from "@/lib/downloads/resource-names";
 import type { ExamType } from "@/db";
-import { campusValues, semesterValues, type Campus, type Semester } from "@/db";
 import { getExamFocusForDate } from "@/lib/exam-focus";
 import { getUpcomingExamsForCourses } from "@/lib/data/upcoming-exams";
-import type { CoursePaperSort } from "@/lib/data/course-papers";
+import {
+    buildPastPaperSearchString,
+    getCoursePaperFilters,
+    parsePastPaperSearchParams,
+    type PastPaperSearchParams,
+} from "@/lib/past-paper-search-params";
 
-type SearchParamsRaw = {
-    exam?: string;
-    slot?: string;
-    year?: string;
-    semester?: string;
-    campus?: string;
-    answer_key?: string;
-    sort?: string;
-    page?: string;
-};
-
-const SEMESTER_VALUES = new Set<Semester>(semesterValues);
-const CAMPUS_VALUES = new Set<Campus>(campusValues);
+export const instant = true;
 
 //todo refactor to utility function and move to lib
 const ACRONYM_SKIP_WORDS = new Set([
@@ -80,74 +70,6 @@ function getHeadingTitle(courseTitle: string): string {
     const isLikelyToWrap = courseTitle.length > 30 || courseTitle.split(/\s+/).length > 4;
 
     return isLikelyToWrap && acronym.length >= 2 ? acronym : courseTitle;
-}
-
-function splitList(raw: string | undefined): string[] {
-    if (!raw) return [];
-    const values: string[] = [];
-    for (const item of raw.split(",")) {
-        const value = item.trim();
-        if (value) values.push(value);
-    }
-    return values;
-}
-
-function parseUppercaseEnumList<T extends string>(
-    raw: string | undefined,
-    allowed: ReadonlySet<T>,
-): T[] {
-    const values: T[] = [];
-    for (const value of splitList(raw)) {
-        const normalized = value.toUpperCase() as T;
-        if (allowed.has(normalized)) values.push(normalized);
-    }
-    return values;
-}
-
-function parseExamTypes(raw: string | undefined): ExamType[] {
-    const values: ExamType[] = [];
-    for (const value of splitList(raw)) {
-        const examType = examSlugToType(value);
-        if (examType) values.push(examType);
-    }
-    return values;
-}
-
-function parseYears(raw: string | undefined): number[] {
-    const values: number[] = [];
-    for (const value of splitList(raw)) {
-        const year = Number(value);
-        if (!Number.isNaN(year)) values.push(year);
-    }
-    return values;
-}
-
-function parseSearchParams(raw: SearchParamsRaw): {
-    examTypes: ExamType[];
-    slots: string[];
-    years: number[];
-    semesters: Semester[];
-    campuses: Campus[];
-    hasAnswerKey: boolean;
-    sort: CoursePaperSort;
-} {
-    const sort = raw.sort?.toLowerCase();
-
-    return {
-        examTypes: parseExamTypes(raw.exam),
-        slots: splitList(raw.slot).map((s) => s.toUpperCase()),
-        years: parseYears(raw.year),
-        semesters: parseUppercaseEnumList(raw.semester, SEMESTER_VALUES),
-        campuses: parseUppercaseEnumList(raw.campus, CAMPUS_VALUES),
-        hasAnswerKey: raw.answer_key === "1",
-        sort:
-            sort === "seasonal" ||
-            sort === "year_desc" ||
-            sort === "year_asc" ||
-            sort === "recent"
-                ? sort
-                : "seasonal",
-    };
 }
 
 async function getCourseExamFocus(courseId: string): Promise<ExamType> {
@@ -236,14 +158,13 @@ async function PaperViewerContent({
     searchParamsPromise,
 }: {
     paramsPromise: Promise<{ code: string; id: string }>;
-    searchParamsPromise?: Promise<SearchParamsRaw>;
+    searchParamsPromise?: Promise<PastPaperSearchParams>;
 }) {
     const { code, id } = await paramsPromise;
     const rawSearchParams = (await searchParamsPromise) ?? {};
-    const parsedSearchParams = parseSearchParams(rawSearchParams);
-    const searchString = new URLSearchParams(
-        Object.entries(rawSearchParams).filter(([, value]) => Boolean(value)),
-    ).toString();
+    const parsedSearchParams = parsePastPaperSearchParams(rawSearchParams);
+    const coursePaperFilters = getCoursePaperFilters(parsedSearchParams);
+    const searchString = buildPastPaperSearchString(rawSearchParams);
 
     const paper = await getPastPaperDetail(id);
     if (!paper) return notFound();
@@ -251,7 +172,8 @@ async function PaperViewerContent({
     const canonicalCode = paper.course?.code ?? "unassigned";
 
     if (normalizeCourseCode(code) !== canonicalCode && code !== canonicalCode) {
-        permanentRedirect(getPastPaperDetailPath(paper.id, canonicalCode));
+        const canonicalPath = getPastPaperDetailPath(paper.id, canonicalCode);
+        permanentRedirect(searchString ? `${canonicalPath}?${searchString}` : canonicalPath);
     }
 
     const displayTitle = paper.course?.title ?? paper.title.replace(/\.pdf$/i, "");
@@ -268,45 +190,52 @@ async function PaperViewerContent({
         year: paper.year,
         hasAnswerKey: paper.hasAnswerKey,
     });
+    const courseId = paper.courseId;
 
-    const [relatedPapers, siblingPaper] = paper.courseId
-        ? await Promise.all([
-              getRelatedPapersForCourse({
-                  paperId: paper.id,
-                  courseId: paper.courseId,
-                  examType: paper.examType,
-                  limit: 8,
-              }),
-              getSiblingPastPaper({
-                  paperId: paper.id,
-                  questionPaperId: paper.questionPaperId,
-                  courseId: paper.courseId,
-                  examType: paper.examType,
-                  slot: paper.slot,
-                  year: paper.year,
-                  semester: paper.semester,
-                  campus: paper.campus,
-                  hasAnswerKey: paper.hasAnswerKey,
-              }),
-          ])
-        : [[], null];
-
-    const adjacentPapers = paper.courseId
+    const relatedPapersPromise = courseId
+        ? getRelatedPapersForCourse({
+              paperId: paper.id,
+              courseId,
+              examType: paper.examType,
+              limit: 8,
+          })
+        : Promise.resolve([]);
+    const siblingPaperPromise = courseId
+        ? getSiblingPastPaper({
+              paperId: paper.id,
+              questionPaperId: paper.questionPaperId,
+              courseId,
+              examType: paper.examType,
+              slot: paper.slot,
+              year: paper.year,
+              semester: paper.semester,
+              campus: paper.campus,
+              hasAnswerKey: paper.hasAnswerKey,
+          })
+        : Promise.resolve(null);
+    const adjacentPapersPromise = courseId
         ? parsedSearchParams.sort === "seasonal"
-            ? await getAdjacentPapersInCourse({
+            ? getCourseExamFocus(courseId).then((examFocus) =>
+                  getAdjacentPapersInCourse({
+                      paperId: paper.id,
+                      courseId,
+                      filters: coursePaperFilters,
+                      sort: "seasonal",
+                      examFocus,
+                  }),
+              )
+            : getAdjacentPapersInCourse({
                   paperId: paper.id,
-                  courseId: paper.courseId,
-                  filters: parsedSearchParams,
-                  sort: "seasonal",
-                  examFocus: await getCourseExamFocus(paper.courseId),
-              })
-            : await getAdjacentPapersInCourse({
-                  paperId: paper.id,
-                  courseId: paper.courseId,
-                  filters: parsedSearchParams,
+                  courseId,
+                  filters: coursePaperFilters,
                   sort: parsedSearchParams.sort,
               })
-        : { prev: null, next: null };
+        : Promise.resolve({ prev: null, next: null });
+    const [relatedPapers, siblingPaper, adjacentPapers] = await Promise.all([
+        relatedPapersPromise,
+        siblingPaperPromise,
+        adjacentPapersPromise,
+    ]);
 
     const relatedItems = relatedPapers.map((item) => ({
         id: item.id,
@@ -325,11 +254,10 @@ async function PaperViewerContent({
     if (displayYear) metaPills.push({ value: displayYear });
     if (paper.course?.code) metaPills.push({ className: "hidden sm:inline-flex", value: paper.course.code });
 
-    const courseHref = `/past_papers/${canonicalCode}`;
-    const backLabel = paper.course?.code ?? "Past papers";
-
     const appendSearchString = (href: string) =>
         searchString ? `${href}?${searchString}` : href;
+    const courseHref = appendSearchString(`/past_papers/${canonicalCode}`);
+    const backLabel = paper.course?.code ?? "Past papers";
 
     const buildSideNavHref = (
         item: NonNullable<typeof adjacentPapers.prev> | NonNullable<typeof adjacentPapers.next>,
@@ -430,24 +358,24 @@ async function PaperViewerContent({
                     </div>
 
                     {relatedItems.length > 0 && (
-                        <RecentPaperStrip items={relatedItems} title="Related papers" />
+                        <RecentPaperStrip
+                            items={relatedItems}
+                            title="Related papers"
+                            detailSearchString={searchString}
+                        />
                     )}
                 </div>
         </>
     );
 }
 
-async function PdfViewerPage({
+function PdfViewerPage({
     params,
     searchParams,
 }: {
     params: Promise<{ code: string; id: string }>;
-    searchParams?: Promise<SearchParamsRaw>;
+    searchParams?: Promise<PastPaperSearchParams>;
 }) {
-    // Render dynamically: under `cacheComponents` a prerendered static shell
-    // would serve the Suspense skeleton fallback as the document, which then
-    // mismatches the resolved viewer content the client hydrates (React #418).
-    await connection();
     return (
         <DirectionalTransition>
             <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">

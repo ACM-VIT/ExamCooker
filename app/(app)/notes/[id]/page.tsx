@@ -3,7 +3,6 @@ import PDFViewerClient from '@/app/components/pdf-viewer-client';
 import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import {notFound} from "next/navigation";
 import {Metadata} from "next";
-import { connection } from "next/server";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import StructuredData from "@/app/components/seo/structured-data";
 
@@ -16,6 +15,8 @@ import { buildNotePdfFileName } from "@/lib/downloads/resource-names";
 import { stripPdfExtension } from "@/lib/pdf";
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+
+export const instant = true;
 
 const POSTED_AT_FORMATTER = new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
@@ -199,11 +200,7 @@ async function NoteViewerContent({
 
 }
 
-async function PdfViewerPage({ params }: { params: Promise<{ id: string }> }) {
-    // Render dynamically: under `cacheComponents` a prerendered static shell
-    // would serve the Suspense skeleton fallback as the document, which then
-    // mismatches the resolved viewer content the client hydrates (React #418).
-    await connection();
+function PdfViewerPage({ params }: { params: Promise<{ id: string }> }) {
     return (
         <DirectionalTransition>
             <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">

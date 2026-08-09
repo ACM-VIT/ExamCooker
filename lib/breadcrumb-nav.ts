@@ -18,6 +18,10 @@ export function normalizeRouteKey(pathWithSearch: string): string {
     return query ? `${path}?${query}` : path;
 }
 
+export function normalizePathnameKey(pathWithSearch: string): string {
+    return normalizeRouteKey(pathWithSearch).split("?")[0] ?? "";
+}
+
 export function describePathForBreadcrumb(fullPath: string): { label: string; href: string } {
     const [pathPart, queryPart] = fullPath.split("?");
     const query = queryPart ? `?${queryPart}` : "";
@@ -78,8 +82,15 @@ export function mergePrevCrumb(
     if (!prev) return items;
     const prevKey = normalizeRouteKey(prev.href);
     if (prevKey === normalizeRouteKey(currentRouteKey)) return items;
-    if (items.some((i) => i.href !== undefined && normalizeRouteKey(i.href) === prevKey)) {
-        return items;
+    const matchingItemIndex = items.findIndex(
+        (item) =>
+            item.href !== undefined &&
+            normalizePathnameKey(item.href) === normalizePathnameKey(prev.href),
+    );
+    if (matchingItemIndex !== -1) {
+        return items.map((item, index) =>
+            index === matchingItemIndex ? { ...item, href: prev.href } : item,
+        );
     }
     return [{ label: prev.label, href: prev.href }, ...items];
 }
