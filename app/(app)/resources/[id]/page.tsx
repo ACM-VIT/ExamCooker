@@ -71,11 +71,11 @@ function SubjectDetailShell() {
             aria-hidden="true"
         >
             <span className="block h-8 w-1/2 bg-black/10 dark:bg-white/10" />
-            <div className="mt-6 space-y-3">
+            <div className="mt-6 space-y-2">
                 {Array.from({ length: 4 }).map((_, index) => (
                     <div
                         key={index}
-                        className="h-14 rounded-md border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                        className="h-11 bg-[#82BEE9]/60 dark:bg-[#232530]/60"
                     />
                 ))}
             </div>
