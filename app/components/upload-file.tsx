@@ -290,9 +290,6 @@ function PastPaperMetadataFields({
 }) {
     return (
         <>
-            <p className="text-xs leading-5 text-black/55 dark:text-[#D5D5D5]/55">
-                Metadata is optional. Leave anything blank and the AI review will fill in what it can from the paper.
-            </p>
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <label
