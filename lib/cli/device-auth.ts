@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, or } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, or } from "drizzle-orm";
 import { db, cliAccessToken, cliDeviceAuthRequest, user } from "@/db";
 import {
   buildCliAccessToken,
@@ -43,6 +43,10 @@ async function createUniqueUserCode() {
 export async function createCliDeviceAuthRequest(input?: {
   deviceName?: string | null;
 }) {
+  await db
+    .delete(cliDeviceAuthRequest)
+    .where(lt(cliDeviceAuthRequest.expiresAt, new Date()));
+
   const deviceCode = generateCliDeviceCode();
   const userCode = await createUniqueUserCode();
   const now = Date.now();

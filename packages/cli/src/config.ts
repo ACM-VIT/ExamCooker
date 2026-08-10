@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -60,7 +60,9 @@ export async function loadConfig(): Promise<ExamCookerConfig> {
 
 export async function saveConfig(config: ExamCookerConfig) {
   const configPath = getConfigPath();
-  await mkdir(dirname(configPath), { recursive: true });
+  const configDirectory = dirname(configPath);
+  await mkdir(configDirectory, { recursive: true, mode: 0o700 });
+  await chmod(configDirectory, 0o700);
   await writeFile(
     configPath,
     `${JSON.stringify(
@@ -71,8 +73,9 @@ export async function saveConfig(config: ExamCookerConfig) {
       null,
       2,
     )}\n`,
-    "utf8",
+    { encoding: "utf8", mode: 0o600 },
   );
+  await chmod(configPath, 0o600);
 }
 
 export async function clearConfig() {

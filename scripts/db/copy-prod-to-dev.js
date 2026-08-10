@@ -111,6 +111,21 @@ async function fetchSubjectsBatch(cursor) {
   );
 }
 
+async function fetchCoursesBatch(cursor) {
+  const [whereClause, params] = recordIdGreaterThan(cursor);
+  return queryRows(
+    prod.pool,
+    `
+      SELECT id, code, title, aliases
+      FROM "Course"
+      ${whereClause}
+      ORDER BY id ASC
+      LIMIT ${BATCH_SIZE}
+    `,
+    params,
+  );
+}
+
 async function fetchModulesBatch(cursor) {
   const [whereClause, params] = recordIdGreaterThan(cursor);
   return queryRows(
@@ -299,6 +314,27 @@ async function copyTags() {
   });
 }
 
+async function copyCourses() {
+  await copyInBatches('Courses', fetchCoursesBatch, async (courses) => {
+    await withDevTransaction(async (client) => {
+      for (const course of courses) {
+        await client.query(
+          `
+            INSERT INTO "Course" (id, code, title, aliases, "createdAt", "updatedAt")
+            VALUES ($1, $2, $3, $4, NOW(), NOW())
+            ON CONFLICT (code)
+            DO UPDATE SET
+              title = EXCLUDED.title,
+              aliases = EXCLUDED.aliases,
+              "updatedAt" = NOW()
+          `,
+          [course.id, course.code, course.title, course.aliases ?? []],
+        );
+      }
+    });
+  });
+}
+
 async function copySubjects() {
   await copyInBatches('Subjects', fetchSubjectsBatch, async (subjects) => {
     await withDevTransaction(async (client) => {
@@ -386,6 +422,8 @@ async function copyNotes(systemUserId) {
           'base."fileUrl"',
           'base."thumbNailUrl"',
           'base."isClear"',
+          'base."contentHash"',
+          '(SELECT c.code FROM "Course" c WHERE c.id = base."courseId") AS "courseCode"',
         ],
         cursor,
       }),
@@ -395,9 +433,9 @@ async function copyNotes(systemUserId) {
           await client.query(
             `
               INSERT INTO "Note" (
-                id, title, "fileUrl", "thumbNailUrl", "authorId", "isClear", "createdAt", "updatedAt"
+                id, title, "fileUrl", "thumbNailUrl", "authorId", "isClear", "contentHash", "courseId", "createdAt", "updatedAt"
               )
-              VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+              VALUES ($1, $2, $3, $4, $5, $6, $7, (SELECT id FROM "Course" WHERE code = $8), NOW(), NOW())
               ON CONFLICT (id)
               DO UPDATE SET
                 title = EXCLUDED.title,
@@ -405,6 +443,8 @@ async function copyNotes(systemUserId) {
                 "thumbNailUrl" = EXCLUDED."thumbNailUrl",
                 "authorId" = EXCLUDED."authorId",
                 "isClear" = EXCLUDED."isClear",
+                "contentHash" = EXCLUDED."contentHash",
+                "courseId" = EXCLUDED."courseId",
                 "updatedAt" = NOW()
             `,
             [
@@ -414,6 +454,8 @@ async function copyNotes(systemUserId) {
               note.thumbNailUrl,
               systemUserId,
               note.isClear,
+              note.contentHash,
+              note.courseCode,
             ],
           );
           await syncTagLinks(client, '_NoteToTag', note.id, note.tags);
@@ -436,6 +478,15 @@ async function copyPastPapers(systemUserId) {
           'base."fileUrl"',
           'base."thumbNailUrl"',
           'base."isClear"',
+          'base."contentHash"',
+          '(SELECT c.code FROM "Course" c WHERE c.id = base."courseId") AS "courseCode"',
+          'base."examType"',
+          'base.slot',
+          'base.year',
+          'base.semester',
+          'base.campus',
+          'base."hasAnswerKey"',
+          'base."page_edits" AS "pageEdits"',
         ],
         cursor,
       }),
@@ -445,9 +496,15 @@ async function copyPastPapers(systemUserId) {
           await client.query(
             `
               INSERT INTO "PastPaper" (
-                id, title, "fileUrl", "thumbNailUrl", "authorId", "isClear", "createdAt", "updatedAt"
+                id, title, "fileUrl", "thumbNailUrl", "authorId", "isClear",
+                "contentHash", "courseId", "examType", slot, year, semester, campus,
+                "hasAnswerKey", "page_edits", "createdAt", "updatedAt"
               )
-              VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+              VALUES (
+                $1, $2, $3, $4, $5, $6,
+                $7, (SELECT id FROM "Course" WHERE code = $8), $9, $10, $11, $12, $13,
+                $14, $15, NOW(), NOW()
+              )
               ON CONFLICT (id)
               DO UPDATE SET
                 title = EXCLUDED.title,
@@ -455,6 +512,16 @@ async function copyPastPapers(systemUserId) {
                 "thumbNailUrl" = EXCLUDED."thumbNailUrl",
                 "authorId" = EXCLUDED."authorId",
                 "isClear" = EXCLUDED."isClear",
+                "contentHash" = EXCLUDED."contentHash",
+                "courseId" = EXCLUDED."courseId",
+                "examType" = EXCLUDED."examType",
+                slot = EXCLUDED.slot,
+                year = EXCLUDED.year,
+                semester = EXCLUDED.semester,
+                campus = EXCLUDED.campus,
+                "hasAnswerKey" = EXCLUDED."hasAnswerKey",
+                "questionPaperId" = NULL,
+                "page_edits" = EXCLUDED."page_edits",
                 "updatedAt" = NOW()
             `,
             [
@@ -464,6 +531,15 @@ async function copyPastPapers(systemUserId) {
               paper.thumbNailUrl,
               systemUserId,
               paper.isClear,
+              paper.contentHash,
+              paper.courseCode,
+              paper.examType,
+              paper.slot,
+              paper.year,
+              paper.semester,
+              paper.campus,
+              paper.hasAnswerKey,
+              paper.pageEdits,
             ],
           );
           await syncTagLinks(client, '_PastPaperToTag', paper.id, paper.tags);
@@ -471,6 +547,40 @@ async function copyPastPapers(systemUserId) {
       });
     },
   );
+}
+
+async function copyPastPaperLinks() {
+  const links = await queryRows(
+    prod.pool,
+    `
+      SELECT id, "questionPaperId"
+      FROM "PastPaper"
+      WHERE "questionPaperId" IS NOT NULL
+      ORDER BY id ASC
+    `,
+  );
+  if (DRY_RUN) {
+    console.log(`Past paper links: done (${links.length} records)`);
+    return;
+  }
+
+  await withDevTransaction(async (client) => {
+    for (const link of links) {
+      const result = await client.query(
+        `
+          UPDATE "PastPaper"
+          SET "questionPaperId" = $2, "updatedAt" = NOW()
+          WHERE id = $1
+            AND EXISTS (SELECT 1 FROM "PastPaper" question WHERE question.id = $2)
+        `,
+        [link.id, link.questionPaperId],
+      );
+      if (result.rowCount !== 1) {
+        throw new Error(`Could not restore answer-key link ${link.id} -> ${link.questionPaperId}.`);
+      }
+    }
+  });
+  console.log(`Past paper links: done (${links.length} records)`);
 }
 
 async function copyForums() {
@@ -596,6 +706,7 @@ async function main() {
 
   const systemUser = await ensureSystemUser();
 
+  await copyCourses();
   await copyTags();
   await copySubjects();
   await copyModules();
@@ -605,6 +716,7 @@ async function main() {
   await copyComments(systemUser.id);
   await copyNotes(systemUser.id);
   await copyPastPapers(systemUser.id);
+  await copyPastPaperLinks();
 }
 
 main()

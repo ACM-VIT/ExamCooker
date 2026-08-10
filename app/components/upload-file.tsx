@@ -31,6 +31,14 @@ type ProcessedUploadResult = {
     thumbnailUrl: string | null;
     filename: string;
     message: string;
+    receiptId: string;
+};
+
+type UploadProcessResponse = {
+    success: boolean;
+    error?: string;
+    receiptId?: string;
+    result?: Omit<ProcessedUploadResult, "receiptId">;
 };
 
 type UploadSaveResponse = {
@@ -151,59 +159,6 @@ const isPdfFile = (file: File) =>
 const isImageFile = (file: File) => file.type.startsWith("image/");
 const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, "");
 const PROCESSOR_SUCCESS_MESSAGE = "processed successfully";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null;
-}
-
-function getStringField(
-    source: Record<string, unknown>,
-    ...keys: string[]
-): string | null {
-    for (const key of keys) {
-        const value = source[key];
-        if (typeof value === "string" && value.trim()) {
-            return value.trim();
-        }
-    }
-
-    return null;
-}
-
-function normalizeProcessedUploadResult(
-    payload: unknown,
-    fallbackFilename: string,
-): ProcessedUploadResult {
-    if (!isRecord(payload)) {
-        return {
-            fileUrl: "",
-            thumbnailUrl: null,
-            filename: fallbackFilename,
-            message: "Upload processor returned an invalid response.",
-        };
-    }
-
-    const fileUrl = getStringField(payload, "fileUrl", "file_url", "url") ?? "";
-    const filename =
-        getStringField(payload, "filename", "fileName", "name") ?? fallbackFilename;
-    const message =
-        getStringField(payload, "message") ??
-        (fileUrl
-            ? PROCESSOR_SUCCESS_MESSAGE
-            : "Upload processor did not return a file URL.");
-
-    return {
-        fileUrl,
-        filename,
-        message,
-        thumbnailUrl: getStringField(
-            payload,
-            "thumbnailUrl",
-            "thumbnail_url",
-            "thumbNailUrl",
-        ),
-    };
-}
 
 function uploadFormReducer(
     state: UploadFormState,
@@ -1078,12 +1033,6 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
 
             startTransition(async () => {
                 try {
-                    const processorBaseUrl =
-                        process.env.NEXT_PUBLIC_MICROSERVICE_URL?.replace(/\/$/, "");
-                    if (!processorBaseUrl) {
-                        throw new Error("Upload processor URL is not configured.");
-                    }
-
                     const formDatas = files.map((file, index) => {
                         const formData = new FormData();
                         formData.append("file", file);
@@ -1093,28 +1042,25 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
 
                     const promises = formDatas.map(async (formData) => {
                         const response = await fetch(
-                            `${processorBaseUrl}/process_pdf`,
+                            "/api/uploads/process",
                             {
                                 method: "POST",
                                 body: formData,
                             },
                         );
 
-                        if (!response.ok) {
-                            const errorText = await response.text().catch(() => "");
-                            const details = errorText
-                                ? `: ${errorText.slice(0, 240)}`
-                                : "";
-                            throw new Error(
-                                `Failed to upload file ${formData.get("filetitle")}${details}`,
-                            );
+                        const payload = (await response
+                            .json()
+                            .catch(() => null)) as UploadProcessResponse | null;
+                        if (
+                            !response.ok ||
+                            !payload?.success ||
+                            !payload.receiptId ||
+                            !payload.result
+                        ) {
+                            throw new Error(payload?.error ?? "Upload processing failed.");
                         }
-
-                        const payload = await response.json();
-                        return normalizeProcessedUploadResult(
-                            payload,
-                            String(formData.get("filetitle") ?? "Untitled"),
-                        );
+                        return { ...payload.result, receiptId: payload.receiptId };
                     });
 
                     const results = await Promise.all(promises);

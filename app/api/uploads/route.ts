@@ -1,19 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import {
     createUploadedResources,
     type CreateUploadedResourcesInput,
-    type ProcessedUploadResult,
     type UploadVariant,
 } from "@/lib/uploads/create-uploaded-resources";
-import { campusValues, examTypeValues, semesterValues } from "@/db";
+import { campusValues, db, examTypeValues, semesterValues, uploadResultReceipt } from "@/db";
+import { checkSlidingWindowRateLimit } from "@/lib/redis-rate-limit";
 
+const MAX_UPLOAD_BATCH = 8;
+const SAVE_RATE_LIMIT = 12;
+const SAVE_RATE_WINDOW_MS = 60 * 60 * 1000;
 const uploadVariants = new Set<UploadVariant>(["Notes", "Past Papers"]);
 const examTypes = new Set<string>(examTypeValues);
 const semesters = new Set<string>(semesterValues);
 const campuses = new Set<string>(campusValues);
 
-type UploadRequestBody = Partial<Omit<CreateUploadedResourcesInput, "userEmail">>;
+type UploadRequestBody = Partial<
+    Omit<CreateUploadedResourcesInput, "userEmail" | "results">
+> & { results?: unknown };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -26,27 +32,6 @@ function stringValue(value: unknown) {
 function nullableStringValue(value: unknown) {
     const string = stringValue(value);
     return string.length > 0 ? string : null;
-}
-
-function normalizeResult(value: unknown): ProcessedUploadResult | null {
-    if (!isRecord(value)) {
-        return null;
-    }
-
-    const fileUrl = stringValue(value.fileUrl);
-    const filename = stringValue(value.filename);
-    const message = stringValue(value.message);
-
-    if (!fileUrl || !filename || !message) {
-        return null;
-    }
-
-    return {
-        fileUrl,
-        filename,
-        message,
-        thumbnailUrl: nullableStringValue(value.thumbnailUrl),
-    };
 }
 
 function validateOptionalEnum(
@@ -63,10 +48,23 @@ function validateOptionalEnum(
 
 export async function POST(request: NextRequest) {
     const session = await auth();
-    if (!session?.user?.email) {
+    if (!session?.user?.id || !session.user.email) {
         return NextResponse.json(
             { success: false, error: "You must be signed in to upload files." },
             { status: 401 },
+        );
+    }
+
+    const rateLimit = await checkSlidingWindowRateLimit({
+        identifier: session.user.id,
+        limit: SAVE_RATE_LIMIT,
+        prefix: "upload-save",
+        windowMs: SAVE_RATE_WINDOW_MS,
+    });
+    if (!rateLimit.success) {
+        return NextResponse.json(
+            { success: false, error: "You have saved several uploads recently. Try again later." },
+            { status: 429 },
         );
     }
 
@@ -95,12 +93,19 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const results = Array.isArray(body.results)
-        ? body.results.map(normalizeResult)
+    const receiptIds = Array.isArray(body.results)
+        ? body.results.map((result) =>
+              isRecord(result) ? stringValue(result.receiptId) : "",
+          )
         : [];
-    if (results.length === 0 || results.some((result) => result === null)) {
+    if (
+        receiptIds.length === 0 ||
+        receiptIds.length > MAX_UPLOAD_BATCH ||
+        receiptIds.some((receiptId) => !receiptId) ||
+        new Set(receiptIds).size !== receiptIds.length
+    ) {
         return NextResponse.json(
-            { success: false, error: "Upload results are missing required fields." },
+            { success: false, error: `Upload batches must contain 1-${MAX_UPLOAD_BATCH} valid receipts.` },
             { status: 400 },
         );
     }
@@ -122,9 +127,33 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+        const results = await db.transaction(async (transaction) => {
+            const now = new Date();
+            const consumed = await transaction
+                .update(uploadResultReceipt)
+                .set({ consumedAt: now })
+                .where(
+                    and(
+                        inArray(uploadResultReceipt.id, receiptIds),
+                        eq(uploadResultReceipt.userId, session.user.id),
+                        gt(uploadResultReceipt.expiresAt, now),
+                        isNull(uploadResultReceipt.consumedAt),
+                    ),
+                )
+                .returning({
+                    id: uploadResultReceipt.id,
+                    result: uploadResultReceipt.result,
+                });
+            if (consumed.length !== receiptIds.length) {
+                throw new Error("One or more upload receipts are invalid, expired, or already used.");
+            }
+            const resultById = new Map(consumed.map((receipt) => [receipt.id, receipt.result]));
+            return receiptIds.map((receiptId) => resultById.get(receiptId)!);
+        });
+
         const result = await createUploadedResources({
             userEmail: session.user.email,
-            results: results as ProcessedUploadResult[],
+            results,
             year: stringValue(body.year),
             slot: stringValue(body.slot),
             variant,

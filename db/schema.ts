@@ -231,6 +231,52 @@ export const cliDeviceAuthRequest = cockroachTable(
   ],
 );
 
+export type StoredUploadResult = {
+  fileUrl: string;
+  thumbnailUrl: string | null;
+  filename: string;
+  message: string;
+};
+
+export const uploadResultReceipt = cockroachTable(
+  "UploadResultReceipt",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    userId: string()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    result: jsonb().$type<StoredUploadResult>().notNull(),
+    consumedAt: timestamp({ mode: "date", precision: 3 }),
+    expiresAt: timestamp({ mode: "date", precision: 3 }).notNull(),
+    createdAt: createdAtColumn(),
+  },
+  (table) => [
+    index("UploadResultReceipt_expiresAt_idx").using("btree", table.expiresAt.asc()),
+    index("UploadResultReceipt_userId_idx").using("btree", table.userId.asc()),
+  ],
+);
+
+export const nativePushToken = cockroachTable(
+  "NativePushToken",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    token: string().notNull(),
+    tokenHash: varchar({ length: 64 }).notNull(),
+    platform: varchar({ length: 16 }).notNull(),
+    userId: string().references(() => user.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    lastSeenAt: timestamp({ mode: "date", precision: 3 }).defaultNow().notNull(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("NativePushToken_tokenHash_key").using("btree", table.tokenHash.asc()),
+    index("NativePushToken_userId_idx").using("btree", table.userId.asc()),
+  ],
+);
+
 export const course = cockroachTable(
   "Course",
   {
