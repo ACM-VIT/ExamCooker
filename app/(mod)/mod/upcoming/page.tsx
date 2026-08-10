@@ -11,6 +11,8 @@ export const metadata = {
     title: "Upcoming exams · Mod",
 };
 
+export const instant = true;
+
 function UpcomingExamsShell() {
     return (
         <div

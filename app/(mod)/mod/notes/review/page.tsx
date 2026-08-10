@@ -1,7 +1,7 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import NoteReviewList from "@/app/components/mod/note-review-list";
@@ -12,6 +12,8 @@ import { course, db, note } from "@/db";
 export const metadata = {
     title: "Note metadata review · Mod",
 };
+
+export const instant = true;
 
 function NoteReviewShell() {
     return (
@@ -38,7 +40,12 @@ async function NoteReviewContent() {
                 courseId: note.courseId,
             })
             .from(note)
-            .where(isNull(note.courseId))
+            .where(
+                and(
+                    isNull(note.moderationArchivedAt),
+                    or(eq(note.isClear, false), isNull(note.courseId)),
+                ),
+            )
             .orderBy(desc(note.createdAt))
             .limit(100),
         db

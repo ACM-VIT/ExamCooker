@@ -185,11 +185,11 @@ export default function CoursePaperGrid({
     courseTitle,
     detailSearchString,
 }: Props) {
+    const router = useRouter();
     const [{ contextMenu, isDownloading, portalReady, selected, splitDrag }, dispatch] =
         useReducer(coursePaperGridReducer, initialCoursePaperGridState);
     const splitDragPaperRef = useRef<CoursePaperListItem | null>(null);
     const splitDragSideRef = useRef<PaperSplitSide | null>(null);
-    const router = useRouter();
     const { toast } = useToast();
     const { isSupported: splitViewSupported, openPaperSplit } = usePaperSplitView();
     const wideRemainder = papers.length % 5;
@@ -339,6 +339,7 @@ export default function CoursePaperGrid({
 
     const openContextMenu = useCallback(
         (paper: CoursePaperListItem, point: { x: number; y: number }) => {
+            router.prefetch(getPaperPageHref(paper));
             dispatch({
                 type: "context-menu",
                 contextMenu: {
@@ -347,7 +348,7 @@ export default function CoursePaperGrid({
                 },
             });
         },
-        [],
+        [getPaperPageHref, router],
     );
 
     const openPaperPage = useCallback((paper: CoursePaperListItem) => {

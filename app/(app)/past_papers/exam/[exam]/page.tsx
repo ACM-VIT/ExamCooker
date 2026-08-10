@@ -7,6 +7,7 @@ import PastPapersCourseSearch from "@/app/components/past_papers/past-papers-cou
 import StructuredData from "@/app/components/seo/structured-data";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
+import IntentPrefetchLink from "@/app/components/common/intent-prefetch-link";
 import {
     getExamHubPageData,
     getExamHubSummaries,
@@ -239,7 +240,7 @@ async function ExamHubContent({
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
                         {data.courses.map((course) => (
                             <div key={course.id} className="group relative h-full">
-                                <Link
+                                <IntentPrefetchLink
                                     href={getCourseExamPath(course.code, data.slug)}
                                     transitionTypes={["nav-forward"]}
                                     className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 hover:scale-[1.03] hover:shadow-xl hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
@@ -265,7 +266,7 @@ async function ExamHubContent({
                                             </span>
                                         )}
                                     </div>
-                                </Link>
+                                </IntentPrefetchLink>
                             </div>
                         ))}
                     </div>

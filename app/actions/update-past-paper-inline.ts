@@ -8,6 +8,7 @@ import { db, pastPaper, pastPaperToTag } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { campusValues, examTypeValues, semesterValues } from "@/db/enums";
 import { findOrCreateTag } from "@/db/helpers";
+import { clearedModerationReview } from "@/lib/ai/moderation-review-types";
 
 const schema = z.object({
   id: z.string().min(1),
@@ -200,6 +201,7 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
           campus: parsed.campus,
           hasAnswerKey: parsed.hasAnswerKey,
           questionPaperId: nextQuestionPaperId,
+          ...clearedModerationReview,
         })
         .where(eq(pastPaper.id, parsed.id));
 

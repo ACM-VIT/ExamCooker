@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { connection } from "next/server";
 import { Suspense } from "react";
 import ClientSide from "@/app/(app)/client-side";
 import { auth } from "@/app/auth";
@@ -11,8 +10,9 @@ export const metadata: Metadata = {
   description: "Private live infrastructure telemetry for ExamCooker.",
 };
 
+export const instant = true;
+
 async function ProtectedAzureObservabilityDashboard() {
-  await connection();
   const session = await auth();
   if (!session?.user) redirect("/");
   if (session.user.role !== "MODERATOR") notFound();

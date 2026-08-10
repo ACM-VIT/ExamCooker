@@ -6,6 +6,7 @@ import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { db, note } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
+import { clearedModerationReview } from "@/lib/ai/moderation-review-types";
 
 const schema = z.object({
     id: z.string().min(1),
@@ -24,7 +25,7 @@ export async function updateNoteCourse(input: UpdateNoteCourseInput) {
 
     await db
         .update(note)
-        .set({ courseId: parsed.courseId })
+        .set({ courseId: parsed.courseId, ...clearedModerationReview })
         .where(eq(note.id, parsed.id));
 
     revalidatePath("/mod/notes/review");

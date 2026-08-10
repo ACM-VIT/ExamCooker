@@ -18,6 +18,7 @@ import {
 } from "@/app/components/moderation/tag-utils";
 import { useModeratorInlineEditorOptions } from "@/app/components/moderation/use-moderator-inline-editor-options";
 import { useToast } from "@/app/components/ui/use-toast";
+import ResourceCorrectionTrigger from "@/app/components/corrections/resource-correction-trigger";
 
 type NoteInlineEditorProps = {
   initialCourseId: string | null;
@@ -80,8 +81,12 @@ export default function NoteInlineEditor({
     );
   }, [baseline, draft]);
 
-  if (status === "loading" || !isModerator) {
+  if (status === "loading") {
     return null;
+  }
+
+  if (!isModerator) {
+    return <ResourceCorrectionTrigger resourceId={noteId} resourceType="note" />;
   }
 
   const handleSave = () => {

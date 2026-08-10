@@ -2,8 +2,9 @@ import { generateText, Output } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { AI_MODERATION_MODEL } from "@/lib/ai/moderation-review-types";
 
-const AI_PAST_PAPER_MODEL = process.env.OPENAI_PAST_PAPER_MODEL?.trim() || "gpt-5.4-mini";
+const AI_PAST_PAPER_MODEL = AI_MODERATION_MODEL;
 const COURSE_CODE_REGEX = /^[A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3}$/i;
 const SLOT_OPTIONS = [
     "A1",

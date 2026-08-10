@@ -216,6 +216,7 @@ async function CourseExamContent({
                         />
                         <Link
                             href={getCoursePastPapersPath(course.code)}
+                            prefetch
                             transitionTypes={["nav-back"]}
                             className="inline-flex h-9 items-center border border-black/60 px-3 text-sm font-semibold text-black transition hover:bg-[#5FC4E7]/25 dark:border-[#D5D5D5]/60 dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7] dark:hover:bg-[#3BF4C7]/10 dark:hover:text-[#3BF4C7]"
                         >
@@ -232,6 +233,7 @@ async function CourseExamContent({
                                 <Link
                                     key={type}
                                     href={getCourseExamPath(course.code, examTypeToSlug(type))}
+                                    prefetch
                                     transitionTypes={["nav-forward"]}
                                     className="inline-flex h-8 items-center border border-black/30 px-3 text-xs font-semibold text-black transition hover:bg-black/5 dark:border-[#D5D5D5]/40 dark:text-[#D5D5D5] dark:hover:bg-white/5"
                                 >

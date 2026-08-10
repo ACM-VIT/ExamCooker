@@ -14,6 +14,8 @@ export const metadata = {
     title: "Paper metadata review · Mod",
 };
 
+export const instant = true;
+
 function PaperReviewShell() {
     return (
         <div
@@ -48,12 +50,15 @@ async function PaperReviewContent() {
             })
             .from(pastPaper)
             .where(
-                or(
-                    eq(pastPaper.isClear, false),
-                    isNull(pastPaper.courseId),
-                    isNull(pastPaper.examType),
-                    isNull(pastPaper.year),
-                    and(eq(pastPaper.hasAnswerKey, true), isNull(pastPaper.questionPaperId)),
+                and(
+                    isNull(pastPaper.moderationArchivedAt),
+                    or(
+                        eq(pastPaper.isClear, false),
+                        isNull(pastPaper.courseId),
+                        isNull(pastPaper.examType),
+                        isNull(pastPaper.year),
+                        and(eq(pastPaper.hasAnswerKey, true), isNull(pastPaper.questionPaperId)),
+                    ),
                 ),
             )
             .orderBy(desc(pastPaper.createdAt))

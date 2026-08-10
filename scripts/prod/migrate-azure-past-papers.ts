@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { BlobServiceClient } from "@azure/storage-blob";
 import { asc, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
 import { pastPaper } from "../../db";
 import { createScriptDb } from "../lib/db";
 import { loadScriptEnv } from "../lib/env";
@@ -20,6 +21,20 @@ type PromotionManifest = {
     thumbNailUrl: string | null;
   }>;
 };
+
+const PromotionManifestSchema = z.object({
+  touchedPapers: z.array(
+    z.object({
+      sourcePaperId: z.string().min(1),
+      targetPaperId: z.string().min(1),
+      action: z.enum(["create", "update"]),
+      courseCode: z.string().nullable(),
+      title: z.string(),
+      fileUrl: z.string().url(),
+      thumbNailUrl: z.string().url().nullable(),
+    }),
+  ),
+});
 
 type StateRecord = {
   sourceUrl: string;
@@ -180,6 +195,30 @@ async function readJsonFile<T>(pathname: string, fallback: T) {
   }
 }
 
+async function readPromotionManifest(pathname: string): Promise<PromotionManifest> {
+  let raw: string;
+  try {
+    raw = await readFile(pathname, "utf8");
+  } catch (error) {
+    throw new Error(`Could not read promotion manifest ${pathname}.`, { cause: error });
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`Promotion manifest ${pathname} is not valid JSON.`, { cause: error });
+  }
+
+  const validated = PromotionManifestSchema.safeParse(parsed);
+  if (!validated.success) {
+    throw new Error(
+      `Promotion manifest ${pathname} has an invalid shape: ${validated.error.message}`,
+    );
+  }
+  return validated.data;
+}
+
 function timestamp() {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
@@ -211,7 +250,7 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   await mkdir(REPORT_DIR, { recursive: true });
 
-  const manifest = await readJsonFile<PromotionManifest>(options.manifestFile, { touchedPapers: [] });
+  const manifest = await readPromotionManifest(options.manifestFile);
   const { db: target, close } = createScriptDb(options.databaseUrl);
   const state = await readJsonFile<StateFile>(options.stateFile, {
     version: 1,

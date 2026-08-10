@@ -1,6 +1,6 @@
 import React from "react";
-import Link from "next/link";
 import Image from "@/app/components/common/app-image";
+import IntentPrefetchLink from "@/app/components/common/intent-prefetch-link";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { examTypeLabel } from "@/lib/exam-slug";
 import type { ExamType } from "@/db";
@@ -42,7 +42,7 @@ export default function RecentPaperStrip({
                         : hrefBase;
                     const thumb = normalizeGcsUrl(item.thumbNailUrl);
                     return (
-                        <Link
+                        <IntentPrefetchLink
                             key={item.id}
                             href={href}
                             transitionTypes={["nav-forward"]}
@@ -85,7 +85,7 @@ export default function RecentPaperStrip({
                                     )}
                                 </div>
                             </div>
-                        </Link>
+                        </IntentPrefetchLink>
                     );
                 })}
             </div>

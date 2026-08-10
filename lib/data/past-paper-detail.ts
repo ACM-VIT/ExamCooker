@@ -159,7 +159,7 @@ function readCachedDate(value: unknown, fieldName: string) {
     return date;
 }
 
-export async function getPastPaperDetail(id: string) {
+async function getCachedPastPaperDetail(id: string) {
     "use cache";
     cacheTag("past_papers");
     cacheTag(`past_paper:${id}`);
@@ -172,6 +172,15 @@ export async function getPastPaperDetail(id: string) {
         },
         async () => loadPastPaperDetail(id),
     );
+}
+
+export async function getPastPaperDetail(id: string) {
+    const cached = await getCachedPastPaperDetail(id);
+    if (cached) return cached;
+
+    // Do not let a transient database/cache miss become a shared 404 for the
+    // lifetime of the cache entry. Missing resources are cheap to recheck.
+    return loadPastPaperDetail(id);
 }
 
 export async function getSiblingPastPaper(input: {

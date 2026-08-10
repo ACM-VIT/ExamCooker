@@ -47,7 +47,14 @@ const courseCodes = new Set(
 );
 
 function strictGroupKey(paper: CandidatePaper) {
-  return [paper.courseId, paper.examType, paper.slot, paper.year].join("::");
+  return [
+    paper.courseId,
+    paper.examType,
+    paper.slot,
+    paper.year,
+    paper.semester,
+    paper.campus,
+  ].join("::");
 }
 
 function compareByCreatedAt(left: CandidatePaper, right: CandidatePaper) {

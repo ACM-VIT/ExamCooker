@@ -190,6 +190,52 @@
     animation-delay: calc(var(--ec-row-index, 0) * 28ms);
 }
 
+/* Text shimmer for in-progress AI/agent work — ported from the AI SDK
+   Elements "Shimmer" (via Projects/conclave) as a pure CSS animation: a faint
+   base with a brighter highlight band sweeping across the glyphs. */
+.ec-shimmer {
+    --ec-shimmer-base: rgb(0 0 0 / 0.45);
+    --ec-shimmer-highlight: #0D5875;
+    position: relative;
+    display: inline-block;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    background-image:
+        linear-gradient(
+            90deg,
+            transparent calc(50% - var(--ec-shimmer-spread, 40px)),
+            var(--ec-shimmer-highlight),
+            transparent calc(50% + var(--ec-shimmer-spread, 40px))
+        ),
+        linear-gradient(var(--ec-shimmer-base), var(--ec-shimmer-base));
+    background-size: 250% 100%, auto;
+    background-repeat: no-repeat, padding-box;
+    animation: ec-shimmer var(--ec-shimmer-duration, 2s) linear infinite;
+}
+
+.dark .ec-shimmer {
+    --ec-shimmer-base: rgb(213 213 213 / 0.4);
+    --ec-shimmer-highlight: #3BF4C7;
+}
+
+@keyframes ec-shimmer {
+    from {
+        background-position: 100% center, 0 0;
+    }
+    to {
+        background-position: 0% center, 0 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ec-shimmer {
+        animation: none;
+        color: inherit;
+        background-image: none;
+    }
+}
+
 /* Generic icon button — soft scale-up on hover, snappy press-down. */
 .ec-icon-button {
     transition: transform 180ms var(--ec-ease-out-soft),

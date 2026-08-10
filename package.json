@@ -26,6 +26,8 @@
     "backfill_metadata:dry": "tsx scripts/backfill-paper-metadata.js --dry-run",
     "backfill_answer_key_links": "tsx scripts/backfill-answer-key-links.ts",
     "backfill_answer_key_links:dry": "tsx scripts/backfill-answer-key-links.ts --dry-run",
+    "backfill_content_hashes": "tsx scripts/backfill-content-hashes.ts --apply",
+    "backfill_content_hashes:dry": "tsx scripts/backfill-content-hashes.ts",
     "copy_prod_to_dev": "tsx scripts/db/copy-prod-to-dev.js",
     "migrate_dev_bucket": "tsx scripts/storage/migrate-dev-bucket.ts",
     "migrate_gcs_to_azure": "tsx scripts/storage/migrate-gcs-to-azure.ts",

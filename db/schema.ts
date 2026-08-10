@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -22,6 +24,8 @@ import {
   voteTypeValues,
 } from "@/db/enums";
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
+import type { AiModerationReview } from "@/lib/ai/moderation-review-types";
+import type { CorrectionReportDecision } from "@/lib/ai/content-correction-types";
 
 const cockroachEnum = pgEnum;
 const cockroachTable = pgTable;
@@ -227,6 +231,52 @@ export const cliDeviceAuthRequest = cockroachTable(
   ],
 );
 
+export type StoredUploadResult = {
+  fileUrl: string;
+  thumbnailUrl: string | null;
+  filename: string;
+  message: string;
+};
+
+export const uploadResultReceipt = cockroachTable(
+  "UploadResultReceipt",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    userId: string()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    result: jsonb().$type<StoredUploadResult>().notNull(),
+    consumedAt: timestamp({ mode: "date", precision: 3 }),
+    expiresAt: timestamp({ mode: "date", precision: 3 }).notNull(),
+    createdAt: createdAtColumn(),
+  },
+  (table) => [
+    index("UploadResultReceipt_expiresAt_idx").using("btree", table.expiresAt.asc()),
+    index("UploadResultReceipt_userId_idx").using("btree", table.userId.asc()),
+  ],
+);
+
+export const nativePushToken = cockroachTable(
+  "NativePushToken",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    token: string().notNull(),
+    tokenHash: varchar({ length: 64 }).notNull(),
+    platform: varchar({ length: 16 }).notNull(),
+    userId: string().references(() => user.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    lastSeenAt: timestamp({ mode: "date", precision: 3 }).defaultNow().notNull(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex("NativePushToken_tokenHash_key").using("btree", table.tokenHash.asc()),
+    index("NativePushToken_userId_idx").using("btree", table.userId.asc()),
+  ],
+);
+
 export const course = cockroachTable(
   "Course",
   {
@@ -354,6 +404,13 @@ export const note = cockroachTable(
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
     thumbNailUrl: string(),
+    contentHash: string(),
+    aiReview: jsonb("aiReview").$type<AiModerationReview>(),
+    aiReviewedAt: timestamp("aiReviewedAt", { mode: "date", precision: 3 }),
+    moderationArchivedAt: timestamp("moderationArchivedAt", {
+      mode: "date",
+      precision: 3,
+    }),
     courseId: string().references(() => course.id, {
       onDelete: "set null",
       onUpdate: "cascade",
@@ -368,6 +425,11 @@ export const note = cockroachTable(
       table.isClear.asc(),
       table.createdAt.asc(),
     ),
+    index("Note_courseId_contentHash_idx").using(
+      "btree",
+      table.courseId.asc(),
+      table.contentHash.asc(),
+    ),
     index("Note_courseId_isClear_updatedAt_idx").using(
       "btree",
       table.courseId.asc(),
@@ -379,6 +441,10 @@ export const note = cockroachTable(
       "btree",
       table.isClear.asc(),
       table.createdAt.asc(),
+    ),
+    index("Note_moderationArchivedAt_idx").using(
+      "btree",
+      table.moderationArchivedAt.asc(),
     ),
     index("Note_title_trgm_idx").using("gin", table.title.asc()),
   ],
@@ -397,6 +463,13 @@ export const pastPaper = cockroachTable(
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
     thumbNailUrl: string(),
+    contentHash: string(),
+    aiReview: jsonb("aiReview").$type<AiModerationReview>(),
+    aiReviewedAt: timestamp("aiReviewedAt", { mode: "date", precision: 3 }),
+    moderationArchivedAt: timestamp("moderationArchivedAt", {
+      mode: "date",
+      precision: 3,
+    }),
     courseId: string().references(() => course.id, {
       onDelete: "set null",
       onUpdate: "cascade",
@@ -423,6 +496,11 @@ export const pastPaper = cockroachTable(
       "btree",
       table.courseId.asc(),
       table.examType.asc(),
+    ),
+    index("PastPaper_courseId_contentHash_idx").using(
+      "btree",
+      table.courseId.asc(),
+      table.contentHash.asc(),
     ),
     index("PastPaper_courseId_isClear_createdAt_idx").using(
       "btree",
@@ -469,6 +547,10 @@ export const pastPaper = cockroachTable(
       table.year.asc(),
       table.createdAt.asc(),
     ),
+    index("PastPaper_moderationArchivedAt_idx").using(
+      "btree",
+      table.moderationArchivedAt.asc(),
+    ),
     index("PastPaper_metadata_sibling_idx").using(
       "btree",
       table.courseId.asc(),
@@ -486,6 +568,57 @@ export const pastPaper = cockroachTable(
       table.questionPaperId.asc(),
     ),
     index("PastPaper_title_trgm_idx").using("gin", table.title.asc()),
+  ],
+);
+
+export const contentCorrectionReport = cockroachTable(
+  "ContentCorrectionReport",
+  {
+    id: string().$defaultFn(createId).primaryKey(),
+    resourceType: string().notNull(),
+    noteId: string().references(() => note.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    pastPaperId: string().references(() => pastPaper.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+    reporterId: string()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    category: string().notNull(),
+    description: string().notNull(),
+    suggestedValue: string(),
+    status: string().default("pending").notNull(),
+    aiDecision: jsonb("aiDecision").$type<CorrectionReportDecision>(),
+    resolvedById: string().references(() => user.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+    resolvedAt: timestamp({ mode: "date", precision: 3 }),
+  },
+  (table) => [
+    check(
+      "ContentCorrectionReport_one_resource_check",
+      sql`(${table.noteId} IS NOT NULL AND ${table.pastPaperId} IS NULL AND ${table.resourceType} = 'note') OR (${table.noteId} IS NULL AND ${table.pastPaperId} IS NOT NULL AND ${table.resourceType} = 'pastPaper')`,
+    ),
+    index("ContentCorrectionReport_status_createdAt_idx").using(
+      "btree",
+      table.status.asc(),
+      table.createdAt.asc(),
+    ),
+    index("ContentCorrectionReport_noteId_idx").using("btree", table.noteId.asc()),
+    index("ContentCorrectionReport_pastPaperId_idx").using(
+      "btree",
+      table.pastPaperId.asc(),
+    ),
+    index("ContentCorrectionReport_reporterId_idx").using(
+      "btree",
+      table.reporterId.asc(),
+    ),
   ],
 );
 

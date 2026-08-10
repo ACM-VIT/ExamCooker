@@ -119,6 +119,9 @@ const nextConfig: NextConfig = {
                 : false,
     },
     experimental: {
+        instantInsights: {
+            validationLevel: "warning",
+        },
         serverActions: {
             bodySizeLimit: "10mb",
         },

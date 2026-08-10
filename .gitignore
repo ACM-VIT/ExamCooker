@@ -40,14 +40,14 @@ next-env.d.ts
 # generated reports
 scripts/reports/
 prisma/generated
-lib/generated
+/lib/generated/*
+!/lib/generated/vinTogether.json
 import-answer-key-papers.ts
 import-missing-courses.ts
 
 
 # generated files 
 prisma/generated/*
-lib/generated/*
 scripts/import-answer-key-papers.ts
 scripts/import-missing-courses.ts
 

@@ -7,6 +7,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { db, pastPaper } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { campusValues, examTypeValues, semesterValues } from "@/db/enums";
+import { clearedModerationReview } from "@/lib/ai/moderation-review-types";
 
 const schema = z.object({
     id: z.string().min(1),
@@ -179,6 +180,7 @@ export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
                     campus: parsed.campus,
                     hasAnswerKey: parsed.hasAnswerKey,
                     questionPaperId: nextQuestionPaperId,
+                    ...clearedModerationReview,
                 })
                 .where(eq(pastPaper.id, parsed.id));
 

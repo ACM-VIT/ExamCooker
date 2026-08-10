@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { connection } from "next/server";
 import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
 import { normalizeNativeAuthHandoffChallenge } from "@/lib/native-auth-token";
 import NativeAuthStartClient from "./native-auth-start-client";
@@ -9,6 +8,8 @@ export const metadata = {
   title: "Start Sign In | ExamCooker",
   description: "Start native app sign-in for ExamCooker.",
 };
+
+export const instant = true;
 
 const PROVIDERS = new Set(["apple", "google"]);
 
@@ -22,7 +23,6 @@ async function NativeAuthStartContent({
     returnTo?: string | string[];
   }>;
 }) {
-  await connection();
   const [{ provider }, query] = await Promise.all([params, searchParams]);
   if (!PROVIDERS.has(provider)) {
     notFound();

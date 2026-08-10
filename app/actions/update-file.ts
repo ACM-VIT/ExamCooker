@@ -5,6 +5,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { auth } from '@/app/auth'
 import { db, note, pastPaper } from '@/db'
 import { invalidatePastPapersSurfaceCache } from '@/lib/cache/past-papers-surface-cache'
+import { clearedModerationReview } from '@/lib/ai/moderation-review-types'
 
 export type EditableTab = "notes" | "pastPaper";
 
@@ -29,13 +30,19 @@ export async function updateFile(
 
     try {
         if (activeTab === "notes") {
-            await db.update(note).set({ title }).where(eq(note.id, itemID));
+            await db
+                .update(note)
+                .set({ title, ...clearedModerationReview })
+                .where(eq(note.id, itemID));
             revalidatePath('/notes');
             revalidateTag('notes', 'minutes');
             revalidateTag(`note:${itemID}`, 'minutes');
             await invalidatePastPapersSurfaceCache();
         } else {
-            await db.update(pastPaper).set({ title }).where(eq(pastPaper.id, itemID));
+            await db
+                .update(pastPaper)
+                .set({ title, ...clearedModerationReview })
+                .where(eq(pastPaper.id, itemID));
             revalidatePath('/past_papers');
             revalidateTag('past_papers', 'minutes');
             revalidateTag(`past_paper:${itemID}`, 'minutes');
