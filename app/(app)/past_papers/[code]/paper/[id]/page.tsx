@@ -351,7 +351,6 @@ async function PaperViewerContent({
                         <RecentPaperStrip
                             items={relatedItems}
                             title="Related papers"
-                            detailSearchString={searchString}
                         />
                     )}
                 </div>
