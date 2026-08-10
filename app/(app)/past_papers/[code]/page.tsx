@@ -5,13 +5,17 @@ import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { getExamFocusForDate } from "@/lib/exam-focus";
-import { examSlugToType } from "@/lib/exam-slug";
 import { getCourseDetailByCode } from "@/lib/data/course-catalog";
 import {
     getCoursePaperFilterOptions,
     getCoursePapers,
-    type CoursePaperSort,
 } from "@/lib/data/course-papers";
+import {
+    buildPastPaperSearchString,
+    getCoursePaperFilters,
+    parsePastPaperSearchParams,
+    type PastPaperSearchParams,
+} from "@/lib/past-paper-search-params";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
 import { getUpcomingExamsForCourses } from "@/lib/data/upcoming-exams";
 import StructuredData from "@/app/components/seo/structured-data";
@@ -41,14 +45,10 @@ import {
 import CoursePagination from "@/app/components/past_papers/course-pagination";
 import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
 import {
-    campusValues,
     course as courseTable,
     db,
     pastPaper,
-    semesterValues,
-    type Campus,
     type ExamType,
-    type Semester,
 } from "@/db";
 import {
     buildBreadcrumbList,
@@ -59,105 +59,6 @@ import {
 
 const PAGE_SIZE = 24;
 const CUID_REGEX = /^c[a-z0-9]{20,}$/i;
-const SEMESTER_VALUES = new Set<Semester>(semesterValues);
-const CAMPUS_VALUES = new Set<Campus>(campusValues);
-
-type SearchParamsRaw = {
-    exam?: string;
-    slot?: string;
-    year?: string;
-    semester?: string;
-    campus?: string;
-    answer_key?: string;
-    sort?: string;
-    page?: string;
-};
-
-type ParsedFilters = {
-    examTypes: ExamType[];
-    slots: string[];
-    years: number[];
-    semesters: Semester[];
-    campuses: Campus[];
-    hasAnswerKey: boolean;
-    sort: CoursePaperSort;
-    page: number;
-};
-
-function splitList(raw: string | undefined): string[] {
-    if (!raw) return [];
-    const values: string[] = [];
-    for (const item of raw.split(",")) {
-        const value = item.trim();
-        if (value) values.push(value);
-    }
-    return values;
-}
-
-function parseUppercaseEnumList<T extends string>(
-    raw: string | undefined,
-    allowed: ReadonlySet<T>,
-): T[] {
-    const values: T[] = [];
-    for (const value of splitList(raw)) {
-        const normalized = value.toUpperCase() as T;
-        if (allowed.has(normalized)) values.push(normalized);
-    }
-    return values;
-}
-
-function parseExamTypes(raw: string | undefined): ExamType[] {
-    const values: ExamType[] = [];
-    for (const value of splitList(raw)) {
-        const examType = examSlugToType(value);
-        if (examType) values.push(examType);
-    }
-    return values;
-}
-
-function parseYears(raw: string | undefined): number[] {
-    const values: number[] = [];
-    for (const value of splitList(raw)) {
-        const year = Number(value);
-        if (!Number.isNaN(year)) values.push(year);
-    }
-    return values;
-}
-
-function parseSearchParams(raw: SearchParamsRaw): ParsedFilters {
-    const sortParam = raw.sort?.toLowerCase();
-    const sort: CoursePaperSort =
-        sortParam === "seasonal" ||
-        sortParam === "year_desc" ||
-        sortParam === "year_asc" ||
-        sortParam === "recent"
-            ? sortParam
-            : "seasonal";
-    const page = Math.max(1, Number.parseInt(raw.page || "1", 10) || 1);
-
-    return {
-        examTypes: parseExamTypes(raw.exam),
-        slots: splitList(raw.slot).map((s) => s.toUpperCase()),
-        years: parseYears(raw.year),
-        semesters: parseUppercaseEnumList(raw.semester, SEMESTER_VALUES),
-        campuses: parseUppercaseEnumList(raw.campus, CAMPUS_VALUES),
-        hasAnswerKey: raw.answer_key === "1",
-        sort,
-        page,
-    };
-}
-
-function buildSearchString(raw: SearchParamsRaw): string {
-    const searchParams = new URLSearchParams();
-
-    for (const [key, value] of Object.entries(raw)) {
-        if (value) {
-            searchParams.set(key, value);
-        }
-    }
-
-    return searchParams.toString();
-}
 
 async function getCourseExamFocus(courseId: string): Promise<ExamType> {
     const upcomingExamsByCourse = await getUpcomingExamsForCourses([courseId]);
@@ -198,7 +99,7 @@ export async function generateMetadata({
     searchParams,
 }: {
     params: Promise<{ code: string }>;
-    searchParams?: Promise<SearchParamsRaw>;
+    searchParams?: Promise<PastPaperSearchParams>;
 }): Promise<Metadata> {
     const { code } = await params;
     if (CUID_REGEX.test(code))
@@ -209,8 +110,7 @@ export async function generateMetadata({
     if (!course) return { robots: { index: false, follow: true } };
 
     const raw = (await searchParams) ?? {};
-    const filters = parseSearchParams(raw);
-    const searchString = buildSearchString(raw);
+    const filters = parsePastPaperSearchParams(raw);
     const hasFilters =
         filters.examTypes.length > 0 ||
         filters.slots.length > 0 ||
@@ -252,22 +152,16 @@ async function CoursePastPapersContent({
     searchParamsPromise,
 }: {
     course: NonNullable<Awaited<ReturnType<typeof getCourseDetailByCode>>>;
-    searchParamsPromise: Promise<SearchParamsRaw> | undefined;
+    searchParamsPromise: Promise<PastPaperSearchParams> | undefined;
 }) {
     const raw = (await searchParamsPromise) ?? {};
-    const filters = parseSearchParams(raw);
-    const searchString = buildSearchString(raw);
+    const filters = parsePastPaperSearchParams(raw);
+    const searchString = buildPastPaperSearchString(raw);
     const basePath = getCoursePastPapersPath(course.code);
+    const coursePaperFilters = getCoursePaperFilters(filters);
     const paperQuery = {
         courseId: course.id,
-        filters: {
-            examTypes: filters.examTypes,
-            slots: filters.slots,
-            years: filters.years,
-            semesters: filters.semesters,
-            campuses: filters.campuses,
-            hasAnswerKey: filters.hasAnswerKey || undefined,
-        },
+        filters: coursePaperFilters,
         page: filters.page,
         pageSize: PAGE_SIZE,
     };
@@ -286,22 +180,15 @@ async function CoursePastPapersContent({
               });
     const [options, { papers, totalCount }] = await Promise.all([
         getCoursePaperFilterOptions(course.id, {
-            examTypes: filters.examTypes,
-            slots: filters.slots,
-            years: filters.years,
-            semesters: filters.semesters,
-            campuses: filters.campuses,
-            hasAnswerKey: filters.hasAnswerKey || undefined,
+            ...coursePaperFilters,
         }),
         papersPromise,
     ]);
 
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
     if (filters.page > totalPages) {
-        const next = new URLSearchParams();
-        for (const [k, v] of Object.entries(raw)) {
-            if (k !== "page" && v) next.set(k, Array.isArray(v) ? v.join(",") : v);
-        }
+        const next = new URLSearchParams(searchString);
+        next.delete("page");
         const qs = next.toString();
         redirect(
             qs
@@ -390,6 +277,7 @@ async function CoursePastPapersContent({
                     papers={papers}
                     courseCode={course.code}
                     courseTitle={course.title}
+                        detailSearchString={searchString}
                 />
             )}
 
@@ -423,7 +311,7 @@ async function CoursePastPapersPageContent({
     searchParamsPromise,
 }: {
     paramsPromise: Promise<{ code: string }>;
-    searchParamsPromise: Promise<SearchParamsRaw> | undefined;
+    searchParamsPromise: Promise<PastPaperSearchParams> | undefined;
 }) {
     const { code } = await paramsPromise;
 
@@ -516,7 +404,7 @@ export default function CoursePastPapersPage({
     searchParams,
 }: {
     params: Promise<{ code: string }>;
-    searchParams?: Promise<SearchParamsRaw>;
+    searchParams?: Promise<PastPaperSearchParams>;
 }) {
     return (
         <DirectionalTransition>

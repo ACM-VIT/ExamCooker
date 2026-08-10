@@ -11,6 +11,11 @@ import { cache } from "react";
 import { withPastPapersSurfaceRedisCache } from "@/lib/cache/past-papers-surface-cache";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import {
+    getOrderedCoursePapers,
+    type CoursePaperFilters,
+    type CoursePaperSort,
+} from "@/lib/data/course-papers";
+import {
     course,
     db,
     pastPaper,
@@ -281,10 +286,19 @@ export async function getSiblingPastPaper(input: {
     );
 }
 
-export async function getAdjacentPapersInCourse(input: {
+type AdjacentPapersInCourseInput = {
     paperId: string;
     courseId: string;
-}) {
+    filters: CoursePaperFilters;
+} & (
+    | { sort: "seasonal"; examFocus: ExamType }
+    | {
+          sort: Exclude<CoursePaperSort, "seasonal">;
+          examFocus?: never;
+      }
+);
+
+export async function getAdjacentPapersInCourse(input: AdjacentPapersInCourseInput) {
     "use cache";
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -294,31 +308,19 @@ export async function getAdjacentPapersInCourse(input: {
             keyParts: ["adjacent-past-papers-in-course", input],
         },
         async () => {
-            const rows = await db
-                .select({
-                    id: pastPaper.id,
-                    year: pastPaper.year,
-                    examType: pastPaper.examType,
-                    slot: pastPaper.slot,
-                    courseCode: course.code,
-                })
-                .from(pastPaper)
-                .leftJoin(course, eq(pastPaper.courseId, course.id))
-                .where(
-                    and(
-                        eq(pastPaper.courseId, input.courseId),
-                        eq(pastPaper.isClear, true),
-                    ),
-                )
-                .orderBy(sql`${pastPaper.year} desc nulls last`, desc(pastPaper.createdAt));
-
-            const papers = rows.map((row) => ({
-                id: row.id,
-                year: row.year,
-                examType: row.examType,
-                slot: row.slot,
-                course: row.courseCode ? { code: row.courseCode } : null,
-            }));
+            const papers =
+                input.sort === "seasonal"
+                    ? await getOrderedCoursePapers({
+                          courseId: input.courseId,
+                          filters: input.filters,
+                          sort: "seasonal",
+                          examFocus: input.examFocus,
+                      })
+                    : await getOrderedCoursePapers({
+                          courseId: input.courseId,
+                          filters: input.filters,
+                          sort: input.sort,
+                      });
 
             const index = papers.findIndex((p) => p.id === input.paperId);
             if (index === -1) return { prev: null, next: null };

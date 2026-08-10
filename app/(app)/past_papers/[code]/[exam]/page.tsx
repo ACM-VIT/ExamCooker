@@ -131,6 +131,10 @@ async function CourseExamContent({
         }),
         getSyllabusByCourseCode(course.code),
     ]);
+    const detailSearchString = new URLSearchParams({
+        exam: examTypeToSlug(examType),
+        sort: "year_desc",
+    }).toString();
 
     const label = examTypeLabel(examType);
     const description = `Download ${course.code} ${label} previous year question papers for ${course.title} on ExamCooker.`;
@@ -250,6 +254,7 @@ async function CourseExamContent({
                         papers={papers}
                         courseCode={course.code}
                         courseTitle={course.title}
+                        detailSearchString={detailSearchString}
                     />
                 )}
 

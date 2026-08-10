@@ -22,6 +22,15 @@ export function normalizePathnameKey(pathWithSearch: string): string {
     return normalizeRouteKey(pathWithSearch).split("?")[0] ?? "";
 }
 
+function isPastPaperDetailRoute(pathWithSearch: string): boolean {
+    const segments = normalizePathnameKey(pathWithSearch).split("/").filter(Boolean);
+    return (
+        segments[0] === "past_papers" &&
+        segments[2] === "paper" &&
+        Boolean(segments[1] && segments[3])
+    );
+}
+
 export function describePathForBreadcrumb(fullPath: string): { label: string; href: string } {
     const [pathPart, queryPart] = fullPath.split("?");
     const query = queryPart ? `?${queryPart}` : "";
@@ -82,6 +91,15 @@ export function mergePrevCrumb(
     if (!prev) return items;
     const prevKey = normalizeRouteKey(prev.href);
     if (prevKey === normalizeRouteKey(currentRouteKey)) return items;
+    // Breadcrumbs describe hierarchy, not browser history. Moving between
+    // adjacent papers should keep the course collection as the parent instead
+    // of inserting the previously viewed paper before it.
+    if (
+        isPastPaperDetailRoute(prev.href) &&
+        isPastPaperDetailRoute(currentRouteKey)
+    ) {
+        return items;
+    }
     const matchingItemIndex = items.findIndex(
         (item) =>
             item.href !== undefined &&
