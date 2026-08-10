@@ -154,6 +154,10 @@ async function PaperViewerContent({
     const parsedSearchParams = parsePastPaperSearchParams(rawSearchParams);
     const coursePaperFilters = getCoursePaperFilters(parsedSearchParams);
     const searchString = buildPastPaperSearchString(rawSearchParams);
+    const siblingSearchString = buildPastPaperSearchString({
+        ...rawSearchParams,
+        answer_key: undefined,
+    });
 
     const paper = await getPastPaperDetail(id);
     if (!paper) return notFound();
@@ -243,8 +247,8 @@ async function PaperViewerContent({
     if (displayYear) metaPills.push({ value: displayYear });
     if (paper.course?.code) metaPills.push({ className: "hidden sm:inline-flex", value: paper.course.code });
 
-    const appendSearchString = (href: string) =>
-        searchString ? `${href}?${searchString}` : href;
+    const appendSearchString = (href: string, queryString = searchString) =>
+        queryString ? `${href}?${queryString}` : href;
     const courseHref = appendSearchString(`/past_papers/${canonicalCode}`);
     const backLabel = paper.course?.code ?? "Past papers";
 
@@ -296,7 +300,13 @@ async function PaperViewerContent({
                         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:pt-1">
                             {siblingPaper ? (
                                 <Link
-                                    href={appendSearchString(getPastPaperDetailPath(siblingPaper.id, siblingPaper.course?.code ?? canonicalCode))}
+                                    href={appendSearchString(
+                                        getPastPaperDetailPath(
+                                            siblingPaper.id,
+                                            siblingPaper.course?.code ?? canonicalCode,
+                                        ),
+                                        siblingSearchString,
+                                    )}
                                     prefetch
                                     transitionTypes={["nav-forward"]}
                                     className="inline-flex items-center justify-center border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black transition hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5"
