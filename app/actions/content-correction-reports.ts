@@ -14,6 +14,7 @@ import {
   applyCorrectionSuggestion,
   reviewContentCorrectionReport,
 } from "@/lib/ai/content-correction-review";
+import { reviewUploadedResource } from "@/lib/ai/moderation-review";
 import { canApplyCorrectionSuggestion } from "@/lib/ai/content-correction-safety";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { checkSlidingWindowRateLimit } from "@/lib/redis-rate-limit";
@@ -71,6 +72,19 @@ export type CorrectionReportResolution =
 function scheduleContentCorrectionReview(reportId: string) {
   after(async () => {
     await reviewContentCorrectionReport(reportId);
+    revalidatePath("/mod");
+    revalidateTag("notes", "minutes");
+    revalidateTag("past_papers", "minutes");
+    await invalidatePastPapersSurfaceCache();
+  });
+}
+
+function scheduleConvertedResourceReview(resource: {
+  id: string;
+  type: "note" | "pastPaper";
+}) {
+  after(async () => {
+    await reviewUploadedResource({ ...resource, autoApprove: true });
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
     revalidateTag("past_papers", "minutes");
@@ -393,8 +407,40 @@ export async function resolveContentCorrectionReport(
     if (resolution === "unpublish_duplicate" && report.aiDecision) {
       const resourceType = report.resourceType as "note" | "pastPaper";
       const resourceId = resourceType === "note" ? report.noteId : report.pastPaperId;
+      const duplicate = report.aiDecision.review.duplicate;
       if (!resourceId || !expectedUpdatedAt) {
         throw new Error("The reported resource no longer exists.");
+      }
+      if (!duplicate || duplicate.id === resourceId) {
+        throw new Error("The stored duplicate is no longer valid. Recheck this report.");
+      }
+
+      const [publishedDuplicate] =
+        resourceType === "note"
+          ? await transaction
+              .select({ id: note.id })
+              .from(note)
+              .where(
+                and(
+                  eq(note.id, duplicate.id),
+                  eq(note.isClear, true),
+                  isNull(note.moderationArchivedAt),
+                ),
+              )
+              .limit(1)
+          : await transaction
+              .select({ id: pastPaper.id })
+              .from(pastPaper)
+              .where(
+                and(
+                  eq(pastPaper.id, duplicate.id),
+                  eq(pastPaper.isClear, true),
+                  isNull(pastPaper.moderationArchivedAt),
+                ),
+              )
+              .limit(1);
+      if (!publishedDuplicate) {
+        throw new Error("The duplicate copy is no longer published. Recheck this report.");
       }
       if (resourceType === "pastPaper") {
         const [linkedAnswerKey] = await transaction
@@ -439,6 +485,7 @@ export async function resolveContentCorrectionReport(
                 aiReview: null,
                 aiReviewedAt: null,
                 moderationArchivedAt,
+                questionPaperId: null,
               })
               .where(
                 and(
@@ -488,6 +535,7 @@ export async function resolveContentCorrectionReport(
           )
           .returning({
             authorId: note.authorId,
+            contentHash: note.contentHash,
             courseId: note.courseId,
             fileUrl: note.fileUrl,
             thumbNailUrl: note.thumbNailUrl,
@@ -504,7 +552,8 @@ export async function resolveContentCorrectionReport(
             fileUrl: source.fileUrl,
             thumbNailUrl: source.thumbNailUrl,
             title: suggestion.title.trim() || source.title,
-            isClear: true,
+            contentHash: source.contentHash,
+            isClear: false,
             ...(suggestion.examType ? { examType: suggestion.examType } : {}),
             ...(suggestion.slot ? { slot: suggestion.slot } : {}),
             ...(suggestion.year ? { year: suggestion.year } : {}),
@@ -522,7 +571,12 @@ export async function resolveContentCorrectionReport(
         const [linkedAnswerKey] = await transaction
           .select({ id: pastPaper.id })
           .from(pastPaper)
-          .where(eq(pastPaper.questionPaperId, resourceId))
+          .where(
+            and(
+              eq(pastPaper.questionPaperId, resourceId),
+              isNull(pastPaper.moderationArchivedAt),
+            ),
+          )
           .limit(1);
         if (linkedAnswerKey) {
           throw new Error(
@@ -547,6 +601,7 @@ export async function resolveContentCorrectionReport(
           )
           .returning({
             authorId: pastPaper.authorId,
+            contentHash: pastPaper.contentHash,
             courseId: pastPaper.courseId,
             fileUrl: pastPaper.fileUrl,
             thumbNailUrl: pastPaper.thumbNailUrl,
@@ -563,7 +618,8 @@ export async function resolveContentCorrectionReport(
             fileUrl: source.fileUrl,
             thumbNailUrl: source.thumbNailUrl,
             title: suggestion.title.trim() || source.title,
-            isClear: true,
+            contentHash: source.contentHash,
+            isClear: false,
           })
           .returning({ id: note.id });
         if (!created) throw new Error("Could not create the converted note.");
@@ -593,6 +649,9 @@ export async function resolveContentCorrectionReport(
       throw new Error("This report was resolved by another moderator.");
     }
   });
+  if (convertedResource) {
+    scheduleConvertedResourceReview(convertedResource);
+  }
   revalidatePath("/mod");
   revalidateTag("notes", "minutes");
   revalidateTag("past_papers", "minutes");
