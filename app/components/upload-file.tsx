@@ -192,10 +192,12 @@ function uploadFormReducer(
 }
 
 function UploadHeader({
+    disabled,
     formId,
     pending,
     variant,
 }: {
+    disabled?: boolean;
     formId: string;
     pending: boolean;
     variant: UploadVariant;
@@ -220,7 +222,7 @@ function UploadHeader({
                 <button
                     type="submit"
                     form={formId}
-                    disabled={pending}
+                    disabled={disabled ?? pending}
                     className="relative whitespace-nowrap border-2 border-black bg-[#3BF4C7] px-3 py-2 text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 disabled:cursor-not-allowed dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] sm:px-4 sm:text-lg"
                 >
                     {pending ? "Uploading..." : "Upload"}
@@ -745,6 +747,12 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     const [pending, startTransition] = useTransition();
     const cameraInputRef = useRef<HTMLInputElement | null>(null);
     const imageConversionInFlightRef = useRef(false);
+    const latestImageBundleStateRef = useRef({
+        fileTitles: initialUploadFormState.fileTitles,
+        files: initialUploadFormState.files,
+        imageBundleFiles: initialUploadFormState.imageBundleFiles,
+        isImageBundleMode: initialUploadFormState.isImageBundleMode,
+    });
     const fieldId = useId();
 
     const ids: UploadFieldIds = {
@@ -778,6 +786,13 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
         slot,
         year,
     } = state;
+
+    latestImageBundleStateRef.current = {
+        fileTitles,
+        files,
+        imageBundleFiles,
+        isImageBundleMode,
+    };
 
     const updateField = useCallback<UploadFieldChange>((field, value) => {
         dispatch({
@@ -887,7 +902,11 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                     toast({ title: "Wait for the current pages to finish processing." });
                     return;
                 }
-                if (files.length > 0 && !isImageBundleMode) {
+                const latestImageBundleState = latestImageBundleStateRef.current;
+                if (
+                    latestImageBundleState.files.length > 0 &&
+                    !latestImageBundleState.isImageBundleMode
+                ) {
                     toast({
                         title: "Remove the existing PDF before adding images",
                         variant: "destructive",
@@ -899,9 +918,24 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                 dispatch({ type: "patch", payload: { isConverting: true } });
 
                 try {
-                    const mergedImageFiles = [...imageBundleFiles, ...imageFiles];
+                    const currentImageBundleState = latestImageBundleStateRef.current;
+                    const mergedImageFiles = [
+                        ...currentImageBundleState.imageBundleFiles,
+                        ...imageFiles,
+                    ];
                     const mergedPdf = await convertImagesToPdfFile(mergedImageFiles);
-                    const existingTitle = fileTitles[0]?.trim();
+                    const existingTitle =
+                        latestImageBundleStateRef.current.fileTitles[0]?.trim();
+                    const nextFileTitles = [
+                        existingTitle || stripExtension(mergedPdf.name),
+                    ];
+
+                    latestImageBundleStateRef.current = {
+                        fileTitles: nextFileTitles,
+                        files: [mergedPdf],
+                        imageBundleFiles: mergedImageFiles,
+                        isImageBundleMode: true,
+                    };
 
                     dispatch({
                         type: "patch",
@@ -909,9 +943,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                             imageBundleFiles: mergedImageFiles,
                             isImageBundleMode: true,
                             files: [mergedPdf],
-                            fileTitles: [
-                                existingTitle || stripExtension(mergedPdf.name),
-                            ],
+                            fileTitles: nextFileTitles,
                         },
                     });
                 } catch (conversionError) {
@@ -927,7 +959,12 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                 return;
             }
 
-            if (variant === "Past Papers" && pdfFiles.length && isImageBundleMode) {
+            const latestImageBundleStateBeforePdf = latestImageBundleStateRef.current;
+            if (
+                variant === "Past Papers" &&
+                pdfFiles.length &&
+                latestImageBundleStateBeforePdf.isImageBundleMode
+            ) {
                 toast({
                     title: "Remove the image pages before adding a PDF",
                     variant: "destructive",
@@ -936,7 +973,11 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             }
 
             if (pdfFiles.length) {
-                if (variant === "Past Papers" && (files.length > 0 || pdfFiles.length > 1)) {
+                const latestImageBundleState = latestImageBundleStateRef.current;
+                if (
+                    variant === "Past Papers" &&
+                    (latestImageBundleState.files.length > 0 || pdfFiles.length > 1)
+                ) {
                     toast({
                         title: "Only one PDF allowed per upload",
                         variant: "destructive",
@@ -944,24 +985,28 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                     return;
                 }
 
+                const nextFiles = [...latestImageBundleState.files, ...pdfFiles];
+                const nextFileTitles = [
+                    ...latestImageBundleState.fileTitles,
+                    ...pdfFiles.map((file) => stripExtension(file.name)),
+                ];
+                latestImageBundleStateRef.current = {
+                    ...latestImageBundleState,
+                    files: nextFiles,
+                    fileTitles: nextFileTitles,
+                };
+
                 dispatch({
                     type: "patch",
                     payload: {
-                        files: [...files, ...pdfFiles],
-                        fileTitles: [
-                            ...fileTitles,
-                            ...pdfFiles.map((file) => stripExtension(file.name)),
-                        ],
+                        files: nextFiles,
+                        fileTitles: nextFileTitles,
                     },
                 });
             }
         },
         [
             convertImagesToPdfFile,
-            fileTitles,
-            files,
-            imageBundleFiles,
-            isImageBundleMode,
             toast,
             variant,
         ],
@@ -1019,6 +1064,21 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             const nextTitles = fileTitles.filter(
                 (_, titleIndex) => titleIndex !== index,
             );
+            const nextImageBundleFiles =
+                variant === "Past Papers" && nextFiles.length === 0
+                    ? []
+                    : imageBundleFiles;
+            const nextIsImageBundleMode =
+                variant === "Past Papers" && nextFiles.length === 0
+                    ? false
+                    : isImageBundleMode;
+
+            latestImageBundleStateRef.current = {
+                fileTitles: nextTitles,
+                files: nextFiles,
+                imageBundleFiles: nextImageBundleFiles,
+                isImageBundleMode: nextIsImageBundleMode,
+            };
 
             dispatch({
                 type: "patch",
@@ -1027,14 +1087,14 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                     fileTitles: nextTitles,
                     ...(variant === "Past Papers" && nextFiles.length === 0
                         ? {
-                            imageBundleFiles: [],
-                            isImageBundleMode: false,
+                            imageBundleFiles: nextImageBundleFiles,
+                            isImageBundleMode: nextIsImageBundleMode,
                         }
                         : {}),
                 },
             });
         },
-        [fileTitles, files, variant],
+        [fileTitles, files, imageBundleFiles, isImageBundleMode, variant],
     );
 
     const handleSubmit = useCallback(
@@ -1046,6 +1106,19 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             }
 
             dispatch({ type: "patch", payload: { error: "" } });
+
+            if (
+                variant === "Past Papers" &&
+                (isConverting || imageConversionInFlightRef.current)
+            ) {
+                dispatch({
+                    type: "patch",
+                    payload: {
+                        error: "Please wait for image processing to finish before uploading.",
+                    },
+                });
+                return;
+            }
 
             if (files.length === 0) {
                 dispatch({
@@ -1158,6 +1231,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             fileTitles,
             files,
             hasAnswerKey,
+            isConverting,
             requireAuth,
             push,
             semesterVal,
@@ -1226,6 +1300,7 @@ function UploadFile({ variant, courses }: UploadFileProps) {
         <div className="flex min-h-screen items-start justify-center px-3 py-4 sm:items-center sm:p-6">
             <div className="w-full max-w-md border-2 border-dashed border-[#D5D5D5] bg-white p-4 text-black shadow-lg dark:bg-[#0C1222] dark:text-[#D5D5D5] sm:p-6">
                 <UploadHeader
+                    disabled={pending || isConverting}
                     formId={ids.formId}
                     pending={pending}
                     variant={variant}
