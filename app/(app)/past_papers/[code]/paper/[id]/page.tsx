@@ -155,8 +155,7 @@ async function PaperViewerContent({
     const coursePaperFilters = getCoursePaperFilters(parsedSearchParams);
     const searchString = buildPastPaperSearchString(rawSearchParams);
     const siblingSearchString = buildPastPaperSearchString({
-        ...rawSearchParams,
-        answer_key: undefined,
+        sort: rawSearchParams.sort,
     });
 
     const paper = await getPastPaperDetail(id);
