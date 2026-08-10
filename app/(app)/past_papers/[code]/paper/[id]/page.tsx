@@ -23,6 +23,14 @@ import { examTypeLabel } from "@/lib/exam-slug";
 import { buildPastPaperPdfFileName } from "@/lib/downloads/resource-names";
 import type { ExamType } from "@/db";
 import DocumentViewerShell from "@/app/components/common/document-viewer-shell";
+import { getExamFocusForDate } from "@/lib/exam-focus";
+import { getUpcomingExamsForCourses } from "@/lib/data/upcoming-exams";
+import {
+    buildPastPaperSearchString,
+    getCoursePaperFilters,
+    parsePastPaperSearchParams,
+    type PastPaperSearchParams,
+} from "@/lib/past-paper-search-params";
 
 export const instant = true;
 
@@ -63,6 +71,16 @@ function getHeadingTitle(courseTitle: string): string {
     const isLikelyToWrap = courseTitle.length > 30 || courseTitle.split(/\s+/).length > 4;
 
     return isLikelyToWrap && acronym.length >= 2 ? acronym : courseTitle;
+}
+
+async function getCourseExamFocus(courseId: string): Promise<ExamType> {
+    const upcomingExamsByCourse = await getUpcomingExamsForCourses([courseId]);
+    return (
+        upcomingExamsByCourse
+            .get(courseId)
+            ?.find((exam) => exam.examType !== null)?.examType ??
+        getExamFocusForDate(new Date())
+    );
 }
 
 function PaperNavButton({
@@ -126,10 +144,19 @@ function PaperNavButton({
 
 async function PaperViewerContent({
     paramsPromise,
+    searchParamsPromise,
 }: {
     paramsPromise: Promise<{ code: string; id: string }>;
+    searchParamsPromise?: Promise<PastPaperSearchParams>;
 }) {
     const { code, id } = await paramsPromise;
+    const rawSearchParams = (await searchParamsPromise) ?? {};
+    const parsedSearchParams = parsePastPaperSearchParams(rawSearchParams);
+    const coursePaperFilters = getCoursePaperFilters(parsedSearchParams);
+    const searchString = buildPastPaperSearchString(rawSearchParams);
+    const siblingSearchString = buildPastPaperSearchString({
+        sort: rawSearchParams.sort,
+    });
 
     const paper = await getPastPaperDetail(id);
     if (!paper) return notFound();
@@ -137,7 +164,8 @@ async function PaperViewerContent({
     const canonicalCode = paper.course?.code ?? "unassigned";
 
     if (normalizeCourseCode(code) !== canonicalCode && code !== canonicalCode) {
-        permanentRedirect(getPastPaperDetailPath(paper.id, canonicalCode));
+        const canonicalPath = getPastPaperDetailPath(paper.id, canonicalCode);
+        permanentRedirect(searchString ? `${canonicalPath}?${searchString}` : canonicalPath);
     }
 
     const displayTitle = paper.course?.title ?? paper.title.replace(/\.pdf$/i, "");
@@ -154,32 +182,52 @@ async function PaperViewerContent({
         year: paper.year,
         hasAnswerKey: paper.hasAnswerKey,
     });
+    const courseId = paper.courseId;
 
-    const [relatedPapers, adjacent, siblingPaper] = paper.courseId
-        ? await Promise.all([
-              getRelatedPapersForCourse({
+    const relatedPapersPromise = courseId
+        ? getRelatedPapersForCourse({
+              paperId: paper.id,
+              courseId,
+              examType: paper.examType,
+              limit: 8,
+          })
+        : Promise.resolve([]);
+    const siblingPaperPromise = courseId
+        ? getSiblingPastPaper({
+              paperId: paper.id,
+              questionPaperId: paper.questionPaperId,
+              courseId,
+              examType: paper.examType,
+              slot: paper.slot,
+              year: paper.year,
+              semester: paper.semester,
+              campus: paper.campus,
+              hasAnswerKey: paper.hasAnswerKey,
+          })
+        : Promise.resolve(null);
+    const adjacentPapersPromise = courseId
+        ? parsedSearchParams.sort === "seasonal"
+            ? getCourseExamFocus(courseId).then((examFocus) =>
+                  getAdjacentPapersInCourse({
+                      paperId: paper.id,
+                      courseId,
+                      filters: coursePaperFilters,
+                      sort: "seasonal",
+                      examFocus,
+                  }),
+              )
+            : getAdjacentPapersInCourse({
                   paperId: paper.id,
-                  courseId: paper.courseId,
-                  examType: paper.examType,
-                  limit: 8,
-              }),
-              getAdjacentPapersInCourse({
-                  paperId: paper.id,
-                  courseId: paper.courseId,
-              }),
-              getSiblingPastPaper({
-                  paperId: paper.id,
-                  questionPaperId: paper.questionPaperId,
-                  courseId: paper.courseId,
-                  examType: paper.examType,
-                  slot: paper.slot,
-                  year: paper.year,
-                  semester: paper.semester,
-                  campus: paper.campus,
-                  hasAnswerKey: paper.hasAnswerKey,
-              }),
-          ])
-        : [[], { prev: null, next: null }, null];
+                  courseId,
+                  filters: coursePaperFilters,
+                  sort: parsedSearchParams.sort,
+              })
+        : Promise.resolve({ prev: null, next: null });
+    const [relatedPapers, siblingPaper, adjacentPapers] = await Promise.all([
+        relatedPapersPromise,
+        siblingPaperPromise,
+        adjacentPapersPromise,
+    ]);
 
     const relatedItems = relatedPapers.map((item) => ({
         id: item.id,
@@ -198,12 +246,14 @@ async function PaperViewerContent({
     if (displayYear) metaPills.push({ value: displayYear });
     if (paper.course?.code) metaPills.push({ className: "hidden sm:inline-flex", value: paper.course.code });
 
-    const courseHref = `/past_papers/${canonicalCode}`;
+    const appendSearchString = (href: string, queryString = searchString) =>
+        queryString ? `${href}?${queryString}` : href;
+    const courseHref = appendSearchString(`/past_papers/${canonicalCode}`);
     const backLabel = paper.course?.code ?? "Past papers";
 
     const buildSideNavHref = (
-        item: NonNullable<typeof adjacent.prev> | NonNullable<typeof adjacent.next>,
-    ) => `/past_papers/${item.course?.code ?? canonicalCode}/paper/${item.id}`;
+        item: NonNullable<typeof adjacentPapers.prev> | NonNullable<typeof adjacentPapers.next>,
+    ) => appendSearchString(`/past_papers/${canonicalCode}/paper/${item.id}`);
 
     return (
         <>
@@ -249,7 +299,13 @@ async function PaperViewerContent({
                         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:pt-1">
                             {siblingPaper ? (
                                 <Link
-                                    href={getPastPaperDetailPath(siblingPaper.id, siblingPaper.course?.code ?? canonicalCode)}
+                                    href={appendSearchString(
+                                        getPastPaperDetailPath(
+                                            siblingPaper.id,
+                                            siblingPaper.course?.code ?? canonicalCode,
+                                        ),
+                                        siblingSearchString,
+                                    )}
                                     prefetch
                                     transitionTypes={["nav-forward"]}
                                     className="inline-flex items-center justify-center border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black transition hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5"
@@ -266,22 +322,22 @@ async function PaperViewerContent({
                     </header>
 
                     <div className="relative">
-                        {adjacent.prev && (
+                        {adjacentPapers.prev && (
                             <PaperNavButton
                                 direction="prev"
-                                href={buildSideNavHref(adjacent.prev)}
-                                year={adjacent.prev.year}
-                                examType={adjacent.prev.examType}
-                                slot={adjacent.prev.slot}
+                                href={buildSideNavHref(adjacentPapers.prev)}
+                                year={adjacentPapers.prev.year}
+                                examType={adjacentPapers.prev.examType}
+                                slot={adjacentPapers.prev.slot}
                             />
                         )}
-                        {adjacent.next && (
+                        {adjacentPapers.next && (
                             <PaperNavButton
                                 direction="next"
-                                href={buildSideNavHref(adjacent.next)}
-                                year={adjacent.next.year}
-                                examType={adjacent.next.examType}
-                                slot={adjacent.next.slot}
+                                href={buildSideNavHref(adjacentPapers.next)}
+                                year={adjacentPapers.next.year}
+                                examType={adjacentPapers.next.examType}
+                                slot={adjacentPapers.next.slot}
                             />
                         )}
                         <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
@@ -301,19 +357,28 @@ async function PaperViewerContent({
                     </div>
 
                     {relatedItems.length > 0 && (
-                        <RecentPaperStrip items={relatedItems} title="Related papers" />
+                        <RecentPaperStrip
+                            items={relatedItems}
+                            title="Related papers"
+                        />
                     )}
                 </div>
         </>
     );
 }
 
-function PdfViewerPage({ params }: { params: Promise<{ code: string; id: string }> }) {
+function PdfViewerPage({
+    params,
+    searchParams,
+}: {
+    params: Promise<{ code: string; id: string }>;
+    searchParams?: Promise<PastPaperSearchParams>;
+}) {
     return (
         <DirectionalTransition>
             <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
                 <Suspense fallback={<DocumentViewerShell kind="paper" />}>
-                    <PaperViewerContent paramsPromise={params} />
+                    <PaperViewerContent paramsPromise={params} searchParamsPromise={searchParams} />
                 </Suspense>
             </div>
         </DirectionalTransition>

@@ -20,9 +20,11 @@ type RecentItem = {
 export default function RecentPaperStrip({
     items,
     title = "Recently added",
+    detailSearchString,
 }: {
     items: RecentItem[];
     title?: string;
+    detailSearchString?: string;
 }) {
     if (items.length === 0) return null;
     return (
@@ -34,7 +36,10 @@ export default function RecentPaperStrip({
             </header>
             <div className="past-papers-recent-strip flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
                 {items.map((item, i) => {
-                    const href = getPastPaperDetailPath(item.id, item.courseCode);
+                    const hrefBase = getPastPaperDetailPath(item.id, item.courseCode);
+                    const href = detailSearchString
+                        ? `${hrefBase}?${detailSearchString}`
+                        : hrefBase;
                     const thumb = normalizeGcsUrl(item.thumbNailUrl);
                     return (
                         <IntentPrefetchLink

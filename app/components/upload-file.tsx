@@ -160,6 +160,20 @@ const isImageFile = (file: File) => file.type.startsWith("image/");
 const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, "");
 const PROCESSOR_SUCCESS_MESSAGE = "processed successfully";
 
+function getClipboardImageFiles(clipboardData: DataTransfer | null): File[] {
+    if (!clipboardData) return [];
+
+    const itemFiles = Array.from(clipboardData.items)
+        .filter((item) => item.kind === "file")
+        .map((item) => item.getAsFile())
+        .filter((file): file is File => file !== null);
+    const files = itemFiles.length > 0
+        ? itemFiles
+        : Array.from(clipboardData.files);
+
+    return files.filter(isImageFile);
+}
+
 function uploadFormReducer(
     state: UploadFormState,
     action: UploadFormAction,
@@ -730,6 +744,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     );
     const [pending, startTransition] = useTransition();
     const cameraInputRef = useRef<HTMLInputElement | null>(null);
+    const imageConversionInFlightRef = useRef(false);
     const fieldId = useId();
 
     const ids: UploadFieldIds = {
@@ -773,8 +788,8 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
 
     const imagePreviewUrls = useMemo(
         () =>
-            imageBundleFiles.map((file) => ({
-                key: `${file.name}-${file.lastModified}-${file.size}`,
+            imageBundleFiles.map((file, index) => ({
+                key: `${file.name}-${file.lastModified}-${file.size}-${index}`,
                 url: URL.createObjectURL(file),
             })),
         [imageBundleFiles],
@@ -868,6 +883,10 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             }
 
             if (variant === "Past Papers" && imageFiles.length) {
+                if (imageConversionInFlightRef.current) {
+                    toast({ title: "Wait for the current pages to finish processing." });
+                    return;
+                }
                 if (files.length > 0 && !isImageBundleMode) {
                     toast({
                         title: "Remove the existing PDF before adding images",
@@ -876,6 +895,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                     return;
                 }
 
+                imageConversionInFlightRef.current = true;
                 dispatch({ type: "patch", payload: { isConverting: true } });
 
                 try {
@@ -901,6 +921,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                         variant: "destructive",
                     });
                 } finally {
+                    imageConversionInFlightRef.current = false;
                     dispatch({ type: "patch", payload: { isConverting: false } });
                 }
                 return;
@@ -953,6 +974,9 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
         },
         onDragEnter: () => updateField("isDragging", true),
         onDragLeave: () => updateField("isDragging", false),
+        // Clipboard images are handled at the document level below so paste
+        // keeps working after the initial dropzone is replaced by the bundle UI.
+        noPaste: true,
         multiple: variant !== "Past Papers",
         maxFiles: variant === "Past Papers" ? 1 : undefined,
         accept:
@@ -965,6 +989,25 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                     "application/pdf": [".pdf"],
                 },
     });
+
+    useEffect(() => {
+        if (variant !== "Past Papers") return;
+
+        const handleClipboardPaste = (event: ClipboardEvent) => {
+            const pastedImages = getClipboardImageFiles(event.clipboardData);
+            if (pastedImages.length === 0) return;
+
+            event.preventDefault();
+            if (isConverting) {
+                toast({ title: "Wait for the current pages to finish processing." });
+                return;
+            }
+            void addFiles(pastedImages);
+        };
+
+        document.addEventListener("paste", handleClipboardPaste);
+        return () => document.removeEventListener("paste", handleClipboardPaste);
+    }, [addFiles, isConverting, toast, variant]);
 
     const handleTitleChange = useCallback((index: number, value: string) => {
         dispatch({ type: "update_title", index, value });

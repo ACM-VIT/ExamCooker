@@ -35,11 +35,13 @@ import {
     DESKTOP_SELECT_ALL_HOST_ID,
     MOBILE_SELECT_ALL_HOST_ID,
 } from "./course-paper-grid-controls";
+import { getPastPaperDetailPath } from "@/lib/seo";
 
 type Props = {
     papers: CoursePaperListItem[];
     courseCode: string;
     courseTitle: string;
+    detailSearchString?: string;
 };
 
 const WIDE_STRETCH_CLASS_BY_REMAINDER: Partial<Record<number, string>> = {
@@ -181,6 +183,7 @@ export default function CoursePaperGrid({
     papers,
     courseCode,
     courseTitle,
+    detailSearchString,
 }: Props) {
     const router = useRouter();
     const [{ contextMenu, isDownloading, portalReady, selected, splitDrag }, dispatch] =
@@ -293,11 +296,19 @@ export default function CoursePaperGrid({
         [courseCode, courseTitle],
     );
 
+    const getPaperPageHref = useCallback(
+        (paper: CoursePaperListItem) => {
+            const href = getPastPaperDetailPath(paper.id, courseCode);
+            return detailSearchString ? `${href}?${detailSearchString}` : href;
+        },
+        [courseCode, detailSearchString],
+    );
+
     const buildSplitPaper = useCallback(
         (paper: CoursePaperListItem): PaperSplitItem => ({
             id: paper.id,
             title: paper.title,
-            href: `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`,
+            href: getPaperPageHref(paper),
             fileUrl: paper.fileUrl,
             fileName: getPaperFileName(paper),
             courseCode,
@@ -310,7 +321,7 @@ export default function CoursePaperGrid({
                 paper.hasAnswerKey ? "Answer key" : null,
             ].filter((value): value is string => Boolean(value)),
         }),
-        [courseCode, courseTitle, getPaperFileName],
+        [courseCode, courseTitle, getPaperFileName, getPaperPageHref],
     );
 
     const getSplitSideForPoint = useCallback((x: number): PaperSplitSide | null => {
@@ -328,9 +339,7 @@ export default function CoursePaperGrid({
 
     const openContextMenu = useCallback(
         (paper: CoursePaperListItem, point: { x: number; y: number }) => {
-            router.prefetch(
-                `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`,
-            );
+            router.prefetch(getPaperPageHref(paper));
             dispatch({
                 type: "context-menu",
                 contextMenu: {
@@ -339,13 +348,13 @@ export default function CoursePaperGrid({
                 },
             });
         },
-        [courseCode, router],
+        [getPaperPageHref, router],
     );
 
     const openPaperPage = useCallback((paper: CoursePaperListItem) => {
-        router.push(`/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`);
+        router.push(getPaperPageHref(paper));
         closeContextMenu();
-    }, [closeContextMenu, courseCode, router]);
+    }, [closeContextMenu, getPaperPageHref, router]);
 
     const openPdfInNewTab = useCallback((paper: CoursePaperListItem) => {
         window.open(paper.fileUrl, "_blank", "noopener,noreferrer");
@@ -683,6 +692,7 @@ export default function CoursePaperGrid({
                                 paper={paper}
                                 courseCode={courseCode}
                                 courseTitle={courseTitle}
+                                href={getPaperPageHref(paper)}
                                 index={index}
                                 selected={selected.has(paper.id)}
                                 onToggleSelect={toggle}
