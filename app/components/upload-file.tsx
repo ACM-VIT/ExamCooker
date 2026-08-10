@@ -235,7 +235,7 @@ function UploadTitleField({
             className="w-full border-2 border-dashed border-gray-300 p-2 text-sm font-bold text-black dark:bg-[#0C1222] dark:text-[#D5D5D5] sm:text-base"
             value={value}
             onChange={(event) => onChange(index, event.target.value)}
-            required
+            placeholder="Title (optional)"
         />
     );
 }
@@ -243,16 +243,22 @@ function UploadTitleField({
 function CourseField({
     courseId,
     courses,
+    required = true,
     updateField,
 }: {
     courseId: string | null;
     courses: CourseOption[];
+    required?: boolean;
     updateField: UploadFieldChange;
 }) {
     return (
         <div>
             <p className="mb-1 block text-xs font-semibold uppercase tracking-wider text-black/60 dark:text-[#D5D5D5]/60">
-                Course <span className="text-red-500">*</span>
+                Course{required ? (
+                    <span className="text-red-500"> *</span>
+                ) : (
+                    <span className="font-normal normal-case tracking-normal"> · optional</span>
+                )}
             </p>
             <CoursePicker
                 courses={courses}
@@ -284,13 +290,16 @@ function PastPaperMetadataFields({
 }) {
     return (
         <>
+            <p className="text-xs leading-5 text-black/55 dark:text-[#D5D5D5]/55">
+                Metadata is optional. Leave anything blank and the AI review will fill in what it can from the paper.
+            </p>
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <label
                         htmlFor={ids.examTypeId}
                         className="mb-1 block text-xs font-semibold uppercase tracking-wider text-black/60 dark:text-[#D5D5D5]/60"
                     >
-                        Exam type <span className="text-red-500">*</span>
+                        Exam type
                     </label>
                     <select
                         id={ids.examTypeId}
@@ -335,7 +344,7 @@ function PastPaperMetadataFields({
                         htmlFor={ids.yearId}
                         className="mb-1 block text-xs font-semibold uppercase tracking-wider text-black/60 dark:text-[#D5D5D5]/60"
                     >
-                        Year <span className="text-red-500">*</span>
+                        Year
                     </label>
                     <select
                         id={ids.yearId}
@@ -1006,7 +1015,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                 return;
             }
 
-            if (courses?.length && !courseId) {
+            if (variant === "Notes" && courses?.length && !courseId) {
                 dispatch({
                     type: "patch",
                     payload: { error: "Please select a course." },
@@ -1014,29 +1023,15 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                 return;
             }
 
-            if (variant === "Past Papers" && courses?.length) {
-                if (!examType) {
-                    dispatch({
-                        type: "patch",
-                        payload: { error: "Please select an exam type." },
-                    });
-                    return;
-                }
-                if (!year) {
-                    dispatch({
-                        type: "patch",
-                        payload: { error: "Please select a year." },
-                    });
-                    return;
-                }
-            }
-
             startTransition(async () => {
                 try {
                     const formDatas = files.map((file, index) => {
                         const formData = new FormData();
                         formData.append("file", file);
-                        formData.append("filetitle", fileTitles[index]);
+                        formData.append(
+                            "filetitle",
+                            fileTitles[index]?.trim() || stripExtension(file.name),
+                        );
                         return formData;
                     });
 
@@ -1205,6 +1200,7 @@ function UploadFile({ variant, courses }: UploadFileProps) {
                         <CourseField
                             courseId={courseId}
                             courses={courses}
+                            required={variant === "Notes"}
                             updateField={updateField}
                         />
                     ) : null}
