@@ -42,9 +42,15 @@ const unsafePatterns = [
 
 const failures: string[] = [];
 
+function stripComments(contents: string) {
+  return contents
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+}
+
 for (const file of filesToCheck) {
   const absolutePath = resolve(repoRoot, file);
-  const contents = readFileSync(absolutePath, "utf8");
+  const contents = stripComments(readFileSync(absolutePath, "utf8"));
   for (const { label, pattern } of unsafePatterns) {
     if (file === "app/components/common/react-transition.tsx") continue;
     if (pattern.test(contents)) {
