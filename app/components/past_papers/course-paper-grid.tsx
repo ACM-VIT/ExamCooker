@@ -2,6 +2,7 @@
 
 import React, { ViewTransition, useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import {
     Check,
     Download,
@@ -181,6 +182,7 @@ export default function CoursePaperGrid({
     courseCode,
     courseTitle,
 }: Props) {
+    const router = useRouter();
     const [{ contextMenu, isDownloading, portalReady, selected, splitDrag }, dispatch] =
         useReducer(coursePaperGridReducer, initialCoursePaperGridState);
     const splitDragPaperRef = useRef<CoursePaperListItem | null>(null);
@@ -326,6 +328,9 @@ export default function CoursePaperGrid({
 
     const openContextMenu = useCallback(
         (paper: CoursePaperListItem, point: { x: number; y: number }) => {
+            router.prefetch(
+                `/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`,
+            );
             dispatch({
                 type: "context-menu",
                 contextMenu: {
@@ -334,13 +339,13 @@ export default function CoursePaperGrid({
                 },
             });
         },
-        [],
+        [courseCode, router],
     );
 
     const openPaperPage = useCallback((paper: CoursePaperListItem) => {
-        window.location.assign(`/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`);
+        router.push(`/past_papers/${encodeURIComponent(courseCode)}/paper/${paper.id}`);
         closeContextMenu();
-    }, [closeContextMenu, courseCode]);
+    }, [closeContextMenu, courseCode, router]);
 
     const openPdfInNewTab = useCallback((paper: CoursePaperListItem) => {
         window.open(paper.fileUrl, "_blank", "noopener,noreferrer");

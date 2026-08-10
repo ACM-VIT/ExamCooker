@@ -3,7 +3,7 @@ import type { AppRedisClient } from "@/lib/redis";
 import { getOptionalRedis } from "@/lib/redis";
 
 const CACHE_KEY_PREFIX = "ec:past-papers-surface-cache";
-const CACHE_SCHEMA_VERSION = 1;
+const CACHE_SCHEMA_VERSION = 2;
 const NAMESPACE_VERSION_KEY = `${CACHE_KEY_PREFIX}:namespace-version`;
 const DEFAULT_CACHE_TTL_SECONDS = 900;
 const DEFAULT_LOCK_TTL_SECONDS = 15;
@@ -200,6 +200,12 @@ async function storeCacheEntry<T>(input: {
   ttlSeconds?: number;
   value: T;
 }) {
+  // A temporary database/cache miss must not become a shared 404 for a real
+  // paper. Successful reads are worth sharing; absence is cheap to recheck.
+  if (input.value === null || input.value === undefined) {
+    return;
+  }
+
   await input.redis.set(input.cacheKey, JSON.stringify(input.value), {
     ex:
       input.ttlSeconds ??

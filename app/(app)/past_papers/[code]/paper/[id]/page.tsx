@@ -5,7 +5,6 @@ import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import PDFViewerClient from '@/app/components/pdf-viewer-client';
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { connection } from "next/server";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
 import ShareLink from '@/app/components/share-link';
@@ -23,6 +22,9 @@ import { normalizeCourseCode } from "@/lib/course-tags";
 import { examTypeLabel } from "@/lib/exam-slug";
 import { buildPastPaperPdfFileName } from "@/lib/downloads/resource-names";
 import type { ExamType } from "@/db";
+import DocumentViewerShell from "@/app/components/common/document-viewer-shell";
+
+export const instant = true;
 
 //todo refactor to utility function and move to lib
 const ACRONYM_SKIP_WORDS = new Set([
@@ -100,6 +102,7 @@ function PaperNavButton({
             <div className="dark:absolute dark:inset-0 dark:blur-[75px] dark:lg:bg-none lg:dark:group-hover:bg-[#3BF4C7] transition dark:group-hover:duration-200 duration-1000" />
             <Link
                 href={href}
+                prefetch
                 transitionTypes={[isPrev ? "nav-back" : "nav-forward"]}
                 aria-label={tooltip}
                 title={tooltip}
@@ -117,19 +120,6 @@ function PaperNavButton({
                     />
                 )}
             </Link>
-        </div>
-    );
-}
-
-function PaperViewerShell() {
-    return (
-        <div
-            className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10"
-            aria-hidden="true"
-        >
-            <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
-            <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
-            <div className="h-[70dvh] border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]" />
         </div>
     );
 }
@@ -260,6 +250,7 @@ async function PaperViewerContent({
                             {siblingPaper ? (
                                 <Link
                                     href={getPastPaperDetailPath(siblingPaper.id, siblingPaper.course?.code ?? canonicalCode)}
+                                    prefetch
                                     transitionTypes={["nav-forward"]}
                                     className="inline-flex items-center justify-center border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black transition hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5"
                                 >
@@ -317,15 +308,11 @@ async function PaperViewerContent({
     );
 }
 
-async function PdfViewerPage({ params }: { params: Promise<{ code: string; id: string }> }) {
-    // Render dynamically: under `cacheComponents` a prerendered static shell
-    // would serve the Suspense skeleton fallback as the document, which then
-    // mismatches the resolved viewer content the client hydrates (React #418).
-    await connection();
+function PdfViewerPage({ params }: { params: Promise<{ code: string; id: string }> }) {
     return (
         <DirectionalTransition>
             <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-                <Suspense fallback={<PaperViewerShell />}>
+                <Suspense fallback={<DocumentViewerShell kind="paper" />}>
                     <PaperViewerContent paramsPromise={params} />
                 </Suspense>
             </div>

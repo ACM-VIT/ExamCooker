@@ -25,6 +25,7 @@ import { useModeratorInlineEditorOptions } from "@/app/components/moderation/use
 import { useToast } from "@/app/components/ui/use-toast";
 import type { Campus, ExamType, Semester } from "@/db";
 import { getPastPaperDetailPath } from "@/lib/seo";
+import ResourceCorrectionTrigger from "@/app/components/corrections/resource-correction-trigger";
 
 type PastPaperInlineEditorProps = {
   canonicalCode: string;
@@ -149,8 +150,17 @@ export default function PastPaperInlineEditor(
     [baseline, draft],
   );
 
-  if (status === "loading" || !isModerator) {
+  if (status === "loading") {
     return null;
+  }
+
+  if (!isModerator) {
+    return (
+      <ResourceCorrectionTrigger
+        resourceId={props.paperId}
+        resourceType="pastPaper"
+      />
+    );
   }
 
   const handleSave = () => {
