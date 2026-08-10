@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 const uploadFilePath = resolve(__dirname, "../app/components/upload-file.tsx");
 const source = readFileSync(uploadFilePath, "utf8");
 
+const normalizedSource = source.replace(/\s+/g, " ");
+
 const requiredSnippets = [
   {
     label: "submit guard blocks conversion-in-flight uploads",
@@ -28,7 +30,9 @@ const requiredSnippets = [
   },
 ];
 
-const missing = requiredSnippets.filter(({ snippet }) => !source.includes(snippet));
+const missing = requiredSnippets.filter(
+  ({ snippet }) => !normalizedSource.includes(snippet.replace(/\s+/g, " ")),
+);
 
 if (missing.length > 0) {
   throw new Error(
