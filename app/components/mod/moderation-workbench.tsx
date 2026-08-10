@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "@/app/components/common/app-image";
 import {
@@ -234,17 +234,28 @@ function suggestedResourceType(item: QueueItem, review: AiModerationReview) {
   return null;
 }
 
-function SectionHeading({ title, detail }: { title: string; detail?: string }) {
+function SectionHeading({
+  title,
+  detail,
+  action,
+}: {
+  title: string;
+  detail?: string;
+  action?: ReactNode;
+}) {
   return (
     <header className="flex items-end justify-between gap-4">
       <h2 className="text-lg font-bold uppercase tracking-wider text-black dark:text-[#D5D5D5] sm:text-xl">
         {title}
       </h2>
-      {detail ? (
-        <span className="hidden text-sm text-black/55 dark:text-[#D5D5D5]/55 sm:block">
-          {detail}
-        </span>
-      ) : null}
+      <div className="flex items-center gap-3">
+        {detail ? (
+          <span className="hidden text-sm text-black/55 dark:text-[#D5D5D5]/55 sm:block">
+            {detail}
+          </span>
+        ) : null}
+        {action}
+      </div>
     </header>
   );
 }
@@ -885,14 +896,20 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
   const [kind, setKind] = useState<"all" | ModerationResourceType>("all");
   const [filter, setFilter] = useState<QueueFilter>("all");
   const [query, setQuery] = useState("");
-  const [busy, setBusy] = useState<{ id: string; label: string } | null>(null);
+  const [busyItems, setBusyItems] = useState<Record<string, string>>({});
+  const busyItemIds = useRef(new Set<string>());
+  const [reviewAllProgress, setReviewAllProgress] = useState<{
+    completed: number;
+    failed: number;
+    total: number;
+  } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [correctionReports, setCorrectionReports] = useState(initialCorrectionReports);
   const [busyReportId, setBusyReportId] = useState<string | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (busy || busyReportId) return;
+    if (Object.keys(busyItems).length > 0 || busyReportId) return;
 
     let cancelled = false;
     let polling = false;
@@ -916,7 +933,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [busy, busyReportId]);
+  }, [busyItems, busyReportId]);
 
   const counts = useMemo(() => ({
     all: items.length,
@@ -924,6 +941,15 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
     changes: items.filter((item) => item.aiReview?.status === "needs_changes").length,
     duplicates: items.filter((item) => item.aiReview?.status === "duplicate").length,
   }), [items]);
+  const reviewableCount = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          (!item.aiReview || item.aiReview.status === "failed") &&
+          !busyItems[item.id],
+      ).length,
+    [busyItems, items],
+  );
 
   const visibleItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -952,10 +978,16 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
 
   const remove = (id: string) => setItems((current) => current.filter((item) => item.id !== id));
 
-  const replaceReview = (id: string, review: AiModerationReview) => {
+  const replaceReview = (
+    id: string,
+    review: AiModerationReview,
+    options?: { announce?: boolean },
+  ) => {
     if (review.autoApproved) {
       remove(id);
-      toast({ title: "Reviewed and approved." });
+      if (options?.announce !== false) {
+        toast({ title: "Reviewed and approved." });
+      }
       return;
     }
     setItems((current) => current.map((item) => item.id === id ? { ...item, aiReview: review } : item));
@@ -1010,18 +1042,90 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
     toast({ title: "Changes applied. The remaining issues still need review." });
   };
 
-  const perform = async (id: string, label: string, task: () => Promise<void>) => {
-    setBusy({ id, label });
+  const perform = async (
+    id: string,
+    label: string,
+    task: () => Promise<void>,
+    options?: { alreadyClaimed?: boolean; showErrorToast?: boolean },
+  ) => {
+    if (!options?.alreadyClaimed) {
+      if (busyItemIds.current.has(id)) return false;
+      busyItemIds.current.add(id);
+    }
+    setBusyItems((current) => ({ ...current, [id]: label }));
     try {
       await task();
+      return true;
     } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : "The moderation action failed.",
-        variant: "destructive",
-      });
+      if (options?.showErrorToast !== false) {
+        toast({
+          title: error instanceof Error ? error.message : "The moderation action failed.",
+          variant: "destructive",
+        });
+      }
+      return false;
     } finally {
-      setBusy(null);
+      busyItemIds.current.delete(id);
+      setBusyItems((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
     }
+  };
+
+  const reviewAll = async () => {
+    if (reviewAllProgress) return;
+
+    const candidates = items.filter(
+      (item) =>
+        (!item.aiReview || item.aiReview.status === "failed") &&
+        !busyItemIds.current.has(item.id),
+    );
+    if (candidates.length === 0) return;
+
+    for (const item of candidates) busyItemIds.current.add(item.id);
+    setBusyItems((current) => {
+      const next = { ...current };
+      for (const item of candidates) next[item.id] = "Queued for AI review…";
+      return next;
+    });
+    setReviewAllProgress({ completed: 0, failed: 0, total: candidates.length });
+
+    let cursor = 0;
+    let completed = 0;
+    let failed = 0;
+    const worker = async () => {
+      while (cursor < candidates.length) {
+        const item = candidates[cursor++];
+        let reviewFailed = false;
+        const succeeded = await perform(
+          item.id,
+          "AI is reading the PDF and checking the course corpus…",
+          async () => {
+            const review = await runAiModerationReview(item.id, item.resourceType);
+            reviewFailed = review.status === "failed";
+            replaceReview(item.id, review, { announce: false });
+          },
+          { alreadyClaimed: true, showErrorToast: false },
+        );
+        completed += 1;
+        if (!succeeded || reviewFailed) failed += 1;
+        setReviewAllProgress({ completed, failed, total: candidates.length });
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(3, candidates.length) }, () => worker()),
+    );
+    setReviewAllProgress(null);
+    toast({
+      title:
+        failed === 0
+          ? `${completed} ${completed === 1 ? "upload" : "uploads"} reviewed.`
+          : `${completed - failed} reviewed; ${failed} need another attempt.`,
+      variant: failed > 0 ? "destructive" : undefined,
+    });
   };
 
   const resolveReport = async (
@@ -1171,6 +1275,19 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
           <SectionHeading
             title="Review queue"
             detail={`${visibleItems.length} of ${items.length} shown`}
+            action={
+              <PrimaryButton
+                onClick={() => void reviewAll()}
+                disabled={reviewAllProgress !== null || reviewableCount === 0}
+              >
+                <Bot className="size-4" aria-hidden />
+                <span aria-live="polite">
+                  {reviewAllProgress
+                    ? `Reviewing ${reviewAllProgress.completed}/${reviewAllProgress.total}`
+                    : `Review all${reviewableCount > 0 ? ` (${reviewableCount})` : ""}`}
+                </span>
+              </PrimaryButton>
+            }
           />
           <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
             <div className="flex flex-col border-2 border-black/20 dark:border-white/20 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)]">
@@ -1213,7 +1330,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
                       key={item.id}
                       item={item}
                       active={selected?.id === item.id}
-                      busy={busy?.id === item.id}
+                      busy={Boolean(busyItems[item.id])}
                       onSelect={() => selectItem(item.id)}
                     />
                   ))}
@@ -1226,7 +1343,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
                 <DetailPanel
                   key={selected.id}
                   item={selected}
-                  busyLabel={busy?.id === selected.id ? busy.label : null}
+                  busyLabel={busyItems[selected.id] ?? null}
                   onReview={() =>
                     perform(selected.id, "AI is reading the PDF and checking the course corpus…", async () =>
                       replaceReview(selected.id, await runAiModerationReview(selected.id, selected.resourceType)),
