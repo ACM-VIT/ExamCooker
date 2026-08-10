@@ -10,6 +10,7 @@ import type {
 import {
   accounts,
   comment,
+  contentCorrectionReport,
   course,
   forum,
   forumPost,
@@ -30,6 +31,7 @@ import {
 
 export type Account = InferSelectModel<typeof accounts>;
 export type Comment = InferSelectModel<typeof comment>;
+export type ContentCorrectionReport = InferSelectModel<typeof contentCorrectionReport>;
 export type Course = InferSelectModel<typeof course>;
 export type Forum = InferSelectModel<typeof forum>;
 export type ForumPost = InferSelectModel<typeof forumPost>;
@@ -49,6 +51,7 @@ export type Vote = InferSelectModel<typeof vote>;
 
 export type NewAccount = InferInsertModel<typeof accounts>;
 export type NewComment = InferInsertModel<typeof comment>;
+export type NewContentCorrectionReport = InferInsertModel<typeof contentCorrectionReport>;
 export type NewCourse = InferInsertModel<typeof course>;
 export type NewForum = InferInsertModel<typeof forum>;
 export type NewForumPost = InferInsertModel<typeof forumPost>;

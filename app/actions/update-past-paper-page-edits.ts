@@ -7,6 +7,7 @@ import { revalidateTag } from "next/cache";
 import { db, pastPaper } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { normalizePdfPageEdits } from "@/lib/pdf/page-edits";
+import { clearedModerationReview } from "@/lib/ai/moderation-review-types";
 
 const pageRotationSchema = z.union([
   z.literal(0),
@@ -44,6 +45,7 @@ export async function updatePastPaperPageEdits(input: z.input<typeof schema>) {
     .update(pastPaper)
     .set({
       pageEdits,
+      ...clearedModerationReview,
     })
     .where(eq(pastPaper.id, parsed.id))
     .returning({ id: pastPaper.id });

@@ -10,8 +10,14 @@ type PatchedHistory = History & {
 
 let locationChangeQueued = false;
 
-function getSnapshot() {
+function getSearchSnapshot() {
     return typeof window === "undefined" ? "" : window.location.search;
+}
+
+function getPathWithSearchSnapshot() {
+    return typeof window === "undefined"
+        ? ""
+        : `${window.location.pathname}${window.location.search}`;
 }
 
 function getServerSnapshot() {
@@ -61,5 +67,9 @@ function subscribe(onStoreChange: () => void) {
 }
 
 export function useLocationSearch() {
-    return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+    return useSyncExternalStore(subscribe, getSearchSnapshot, getServerSnapshot);
+}
+
+export function useLocationPathWithSearch() {
+    return useSyncExternalStore(subscribe, getPathWithSearchSnapshot, getServerSnapshot);
 }

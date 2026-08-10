@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   Fragment,
   useEffect,
@@ -33,6 +34,7 @@ export default function CliCodeInput({
   busy?: boolean;
   onSubmitCode?: (code: string) => void;
 }) {
+  const router = useRouter();
   const [chars, setChars] = useState<string[]>(() => {
     const seed = clean(initial);
     return Array.from({ length: LENGTH }, (_, i) => seed[i] ?? "");
@@ -166,7 +168,7 @@ export default function CliCodeInput({
     setIsSubmitting(true);
 
     const params = new URLSearchParams({ code: formatted });
-    window.location.assign(`/cli?${params.toString()}`);
+    router.push(`/cli?${params.toString()}`);
   }
 
   return (

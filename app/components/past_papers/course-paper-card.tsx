@@ -1,8 +1,8 @@
 "use client";
 
 import React, { memo, useCallback, useRef } from "react";
-import Link from "next/link";
 import Image from "@/app/components/common/app-image";
+import IntentPrefetchLink from "@/app/components/common/intent-prefetch-link";
 import {
     Check,
     Download,
@@ -235,14 +235,12 @@ function CoursePaperCard({
 
     return (
         <article
-            className={`ec-card-lift ec-press group relative isolate flex h-full flex-col border-2 p-3 text-black focus-within:outline-none focus-within:ring-2 focus-within:ring-black/70 dark:text-[#D5D5D5] dark:focus-within:ring-[#3BF4C7] ${
-                splitDragEnabled ? "[touch-action:pan-y]" : ""
-            } ${selected
+            className={`ec-card-lift ec-press group relative isolate flex h-full flex-col border-2 p-3 text-black [touch-action:pan-y] focus-within:outline-none focus-within:ring-2 focus-within:ring-black/70 dark:text-[#D5D5D5] dark:focus-within:ring-[#3BF4C7] ${selected
                     ? "border-black bg-[#5FC4E7] shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:border-[#3BF4C7] dark:bg-[#0C1222] dark:shadow-[4px_4px_0_0_rgba(59,244,199,0.35)]"
                     : "border-[#5FC4E7] bg-[#5FC4E7] hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
                 }`}
         >
-            <Link
+            <IntentPrefetchLink
                 href={href}
                 draggable={false}
                 transitionTypes={["nav-forward"]}
@@ -259,7 +257,7 @@ function CoursePaperCard({
                 className="absolute inset-0 z-0"
             >
                 <span className="sr-only">{linkAriaLabel}</span>
-            </Link>
+            </IntentPrefetchLink>
 
             <div className="pointer-events-none flex h-full flex-col">
                 <div className="flex flex-col gap-1.5 pb-2 pr-6 text-black dark:text-[#D5D5D5]">

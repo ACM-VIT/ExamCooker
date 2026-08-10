@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { connection } from "next/server";
 import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
 import { normalizeNativeAuthHandoffChallenge } from "@/lib/native-auth-token";
 import NativeAuthCompleteClient from "./native-auth-complete-client";
@@ -8,6 +7,8 @@ export const metadata = {
   title: "Finishing Sign In | ExamCooker",
   description: "Return to the ExamCooker app after sign-in.",
 };
+
+export const instant = true;
 
 async function NativeAuthCompleteContent({
   searchParams,
@@ -18,7 +19,6 @@ async function NativeAuthCompleteContent({
     returnTo?: string | string[];
   }>;
 }) {
-  await connection();
   const query = await searchParams;
   const code = Array.isArray(query.code) ? query.code[0] : query.code;
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "next-auth";
 import { captureAuthPromptOpened } from "@/lib/posthog/client";
@@ -75,14 +76,15 @@ function getAuthSessionState(session: Session | null | undefined): AuthSessionSt
     };
 }
 
-function redirectToAuth(action?: string) {
+function getAuthHref(action?: string) {
     const callbackUrl = getCurrentRedirect();
     captureAuthPromptOpened(action);
     const params = new URLSearchParams({ callbackUrl });
-    window.location.assign(`/auth?${params.toString()}`);
+    return `/auth?${params.toString()}`;
 }
 
 export function useGuestPrompt(): AuthGate {
+    const router = useRouter();
     const [{ session, status }, setAuthSessionState] = useState<AuthSessionState>(
         () => getAuthSessionState(cachedSession),
     );
@@ -119,8 +121,8 @@ export function useGuestPrompt(): AuthGate {
     }, []);
 
     const openPrompt = useCallback((action?: string) => {
-        redirectToAuth(action);
-    }, []);
+        router.push(getAuthHref(action));
+    }, [router]);
 
     const requireAuth = useCallback(
         (action?: string) => {
@@ -129,15 +131,15 @@ export function useGuestPrompt(): AuthGate {
                 void loadSession().then((nextSession) => {
                     setAuthSessionState(getAuthSessionState(nextSession));
                     if (!nextSession?.user) {
-                        redirectToAuth(action);
+                        router.push(getAuthHref(action));
                     }
                 });
                 return false;
             }
-            redirectToAuth(action);
+            router.push(getAuthHref(action));
             return false;
         },
-        [isAuthed, status],
+        [isAuthed, router, status],
     );
 
     return {

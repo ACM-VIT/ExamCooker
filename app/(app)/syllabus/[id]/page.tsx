@@ -15,6 +15,7 @@ import {
     parseSyllabusName,
 } from "@/lib/seo";
 import { buildSyllabusPdfFileName } from "@/lib/downloads/resource-names";
+import DocumentViewerShell from "@/app/components/common/document-viewer-shell";
 
 export async function generateMetadata({
     params,
@@ -47,19 +48,6 @@ export async function generateMetadata({
         },
         robots: { index: true, follow: true },
     };
-}
-
-function SyllabusViewerShell() {
-    return (
-        <div
-            className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 xl:px-10"
-            aria-hidden="true"
-        >
-            <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
-            <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
-            <div className="h-[70dvh] border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]" />
-        </div>
-    );
 }
 
 async function SyllabusViewerContent({
@@ -167,7 +155,7 @@ function SyllabusViewerPage({ params }: { params: Promise<{ id: string }> }) {
     return (
         <DirectionalTransition>
             <div className="min-h-dvh bg-[#C2E6EC] text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
-                <Suspense fallback={<SyllabusViewerShell />}>
+                <Suspense fallback={<DocumentViewerShell kind="syllabus" />}>
                     <SyllabusViewerContent paramsPromise={params} />
                 </Suspense>
             </div>

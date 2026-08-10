@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import Image from "@/app/components/common/app-image";
+import IntentPrefetchLink from "@/app/components/common/intent-prefetch-link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { stripPdfExtension } from "@/lib/pdf";
@@ -44,7 +44,7 @@ function NotesCard({
 
     return (
         <div className="size-full max-w-sm text-black dark:text-[#D5D5D5]">
-            <Link
+            <IntentPrefetchLink
                 href={`/notes/${note.id}`}
                 transitionTypes={openInNewTab ? undefined : ["nav-forward"]}
                 target={openInNewTab ? "_blank" : undefined}
@@ -95,7 +95,7 @@ function NotesCard({
                         </button>
                     )}
                 </div>
-            </Link>
+            </IntentPrefetchLink>
         </div>
     );
 }

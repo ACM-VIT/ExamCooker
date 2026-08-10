@@ -2,7 +2,8 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
-import { generatePastPaperTitleFromPdf } from "@/lib/ai/past-paper-title";
+import { reviewUploadedResource } from "@/lib/ai/moderation-review";
+import { mapWithConcurrency } from "@/lib/async/map-with-concurrency";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import type {
     Campus,
@@ -143,31 +144,31 @@ export async function createUploadedResources({
                   }),
               );
 
-    if (variant === "Past Papers") {
-        const createdPapers = data as { id: string; title: string; fileUrl: string }[];
-        after(async () => {
+    const uploadedType = variant === "Notes" ? ("note" as const) : ("pastPaper" as const);
+    const createdResources = data.map((resource) => ({
+        id: resource.id,
+        type: uploadedType,
+    }));
+    after(async () => {
+        await mapWithConcurrency(createdResources, 2, async (resource) => {
             try {
-                await Promise.allSettled(
-                    createdPapers.map(async (paper) => {
-                        const aiTitle = await generatePastPaperTitleFromPdf({
-                            fileUrl: paper.fileUrl,
-                            fallbackTitle: paper.title,
-                        });
-                        if (aiTitle && aiTitle !== paper.title) {
-                            await db
-                                .update(pastPaper)
-                                .set({ title: aiTitle })
-                                .where(eq(pastPaper.id, paper.id));
-                        }
-                    }),
-                );
-                revalidateTag("past_papers", "minutes");
-                await invalidatePastPapersSurfaceCache();
+                await reviewUploadedResource({ ...resource, autoApprove: true });
             } catch (error) {
-                console.error("Failed to post-process uploaded past papers:", error);
+                console.error(
+                    `Failed to review uploaded ${resource.type} ${resource.id}:`,
+                    error,
+                );
             }
         });
-    }
+        try {
+            revalidatePath("/mod");
+            revalidateTag("notes", "minutes");
+            revalidateTag("past_papers", "minutes");
+            await invalidatePastPapersSurfaceCache();
+        } catch (error) {
+            console.error("Failed to run automatic upload moderation:", error);
+        }
+    });
 
     if (variant === "Notes") {
         revalidatePath("/notes");

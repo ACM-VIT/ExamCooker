@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
-import { connection } from "next/server";
 import { auth } from "@/app/auth";
 import { normalizeAuthCallbackPath } from "@/lib/auth-origin";
 import {
@@ -13,6 +12,8 @@ export const metadata = {
   title: "Completing Sign In | ExamCooker",
   description: "Complete native app sign-in for ExamCooker.",
 };
+
+export const instant = true;
 
 function NativeAuthMessage({ children }: { children: ReactNode }) {
   return (
@@ -30,7 +31,6 @@ async function NativeAuthBrowserCompleteContent({
     returnTo?: string | string[];
   }>;
 }) {
-  await connection();
   const [session, query] = await Promise.all([auth(), searchParams]);
   const userId = session?.user?.id;
   const handoffChallenge = normalizeNativeAuthHandoffChallenge(

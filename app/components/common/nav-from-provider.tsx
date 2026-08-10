@@ -8,21 +8,19 @@ import React, {
     useRef,
     useState,
 } from "react";
-import { usePathname } from "next/navigation";
 import {
     describePathForBreadcrumb,
     mergePrevCrumb,
+    normalizePathnameKey,
     normalizeRouteKey,
     type BreadcrumbNavItem,
 } from "@/lib/breadcrumb-nav";
-import { useLocationSearch } from "@/app/components/common/use-location-search";
+import { useLocationPathWithSearch } from "@/app/components/common/use-location-search";
 
 const NavFromRawContext = createContext<string | null>(null);
 
 function NavFromProviderInner({ children }: { children: React.ReactNode }) {
-    const pathname = usePathname() ?? "";
-    const search = useLocationSearch();
-    const full = `${pathname}${search}`;
+    const full = useLocationPathWithSearch();
     const currentRef = useRef<string | null>(null);
     const [fromPath, setFromPath] = useState<string | null>(null);
 
@@ -50,6 +48,7 @@ function NavFromProviderInner({ children }: { children: React.ReactNode }) {
 
         if (normalizeRouteKey(prev) !== normalizeRouteKey(full)) {
             currentRef.current = full;
+            if (normalizePathnameKey(prev) === normalizePathnameKey(full)) return;
             setFromPath(prev);
         }
     }, [full]);
@@ -69,9 +68,7 @@ export function useNavFromRawPath(): string | null {
 
 export function useNavFromBreadcrumbItem(): { label: string; href: string } | null {
     const raw = useNavFromRawPath();
-    const pathname = usePathname() ?? "";
-    const search = useLocationSearch();
-    const current = `${pathname}${search}`;
+    const current = useLocationPathWithSearch();
 
     return useMemo(() => {
         if (!raw) return null;
@@ -82,9 +79,7 @@ export function useNavFromBreadcrumbItem(): { label: string; href: string } | nu
 
 export function useMergedBreadcrumbItems(items: BreadcrumbNavItem[]): BreadcrumbNavItem[] {
     const prev = useNavFromBreadcrumbItem();
-    const pathname = usePathname() ?? "";
-    const search = useLocationSearch();
-    const current = `${pathname}${search}`;
+    const current = useLocationPathWithSearch();
 
     return useMemo(
         () => mergePrevCrumb(prev, items, current),
