@@ -98,6 +98,12 @@ jobs:
           set -eux
           npx --yes @posthog/cli@latest --host "${POSTHOG_CLI_HOST}" sourcemap inject --directory .next/static
           npx --yes @posthog/cli@latest --host "${POSTHOG_CLI_HOST}" sourcemap upload --directory .next/static
+
+      - name: Remove public source maps
+        if: ${{ always() && env.POSTHOG_SOURCEMAP_UPLOAD == 'true' }}
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          set -eu
           find .next/static -name '*.map' -type f -delete
 
       - name: Package deployment payload

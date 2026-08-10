@@ -78,10 +78,11 @@ export async function loadPastPaperRows(
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  const limitClause =
-    typeof options.limit === "number" && options.limit > 0
-      ? `LIMIT ${options.limit}`
-      : "";
+  let limitClause = "";
+  if (typeof options.limit === "number" && options.limit > 0) {
+    params.push(options.limit);
+    limitClause = `LIMIT $${params.length}`;
+  }
 
   const rows = await queryRows<{
     id: string;
@@ -108,6 +109,14 @@ export async function loadPastPaperRows(
   }>(
     queryable,
     `
+      WITH selected_papers AS (
+        SELECT p.id, p.year, p.title
+        FROM "PastPaper" p
+        LEFT JOIN "Course" c ON c.id = p."courseId"
+        ${whereClause}
+        ORDER BY p.year ASC NULLS LAST, p.title ASC, p.id ASC
+        ${limitClause}
+      )
       SELECT
         p.id,
         p.title,
@@ -130,13 +139,12 @@ export async function loadPastPaperRows(
         c.aliases AS "courseAliases",
         t.id AS "tagId",
         t.name AS "tagName"
-      FROM "PastPaper" p
+      FROM selected_papers selected
+      INNER JOIN "PastPaper" p ON p.id = selected.id
       LEFT JOIN "Course" c ON c.id = p."courseId"
       LEFT JOIN "_PastPaperToTag" ppt ON ppt."A" = p.id
       LEFT JOIN "Tag" t ON t.id = ppt."B"
-      ${whereClause}
       ORDER BY p.year ASC NULLS LAST, p.title ASC, p.id ASC
-      ${limitClause}
     `,
     params,
   );

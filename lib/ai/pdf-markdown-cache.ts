@@ -179,7 +179,7 @@ export function getPdfMarkdownAccuracyStatus(input: {
   downvotes: number;
   upvotes: number;
 }): PdfMarkdownFeedbackSummary["status"] {
-  if (input.downvotes > 0 && input.downvotes >= input.upvotes) {
+  if (input.downvotes >= 3 && input.downvotes >= input.upvotes + 2) {
     return "needs_review";
   }
 
@@ -472,7 +472,9 @@ export async function storePdfMarkdownCache(
   input: CacheStoreInput,
 ): Promise<PdfMarkdownCacheMetadata> {
   const redis = getOptionalRedis();
-  const generationId = hashText(input.markdown);
+  // Feedback belongs to a particular generation attempt, even if a retry
+  // happens to produce byte-identical Markdown.
+  const generationId = hashText(`${randomUUID()}\n${input.markdown}`);
 
   if (!redis) {
     return buildCacheMetadata({

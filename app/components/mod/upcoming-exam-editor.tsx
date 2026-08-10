@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId, useReducer, useState, useTransition } from "react";
+import React, { useEffect, useId, useReducer, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import CoursePicker, { type CourseOption } from "./course-picker";
 import { useToast } from "@/app/components/ui/use-toast";
@@ -34,6 +34,12 @@ const SCHEDULED_AT_FORMATTER = new Intl.DateTimeFormat("en-IN", {
 
 function formatScheduledAt(value: string | Date) {
     return SCHEDULED_AT_FORMATTER.format(value instanceof Date ? value : new Date(value));
+}
+
+function formatDateTimeLocalValue(value: string | Date) {
+    const date = value instanceof Date ? value : new Date(value);
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+    return localDate.toISOString().slice(0, 16);
 }
 
 function parseSlots(raw: string): string[] {
@@ -197,12 +203,20 @@ function Row({
             courseId: item.courseId,
             editing: false,
             examType: item.examType ?? "",
-            scheduledAt: item.scheduledAt
-                ? new Date(item.scheduledAt).toISOString().slice(0, 16)
-                : "",
+            // The browser timezone is not available during server rendering.
+            // Populate this after hydration so datetime-local receives wall time.
+            scheduledAt: "",
             slotsText: item.slots.join(", "),
         },
     );
+
+    useEffect(() => {
+        updateDraft({
+            scheduledAt: item.scheduledAt
+                ? formatDateTimeLocalValue(item.scheduledAt)
+                : "",
+        });
+    }, [item.scheduledAt]);
 
     const save = () => {
         const courseId = draft.courseId;

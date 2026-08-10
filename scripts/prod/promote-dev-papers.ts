@@ -529,6 +529,21 @@ async function main() {
       loadTagNameRows(target.pool),
     ]);
 
+    const selectedSourceIds = new Set(sourcePapers.map((paper) => paper.id));
+    const referencedQuestionPaperIds = [
+      ...new Set(
+        sourcePapers.flatMap((paper) =>
+          paper.questionPaperId && !selectedSourceIds.has(paper.questionPaperId)
+            ? [paper.questionPaperId]
+            : [],
+        ),
+      ),
+    ];
+    const referencedQuestionPapers =
+      referencedQuestionPaperIds.length > 0
+        ? await loadPastPaperRows(source.pool, { ids: referencedQuestionPaperIds })
+        : [];
+
     const mappedSourcePapers: PaperRow[] = sourcePapers.map((paper) => ({
       ...paper,
       tags: getPaperTagNames(paper),
@@ -537,6 +552,12 @@ async function main() {
       ...paper,
       tags: getPaperTagNames(paper),
     }));
+    const mappedReferencedQuestionPapers: PaperRow[] = referencedQuestionPapers.map(
+      (paper) => ({
+        ...paper,
+        tags: getPaperTagNames(paper),
+      }),
+    );
 
     const targetPapersByKey = new Map<string, PaperRow[]>();
     for (const paper of mappedTargetPapers) {
@@ -557,7 +578,9 @@ async function main() {
       targetCourses.map((course) => [normalizeCode(course.code) ?? course.code, course]),
     );
     const targetTagNames = new Set(targetTags.map((tag) => tag.name));
-    const sourcePaperById = new Map(mappedSourcePapers.map((paper) => [paper.id, paper]));
+    const sourcePaperById = new Map(
+      [...mappedSourcePapers, ...mappedReferencedQuestionPapers].map((paper) => [paper.id, paper]),
+    );
     const sourceToTargetIds = new Map<string, string>();
     const touchedPapers: PromotionManifest["touchedPapers"] = [];
     const records: PromotionRecord[] = [];
@@ -570,6 +593,37 @@ async function main() {
     let blocked = 0;
     let blockedMissingMetadata = 0;
     let blockedTargetDuplicates = 0;
+
+    const preflightBlockers = mappedSourcePapers.filter((sourcePaper) => {
+      const key = canonicalVariantKey(sourcePaper);
+      const courseCode = normalizeCode(sourcePaper.course?.code);
+      if (!key || !courseCode || !sourcePaper.course) return true;
+      return options.failOnTargetDuplicates && (targetPapersByKey.get(key)?.length ?? 0) > 1;
+    });
+    if (options.failOnBlocked && preflightBlockers.length > 0) {
+      throw new Error(
+        `Promotion preflight found ${preflightBlockers.length} blocked source paper(s); no target rows were changed.`,
+      );
+    }
+
+    const linkPreflightErrors = mappedSourcePapers.flatMap((sourcePaper) => {
+      if (!sourcePaper.hasAnswerKey || !sourcePaper.questionPaperId) return [];
+      const sourceQuestionPaper = sourcePaperById.get(sourcePaper.questionPaperId);
+      if (!sourceQuestionPaper) {
+        return [`${sourcePaper.id}: referenced question paper ${sourcePaper.questionPaperId} was not found`];
+      }
+      if (selectedSourceIds.has(sourceQuestionPaper.id)) return [];
+      const questionKey = canonicalVariantKey(sourceQuestionPaper);
+      const targetMatches = questionKey ? targetPapersByKey.get(questionKey) ?? [] : [];
+      return targetMatches.length === 1
+        ? []
+        : [`${sourcePaper.id}: referenced question paper has ${targetMatches.length} target matches`];
+    });
+    if (linkPreflightErrors.length > 0) {
+      throw new Error(
+        `Answer-key link preflight failed; no target rows were changed:\n${linkPreflightErrors.join("\n")}`,
+      );
+    }
 
     const importUser = options.dryRun
       ? { id: "dry-run-import-user" }
@@ -902,7 +956,11 @@ async function main() {
       if (!targetAnswerKeyId) continue;
 
       const sourceQuestionPaper = sourcePaperById.get(sourcePaper.questionPaperId);
-      if (!sourceQuestionPaper) continue;
+      if (!sourceQuestionPaper) {
+        throw new Error(
+          `Referenced question paper ${sourcePaper.questionPaperId} disappeared after preflight.`,
+        );
+      }
 
       const targetQuestionPaperId =
         sourceToTargetIds.get(sourceQuestionPaper.id) ??

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "@/app/components/common/app-image";
 import {
   ArrowLeft,
+  ArrowRightLeft,
   Bot,
   CalendarDays,
   Check,
@@ -25,6 +26,7 @@ import type {
 import {
   applyAiModerationSuggestion,
   approveItem,
+  convertModerationResourceType,
   deleteItem,
   fetchModerationWorkbenchSnapshot,
   renameItem,
@@ -220,6 +222,16 @@ function hasSafelyApplicableSuggestion(
     }
     return true;
   });
+}
+
+function suggestedResourceType(item: QueueItem, review: AiModerationReview) {
+  if (item.resourceType === "note" && review.documentKind === "past_paper") {
+    return { current: "Notes", next: "Past papers" };
+  }
+  if (item.resourceType === "pastPaper" && review.documentKind === "notes") {
+    return { current: "Past papers", next: "Notes" };
+  }
+  return null;
 }
 
 function SectionHeading({ title, detail }: { title: string; detail?: string }) {
@@ -526,6 +538,7 @@ function DetailPanel({
   onApply,
   onApprove,
   onApproveAnyway,
+  onConvert,
   onDelete,
   onRename,
 }: {
@@ -535,6 +548,7 @@ function DetailPanel({
   onApply: () => void;
   onApprove: () => void;
   onApproveAnyway: () => void;
+  onConvert: () => void;
   onDelete: () => void;
   onRename: (title: string) => void;
 }) {
@@ -543,7 +557,15 @@ function DetailPanel({
   const [title, setTitle] = useState(displayTitle(item));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const review = item.aiReview;
-  const changes = review ? suggestionRows(item, review.suggestion) : [];
+  const resourceTypeChange = review ? suggestedResourceType(item, review) : null;
+  const changes = review
+    ? [
+        ...(resourceTypeChange
+          ? [{ label: "Resource type", ...resourceTypeChange }]
+          : []),
+        ...suggestionRows(item, review.suggestion),
+      ]
+    : [];
   const canApplySuggestion = review
     ? hasSafelyApplicableSuggestion(item, review.suggestion)
     : false;
@@ -650,6 +672,12 @@ function DetailPanel({
                 Apply changes & recheck
               </button>
             )}
+            {resourceTypeChange ? (
+              <button type="button" onClick={onConvert} disabled={busy} className={quietButton}>
+                <ArrowRightLeft className="size-4" aria-hidden />
+                Move to {resourceTypeChange.next.toLowerCase()}
+              </button>
+            ) : null}
             {item.aiReview?.status === "duplicate" ? (
               <button
                 type="button"
@@ -659,11 +687,11 @@ function DetailPanel({
               >
                 Approve anyway
               </button>
-            ) : (
+            ) : !resourceTypeChange ? (
               <button type="button" onClick={onApprove} disabled={busy} className={quietButton}>
                 <Check className="size-4" aria-hidden /> Manual approve
               </button>
-            )}
+            ) : null}
             <Link
               href={metadataHref(item)}
               className="ec-press inline-flex h-9 items-center px-1 text-sm font-semibold underline decoration-2 underline-offset-4"
@@ -1223,6 +1251,20 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
                     perform(selected.id, "Approving despite the duplicate…", async () => {
                       await approveItem(selected.id, selected.resourceType, { allowDuplicate: true });
                       remove(selected.id);
+                    })
+                  }
+                  onConvert={() =>
+                    perform(selected.id, "Moving the upload and rechecking its new corpus…", async () => {
+                      const result = await convertModerationResourceType(
+                        selected.id,
+                        selected.resourceType,
+                      );
+                      remove(selected.id);
+                      toast({
+                        title: result.review.autoApproved
+                          ? "Moved, rechecked, and approved."
+                          : `Moved to ${result.targetType === "note" ? "notes" : "past papers"} for review.`,
+                      });
                     })
                   }
                   onDelete={() =>

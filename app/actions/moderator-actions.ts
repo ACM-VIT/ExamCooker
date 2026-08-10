@@ -418,6 +418,108 @@ export async function runAiModerationReview(
     return review;
 }
 
+export async function convertModerationResourceType(
+    id: string,
+    type: "note" | "pastPaper",
+) {
+    const session = await auth();
+    if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
+
+    const targetType = type === "note" ? "pastPaper" : "note";
+    await db.transaction(async (transaction) => {
+        if (type === "note") {
+            const [source] = await transaction
+                .select()
+                .from(note)
+                .where(
+                    and(
+                        eq(note.id, id),
+                        eq(note.isClear, false),
+                        isNull(note.moderationArchivedAt),
+                    ),
+                )
+                .limit(1);
+            if (!source) throw new Error("This note is no longer awaiting review.");
+            const review = assertStoredReview(source.aiReview ?? null, source.updatedAt);
+            if (review.documentKind !== "past_paper") {
+                throw new Error("The AI review does not classify this upload as a past paper.");
+            }
+
+            await transaction.delete(note).where(eq(note.id, id));
+            await transaction.insert(pastPaper).values({
+                id: source.id,
+                authorId: source.authorId,
+                contentHash: source.contentHash,
+                courseId: review.suggestion.courseId ?? source.courseId,
+                fileUrl: source.fileUrl,
+                thumbNailUrl: source.thumbNailUrl,
+                title: review.suggestion.title.trim() || source.title,
+                examType: review.suggestion.examType,
+                slot: review.suggestion.slot,
+                year: review.suggestion.year,
+                semester: review.suggestion.semester ?? "UNKNOWN",
+                campus: review.suggestion.campus ?? "VELLORE",
+                hasAnswerKey: review.suggestion.hasAnswerKey ?? false,
+                isClear: false,
+                createdAt: source.createdAt,
+                updatedAt: new Date(),
+            });
+            return;
+        }
+
+        const [source] = await transaction
+            .select()
+            .from(pastPaper)
+            .where(
+                and(
+                    eq(pastPaper.id, id),
+                    eq(pastPaper.isClear, false),
+                    isNull(pastPaper.moderationArchivedAt),
+                ),
+            )
+            .limit(1);
+        if (!source) throw new Error("This past paper is no longer awaiting review.");
+        const review = assertStoredReview(source.aiReview ?? null, source.updatedAt);
+        if (review.documentKind !== "notes") {
+            throw new Error("The AI review does not classify this upload as notes.");
+        }
+        const [linkedAnswerKey] = await transaction
+            .select({ id: pastPaper.id })
+            .from(pastPaper)
+            .where(
+                and(
+                    eq(pastPaper.questionPaperId, id),
+                    isNull(pastPaper.moderationArchivedAt),
+                ),
+            )
+            .limit(1);
+        if (linkedAnswerKey) {
+            throw new Error("Unlink the answer key before moving this paper to notes.");
+        }
+
+        await transaction.delete(pastPaper).where(eq(pastPaper.id, id));
+        await transaction.insert(note).values({
+            id: source.id,
+            authorId: source.authorId,
+            contentHash: source.contentHash,
+            courseId: review.suggestion.courseId ?? source.courseId,
+            fileUrl: source.fileUrl,
+            thumbNailUrl: source.thumbNailUrl,
+            title: review.suggestion.title.trim() || source.title,
+            isClear: false,
+            createdAt: source.createdAt,
+            updatedAt: new Date(),
+        });
+    });
+
+    const review = await reviewUploadedResource({ id, type: targetType, autoApprove: true });
+    revalidatePath("/mod");
+    revalidateTag("notes", "minutes");
+    revalidateTag("past_papers", "minutes");
+    await invalidatePastPapersSurfaceCache();
+    return { review, targetType };
+}
+
 export async function applyAiModerationSuggestion(
     id: string,
     type: "note" | "pastPaper",
