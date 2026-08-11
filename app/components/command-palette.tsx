@@ -2,7 +2,6 @@
 
 import React, {
   Activity,
-  addTransitionType,
   startTransition,
   useEffect,
   useEffectEvent,
