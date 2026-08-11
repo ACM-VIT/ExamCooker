@@ -46,6 +46,8 @@ function validateOptionalEnum(
     return { error: `${fieldName} is invalid.` };
 }
 
+class UploadSaveClientError extends Error {}
+
 export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id || !session.user.email) {
@@ -127,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const results = await db.transaction(async (transaction) => {
+        const result = await db.transaction(async (transaction) => {
             const now = new Date();
             const consumed = await transaction
                 .update(uploadResultReceipt)
@@ -148,29 +150,38 @@ export async function POST(request: NextRequest) {
                 throw new Error("One or more upload receipts are invalid, expired, or already used.");
             }
             const resultById = new Map(consumed.map((receipt) => [receipt.id, receipt.result]));
-            return receiptIds.map((receiptId) => resultById.get(receiptId)!);
-        });
+            const results = receiptIds.map((receiptId) => resultById.get(receiptId)!);
 
-        const result = await createUploadedResources({
-            userEmail: session.user.email,
-            results,
-            year: stringValue(body.year),
-            slot: stringValue(body.slot),
-            variant,
-            courseId: nullableStringValue(body.courseId),
-            examType,
-            semester,
-            campus,
-            hasAnswerKey: body.hasAnswerKey === true,
-        });
+            const result = await createUploadedResources({
+                userEmail: session.user.email,
+                results,
+                year: stringValue(body.year),
+                slot: stringValue(body.slot),
+                variant,
+                courseId: nullableStringValue(body.courseId),
+                examType,
+                semester,
+                campus,
+                hasAnswerKey: body.hasAnswerKey === true,
+            }, transaction);
 
-        if (!result.success) {
-            return NextResponse.json(result, { status: 400 });
-        }
+            if (!result.success) {
+                throw new UploadSaveClientError(result.error);
+            }
+
+            return result;
+        });
 
         return NextResponse.json({ success: true, count: result.data?.length ?? 0 });
     } catch (error) {
         console.error("upload save api error", error);
+        if (error instanceof UploadSaveClientError) {
+            return NextResponse.json(
+                { success: false, error: error.message },
+                { status: 400 },
+            );
+        }
+
         const message =
             error instanceof Error
                 ? error.message
