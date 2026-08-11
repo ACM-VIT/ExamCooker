@@ -1,6 +1,7 @@
 'use client';
 
-import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Activity, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { addReactTransitionType } from "@/app/components/common/react-transition";
 import Image from "@/app/components/common/app-image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -74,14 +75,14 @@ export default function CourseSearch({ courses }: CourseSearchProps) {
     const navigateForward = (href: string, beforeNavigate?: () => void) => {
         startTransition(() => {
             beforeNavigate?.();
-            addTransitionType("nav-forward");
+            addReactTransitionType("nav-forward");
             push(href);
         });
     };
 
     const navigateToSearch = (href: string) => {
         startTransition(() => {
-            addTransitionType("filter-results");
+            addReactTransitionType("filter-results");
             push(href);
         });
     };

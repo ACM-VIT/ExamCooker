@@ -10,6 +10,7 @@ import React, {
   useReducer,
   useState,
 } from "react";
+import { addReactTransitionType } from "@/app/components/common/react-transition";
 import { Command } from "cmdk";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useAgent } from "agents/react";
@@ -1460,7 +1461,7 @@ function CommandPaletteSession({
     if (href === pathname) return;
 
     startTransition(() => {
-      addTransitionType(href.startsWith("/past_papers/") ? "nav-forward" : "nav-lateral");
+      addReactTransitionType(href.startsWith("/past_papers/") ? "nav-forward" : "nav-lateral");
       push(href);
     });
   };

@@ -1,7 +1,6 @@
 "use client";
 
 import React, {
-  addTransitionType,
   createContext,
   startTransition,
   useCallback,
@@ -11,6 +10,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { addReactTransitionType } from "@/app/components/common/react-transition";
 import { useRouter } from "next/navigation";
 import {
   createVoiceControlController,
@@ -428,7 +428,7 @@ export default function VoiceAgentProvider({
             }
 
             startTransition(() => {
-              addTransitionType("filter-results");
+              addReactTransitionType("filter-results");
               replace(nextPath);
             });
             await settleUi({ targetPath: nextPath });
