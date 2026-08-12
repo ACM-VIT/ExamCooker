@@ -193,10 +193,12 @@ function uploadFormReducer(
 
 function UploadHeader({
     formId,
+    isConverting,
     pending,
     variant,
 }: {
     formId: string;
+    isConverting: boolean;
     pending: boolean;
     variant: UploadVariant;
 }) {
@@ -220,10 +222,10 @@ function UploadHeader({
                 <button
                     type="submit"
                     form={formId}
-                    disabled={pending}
+                    disabled={pending || isConverting}
                     className="relative whitespace-nowrap border-2 border-black bg-[#3BF4C7] px-3 py-2 text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 disabled:cursor-not-allowed dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] sm:px-4 sm:text-lg"
                 >
-                    {pending ? "Uploading..." : "Upload"}
+                    {pending ? "Uploading..." : isConverting ? "Processing..." : "Upload"}
                 </button>
             </div>
         </div>
@@ -1047,6 +1049,14 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
 
             dispatch({ type: "patch", payload: { error: "" } });
 
+            if (variant === "Past Papers" && (isConverting || imageConversionInFlightRef.current)) {
+                dispatch({
+                    type: "patch",
+                    payload: { error: "Wait for the current pages to finish processing." },
+                });
+                return;
+            }
+
             if (files.length === 0) {
                 dispatch({
                     type: "patch",
@@ -1158,6 +1168,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             fileTitles,
             files,
             hasAnswerKey,
+            isConverting,
             requireAuth,
             push,
             semesterVal,
@@ -1227,6 +1238,7 @@ function UploadFile({ variant, courses }: UploadFileProps) {
             <div className="w-full max-w-md border-2 border-dashed border-[#D5D5D5] bg-white p-4 text-black shadow-lg dark:bg-[#0C1222] dark:text-[#D5D5D5] sm:p-6">
                 <UploadHeader
                     formId={ids.formId}
+                    isConverting={isConverting}
                     pending={pending}
                     variant={variant}
                 />

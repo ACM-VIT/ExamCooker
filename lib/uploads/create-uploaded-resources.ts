@@ -14,6 +14,8 @@ import { db, note, pastPaper, user } from "@/db";
 
 export const UPLOAD_SUCCESS_MESSAGE = "processed successfully";
 
+type UploadDatabaseClient = Pick<typeof db, "insert" | "select">;
+
 export type UploadVariant = "Notes" | "Past Papers";
 
 export type ProcessedUploadResult = {
@@ -36,6 +38,11 @@ export type CreateUploadedResourcesInput = {
     hasAnswerKey?: boolean;
 };
 
+type CreateUploadedResourcesOptions = {
+    dbClient?: UploadDatabaseClient;
+    runSideEffects?: boolean;
+};
+
 function normalizeOptionalUrl(url: string | null | undefined) {
     if (!url) {
         return null;
@@ -55,8 +62,10 @@ export async function createUploadedResources({
     semester,
     campus,
     hasAnswerKey,
-}: CreateUploadedResourcesInput) {
-    const userRows = await db
+}: CreateUploadedResourcesInput, options?: CreateUploadedResourcesOptions) {
+    const database = options?.dbClient ?? db;
+    const shouldRunSideEffects = options?.runSideEffects ?? true;
+    const userRows = await database
         .select({
             id: user.id,
         })
@@ -99,7 +108,7 @@ export async function createUploadedResources({
                   results.map(async (result) => {
                       const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
                       const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                      const rows = await db
+                      const rows = await database
                           .insert(note)
                           .values({
                               title: result.filename,
@@ -117,7 +126,7 @@ export async function createUploadedResources({
                   results.map(async (result) => {
                       const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
                       const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                      const rows = await db
+                      const rows = await database
                           .insert(pastPaper)
                           .values({
                               title: result.filename,
@@ -144,6 +153,17 @@ export async function createUploadedResources({
                   }),
               );
 
+    if (shouldRunSideEffects) {
+        await runUploadedResourceSideEffects(variant, data);
+    }
+
+    return { success: true as const, data };
+}
+
+export async function runUploadedResourceSideEffects(
+    variant: UploadVariant,
+    data: { id: string }[],
+) {
     const uploadedType = variant === "Notes" ? ("note" as const) : ("pastPaper" as const);
     const createdResources = data.map((resource) => ({
         id: resource.id,
@@ -179,6 +199,4 @@ export async function createUploadedResources({
         revalidateTag("past_papers", "minutes");
         await invalidatePastPapersSurfaceCache();
     }
-
-    return { success: true as const, data };
 }
