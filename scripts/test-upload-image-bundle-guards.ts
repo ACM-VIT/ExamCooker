@@ -18,20 +18,31 @@ assert.match(
 const conversionGuardIndex = source.indexOf(
   'variant === "Past Papers" && (isConverting || imageConversionInFlightRef.current)',
 );
-const missingFilesIndex = source.indexOf("if (files.length === 0)");
-const submitStartIndex = source.indexOf("startTransition(async () => {");
+const handleSubmitIndex = source.indexOf("const handleSubmit = useCallback");
+const handleSubmitSource = source.slice(handleSubmitIndex);
+const submitConversionGuardIndex = handleSubmitSource.indexOf(
+  'variant === "Past Papers" && (isConverting || imageConversionInFlightRef.current)',
+);
+const missingFilesIndex = handleSubmitSource.indexOf("if (files.length === 0)");
+const submitStartIndex = handleSubmitSource.indexOf("startTransition(async () => {");
 
 assert.notEqual(
   conversionGuardIndex,
   -1,
   "handleSubmit must block while the latest image bundle PDF is still being generated",
 );
+assert.notEqual(handleSubmitIndex, -1, "UploadFile should define a submit handler");
+assert.notEqual(
+  submitConversionGuardIndex,
+  -1,
+  "handleSubmit must include the conversion guard",
+);
 assert.ok(
-  conversionGuardIndex < missingFilesIndex,
+  submitConversionGuardIndex < missingFilesIndex,
   "the conversion guard should run before normal upload validation",
 );
 assert.ok(
-  conversionGuardIndex < submitStartIndex,
+  submitConversionGuardIndex < submitStartIndex,
   "the conversion guard must run before any upload processing starts",
 );
 
