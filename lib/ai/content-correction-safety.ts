@@ -22,6 +22,7 @@ function hasConcreteReplacement(
   if (field === "title") return suggestion.title.trim().length >= 2;
   if (field === "courseId") return suggestion.courseId !== null;
   if (field === "examType") return suggestion.examType !== null;
+  if (field === "slot") return suggestion.slot !== null;
   if (field === "year") return suggestion.year !== null;
   if (field === "semester") return suggestion.semester !== null;
   if (field === "campus") return suggestion.campus !== null;

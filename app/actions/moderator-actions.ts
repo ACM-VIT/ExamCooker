@@ -298,8 +298,48 @@ export async function deleteItem(id: string, type: "note" | "pastPaper") {
     const session = await auth();
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    if (type === "note") await db.delete(note).where(eq(note.id, id));
-    if (type === "pastPaper") await db.delete(pastPaper).where(eq(pastPaper.id, id));
+    if (type === "note") {
+        const [deleted] = await db
+            .delete(note)
+            .where(
+                and(
+                    eq(note.id, id),
+                    eq(note.isClear, false),
+                    isNull(note.moderationArchivedAt),
+                ),
+            )
+            .returning({ id: note.id });
+        if (!deleted) throw new Error("This note is no longer awaiting review.");
+    }
+    if (type === "pastPaper") {
+        await db.transaction(async (transaction) => {
+            const [linkedAnswerKey] = await transaction
+                .select({ id: pastPaper.id })
+                .from(pastPaper)
+                .where(
+                    and(
+                        eq(pastPaper.questionPaperId, id),
+                        isNull(pastPaper.moderationArchivedAt),
+                    ),
+                )
+                .limit(1);
+            if (linkedAnswerKey) {
+                throw new Error("Unlink the answer key before deleting this paper.");
+            }
+
+            const [deleted] = await transaction
+                .delete(pastPaper)
+                .where(
+                    and(
+                        eq(pastPaper.id, id),
+                        eq(pastPaper.isClear, false),
+                        isNull(pastPaper.moderationArchivedAt),
+                    ),
+                )
+                .returning({ id: pastPaper.id });
+            if (!deleted) throw new Error("This paper is no longer awaiting review.");
+        });
+    }
 
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
@@ -409,6 +449,34 @@ export async function runAiModerationReview(
 ) {
     const session = await auth();
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
+
+    if (type === "note") {
+        const [pendingNote] = await db
+            .select({ id: note.id })
+            .from(note)
+            .where(
+                and(
+                    eq(note.id, id),
+                    eq(note.isClear, false),
+                    isNull(note.moderationArchivedAt),
+                ),
+            )
+            .limit(1);
+        if (!pendingNote) throw new Error("This note is no longer awaiting review.");
+    } else {
+        const [pendingPaper] = await db
+            .select({ id: pastPaper.id })
+            .from(pastPaper)
+            .where(
+                and(
+                    eq(pastPaper.id, id),
+                    eq(pastPaper.isClear, false),
+                    isNull(pastPaper.moderationArchivedAt),
+                ),
+            )
+            .limit(1);
+        if (!pendingPaper) throw new Error("This paper is no longer awaiting review.");
+    }
 
     const review = await reviewUploadedResource({ id, type, autoApprove: true });
     revalidatePath("/mod");
