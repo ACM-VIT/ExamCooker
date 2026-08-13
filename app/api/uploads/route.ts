@@ -3,6 +3,7 @@ import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import {
     createUploadedResources,
+    runUploadedResourcePostSaveTasks,
     type CreateUploadedResourcesInput,
     type UploadVariant,
 } from "@/lib/uploads/create-uploaded-resources";
@@ -20,6 +21,13 @@ const campuses = new Set<string>(campusValues);
 type UploadRequestBody = Partial<
     Omit<CreateUploadedResourcesInput, "userEmail" | "results">
 > & { results?: unknown };
+
+class UploadSaveValidationError extends Error {
+    constructor(readonly result: { success: false; error: string }) {
+        super(result.error);
+        this.name = "UploadSaveValidationError";
+    }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -127,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const results = await db.transaction(async (transaction) => {
+        const result = await db.transaction(async (transaction) => {
             const now = new Date();
             const consumed = await transaction
                 .update(uploadResultReceipt)
@@ -148,28 +156,37 @@ export async function POST(request: NextRequest) {
                 throw new Error("One or more upload receipts are invalid, expired, or already used.");
             }
             const resultById = new Map(consumed.map((receipt) => [receipt.id, receipt.result]));
-            return receiptIds.map((receiptId) => resultById.get(receiptId)!);
+            const results = receiptIds.map((receiptId) => resultById.get(receiptId)!);
+
+            const uploadResult = await createUploadedResources({
+                userEmail: session.user.email,
+                results,
+                year: stringValue(body.year),
+                slot: stringValue(body.slot),
+                variant,
+                courseId: nullableStringValue(body.courseId),
+                examType,
+                semester,
+                campus,
+                hasAnswerKey: body.hasAnswerKey === true,
+                database: transaction,
+            });
+
+            if (!uploadResult.success) {
+                throw new UploadSaveValidationError(uploadResult);
+            }
+
+            return uploadResult;
         });
 
-        const result = await createUploadedResources({
-            userEmail: session.user.email,
-            results,
-            year: stringValue(body.year),
-            slot: stringValue(body.slot),
-            variant,
-            courseId: nullableStringValue(body.courseId),
-            examType,
-            semester,
-            campus,
-            hasAnswerKey: body.hasAnswerKey === true,
-        });
-
-        if (!result.success) {
-            return NextResponse.json(result, { status: 400 });
-        }
+        await runUploadedResourcePostSaveTasks(variant, result.data);
 
         return NextResponse.json({ success: true, count: result.data?.length ?? 0 });
     } catch (error) {
+        if (error instanceof UploadSaveValidationError) {
+            return NextResponse.json(error.result, { status: 400 });
+        }
+
         console.error("upload save api error", error);
         const message =
             error instanceof Error

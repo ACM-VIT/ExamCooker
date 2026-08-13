@@ -298,8 +298,44 @@ export async function deleteItem(id: string, type: "note" | "pastPaper") {
     const session = await auth();
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    if (type === "note") await db.delete(note).where(eq(note.id, id));
-    if (type === "pastPaper") await db.delete(pastPaper).where(eq(pastPaper.id, id));
+    if (type === "note") {
+        const [deleted] = await db
+            .delete(note)
+            .where(
+                and(
+                    eq(note.id, id),
+                    eq(note.isClear, false),
+                    isNull(note.moderationArchivedAt),
+                ),
+            )
+            .returning({ id: note.id });
+        if (!deleted) throw new Error("This note is no longer awaiting review.");
+    }
+
+    if (type === "pastPaper") {
+        await db.transaction(async (transaction) => {
+            const linkedAnswerKeys = await transaction
+                .select({ id: pastPaper.id })
+                .from(pastPaper)
+                .where(eq(pastPaper.questionPaperId, id))
+                .limit(1);
+            if (linkedAnswerKeys.length > 0) {
+                throw new Error("Delete the linked answer key before deleting this question paper.");
+            }
+
+            const [deleted] = await transaction
+                .delete(pastPaper)
+                .where(
+                    and(
+                        eq(pastPaper.id, id),
+                        eq(pastPaper.isClear, false),
+                        isNull(pastPaper.moderationArchivedAt),
+                    ),
+                )
+                .returning({ id: pastPaper.id });
+            if (!deleted) throw new Error("This paper is no longer awaiting review.");
+        });
+    }
 
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
