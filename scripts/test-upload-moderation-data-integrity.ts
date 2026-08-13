@@ -9,6 +9,10 @@ const uploadRouteSource = readSource("app/api/uploads/route.ts");
 const uploadHelperSource = readSource("lib/uploads/create-uploaded-resources.ts");
 const cliUploadRouteSource = readSource("app/api/cli/uploads/route.ts");
 const moderatorActionsSource = readSource("app/actions/moderator-actions.ts");
+const createUploadedResourcesBody = uploadHelperSource.slice(
+  uploadHelperSource.indexOf("export async function createUploadedResources"),
+  uploadHelperSource.indexOf("export async function runUploadedResourcePostSaveTasks"),
+);
 
 assert.match(
   uploadRouteSource,
@@ -31,7 +35,7 @@ assert.match(
   "upload review and cache side effects must run after the transaction commits",
 );
 assert.doesNotMatch(
-  uploadHelperSource,
+  createUploadedResourcesBody,
   /after\(async \(\) => \{/,
   "createUploadedResources must not schedule post-save side effects while running inside a transaction",
 );

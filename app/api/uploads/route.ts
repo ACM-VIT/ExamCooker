@@ -62,9 +62,11 @@ export async function POST(request: NextRequest) {
             { status: 401 },
         );
     }
+    const userId = session.user.id;
+    const userEmail = session.user.email;
 
     const rateLimit = await checkSlidingWindowRateLimit({
-        identifier: session.user.id,
+        identifier: userId,
         limit: SAVE_RATE_LIMIT,
         prefix: "upload-save",
         windowMs: SAVE_RATE_WINDOW_MS,
@@ -143,7 +145,7 @@ export async function POST(request: NextRequest) {
                 .where(
                     and(
                         inArray(uploadResultReceipt.id, receiptIds),
-                        eq(uploadResultReceipt.userId, session.user.id),
+                        eq(uploadResultReceipt.userId, userId),
                         gt(uploadResultReceipt.expiresAt, now),
                         isNull(uploadResultReceipt.consumedAt),
                     ),
@@ -159,7 +161,7 @@ export async function POST(request: NextRequest) {
             const results = receiptIds.map((receiptId) => resultById.get(receiptId)!);
 
             const uploadResult = await createUploadedResources({
-                userEmail: session.user.email,
+                userEmail,
                 results,
                 year: stringValue(body.year),
                 slot: stringValue(body.slot),
