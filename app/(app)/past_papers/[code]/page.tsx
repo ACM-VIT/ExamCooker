@@ -5,7 +5,10 @@ import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { getExamFocusForDate } from "@/lib/exam-focus";
-import { getCourseDetailByCode } from "@/lib/data/course-catalog";
+import {
+    getCourseDetailByCode,
+    getCourseTitleVariants,
+} from "@/lib/data/course-catalog";
 import {
     getCoursePaperFilterOptions,
     getCoursePapers,
@@ -324,6 +327,7 @@ async function CoursePastPapersPageContent({
     const syllabusPromise = getSyllabusByCourseCode(normalized);
     const course = await coursePromise;
     if (!course) notFound();
+    const courseOptions = await getCourseTitleVariants(course.title);
 
     const description = `Browse ${course.paperCount} past papers and ${course.noteCount} notes for ${course.title} on ExamCooker.`;
     const faq = [
@@ -365,6 +369,7 @@ async function CoursePastPapersPageContent({
                     paperCount={course.paperCount}
                     noteCount={course.noteCount}
                     syllabusId={null}
+                    courseOptions={courseOptions}
                 >
                     <Suspense fallback={null}>
                         <CourseHeaderSyllabusAction

@@ -77,6 +77,19 @@ export type CourseSearchRecord = {
     aliases: string[];
 };
 
+export type CourseTitleVariant = Pick<
+    CourseSearchRecord,
+    "id" | "code" | "title" | "paperCount" | "noteCount"
+>;
+
+function normalizeCourseTitle(title: string) {
+    return title
+        .normalize("NFKC")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLocaleLowerCase("en");
+}
+
 async function getSyllabusIdByCourseCode() {
     "use cache";
     cacheTag("syllabus");
@@ -282,6 +295,39 @@ export async function getCoursePickerRecords(): Promise<CourseSearchRecord[]> {
             aliases: courseRow.aliases,
         }))
         .sort((a, b) => a.code.localeCompare(b.code));
+}
+
+/**
+ * Returns every course code that shares this course's displayed title.
+ * Case and incidental whitespace are ignored so catalog capitalization does
+ * not split otherwise identical courses into separate groups.
+ */
+export async function getCourseTitleVariants(
+    title: string,
+): Promise<CourseTitleVariant[]> {
+    "use cache";
+    cacheTag("courses", "notes", "past_papers");
+    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+
+    const titleKey = normalizeCourseTitle(title);
+    if (!titleKey) return [];
+
+    const courses = await getCourseCatalogRows();
+    return courses
+        .filter((courseRow) => normalizeCourseTitle(courseRow.title) === titleKey)
+        .map(({ id, code, title: courseTitle, paperCount, noteCount }) => ({
+            id,
+            code,
+            title: courseTitle,
+            paperCount,
+            noteCount,
+        }))
+        .sort(
+            (a, b) =>
+                b.paperCount - a.paperCount ||
+                b.noteCount - a.noteCount ||
+                a.code.localeCompare(b.code, "en", { sensitivity: "base" }),
+        );
 }
 
 const getCourseSearchIndex = cache(async () => {

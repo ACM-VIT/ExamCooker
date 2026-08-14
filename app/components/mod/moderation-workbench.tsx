@@ -12,6 +12,7 @@ import {
   ChartLine,
   ExternalLink,
   Flag,
+  LibraryBig,
   Pencil,
   Search,
   Trash2,
@@ -1203,6 +1204,10 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
             </Link>
             <span className="lg:hidden" aria-hidden="true" />
             <nav aria-label="Moderator tools" className="flex items-center gap-2">
+              <Link href="/mod/courses" className={quietButton}>
+                <LibraryBig className="size-4" aria-hidden />
+                <span className="hidden sm:inline">Courses</span>
+              </Link>
               <Link href="/mod/upcoming" className={quietButton}>
                 <CalendarDays className="size-4" aria-hidden />
                 <span className="hidden sm:inline">Upcoming exams</span>

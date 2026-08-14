@@ -4,7 +4,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { examSlugToType, examTypeLabel, examTypeToSlug } from "@/lib/exam-slug";
-import { getCourseDetailByCode } from "@/lib/data/course-catalog";
+import {
+    getCourseDetailByCode,
+    getCourseTitleVariants,
+} from "@/lib/data/course-catalog";
 import {
     getCoursePaperFilterOptions,
     getCoursePapers,
@@ -118,7 +121,7 @@ async function CourseExamContent({
     const course = await getCourseDetailByCode(normalized);
     if (!course) notFound();
 
-    const [options, { papers }, syllabus] = await Promise.all([
+    const [options, { papers }, syllabus, courseOptions] = await Promise.all([
         getCoursePaperFilterOptions(course.id, {
             examTypes: [examType],
         }),
@@ -130,6 +133,7 @@ async function CourseExamContent({
             pageSize: 48,
         }),
         getSyllabusByCourseCode(course.code),
+        getCourseTitleVariants(course.title),
     ]);
     const detailSearchString = new URLSearchParams({
         exam: examTypeToSlug(examType),
@@ -183,6 +187,7 @@ async function CourseExamContent({
                         paperCount={course.paperCount}
                         noteCount={course.noteCount}
                         syllabusId={syllabus?.id ?? null}
+                        courseOptions={courseOptions}
                         breadcrumbItems={[
                             { label: "Past papers", href: "/past_papers" },
                             {
