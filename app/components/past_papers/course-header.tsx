@@ -14,6 +14,7 @@ type Props = {
     noteCount: number;
     syllabusId: string | null;
     courseOptions: CourseTitleVariant[];
+    examSlug?: string;
     children?: ReactNode;
     breadcrumbItems?: BreadcrumbNavItem[];
 };
@@ -37,6 +38,7 @@ export default function CourseHeader({
     noteCount,
     syllabusId,
     courseOptions,
+    examSlug,
     children,
     breadcrumbItems,
 }: Props) {
@@ -59,6 +61,7 @@ export default function CourseHeader({
                             currentCode={code}
                             courseTitle={title}
                             courses={courseOptions}
+                            examSlug={examSlug}
                         />
                         <p className="text-sm text-black/60 dark:text-[#D5D5D5]/60">
                             <span className="font-bold text-black dark:text-[#D5D5D5]">

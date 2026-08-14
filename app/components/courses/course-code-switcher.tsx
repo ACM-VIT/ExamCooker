@@ -4,13 +4,18 @@ import Link from "next/link";
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { CourseTitleVariant } from "@/lib/data/course-catalog";
-import { getCourseNotesPath, getCoursePastPapersPath } from "@/lib/seo";
+import {
+    getCourseExamPath,
+    getCourseNotesPath,
+    getCoursePastPapersPath,
+} from "@/lib/seo";
 
 type Props = {
     currentCode: string;
     courseTitle: string;
     courses: CourseTitleVariant[];
     surface?: "notes" | "papers";
+    examSlug?: string;
 };
 
 function countLabel(count: number, singular: string) {
@@ -22,6 +27,7 @@ export default function CourseCodeSwitcher({
     courseTitle,
     courses,
     surface = "papers",
+    examSlug,
 }: Props) {
     const [isOpen, setIsOpen] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
@@ -139,6 +145,8 @@ export default function CourseCodeSwitcher({
                                     href={
                                         surface === "notes"
                                             ? getCourseNotesPath(course.code)
+                                            : examSlug
+                                              ? getCourseExamPath(course.code, examSlug)
                                             : getCoursePastPapersPath(course.code)
                                     }
                                     onClick={() => setIsOpen(false)}

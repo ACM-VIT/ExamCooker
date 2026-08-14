@@ -188,6 +188,7 @@ async function CourseExamContent({
                         noteCount={course.noteCount}
                         syllabusId={syllabus?.id ?? null}
                         courseOptions={courseOptions}
+                        examSlug={examTypeToSlug(examType)}
                         breadcrumbItems={[
                             { label: "Past papers", href: "/past_papers" },
                             {

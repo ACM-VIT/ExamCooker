@@ -1,10 +1,10 @@
 "use server";
 
-import { asc, count, eq, isNotNull } from "drizzle-orm";
+import { asc, count, eq, ilike, isNotNull, or } from "drizzle-orm";
 import { updateTag, revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/app/auth";
-import { course, db, note, pastPaper } from "@/db";
+import { course, db, note, pastPaper, subject, syllabi } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { normalizeCourseCode } from "@/lib/course-tags";
 
@@ -155,6 +155,24 @@ function isUniqueViolation(error: unknown) {
     );
 }
 
+function replaceSyllabusCodePrefix(name: string, currentCode: string, nextCode: string) {
+    const prefix = `${currentCode}_`;
+    if (!name.toUpperCase().startsWith(prefix.toUpperCase())) return null;
+    return `${nextCode}${name.slice(currentCode.length)}`;
+}
+
+function replaceSubjectCodePrefix(name: string, currentCode: string, nextCode: string) {
+    const upperName = name.toUpperCase();
+    const upperCode = currentCode.toUpperCase();
+    if (upperName === upperCode) return nextCode;
+    if (!upperName.startsWith(upperCode)) return null;
+
+    const suffix = name.slice(currentCode.length);
+    return suffix.startsWith("-") || suffix.startsWith(" -")
+        ? `${nextCode}${suffix}`
+        : null;
+}
+
 export async function getModeratorCourseRegistry() {
     await requireModerator();
     return loadModeratorCourseRecords();
@@ -200,13 +218,75 @@ export async function updateManagedCourse(
     if (!validated.success) return validated;
 
     try {
-        const [updated] = await db
-            .update(course)
-            .set({ ...validated.data, updatedAt: new Date() })
-            .where(eq(course.id, courseId))
-            .returning({ id: course.id });
+        const updated = await db.transaction(async (tx) => {
+            const [existing] = await tx
+                .select({ code: course.code })
+                .from(course)
+                .where(eq(course.id, courseId))
+                .limit(1);
+            if (!existing) return null;
+
+            const codeChanged = existing.code !== validated.data.code;
+            if (codeChanged) {
+                const syllabusRows = await tx
+                    .select({ id: syllabi.id, name: syllabi.name })
+                    .from(syllabi)
+                    .where(ilike(syllabi.name, `${existing.code}_%`));
+
+                for (const syllabusRow of syllabusRows) {
+                    const nextName = replaceSyllabusCodePrefix(
+                        syllabusRow.name,
+                        existing.code,
+                        validated.data.code,
+                    );
+                    if (!nextName) continue;
+                    await tx
+                        .update(syllabi)
+                        .set({ name: nextName })
+                        .where(eq(syllabi.id, syllabusRow.id));
+                }
+
+                const subjectRows = await tx
+                    .select({ id: subject.id, name: subject.name })
+                    .from(subject)
+                    .where(
+                        or(
+                            ilike(subject.name, `${existing.code} -%`),
+                            ilike(subject.name, `${existing.code}-%`),
+                            ilike(subject.name, existing.code),
+                        ),
+                    );
+
+                for (const subjectRow of subjectRows) {
+                    const nextName = replaceSubjectCodePrefix(
+                        subjectRow.name,
+                        existing.code,
+                        validated.data.code,
+                    );
+                    if (!nextName) continue;
+                    await tx
+                        .update(subject)
+                        .set({ name: nextName })
+                        .where(eq(subject.id, subjectRow.id));
+                }
+            }
+
+            const [updated] = await tx
+                .update(course)
+                .set({ ...validated.data, updatedAt: new Date() })
+                .where(eq(course.id, courseId))
+                .returning({ id: course.id });
+
+            return updated
+                ? { id: updated.id, codeChanged }
+                : null;
+        });
         if (!updated) return { success: false, error: "Course not found." };
 
+        if (updated.codeChanged) {
+            updateTag("syllabus");
+            updateTag("resources");
+        }
         await invalidateCourseRegistry();
         const record = (await loadModeratorCourseRecords()).find(
             (entry) => entry.id === updated.id,
@@ -216,7 +296,10 @@ export async function updateManagedCourse(
             : { success: false, error: "Saved, but the course could not be reloaded." };
     } catch (error) {
         if (isUniqueViolation(error)) {
-            return { success: false, error: `A course with code ${validated.data.code} already exists.` };
+            return {
+                success: false,
+                error: `The code ${validated.data.code} is already used by a course or linked resource.`,
+            };
         }
         return { success: false, error: "The course could not be saved." };
     }
