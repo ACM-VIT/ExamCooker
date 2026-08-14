@@ -8,7 +8,6 @@ import AppImage from "@/app/components/common/app-image";
 import ExamCookerLogoIcon from "@/public/assets/logo-icon.svg";
 import { markRenderedRoutePath } from "@/app/components/voice/voice-navigation";
 import MobileTabBar from "@/app/components/mobile-tab-bar";
-import { NavFromProvider } from "@/app/components/common/nav-from-provider";
 import { useLocationSearch } from "@/app/components/common/use-location-search";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 import { MoreHorizontal, X } from "lucide-react";
@@ -214,44 +213,42 @@ function ClientShell({
 
     return (
         <Suspense fallback={<div className="relative flex" />}>
-            <NavFromProvider>
-                <div className="relative flex">
-                    <MobileChromeHeader isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
-                    <Suspense
-                        fallback={
-                            <NavBarFallback
-                                isNavOn={isNavOn}
-                                toggleNavbar={toggleNavbar}
-                            />
-                        }
-                    >
-                        <NavBar
+            <div className="relative flex">
+                <MobileChromeHeader isNavOn={isNavOn} toggleNavbar={toggleNavbar} />
+                <Suspense
+                    fallback={
+                        <NavBarFallback
                             isNavOn={isNavOn}
                             toggleNavbar={toggleNavbar}
-                            commandPaletteEnabled={commandPaletteEnabled}
-                            onOpenCommandPalette={openCommandPalette}
                         />
-                    </Suspense>
-                    {commandPaletteEnabled ? (
-                        <CommandPalette
-                            open={commandPaletteOpen}
-                            onOpenChange={setCommandPaletteOpen}
-                        />
-                    ) : null}
-                    <main className="ec-app-main min-w-0 flex-1 pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] lg:pb-0 lg:pl-14 lg:pt-0">
-                        <C2CSakuraSignal />
-                        <PaperSplitViewProvider>
-                            <Suspense fallback={null}>
-                                <MobileStaticLogo />
-                            </Suspense>
-                            {children}
-                        </PaperSplitViewProvider>
-                    </main>
-                    <Suspense fallback={null}>
-                        <MobileTabBar toolsSheetOpen={isNavOn} />
-                    </Suspense>
-                </div>
-            </NavFromProvider>
+                    }
+                >
+                    <NavBar
+                        isNavOn={isNavOn}
+                        toggleNavbar={toggleNavbar}
+                        commandPaletteEnabled={commandPaletteEnabled}
+                        onOpenCommandPalette={openCommandPalette}
+                    />
+                </Suspense>
+                {commandPaletteEnabled ? (
+                    <CommandPalette
+                        open={commandPaletteOpen}
+                        onOpenChange={setCommandPaletteOpen}
+                    />
+                ) : null}
+                <main className="ec-app-main min-w-0 flex-1 pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] lg:pb-0 lg:pl-14 lg:pt-0">
+                    <C2CSakuraSignal />
+                    <PaperSplitViewProvider>
+                        <Suspense fallback={null}>
+                            <MobileStaticLogo />
+                        </Suspense>
+                        {children}
+                    </PaperSplitViewProvider>
+                </main>
+                <Suspense fallback={null}>
+                    <MobileTabBar toolsSheetOpen={isNavOn} />
+                </Suspense>
+            </div>
         </Suspense>
     );
 }

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BookOpen, FileText } from "lucide-react";
+import CourseCodeSwitcher from "@/app/components/courses/course-code-switcher";
 import CourseBreadcrumbRail from "@/app/components/past_papers/course-breadcrumb-rail";
+import type { CourseTitleVariant } from "@/lib/data/course-catalog";
 import { getCourseNotesPath, getCourseSyllabusPath } from "@/lib/seo";
 import type { BreadcrumbNavItem } from "@/lib/breadcrumb-nav";
 
@@ -11,6 +13,8 @@ type Props = {
     paperCount: number;
     noteCount: number;
     syllabusId: string | null;
+    courseOptions: CourseTitleVariant[];
+    examSlug?: string;
     children?: ReactNode;
     breadcrumbItems?: BreadcrumbNavItem[];
 };
@@ -33,6 +37,8 @@ export default function CourseHeader({
     paperCount,
     noteCount,
     syllabusId,
+    courseOptions,
+    examSlug,
     children,
     breadcrumbItems,
 }: Props) {
@@ -50,23 +56,31 @@ export default function CourseHeader({
                     <h1 className="min-w-0 text-pretty text-[1.08rem] font-bold leading-[1.08] text-black dark:text-[#D5D5D5] min-[360px]:text-[1.18rem] min-[400px]:text-[1.28rem] sm:text-3xl lg:text-4xl">
                         {title}
                     </h1>
-                    <p className="mt-1 text-sm text-black/60 dark:text-[#D5D5D5]/60">
-                        <span className="font-bold text-black dark:text-[#D5D5D5]">
-                            {paperCount}
-                        </span>{" "}
-                        paper{paperCount === 1 ? "" : "s"}
-                        {noteCount > 0 && (
-                            <>
-                                <span className="mx-1.5" aria-hidden="true">
-                                    ·
-                                </span>
-                                <span className="font-bold text-black dark:text-[#D5D5D5]">
-                                    {noteCount}
-                                </span>{" "}
-                                note{noteCount === 1 ? "" : "s"}
-                            </>
-                        )}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <CourseCodeSwitcher
+                            currentCode={code}
+                            courseTitle={title}
+                            courses={courseOptions}
+                            examSlug={examSlug}
+                        />
+                        <p className="text-sm text-black/60 dark:text-[#D5D5D5]/60">
+                            <span className="font-bold text-black dark:text-[#D5D5D5]">
+                                {paperCount}
+                            </span>{" "}
+                            paper{paperCount === 1 ? "" : "s"}
+                            {noteCount > 0 && (
+                                <>
+                                    <span className="mx-1.5" aria-hidden="true">
+                                        ·
+                                    </span>
+                                    <span className="font-bold text-black dark:text-[#D5D5D5]">
+                                        {noteCount}
+                                    </span>{" "}
+                                    note{noteCount === 1 ? "" : "s"}
+                                </>
+                            )}
+                        </p>
+                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs sm:flex sm:shrink-0 sm:flex-wrap sm:items-center sm:justify-end sm:gap-1.5">
                     {noteCount > 0 && (
