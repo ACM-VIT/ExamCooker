@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import type { ViewTransitionClass } from "react";
 
 type ViewTransitionProps = {
-    children: ReactNode;
+    children?: ReactNode;
     name?: string;
     enter?: ViewTransitionClass | string;
     exit?: ViewTransitionClass | string;
