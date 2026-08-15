@@ -1,6 +1,7 @@
 "use client";
 
-import React, { ViewTransition, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { OptionalViewTransition } from "@/app/components/common/react-transition";
 import type { ViewTransitionClass } from "react";
 
 // `<ViewTransition>` is an experimental React API. It used to be keyed on
@@ -70,12 +71,12 @@ export default function DirectionalTransition({
     }
 
     return (
-        <ViewTransition
+        <OptionalViewTransition
             enter={NAV_TRANSITION_CLASSES}
             update={NAV_TRANSITION_CLASSES}
             default="none"
         >
             {children}
-        </ViewTransition>
+        </OptionalViewTransition>
     );
 }
