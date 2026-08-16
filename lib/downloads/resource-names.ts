@@ -21,13 +21,13 @@ function compactParts(parts: Array<string | null | undefined>) {
 }
 
 function withExtension(fileName: string, extension: string) {
-    const trimmedFileName = fileName.trim();
-    const hasExtension = trimmedFileName
-        .toLowerCase()
-        .endsWith(extension.toLowerCase());
-    const baseFileName = hasExtension
-        ? trimmedFileName.slice(0, -extension.length)
-        : trimmedFileName;
+    const lowerCaseExtension = extension.toLowerCase();
+    let baseFileName = fileName.trim();
+
+    while (baseFileName.toLowerCase().endsWith(lowerCaseExtension)) {
+        baseFileName = baseFileName.slice(0, -extension.length).trimEnd();
+    }
+
     const safeBase =
         sanitizeFileNamePart(baseFileName)
             .replace(/[. ]+$/g, "")
