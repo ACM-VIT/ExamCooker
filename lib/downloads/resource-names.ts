@@ -21,8 +21,15 @@ function compactParts(parts: Array<string | null | undefined>) {
 }
 
 function withExtension(fileName: string, extension: string) {
+    const trimmedFileName = fileName.trim();
+    const hasExtension = trimmedFileName
+        .toLowerCase()
+        .endsWith(extension.toLowerCase());
+    const baseFileName = hasExtension
+        ? trimmedFileName.slice(0, -extension.length)
+        : trimmedFileName;
     const safeBase =
-        sanitizeFileNamePart(fileName)
+        sanitizeFileNamePart(baseFileName)
             .replace(/[. ]+$/g, "")
             .slice(0, MAX_FILE_NAME_LENGTH)
             .trim() || "ExamCooker Download";
