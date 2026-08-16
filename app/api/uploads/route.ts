@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
             { status: 401 },
         );
     }
+    const userEmail = session.user.email;
 
     const rateLimit = await checkSlidingWindowRateLimit({
         identifier: session.user.id,
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
             const resultById = new Map(consumed.map((receipt) => [receipt.id, receipt.result]));
             const results = receiptIds.map((receiptId) => resultById.get(receiptId)!);
             const created = await createUploadedResources({
-                userEmail: session.user.email,
+                userEmail,
                 results,
                 year: stringValue(body.year),
                 slot: stringValue(body.slot),
