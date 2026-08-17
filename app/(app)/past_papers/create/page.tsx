@@ -1,6 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
-import UploadFile from "@/app/components/upload-file";
+import UploadFile from "@/app/components/upload-file-with-classifier";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import { getCoursePickerRecords } from "@/lib/data/course-catalog";
 
@@ -15,7 +15,7 @@ async function UploadPaperPage() {
     return (
         <DirectionalTransition>
             <div className="create-papers">
-                <UploadFile variant="Past Papers" courses={courses} />
+                <UploadFile courses={courses} />
             </div>
         </DirectionalTransition>
     );
