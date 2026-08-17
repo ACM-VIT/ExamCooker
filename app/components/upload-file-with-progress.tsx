@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useReducer, useRef } from "react";
+import React, { useEffect, useReducer } from "react";
 import UploadFile from "@/app/components/upload-file";
 import type { CourseOption } from "@/app/components/mod/course-picker";
 
@@ -11,13 +11,7 @@ type UploadFileWithProgressProps = {
     courses?: CourseOption[];
 };
 
-type UploadStage =
-    | "idle"
-    | "preparing"
-    | "processing"
-    | "saving"
-    | "complete"
-    | "failed";
+type UploadStage = "idle" | "processing" | "saving" | "complete" | "failed";
 
 type UploadProgressState = {
     stage: UploadStage;
@@ -26,13 +20,11 @@ type UploadProgressState = {
 };
 
 type UploadProgressAction =
-    | { type: "submitted" }
     | { type: "process-started" }
     | { type: "process-finished" }
     | { type: "save-started" }
     | { type: "completed" }
-    | { type: "failed" }
-    | { type: "reset" };
+    | { type: "failed" };
 
 const initialProgressState: UploadProgressState = {
     stage: "idle",
@@ -40,30 +32,28 @@ const initialProgressState: UploadProgressState = {
     processRequestsStarted: 0,
 };
 
-const stageOrder: UploadStage[] = [
-    "preparing",
-    "processing",
-    "saving",
-    "complete",
-];
+const stageOrder: UploadStage[] = ["processing", "saving", "complete"];
 
 function uploadProgressReducer(
     state: UploadProgressState,
     action: UploadProgressAction,
 ): UploadProgressState {
     switch (action.type) {
-        case "submitted":
+        case "process-started": {
+            const startsNewRun =
+                state.stage === "idle" ||
+                state.stage === "complete" ||
+                state.stage === "failed";
             return {
-                stage: "preparing",
-                processRequestsFinished: 0,
-                processRequestsStarted: 0,
-            };
-        case "process-started":
-            return {
-                ...state,
                 stage: "processing",
-                processRequestsStarted: state.processRequestsStarted + 1,
+                processRequestsFinished: startsNewRun
+                    ? 0
+                    : state.processRequestsFinished,
+                processRequestsStarted: startsNewRun
+                    ? 1
+                    : state.processRequestsStarted + 1,
             };
+        }
         case "process-finished":
             return {
                 ...state,
@@ -75,8 +65,6 @@ function uploadProgressReducer(
             return { ...state, stage: "complete" };
         case "failed":
             return { ...state, stage: "failed" };
-        case "reset":
-            return initialProgressState;
     }
 }
 
@@ -105,13 +93,6 @@ function progressCopy(state: UploadProgressState, variant: UploadVariant) {
     const resourceName = variant === "Past Papers" ? "paper" : "notes";
 
     switch (state.stage) {
-        case "preparing":
-            return {
-                eyebrow: "Step 1 of 4",
-                title: "Preparing your files",
-                description:
-                    "Checking the selected files and assembling the upload request.",
-            };
         case "processing": {
             const count = state.processRequestsStarted;
             const completed = Math.min(state.processRequestsFinished, count);
@@ -123,7 +104,7 @@ function progressCopy(state: UploadProgressState, variant: UploadVariant) {
                       : "";
 
             return {
-                eyebrow: "Step 2 of 4",
+                eyebrow: "Step 1 of 3",
                 title: `Uploading and processing ${resourceName}`,
                 description:
                     `Sending the file to ExamCooker, generating its stored copy and preview.${countText}`,
@@ -131,14 +112,14 @@ function progressCopy(state: UploadProgressState, variant: UploadVariant) {
         }
         case "saving":
             return {
-                eyebrow: "Step 3 of 4",
+                eyebrow: "Step 2 of 3",
                 title: "Saving submission details",
                 description:
                     "Writing the selected metadata and adding the submission to the automated review queue.",
             };
         case "complete":
             return {
-                eyebrow: "Step 4 of 4",
+                eyebrow: "Step 3 of 3",
                 title: "Submitted for review",
                 description:
                     "The upload is stored. ExamCooker is opening the library while automated review starts.",
@@ -201,8 +182,8 @@ function UploadProgressPanel({
 
             {state.stage !== "failed" ? (
                 <div
-                    className="mt-4 grid grid-cols-4 gap-1"
-                    aria-label={`${activeIndex + 1} of 4 upload steps reached`}
+                    className="mt-4 grid grid-cols-3 gap-1"
+                    aria-label={`${activeIndex + 1} of 3 upload steps reached`}
                 >
                     {stageOrder.map((stage, index) => (
                         <span
@@ -228,8 +209,6 @@ export default function UploadFileWithProgress(
         uploadProgressReducer,
         initialProgressState,
     );
-    const validationFallbackRef = useRef<number | null>(null);
-    const networkStartedRef = useRef(false);
 
     useEffect(() => {
         const originalFetch = window.fetch;
@@ -243,12 +222,6 @@ export default function UploadFileWithProgress(
 
             if (!isProcessRequest && !isSaveRequest) {
                 return originalFetch(input, init);
-            }
-
-            networkStartedRef.current = true;
-            if (validationFallbackRef.current !== null) {
-                window.clearTimeout(validationFallbackRef.current);
-                validationFallbackRef.current = null;
             }
 
             dispatch({
@@ -277,29 +250,11 @@ export default function UploadFileWithProgress(
             if (window.fetch === trackedFetch) {
                 window.fetch = originalFetch;
             }
-            if (validationFallbackRef.current !== null) {
-                window.clearTimeout(validationFallbackRef.current);
-            }
         };
     }, []);
 
-    const handleSubmitCapture = () => {
-        networkStartedRef.current = false;
-        dispatch({ type: "submitted" });
-
-        if (validationFallbackRef.current !== null) {
-            window.clearTimeout(validationFallbackRef.current);
-        }
-        validationFallbackRef.current = window.setTimeout(() => {
-            if (!networkStartedRef.current) {
-                dispatch({ type: "reset" });
-            }
-            validationFallbackRef.current = null;
-        }, 750);
-    };
-
     return (
-        <div onSubmitCapture={handleSubmitCapture}>
+        <div>
             <UploadFile {...props} />
             <UploadProgressPanel state={progress} variant={props.variant} />
         </div>
