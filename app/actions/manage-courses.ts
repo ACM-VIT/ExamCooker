@@ -1,11 +1,15 @@
 "use server";
 
-import { asc, count, eq, ilike, isNotNull, or } from "drizzle-orm";
+import { asc, count, eq, isNotNull } from "drizzle-orm";
 import { updateTag, revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/app/auth";
 import { course, db, note, pastPaper, subject, syllabi } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
+import {
+    replaceOwnedSubjectCodePrefix,
+    replaceOwnedSyllabusCodePrefix,
+} from "@/lib/course-code-owned-prefix";
 import { normalizeCourseCode } from "@/lib/course-tags";
 
 const courseInputSchema = z.object({
@@ -155,24 +159,6 @@ function isUniqueViolation(error: unknown) {
     );
 }
 
-function replaceSyllabusCodePrefix(name: string, currentCode: string, nextCode: string) {
-    const prefix = `${currentCode}_`;
-    if (!name.toUpperCase().startsWith(prefix.toUpperCase())) return null;
-    return `${nextCode}${name.slice(currentCode.length)}`;
-}
-
-function replaceSubjectCodePrefix(name: string, currentCode: string, nextCode: string) {
-    const upperName = name.toUpperCase();
-    const upperCode = currentCode.toUpperCase();
-    if (upperName === upperCode) return nextCode;
-    if (!upperName.startsWith(upperCode)) return null;
-
-    const suffix = name.slice(currentCode.length);
-    return suffix.startsWith("-") || suffix.startsWith(" -")
-        ? `${nextCode}${suffix}`
-        : null;
-}
-
 export async function getModeratorCourseRegistry() {
     await requireModerator();
     return loadModeratorCourseRecords();
@@ -228,17 +214,21 @@ export async function updateManagedCourse(
 
             const codeChanged = existing.code !== validated.data.code;
             if (codeChanged) {
+                const courseCodeRows = await tx
+                    .select({ code: course.code })
+                    .from(course);
+                const knownCourseCodes = courseCodeRows.map((row) => row.code);
                 const syllabusRows = await tx
                     .select({ id: syllabi.id, name: syllabi.name })
-                    .from(syllabi)
-                    .where(ilike(syllabi.name, `${existing.code}_%`));
+                    .from(syllabi);
 
                 for (const syllabusRow of syllabusRows) {
-                    const nextName = replaceSyllabusCodePrefix(
-                        syllabusRow.name,
-                        existing.code,
-                        validated.data.code,
-                    );
+                    const nextName = replaceOwnedSyllabusCodePrefix({
+                        name: syllabusRow.name,
+                        currentCode: existing.code,
+                        nextCode: validated.data.code,
+                        knownCourseCodes,
+                    });
                     if (!nextName) continue;
                     await tx
                         .update(syllabi)
@@ -248,21 +238,15 @@ export async function updateManagedCourse(
 
                 const subjectRows = await tx
                     .select({ id: subject.id, name: subject.name })
-                    .from(subject)
-                    .where(
-                        or(
-                            ilike(subject.name, `${existing.code} -%`),
-                            ilike(subject.name, `${existing.code}-%`),
-                            ilike(subject.name, existing.code),
-                        ),
-                    );
+                    .from(subject);
 
                 for (const subjectRow of subjectRows) {
-                    const nextName = replaceSubjectCodePrefix(
-                        subjectRow.name,
-                        existing.code,
-                        validated.data.code,
-                    );
+                    const nextName = replaceOwnedSubjectCodePrefix({
+                        name: subjectRow.name,
+                        currentCode: existing.code,
+                        nextCode: validated.data.code,
+                        knownCourseCodes,
+                    });
                     if (!nextName) continue;
                     await tx
                         .update(subject)
