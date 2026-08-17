@@ -162,25 +162,22 @@ async function setCourseValue(root: HTMLElement, courseCode: string) {
     const matchingOption = Array.from(root.querySelectorAll("li")).find((option) =>
         option.textContent?.toUpperCase().includes(courseCode),
     );
-    if (matchingOption) {
-        matchingOption.dispatchEvent(
-            new MouseEvent("mousedown", {
-                bubbles: true,
-                cancelable: true,
-            }),
-        );
-        return true;
-    }
+    if (!matchingOption) return false;
 
-    input.dispatchEvent(
-        new KeyboardEvent("keydown", {
-            key: "Enter",
-            code: "Enter",
+    matchingOption.dispatchEvent(
+        new MouseEvent("mousedown", {
             bubbles: true,
             cancelable: true,
         }),
     );
-    return true;
+    await nextPaint();
+
+    return Array.from(root.querySelectorAll("button")).some((button) => {
+        if (button.textContent?.trim().toLowerCase() !== "change") return false;
+        return button.parentElement?.textContent
+            ?.toUpperCase()
+            .includes(courseCode);
+    });
 }
 
 export async function applyPaperMetadata(
