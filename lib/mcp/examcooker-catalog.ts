@@ -23,10 +23,12 @@ import {
   type VinCourse,
 } from "@/lib/data/vin-together";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import {
+  getDatabaseResourcePageRequests,
+  MAX_PAGE_SIZE,
+} from "@/lib/mcp/resource-pagination";
 import { toResourceId } from "@/lib/mcp/resource-id";
-
 const DEFAULT_PAGE_SIZE = 20;
-const MAX_PAGE_SIZE = 50;
 
 export type McpPage<T> = {
   items: T[];
@@ -367,19 +369,23 @@ async function getDatabaseResourceWindow(
 ): Promise<McpResourceCandidate[]> {
   if (limit <= 0) return [];
 
-  const databasePageSize = MAX_PAGE_SIZE;
-  const databasePage = Math.floor(offset / databasePageSize) + 1;
-  const databasePageOffset = offset % databasePageSize;
-  const resources = await getResourcesPage({
-    search: input.query?.trim() ?? "",
-    courseCode: input.courseCode?.trim()
-      ? normalizeCourseCode(input.courseCode)
-      : undefined,
-    page: databasePage,
-    pageSize: databasePageSize,
-  });
+  const pageRequests = getDatabaseResourcePageRequests(offset, limit);
+  const pages = await Promise.all(
+    pageRequests.map(({ page, pageSize }) =>
+      getResourcesPage({
+        search: input.query?.trim() ?? "",
+        courseCode: input.courseCode?.trim()
+          ? normalizeCourseCode(input.courseCode)
+          : undefined,
+        page,
+        pageSize,
+      }),
+    ),
+  );
+  const databasePageOffset = offset % MAX_PAGE_SIZE;
 
-  return resources
+  return pages
+    .flat()
     .slice(databasePageOffset, databasePageOffset + limit)
     .map(mapDatabaseResource);
 }
