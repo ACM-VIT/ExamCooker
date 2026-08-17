@@ -175,13 +175,12 @@ export default async function AccountPage() {
                             >
                                 Upload a paper
                             </Link>
-                            <Link
+                            <a
                                 href="/account"
-                                prefetch={false}
                                 className="border-2 border-black/25 px-4 py-2 transition hover:border-black dark:border-white/25 dark:hover:border-white"
                             >
                                 Refresh
-                            </Link>
+                            </a>
                         </div>
                     </div>
                 </header>
@@ -250,9 +249,9 @@ export default async function AccountPage() {
                                             >
                                                 Open file
                                             </a>
-                                            {paper.isClear ? (
+                                            {paper.isClear && paper.courseCode ? (
                                                 <Link
-                                                    href={`/past_papers/paper/${paper.id}`}
+                                                    href={`/past_papers/${paper.courseCode}/paper/${paper.id}`}
                                                     className="border border-black bg-black px-3 py-2 text-white dark:border-white dark:bg-white dark:text-black"
                                                 >
                                                     View published paper
