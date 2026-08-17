@@ -1,6 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
-import UploadFile from "@/app/components/upload-file";
+import UploadFile from "@/app/components/upload-file-with-progress";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import { getCoursePickerRecords } from "@/lib/data/course-catalog";
 
