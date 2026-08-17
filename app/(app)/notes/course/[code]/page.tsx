@@ -5,11 +5,15 @@ import { notFound, redirect } from "next/navigation";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import PageBreadcrumbRow from "@/app/components/common/page-breadcrumb-row";
 import CourseNotesGrid from "@/app/components/notes/course-notes-grid";
+import CourseCodeSwitcher from "@/app/components/courses/course-code-switcher";
 import Pagination from "@/app/components/pagination";
 import UploadButtonNotes from "@/app/components/upload-button-notes";
 import CourseVisitTracker from "@/app/components/past_papers/course-visit-tracker";
 import StructuredData from "@/app/components/seo/structured-data";
-import { getCourseDetailByCode } from "@/lib/data/course-catalog";
+import {
+    getCourseDetailByCode,
+    getCourseTitleVariants,
+} from "@/lib/data/course-catalog";
 import {
     getCourseNotesCount,
     getCourseNotesPage,
@@ -142,9 +146,10 @@ async function CourseNotesContent({
         Number.parseInt(rawSearchParams?.page || "1", 10) || 1,
     );
 
-    const [noteCount, subject] = await Promise.all([
+    const [noteCount, subject, courseOptions] = await Promise.all([
         getCourseNotesCount({ courseId: course.courseId }),
         getSubjectByCourseCode(course.code),
+        getCourseTitleVariants(course.title),
     ]);
 
     if (!noteCount) {
@@ -164,6 +169,14 @@ async function CourseNotesContent({
                             <h1 className="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
                                 {course.title} notes
                             </h1>
+                            <div className="mt-3">
+                                <CourseCodeSwitcher
+                                    currentCode={course.code}
+                                    courseTitle={course.title}
+                                    courses={courseOptions}
+                                    surface="notes"
+                                />
+                            </div>
                         </div>
                     </header>
 
@@ -287,6 +300,14 @@ async function CourseNotesContent({
                             <h1 className="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
                                 {course.title} notes
                             </h1>
+                            <div className="mt-3">
+                                <CourseCodeSwitcher
+                                    currentCode={course.code}
+                                    courseTitle={course.title}
+                                    courses={courseOptions}
+                                    surface="notes"
+                                />
+                            </div>
                             <p className="sr-only">
                                 Download {course.code} lecture notes, study material, revision PDFs,
                                 and prep resources for {course.title}. Use it as the main notes
