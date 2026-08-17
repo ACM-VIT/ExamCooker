@@ -1,7 +1,10 @@
 "use client";
 
-import React, { ViewTransition, useEffect, useState } from "react";
-import type { ViewTransitionClass } from "react";
+import React, { useEffect, useState } from "react";
+import {
+    ViewTransition,
+    type ViewTransitionClass,
+} from "@/app/components/common/react-transition";
 
 // `<ViewTransition>` is an experimental React API. It used to be keyed on
 // `pathname`, which forced the whole page subtree to remount on every

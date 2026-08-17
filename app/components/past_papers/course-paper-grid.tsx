@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ViewTransition, useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
@@ -35,6 +35,7 @@ import {
     DESKTOP_SELECT_ALL_HOST_ID,
     MOBILE_SELECT_ALL_HOST_ID,
 } from "./course-paper-grid-controls";
+import { ViewTransition } from "@/app/components/common/react-transition";
 import { getPastPaperDetailPath } from "@/lib/seo";
 
 type Props = {
