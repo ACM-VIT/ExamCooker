@@ -27,7 +27,11 @@ import {
     tag,
 } from "@/db";
 
-function buildWhere(search: string, tags: string[]) {
+function buildWhere(
+    search: string,
+    tags: string[],
+    courseId?: string | null,
+) {
     const filters = [eq(note.isClear, true)];
 
     if (tags.length > 0) {
@@ -45,6 +49,10 @@ function buildWhere(search: string, tags: string[]) {
                     ),
             ),
         );
+    }
+
+    if (courseId) {
+        filters.push(eq(note.courseId, courseId));
     }
 
     if (search) {
@@ -73,12 +81,16 @@ function buildWhere(search: string, tags: string[]) {
     return and(...filters);
 }
 
-export async function getNotesCount(input: { search: string; tags: string[] }) {
+export async function getNotesCount(input: {
+    search: string;
+    tags: string[];
+    courseId?: string | null;
+}) {
     "use cache";
     cacheTag("notes");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const where = buildWhere(input.search, input.tags);
+    const where = buildWhere(input.search, input.tags, input.courseId);
     const rows = await db
         .select({ total: count() })
         .from(note)
@@ -90,6 +102,7 @@ export async function getNotesCount(input: { search: string; tags: string[] }) {
 export async function getNotesPage(input: {
     search: string;
     tags: string[];
+    courseId?: string | null;
     page: number;
     pageSize: number;
 }) {
@@ -97,7 +110,7 @@ export async function getNotesPage(input: {
     cacheTag("notes");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const where = buildWhere(input.search, input.tags);
+    const where = buildWhere(input.search, input.tags, input.courseId);
     const skip = (input.page - 1) * input.pageSize;
 
     const items = await db
@@ -105,8 +118,11 @@ export async function getNotesPage(input: {
             id: note.id,
             title: note.title,
             thumbNailUrl: note.thumbNailUrl,
+            courseCode: course.code,
+            courseTitle: course.title,
         })
         .from(note)
+        .leftJoin(course, eq(note.courseId, course.id))
         .where(where)
         .orderBy(desc(note.createdAt))
         .offset(skip)
@@ -117,6 +133,7 @@ export async function getNotesPage(input: {
         thumbNailUrl: normalizeGcsUrl(item.thumbNailUrl),
     }));
 }
+
 
 export type CourseNoteListItem = {
     id: string;

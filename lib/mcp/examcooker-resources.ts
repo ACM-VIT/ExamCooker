@@ -41,11 +41,21 @@ export type McpSearchOutput = {
   results: McpSearchResult[];
 };
 
+export type McpAsset = {
+  uri: string;
+  name: string;
+  mimeType: string;
+  description?: string;
+};
+
 export type McpFetchOutput = {
   id: string;
   title: string;
   text: string;
   url: string;
+  pdfUrl?: string;
+  imageUrls?: string[];
+  assets?: McpAsset[];
   metadata?: Record<string, string | number | boolean | null>;
 };
 
@@ -81,6 +91,51 @@ function listItems(items: string[]) {
   return items.length ? items.map((item) => `- ${item}`).join("\n") : "- None";
 }
 
+function mediaTypeForUrl(url: string) {
+  const path = (() => {
+    try {
+      return new URL(url).pathname.toLowerCase();
+    } catch {
+      return url.toLowerCase();
+    }
+  })();
+
+  if (path.endsWith(".pdf")) return "application/pdf";
+  if (path.endsWith(".png")) return "image/png";
+  if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+  if (path.endsWith(".webp")) return "image/webp";
+  if (path.endsWith(".gif")) return "image/gif";
+  if (path.endsWith(".svg")) return "image/svg+xml";
+  return "application/octet-stream";
+}
+
+function toPublicAssetUrl(url: string | null | undefined) {
+  return normalizeGcsUrl(url);
+}
+
+function buildAssets(
+  entries: Array<{
+    url: string | null | undefined;
+    name: string;
+    description?: string;
+  }>,
+) {
+  const seen = new Set<string>();
+  return entries.flatMap(({ url, name, description }) => {
+    const normalizedUrl = toPublicAssetUrl(url)?.trim();
+    if (!normalizedUrl || seen.has(normalizedUrl)) return [];
+    seen.add(normalizedUrl);
+    return [
+      {
+        uri: normalizedUrl,
+        name,
+        mimeType: mediaTypeForUrl(normalizedUrl),
+        ...(description ? { description } : {}),
+      },
+    ];
+  });
+}
+
 function compactMetadata(
   values: Record<string, string | number | boolean | null | undefined>,
 ) {
@@ -104,6 +159,7 @@ function dedupeAndSort(
   results.forEach((item, pos) => {
     if (!byId.has(item.id)) byId.set(item.id, { item, pos });
   });
+
   const entries = Array.from(byId.values());
   entries.sort((a, b) => {
     const aRank = a.item._courseCode ? coursePaperRank.get(a.item._courseCode) ?? 0 : 0;
@@ -112,6 +168,7 @@ function dedupeAndSort(
     if (a.item._kindRank !== b.item._kindRank) return a.item._kindRank - b.item._kindRank;
     return a.pos - b.pos;
   });
+
   return entries
     .slice(0, MAX_SEARCH_RESULTS)
     .map(({ item }) => ({ id: item.id, title: item.title, url: item.url }));
@@ -125,11 +182,13 @@ async function searchCourses(query: string): Promise<InternalResult[]> {
       b.noteCount - a.noteCount ||
       a.code.localeCompare(b.code),
   );
+
   return ranked.slice(0, PER_TYPE_SEARCH_LIMIT).map((course) => {
     const signals = [
       course.paperCount ? `${course.paperCount} papers` : null,
       course.noteCount ? `${course.noteCount} notes` : null,
     ].filter(Boolean);
+
     return {
       id: toResourceId({ kind: "course", id: course.code }),
       title: `Course: ${course.code} - ${course.title}${
@@ -142,11 +201,9 @@ async function searchCourses(query: string): Promise<InternalResult[]> {
   });
 }
 
-// Notes have course code embedded in their filename, e.g. "...-BMAT202L.pdf".
-// Pull it from the title since the data layer doesn't return the course relation.
 function inferCourseCodeFromTitle(title: string): string | null {
-  const m = /\b([A-Z]{2,5}\d{2,4}[A-Z]?)\b/.exec(title);
-  return m ? m[1] : null;
+  const match = /\b([A-Z]{2,5}\d{2,4}[A-Z]?)\b/.exec(title);
+  return match?.[1] ?? null;
 }
 
 async function searchPastPapers(query: string): Promise<InternalResult[]> {
@@ -249,18 +306,11 @@ export async function searchExamCookerResources(
   const providerResults = await Promise.all(
     searchProviders.map((provider) => provider(trimmedQuery)),
   );
-  const all = providerResults.flat();
-
-  // Build paperCount rank from the course results so we can group everything
-  // by course and pull the most-active courses (most papers) to the top.
-  const coursePaperRank = new Map<string, number>();
-  // Match the same course ranking as searchCourses(): full catalog rank by
-  // paperCount, not just the top 5 we surface as tiles.
   const allCourses = await searchCourseGrid(trimmedQuery);
-  for (const c of allCourses) coursePaperRank.set(c.code, c.paperCount);
+  const coursePaperRank = new Map(allCourses.map((course) => [course.code, course.paperCount]));
 
   return {
-    results: dedupeAndSort(all, coursePaperRank),
+    results: dedupeAndSort(providerResults.flat(), coursePaperRank),
   };
 }
 
@@ -274,6 +324,23 @@ function moduleLinks(module: {
   ];
 }
 
+function getVinCourseAssets(course: VinCourse) {
+  return buildAssets([
+    ...(course.image ? [{ url: course.image, name: `${course.displayName} cover image` }] : []),
+    ...course.modules.flatMap((module) =>
+      module.subtopics.flatMap((topic) => [
+        ...(topic.pdfLink ? [{ url: topic.pdfLink, name: `${topic.title} PDF` }] : []),
+        ...topic.takeaways.flatMap((item) =>
+          item.image ? [{ url: item.image, name: `${topic.title} takeaway` }] : [],
+        ),
+        ...topic.questions.flatMap((item) =>
+          item.image ? [{ url: item.image, name: `${topic.title} question` }] : [],
+        ),
+      ]),
+    ),
+  ]);
+}
+
 function formatVinCourse(course: VinCourse): McpFetchOutput {
   const topicSections = course.modules.flatMap((module) =>
     module.subtopics.map((topic) => {
@@ -281,40 +348,46 @@ function formatVinCourse(course: VinCourse): McpFetchOutput {
         ...topic.videos.map((url) => `video: ${url}`),
         ...topic.exampleVideos.map((url) => `example video: ${url}`),
         topic.pdfLink ? `pdf: ${topic.pdfLink}` : null,
-        ...topic.takeaways.flatMap((item) =>
-          item.text ? [`takeaway: ${item.text}`] : [],
-        ),
-        ...topic.questions.flatMap((item) =>
-          item.text ? [`previous question: ${item.text}`] : [],
-        ),
+        ...topic.takeaways
+          .map((item) => (item.text ? `takeaway: ${item.text}` : null))
+          .filter((item): item is string => item !== null),
+        ...topic.questions
+          .map((item) => (item.text ? `previous question: ${item.text}` : null))
+          .filter((item): item is string => item !== null),
       ].filter((item): item is string => item !== null);
 
-      return [
-        `### ${module.title}: ${topic.title}`,
-        listItems(resources),
-      ].join("\n");
+      return [`### ${module.title}: ${topic.title}`, listItems(resources)].join("\n");
     }),
   );
 
+  const assets = getVinCourseAssets(course);
+
+  const path = `/resources/${encodeURIComponent(course.slug)}`;
   return {
     id: toResourceId({ kind: "resource", id: course.slug }),
     title: `${course.displayName} resources`,
-    url: absoluteUrl(`/resources/${encodeURIComponent(course.slug)}`),
+    url: absoluteUrl(path),
+    imageUrls: assets
+      .filter((asset) => asset.mimeType.startsWith("image/"))
+      .map((asset) => asset.uri),
+    assets,
     text: joinSections([
       `# ${course.displayName} resources`,
-      course.shortName ? `Short name: ${course.shortName}` : null,
       `Year: ${course.year}`,
       `Modules: ${course.counts.moduleCount}`,
       `Topics: ${course.counts.topicCount}`,
+      `Videos: ${course.counts.videoCount + course.counts.exampleVideoCount}`,
+      `Previous questions: ${course.counts.questionCount}`,
       ...topicSections,
     ]),
     metadata: compactMetadata({
       type: "resource",
-      source: "VInTogether",
+      year: course.year,
       moduleCount: course.counts.moduleCount,
       topicCount: course.counts.topicCount,
       videoCount: course.counts.videoCount,
       questionCount: course.counts.questionCount,
+      assetCount: assets.length,
     }),
   };
 }
@@ -328,18 +401,19 @@ async function fetchCourse(ref: ResourceRef) {
     getSubjectByCourseCode(courseCode),
     getSyllabusDetailByCourseCode(courseCode),
   ]);
-
-  if (!courseDetail && !subjectDetail && !syllabus) return null;
-
   const parsedSubject = subjectDetail ? parseSubjectName(subjectDetail.name) : null;
+  const remoteCourse = findVinCourseByNames([
+    courseCode,
+    courseDetail?.title,
+    ...(courseDetail?.aliases ?? []),
+    parsedSubject?.courseName,
+  ]);
+
+  if (!courseDetail && !subjectDetail && !syllabus && !remoteCourse) return null;
+
   const canonicalCode = courseDetail?.code ?? parsedSubject?.courseCode ?? courseCode;
   const courseTitle =
-    courseDetail?.title ?? parsedSubject?.courseName ?? syllabus?.name ?? canonicalCode;
-  const remoteCourse = findVinCourseByNames([
-    canonicalCode,
-    courseTitle,
-    ...(courseDetail?.aliases ?? []),
-  ]);
+    courseDetail?.title ?? parsedSubject?.courseName ?? syllabus?.name ?? remoteCourse?.displayName ?? canonicalCode;
 
   const [papers, notes] = await Promise.all([
     searchCliPapers(absoluteUrl("/"), {
@@ -368,10 +442,40 @@ async function fetchCourse(ref: ResourceRef) {
       return `${module.title}${links.length ? ` (${links.join(", ")})` : ""}`;
     }) ?? [];
 
+  const remoteAssets = remoteCourse ? getVinCourseAssets(remoteCourse) : [];
+  const assets = buildAssets([
+    ...(syllabus
+      ? [{ url: syllabus.fileUrl, name: `${canonicalCode} syllabus PDF` }]
+      : []),
+    ...papers.papers.map((paper) => ({
+      url: paper.fileUrl,
+      name: `${stripPdfExtension(paper.title)} PDF`,
+    })),
+    ...notes.map((note) => ({
+      url: note.fileUrl,
+      name: `${stripPdfExtension(note.title)} PDF`,
+    })),
+    ...(subjectDetail?.modules.flatMap((module) =>
+      (module.webReferences ?? []).map((url) => ({
+        url,
+        name: `${module.title} resource`,
+      })),
+    ) ?? []),
+    ...remoteAssets.map((asset) => ({
+      url: asset.uri,
+      name: asset.name,
+      description: asset.description,
+    })),
+  ]);
+
   return {
     id: toResourceId({ kind: "course", id: canonicalCode }),
     title: `${canonicalCode} - ${courseTitle}`,
     url: absoluteUrl(getCoursePastPapersPath(canonicalCode)),
+    imageUrls: assets
+      .filter((asset) => asset.mimeType.startsWith("image/"))
+      .map((asset) => asset.uri),
+    assets,
     text: joinSections([
       `# ${canonicalCode} - ${courseTitle}`,
       `Past papers: ${courseDetail?.paperCount ?? papers.total}`,
@@ -380,7 +484,7 @@ async function fetchCourse(ref: ResourceRef) {
         ? [
             `Syllabus: ${formatSyllabusDisplayName(syllabus.name)}`,
             `Syllabus URL: ${absoluteUrl(getCourseSyllabusPath(canonicalCode))}`,
-            `PDF: ${syllabus.fileUrl}`,
+            `PDF: ${toPublicAssetUrl(syllabus.fileUrl)}`,
           ].join("\n")
         : "Syllabus: not listed",
       `Past papers URL: ${absoluteUrl(getCoursePastPapersPath(canonicalCode))}`,
@@ -413,7 +517,7 @@ async function fetchCourse(ref: ResourceRef) {
       subjectDetail ? listItems(moduleSummaries) : null,
       remoteCourse
         ? [
-            `VInTogether resources: ${remoteCourse.counts.moduleCount} modules, ${remoteCourse.counts.topicCount} topics, ${remoteCourse.counts.videoCount} videos, ${remoteCourse.counts.questionCount} previous questions.`,
+            `Module resources: ${remoteCourse.counts.moduleCount} modules, ${remoteCourse.counts.topicCount} topics, ${remoteCourse.counts.videoCount} videos, ${remoteCourse.counts.questionCount} previous questions.`,
             `Resource URL: ${absoluteUrl(`/resources/${encodeURIComponent(remoteCourse.slug)}`)}`,
           ].join("\n")
         : null,
@@ -425,6 +529,7 @@ async function fetchCourse(ref: ResourceRef) {
       noteCount: courseDetail?.noteCount ?? notes.length,
       hasSyllabus: Boolean(syllabus),
       hasModuleResources: Boolean(subjectDetail || remoteCourse),
+      assetCount: assets.length,
     }),
   };
 }
@@ -433,10 +538,30 @@ async function fetchPastPaper(ref: ResourceRef) {
   const paper = await getCliPastPaperDetail(absoluteUrl("/"), ref.id);
   if (!paper || !paper.isClear) return null;
 
+  const pdfUrl = toPublicAssetUrl(paper.fileUrl) ?? paper.fileUrl;
+  const thumbnailUrl = toPublicAssetUrl(paper.thumbNailUrl);
+  const assets = buildAssets([
+    {
+      url: pdfUrl,
+      name: `${stripPdfExtension(paper.title)} PDF`,
+      description: "Original ExamCooker past-paper PDF.",
+    },
+    {
+      url: thumbnailUrl,
+      name: `${stripPdfExtension(paper.title)} preview`,
+      description: "ExamCooker preview image for this past paper.",
+    },
+  ]);
+
   return {
     id: toResourceId({ kind: "past_paper", id: paper.id }),
     title: stripPdfExtension(paper.title),
     url: paper.pageUrl,
+    pdfUrl,
+    imageUrls: assets
+      .filter((asset) => asset.mimeType.startsWith("image/"))
+      .map((asset) => asset.uri),
+    assets,
     text: joinSections([
       `# ${stripPdfExtension(paper.title)}`,
       [
@@ -448,7 +573,8 @@ async function fetchPastPaper(ref: ResourceRef) {
         `Semester: ${paper.semester}`,
         `Campus: ${paper.campus}`,
         `Answer key: ${paper.hasAnswerKey ? "yes" : "no"}`,
-        `PDF: ${normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl}`,
+        `PDF: ${pdfUrl}`,
+        thumbnailUrl ? `Preview image: ${thumbnailUrl}` : null,
       ]
         .filter(Boolean)
         .join("\n"),
@@ -465,7 +591,9 @@ async function fetchPastPaper(ref: ResourceRef) {
       examType: paper.examType,
       year: paper.year,
       hasAnswerKey: paper.hasAnswerKey,
-      fileUrl: normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl,
+      fileUrl: pdfUrl,
+      thumbnailUrl,
+      assetCount: assets.length,
     }),
   };
 }
@@ -474,24 +602,46 @@ async function fetchNote(ref: ResourceRef) {
   const note = await getNoteDetail(ref.id);
   if (!note || !note.isClear) return null;
 
+  const pdfUrl = toPublicAssetUrl(note.fileUrl) ?? note.fileUrl;
+  const thumbnailUrl = toPublicAssetUrl(note.thumbNailUrl);
+  const assets = buildAssets([
+    {
+      url: pdfUrl,
+      name: `${stripPdfExtension(note.title)} PDF`,
+      description: "Original ExamCooker note PDF.",
+    },
+    {
+      url: thumbnailUrl,
+      name: `${stripPdfExtension(note.title)} preview`,
+      description: "ExamCooker preview image for this note.",
+    },
+  ]);
+
   return {
     id: toResourceId({ kind: "note", id: note.id }),
     title: stripPdfExtension(note.title),
     url: absoluteUrl(`/notes/${encodeURIComponent(note.id)}`),
+    pdfUrl,
+    imageUrls: assets
+      .filter((asset) => asset.mimeType.startsWith("image/"))
+      .map((asset) => asset.uri),
+    assets,
     text: joinSections([
       `# ${stripPdfExtension(note.title)}`,
       note.course
         ? `Course: ${note.course.code} - ${note.course.title}`
         : "Course: not listed",
-      `PDF: ${note.fileUrl}`,
+      `PDF: ${pdfUrl}`,
+      thumbnailUrl ? `Preview image: ${thumbnailUrl}` : null,
       note.tags.length ? "## Tags" : null,
       note.tags.length ? listItems(note.tags.map((tag) => tag.name)) : null,
     ]),
     metadata: compactMetadata({
       type: "note",
       courseCode: note.course?.code ?? null,
-      fileUrl: note.fileUrl,
-      thumbnailUrl: note.thumbNailUrl,
+      fileUrl: pdfUrl,
+      thumbnailUrl,
+      assetCount: assets.length,
     }),
   };
 }
@@ -505,6 +655,14 @@ async function fetchSyllabus(ref: ResourceRef) {
     parsed.courseCode && parsed.courseName
       ? `${parsed.courseCode} - ${parsed.courseName} syllabus`
       : `${formatSyllabusDisplayName(syllabus.name)} syllabus`;
+  const pdfUrl = toPublicAssetUrl(syllabus.fileUrl) ?? syllabus.fileUrl;
+  const assets = buildAssets([
+    {
+      url: pdfUrl,
+      name: `${title} PDF`,
+      description: "Original ExamCooker syllabus PDF.",
+    },
+  ]);
 
   return {
     id: toResourceId({ kind: "syllabus", id: syllabus.id }),
@@ -512,16 +670,19 @@ async function fetchSyllabus(ref: ResourceRef) {
     url: parsed.courseCode
       ? absoluteUrl(getCourseSyllabusPath(parsed.courseCode))
       : absoluteUrl(`/syllabus/${encodeURIComponent(syllabus.id)}`),
+    pdfUrl,
+    assets,
     text: joinSections([
       `# ${title}`,
       parsed.courseCode ? `Course code: ${parsed.courseCode}` : null,
       parsed.courseName ? `Course title: ${parsed.courseName}` : null,
-      `PDF: ${syllabus.fileUrl}`,
+      `PDF: ${pdfUrl}`,
     ]),
     metadata: compactMetadata({
       type: "syllabus",
       courseCode: parsed.courseCode,
-      fileUrl: syllabus.fileUrl,
+      fileUrl: pdfUrl,
+      assetCount: assets.length,
     }),
   };
 }
@@ -538,11 +699,26 @@ async function fetchResource(ref: ResourceRef) {
   const moduleSections = subject.modules.map((module) =>
     [`### ${module.title}`, listItems(moduleLinks(module))].join("\n"),
   );
+  const path = parsed.courseCode
+    ? getCourseResourcesPath(parsed.courseCode)
+    : `/resources/${encodeURIComponent(subject.id)}`;
+  const assets = buildAssets(
+    subject.modules.flatMap((module) =>
+      (module.webReferences ?? []).map((url) => ({
+        url,
+        name: `${module.title} resource`,
+      })),
+    ),
+  );
 
   return {
     id: toResourceId({ kind: "resource", id: subject.id }),
     title,
-    url: absoluteUrl(`/resources/${encodeURIComponent(subject.id)}`),
+    url: absoluteUrl(path),
+    imageUrls: assets
+      .filter((asset) => asset.mimeType.startsWith("image/"))
+      .map((asset) => asset.uri),
+    assets,
     text: joinSections([
       `# ${title}`,
       parsed.courseCode ? `Course code: ${parsed.courseCode}` : null,
@@ -553,6 +729,7 @@ async function fetchResource(ref: ResourceRef) {
       type: "resource",
       courseCode: parsed.courseCode,
       moduleCount: subject.modules.length,
+      assetCount: assets.length,
     }),
   };
 }
@@ -570,6 +747,5 @@ export async function fetchExamCookerResource(
 ): Promise<McpFetchOutput | null> {
   const ref = parseResourceRef(rawId);
   if (!ref) return null;
-
   return fetchProviders[ref.kind](ref);
 }

@@ -1,6 +1,6 @@
-import { and, count, eq, ilike, or, desc } from "drizzle-orm";
+import { and, count, desc, eq, exists, ilike, or } from "drizzle-orm";
 import type { Campus, ExamType, Semester } from "@/db";
-import { course, db, pastPaper } from "@/db";
+import { course, db, pastPaper, pastPaperToTag, tag } from "@/db";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { getSiblingPastPaper, getPastPaperDetail } from "@/lib/data/past-paper-detail";
 import { examTypeLabel } from "@/lib/exam-slug";
@@ -18,6 +18,8 @@ export type CliPaperSearchFilters = {
   semester?: Semester | null;
   campus?: Campus | null;
   answerKeysOnly?: boolean;
+  tags?: string[] | null;
+  tagMode?: "any" | "all";
   includeDrafts?: boolean;
   page: number;
   limit: number;
@@ -80,6 +82,31 @@ export async function searchCliPapers(
   }
   if (input.answerKeysOnly) {
     clauses.push(eq(pastPaper.hasAnswerKey, true));
+  }
+
+  const tagNames = [
+    ...new Set(
+      (input.tags ?? [])
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (tagNames.length > 0) {
+    const tagMatches = tagNames.map((tagName) =>
+      exists(
+        db
+          .select({ id: pastPaperToTag.a })
+          .from(pastPaperToTag)
+          .innerJoin(tag, eq(pastPaperToTag.b, tag.id))
+          .where(
+            and(
+              eq(pastPaperToTag.a, pastPaper.id),
+              ilike(tag.name, tagName),
+            ),
+          ),
+      ),
+    );
+    clauses.push(input.tagMode === "all" ? and(...tagMatches) : or(...tagMatches));
   }
 
   const where = clauses.length > 0 ? and(...clauses) : undefined;
@@ -173,6 +200,7 @@ export async function getCliPastPaperDetail(baseUrl: string, paperId: string) {
     id: paper.id,
     title: paper.title,
     fileUrl: paper.fileUrl,
+    thumbNailUrl: paper.thumbNailUrl,
     pageUrl: buildPageUrl(baseUrl, paper.id, paper.course?.code),
     isClear: paper.isClear,
     examType: paper.examType,
