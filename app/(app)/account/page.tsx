@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/app/auth";
-import { course, db, pastPaper } from "@/db";
+import {
+    contentCorrectionReport,
+    course,
+    db,
+    pastPaper,
+} from "@/db";
 import type { AiModerationReview } from "@/lib/ai/moderation-review-types";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
+import { getPastPaperDetailPath } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +23,7 @@ export const metadata: Metadata = {
 };
 
 type UploadStatusTone = "neutral" | "info" | "warning" | "danger" | "success";
+type CorrectionArchiveAction = "withdrawn" | "converted" | null;
 
 type UploadStatus = {
     label: string;
@@ -26,6 +33,7 @@ type UploadStatus = {
 
 type PaperStatusInput = {
     aiReview: AiModerationReview | null;
+    correctionAction: CorrectionArchiveAction;
     isClear: boolean;
     moderationArchivedAt: Date | null;
 };
@@ -40,6 +48,7 @@ const statusClassNames: Record<UploadStatusTone, string> = {
 
 function getUploadStatus({
     aiReview,
+    correctionAction,
     isClear,
     moderationArchivedAt,
 }: PaperStatusInput): UploadStatus {
@@ -52,6 +61,24 @@ function getUploadStatus({
     }
 
     if (moderationArchivedAt) {
+        if (correctionAction === "converted") {
+            return {
+                label: "Moved to notes",
+                description:
+                    "This upload was reclassified and moved to the notes collection after a correction review.",
+                tone: "info",
+            };
+        }
+
+        if (correctionAction === "withdrawn") {
+            return {
+                label: "Withdrawn",
+                description:
+                    "Previously published, then removed from the library after a correction review.",
+                tone: "warning",
+            };
+        }
+
         if (aiReview?.status === "duplicate") {
             return {
                 label: "Duplicate",
@@ -152,6 +179,46 @@ export default async function AccountPage() {
         .orderBy(desc(pastPaper.createdAt))
         .limit(100);
 
+    const archivedUploadIds = uploads
+        .filter((upload) => upload.moderationArchivedAt !== null)
+        .map((upload) => upload.id);
+    const correctionReports =
+        archivedUploadIds.length === 0
+            ? []
+            : await db
+                  .select({
+                      pastPaperId: contentCorrectionReport.pastPaperId,
+                      aiDecision: contentCorrectionReport.aiDecision,
+                  })
+                  .from(contentCorrectionReport)
+                  .where(
+                      and(
+                          inArray(
+                              contentCorrectionReport.pastPaperId,
+                              archivedUploadIds,
+                          ),
+                          inArray(contentCorrectionReport.status, [
+                              "approved",
+                              "auto_approved",
+                          ]),
+                      ),
+                  )
+                  .orderBy(desc(contentCorrectionReport.resolvedAt));
+
+    const correctionActions = new Map<string, Exclude<CorrectionArchiveAction, null>>();
+    for (const report of correctionReports) {
+        if (!report.pastPaperId || correctionActions.has(report.pastPaperId)) {
+            continue;
+        }
+
+        const appliedFields = report.aiDecision?.appliedFields ?? [];
+        if (appliedFields.includes("resourceType")) {
+            correctionActions.set(report.pastPaperId, "converted");
+        } else if (appliedFields.includes("visibility")) {
+            correctionActions.set(report.pastPaperId, "withdrawn");
+        }
+    }
+
     return (
         <main className="min-h-screen bg-[#C2E6EC] px-4 py-8 text-black dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5] sm:px-8 lg:px-12">
             <div className="mx-auto w-full max-w-5xl space-y-8">
@@ -195,12 +262,16 @@ export default async function AccountPage() {
                 ) : (
                     <section aria-label="Uploaded past papers" className="space-y-4">
                         {uploads.map((paper) => {
-                            const status = getUploadStatus(paper);
+                            const status = getUploadStatus({
+                                ...paper,
+                                correctionAction:
+                                    correctionActions.get(paper.id) ?? null,
+                            });
                             const fileUrl = normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl;
                             const metadata = [
                                 paper.courseCode
                                     ? `${paper.courseCode}${paper.courseTitle ? ` · ${paper.courseTitle}` : ""}`
-                                    : paper.courseTitle,
+                                    : paper.courseTitle ?? "Course unassigned",
                                 formatExamType(paper.examType),
                                 paper.slot ? `Slot ${paper.slot}` : null,
                                 paper.year?.toString() ?? null,
@@ -249,9 +320,12 @@ export default async function AccountPage() {
                                             >
                                                 Open file
                                             </a>
-                                            {paper.isClear && paper.courseCode ? (
+                                            {paper.isClear ? (
                                                 <Link
-                                                    href={`/past_papers/${paper.courseCode}/paper/${paper.id}`}
+                                                    href={getPastPaperDetailPath(
+                                                        paper.id,
+                                                        paper.courseCode,
+                                                    )}
                                                     className="border border-black bg-black px-3 py-2 text-white dark:border-white dark:bg-white dark:text-black"
                                                 >
                                                     View published paper
