@@ -495,6 +495,43 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
       '<div class="tile-foot">' + statFoot + '<span class="tile-arrow">' + ARROW_RIGHT + '</span></div>' +
     '</button>';
   };
+  const catalogItemTitle = (item) => {
+    if (!item || typeof item !== 'object') return '';
+    const title = typeof item.title === 'string' ? item.title.trim() : '';
+    const code = typeof item.code === 'string' ? item.code.trim() : '';
+    if (code && typeof item.paperCount === 'number' && typeof item.noteCount === 'number') {
+      const stats = [
+        item.paperCount + ' ' + (item.paperCount === 1 ? 'paper' : 'papers'),
+        item.noteCount + ' ' + (item.noteCount === 1 ? 'note' : 'notes'),
+      ].join(', ');
+      return 'Course: ' + code + ' - ' + title + ' (' + stats + ')';
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'examTypeLabel') || Object.prototype.hasOwnProperty.call(item, 'examType')) {
+      const qualifiers = [item.examTypeLabel, item.year, item.hasAnswerKey ? 'answer key' : null].filter(Boolean);
+      return 'Past paper: ' + title + (qualifiers.length ? ' (' + qualifiers.join(', ') + ')' : '');
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'courseTitle')) {
+      return 'Note: ' + title + (item.courseCode ? ' (' + item.courseCode + ')' : '');
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'name')) {
+      const syllabusTitle = item.courseName || item.name || title;
+      return 'Syllabus: ' + syllabusTitle + (item.courseCode ? ' (' + item.courseCode + ')' : '');
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'year')) {
+      return 'Resource: ' + (item.courseName || title) + (item.year ? ' (' + item.year + ')' : '');
+    }
+    return title || (typeof item.name === 'string' ? item.name.trim() : '');
+  };
+
+  const normalizeCatalogResult = (catalog) => ({
+    ...catalog,
+    results: (Array.isArray(catalog.items) ? catalog.items : []).flatMap((item) => {
+      if (!item || typeof item.id !== 'string' || typeof item.url !== 'string') return [];
+      const title = catalogItemTitle(item);
+      return title ? [{ id: item.id, title, url: item.url }] : [];
+    }),
+  });
+
 
   const renderSearch = () => {
     const results = (state.searchResults && state.searchResults.results) || [];
@@ -676,6 +713,14 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     if (Array.isArray(sc.results)) {
       state.mode = 'search';
       state.searchResults = sc;
+      state.searchQuery = (result && result._meta && result._meta.query) || '';
+      state.history = [];
+      render();
+      return;
+    }
+    if (Array.isArray(sc.items)) {
+      state.mode = 'search';
+      state.searchResults = normalizeCatalogResult(sc);
       state.searchQuery = (result && result._meta && result._meta.query) || '';
       state.history = [];
       render();
