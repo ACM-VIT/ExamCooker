@@ -399,7 +399,7 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
 
   // ===== Markdown-ish body parser for fetch detail =====
   const REDUNDANT_INTRO_KEYS = /^(?:Past papers?|Notes?|Modules?|Topics?|Videos?|Previous questions?|Past papers? URL|Notes? URL|Resources? URL|Syllabus URL|Year)$/i;
-  const PAST_PAPER_INTRO_KEYS = /^(?:Course|Course title|Exam type|Slot|Semester|Campus|Answer key)$/i;
+  const PAST_PAPER_INTRO_KEYS = /^(?:Course|Course title)$/i;
   const parseFetchBody = (text, resourceType = '') => {
     const lines = String(text || '').split(/\\r?\\n/);
     const sections = [];
@@ -581,18 +581,20 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     const primaryPdf = meta.fileUrl || parsed.extras.syllabusPdf || (assetPdf && assetPdf.uri);
     const pdfLabel = meta.type === 'syllabus' ? 'Open syllabus PDF' : 'Open PDF';
 
-    const seenItems = new Set();
     parsed.sections = parsed.sections
-      .map((section) => ({
-        ...section,
-        items: section.items.filter((item) => {
-          const key = [item.url || '', item.label || '', item.value || ''].join('|');
-          if (seenItems.has(key)) return false;
-          if (primaryPdf && item.url === primaryPdf) return false;
-          seenItems.add(key);
-          return true;
-        }),
-      }))
+      .map((section) => {
+        const seenItems = new Set();
+        return {
+          ...section,
+          items: section.items.filter((item) => {
+            const key = [item.url || '', item.label || '', item.value || ''].join('|');
+            if (seenItems.has(key)) return false;
+            if (primaryPdf && item.url === primaryPdf) return false;
+            seenItems.add(key);
+            return true;
+          }),
+        };
+      })
       .filter((section) => section.title.trim());
 
     const renderRow = (item) => {

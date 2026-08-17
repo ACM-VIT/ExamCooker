@@ -26,6 +26,7 @@ import { normalizeCourseCode } from "@/lib/course-tags";
 import {
   getDatabaseResourcePageRequests,
   MAX_PAGE_SIZE,
+  shouldQueryDatabaseResources,
 } from "@/lib/mcp/resource-pagination";
 import { toResourceId } from "@/lib/mcp/resource-id";
 const DEFAULT_PAGE_SIZE = 20;
@@ -400,12 +401,15 @@ export async function listMcpResources(
   if (rawCourseCode && !normalizedCourseCode) {
     return makePage([], 0, page, pageSize);
   }
+  const includeDatabaseResources = shouldQueryDatabaseResources(input.year);
 
   const [databaseTotal, vinTogetherResources] = await Promise.all([
-    getResourcesCount({
-      search,
-      courseCode: normalizedCourseCode ?? undefined,
-    }),
+    includeDatabaseResources
+      ? getResourcesCount({
+          search,
+          courseCode: normalizedCourseCode ?? undefined,
+        })
+      : Promise.resolve(0),
     getVinTogetherResources(input),
   ]);
 

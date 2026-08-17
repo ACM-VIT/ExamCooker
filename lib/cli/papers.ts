@@ -1,7 +1,8 @@
-import { and, count, desc, eq, exists, ilike, or } from "drizzle-orm";
+import { and, count, desc, eq, exists, ilike, or, sql } from "drizzle-orm";
 import type { Campus, ExamType, Semester } from "@/db";
 import { course, db, pastPaper, pastPaperToTag, tag } from "@/db";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { normalizeTagFilterNames } from "@/lib/cli/tag-filter";
 import { getSiblingPastPaper, getPastPaperDetail } from "@/lib/data/past-paper-detail";
 import { examTypeLabel } from "@/lib/exam-slug";
 import { getPastPaperDetailPath } from "@/lib/seo";
@@ -83,14 +84,7 @@ export async function searchCliPapers(
   if (input.answerKeysOnly) {
     clauses.push(eq(pastPaper.hasAnswerKey, true));
   }
-
-  const tagNames = [
-    ...new Set(
-      (input.tags ?? [])
-        .map((value) => value.trim())
-        .filter(Boolean),
-    ),
-  ];
+  const tagNames = normalizeTagFilterNames(input.tags);
   if (tagNames.length > 0) {
     const tagMatches = tagNames.map((tagName) =>
       exists(
@@ -101,7 +95,7 @@ export async function searchCliPapers(
           .where(
             and(
               eq(pastPaperToTag.a, pastPaper.id),
-              ilike(tag.name, tagName),
+              sql`lower(${tag.name}) = ${tagName}`,
             ),
           ),
       ),

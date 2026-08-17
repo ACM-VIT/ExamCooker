@@ -22,3 +22,7 @@ export function getDatabaseResourcePageRequests(
     pageSize: MAX_PAGE_SIZE,
   }));
 }
+
+export function shouldQueryDatabaseResources(year?: string): boolean {
+  return !(year?.trim());
+}
