@@ -14,7 +14,7 @@ const safeWrapperPath = path.join(
 );
 
 const unsafeReactTransitionImport =
-  /import\s+(?:React\s*,\s*)?\{[^}]*\b(?:addTransitionType|ViewTransition)\b[^}]*\}\s+from\s+["']react["']/s;
+  /import\s+(?:React\s*,\s*)?\{[\s\S]*?\b(?:addTransitionType|ViewTransition)\b[\s\S]*?\}\s+from\s+["']react["']/;
 
 function collectSourceFiles(dir: string): string[] {
   const entries = readdirSync(dir);
