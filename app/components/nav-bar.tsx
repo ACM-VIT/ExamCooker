@@ -1,5 +1,6 @@
 "use client";
-import React, { addTransitionType, startTransition, useCallback, useEffect, useEffectEvent, useReducer, useRef, useSyncExternalStore } from "react";
+import React, { startTransition, useCallback, useEffect, useEffectEvent, useReducer, useRef, useSyncExternalStore } from "react";
+import { addOptionalTransitionType } from "@/app/components/common/react-transition";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { createPortal } from "react-dom";
@@ -296,7 +297,7 @@ const NavBar: React.FC<Props> = ({
     event.preventDefault();
     setNavTransitionOrigin(event.currentTarget);
     startTransition(() => {
-      addTransitionType("nav-lateral");
+      addOptionalTransitionType("nav-lateral");
       push(href);
     });
   };
