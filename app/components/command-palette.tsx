@@ -2,7 +2,6 @@
 
 import React, {
   Activity,
-  addTransitionType,
   startTransition,
   useEffect,
   useEffectEvent,
@@ -11,6 +10,7 @@ import React, {
   useState,
 } from "react";
 import { Command } from "cmdk";
+import { addTransitionType } from "@/app/components/common/react-transition";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useAgent } from "agents/react";
 import { usePathname, useRouter } from "next/navigation";
