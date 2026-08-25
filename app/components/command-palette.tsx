@@ -2,7 +2,6 @@
 
 import React, {
   Activity,
-  addTransitionType,
   startTransition,
   useEffect,
   useEffectEvent,
@@ -18,6 +17,7 @@ import {
   invalidateAuthSessionCache,
   useGuestPrompt,
 } from "@/app/components/auth-gate";
+import { addTransitionType } from "@/app/components/common/react-transition";
 import {
   getCommandCatalogAction,
   getCommandSessionAction,
