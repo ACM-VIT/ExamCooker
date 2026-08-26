@@ -1,11 +1,12 @@
 'use client';
 
-import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Activity, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import Image from "@/app/components/common/app-image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import VoiceAgentButton from "@/app/components/voice/voice-agent-button";
+import { addTransitionType } from "@/app/components/common/react-transition";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { createCourseFuse } from "@/lib/course-search-fuse";
 import { normalizeCourseCode } from "@/lib/course-tags";
