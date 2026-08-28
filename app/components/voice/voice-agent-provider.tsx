@@ -1,7 +1,6 @@
 "use client";
 
 import React, {
-  addTransitionType,
   createContext,
   startTransition,
   useCallback,
@@ -22,6 +21,7 @@ import {
 } from "./voice-runtime";
 import { GhostCursorOverlay, useGhostCursor } from "./voice-ghost-cursor";
 import { answerVisiblePdfPageQuestionAction } from "./voice-agent-actions";
+import { addOptionalTransitionType } from "@/app/components/common/react-transition";
 import {
   DEFAULT_VOICE,
   MAX_VISIBLE_CONTROLS,
@@ -428,7 +428,7 @@ export default function VoiceAgentProvider({
             }
 
             startTransition(() => {
-              addTransitionType("filter-results");
+              addOptionalTransitionType("filter-results");
               replace(nextPath);
             });
             await settleUi({ targetPath: nextPath });
