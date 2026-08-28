@@ -3,6 +3,7 @@ import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import {
     createUploadedResources,
+    runUploadedResourceSideEffects,
     type CreateUploadedResourcesInput,
     type UploadVariant,
 } from "@/lib/uploads/create-uploaded-resources";
@@ -16,6 +17,8 @@ const uploadVariants = new Set<UploadVariant>(["Notes", "Past Papers"]);
 const examTypes = new Set<string>(examTypeValues);
 const semesters = new Set<string>(semesterValues);
 const campuses = new Set<string>(campusValues);
+
+class UploadSaveValidationError extends Error {}
 
 type UploadRequestBody = Partial<
     Omit<CreateUploadedResourcesInput, "userEmail" | "results">
@@ -54,9 +57,11 @@ export async function POST(request: NextRequest) {
             { status: 401 },
         );
     }
+    const userId = session.user.id;
+    const userEmail = session.user.email;
 
     const rateLimit = await checkSlidingWindowRateLimit({
-        identifier: session.user.id,
+        identifier: userId,
         limit: SAVE_RATE_LIMIT,
         prefix: "upload-save",
         windowMs: SAVE_RATE_WINDOW_MS,
@@ -127,7 +132,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const results = await db.transaction(async (transaction) => {
+        const result = await db.transaction(async (transaction) => {
             const now = new Date();
             const consumed = await transaction
                 .update(uploadResultReceipt)
@@ -135,7 +140,7 @@ export async function POST(request: NextRequest) {
                 .where(
                     and(
                         inArray(uploadResultReceipt.id, receiptIds),
-                        eq(uploadResultReceipt.userId, session.user.id),
+                        eq(uploadResultReceipt.userId, userId),
                         gt(uploadResultReceipt.expiresAt, now),
                         isNull(uploadResultReceipt.consumedAt),
                     ),
@@ -145,31 +150,47 @@ export async function POST(request: NextRequest) {
                     result: uploadResultReceipt.result,
                 });
             if (consumed.length !== receiptIds.length) {
-                throw new Error("One or more upload receipts are invalid, expired, or already used.");
+                throw new UploadSaveValidationError(
+                    "One or more upload receipts are invalid, expired, or already used.",
+                );
             }
             const resultById = new Map(consumed.map((receipt) => [receipt.id, receipt.result]));
-            return receiptIds.map((receiptId) => resultById.get(receiptId)!);
+            const results = receiptIds.map((receiptId) => resultById.get(receiptId)!);
+
+            const uploadResult = await createUploadedResources({
+                userEmail,
+                results,
+                year: stringValue(body.year),
+                slot: stringValue(body.slot),
+                variant,
+                courseId: nullableStringValue(body.courseId),
+                examType,
+                semester,
+                campus,
+                hasAnswerKey: body.hasAnswerKey === true,
+            }, {
+                dbClient: transaction,
+                runSideEffects: false,
+            });
+
+            if (!uploadResult.success) {
+                throw new UploadSaveValidationError(uploadResult.error);
+            }
+
+            return uploadResult;
         });
 
-        const result = await createUploadedResources({
-            userEmail: session.user.email,
-            results,
-            year: stringValue(body.year),
-            slot: stringValue(body.slot),
-            variant,
-            courseId: nullableStringValue(body.courseId),
-            examType,
-            semester,
-            campus,
-            hasAnswerKey: body.hasAnswerKey === true,
-        });
-
-        if (!result.success) {
-            return NextResponse.json(result, { status: 400 });
-        }
+        await runUploadedResourceSideEffects(variant, result.data);
 
         return NextResponse.json({ success: true, count: result.data?.length ?? 0 });
     } catch (error) {
+        if (error instanceof UploadSaveValidationError) {
+            return NextResponse.json(
+                { success: false, error: error.message },
+                { status: 400 },
+            );
+        }
+
         console.error("upload save api error", error);
         const message =
             error instanceof Error
