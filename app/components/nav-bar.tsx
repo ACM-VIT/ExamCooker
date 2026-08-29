@@ -1,9 +1,10 @@
 "use client";
-import React, { addTransitionType, startTransition, useCallback, useEffect, useEffectEvent, useReducer, useRef, useSyncExternalStore } from "react";
+import React, { startTransition, useCallback, useEffect, useEffectEvent, useReducer, useRef, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import Image from "@/app/components/common/app-image";
+import { addTransitionType } from "@/app/components/common/react-transition";
 import { usePathname, useRouter } from "next/navigation";
 import ThemeToggleSwitch from "@/app/components/common/theme-toggle";
 import { SignOut } from "@/app/components/sign-out";
