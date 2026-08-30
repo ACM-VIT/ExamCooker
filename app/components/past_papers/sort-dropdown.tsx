@@ -1,7 +1,8 @@
 "use client";
 
-import React, { addTransitionType, useTransition } from "react";
+import React, { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { addReactTransitionType } from "@/app/components/common/react-transition";
 
 const OPTIONS = [
     { value: "seasonal", label: "Current exam first" },
@@ -34,7 +35,7 @@ export default function SortDropdown({
         params.delete("page");
         const qs = params.toString();
         startTransition(() => {
-            addTransitionType("filter-results");
+            addReactTransitionType("filter-results");
             replace(qs ? `${basePath}?${qs}` : basePath);
         });
     };
