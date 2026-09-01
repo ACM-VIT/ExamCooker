@@ -394,17 +394,21 @@ function isCapacitorBridgeTeardownNoise(event: CaptureResult): boolean {
 // grid, and the manual `document.startViewTransition()` on the dark-mode toggle.
 // When a transition is initiated while the tab is hidden — e.g. a navigation that
 // resolves after the user has switched away — the browser intentionally skips it
-// and throws `DOMException: InvalidStateError: Skipped ViewTransition due to
-// document being hidden`. Nothing breaks for the user: the underlying route or
-// theme change still applies, only the animation is dropped. The declarative
-// React `<ViewTransition>` sites can't be guarded at the call site (React starts
-// the transition internally), so we drop this expected browser behavior here
-// before it reaches error tracking as noise.
+// and throws an `InvalidStateError` DOMException. Nothing breaks for the user:
+// the underlying route or theme change still applies, only the animation is
+// dropped. The declarative React `<ViewTransition>` sites can't be guarded at the
+// call site (React starts the transition internally), so we drop this expected
+// browser behavior here before it reaches error tracking as noise.
 //
-// Match the skip-because-hidden signature on a DOMException so a genuine
+// Chrome has phrased this same condition two ways:
+//   "Skipped ViewTransition due to document being hidden" (earlier Chrome)
+//   "Transition was aborted because of invalid state. Document hidden" (Chrome 153)
+// Both name a transition, the document, and its hidden state in that order, so we
+// match that trio rather than either exact sentence. Keeping the signature
+// anchored to a DOMException plus the hidden-document signal means a genuine
 // InvalidStateError from other code still surfaces.
 const VIEW_TRANSITION_HIDDEN_SIGNATURE =
-    /Skipped\s+view\s*transition\b[\s\S]*\bhidden\b/i;
+    /transition\b[\s\S]*\bdocument\b[\s\S]*\bhidden\b/i;
 
 function isViewTransitionHiddenSkip(exception: unknown): boolean {
     if (!exception || typeof exception !== "object") {
