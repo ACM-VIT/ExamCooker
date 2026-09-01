@@ -403,13 +403,13 @@ function isCapacitorBridgeTeardownNoise(event: CaptureResult): boolean {
 // Chrome has phrased this same condition two ways:
 //   "Skipped ViewTransition due to document being hidden" (earlier Chrome)
 //   "Transition was aborted because of invalid state. Document hidden" (Chrome 153)
-// Match the distinctive lead of each phrasing followed by the hidden signal,
-// rather than a loose "transition ... hidden" pair, so an unrelated transition
-// failure that merely mentions a hidden document (e.g. a policy error) still
-// reaches error tracking. Kept anchored to a DOMException so a genuine
-// InvalidStateError from other code also surfaces.
+// Match each full message exactly (whitespace-tolerant, ignoring an optional
+// error-name prefix and trailing period) and anchor the end, so a transition
+// failure that appends its own cause — e.g. "...Document hidden by enterprise
+// policy" — is NOT swallowed and still reaches error tracking. Kept anchored to a
+// DOMException so a genuine InvalidStateError from other code also surfaces.
 const VIEW_TRANSITION_HIDDEN_SIGNATURE =
-    /(?:skipped\s+view\s*transition|transition\s+was\s+aborted\b[\s\S]*\binvalid\s+state)[\s\S]*\bhidden\b/i;
+    /(?:skipped\s+view\s*transition\s+due\s+to\s+document\s+being\s+hidden|transition\s+was\s+aborted\s+because\s+of\s+invalid\s+state\.?\s+document\s+hidden)\.?\s*$/i;
 
 function isViewTransitionHiddenSkip(exception: unknown): boolean {
     if (!exception || typeof exception !== "object") {
