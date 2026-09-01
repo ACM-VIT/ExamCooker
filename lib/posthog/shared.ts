@@ -394,17 +394,22 @@ function isCapacitorBridgeTeardownNoise(event: CaptureResult): boolean {
 // grid, and the manual `document.startViewTransition()` on the dark-mode toggle.
 // When a transition is initiated while the tab is hidden — e.g. a navigation that
 // resolves after the user has switched away — the browser intentionally skips it
-// and throws `DOMException: InvalidStateError: Skipped ViewTransition due to
-// document being hidden`. Nothing breaks for the user: the underlying route or
-// theme change still applies, only the animation is dropped. The declarative
-// React `<ViewTransition>` sites can't be guarded at the call site (React starts
-// the transition internally), so we drop this expected browser behavior here
-// before it reaches error tracking as noise.
+// and throws an `InvalidStateError` DOMException. Nothing breaks for the user:
+// the underlying route or theme change still applies, only the animation is
+// dropped. The declarative React `<ViewTransition>` sites can't be guarded at the
+// call site (React starts the transition internally), so we drop this expected
+// browser behavior here before it reaches error tracking as noise.
 //
-// Match the skip-because-hidden signature on a DOMException so a genuine
-// InvalidStateError from other code still surfaces.
+// Chrome has phrased this same condition two ways:
+//   "Skipped ViewTransition due to document being hidden" (earlier Chrome)
+//   "Transition was aborted because of invalid state. Document hidden" (Chrome 153)
+// Match each full message exactly (whitespace-tolerant, ignoring an optional
+// error-name prefix and trailing period) and anchor the end, so a transition
+// failure that appends its own cause — e.g. "...Document hidden by enterprise
+// policy" — is NOT swallowed and still reaches error tracking. Kept anchored to a
+// DOMException so a genuine InvalidStateError from other code also surfaces.
 const VIEW_TRANSITION_HIDDEN_SIGNATURE =
-    /Skipped\s+view\s*transition\b[\s\S]*\bhidden\b/i;
+    /(?:skipped\s+view\s*transition\s+due\s+to\s+document\s+being\s+hidden|transition\s+was\s+aborted\s+because\s+of\s+invalid\s+state\.?\s+document\s+hidden)\.?\s*$/i;
 
 function isViewTransitionHiddenSkip(exception: unknown): boolean {
     if (!exception || typeof exception !== "object") {
