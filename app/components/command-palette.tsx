@@ -2,7 +2,6 @@
 
 import React, {
   Activity,
-  addTransitionType,
   startTransition,
   useEffect,
   useEffectEvent,
@@ -55,6 +54,7 @@ import {
   getCourseSyllabusPath,
   getExamHubPath,
 } from "@/lib/seo";
+import { safeAddTransitionType } from "@/app/components/common/react-transition";
 
 type CommandPaletteProps = {
   open: boolean;
@@ -1460,7 +1460,7 @@ function CommandPaletteSession({
     if (href === pathname) return;
 
     startTransition(() => {
-      addTransitionType(href.startsWith("/past_papers/") ? "nav-forward" : "nav-lateral");
+      safeAddTransitionType(href.startsWith("/past_papers/") ? "nav-forward" : "nav-lateral");
       push(href);
     });
   };

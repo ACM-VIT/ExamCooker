@@ -1,7 +1,6 @@
 "use client";
 
 import React, {
-  addTransitionType,
   createContext,
   startTransition,
   useCallback,
@@ -59,6 +58,7 @@ import {
   currentBrowserRoutePath,
 } from "./voice-navigation";
 import VoiceAgentDock from "./voice-agent-dock";
+import { safeAddTransitionType } from "@/app/components/common/react-transition";
 import {
   captureVoiceAgentLlmGeneration,
   captureVoiceAgentError,
@@ -428,7 +428,7 @@ export default function VoiceAgentProvider({
             }
 
             startTransition(() => {
-              addTransitionType("filter-results");
+              safeAddTransitionType("filter-results");
               replace(nextPath);
             });
             await settleUi({ targetPath: nextPath });
