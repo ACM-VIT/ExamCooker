@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import React, { Activity, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Image from "@/app/components/common/app-image";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ import {
     presentNativeCourseSearch,
     useNativeCourseSearchAvailable,
 } from "@/lib/native-course-search";
+import { safeAddTransitionType } from "@/app/components/common/react-transition";
 
 export type SearchableNoteCourseItem = {
     id: string;
@@ -156,7 +157,7 @@ export default function NotesCourseSearch({
         });
 
         startTransition(() => {
-            addTransitionType("nav-forward");
+            safeAddTransitionType("nav-forward");
             push(`/notes/course/${encodeURIComponent(course.code)}`);
         });
         setIsOpen(false);
@@ -180,7 +181,7 @@ export default function NotesCourseSearch({
             return;
         }
         startTransition(() => {
-            addTransitionType("filter-results");
+            safeAddTransitionType("filter-results");
             push(`/notes?search=${encodeURIComponent(trimmed)}`);
         });
         setIsOpen(false);
@@ -246,7 +247,7 @@ export default function NotesCourseSearch({
                     hasSyllabus: false,
                 });
                 startTransition(() => {
-                    addTransitionType("nav-forward");
+                    safeAddTransitionType("nav-forward");
                     push(`/notes/course/${encodeURIComponent(course.code)}`);
                 });
                 return;
@@ -277,13 +278,13 @@ export default function NotesCourseSearch({
                     hasSyllabus: false,
                 });
                 startTransition(() => {
-                    addTransitionType("nav-forward");
+                    safeAddTransitionType("nav-forward");
                     push(`/notes/course/${encodeURIComponent(exact.code)}`);
                 });
                 return;
             }
             startTransition(() => {
-                addTransitionType("filter-results");
+                safeAddTransitionType("filter-results");
                 push(`/notes?search=${encodeURIComponent(trimmed)}`);
             });
         } catch {

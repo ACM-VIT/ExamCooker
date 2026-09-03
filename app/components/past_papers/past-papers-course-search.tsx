@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import React, { Activity, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Image from "@/app/components/common/app-image";
 import Link from "next/link";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
@@ -19,6 +19,7 @@ import {
     presentNativeCourseSearch,
     useNativeCourseSearchAvailable,
 } from "@/lib/native-course-search";
+import { safeAddTransitionType } from "@/app/components/common/react-transition";
 
 export type SearchableCourse = {
     id: string;
@@ -204,7 +205,7 @@ export default function PastPapersCourseSearch({
     ) => {
         recordSelection(course, options);
         startTransition(() => {
-            addTransitionType("nav-forward");
+            safeAddTransitionType("nav-forward");
             push(getCoursePastPapersPath(course.code));
         });
     };
@@ -288,7 +289,7 @@ export default function PastPapersCourseSearch({
                     hasSyllabus: false,
                 });
                 startTransition(() => {
-                    addTransitionType("nav-forward");
+                    safeAddTransitionType("nav-forward");
                     push(`/past_papers/${encodeURIComponent(course.code)}`);
                 });
                 return;
@@ -322,7 +323,7 @@ export default function PastPapersCourseSearch({
                     hasSyllabus: false,
                 });
                 startTransition(() => {
-                    addTransitionType("nav-forward");
+                    safeAddTransitionType("nav-forward");
                     push(`/past_papers/${encodeURIComponent(exact.code)}`);
                 });
                 return;

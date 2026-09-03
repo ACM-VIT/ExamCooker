@@ -1,5 +1,5 @@
 "use client";
-import React, { addTransitionType, startTransition, useCallback, useEffect, useEffectEvent, useReducer, useRef, useSyncExternalStore } from "react";
+import React, { startTransition, useCallback, useEffect, useEffectEvent, useReducer, useRef, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { createPortal } from "react-dom";
@@ -17,6 +17,7 @@ import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 import { Search, X } from "lucide-react";
+import { safeAddTransitionType } from "@/app/components/common/react-transition";
 
 type Props = {
   isNavOn: boolean;
@@ -296,7 +297,7 @@ const NavBar: React.FC<Props> = ({
     event.preventDefault();
     setNavTransitionOrigin(event.currentTarget);
     startTransition(() => {
-      addTransitionType("nav-lateral");
+      safeAddTransitionType("nav-lateral");
       push(href);
     });
   };
