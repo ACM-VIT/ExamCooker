@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Activity, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import Image from "@/app/components/common/app-image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,6 +24,7 @@ import {
     presentNativeCourseSearch,
     useNativeCourseSearchAvailable,
 } from "@/lib/native-course-search";
+import { addTransitionType } from "@/app/components/common/react-transition";
 
 export type CourseResult = {
     code: string;
