@@ -3,9 +3,10 @@
 import Link from "next/link";
 import Image from "@/app/components/common/app-image";
 import { usePathname, useRouter } from "next/navigation";
-import { addTransitionType, startTransition, useEffect, useReducer, type MouseEvent } from "react";
+import { startTransition, useEffect, useReducer, type MouseEvent } from "react";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 import c2cStyles from "./mobile-tab-bar.module.css";
+import { addTransitionType } from "@/app/components/common/react-transition";
 
 const C2C_EVENT_URL =
   "https://gravitas.vit.ac.in/events/0eba5a6f-2687-416c-acd7-c51419433366";
