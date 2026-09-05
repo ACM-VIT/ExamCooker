@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "@/app/components/common/app-image";
 import { usePathname, useRouter } from "next/navigation";
-import { addTransitionType, startTransition, useEffect, useReducer, type MouseEvent } from "react";
+import { startTransition, useEffect, useReducer, type MouseEvent } from "react";
+import { addTransitionType } from "@/app/components/common/react-transition";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 import c2cStyles from "./mobile-tab-bar.module.css";
 
