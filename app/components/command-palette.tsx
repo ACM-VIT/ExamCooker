@@ -1,15 +1,6 @@
 "use client";
 
-import React, {
-  Activity,
-  addTransitionType,
-  startTransition,
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useReducer,
-  useState,
-} from "react";
+import React, { Activity, startTransition, useEffect, useEffectEvent, useMemo, useReducer, useState } from "react";
 import { Command } from "cmdk";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useAgent } from "agents/react";
@@ -55,6 +46,7 @@ import {
   getCourseSyllabusPath,
   getExamHubPath,
 } from "@/lib/seo";
+import { addOptionalTransitionType } from "@/app/components/common/react-transition";
 
 type CommandPaletteProps = {
   open: boolean;
@@ -1460,7 +1452,7 @@ function CommandPaletteSession({
     if (href === pathname) return;
 
     startTransition(() => {
-      addTransitionType(href.startsWith("/past_papers/") ? "nav-forward" : "nav-lateral");
+      addOptionalTransitionType(href.startsWith("/past_papers/") ? "nav-forward" : "nav-lateral");
       push(href);
     });
   };

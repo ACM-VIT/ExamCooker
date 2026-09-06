@@ -1,9 +1,10 @@
 "use client";
 
-import React, { ViewTransition, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { ViewTransitionClass } from "react";
+import { OptionalViewTransition } from "@/app/components/common/react-transition";
 
-// `<ViewTransition>` is an experimental React API. It used to be keyed on
+// React's `<ViewTransition>` is experimental. It used to be keyed on
 // `pathname`, which forced the whole page subtree to remount on every
 // navigation. Because pages stream their content behind nested `<Suspense>`
 // boundaries, interrupting a navigation tore down the exit-side Offscreen
@@ -14,7 +15,7 @@ import type { ViewTransitionClass } from "react";
 // The directional animation never depended on that key: the forward / back /
 // lateral direction comes from React transition *types* (`transitionTypes` on
 // `<Link>` and `addTransitionType(...)` on programmatic navigations), which are
-// mapped to CSS classes below. So we keep a single, persistent `<ViewTransition>`
+// mapped to CSS classes below. So we keep a single, persistent `<OptionalViewTransition>`
 // (no `key`) that is never remounted, and animate route changes through the
 // `update` path instead of key-driven enter/exit. Suspense boundaries are no
 // longer torn down mid-transition, which removes the crash at its root.
@@ -70,12 +71,12 @@ export default function DirectionalTransition({
     }
 
     return (
-        <ViewTransition
+        <OptionalViewTransition
             enter={NAV_TRANSITION_CLASSES}
             update={NAV_TRANSITION_CLASSES}
             default="none"
         >
             {children}
-        </ViewTransition>
+        </OptionalViewTransition>
     );
 }

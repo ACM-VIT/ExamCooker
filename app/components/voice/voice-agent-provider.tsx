@@ -1,16 +1,6 @@
 "use client";
 
-import React, {
-  addTransitionType,
-  createContext,
-  startTransition,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createVoiceControlController,
@@ -67,6 +57,8 @@ import {
   getPostHogSessionId,
   type VoiceAgentEntryPoint,
 } from "@/lib/posthog/client";
+import { addOptionalTransitionType } from "@/app/components/common/react-transition";
+
 const VOICE_DEBUG = process.env.NODE_ENV !== "production";
 
 type VoiceAgentContextValue = {
@@ -428,7 +420,7 @@ export default function VoiceAgentProvider({
             }
 
             startTransition(() => {
-              addTransitionType("filter-results");
+              addOptionalTransitionType("filter-results");
               replace(nextPath);
             });
             await settleUi({ targetPath: nextPath });
