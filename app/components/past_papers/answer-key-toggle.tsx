@@ -1,6 +1,7 @@
 "use client";
 
-import React, { addTransitionType, useTransition } from "react";
+import React, { useTransition } from "react";
+import { addOptionalTransitionType as addTransitionType } from "@/app/components/common/react-transition";
 import { useRouter } from "next/navigation";
 
 type Props = {
