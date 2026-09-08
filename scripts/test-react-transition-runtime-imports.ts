@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import React from "react";
-import ts from "typescript";
+import * as ts from "typescript-api";
 
 const rootDir = process.cwd();
 const appDir = path.join(rootDir, "app");
