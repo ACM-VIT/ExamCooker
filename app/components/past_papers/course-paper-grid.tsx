@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ViewTransition, useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
@@ -35,6 +35,7 @@ import {
     DESKTOP_SELECT_ALL_HOST_ID,
     MOBILE_SELECT_ALL_HOST_ID,
 } from "./course-paper-grid-controls";
+import { OptionalViewTransition } from "@/app/components/common/react-transition";
 import { getPastPaperDetailPath } from "@/lib/seo";
 
 type Props = {
@@ -669,7 +670,7 @@ export default function CoursePaperGrid({
 
             <div className="course-paper-grid flex flex-wrap gap-3">
                 {papers.map((paper, index) => (
-                    <ViewTransition
+                    <OptionalViewTransition
                         key={paper.id}
                         enter={{
                             "filter-results": "paper-card-enter",
@@ -704,7 +705,7 @@ export default function CoursePaperGrid({
                                 onContextMenuOpen={openContextMenu}
                             />
                         </div>
-                    </ViewTransition>
+                    </OptionalViewTransition>
                 ))}
             </div>
 
