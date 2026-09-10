@@ -1,7 +1,8 @@
 "use client";
 
-import React, { addTransitionType, useTransition } from "react";
+import React, { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { addTransitionType } from "@/app/components/common/react-transition";
 
 const OPTIONS = [
     { value: "seasonal", label: "Current exam first" },
