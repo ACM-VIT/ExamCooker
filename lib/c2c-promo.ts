@@ -8,4 +8,4 @@
  * this flipped back to 1, plus a refresh of the event URL and the "7.0"
  * labels/logo inside those two files.
  */
-export const C2C_PROMO_ENABLED: number = 1;
+export const C2C_PROMO_ENABLED: number = 0;
