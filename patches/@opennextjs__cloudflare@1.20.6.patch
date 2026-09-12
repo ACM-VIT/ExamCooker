@@ -634,3 +634,35 @@ index 0000000000000000000000000000000000000000..703c2fb001c60d16bbebba80f0144a97
 +        void previousRun.then(() => schedule(enterStage));
 +    });
 +}
+diff --git a/dist/api/durable-objects/sharded-tag-cache.js b/dist/api/durable-objects/sharded-tag-cache.js
+--- a/dist/api/durable-objects/sharded-tag-cache.js
++++ b/dist/api/durable-objects/sharded-tag-cache.js
+@@ -11,15 +11,20 @@
+             //   revalidatedAt - Timestamp (ms) when the tag was last revalidated.
+             //   stale         - Timestamp (ms) when the cached entry becomes stale. Added in v1.19.
+             //   expire        - Timestamp (ms) when the cached entry expires. NULL means no expire. Added in v1.19.
+-            this.sql.exec(`CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER, stale INTEGER, expire INTEGER DEFAULT NULL)`);
+-            // Schema migration: Add `stale` and `expire` columns for existing DO - those have been introduced to support SWR in v1.19
+-            try {
+-                // SQLite does not support adding multiple columns in a single ALTER TABLE statement.
+-                this.sql.exec(`ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER DEFAULT NULL`);
++            const columns = this.sql.exec("PRAGMA table_info(revalidations)").toArray();
++            if (columns.length === 0) {
++                this.sql.exec(`CREATE TABLE revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER, stale INTEGER, expire INTEGER DEFAULT NULL)`);
+             }
+-            catch {
+-                // The ALTER TABLE statement fails if the columns already exist.
+-                // It only means the DO has already been migrated.
++            else {
++                // An initialized shard only needs a read on wake-up. Avoid DDL
++                // and its storage write gate on every new object instance.
++                const names = new Set(columns.map((column) => column.name));
++                if (!names.has("stale")) {
++                    this.sql.exec(`ALTER TABLE revalidations ADD COLUMN stale INTEGER`);
++                }
++                if (!names.has("expire")) {
++                    this.sql.exec(`ALTER TABLE revalidations ADD COLUMN expire INTEGER DEFAULT NULL`);
++                }
+             }
+         });
+     }

@@ -6,7 +6,7 @@ assert.ok(["localhost", "127.0.0.1", "ec-test.acmvit.in"].includes(base.hostname
   "Run revalidation probes only against a local preview or the test deployment");
 // The local build must match the deployed build. Never log this revalidation token.
 const { preview: { previewModeId } } = JSON.parse(await readFile(".next/prerender-manifest.json", "utf8"));
-const paths = ["/", "/past_papers", "/notes"];
+const paths = ["/", "/past_papers", "/notes", "/past_papers/BMAT202L"];
 
 for (const method of ["HEAD", "GET"]) {
   for (const path of paths) {

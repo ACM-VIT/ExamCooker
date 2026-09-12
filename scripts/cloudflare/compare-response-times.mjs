@@ -102,8 +102,14 @@ for (const mode of modes) for (const path of paths) {
     const host = new URL(base).hostname;
     const rows = samples.filter((row) => row.host === host && !row.warmup);
     const successful = rows.filter((row) => row.status === 200 && row.complete && !row.digests.length);
+    const firstRequest = samples.find((row) => row.host === host && row.warmup);
     return { host, samples: rows.length, failed: rows.length - successful.length,
+      // Surface the first visit separately: a warm median can hide the delay
+      // people experience when opening an infrequently visited course.
+      firstRequestTotalMs: firstRequest?.totalMs ?? null,
+      firstRequestValid: firstRequest?.status === 200 && firstRequest.complete && !firstRequest.digests?.length,
       firstByteMs: successful.length ? median(successful.map((row) => row.firstByteMs)) : null,
-      totalMs: successful.length ? median(successful.map((row) => row.totalMs)) : null };
+      totalMs: successful.length ? median(successful.map((row) => row.totalMs)) : null,
+      slowestMeasuredMs: successful.length ? Math.max(...successful.map((row) => row.totalMs)) : null };
   }) }));
 }

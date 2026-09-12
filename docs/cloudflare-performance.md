@@ -330,3 +330,125 @@ passed. Nine concurrent streams had a 3119 ms maximum; forced revalidation took
 need improvement even though the targeted warm-request penalties were reduced.
 Lint remains unavailable because the repository has no standalone ESLint setup
 and Next 16 removed `next lint`.
+
+## BMAT202L: first-visit and visible-page latency
+
+The user reported a 5–6 second load for `/past_papers/BMAT202L`. The earlier warm
+HTTP medians did not represent this experience. An isolated headless Chrome probe
+recorded cards becoming visible at 4504 ms, first contentful paint at 4840 ms and
+load completion at 5387 ms. That first capture included media interception.
+A repeat without interception recorded a 8318 ms load, with Cloudflare reporting
+5160 ms of Worker time in the navigation's `Server-Timing` header. A regular
+Chrome user-agent repeat took 2760 ms; results were variable. These were anonymous
+sessions with audio muted and playback disabled; the browser was closed afterward.
+
+A temporary nested server trace on BMAT202L then recorded 5250 ms of internal
+stream completion. The initial shell read took 282 ms, followed by a 1618 ms
+cache-tag validation. Course/syllabus data reads were hits, but their subsequent
+tag validation took up to 2110 ms. This identified sequential tag metadata I/O as
+a major delay rather than a missing paper query alone. The trace is in
+`bmat-trace-before.jsonl` in the ignored diagnostics directory.
+
+### Start course-tag reads alongside the shell
+
+`withCourseTagPrefetch` starts metadata reads for `courses`, `notes`, `past_papers`,
+`syllabus` and `upcoming_exams` at the first course-shell cache lookup. OpenNext
+stores the resolved metadata in its existing request-local tag cache, so later
+normal invalidation checks can reuse it. A WeakSet limits this work to once per
+request. Auth routes, upload/create routes and data-cache lookups do not trigger
+it. The normal tag checks, five-second regional TTL and cross-region writes remain
+unchanged. There are no cross-request promises or cached session values.
+
+Candidate `ebfbfde0-7377-42d6-a2a3-5ccc83431e60` retained the same Next build and
+cache keys. Its first traced HTML response took 3816 ms; the hard-tag prefetch ran
+from 0–1614 ms, and later course/syllabus invalidation checks completed immediately.
+Warm HTML internal completion was 85–143 ms. One forced revalidation still took
+6360 ms, so this change alone did not resolve the slow tail.
+
+### Avoid schema writes when tag objects restart
+
+OpenNext's tag Durable Object constructor executed `CREATE TABLE IF NOT EXISTS`
+and attempted `ALTER TABLE` on every activation. The compatibility patch now
+inspects `PRAGMA table_info(revalidations)` first, creates a missing table, and
+adds only missing columns individually. An initialized object performs no schema
+writes on restart. This also handles the partially migrated case where `stale`
+already exists but `expire` does not; the old combined ALTER would fail on the
+first existing column. Existing tag rows are preserved.
+
+Candidate `7f39c6e4-344f-4199-9f3b-cab0f6d55cfb` changed only the Durable Object
+module after the prefetch candidate. Its first trace completed internally in
+1489 ms. Tag-object reads in that trace took 46–64 ms, compared with 1204–2097 ms
+in the original trace. The first shell read was also faster, so this sequential
+comparison does not attribute the entire improvement to the schema change.
+These are first probes after deployment, not guaranteed empty-cache cold starts.
+Cloudflare can evict idle objects, and their constructors run again on activation;
+see the [Durable Object lifecycle](https://developers.cloudflare.com/durable-objects/concepts/durable-object-lifecycle/).
+
+Workerd tests verify that prefetch overlaps shell reads, runs once per request,
+isolates concurrent requests and does not block page reads after a failed prefetch.
+SQLite tests verify new, existing and partially migrated schemas, preserved rows,
+and no DDL or writes when reconstructing an initialized tag object. The real
+workerd regional-tag test still passes across all six regions. The complete
+Cloudflare patch was applied successfully to a pristine 1.20.6 package, and its
+schema source matches the tested/deployed module. The lockfile changes only the
+patch hash; pnpm's supply-chain verification passed. An offline reinstall could
+not complete because a pre-existing esbuild tarball was absent from the store.
+
+The benchmark now prints the first-request duration and the slowest measured
+sample alongside warm medians. Neither full HTML nor Flight completion is a
+browser paint measurement. Raw browser reports are `bmat-browser-*.json`; server
+reports are `bmat-trace-before.jsonl`, `bmat-trace-after.jsonl` and
+`bmat-trace-schema.jsonl`, all under the ignored diagnostics directory.
+
+### Clean deployment: visible latency is still unresolved
+
+The clean Worker deployment was `e0d458fa-52f5-43d8-ba54-5ad5993acee4`.
+Removing the temporary diagnostic secret activated the same code as
+`dcd5d8aa-e249-4341-bb9c-b895ff80ab2f`. The tracing wrapper is absent from this
+deployment. No production deployment or database data changed.
+
+A fresh, muted headless browser with a regular Chrome user agent and no network
+interception still reproduced a slow BMAT202L visit. The following visits were
+sequential on the same client, not a controlled statistical comparison:
+
+| Visit | HTML complete | First contentful paint | 24 cards visible | Window load |
+| --- | ---: | ---: | ---: | ---: |
+| Cloudflare, fresh browser | 5954 ms | 7076 ms | 6919 ms | 8228 ms |
+| Production, same browser | 1467 ms | 2428 ms | 2739 ms | 3523 ms |
+| Cloudflare repeat | 3520 ms | 2812 ms | 3616 ms | 3545 ms |
+
+The first Cloudflare navigation received an interim response at 851 ms but final
+response headers only at 4377 ms. Reporting `navigation.responseStart` as the HTML
+TTFB would therefore hide much of this delay: inspect `finalResponseHeadersStart`
+when Early Hints are present. The navigation reported 1875 ms of `cfWorker` time;
+the repeat reported 1301 ms. These header metrics do not describe full-body
+completion. After the first HTML completed, cards took another 966 ms to become
+visible. The same run had a 339 ms main-thread task and slow thumbnail and
+analytics requests. These observations identify remaining server delivery and
+browser work, but do not isolate one cause or prove the cache changes improved
+end-to-end first-visit latency. All probe browsers were closed afterward.
+
+A subsequent five-round HTTP comparison, after the browser visits had warmed the
+site, produced these completion times. The first request is reported separately
+and is not a controlled cold start:
+
+| Response | Production first / median / slowest measured | Cloudflare first / median / slowest measured |
+| --- | ---: | ---: |
+| HTML | 1352 / 685 / 3660 ms | 2052 / 653 / 742 ms |
+| Full RSC | 1023 / 452 / 596 ms | 435 / 278 / 702 ms |
+
+All HTTP samples completed without server-render error digests. These warm
+numbers must not replace the slow visible-load results above. The retained
+changes reduce measured tag-validation work; BMAT202L's first-visit experience
+still needs improvement. Browser reports are `bmat-browser-final-first.json`,
+`bmat-browser-final-prod.json`, and `bmat-browser-final-repeat.json`; paired HTTP
+samples are `bmat-clean-http.jsonl` in the ignored diagnostics directory.
+
+The clean deployment passed alternating/concurrent synthetic A/B/anonymous
+session isolation, chunked session cookies, CSRF uniqueness, and private/no-store
+HTML and RSC checks. Streaming checks now include BMAT202L: nine concurrent
+streams completed (maximum 2128 ms), cancellation did not break subsequent
+visitors, and runtime prefetches contained rendered Flight rows.
+Forced HEAD and GET revalidation also passed on all four routes; BMAT202L took
+657 ms and 1242 ms respectively. App and Worker type checks and the OpenNext
+build passed. Lint remains unavailable for the repository reasons noted above.

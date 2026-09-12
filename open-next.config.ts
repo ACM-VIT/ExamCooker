@@ -5,14 +5,15 @@ import doQueue from "@opennextjs/cloudflare/overrides/queue/do-queue";
 import doShardedTagCache from "@opennextjs/cloudflare/overrides/tag-cache/do-sharded-tag-cache";
 import { withCacheWriteLifetime } from "./cloudflare/cache-write-lifetime";
 import { withFullRouteMissCache } from "./cloudflare/full-route-misses";
+import { withCourseTagPrefetch } from "./cloudflare/course-tag-prefetch";
 
 export default defineCloudflareConfig({
-  incrementalCache: withCacheWriteLifetime(
+  incrementalCache: withCourseTagPrefetch(withCacheWriteLifetime(
     withFullRouteMissCache(withRegionalCache(r2IncrementalCache, {
       mode: "short-lived",
       bypassTagCacheOnCacheHit: false,
     })),
-  ),
+  )),
   queue: doQueue,
   tagCache: doShardedTagCache({
     baseShardSize: 4,

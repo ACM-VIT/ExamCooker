@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 const base = new URL(process.env.TEST_BASE_URL || "https://ec-test.acmvit.in");
 assert.ok(["localhost", "127.0.0.1", "ec-test.acmvit.in"].includes(base.hostname),
   "Run this concurrency probe against a local preview or the test deployment");
-const paths = ["/", "/past_papers", "/notes"];
+const paths = ["/", "/past_papers", "/notes", "/past_papers/BMAT202L"];
 
 async function render(path) {
   const started = performance.now();
@@ -32,7 +32,7 @@ console.log("PASS: subsequent pages complete after other response streams are ca
 
 // Cache Components runtime prefetches may be partial, but must contain Flight
 // rows. A lone partial marker hides the staged-render scheduling regression.
-for (const path of ["/", "/notes", "/past_papers/BCSE102L"]) {
+for (const path of ["/", "/notes", "/past_papers/BCSE102L", "/past_papers/BMAT202L"]) {
   const response = await fetch(new URL(path, base), {
     headers: { rsc: "1", "next-router-prefetch": "2" },
     signal: AbortSignal.timeout(30000),
