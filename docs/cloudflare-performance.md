@@ -1,6 +1,6 @@
 # Cloudflare performance measurements
 
-Measured on September 12, 2026 against `examcooker.acmvit.in` and `ec-test.acmvit.in`. Final deployed Worker version: `6828eb92-82b9-4ce0-a3c6-c4e90d470a5f`. Azure production was not redeployed.
+Measured on September 12, 2026 against `examcooker.acmvit.in` and `ec-test.acmvit.in`. The first optimization pass ended on Worker `6828eb92-82b9-4ce0-a3c6-c4e90d470a5f`; the follow-up experiments below ended on `300bdd63-3ae4-4fd6-a158-ad374693165f`, with the same application source and default placement. Azure production was not redeployed.
 
 ## Changes retained
 
@@ -79,3 +79,97 @@ node scripts/cloudflare/compare-response-times.mjs \
   --paths "/past_papers/BCSE202L,/past_papers/BCSE202L/paper/cmoeqh9nt022ka8v37i2rf75z,/notes/course/BCSE202L,/syllabus/course/BCSE202L" \
   --output /tmp/examcooker-latency.jsonl
 ```
+
+## Follow-up: cache warming and partial prefetching
+
+The next five-sample baseline measured HTML completion at 515/443/403/414 ms
+(course/paper/notes/syllabus), versus production at 268/222/263/222 ms. First
+bytes were similar, so most of the gap occurred after the initial response.
+
+A temporary diagnostic build (`f07e9989-638d-45d3-8394-98aa2aaa7d35`) observed
+46 cache-warming warnings across course, notes and syllabus probes. Every warning
+had an empty resume-data cache and an already pending invocation for the same
+key. This identifies premature runtime-prefetch rendering; it does not establish
+that the warning accounts for the entire latency gap. Only counts and route
+patterns were logged, not cache keys, arguments or session values.
+
+Tested `partialPrefetching: false` on Cloudflare while retaining Cache Components
+and PPR (`93cbabee-cf98-4122-b5d7-740c5fe7dbae`). The warnings disappeared, but
+course, paper and notes became slower. The table reports the median latency
+difference inside each simultaneous CF/production pair, in milliseconds:
+
+| Route | Baseline HTML | Disabled HTML | Restored HTML | Baseline RSC | Disabled RSC | Restored RSC |
+|---|---:|---:|---:|---:|---:|---:|
+| Course | +247 | +608 | +504 | +128 | +419 | +189 |
+| Paper | +174 | +747 | +238 | +245 | +591 | +376 |
+| Notes | +126 | +973 | +1 | +286 | +682 | +285 |
+| Syllabus | +204 | -67 | +7 | +285 | -215 | +23 |
+
+Rejected the candidate and rolled back to `6828eb92-82b9-4ce0-a3c6-c4e90d470a5f`.
+Both `cacheComponents` and `partialPrefetching` remain enabled. Runtime-prefetch
+behavior changes more than payload size, so disabling it is not a targeted fix
+for the scheduler. Raw reports: `warming-baseline.jsonl`, `warming-disabled.jsonl`
+and `warming-restored.jsonl` in the ignored diagnostics directory.
+
+Worker tail measurements on the diagnostic build recorded median CPU of 43–71 ms
+versus wall time of 336–647 ms on those routes. Wall time can include background
+work; this supports investigating I/O but is not a breakdown of response latency.
+A small sequential Brotli/gzip/identity comparison did not establish a reliable
+compression win, so compression configuration was unchanged.
+
+## Follow-up: Mumbai placement
+
+Tested `placement.region: "aws:ap-south-1"` with both caching features restored.
+Cloudflare accepted targeted placement (Worker `64e9afd3-6584-4d35-8362-b395e80bb651`).
+The execution-location header was not exposed in the captured request logs, so
+the requested placement is verified through the control plane only.
+
+Then disabled placement through the Worker settings API, preserving the same
+application build and cache keys (`300bdd63-3ae4-4fd6-a158-ad374693165f`). A fresh
+settings read confirmed empty placement settings. Five paired samples per case:
+
+| Route | Targeted HTML | Default HTML | Targeted RSC | Default RSC |
+|---|---:|---:|---:|---:|
+| Course | 1458 | 504 | 1337 | 628 |
+| Paper | 732 | 511 | 1168 | 668 |
+| Notes | 1198 | 528 | 974 | 788 |
+| Syllabus | 544 | 445 | 931 | 714 |
+
+These are Cloudflare completion medians in milliseconds. Default placement won
+in this sequence; targeted placement was removed from the configuration. The
+sequence is not randomized and local network/production timing varied, so these
+differences are not a precise causal estimate. Raw reports are
+`placement-mumbai.jsonl` and `placement-off.jsonl`.
+
+## Follow-up: combined syllabus cache
+
+Added a public `use cache` boundary around `loadCourseSyllabusContext`, preserving
+the child functions' propagated invalidation tags and using the same explicit
+60/300/3600-second stale/revalidate/expire profile. A warm hit could return the
+assembled result instead of making four independent child cache lookups.
+
+Built and deployed the candidate (`75763613-8aa7-4572-9d28-e037abc84d41`), then
+compared seven paired samples against a seven-sample baseline. Paper detail was
+an unchanged control. Median paired CF penalties, milliseconds:
+
+| Route | Before HTML | Combined HTML | Before RSC | Combined RSC |
+|---|---:|---:|---:|---:|
+| Syllabus | -10 | +164 | +131 | +209 |
+| Unchanged paper | +20 | +158 | +350 | +296 |
+
+This did not demonstrate a latency improvement. Reverted the source change and
+rolled back to `300bdd63-3ae4-4fd6-a158-ad374693165f`. The unsuccessful candidate's
+generated build artifacts were moved under the ignored diagnostics directory to
+prevent accidental deployment; run `pnpm cf:build` before another deployment.
+Raw reports: `aggregate-before.jsonl` and `aggregate-after.jsonl`.
+
+No new runtime optimization from these three follow-up experiments was retained.
+Cache Components, partial prefetching, Hyperdrive and the previously implemented
+regional caches remain enabled. Default Worker placement is restored. Build and
+PPR payload checks passed for the candidates; the final restored deployment was
+checked for session isolation, concurrent rendering, cancellation recovery and
+runtime-prefetch payloads. The known warming warning remains unresolved.
+The final serial render checks took 423 ms for home, 4057 ms for `/past_papers`
+and 3124 ms for `/notes`; nine subsequent concurrent renders completed with a
+2064 ms maximum. These were correctness checks, not controlled cold-start
+measurements, but they confirm that multi-second listing responses still occur.
