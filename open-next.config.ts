@@ -3,12 +3,16 @@ import r2IncrementalCache from "@opennextjs/cloudflare/overrides/incremental-cac
 import { withRegionalCache } from "@opennextjs/cloudflare/overrides/incremental-cache/regional-cache";
 import doQueue from "@opennextjs/cloudflare/overrides/queue/do-queue";
 import doShardedTagCache from "@opennextjs/cloudflare/overrides/tag-cache/do-sharded-tag-cache";
+import { withCacheWriteLifetime } from "./cloudflare/cache-write-lifetime";
+import { withFullRouteMissCache } from "./cloudflare/full-route-misses";
 
 export default defineCloudflareConfig({
-  incrementalCache: withRegionalCache(r2IncrementalCache, {
-    mode: "short-lived",
-    bypassTagCacheOnCacheHit: false,
-  }),
+  incrementalCache: withCacheWriteLifetime(
+    withFullRouteMissCache(withRegionalCache(r2IncrementalCache, {
+      mode: "short-lived",
+      bypassTagCacheOnCacheHit: false,
+    })),
+  ),
   queue: doQueue,
   tagCache: doShardedTagCache({
     baseShardSize: 4,

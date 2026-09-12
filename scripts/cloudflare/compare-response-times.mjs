@@ -27,6 +27,30 @@ const median = (values) => {
 
 for (const mode of modes) for (const path of paths) {
   const samples = [];
+  const targets = new Map(hosts.map((base) => [base, new URL(path, base)]));
+  if (mode === "rsc") {
+    // Next's router supplies a header-derived _rsc hash. Discover the deployed
+    // version's value before timing, so a synthetic missing-hash redirect does
+    // not add a round trip to every navigation sample.
+    await Promise.all(hosts.map(async (base) => {
+      const target = targets.get(base);
+      const response = await fetch(target, {
+        headers: { rsc: "1" }, redirect: "manual", signal: AbortSignal.timeout(30000),
+      });
+      await response.body?.cancel();
+      if (response.status === 307 && response.headers.has("location")) {
+        const canonical = new URL(response.headers.get("location"), target);
+        const withoutHash = new URL(canonical);
+        withoutHash.searchParams.delete("_rsc");
+        if (!canonical.searchParams.has("_rsc") || withoutHash.href !== target.href) {
+          throw new Error(`Unexpected RSC redirect for ${target.pathname} on ${target.hostname}`);
+        }
+        targets.set(base, canonical);
+      } else if (response.status !== 200) {
+        throw new Error(`RSC discovery returned HTTP ${response.status} on ${target.hostname}`);
+      }
+    }));
+  }
   // Round zero is a separately reported warmup, not a controlled cold start.
   for (let round = 0; round <= rounds; round++) {
     await Promise.all(hosts.map(async (base) => {
@@ -40,7 +64,7 @@ for (const mode of modes) for (const path of paths) {
           headers["x-ec-perf-token"] = token;
           headers["x-ec-perf-id"] = id;
         }
-        const response = await fetch(new URL(path, base), { headers, signal: AbortSignal.timeout(30000) });
+        const response = await fetch(targets.get(base), { headers, redirect: "manual", signal: AbortSignal.timeout(30000) });
         const headersMs = Math.round(performance.now() - start);
         let firstByteMs;
         const chunks = [];
@@ -62,7 +86,8 @@ for (const mode of modes) for (const path of paths) {
         const complete = mode === "html" ? text.includes("</body></html>") : type.includes("text/x-component") && /^[0-9a-f]+:/m.test(text);
         row = { ...row, status: response.status, headersMs, firstByteMs,
           totalMs: Math.round(performance.now() - start), bytes: body.length, complete, digests,
-          colo: response.headers.get("cf-ray")?.split("-").at(-1) };
+          colo: response.headers.get("cf-ray")?.split("-").at(-1),
+          rscHashSupplied: mode === "rsc" && targets.get(base).searchParams.has("_rsc") };
         if (response.status !== 200 || !complete || digests.length) process.exitCode = 1;
       } catch (error) {
         row = { ...row, error: error.name, totalMs: Math.round(performance.now() - start) };

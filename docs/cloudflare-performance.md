@@ -173,3 +173,160 @@ The final serial render checks took 423 ms for home, 4057 ms for `/past_papers`
 and 3124 ms for `/notes`; nine subsequent concurrent renders completed with a
 2064 ms maximum. These were correctness checks, not controlled cold-start
 measurements, but they confirm that multi-second listing responses still occur.
+
+## Follow-up: retain late streaming cache writes
+
+A nested Worker-side trace exposed composable cache keys that repeatedly missed
+on warm requests. Their R2 writes started near stream completion but remained
+unfinished when the registered background work finished. The trace contained
+39 HTML cache writes, of which 17 were still unfinished. For example, the paper
+listing repeatedly missed keys `419d7598f604` and `5229db60eb35` (SHA-256 prefixes,
+not raw cache keys), adding 128–183 ms of R2 reads before loading public data.
+Paper detail showed the same behavior for `a31a3bb15e38`.
+
+Next starts some cache fills during streaming, after `app-render` snapshots the
+pending revalidation promises. The existing OpenNext incremental-cache `set`
+awaited R2 but did not itself register the write with the Worker context. This
+supports a request-lifetime failure: an outstanding promise alone does not retain
+an invocation after its response completes. See Cloudflare's
+[context lifetime documentation](https://developers.cloudflare.com/workers/runtime-apis/context/).
+
+Added `withCacheWriteLifetime` around the configured incremental cache. Each
+write registers its complete R2 and regional-cache promise with `ctx.waitUntil`,
+then returns that same promise to the caller. HTTP streaming does not await it.
+The wrapper does not alter cache keys, tags, data expiry, or response-cache policy.
+The normal Workers background execution limit still applies; this is not a
+persistent retry queue.
+
+Compared diagnostic baseline `4f4f42ec-6f43-4434-81af-4605b8c5e98c` with candidate
+`8392669a-ff5e-403d-be6a-3a48a78b800d`, retaining the exact Next build and cache keys
+with `--skipNextBuild`. The candidate trace contained five HTML cache writes;
+all five completed, including writes ending after the response. Previously
+missing keys subsequently returned hits. Some first follow-up requests still
+missed while the preceding request's write was in flight.
+
+Median Worker-internal stream completion, milliseconds, rounds 1–3 after a
+separately recorded first request:
+
+| Route | Before HTML | Retained writes HTML | Before RSC | Retained writes RSC |
+|---|---:|---:|---:|---:|
+| Home | 26 | 80 | 89 | 94 |
+| Paper listing | 237 | 34 | 32 | 33 |
+| Notes listing | 217 | 81 | 70 | 24 |
+| Paper detail | 247 | 66 | 746 | 198 |
+
+These are small, sequential diagnostic samples, not controlled cold-start or
+browser paint measurements. The temporary wrapper drains the response within the
+Worker and traces parent/child cache operations; background R2 refreshes are
+excluded from response time. Its fast drain can expose the lifetime failure more
+readily than a slow client. Intervening ordinary HTTP probes also warmed caches,
+so the complete numerical difference cannot be attributed solely to the wrapper.
+The completed writes and subsequent hits provide the direct correctness evidence.
+
+Ordinary HTML completion medians in the initial five-pair comparison were
+472→234 ms for home, 431→317 ms for papers, 528→633 ms for notes, and 557→329 ms
+for paper detail. Production changed substantially during the same sequence.
+A seven-pair paper repeat measured 271 ms on Cloudflare versus 286 ms on Azure.
+The improvement is not uniform, and occasional multi-second responses remain.
+
+Validation: application and Worker typechecks, OpenNext build, PPR resume-payload
+parsing in workerd, delayed R2 writes across eight concurrent workerd requests,
+write failure propagation, session A/B/anonymous isolation, chunked cookies,
+CSRF isolation, concurrent/canceled response streams, runtime prefetch payloads,
+and forced HEAD/GET revalidation passed. The new regression test is
+`node scripts/cloudflare/test-cache-write-lifetime.mjs`.
+
+Raw local reports: `critical-baseline-spans.jsonl`, `lifetime-spans.jsonl`,
+`critical-background-spans.jsonl`, `lifetime-before.jsonl`, `lifetime-after.jsonl`,
+`lifetime-paper-repeat.jsonl` under the ignored `.cloudflare-deploy/` directory.
+Wrangler's raw tail contains request headers and must not be published.
+
+### Corrected RSC measurement
+
+Earlier ordinary RSC probes sent `rsc: 1` without the matching `_rsc` query hash.
+Next responded with a 307 before serving the Flight response, and the benchmark
+included that extra round trip. Next's router supplies this hash itself; see the
+[Next CDN guide](https://nextjs.org/docs/app/guides/cdn-caching).
+
+The benchmark now discovers each deployed server's canonical RSC URL before
+measurement, accepts only the same URL with an added `_rsc` parameter, and rejects
+unexpected redirects during timed samples. It records whether the hash was sent.
+Earlier RSC numbers remain useful as synthetic redirect-plus-response timings,
+but must not be presented as direct client-navigation timings. The probe still
+requests a full Flight payload without a router-state tree and does not measure
+hydration, prefetch reuse, or click-to-paint latency.
+
+### Follow-up: missing full-route shell lookups
+
+After retaining writes, warm paper-detail RSC still waited 130–180 ms for a
+full-route cache lookup before reading its now-cached data. The key was the actual
+paper URL. R2 consistently returned no shell for that key; Next then rendered the
+page. HTML could use the PPR fallback shell, while the full Flight request still
+attempted this concrete-path lookup.
+
+Added `withFullRouteMissCache`, an isolate-local map of at most 256 timestamps
+with a five-second expiry and a 1024-character key limit. Only explicit full-route
+`cache` lookups are eligible. A remembered miss returns `null` to Next, which still
+renders the page and performs its normal data-cache/tag checks. No response,
+session, promise, stream, or data-cache value is retained. Local shell writes and
+deletions clear the marker before and after storage; a mutation generation stops
+an older in-flight read from installing a miss after a write. A shell created by
+another isolate may be bypassed for up to five seconds, causing an extra render
+rather than returning stale content. Upstream adapters can represent storage
+errors as misses; those also fall back to rendering during this short interval.
+
+Candidate `412d7da7-7130-4fef-95fb-96019e949e76` retained the same Next build.
+The initial two traced RSC requests still fetched R2 (166 and 287 ms); the next
+five skipped that lookup entirely and completed internal rendering in
+66, 74, 59, 35 and 39 ms. The six samples after the first request had a 62.5 ms
+median, compared with 198 ms after the write-lifetime fix alone. The map is local
+to an isolate, so first requests, other isolates and expired entries still read R2.
+
+Seven ordinary paired RSC samples, with the correct `_rsc` hash, measured:
+
+| Metric | Before miss cache | After miss cache |
+|---|---:|---:|
+| Cloudflare first byte | 286 ms | 164 ms |
+| Cloudflare complete response | 397 ms | 258 ms |
+| Production complete response | 351 ms | 335 ms |
+
+The Cloudflare completion median improved by 35% in this sequence. This is a
+small warm-request comparison, not a p95 or global latency guarantee. Raw reports:
+`route-misses-before.jsonl`, `route-misses-after.jsonl`, and
+`route-misses-spans.jsonl` in the ignored diagnostics directory.
+
+`node scripts/cloudflare/test-full-route-misses.mjs` verifies expiry, capacity,
+key length, exclusion of fetch/composable caches, write/delete invalidation,
+in-flight read/write ordering, and exception propagation. Both app and Worker
+typechecks and the OpenNext bundle passed.
+
+### Final clean deployment
+
+Both changes are active on `ec-test.acmvit.in`. The clean code deployment was
+`e8669a31-5a23-4dd3-bba2-a5bada8bddd7`; deleting the temporary diagnostic secret
+created active version `50855842-76d2-43a4-82ea-b90038e55fcc`. The tracing wrapper
+is absent and its tail process is stopped. Production was not deployed or edited.
+
+After cleanup and correctness checks, a final seven-pair anonymous comparison
+recorded these complete-response medians in milliseconds:
+
+| Route | Production HTML | Cloudflare HTML | Production RSC | Cloudflare RSC |
+|---|---:|---:|---:|---:|
+| Home | 553 | 319 | 1518 | 373 |
+| Paper listing | 367 | 251 | 680 | 375 |
+| Notes listing | 397 | 423 | 644 | 324 |
+| Paper detail | 352 | 281 | 322 | 200 |
+
+All samples returned complete, valid payloads. Warmup is excluded. Production
+also varied considerably between runs (particularly home RSC), so this final table
+is a contemporaneous comparison, not a causal estimate of the changes. Neither
+HTML nor full Flight completion is click-to-paint time. Raw samples are in
+`cache-fixes-final.jsonl` under the ignored diagnostics directory.
+
+Final live session isolation, CSRF, chunked-cookie, concurrent rendering,
+cancellation recovery, runtime prefetch, and forced HEAD/GET revalidation checks
+passed. Nine concurrent streams had a 3119 ms maximum; forced revalidation took
+1384–2614 ms. Cold/expired-cache rendering and latency under concurrency still
+need improvement even though the targeted warm-request penalties were reduced.
+Lint remains unavailable because the repository has no standalone ESLint setup
+and Next 16 removed `next lint`.
