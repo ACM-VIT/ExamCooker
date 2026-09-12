@@ -9,51 +9,55 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
 <style>
   :root {
     color-scheme: light dark;
-    --ec-bg: #EAF6F8;
-    --ec-surface: #ffffff;
-    --ec-surface-hover: #ffffff;
-    --ec-border: rgba(13,88,117,0.13);
-    --ec-border-hover: rgba(13,148,136,0.45);
+    --ec-bg: #C2E6EC;
+    --ec-surface: #F8FDFE;
+    --ec-surface-soft: #EAF6F8;
+    --ec-surface-hover: #FFFFFF;
+    --ec-border: rgba(13,88,117,0.18);
+    --ec-border-hover: rgba(13,148,136,0.62);
     --ec-text: #0A2A36;
-    --ec-text-soft: rgba(10,42,54,0.70);
-    --ec-text-muted: rgba(10,42,54,0.50);
-    --ec-divider: rgba(10,42,54,0.10);
+    --ec-text-soft: rgba(10,42,54,0.76);
+    --ec-text-muted: rgba(10,42,54,0.56);
+    --ec-divider: rgba(10,42,54,0.14);
     --ec-link: #0D5875;
-    --ec-link-strong: #06384b;
+    --ec-link-strong: #06384B;
     --ec-accent: #0D9488;
-    --ec-chip-bg: rgba(13,148,136,0.12);
-    --ec-chip-fg: #0B6B62;
-    --ec-shadow: 0 12px 30px -18px rgba(13,88,117,0.40);
-    --ec-radius: 16px;
-    --ec-radius-sm: 12px;
-    --ec-btn-bg: #14B8A6;
-    --ec-btn-fg: #ffffff;
-    --ec-btn-hover-bg: #0D9488;
+    --ec-accent-soft: rgba(13,148,136,0.13);
+    --ec-accent-strong: #08756C;
+    --ec-shadow: 0 14px 28px -20px rgba(13,88,117,0.56);
+    --ec-radius: 8px;
+    --ec-radius-sm: 6px;
+    --ec-btn-bg: #0D9488;
+    --ec-btn-fg: #FFFFFF;
+    --ec-btn-hover-bg: #0B7E75;
     --ec-btn-secondary-fg: var(--ec-text);
-    --ec-btn-secondary-border: rgba(10,42,54,0.22);
+    --ec-btn-secondary-border: rgba(10,42,54,0.28);
+    --ec-focus: rgba(13,148,136,0.42);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ec-bg: #0B1120;
-      --ec-surface: rgba(255,255,255,0.035);
-      --ec-surface-hover: rgba(255,255,255,0.07);
-      --ec-border: rgba(255,255,255,0.09);
-      --ec-border-hover: rgba(59,244,199,0.5);
-      --ec-text: #E6EAF0;
-      --ec-text-soft: rgba(230,234,240,0.72);
-      --ec-text-muted: rgba(230,234,240,0.48);
-      --ec-divider: rgba(255,255,255,0.10);
-      --ec-link: #3BF4C7;
-      --ec-link-strong: #6BFADB;
+      --ec-bg: #0C1222;
+      --ec-surface: #111A2B;
+      --ec-surface-soft: #101827;
+      --ec-surface-hover: #172338;
+      --ec-border: rgba(194,230,236,0.18);
+      --ec-border-hover: rgba(59,244,199,0.64);
+      --ec-text: #E6F4F5;
+      --ec-text-soft: rgba(230,244,245,0.78);
+      --ec-text-muted: rgba(230,244,245,0.54);
+      --ec-divider: rgba(230,244,245,0.14);
+      --ec-link: #6BFADB;
+      --ec-link-strong: #9BFFE8;
       --ec-accent: #3BF4C7;
-      --ec-chip-bg: rgba(59,244,199,0.12);
-      --ec-chip-fg: #6BFADB;
-      --ec-shadow: 0 16px 36px -20px rgba(0,0,0,0.65);
+      --ec-accent-soft: rgba(59,244,199,0.12);
+      --ec-accent-strong: #6BFADB;
+      --ec-shadow: 0 18px 34px -22px rgba(0,0,0,0.72);
       --ec-btn-bg: #3BF4C7;
-      --ec-btn-fg: #04241d;
+      --ec-btn-fg: #04241D;
       --ec-btn-hover-bg: #6BFADB;
       --ec-btn-secondary-fg: var(--ec-text);
-      --ec-btn-secondary-border: rgba(230,234,240,0.28);
+      --ec-btn-secondary-border: rgba(230,244,245,0.3);
+      --ec-focus: rgba(59,244,199,0.45);
     }
   }
   * { box-sizing: border-box; }
@@ -67,166 +71,180 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     font-size: 14px;
     line-height: 1.5;
   }
-  /* Gutter lives on .root, NOT on body. The host (ChatGPT) renders the widget
-     edge-to-edge in a sandbox iframe and resets body margin/padding, so any
-     gutter set on body silently vanishes and content collides with the host's
-     rounded panel mask. Padding on the inner wrapper survives the host reset,
-     so the breathing room actually reflects. */
-  body { margin: 0; padding: 0; }
-  .root { max-width: 1080px; margin: 0 auto; padding: 44px 40px 40px; }
+  .root { max-width: 1120px; margin: 0 auto; padding: 30px 32px 34px; }
   @media (max-width: 720px) {
-    .root { padding: 32px 24px 30px; }
+    .root { padding: 24px 22px 28px; }
   }
   @media (max-width: 480px) {
-    .root { padding: 26px 18px 26px; }
+    .root { padding: 20px 16px 24px; }
   }
 
-  .status { display: flex; align-items: center; justify-content: center; padding: 56px 16px; color: var(--ec-text-muted); font-size: 13px; font-weight: 500; gap: 10px; }
-  .spinner { width: 14px; height: 14px; border: 2px solid var(--ec-text-muted); border-top-color: transparent; border-radius: 50%; animation: spin 700ms linear infinite; }
+  .status {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    min-height: 156px; padding: 28px 16px;
+    color: var(--ec-text-muted); font-size: 13px; font-weight: 600;
+    text-align: center;
+  }
+  .spinner {
+    width: 15px; height: 15px; flex: 0 0 auto;
+    border: 2px solid var(--ec-text-muted); border-top-color: transparent;
+    border-radius: 50%; animation: spin 700ms linear infinite;
+  }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Header bar */
-  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  .bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    min-height: 38px; margin-bottom: 20px; padding-bottom: 13px;
+    border-bottom: 1px solid var(--ec-divider);
+  }
   .bar-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
-  .bar-title { font-size: 13.5px; font-weight: 600; color: var(--ec-text-soft); letter-spacing: -0.005em; }
-  .bar-count { font-size: 12.5px; font-weight: 600; color: var(--ec-text-muted); }
+  .bar-title { font-size: 13px; font-weight: 700; color: var(--ec-text-soft); letter-spacing: 0.01em; }
+  .bar-count { font-size: 12px; font-weight: 700; color: var(--ec-text-muted); }
 
-  /* Back button */
   .back {
-    display: inline-flex; align-items: center; gap: 6px;
-    height: 34px; padding: 0 14px;
-    font: 600 12.5px/1 inherit;
-    color: var(--ec-text-soft);
-    background: var(--ec-surface);
-    border: 1px solid var(--ec-border);
-    border-radius: 999px;
-    cursor: pointer;
-    transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 32px; padding: 0 11px;
+    font: 700 12px/1 inherit; letter-spacing: 0.01em;
+    color: var(--ec-text-soft); background: var(--ec-surface);
+    border: 1px solid var(--ec-border); border-radius: var(--ec-radius-sm);
+    cursor: pointer; transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
   }
-  .back:hover { border-color: var(--ec-border-hover); color: var(--ec-text); }
+  .back:hover { border-color: var(--ec-border-hover); color: var(--ec-text); background: var(--ec-surface-hover); }
+  .back:focus-visible, .tile:focus-visible, .row:focus-visible, .btn:focus-visible {
+    outline: 0; box-shadow: 0 0 0 3px var(--ec-focus);
+  }
 
-  /* Search grid: soft elevated cards */
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(244px, 1fr)); gap: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(238px, 1fr)); gap: 12px; }
   .tile {
-    display: flex; flex-direction: column; gap: 14px;
-    background: var(--ec-surface);
-    border: 1px solid var(--ec-border);
-    border-radius: var(--ec-radius);
-    padding: 18px;
-    text-align: left;
-    text-decoration: none; color: var(--ec-text);
+    position: relative; display: flex; flex-direction: column; gap: 13px;
+    min-height: 164px; padding: 17px 18px 15px;
+    overflow: hidden; text-align: left; text-decoration: none;
+    color: var(--ec-text); background: var(--ec-surface);
+    border: 1px solid var(--ec-border); border-radius: var(--ec-radius);
     font-family: inherit; font-size: inherit; line-height: inherit;
-    cursor: pointer;
-    min-height: 150px;
-    transition: border-color 180ms ease, background 180ms ease, box-shadow 220ms cubic-bezier(0.22,1,0.36,1);
+    cursor: pointer; transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 200ms ease;
   }
-  .tile:hover { border-color: var(--ec-border-hover); background: var(--ec-surface-hover); box-shadow: var(--ec-shadow); }
+  .tile::before {
+    content: ""; position: absolute; inset: 0 auto 0 0; width: 3px;
+    background: var(--ec-accent); opacity: 0.78;
+  }
+  .tile:hover { transform: translateY(-2px); border-color: var(--ec-border-hover); background: var(--ec-surface-hover); box-shadow: var(--ec-shadow); }
+  .tile:active { transform: translateY(0); }
+  .tile-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 21px; }
   .tile-code {
-    align-self: flex-start;
-    font-family: inherit;
-    font-size: 11px; font-weight: 600; letter-spacing: 0.01em;
-    color: var(--ec-chip-fg);
-    background: var(--ec-chip-bg);
-    padding: 4px 10px; border-radius: 999px;
-    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    display: inline-flex; align-items: center; max-width: 100%; min-height: 23px;
+    padding: 3px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--ec-accent-strong); background: var(--ec-accent-soft);
+    border: 1px solid rgba(13,148,136,0.18); border-radius: 4px;
+    font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
   }
+  .tile-kind { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; color: var(--ec-text-muted); }
   .tile-title {
-    font-size: 15.5px; font-weight: 700; line-height: 1.34;
-    color: var(--ec-text);
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-    word-break: break-word;
+    font-size: 15px; font-weight: 800; line-height: 1.35; letter-spacing: -0.01em;
+    color: var(--ec-text); display: -webkit-box; -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;
   }
-  .tile-foot { margin-top: auto; display: flex; align-items: baseline; gap: 7px; padding-top: 4px; }
-  .tile-stat { font-size: 28px; font-weight: 800; line-height: 1; color: var(--ec-text); letter-spacing: -0.02em; }
-  .tile-stat-label { font-size: 11.5px; font-weight: 600; color: var(--ec-text-muted); }
-  .tile-stat-sub { font-size: 11.5px; font-weight: 500; color: var(--ec-text-muted); margin-left: auto; }
-  .tile-kind { font-size: 11.5px; font-weight: 600; color: var(--ec-text-muted); }
-  .tile-cta { font-size: 12.5px; font-weight: 600; color: var(--ec-text); display: inline-flex; align-items: center; gap: 6px; }
-  .tile-cta-arrow { transition: transform 220ms cubic-bezier(0.22,1,0.36,1); }
-  .tile:hover .tile-cta-arrow { transform: translateX(3px); }
+  .tile-foot {
+    display: flex; align-items: baseline; gap: 7px; margin-top: auto; padding-top: 12px;
+    border-top: 1px solid var(--ec-divider);
+  }
+  .tile-stat { font-size: 24px; font-weight: 800; line-height: 1; color: var(--ec-text); letter-spacing: -0.03em; }
+  .tile-stat-label, .tile-stat-sub { font-size: 11px; font-weight: 700; color: var(--ec-text-muted); }
+  .tile-stat-sub { margin-left: auto; }
+  .tile-arrow { margin-left: auto; color: var(--ec-accent); opacity: 0.7; transition: transform 180ms ease, opacity 180ms ease; }
+  .tile:hover .tile-arrow { opacity: 1; transform: translateX(3px); }
 
-  /* Detail view */
-  .detail { display: flex; flex-direction: column; gap: 18px; }
+  .detail { display: flex; flex-direction: column; gap: 16px; }
   .hero {
-    background: var(--ec-surface);
-    border: 1px solid var(--ec-border);
-    border-radius: var(--ec-radius);
-    padding: 24px 26px 22px;
+    position: relative; overflow: hidden; padding: 23px 24px 20px;
+    background: var(--ec-surface); border: 1px solid var(--ec-border); border-radius: var(--ec-radius);
   }
+  .hero::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--ec-accent); }
   .hero-eyebrow {
-    display: inline-flex; align-items: center;
-    font-family: inherit;
-    font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
-    color: var(--ec-chip-fg);
-    background: var(--ec-chip-bg);
-    padding: 5px 11px; border-radius: 999px;
-    margin-bottom: 16px;
+    display: inline-flex; align-items: center; min-height: 24px; max-width: 100%;
+    margin-bottom: 14px; padding: 3px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--ec-accent-strong); background: var(--ec-accent-soft);
+    border: 1px solid rgba(13,148,136,0.18); border-radius: 4px;
+    font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
   }
-  .hero-title {
-    margin: 0;
-    font-size: 28px; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em;
-    color: var(--ec-text);
-  }
-  .hero-stats { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--ec-divider); }
-  .hero-stat { display: flex; align-items: baseline; gap: 8px; }
-  .hero-stat-num { font-size: 32px; font-weight: 800; line-height: 1; color: var(--ec-text); letter-spacing: -0.02em; }
-  .hero-stat-label { font-size: 12.5px; font-weight: 600; color: var(--ec-text-muted); }
+  .hero-title { margin: 0; max-width: 820px; font-size: 27px; font-weight: 800; line-height: 1.16; letter-spacing: -0.025em; color: var(--ec-text); }
+  .hero-stats { display: flex; flex-wrap: wrap; gap: 0; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--ec-divider); }
+  .hero-stat { display: flex; align-items: baseline; gap: 7px; min-width: 112px; margin: 2px 22px 2px 0; }
+  .hero-stat-num { font-size: 25px; font-weight: 800; line-height: 1; color: var(--ec-text); letter-spacing: -0.03em; }
+  .hero-stat-label { font-size: 11.5px; font-weight: 700; color: var(--ec-text-muted); }
 
-  /* Section heads — plain title case, not uppercase */
-  .section { display: flex; flex-direction: column; gap: 10px; }
+  .section { display: flex; flex-direction: column; gap: 9px; }
   .section-head {
-    font-size: 13px; font-weight: 700; color: var(--ec-text-soft); letter-spacing: -0.005em;
-    padding: 0 2px 2px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 2px; color: var(--ec-text-soft);
+    font-size: 12.5px; font-weight: 800; letter-spacing: 0.01em;
   }
-  .row-list { display: flex; flex-direction: column; gap: 8px; }
+  .section-head::after { content: ""; height: 1px; flex: 1; background: var(--ec-divider); }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag-chip {
+    display: inline-flex; align-items: center; max-width: 100%;
+    padding: 4px 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--ec-text); background: var(--ec-surface);
+    border: 1px solid var(--ec-border); border-radius: 0;
+    font-size: 11px; font-weight: 700; line-height: 1.25;
+  }
+  .tag-chip::first-letter { color: var(--ec-accent); }
+  .markdown-code {
+    padding: 1px 4px; color: var(--ec-accent-strong); background: var(--ec-accent-soft);
+    border: 1px solid var(--ec-border); border-radius: 3px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em;
+  }
+  .row-value { font-size: 13px; font-weight: 600; line-height: 1.45; word-break: break-word; }
+  .row-list { display: flex; flex-direction: column; gap: 7px; }
   .row {
     display: flex; align-items: center; justify-content: space-between; gap: 14px;
-    background: var(--ec-surface);
-    border: 1px solid var(--ec-border);
-    border-radius: var(--ec-radius-sm);
-    padding: 14px 16px;
-    text-align: left; text-decoration: none; color: var(--ec-text);
-    font: inherit; cursor: pointer;
-    transition: border-color 180ms ease, background 180ms ease, box-shadow 200ms cubic-bezier(0.22,1,0.36,1);
+    padding: 12px 14px; min-height: 50px;
+    color: var(--ec-text); background: var(--ec-surface);
+    border: 1px solid var(--ec-border); border-radius: var(--ec-radius-sm);
+    text-align: left; text-decoration: none; font: inherit; cursor: pointer;
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 180ms ease;
   }
-  .row:hover { border-color: var(--ec-border-hover); background: var(--ec-surface-hover); box-shadow: var(--ec-shadow); }
-  .row-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-  .row-title { font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--ec-text); word-break: break-word; }
-  .row-sub { font-size: 12px; font-weight: 500; color: var(--ec-text-muted); }
-  .row-arrow { color: var(--ec-text-muted); flex-shrink: 0; opacity: 0.55; transition: transform 200ms cubic-bezier(0.22,1,0.36,1), opacity 180ms ease; }
+  .row:hover { transform: translateX(2px); border-color: var(--ec-border-hover); background: var(--ec-surface-hover); box-shadow: var(--ec-shadow); }
+  .row-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .row-title { font-size: 13.5px; font-weight: 700; line-height: 1.4; color: var(--ec-text); word-break: break-word; }
+  .row-sub { font-size: 11px; font-weight: 700; color: var(--ec-text-muted); }
+  .row-arrow { color: var(--ec-accent); flex-shrink: 0; opacity: 0.68; transition: transform 180ms ease, opacity 160ms ease; }
   .row:hover .row-arrow { opacity: 1; transform: translateX(3px); }
 
-  /* Free-form text block */
-  .prose { color: var(--ec-text-soft); font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; padding: 0 2px; }
-  .prose a { color: var(--ec-link); text-decoration: none; font-weight: 600; word-break: break-word; }
+  .prose {
+    padding: 13px 15px; color: var(--ec-text-soft); background: var(--ec-surface-soft);
+    border: 1px solid var(--ec-border); border-left: 3px solid var(--ec-accent);
+    border-radius: var(--ec-radius-sm); font-size: 13px; line-height: 1.62;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .prose a { color: var(--ec-link); text-decoration: none; font-weight: 700; word-break: break-word; }
   .prose a:hover { color: var(--ec-link-strong); text-decoration: underline; }
 
-  /* Action buttons — clean pill buttons, no overflow tricks */
-  .actions { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 6px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 9px; padding-top: 2px; }
   .btn-wrap { display: inline-flex; }
   .btn-shadow { display: none; }
   .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    height: 44px; padding: 0 20px;
-    background: var(--ec-btn-bg);
-    color: var(--ec-btn-fg);
-    border: 1px solid transparent;
-    border-radius: 999px;
-    text-decoration: none;
-    font: 700 13px/1 inherit;
-    letter-spacing: 0.005em;
-    cursor: pointer;
-    transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 40px; padding: 0 15px;
+    color: var(--ec-btn-fg); background: var(--ec-btn-bg);
+    border: 1px solid var(--ec-btn-bg); border-radius: 5px;
+    text-decoration: none; font: 800 12px/1 inherit; letter-spacing: 0.01em;
+    cursor: pointer; transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
   }
-  .btn:hover { background: var(--ec-btn-hover-bg); }
-
-  /* Secondary (outline only) */
-  .btn.secondary {
-    background: transparent;
-    color: var(--ec-btn-secondary-fg);
-    border-color: var(--ec-btn-secondary-border);
+  .btn:hover { background: var(--ec-btn-hover-bg); border-color: var(--ec-btn-hover-bg); }
+  .btn:active { transform: translateY(1px); }
+  .btn.secondary { color: var(--ec-btn-secondary-fg); background: transparent; border-color: var(--ec-btn-secondary-border); }
+  .btn.secondary:hover { color: var(--ec-link); background: var(--ec-surface-hover); border-color: var(--ec-link); }
+  @media (max-width: 480px) {
+    .hero { padding: 21px 18px 18px; }
+    .hero-title { font-size: 23px; }
+    .hero-stat { min-width: 98px; margin-right: 14px; }
+    .hero-stat-num { font-size: 22px; }
+    .actions, .btn-wrap, .btn { width: 100%; }
   }
-  .btn.secondary:hover { background: transparent; color: var(--ec-link); border-color: var(--ec-link); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
 </style>
 </head>
 <body>
@@ -381,7 +399,8 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
 
   // ===== Markdown-ish body parser for fetch detail =====
   const REDUNDANT_INTRO_KEYS = /^(?:Past papers?|Notes?|Modules?|Topics?|Videos?|Previous questions?|Past papers? URL|Notes? URL|Resources? URL|Syllabus URL|Year)$/i;
-  const parseFetchBody = (text) => {
+  const PAST_PAPER_INTRO_KEYS = /^(?:Course|Course title)$/i;
+  const parseFetchBody = (text, resourceType = '') => {
     const lines = String(text || '').split(/\\r?\\n/);
     const sections = [];
     let cur = null;
@@ -390,50 +409,62 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     let inIntro = true;
     for (const raw of lines) {
       const line = raw.trimEnd();
-      if (/^#\\s+/.test(line)) continue;
-      if (/^##\\s+/.test(line)) {
-        cur = { title: line.replace(/^##\\s+/, ''), items: [] };
+      const heading = /^(#{1,6})\\s+(.+)$/.exec(line);
+      if (heading) {
+        if (heading[1].length === 1) continue;
+        cur = { title: heading[2].trim(), items: [] };
         sections.push(cur);
         inIntro = false;
         continue;
       }
-      if (/^-\\s+/.test(line)) {
-        const item = line.replace(/^-\\s+/, '');
+      const listMatch = /^\\s*(?:[-*+]|\\d+[.)]|\\([a-z]+\\))\\s+(.+)$/.exec(line);
+      if (listMatch) {
+        const item = listMatch[1];
         if (cur) cur.items.push(parseListItem(item));
-        else if (inIntro && !shouldSkipIntroLine(item, extras)) intro.push(item);
+        else if (inIntro && !shouldSkipIntroLine(item, extras, resourceType)) intro.push(item);
         continue;
       }
       if (!line.trim()) continue;
       if (cur) cur.items.push(parseListItem(line));
-      else if (inIntro && !shouldSkipIntroLine(line, extras)) intro.push(line);
+      else if (inIntro && !shouldSkipIntroLine(line, extras, resourceType)) intro.push(line);
     }
     return { intro, sections, extras };
   };
-  const shouldSkipIntroLine = (line, extras) => {
+  const shouldSkipIntroLine = (line, extras, resourceType = '') => {
     const pdfMatch = /^PDF:\\s*(https?:\\/\\/\\S+)/i.exec(line);
     if (pdfMatch) { extras.syllabusPdf = pdfMatch[1]; return true; }
     const synMatch = /^Syllabus(?: URL)?:\\s*(https?:\\/\\/\\S+)/i.exec(line);
     if (synMatch) { extras.syllabusUrl = synMatch[1]; return true; }
     const kv = /^([A-Za-z][A-Za-z _]*):\\s*(.+)$/.exec(line);
     if (kv && REDUNDANT_INTRO_KEYS.test(kv[1].trim())) return true;
+    if (resourceType === 'past_paper' && kv && PAST_PAPER_INTRO_KEYS.test(kv[1].trim())) return true;
     if (kv && /^not listed$/i.test(kv[2].trim())) return true;
     return false;
   };
   const parseListItem = (raw) => {
-    const urlMatch = /(https?:\\/\\/\\S+)/.exec(raw);
+    const normalized = raw.replace(/^\\s*(?:\\d+[.)]|\\([a-z]+\\))\\s+/i, '').trim();
+    const urlMatch = /(https?:\\/\\/\\S+)/.exec(normalized);
     if (urlMatch) {
       const url = urlMatch[1].replace(/[).,;]+$/, '');
-      const before = raw.slice(0, urlMatch.index).replace(/[\\s-]+$/, '').trim();
+      const before = normalized.slice(0, urlMatch.index).replace(/[\\s-]+$/, '').trim();
       return { label: before || url, url };
     }
-    const kv = /^([A-Za-z][A-Za-z _]*):\\s*(.+)$/.exec(raw);
+    const kv = /^([A-Za-z][A-Za-z _]*):\\s*(.+)$/.exec(normalized);
     if (kv) return { label: kv[1].trim(), value: kv[2].trim() };
-    return { label: raw, value: null };
+    return { label: normalized, value: null };
+  };
+  const renderMarkdownText = (raw) => {
+    let html = esc(raw == null ? '' : raw);
+    html = html
+      .replace(/\\x60([^\\x60]+)\\x60/g, '<code class="markdown-code">$1</code>')
+      .replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>')
+      .replace(/\\*([^*]+)\\*/g, '<em>$1</em>');
+    return linkify(html);
   };
 
   // ===== Rendering =====
   const renderStatus = (msg, withSpinner) => {
-    root.innerHTML = '<div class="status">' + (withSpinner ? '<div class="spinner"></div>' : '') + esc(msg) + '</div>';
+    root.innerHTML = '<div class="status" role="status" aria-live="polite">' + (withSpinner ? '<div class="spinner" aria-hidden="true"></div>' : '') + esc(msg) + '</div>';
   };
 
   const renderSearchTile = (r, idx) => {
@@ -449,29 +480,65 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
       eyebrow = tail.eyebrow || kind;
       title = tail.body || afterStat;
     }
-    let foot = '';
-    if (primary) {
-      foot = '<div class="tile-foot">' +
-        '<span class="tile-stat">' + primary.n + '</span>' +
-        '<span class="tile-stat-label">' + esc(primary.unit) + '</span>' +
-        (secondary ? '<span class="tile-stat-sub">+' + secondary.n + ' ' + esc(secondary.unit) + '</span>' : '') +
+    const head = '<div class="tile-head">' +
+      (eyebrow ? '<span class="tile-code">' + esc(eyebrow) + '</span>' : '<span></span>') +
+      (kind ? '<span class="tile-kind">' + esc(kind) + '</span>' : '') +
       '</div>';
-    } else if (kind && kind !== 'Course') {
-      foot = '<div class="tile-foot"><span class="tile-kind">' + esc(kind) + '</span></div>';
-    }
-    return '<button class="tile" type="button" data-action="open" data-idx="' + idx + '">' +
-      (eyebrow ? '<span class="tile-code">' + esc(eyebrow) + '</span>' : '') +
+    const statFoot = primary
+      ? '<span class="tile-stat">' + esc(primary.n) + '</span>' +
+        '<span class="tile-stat-label">' + esc(primary.unit) + '</span>' +
+        (secondary ? '<span class="tile-stat-sub">+' + esc(secondary.n) + ' ' + esc(secondary.unit) + '</span>' : '')
+      : '<span class="tile-stat-label">Open resource</span>';
+    return '<button class="tile" type="button" aria-label="' + esc('Open ' + title) + '" data-action="open" data-idx="' + idx + '">' +
+      head +
       '<div class="tile-title">' + esc(title) + '</div>' +
-      foot +
+      '<div class="tile-foot">' + statFoot + '<span class="tile-arrow">' + ARROW_RIGHT + '</span></div>' +
     '</button>';
   };
+  const catalogItemTitle = (item) => {
+    if (!item || typeof item !== 'object') return '';
+    const title = typeof item.title === 'string' ? item.title.trim() : '';
+    const code = typeof item.code === 'string' ? item.code.trim() : '';
+    if (code && typeof item.paperCount === 'number' && typeof item.noteCount === 'number') {
+      const stats = [
+        item.paperCount + ' ' + (item.paperCount === 1 ? 'paper' : 'papers'),
+        item.noteCount + ' ' + (item.noteCount === 1 ? 'note' : 'notes'),
+      ].join(', ');
+      return 'Course: ' + code + ' - ' + title + ' (' + stats + ')';
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'examTypeLabel') || Object.prototype.hasOwnProperty.call(item, 'examType')) {
+      const qualifiers = [item.examTypeLabel, item.year, item.hasAnswerKey ? 'answer key' : null].filter(Boolean);
+      return 'Past paper: ' + title + (qualifiers.length ? ' (' + qualifiers.join(', ') + ')' : '');
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'courseTitle')) {
+      return 'Note: ' + title + (item.courseCode ? ' (' + item.courseCode + ')' : '');
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'name')) {
+      const syllabusTitle = item.courseName || item.name || title;
+      return 'Syllabus: ' + syllabusTitle + (item.courseCode ? ' (' + item.courseCode + ')' : '');
+    }
+    if (Object.prototype.hasOwnProperty.call(item, 'year')) {
+      return 'Resource: ' + (item.courseName || title) + (item.year ? ' (' + item.year + ')' : '');
+    }
+    return title || (typeof item.name === 'string' ? item.name.trim() : '');
+  };
+
+  const normalizeCatalogResult = (catalog) => ({
+    ...catalog,
+    results: (Array.isArray(catalog.items) ? catalog.items : []).flatMap((item) => {
+      if (!item || typeof item.id !== 'string' || typeof item.url !== 'string') return [];
+      const title = catalogItemTitle(item);
+      return title ? [{ id: item.id, title, url: item.url }] : [];
+    }),
+  });
+
 
   const renderSearch = () => {
     const results = (state.searchResults && state.searchResults.results) || [];
     const labelPrefix = state.searchQuery ? 'Results for ' + esc('"' + state.searchQuery + '"') : 'ExamCooker results';
     if (!results.length) {
       root.innerHTML = '<div class="bar"><div class="bar-left"><span class="bar-title">' + labelPrefix + '</span></div></div>' +
-        '<div class="status">No matching ExamCooker resources.</div>';
+        '<div class="status" role="status" aria-live="polite">No matching ExamCooker resources.</div>';
       return;
     }
     root.innerHTML =
@@ -495,43 +562,78 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     const eyebrow = eyebrowBits.join(' · ');
 
     const heroStats = [];
-    if (typeof meta.paperCount === 'number') heroStats.push({ n: meta.paperCount, label: meta.paperCount === 1 ? 'paper' : 'papers' });
-    if (typeof meta.noteCount === 'number') heroStats.push({ n: meta.noteCount, label: meta.noteCount === 1 ? 'note' : 'notes' });
-    if (typeof meta.moduleCount === 'number') heroStats.push({ n: meta.moduleCount, label: meta.moduleCount === 1 ? 'module' : 'modules' });
-    if (typeof meta.topicCount === 'number') heroStats.push({ n: meta.topicCount, label: meta.topicCount === 1 ? 'topic' : 'topics' });
-    if (typeof meta.videoCount === 'number') heroStats.push({ n: meta.videoCount, label: meta.videoCount === 1 ? 'video' : 'videos' });
-    if (meta.year != null) heroStats.push({ n: meta.year, label: 'year' });
+    const addStat = (value, label) => {
+      if (value == null || heroStats.some((item) => item.label === label)) return;
+      heroStats.push({ n: value, label });
+    };
+    if (typeof meta.paperCount === 'number') addStat(meta.paperCount, meta.paperCount === 1 ? 'paper' : 'papers');
+    if (typeof meta.noteCount === 'number') addStat(meta.noteCount, meta.noteCount === 1 ? 'note' : 'notes');
+    if (typeof meta.moduleCount === 'number') addStat(meta.moduleCount, meta.moduleCount === 1 ? 'module' : 'modules');
+    if (typeof meta.topicCount === 'number') addStat(meta.topicCount, meta.topicCount === 1 ? 'topic' : 'topics');
+    if (typeof meta.videoCount === 'number') addStat(meta.videoCount, meta.videoCount === 1 ? 'video' : 'videos');
+    if (meta.year != null) addStat(meta.year, 'year');
 
-    const parsed = parseFetchBody(doc.text);
+    const parsed = parseFetchBody(doc.text, String(meta.type || ''));
+    const assets = Array.isArray(doc.assets) ? doc.assets : [];
+    const assetPdf = assets.find((asset) =>
+      asset && typeof asset.uri === 'string' && /\\.pdf(?:[?#]|$)/i.test(asset.uri)
+    );
+    const primaryPdf = meta.fileUrl || parsed.extras.syllabusPdf || (assetPdf && assetPdf.uri);
+    const pdfLabel = meta.type === 'syllabus' ? 'Open syllabus PDF' : 'Open PDF';
+
+    parsed.sections = parsed.sections
+      .map((section) => {
+        const seenItems = new Set();
+        return {
+          ...section,
+          items: section.items.filter((item) => {
+            const key = [item.url || '', item.label || '', item.value || ''].join('|');
+            if (seenItems.has(key)) return false;
+            if (primaryPdf && item.url === primaryPdf) return false;
+            seenItems.add(key);
+            return true;
+          }),
+        };
+      })
+      .filter((section) => section.title.trim());
 
     const renderRow = (item) => {
-      const sub = item.kind ? '<div class="row-sub">' + esc(item.kind) + '</div>' : '';
+      const sub = item.kind ? '<div class="row-sub">' + renderMarkdownText(item.kind) + '</div>' : '';
       const itemHref = item.url ? safeHref(item.url) : null;
       if (itemHref) {
         return '<a class="row" href="' + esc(itemHref) + '" target="_blank" rel="noopener noreferrer">' +
-          '<div class="row-main"><div class="row-title">' + esc(item.label) + '</div>' + sub + '</div>' +
+          '<div class="row-main"><div class="row-title">' + renderMarkdownText(item.label) + '</div>' + sub + '</div>' +
           '<span class="row-arrow">' + CHEVRON + '</span>' +
         '</a>';
       }
       if (item.value) {
         return '<div class="row"><div class="row-main">' +
-          '<div class="row-sub">' + esc(item.label) + '</div>' +
-          '<div class="row-title" style="font-weight:600;font-size:13.5px;word-break:break-all">' + linkify(esc(item.value)) + '</div>' +
+          '<div class="row-sub">' + renderMarkdownText(item.label) + '</div>' +
+          '<div class="row-value">' + renderMarkdownText(item.value) + '</div>' +
         '</div></div>';
       }
-      return '<div class="row"><div class="row-main"><div class="row-title">' + esc(item.label) + '</div></div></div>';
+      return '<div class="row"><div class="row-main"><div class="row-title">' + renderMarkdownText(item.label) + '</div></div></div>';
     };
 
     const renderSection = (section) => {
-      if (!section.items.length) return '';
+      if (/^tags?$/i.test(section.title.trim())) {
+        const tags = Array.from(new Set(section.items
+          .map((item) => item.label || item.value)
+          .filter(Boolean)));
+        if (!tags.length) return '';
+        return '<section class="section">' +
+          '<div class="section-head">Tags</div>' +
+          '<div class="tag-list" aria-label="Tags">' +
+            tags.map((tag) => '<span class="tag-chip">#' + renderMarkdownText(tag) + '</span>').join('') +
+          '</div>' +
+        '</section>';
+      }
       return '<section class="section">' +
-        '<div class="section-head">' + esc(section.title) + '</div>' +
-        '<div class="row-list">' + section.items.map(renderRow).join('') + '</div>' +
+        '<div class="section-head">' + renderMarkdownText(section.title) + '</div>' +
+        (section.items.length ? '<div class="row-list">' + section.items.map(renderRow).join('') + '</div>' : '') +
       '</section>';
     };
 
-    const primaryPdf = meta.fileUrl || parsed.extras.syllabusPdf;
-    const pdfLabel = meta.fileUrl ? (meta.type === 'syllabus' ? 'Open syllabus PDF' : 'Open PDF') : 'Open syllabus PDF';
     const renderBtn = (href, label, secondary) => {
       const safe = safeHref(href);
       if (!safe) return '';
@@ -546,13 +648,9 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
       primaryPdf ? renderBtn(String(primaryPdf), pdfLabel, false) : '',
       doc.url ? renderBtn(doc.url, 'View on ExamCooker', true) : '',
     ].filter(Boolean).join('');
-
-    const barHtml =
-      '<div class="bar">' +
-        '<div class="bar-left">' +
-          (state.history.length ? '<button class="back" type="button" data-action="back">' + ARROW_LEFT + 'Back</button>' : '') +
-        '</div>' +
-      '</div>';
+    const barHtml = state.history.length
+      ? '<div class="bar"><div class="bar-left"><button class="back" type="button" data-action="back">' + ARROW_LEFT + 'Back</button></div></div>'
+      : '';
 
     root.innerHTML = barHtml +
       '<div class="detail">' +
@@ -563,7 +661,7 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
               '<div class="hero-stat"><span class="hero-stat-num">' + esc(s.n) + '</span><span class="hero-stat-label">' + esc(s.label) + '</span></div>'
             ).join('') + '</div>' : '') +
         '</section>' +
-        (parsed.intro.length ? '<div class="prose">' + linkify(esc(parsed.intro.join('\\n'))) + '</div>' : '') +
+        (parsed.intro.length ? '<div class="prose">' + renderMarkdownText(parsed.intro.join('\\n')) + '</div>' : '') +
         parsed.sections.map(renderSection).join('') +
         (actionBtns ? '<div class="actions">' + actionBtns + '</div>' : '') +
       '</div>';
@@ -617,6 +715,14 @@ export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
     if (Array.isArray(sc.results)) {
       state.mode = 'search';
       state.searchResults = sc;
+      state.searchQuery = (result && result._meta && result._meta.query) || '';
+      state.history = [];
+      render();
+      return;
+    }
+    if (Array.isArray(sc.items)) {
+      state.mode = 'search';
+      state.searchResults = normalizeCatalogResult(sc);
       state.searchQuery = (result && result._meta && result._meta.query) || '';
       state.history = [];
       render();
