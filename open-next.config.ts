@@ -10,7 +10,9 @@ import { withCourseTagPrefetch } from "./cloudflare/course-tag-prefetch";
 export default defineCloudflareConfig({
   incrementalCache: withCourseTagPrefetch(withCacheWriteLifetime(
     withFullRouteMissCache(withRegionalCache(r2IncrementalCache, {
-      mode: "short-lived",
+      // Keep local copies for their revalidation lifetime instead of expiring
+      // every minute. Next still checks tags and serves/revalidates stale data.
+      mode: "long-lived",
       bypassTagCacheOnCacheHit: false,
     })),
   )),

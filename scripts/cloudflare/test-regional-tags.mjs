@@ -7,8 +7,6 @@ const { build } = require("esbuild");
 const { outputFiles } = await build({ stdin: { resolveDir: resolve("."), contents: `
   import { AsyncLocalStorage } from "node:async_hooks";
   import config from "./open-next.config.ts";
-  import { DOShardedTagCache } from "./node_modules/@opennextjs/cloudflare/dist/api/durable-objects/sharded-tag-cache.js";
-  export { DOShardedTagCache };
   const context = new AsyncLocalStorage();
   Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), { get: () => context.getStore() });
   globalThis.openNextConfig = config;
@@ -22,9 +20,23 @@ const { outputFiles } = await build({ stdin: { resolveDir: resolve("."), content
   }};` }, bundle: true, write: false, format: "esm", platform: "node",
   external: ["cloudflare:workers", "node:*"],
 });
-const mf = new Miniflare(convertV4MiniflareOptions({ name: "regional-tag-test", modules: true,
-  script: outputFiles[0].text, compatibilityDate: "2026-09-10", compatibilityFlags: ["nodejs_compat"],
-  durableObjects: { NEXT_TAG_CACHE_DO_SHARDED: { className: "DOShardedTagCache", useSQLite: true } },
+const { outputFiles: tagWorker } = await build({
+  entryPoints: ["cloudflare/tag-cache-worker.ts"], bundle: true, write: false,
+  format: "esm", platform: "node", external: ["cloudflare:workers", "node:*"],
+});
+const workerOptions = {
+  modules: true, compatibilityDate: "2026-09-10", compatibilityFlags: ["nodejs_compat"],
+};
+const mf = new Miniflare(convertV4MiniflareOptions({ workers: [
+  { ...workerOptions, name: "regional-tag-test", script: outputFiles[0].text,
+    durableObjects: { NEXT_TAG_CACHE_DO_SHARDED: {
+      className: "DOShardedTagCache", scriptName: "examcooker-test-tag-cache", useSQLite: true,
+    } },
+  },
+  { ...workerOptions, name: "examcooker-test-tag-cache", script: tagWorker[0].text,
+    durableObjects: { TAG_CACHE: { className: "DOShardedTagCache", useSQLite: true } },
+  },
+],
 }));
 async function read(continent, tag, write = false) {
   const response = await mf.dispatchFetch("https://test", { method: "POST", body: JSON.stringify({ continent, tag, write }) });
@@ -38,5 +50,5 @@ try {
     assert.equal(await read(continent, "regional-invalidation"), true, continent);
     assert.equal(await read(continent, "untouched-control"), false, continent);
   }
-  console.log("PASS: the deployed tag-cache configuration propagates invalidation to all six regions; unrelated tags remain valid");
+  console.log("PASS: the dedicated tag Worker propagates invalidation to all six regions; unrelated tags remain valid");
 } finally { await mf.dispose(); }

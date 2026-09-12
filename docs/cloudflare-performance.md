@@ -452,3 +452,121 @@ visitors, and runtime prefetches contained rendered Flight rows.
 Forced HEAD and GET revalidation also passed on all four routes; BMAT202L took
 657 ms and 1242 ms respectively. App and Worker type checks and the OpenNext
 build passed. Lint remains unavailable for the repository reasons noted above.
+
+## Follow-up: infrequent visits and dedicated tag Worker
+
+The next pass used 75-second gaps between requests to BMAT202L. The benchmark's
+new `--round-delay-ms` option makes this repeatable; it also records the response's
+`Server-Timing` header. These are single-client measurements at MAA, with two
+spaced samples per case, not p95 estimates or guaranteed cold starts.
+
+| Case | Production spaced HTML | Cloudflare spaced HTML | Cloudflare initial request |
+| --- | ---: | ---: | ---: |
+| 60-second regional retention | 1327, 1256 ms | 2585, 2064 ms | 3304 ms |
+| Revalidation-based regional retention | 1009, 1265 ms | 2256, 1642 ms | 5815 ms |
+
+The retained `long-lived` regional-cache mode avoids discarding local copies
+every minute. It uses each entry's revalidation lifetime (300 seconds for the
+tested composable data); fallback shell retention follows the adapter default.
+Tag checks remain enabled, including SWR invalidation, with the same five-second
+regional metadata TTL. Background refresh remains enabled by the adapter.
+This modest sequential comparison does not establish an end-to-end first-visit
+improvement: the initial candidate request was slower. A workerd test confirms
+retained data still becomes invalid when its tag changes.
+
+### Tag-object activation remained the main delay
+
+Tracing candidate `3b2e3469-f31e-40b4-820a-659e28ee7754` with longer retention
+showed a 2162 ms internal response, with headers at 1623 ms. Its five initial tag
+RPCs took 1338–1844 ms despite the earlier schema patch. Most page data reads hit
+the regional cache. The schema patch alone had therefore not eliminated slow
+tag-object activation.
+
+The tag class now runs in `examcooker-test-tag-cache`, a 5.19 KiB Worker (1.67 KiB
+gzipped), instead of sharing the approximately 35 MiB application Worker. It uses
+the same pinned, patched OpenNext class. The state-preserving transfer migration
+retains the existing namespace and invalidation rows. Existing bindings forward
+to the transferred class; `wrangler.jsonc` now explicitly names the destination
+Worker for subsequent deployments. The tag Worker has no HTTP deployment target
+or application secrets. Tag Worker version: `d46a5025-6ed0-4c34-bdd2-a837fcbb1ac9`.
+
+Only the tag Worker was deployed for the first comparison: the application build,
+running application Worker, cache keys, and cached data stayed in place. The first
+post-transfer trace completed in 730 ms, with headers at 290 ms. Its initial tag
+RPCs took 205–260 ms. After a further 150 seconds without our page probes, the
+first trace completed in 412 ms internally, headers at 211 ms, and 946 ms from the
+client. Tag RPCs took 149–200 ms. This supports keeping the bundle separation;
+the idle interval allows eviction but does not prove every object was evicted.
+Forced regeneration still had a 2307 ms internal outlier and must not be described
+as consistently subsecond.
+
+Raw reports are `bmat-idle-short.jsonl`, `bmat-idle-long.jsonl`,
+`bmat-trace-retention.jsonl`, `bmat-trace-split-tags.jsonl`, and
+`bmat-trace-split-tags-idle.jsonl` in the ignored diagnostics directory. The
+retention candidate changed only the mode literal in the two generated config
+copies, with exact single-match assertions and original copies retained. This
+kept the Next build/cache keys constant without another memory-heavy build.
+Future normal builds take the setting from `open-next.config.ts`.
+
+The regional-tag workerd test now runs the real dedicated Worker separately from
+its caller and verifies invalidation across all six regions. Schema migration,
+retained-entry invalidation, and app/Worker type checks also pass. Deployment and
+local-preview scripts now include both Workers. Azure production was unchanged.
+
+### Visible timing after tag separation
+
+The clean app deployment was `94d634de-6f98-4b6b-8514-d8494ccc67de`; deleting the
+temporary tracing secret activated `7b5ad4d6-f8c8-4e44-b586-cee86991b169` with the
+same code. One fresh muted Chrome session visited BMAT202L on Cloudflare, then
+production, then Cloudflare again. It used a verified regular Chrome user agent,
+no request interception, and disabled media playback. It closed after capture.
+
+| Visit | HTML complete | First contentful paint | 24 cards visible | Window load |
+| --- | ---: | ---: | ---: | ---: |
+| Cloudflare, fresh browser | 3206 ms | 2960 ms | 3252 ms | 4407 ms |
+| Production, same browser | 1183 ms | 1148 ms | 1442 ms | 2149 ms |
+| Cloudflare repeat | 576 ms | 208 ms | 619 ms | 593 ms |
+
+The fresh Cloudflare result improved from the previous 6919 ms card timing, but
+was still seconds long. Its final response headers arrived at 2556 ms and reported
+792 ms `cfWorker` time; the repeat reported 77 ms. Network/client conditions vary
+across these sequential runs; production was also faster than in the prior run.
+Raw captures are `bmat-browser-split-{first,prod,repeat}.json` in the ignored
+diagnostics directory. These are browser observations, not claims of a p95 bound.
+
+### Rejected: another minification pass
+
+Wrangler minification reduced the application upload from 35532.86 KiB to
+24857.29 KiB (gzip: 7689.85 to 6879.54 KiB). Candidate
+`d2321f7e-8317-43e8-874e-c50f789bdbc2` retained the same Next build/cache keys and
+dedicated tag Worker. In another fresh-browser sequence, Cloudflare cards became
+visible at 3641 ms initially and 2817 ms on repeat; production took 2564 ms.
+Cloudflare's first HTML completed at 3393 ms and window load at 5276 ms. The repeat
+HTML completed at 2786 ms despite the header reporting only 85 ms of Worker time:
+that header is not a measurement of the complete streamed body. Client/network
+conditions varied, and this did not demonstrate a visible-latency improvement.
+
+Removed the minification setting and rolled the application back to
+`7b5ad4d6-f8c8-4e44-b586-cee86991b169`. This version already has the external tag
+binding and no diagnostic secret, so the rollback preserves the successful tag
+transfer. The dedicated tag Worker remains on
+`d46a5025-6ed0-4c34-bdd2-a837fcbb1ac9`. Raw rejected-candidate browser captures are
+`bmat-browser-minify-{first,prod,repeat}.json` in the ignored diagnostics directory.
+All probe browsers are closed. This pass demonstrates subsecond observations,
+not a guarantee that every fresh visit or regeneration finishes below a second.
+
+After restoration, live checks passed for synthetic session isolation (including
+chunked cookies and anonymous CSRF tokens), complete/cancelled/concurrent HTML
+streams, and runtime prefetches. BMAT202L completed in 552 ms during the streaming
+check; the maximum across nine concurrent mixed routes was 2840 ms. Forced
+BMAT202L revalidation completed in 451 ms for HEAD and 853 ms for GET.
+
+Five subsequent paired samples were all valid. Warm HTML medians were 523 ms on
+Cloudflare and 491 ms on production; full RSC medians were 419 ms and 859 ms.
+Cloudflare's separately reported first requests were 485 ms HTML and 388 ms RSC.
+These checks followed other traffic and are not cold-start measurements. Raw
+rows are `bmat-split-final-http.jsonl` in the ignored diagnostics directory.
+The two-Worker local preview started successfully and served a static asset with
+HTTP 200, then was stopped. Its local tag configuration explicitly declares
+SQLite because Wrangler's local migration parser does not infer the backend
+from `transferred_classes`.

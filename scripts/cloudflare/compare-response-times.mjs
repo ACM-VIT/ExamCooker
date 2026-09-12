@@ -9,9 +9,14 @@ const { values } = parseArgs({ options: {
   output: { type: "string" },
   "perf-token-file": { type: "string" },
   label: { type: "string", default: "benchmark" },
+  "round-delay-ms": { type: "string", default: "0" },
 } });
 const rounds = Number(values.rounds);
+const roundDelayMs = Number(values["round-delay-ms"]);
 if (!Number.isInteger(rounds) || rounds < 1 || rounds > 20) throw new Error("rounds must be 1–20");
+if (!Number.isInteger(roundDelayMs) || roundDelayMs < 0 || roundDelayMs > 300000) {
+  throw new Error("round-delay-ms must be 0–300000");
+}
 if (!["html", "rsc", "both"].includes(values.mode)) throw new Error("mode must be html, rsc, or both");
 const hosts = ["https://examcooker.acmvit.in", "https://ec-test.acmvit.in"];
 const paths = values.paths.split(",");
@@ -53,11 +58,14 @@ for (const mode of modes) for (const path of paths) {
   }
   // Round zero is a separately reported warmup, not a controlled cold start.
   for (let round = 0; round <= rounds; round++) {
+    if (round > 0 && roundDelayMs) {
+      await new Promise((resolve) => setTimeout(resolve, roundDelayMs));
+    }
     await Promise.all(hosts.map(async (base) => {
       const start = performance.now();
       const host = new URL(base).hostname;
       const id = `${values.label}-${mode}-${paths.indexOf(path)}-${round}`;
-      let row = { label: values.label, id, host, path, mode, round, warmup: round === 0 };
+      let row = { label: values.label, id, host, path, mode, round, roundDelayMs, warmup: round === 0 };
       try {
         const headers = mode === "rsc" ? { rsc: "1" } : {};
         if (token && host === "ec-test.acmvit.in") {
@@ -87,6 +95,7 @@ for (const mode of modes) for (const path of paths) {
         row = { ...row, status: response.status, headersMs, firstByteMs,
           totalMs: Math.round(performance.now() - start), bytes: body.length, complete, digests,
           colo: response.headers.get("cf-ray")?.split("-").at(-1),
+          serverTiming: response.headers.get("server-timing"),
           rscHashSupplied: mode === "rsc" && targets.get(base).searchParams.has("_rsc") };
         if (response.status !== 200 || !complete || digests.length) process.exitCode = 1;
       } catch (error) {

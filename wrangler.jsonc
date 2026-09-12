@@ -43,7 +43,8 @@
       },
       {
         "name": "NEXT_TAG_CACHE_DO_SHARDED",
-        "class_name": "DOShardedTagCache"
+        "class_name": "DOShardedTagCache",
+        "script_name": "examcooker-test-tag-cache"
       },
       {
         "name": "APP_STATE",
