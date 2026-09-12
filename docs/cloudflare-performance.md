@@ -684,6 +684,11 @@ Live query checks also passed for an exact course search, an empty fuzzy search,
 CAT1 filtering and two disjoint 24-card pages using recent-first ordering. An
 initial supposed empty-search fixture contained the word "course" and correctly
 returned 57 fuzzy matches; it was replaced with an actually unmatched query.
-The final clean version is `076002e1-7a15-4445-b22a-f44eb2248c52`, with both
-external Durable Object bindings and no diagnostic secret. Restoring that
-version removes the second temporary tracer without reverting the improvements.
+The clean candidate `076002e1-7a15-4445-b22a-f44eb2248c52` contains both external
+Durable Object bindings. After the second tracing run, redeploying that same
+clean code and deleting the secret also clears it from Wrangler’s latest saved
+version metadata; a code rollback alone left it listed there.
+
+Final active deployment: `40d8048d-dc69-430b-a3fc-7029a020c632`. Verified the live BMAT
+HTML stream completes, the tracer is inactive, and `EC_PERF_TOKEN` is absent
+from the Worker secret listing.
