@@ -1,0 +1,68 @@
+diff --git a/dist/adapters/composable-cache.js b/dist/adapters/composable-cache.js
+index 71d6151db297868a03d81e3daaedd6ca6a1da76b..35d807a1015b32a0ba2dc36cc3c31b31161220c6 100644
+--- a/dist/adapters/composable-cache.js
++++ b/dist/adapters/composable-cache.js
+@@ -2,8 +2,20 @@ import { isStale, writeTags } from "../utils/cache";
+ import { fromReadableStream, toReadableStream } from "../utils/stream";
+ import { debug } from "./logger";
+ const pendingWritePromiseMap = new Map();
++const workerPendingWrites = new WeakMap();
++function getPendingWrites() {
++    const ctx = globalThis[Symbol.for("__cloudflare-context__")]?.ctx;
++    if (!ctx) return pendingWritePromiseMap;
++    let writes = workerPendingWrites.get(ctx);
++    if (!writes) {
++        writes = new Map();
++        workerPendingWrites.set(ctx, writes);
++    }
++    return writes;
++}
+ export default {
+     async get(cacheKey) {
++        const pendingWritePromiseMap = getPendingWrites();
+         try {
+             // We first check if we have a pending write for this cache key
+             // If we do, we return the pending promise instead of fetching the cache
+@@ -65,23 +77,30 @@ export default {
+         }
+     },
+     async set(cacheKey, pendingEntry) {
++        const pendingWritePromiseMap = getPendingWrites();
+         const promiseEntry = pendingEntry.then(async (entry) => ({
+             ...entry,
+             value: await fromReadableStream(entry.value),
+         }));
+         pendingWritePromiseMap.set(cacheKey, promiseEntry);
+-        const entry = await promiseEntry.finally(() => {
+-            pendingWritePromiseMap.delete(cacheKey);
+-        });
+-        await globalThis.incrementalCache.set(cacheKey, {
+-            ...entry,
+-            value: entry.value,
+-        }, "composable");
+-        if (globalThis.tagCache.mode === "original") {
+-            const storedTags = await globalThis.tagCache.getByPath(cacheKey);
+-            const tagsToWrite = entry.tags.filter((tag) => !storedTags.includes(tag));
+-            if (tagsToWrite.length > 0) {
+-                await writeTags(tagsToWrite.map((tag) => ({ tag, path: cacheKey })));
++        try {
++            const entry = await promiseEntry;
++            await globalThis.incrementalCache.set(cacheKey, {
++                ...entry,
++                value: entry.value,
++            }, "composable");
++            if (globalThis.tagCache.mode === "original") {
++                const storedTags = await globalThis.tagCache.getByPath(cacheKey);
++                const tagsToWrite = entry.tags.filter((tag) => !storedTags.includes(tag));
++                if (tagsToWrite.length > 0) {
++                    await writeTags(tagsToWrite.map((tag) => ({ tag, path: cacheKey })));
++                }
++            }
++        } finally {
++            // Keep read-your-writes until storage finishes. A superseded writer
++            // must not remove a newer pending entry for this same key.
++            if (pendingWritePromiseMap.get(cacheKey) === promiseEntry) {
++                pendingWritePromiseMap.delete(cacheKey);
+             }
+         }
+     },

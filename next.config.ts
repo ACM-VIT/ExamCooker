@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
+if (process.env.NODE_ENV === "development") {
+    initOpenNextCloudflareForDev();
+}
 // Same constant the sync script emits asset URLs against, so the allowlist
 // below can never drift away from the host those URLs actually use.
 import { SITE_ORIGIN as VIN_TOGETHER_ORIGIN } from "./scripts/vin-together-site.js";
@@ -107,6 +112,10 @@ const uploadSourceMaps = process.env.POSTHOG_SOURCEMAP_UPLOAD === "true";
 
 const nextConfig: NextConfig = {
     output: "standalone",
+    // pg loads this transport only inside Workers; Node's build trace misses it.
+    outputFileTracingIncludes: {
+        "/*": ["./node_modules/pg-cloudflare/**/*"],
+    },
     productionBrowserSourceMaps: uploadSourceMaps,
     cacheComponents: true,
     partialPrefetching: true,
@@ -119,6 +128,9 @@ const nextConfig: NextConfig = {
                 : false,
     },
     experimental: {
+        // Next inflates PPR state with a 5x output limit. Its 100 MB default
+        // exceeds Workers' 128 MiB zlib limit even for tiny cached payloads.
+        maxPostponedStateSize: "5mb",
         instantInsights: {
             validationLevel: "warning",
         },

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { AppRedisClient } from "@/lib/redis";
-import { getOptionalRedis } from "@/lib/redis";
+import type { AppStateClient } from "@/lib/app-state";
+import { getOptionalAppState } from "@/lib/app-state";
 
 const CACHE_KEY_PREFIX = "ec:past-papers-surface-cache";
 const CACHE_SCHEMA_VERSION = 2;
@@ -9,9 +9,6 @@ const DEFAULT_CACHE_TTL_SECONDS = 900;
 const DEFAULT_LOCK_TTL_SECONDS = 15;
 const DEFAULT_WAIT_TIMEOUT_MS = 1200;
 const DEFAULT_WAIT_INTERVAL_MS = 80;
-const RELEASE_LOCK_SCRIPT =
-  "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end";
-
 type CacheHit<T> = {
   type: "hit";
   value: T;
@@ -118,7 +115,7 @@ function parseRedisValue<T>(
 async function readCacheEntry<T>(input: {
   cacheKey: string;
   deserialize?: DeserializeValue<T>;
-  redis: AppRedisClient;
+  redis: AppStateClient;
 }): Promise<CacheReadResult<T>> {
   const rawValue = await input.redis.get<unknown>(input.cacheKey);
   const parsedValue = parseRedisValue(rawValue, input.deserialize);
@@ -130,7 +127,7 @@ async function readCacheEntry<T>(input: {
   return parsedValue;
 }
 
-async function tryAcquireCacheLock(redis: AppRedisClient, cacheKey: string) {
+async function tryAcquireCacheLock(redis: AppStateClient, cacheKey: string) {
   const token = randomUUID();
   const result = await redis.set(buildLockKey(cacheKey), token, {
     ex: parsePositiveIntegerEnv(
@@ -144,7 +141,7 @@ async function tryAcquireCacheLock(redis: AppRedisClient, cacheKey: string) {
 }
 
 async function releaseCacheLock(
-  redis: AppRedisClient,
+  redis: AppStateClient,
   cacheKey: string,
   token: string | null,
 ) {
@@ -155,7 +152,7 @@ async function releaseCacheLock(
   const lockKey = buildLockKey(cacheKey);
 
   try {
-    await redis.eval(RELEASE_LOCK_SCRIPT, [lockKey], [token]);
+    await redis.releaseLock(lockKey, token);
   } catch (error) {
     warnRecoverableCacheError("lock release failed", error);
   }
@@ -164,7 +161,7 @@ async function releaseCacheLock(
 async function waitForCacheEntry<T>(input: {
   cacheKey: string;
   deserialize?: DeserializeValue<T>;
-  redis: AppRedisClient;
+  redis: AppStateClient;
 }): Promise<CacheReadResult<T>> {
   const deadline =
     Date.now() +
@@ -196,7 +193,7 @@ async function waitForCacheEntry<T>(input: {
 
 async function storeCacheEntry<T>(input: {
   cacheKey: string;
-  redis: AppRedisClient;
+  redis: AppStateClient;
   ttlSeconds?: number;
   value: T;
 }) {
@@ -217,7 +214,7 @@ async function storeCacheEntry<T>(input: {
 }
 
 async function readNamespaceVersion() {
-  const redis = getOptionalRedis();
+  const redis = getOptionalAppState();
   if (!redis) {
     return 0;
   }
@@ -240,7 +237,7 @@ export async function withPastPapersSurfaceRedisCache<T>(
   },
   loader: () => Promise<T>,
 ): Promise<T> {
-  const redis = getOptionalRedis();
+  const redis = getOptionalAppState();
   if (!redis) {
     return loader();
   }
@@ -327,7 +324,7 @@ export async function withPastPapersSurfaceRedisCache<T>(
 }
 
 export async function invalidatePastPapersSurfaceCache() {
-  const redis = getOptionalRedis();
+  const redis = getOptionalAppState();
   if (!redis) {
     return null;
   }

@@ -10,7 +10,7 @@ import type {
   PdfMarkdownFeedbackSummary,
   PdfMarkdownFeedbackVote,
 } from "@/lib/ai/pdf-markdown-cache-types";
-import { getOptionalRedis } from "@/lib/redis";
+import { getOptionalAppState } from "@/lib/app-state";
 
 const CACHE_ENTRY_VERSION = 1;
 const CACHE_KEY_PREFIX = "ec:pdf-markdown";
@@ -19,51 +19,6 @@ const DEFAULT_FEEDBACK_TTL_SECONDS = 60 * 60 * 24 * 180;
 const GENERATION_LOCK_TTL_SECONDS = 120;
 const WAIT_FOR_CACHE_TIMEOUT_MS = 7000;
 const WAIT_FOR_CACHE_INTERVAL_MS = 500;
-const RELEASE_LOCK_SCRIPT =
-  "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end";
-const RECORD_FEEDBACK_SCRIPT = `
-local voteKey = KEYS[1]
-local feedbackKey = KEYS[2]
-local nextVote = ARGV[1]
-local updatedAt = ARGV[2]
-local ttlSeconds = tonumber(ARGV[3])
-local previousVote = redis.call("GET", voteKey)
-local upvotes = tonumber(redis.call("HGET", feedbackKey, "upvotes") or "0")
-local downvotes = tonumber(redis.call("HGET", feedbackKey, "downvotes") or "0")
-
-if previousVote == nextVote then
-  return { previousVote or "", tostring(upvotes), tostring(downvotes) }
-end
-
-redis.call("SET", voteKey, nextVote, "EX", ttlSeconds)
-
-if previousVote == "up" then
-  upvotes = math.max(upvotes - 1, 0)
-elseif previousVote == "down" then
-  downvotes = math.max(downvotes - 1, 0)
-end
-
-if nextVote == "up" then
-  upvotes = upvotes + 1
-else
-  downvotes = downvotes + 1
-end
-
-redis.call(
-  "HSET",
-  feedbackKey,
-  "updatedAt",
-  updatedAt,
-  "upvotes",
-  upvotes,
-  "downvotes",
-  downvotes
-)
-redis.call("EXPIRE", feedbackKey, ttlSeconds)
-
-return { previousVote or "", tostring(upvotes), tostring(downvotes) }
-`;
-
 const CacheEntrySchema = z.object({
   cacheKey: z.string().regex(/^[a-f0-9]{64}$/),
   contentHash: z.string().regex(/^[a-f0-9]{64}$/),
@@ -262,7 +217,7 @@ async function getUserVote(input: {
     return null;
   }
 
-  const redis = getOptionalRedis();
+  const redis = getOptionalAppState();
   if (!redis) {
     return null;
   }
@@ -307,7 +262,7 @@ export async function readPdfMarkdownFeedback(input: {
   generationId: string;
   voterId?: string;
 }): Promise<PdfMarkdownFeedbackSummary> {
-  const redis = getOptionalRedis();
+  const redis = getOptionalAppState();
   if (!redis) {
     return emptyFeedback();
   }
@@ -334,7 +289,7 @@ export async function readPdfMarkdownFeedback(input: {
 export async function readPdfMarkdownCache(
   input: CacheLookupInput,
 ): Promise<PdfMarkdownCacheLookupResult> {
-  const redis = getOptionalRedis();
+  const redis = getOptionalAppState();
   if (!redis) {
     return {
       cacheKey: input.cacheKey,
@@ -361,7 +316,7 @@ export async function readPdfMarkdownCache(
         cacheKey: input.cacheKey,
         contentHash: input.contentHash,
         model: input.modelId,
-        reason: "redis_read_failed",
+        reason: "cache_read_failed",
         source: "live",
         status: "disabled",
       }),
@@ -471,7 +426,7 @@ export async function readPdfMarkdownCache(
 export async function storePdfMarkdownCache(
   input: CacheStoreInput,
 ): Promise<PdfMarkdownCacheMetadata> {
-  const redis = getOptionalRedis();
+  const redis = getOptionalAppState();
   // Feedback belongs to a particular generation attempt, even if a retry
   // happens to produce byte-identical Markdown.
   const generationId = hashText(`${randomUUID()}\n${input.markdown}`);
@@ -525,7 +480,7 @@ export async function storePdfMarkdownCache(
       generatedAt: entry.generatedAt,
       generationId,
       model: input.modelId,
-      reason: "redis_write_failed",
+      reason: "cache_write_failed",
       source: "live",
       status: "disabled",
     });
@@ -544,7 +499,7 @@ export async function storePdfMarkdownCache(
 }
 
 export async function tryAcquirePdfMarkdownGenerationLock(cacheKey: string) {
-  const redis = getOptionalRedis();
+  const redis = getOptionalAppState();
   if (!redis) {
     return null;
   }
@@ -568,13 +523,13 @@ export async function releasePdfMarkdownGenerationLock(
   cacheKey: string,
   token: string | null,
 ) {
-  const redis = getOptionalRedis();
+  const redis = getOptionalAppState();
   if (!redis || !token) {
     return;
   }
 
   try {
-    await redis.eval(RELEASE_LOCK_SCRIPT, [lockRedisKey(cacheKey)], [token]);
+    await redis.releaseLock(lockRedisKey(cacheKey), token);
   } catch (error) {
     console.error("[pdf-markdown-cache] lock release failed", error);
   }
@@ -605,7 +560,7 @@ export async function recordPdfMarkdownFeedback(input: {
   voterId: string;
   vote: PdfMarkdownFeedbackVote;
 }): Promise<PdfMarkdownFeedbackSummary | null> {
-  const redis = getOptionalRedis();
+  const redis = getOptionalAppState();
   if (!redis) {
     return null;
   }
@@ -632,11 +587,7 @@ export async function recordPdfMarkdownFeedback(input: {
       "PDF_MARKDOWN_FEEDBACK_TTL_SECONDS",
       DEFAULT_FEEDBACK_TTL_SECONDS,
     );
-    const result = await redis.eval<[string, string, string], unknown>(
-      RECORD_FEEDBACK_SCRIPT,
-      [voteKey, feedbackKey],
-      [input.vote, new Date().toISOString(), String(ttlSeconds)],
-    );
+    const result = await redis.recordVote(voteKey, feedbackKey, input.vote, new Date().toISOString(), ttlSeconds);
 
     if (!Array.isArray(result)) {
       return readPdfMarkdownFeedback({

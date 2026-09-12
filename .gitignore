@@ -78,3 +78,8 @@ mobile/android/keystores/examcooker-upload.jks
 .deepsec
 .wrangler
 .pnpm-store/
+
+# Cloudflare build output and local secrets
+.open-next/
+.dev.vars*
+.cloudflare-deploy/

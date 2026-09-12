@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 function readPositiveInt(name: string, fallback: number) {
   const value = Number.parseInt(process.env[name] ?? "", 10);
@@ -228,7 +229,7 @@ function attachQueryRetry(pool: Pool) {
   }) as typeof pool.query;
 }
 
-function createPool() {
+function createPool(workers = false) {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set");
@@ -240,7 +241,7 @@ function createPool() {
   const maxLifetimeSeconds = readOptionalPositiveInt(
     "DATABASE_POOL_MAX_LIFETIME_SECONDS",
   );
-  const maxUses = readOptionalPositiveInt("DATABASE_POOL_MAX_USES");
+  const maxUses = workers ? 1 : readOptionalPositiveInt("DATABASE_POOL_MAX_USES");
   const connectionTimeoutMillis = readPositiveInt(
     "DATABASE_CONNECTION_TIMEOUT_MS",
     10_000,
@@ -291,8 +292,8 @@ declare global {
   var __examCookerDbBeforeExitHookRegistered: boolean | undefined;
 }
 
-function createDb() {
-  const client = createPool();
+function createDb(workers = false) {
+  const client = createPool(workers);
   return drizzle({
     client,
     logger: process.env.NODE_ENV === "development",
@@ -301,7 +302,20 @@ function createDb() {
 
 type Database = ReturnType<typeof createDb>;
 
+// Workers sockets belong to the request that opened them. Keep each request's
+// Drizzle client separate and close connections after use (maxUses: 1).
+const workerDatabases = new WeakMap<object, Database>();
+
 export function getDb() {
+  if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
+    const { ctx } = getCloudflareContext();
+    let database = workerDatabases.get(ctx);
+    if (!database) {
+      database = createDb(true);
+      workerDatabases.set(ctx, database);
+    }
+    return database;
+  }
   if (!globalThis.__examCookerDb) {
     globalThis.__examCookerDb = createDb();
   }
@@ -316,7 +330,14 @@ if (!globalThis.__examCookerDbBeforeExitHookRegistered) {
   globalThis.__examCookerDbBeforeExitHookRegistered = true;
 }
 
-export const db = getDb();
+// Resolve lazily so importing a route never opens a Worker database connection.
+export const db = new Proxy({} as Database, {
+  get(_target, property) {
+    const database = getDb();
+    const value = Reflect.get(database, property, database);
+    return typeof value === "function" ? value.bind(database) : value;
+  },
+});
 
 export type { Database };
 export * from "@/db/schema";

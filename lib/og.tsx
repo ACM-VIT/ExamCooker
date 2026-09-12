@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export const OG_ALT = "ExamCooker social preview image";
 export const OG_IMAGE_SIZE = {
@@ -23,10 +24,16 @@ const TEXT_COLOR = "#F1F3F8";
 const MUTED_TEXT_COLOR = "rgba(241,243,248,0.78)";
 const SUBTLE_TEXT_COLOR = "rgba(241,243,248,0.62)";
 
-const logoIconPromise = readFile(
-    join(process.cwd(), "public", "assets", "logo-icon.svg"),
-    "utf8",
-).then((svg) => svgToDataUrl(svg));
+async function readPublicAsset(path: string): Promise<Buffer> {
+    if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
+        const { env } = getCloudflareContext();
+        if (!env.ASSETS) throw new Error("Cloudflare ASSETS binding is missing");
+        const response = await env.ASSETS.fetch(new Request(`https://assets.local/${path}`));
+        if (!response.ok) throw new Error(`Missing social preview asset: ${path}`);
+        return Buffer.from(await response.arrayBuffer());
+    }
+    return readFile(join(process.cwd(), "public", path));
+}
 
 function bufToArrayBuffer(buf: Buffer): ArrayBuffer {
     const ab = new ArrayBuffer(buf.length);
@@ -34,17 +41,6 @@ function bufToArrayBuffer(buf: Buffer): ArrayBuffer {
     return ab;
 }
 
-const fontBoldPromise = readFile(
-    join(process.cwd(), "public", "assets", "fonts", "plus-jakarta-sans-bold.ttf"),
-)
-    .then(bufToArrayBuffer)
-    .catch(() => null);
-
-const fontExtraBoldPromise = readFile(
-    join(process.cwd(), "public", "assets", "fonts", "plus-jakarta-sans-extra-bold.ttf"),
-)
-    .then(bufToArrayBuffer)
-    .catch(() => null);
 
 const illustrationDataUrl = svgToDataUrl(`
 <svg width="432" height="432" viewBox="0 0 432 432" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -115,9 +111,9 @@ export function formatCountChip(label: string, count: number) {
 
 export async function renderExamCookerOgImage(input: OgImageInput) {
     const [logoIcon, fontBold, fontExtraBold] = await Promise.all([
-        logoIconPromise,
-        fontBoldPromise,
-        fontExtraBoldPromise,
+        readPublicAsset("assets/logo-icon.svg").then((svg) => svgToDataUrl(svg.toString("utf8"))),
+        readPublicAsset("assets/fonts/plus-jakarta-sans-bold.ttf").then(bufToArrayBuffer).catch(() => null),
+        readPublicAsset("assets/fonts/plus-jakarta-sans-extra-bold.ttf").then(bufToArrayBuffer).catch(() => null),
     ]);
     const title = trimText(input.title, 72);
     const subtitle = input.subtitle ? trimText(input.subtitle, 88) : "";

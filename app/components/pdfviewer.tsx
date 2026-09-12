@@ -74,8 +74,10 @@ import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import {
   PDFIUM_ENGINE_LOAD_TIMEOUT_MS,
+  preloadPdfiumEngine,
   usePreloadedPdfiumEngine,
 } from "@/lib/pdf/pdfium-engine-cache";
+
 import {
   applyPdfPageEditsToBuffer,
   normalizePdfPageEdits,
@@ -101,6 +103,10 @@ import type {
   PdfMarkdownCacheMetadata,
   PdfMarkdownFeedbackVote,
 } from "@/lib/ai/pdf-markdown-cache-types";
+
+if (typeof window !== "undefined") {
+  void preloadPdfiumEngine().catch(() => undefined);
+}
 
 const TOOLBAR_BUTTON_CLASS =
   "inline-flex size-8 shrink-0 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500";

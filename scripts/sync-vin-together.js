@@ -613,7 +613,7 @@ function buildCourseCatalog(sourceMap, courses, routeMap) {
 }
 
 async function fetchText(url) {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
 
     if (!response.ok) {
         throw new Error(`Request failed for ${url}: ${response.status} ${response.statusText}`);
@@ -623,7 +623,7 @@ async function fetchText(url) {
 }
 
 async function fetchJson(url) {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
 
     if (!response.ok) {
         throw new Error(`Request failed for ${url}: ${response.status} ${response.statusText}`);

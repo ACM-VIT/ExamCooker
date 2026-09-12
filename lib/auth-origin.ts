@@ -1,4 +1,5 @@
 const PUBLIC_AUTH_HOSTS = new Set([
+    "ec-test.acmvit.in",
     "beta.examcooker.acmvit.in",
     "exam-cooker.acmvit.in",
     "examcooker.acmvit.in",
