@@ -196,10 +196,11 @@ async function storeCacheEntry<T>(input: {
   redis: AppStateClient;
   ttlSeconds?: number;
   value: T;
+  cacheNull?: boolean;
 }) {
   // A temporary database/cache miss must not become a shared 404 for a real
   // paper. Successful reads are worth sharing; absence is cheap to recheck.
-  if (input.value === null || input.value === undefined) {
+  if (input.value === undefined || (input.value === null && !input.cacheNull)) {
     return;
   }
 
@@ -234,6 +235,8 @@ export async function withPastPapersSurfaceRedisCache<T>(
     keyParts: readonly unknown[];
     ttlSeconds?: number;
     deserialize?: DeserializeValue<T>;
+    // Opt in only when null is a successful optional lookup, not a missing resource.
+    cacheNull?: boolean;
   },
   loader: () => Promise<T>,
 ): Promise<T> {
@@ -285,6 +288,7 @@ export async function withPastPapersSurfaceRedisCache<T>(
         cacheKey,
         redis,
         ttlSeconds: input.ttlSeconds,
+        cacheNull: input.cacheNull,
         value,
       });
     } catch (error) {
@@ -311,6 +315,7 @@ export async function withPastPapersSurfaceRedisCache<T>(
         cacheKey,
         redis,
         ttlSeconds: input.ttlSeconds,
+        cacheNull: input.cacheNull,
         value,
       });
     } catch (error) {

@@ -230,7 +230,14 @@ function attachQueryRetry(pool: Pool) {
 }
 
 function createPool(workers = false) {
-  const connectionString = process.env.DATABASE_URL;
+  // Hyperdrive owns the persistent origin pool. Worker sockets still stay
+  // request-scoped; a fresh pg connection now connects to the local proxy.
+  const hyperdrive = workers
+    ? (getCloudflareContext().env as unknown as {
+        HYPERDRIVE?: { connectionString: string };
+      }).HYPERDRIVE
+    : undefined;
+  const connectionString = hyperdrive?.connectionString ?? process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set");
   }
@@ -273,7 +280,7 @@ function createPool(workers = false) {
   });
 
   console.info(
-    `[db] pool configured app=${applicationName} min=${poolMin} max=${poolMax} connectTimeoutMs=${connectionTimeoutMillis} idleTimeoutMs=${idleTimeoutMillis} keepAliveInitialDelayMs=${keepAliveInitialDelayMillis} queryTimeoutMs=${queryTimeoutMillis} statementTimeoutMs=${statementTimeoutMillis} maxLifetimeSeconds=${maxLifetimeSeconds ?? 0} maxUses=${maxUses ?? 0}`,
+    `[db] pool configured transport=${hyperdrive ? "hyperdrive" : "direct"} app=${applicationName} min=${poolMin} max=${poolMax} connectTimeoutMs=${connectionTimeoutMillis} idleTimeoutMs=${idleTimeoutMillis} keepAliveInitialDelayMs=${keepAliveInitialDelayMillis} queryTimeoutMs=${queryTimeoutMillis} statementTimeoutMs=${statementTimeoutMillis} maxLifetimeSeconds=${maxLifetimeSeconds ?? 0} maxUses=${maxUses ?? 0}`,
   );
 
   attachQueryRetry(pool);

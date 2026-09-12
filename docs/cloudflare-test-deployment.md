@@ -12,12 +12,19 @@ own configuration under `worker/`.
   the incremental cache; Durable Objects handle revalidation and cache tags.
   `enableCacheInterception` stays false so dynamic PPR boundaries resume through
   Next.js. A short-lived regional data cache avoids repeated R2 reads; regional
-  public tag metadata is cached for five seconds (the maximum cross-region
-  invalidation delay). Personalized HTTP responses are never in that cache.
+  public tag metadata is cached for up to five seconds. Tag shards are replicated
+  across six regions; reads select the visitor's region and writes update every
+  replica. Personalized HTTP responses are never in that cache.
   The Next.js Node proxy remains an experimental OpenNext integration.
 - Public paper/course payloads and generated PDF Markdown use the private R2
   bucket `examcooker-test-app-cache`. Expiry metadata governs reads. A 31-day
   lifecycle rule removes old payloads; cache misses regenerate normally.
+  Versioned public paper/course payloads also use the regional Cache API for up to
+  60 seconds, bounded by their R2 expiry. Content edits increment the authoritative
+  DO namespace counter, producing new cache keys. Sessions, locks, counters,
+  votes and unversioned Markdown entries cannot use this regional cache.
+  Optional paper-sibling lookups explicitly cache a successful `null` result;
+  primary resource misses and failed database requests remain uncached.
 - `AppState` Durable Objects replace Redis for this Worker: atomic sliding-window
   rate limits, expiring generation/cache locks, namespace counters, and PDF
   feedback. Each feedback generation and all of its voter keys share one object.
@@ -28,8 +35,10 @@ own configuration under `worker/`.
   production cutover. Test caches and feedback are separate from production
   Redis; historical Redis feedback must be migrated before retiring production.
 - CockroachDB Cloud is unchanged: AWS Mumbai (`ap-south-1`), database `defaultdb`.
-  Worker database pools are scoped to each request,
-  with connections closed after use. Static OG assets use the Workers asset
+  The `HYPERDRIVE` binding connects through `examcooker-test-db`, with SQL response
+  caching disabled and a soft origin connection limit of 10. Worker database
+  clients remain scoped to each request; Hyperdrive reuses origin connections.
+  Node/Azure continues using `DATABASE_URL` directly. Static OG assets use the Workers asset
   binding instead of runtime filesystem reads.
 - PDF/WASM/Markdown and video-player libraries load through `next/dynamic` inside
   Client Components with `ssr: false`. They require a browser; keeping them out of
@@ -80,6 +89,9 @@ pnpm install --frozen-lockfile
 pnpm exec tsc --noEmit
 pnpm exec tsc -p cloudflare/tsconfig.json
 node scripts/cloudflare/test-state.mjs
+node scripts/cloudflare/test-regional-public-cache.mjs
+node scripts/cloudflare/test-regional-tags.mjs
+node scripts/cloudflare/test-optional-cache.mjs
 node scripts/cloudflare/test-pending-cache.mjs
 node scripts/cloudflare/test-scheduler.mjs
 pnpm cf:build
@@ -91,6 +103,19 @@ node scripts/cloudflare/test-render-streams.mjs
 node scripts/cloudflare/test-revalidation.mjs
 node scripts/cloudflare/compare-response-times.mjs
 ```
+
+Wrangler's Hyperdrive `localConnectionString` points to the documented local
+PostgreSQL development database; it is ignored in deployment. For a different
+local preview database, securely set
+`CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE`. Never put production
+credentials into `wrangler.jsonc`. Hyperdrive origin credential rotation is
+separate from changing the Worker's `DATABASE_URL` secret.
+
+See [the measured optimization results](cloudflare-performance.md) for the later
+latency comparison across course, paper, notes and syllabus pages. The comparison
+script supports `--rounds`, `--mode html|rsc|both`, comma-separated `--paths`, and
+`--output`. It reports warmup separately and validates response bodies so an
+error page cannot be counted as a fast successful response.
 
 On the current workstation the global pnpm shim points to a missing installation;
 use a working pnpm 12.3.4 installation on `PATH`, including for OpenNext's nested

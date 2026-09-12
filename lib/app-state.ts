@@ -6,6 +6,7 @@ import type { R2Bucket } from "@cloudflare/workers-types";
 import { getOptionalRedis, type AppRedisClient } from "@/lib/redis";
 import { RECORD_FEEDBACK_SCRIPT, RELEASE_LOCK_SCRIPT, SLIDING_WINDOW_SCRIPT } from "@/lib/app-state-scripts";
 import { isCachePayload, stateObjectName, type StateOperation } from "@/lib/app-state-types";
+import { createRegionalPublicCache, isRegionalPublicCacheKey } from "@/lib/regional-public-cache";
 
 export interface AppStateClient extends Omit<AppRedisClient, "eval"> {
   releaseLock(key: string, token: string): Promise<number>;
@@ -23,16 +24,21 @@ type StateBindings = {
 function cloudflareClient(): AppStateClient {
   // Resolve bindings inside the current request. Never retain request I/O in a
   // module-level promise or Durable Object stub across Worker invocations.
-  const { env } = getCloudflareContext();
+  const { env, ctx } = getCloudflareContext();
   const { APP_CACHE_BUCKET: bucket, APP_STATE: state } = env as unknown as StateBindings;
   if (!bucket || !state) throw new Error("Cloudflare application state bindings are missing");
   const execute = <T>(operation: StateOperation) =>
     state.getByName(stateObjectName(operation.key)).execute(operation) as Promise<T>;
   const objectKey = (key: string) => `app-state/${key}`;
+  let regionalCache: ReturnType<typeof createRegionalPublicCache> | undefined;
+  const publicCache = () => regionalCache ??= createRegionalPublicCache(
+    bucket, ctx, process.env.NEXT_PUBLIC_BASE_URL || "https://examcooker.acmvit.in",
+  );
 
   return {
     async get<T>(key: string): Promise<T | null> {
       if (!isCachePayload(key)) return execute<T | null>({ type: "get", key });
+      if (isRegionalPublicCacheKey(key)) return await publicCache().get(key) as T | null;
       const object = await bucket.get(objectKey(key));
       if (!object || Number(object.customMetadata?.expiresAt ?? 0) <= Date.now()) return null;
       return await object.text() as T;
@@ -42,6 +48,10 @@ function cloudflareClient(): AppStateClient {
       // Only immutable/public payloads live in R2. Locks and votes always use DOs.
       if (options?.nx) throw new Error("Conditional cache writes require AppState locks");
       if (!options?.ex) throw new Error("Cached payloads require an expiry");
+      if (isRegionalPublicCacheKey(key)) {
+        await publicCache().set(key, value, options.ex);
+        return "OK";
+      }
       await bucket.put(objectKey(key), value, {
         customMetadata: { expiresAt: String(Date.now() + options.ex * 1000) },
       });
@@ -49,6 +59,10 @@ function cloudflareClient(): AppStateClient {
     },
     async del(key) {
       if (!isCachePayload(key)) return execute({ type: "del", key });
+      if (isRegionalPublicCacheKey(key)) {
+        await publicCache().del(key);
+        return 1;
+      }
       await bucket.delete(objectKey(key));
       return 1;
     },

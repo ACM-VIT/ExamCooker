@@ -18,6 +18,13 @@
       "service": "examcooker-test"
     }
   ],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "37449c92cf764de4b7c8be5b128c99cd",
+      "localConnectionString": "postgresql://examcooker:examcooker@127.0.0.1:5432/examcooker"
+    }
+  ],
   "r2_buckets": [
     {
       "binding": "NEXT_INC_CACHE_R2_BUCKET",

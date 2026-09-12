@@ -12,6 +12,13 @@ export default defineCloudflareConfig({
   queue: doQueue,
   tagCache: doShardedTagCache({
     baseShardSize: 4,
+    // Route reads to the visitor's region; writes invalidate every replica.
+    // In the live MAA trace, the original shard reads took 150–850 ms.
+    shardReplication: {
+      numberOfSoftReplicas: 1,
+      numberOfHardReplicas: 1,
+      regionalReplication: { defaultRegion: "apac" },
+    },
     regionalCache: true,
     regionalCacheTtlSec: 5,
     // These tags describe public content only. Remote content edits can take
