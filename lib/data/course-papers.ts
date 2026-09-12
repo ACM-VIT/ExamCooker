@@ -215,13 +215,11 @@ type GetCoursePapersInput = {
     pageSize: number;
 } & OrderedCoursePapersInput;
 
+// Sorting, filtering and pagination reuse the one cached set of course rows.
+// They must not create a new remote cache entry for every filter combination.
 export async function getOrderedCoursePapers(
     input: OrderedCoursePapersInput,
 ): Promise<CoursePaperListItem[]> {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const rows = await getCoursePaperRows(input.courseId);
     const filterSets = buildFilterSets(input.filters);
     const filteredRows: CoursePaperRow[] = [];
@@ -238,10 +236,6 @@ export async function getOrderedCoursePapers(
 export async function getCoursePapers(
     input: GetCoursePapersInput,
 ): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const { page, pageSize, ...orderedInput } = input;
     const orderedRows = await getOrderedCoursePapers(orderedInput);
 
@@ -258,10 +252,6 @@ export async function getCoursePaperFilterOptions(
     courseId: string,
     filters: CoursePaperFilters = {},
 ): Promise<CoursePaperFilterOptions> {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const rows = await getCoursePaperRows(courseId);
     const filterSets = buildFilterSets(filters);
 

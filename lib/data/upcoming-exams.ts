@@ -17,6 +17,9 @@ export type UpcomingExamItem = {
     scheduledAt: Date | null;
 };
 
+// Keep time out of persistent cache keys: advancing the clock should expire
+// exams in memory, not force a new database/cache roundtrip every five minutes.
+// Tag invalidation and cacheLife still refresh additions and edits.
 function getUpcomingExamCutoffIso() {
     const bucketMs = 5 * 60 * 1000;
     return new Date(Math.floor(Date.now() / bucketMs) * bucketMs).toISOString();
@@ -24,18 +27,19 @@ function getUpcomingExamCutoffIso() {
 
 export async function getUpcomingExams(limit?: number): Promise<UpcomingExamItem[]> {
     await io();
-    return getUpcomingExamsCached(limit ?? null, getUpcomingExamCutoffIso());
+    const cutoff = new Date(getUpcomingExamCutoffIso());
+    const exams = await getUpcomingExamsCached();
+    return exams
+        .filter((exam) => exam.scheduledAt === null || exam.scheduledAt >= cutoff)
+        .slice(0, limit ?? undefined);
 }
 
-async function getUpcomingExamsCached(
-    limit: number | null,
-    cutoffIso: string,
-): Promise<UpcomingExamItem[]> {
+async function getUpcomingExamsCached(): Promise<UpcomingExamItem[]> {
     "use cache";
     cacheTag("upcoming_exams");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const now = new Date(cutoffIso);
+    const now = new Date(getUpcomingExamCutoffIso());
     const rows = await db
         .select({
             id: upcomingExam.id,
@@ -68,7 +72,6 @@ async function getUpcomingExamsCached(
                 b.createdAt.getTime() - a.createdAt.getTime()
             );
         })
-        .slice(0, limit ?? undefined)
         .map((row) => ({
             id: row.id,
             courseId: row.courseId,
@@ -85,21 +88,28 @@ export async function getUpcomingExamsForCourses(
 ): Promise<Map<string, UpcomingExamItem[]>> {
     if (courseIds.length === 0) return new Map();
     await io();
-    return getUpcomingExamsForCoursesCached(
+    const cutoff = new Date(getUpcomingExamCutoffIso());
+    const exams = await getUpcomingExamsForCoursesCached(
         Array.from(new Set(courseIds)).sort(),
-        getUpcomingExamCutoffIso(),
     );
+    const upcoming = new Map<string, UpcomingExamItem[]>();
+    for (const [courseId, items] of exams) {
+        const active = items.filter(
+            (exam) => exam.scheduledAt === null || exam.scheduledAt >= cutoff,
+        );
+        if (active.length > 0) upcoming.set(courseId, active);
+    }
+    return upcoming;
 }
 
 async function getUpcomingExamsForCoursesCached(
     courseIds: string[],
-    cutoffIso: string,
 ): Promise<Map<string, UpcomingExamItem[]>> {
     "use cache";
     cacheTag("upcoming_exams");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const now = new Date(cutoffIso);
+    const now = new Date(getUpcomingExamCutoffIso());
     const rows = await db
         .select({
             id: upcomingExam.id,

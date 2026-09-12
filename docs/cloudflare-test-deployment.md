@@ -105,7 +105,7 @@ node scripts/cloudflare/test-revalidation.mjs
 node scripts/cloudflare/compare-response-times.mjs
 ```
 
-`pnpm cf:deploy` deploys the small tag-cache Worker first, then the application.
+`pnpm cf:deploy` deploys the small tag-cache and app-state Workers first, then the application.
 `wrangler.tag-cache.jsonc` owns `examcooker-test-tag-cache`; the application's
 `NEXT_TAG_CACHE_DO_SHARDED` binding refers to that script. Its initial transfer
 migration preserves the existing tag namespace and stored invalidation data from
@@ -113,16 +113,22 @@ migration preserves the existing tag namespace and stored invalidation data from
 The tag Worker has no public route, workers.dev endpoint, or application secrets.
 Its source imports the same pinned and patched OpenNext tag class used by the app.
 
-`pnpm cf:preview` populates the local cache and starts both Workers in one Wrangler
+`wrangler.app-state.jsonc` similarly transfers the existing `AppState` namespace
+from `examcooker-test` to `examcooker-test-app-state`. The app's `APP_STATE` binding
+must reference that script on future deployments. The class implementation,
+object names, locks, counters, limits and vote data are preserved. This Worker
+also has no public route, workers.dev endpoint or application secrets.
+
+`pnpm cf:preview` populates the local cache and starts all three Workers in one Wrangler
 process. It preserves OpenNext's setting that prevents Wrangler from loading
 `.env` independently. Supply local bindings/credentials as before. The regional
 tag test exercises the actual separate Worker through cross-Worker bindings.
-Preview uses `wrangler.tag-cache.local.jsonc` to declare fresh local SQLite
-storage: Wrangler 4.130 does not infer the storage type from a transfer migration.
-Deployments must use `wrangler.tag-cache.jsonc`, which preserves remote state.
+Preview uses `wrangler.tag-cache.local.jsonc` and `wrangler.app-state.local.jsonc`
+to declare fresh local SQLite storage: Wrangler 4.130 does not infer the storage type from a transfer migration.
+Deployments must use the corresponding non-local configurations, which preserve remote state.
 
 To reverse the ownership transfer, deploy a new transfer migration on the
-application Worker from `examcooker-test-tag-cache`, then change its binding back
+application Worker from the corresponding tag-cache or app-state Worker, then change its binding back
 to the local class. A code-version rollback alone does not reverse a Durable
 Object migration. Keep the current external binding when rolling back unrelated
 application code. See Cloudflare's

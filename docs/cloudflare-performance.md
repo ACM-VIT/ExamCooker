@@ -570,3 +570,120 @@ The two-Worker local preview started successfully and served a static asset with
 HTTP 200, then was stopped. Its local tag configuration explicitly declares
 SQLite because Wrangler's local migration parser does not infer the backend
 from `transferred_classes`.
+
+## Course catalog and paper data projections (2026-09-12)
+
+The initial paired HTTP check reproduced a 5938 ms first `/past_papers` response
+on Cloudflare versus 1447 ms on production. Three following warm Cloudflare
+samples had a 452 ms median. BMAT202L's initial response was 1024 ms versus 287 ms
+on production, with a 295 ms warm Cloudflare median. Warm medians concealed misses.
+Raw rows: `.cloudflare-deploy/course-list-before.jsonl` (ignored).
+
+Removed persistent `use cache` wrappers from cheap catalog projections, static
+stats, paper sorting, filtering and pagination. Their source catalog/paper rows
+retain the same tagged cache and lifetime. This reduces network cache operations
+and filter-dependent cache entries without changing query/filter semantics.
+Upcoming-exam caches now have stable keys; time-based expiry is applied after
+reading cached rows and before pagination. This avoids forcing a new entry every
+five-minute clock bucket. Scheduled expiry still uses the existing five-minute
+cutoff, undated exams remain eligible, and additions/edits still invalidate the
+`upcoming_exams` tag. The expiry regression check covers limits after filtering,
+empty course groups, undated exams and non-mutation of the cached snapshot.
+
+Before/after server traces of forced revalidation (two samples each):
+
+| Route | Before server completion | After projections | Incremental writes before / after |
+| --- | ---: | ---: | ---: |
+| `/past_papers` | 2503 / 1655 ms | 1048 / 942 ms | 11 / 4 |
+| `/past_papers/BMAT202L` | 745 / 663 ms | 297 / 281 ms | 13 / 8 |
+
+These are forced regeneration measurements, not controlled empty-cache trials.
+Raw traces: `list-trace-{before,projections}.jsonl` and
+`bmat-trace-{app-before,projections}.jsonl` in `.cloudflare-deploy`.
+
+The first BMAT request after the new build still took 5774 ms inside the Worker
+(6147 ms client time). Its cache-lock acquisition calls took 1240 and 1224 ms;
+R2 writes and lock release added further serial waits. This remains a real slow
+observation, not a successful cold-load result.
+
+Moved the unchanged `AppState` class to `examcooker-test-app-state` using a transfer
+migration, preserving namespace `f10d6369cb704e6a94b2a4aa84734464`. Its first version
+is `3eea9146-e926-4b7f-96e4-6d95dd8151a6`: 4.38 KiB upload, 1.53 KiB gzip, reported
+startup 4 ms. Existing bindings forward after transfer; future app deployments
+explicitly bind to the new script. The state regression checks now exercise the
+actual separate Worker through RPC. All lock, rate-limit, expiry and vote tests
+passed, as did the three-Worker local preview; the preview was stopped afterwards.
+
+Five diagnostic probes creating new synthetic lock objects took 616, 998, 759,
+682 and 746 ms for acquisition, including provisioning and persistence. These
+are not a matched comparison against waking existing objects. The small bundle
+removes application loading from this path; it does not make durable lock
+creation sub-millisecond. Synthetic locks were released, with a 60-second expiry
+as a fallback. The state Worker has no application secrets or public endpoint.
+
+Fresh muted browser sessions (servers had received earlier probes):
+
+| Route / visit | HTML complete | Cards visible | Production cards, same session |
+| --- | ---: | ---: | ---: |
+| Catalog, before | 857 ms | 1089 ms | 1116 ms |
+| Catalog, projections | 593 ms | 832 ms | 1374 ms |
+| Catalog, repeat | 686 ms | 530 ms | — |
+| BMAT202L, projections | 779 ms | 1081 ms | 1005 ms |
+| BMAT202L, repeat | 764 ms | 866 ms | — |
+
+These browser observations precede the state transfer. They measure visible
+anchors, not image completion or an interaction-ready p95. The catalog's first
+window-load event still took 3411 ms. Browser sessions used a regular Chrome user
+agent, muted/rejected media playback, no request interception, and were closed.
+Raw captures: `list-browser-{before,projections}-{first,prod,repeat}.json` and
+`bmat-browser-projections-{first,prod,repeat}.json` under `.cloudflare-deploy`.
+
+Final clean-deployment verification: five warm paired requests gave full HTML
+medians of 363 ms Cloudflare / 524 ms production for the catalog and 251 / 250 ms
+for BMAT202L. Full RSC medians were 228 / 330 ms and 201 / 571 ms respectively.
+All responses were complete and valid. The first catalog HTML request was still
+3449 ms (2911 ms before headers), versus 1176 ms on production; the first BMAT
+request was 362 / 273 ms. These do not establish consistent subsecond first loads.
+Raw rows: `.cloudflare-deploy/course-final-http.jsonl`.
+
+Separate fresh-connection curl probes negotiated HTTP/2. Cloudflare DNS/TCP/TLS
+finished in 99–107 ms and full catalog responses took 602–757 ms, versus
+812–1094 ms on production. This does not explain the earlier 3449 ms outlier; it
+only establishes that fresh TLS connections were not inherently seconds long in
+these subsequent samples.
+
+The clean app passed A/B/anonymous session isolation, chunked cookies, distinct
+CSRF tokens, complete/cancelled/concurrent streams, runtime prefetch and forced
+HEAD/GET revalidation. Catalog forced GET took 1373 ms and BMAT 769 ms; the largest
+of nine concurrent mixed routes was 2316 ms. Full Next/OpenNext build, app/Worker
+typechecks, expiry checks and the separate-state Worker tests passed. OpenNext
+reported copy warnings for four optional browser-launch dependency directories;
+the completed bundle passed the deployed route checks. Lint remains unavailable
+because this repository still uses removed `next lint` without an ESLint setup.
+Temporary diagnostics and their secret were removed from the final deployment.
+
+A later 75-second idle probe reproduced an outlier: catalog HTML completed in
+573 ms on Cloudflare / 1091 ms on production, but BMAT completed in 6616 / 4023 ms.
+This was retained in `.cloudflare-deploy/course-final-idle.jsonl`, not discarded.
+Re-enabled the temporary server tracer to separate execution from delivery and
+ran two more 75-second idle intervals with no other page probes. BMAT completed
+inside the Worker in 241 / 190 ms, and at the client in 688 / 593 ms; paired
+production requests took 1028 / 977 ms. No traced operation exceeded 150 ms in
+the first idle request; the second had a 162 ms background R2 read. These runs
+did not reproduce or explain the 6616 ms outlier, so consistent subsecond latency
+is still unproven. Raw server traces: `.cloudflare-deploy/bmat-idle-trace.jsonl`.
+
+Measured two public thumbnails through the existing `/_next/image` Cloudflare
+Images path before considering any image-delivery changes. AVIF reduced 9199 /
+10700-byte JPEGs to 3608 / 4529 bytes, but repeated optimized requests took
+210–234 ms versus 101–116 ms directly from Azure. No image configuration or
+component change was retained. Raw: `thumbnail-response-times.jsonl` in the
+ignored diagnostics directory.
+
+Live query checks also passed for an exact course search, an empty fuzzy search,
+CAT1 filtering and two disjoint 24-card pages using recent-first ordering. An
+initial supposed empty-search fixture contained the word "course" and correctly
+returned 57 fuzzy matches; it was replaced with an actually unmatched query.
+The final clean version is `076002e1-7a15-4445-b22a-f44eb2248c52`, with both
+external Durable Object bindings and no diagnostic secret. Restoring that
+version removes the second temporary tracer without reverting the improvements.

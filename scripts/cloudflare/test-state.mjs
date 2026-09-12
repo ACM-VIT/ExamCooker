@@ -7,10 +7,8 @@ const { build } = require("esbuild");
 
 const { outputFiles } = await build({
   stdin: { contents: `
-    import { AppState } from "./cloudflare/app-state.ts";
     import { protectPersonalizedResponse } from "./cloudflare/cache-policy.ts";
     import { stateObjectName } from "./lib/app-state-types.ts";
-    export { AppState };
     export default { async fetch(request, env) {
       if (new URL(request.url).pathname === "/state") {
         const op = await request.json();
@@ -25,10 +23,21 @@ const { outputFiles } = await build({
     }};`, resolveDir: resolve(".") },
   bundle: true, write: false, format: "esm", platform: "neutral", external: ["cloudflare:workers"],
 });
-const mf = new Miniflare(convertV4MiniflareOptions({ name: "app-state-test",
-  modules: true, script: outputFiles[0].text, compatibilityDate: "2026-09-10",
-  durableObjects: { APP_STATE: { className: "AppState", useSQLite: true } },
-}));
+const { outputFiles: stateWorker } = await build({
+  entryPoints: ["cloudflare/app-state-worker.ts"], bundle: true, write: false,
+  format: "esm", platform: "neutral", external: ["cloudflare:workers"],
+});
+const workerOptions = { modules: true, compatibilityDate: "2026-09-10" };
+const mf = new Miniflare(convertV4MiniflareOptions({ workers: [
+  { ...workerOptions, name: "app-state-test", script: outputFiles[0].text,
+    durableObjects: { APP_STATE: {
+      className: "AppState", scriptName: "examcooker-test-app-state", useSQLite: true,
+    } },
+  },
+  { ...workerOptions, name: "examcooker-test-app-state", script: stateWorker[0].text,
+    durableObjects: { APP_STATE: { className: "AppState", useSQLite: true } },
+  },
+] }));
 const op = async (operation) => {
   const response = await mf.dispatchFetch("http://test/state", {
     method: "POST", body: JSON.stringify(operation),

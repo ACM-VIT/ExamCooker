@@ -48,7 +48,8 @@
       },
       {
         "name": "APP_STATE",
-        "class_name": "AppState"
+        "class_name": "AppState",
+        "script_name": "examcooker-test-app-state"
       }
     ]
   },
