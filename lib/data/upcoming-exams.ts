@@ -20,7 +20,7 @@ export type UpcomingExamItem = {
 // Keep time out of persistent cache keys: advancing the clock should expire
 // exams in memory, not force a new database/cache roundtrip every five minutes.
 // Tag invalidation and cacheLife still refresh additions and edits.
-function getUpcomingExamCutoffIso() {
+export function getUpcomingExamCutoffIso() {
     const bucketMs = 5 * 60 * 1000;
     return new Date(Math.floor(Date.now() / bucketMs) * bucketMs).toISOString();
 }
@@ -102,7 +102,7 @@ export async function getUpcomingExamsForCourses(
     return upcoming;
 }
 
-async function getUpcomingExamsForCoursesCached(
+export async function getUpcomingExamsForCoursesCached(
     courseIds: string[],
 ): Promise<Map<string, UpcomingExamItem[]>> {
     "use cache";

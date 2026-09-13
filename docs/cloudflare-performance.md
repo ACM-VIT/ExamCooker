@@ -894,3 +894,117 @@ revalidation, exact/empty search, CAT1 filtering and disjoint pagination. BMAT's
 forced GET completed in 501 ms in the clean verification. Diagnostics and their
 secret were removed; the old token returns ordinary complete HTML. Active Worker
 version: `88494813-87a6-40b4-9c38-b6a9616dbc4f`. Azure production was not redeployed.
+
+## Follow-up: collapse the course data and invalidation waterfall
+
+The initial ordinary BMAT202L traces in this pass finished inside the Worker in
+1340 and 1436 ms. They performed a shell read, then catalog/syllabus reads, then
+paper/upcoming-exam reads. Immediate repeats took 26 and 10 ms internally, which
+shows why warm-only measurements hide the remaining problem.
+
+Changes:
+
+- The course page and its metadata share one tagged public collection containing
+  course details, title variants, clear paper rows and upcoming exam dates. Sort,
+  filter, pagination and time-dependent exam selection run outside that cache.
+  The collection retains the 60/300/3600-second stale/revalidate/expire profile
+  and the `courses`, `notes`, `past_papers` and `upcoming_exams` invalidation tags.
+- The Cloudflare catalog loader now queries through Hyperdrive on a Next cache
+  miss. Its previous inner payload read and distributed lock were redundant;
+  Node retains the existing shared-cache behavior. An intermediate collection
+  candidate still using that inner cache took 5047 ms on its first fill, including
+  a 1044 ms namespace read and a 900 ms lock operation. That path was removed.
+- Shell layout/page tags and the exact request-path tag are prefetched alongside
+  the shell read. A shell hit joins its pending prefetch before Next validates it,
+  preventing duplicate cold tag RPCs. Only a pathname is retained in a WeakMap
+  keyed by the current invocation context; no identities or responses are shared.
+
+A temporary token-protected diagnostic can bypass `incremental-cache` regional
+reads for an anonymous BMAT202L request. It does not delete cache entries or
+bypass invalidation checks. Four runs before adding the exact URL tag completed
+in 859/785/771/817 ms internally (801 ms median); headers had a 277 ms median.
+Each performed one shell and two parallel composable reads. The remaining
+serial request-path tag lookup added about 250 ms after the data read.
+This experiment measures an empty regional cache with populated R2, not a
+completely empty deployment or a browser's visible-content time.
+
+Compression was measured separately using a tiny remote preview Worker in MAA,
+with six alternating-order reads per format and identical public cache payloads.
+The course shell shrank from 143300 to 21013 bytes, but median read/decode time was
+151 ms plain versus 154 ms gzip. Catalog reads were 180.5 versus 153.5 ms. No
+compression format change was retained. Both R2 buckets already report APAC;
+all synthetic probe objects were deleted and the preview workers disposed.
+
+Projection tests cover sort orders, all filter dimensions, independent facet
+counts, pagination and non-mutation of shared rows. Catalog tests verify current
+SQL counts on Cloudflare and retained shared-cache behavior on Node. Workerd
+checks cover concurrent request-path isolation, shell/tag overlap, joining an
+in-flight tag read, failures and normal write/delete behavior. Exam-cutoff,
+undated-exam and seasonal-fallback behavior was also checked against the page's
+actual selection function.
+
+After the exact URL tag was added, rollout initially returned a mixture of old
+and new Worker versions. Those mixed samples are excluded from the comparison.
+The four subsequent stable probes all prefetched 11 tags and finished in
+537/547/533/540 ms (538.5 ms median); median headers were 277.5 ms and client
+completion 747 ms. Compared with the preceding identical regional-bypass probe,
+server completion fell from 801 to 538.5 ms, about 33%. The implicit-tag check
+now resolves from the request-local prefetch with no extra remote round trip.
+Raw results are `collection-r2-hits.jsonl` and
+`collection-path-stable-r2-hits.jsonl` in the ignored diagnostics directory.
+
+The first request that actually reached the new build took 1617 ms internally
+and 3660 ms at the client while its new composable entries missed in R2. This
+remains a slower path: the 538.5 ms result is not a claim of subsecond cold fills
+or subsecond browser rendering. An earlier direct-catalog candidate measured a
+1645 ms empty-build fill, confirming that eliminating the lock avoids the
+intermediate 5-second server regression but not all first-fill delay.
+
+### Browser check and remaining delay
+
+On the final clean deployment, a fresh muted headless Chrome session showed
+BMAT202L cards at 4583 ms, versus 1158 ms on production; the Cloudflare repeat
+was 918 ms. The slow first response had final headers at 3451 ms, HTML complete
+at 4287 ms, and `cfEdge=2003` / `cfWorker=1173` Server-Timing values. DNS plus
+connection setup ended at 173 ms. CSS completed at 3946–4248 ms, before the
+4312 ms first paint. This was a real slow first visit, not a successful
+subsecond browser result.
+
+A second fresh session after the deployment settled showed Cloudflare cards at
+945 ms versus 800 ms on production; Cloudflare final headers were 518 ms and
+HTML completion 905 ms (`cfEdge=12`, `cfWorker=315`). Its repeat showed cards at
+1067 ms. Both sessions had 24 cards, no recorded browser errors, media playback
+blocked/muted, and were closed afterward. Raw captures are
+`bmat-browser-collection-final-*.json` and
+`bmat-browser-collection-stable-recheck-*.json` in the ignored directory.
+These are fresh browser profiles against already exercised server caches, not
+controlled empty-cache browsers. They show that deployment/edge startup and
+asset delivery still need attention; the specific cause of the initial large
+`cfEdge` value has not been established. The roughly 35 MB uncompressed Worker
+bundle is a candidate for further investigation, not a proven explanation.
+
+The clean Worker contains no diagnostic endpoint and its `EC_PERF_TOKEN` secret
+was deleted. The old diagnostic header returns normal complete HTML. Existing
+session isolation, no-store HTML/RSC, filters, pagination and forced revalidation
+checks passed. Nine concurrent render streams also completed during candidate
+validation, with a 3708 ms maximum; that is correctness coverage rather than a
+claim of subsecond concurrency. Production Azure was not deployed.
+
+Final paired HTTP measurements used three samples per route/mode, with a
+separate warmup request and at most two requests in flight. Completion medians
+in milliseconds:
+
+| Route | Cloudflare HTML | Production HTML | Cloudflare RSC | Production RSC |
+|---|---:|---:|---:|---:|
+| BMAT202L | 263 | 398 | 395 | 244 |
+| Course catalog | 662 | 1490 | 242 | 553 |
+
+All streams were valid. Production also had large outliers (up to 8517 ms), so
+this small sequential comparison is not a controlled latency guarantee.
+In particular, course RSC remains slower than production in these samples.
+Raw results: `collection-final-comparison.jsonl`.
+
+Final clean Worker version: `e004785e-0633-47ba-b318-da53d58dea20` (100% traffic).
+The final deployment passed alternating/concurrent/chunked-cookie session and
+CSRF isolation, test-host auth redirects, search/empty-search checks, disjoint
+24-card pages, exam filtering and BMAT202L HEAD/GET forced revalidation.

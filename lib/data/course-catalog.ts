@@ -165,69 +165,74 @@ async function getCourseCatalogRows(): Promise<CourseCatalogRow[]> {
     cacheTag("courses", "notes", "past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
+    const loadRows = async () => {
+        const [courses, noteCounts, paperCounts] = await Promise.all([
+            db
+                .select({
+                    id: course.id,
+                    code: course.code,
+                    title: course.title,
+                    aliases: course.aliases,
+                })
+                .from(course),
+            db
+                .select({
+                    courseId: note.courseId,
+                    noteCount: count(),
+                })
+                .from(note)
+                .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
+                .groupBy(note.courseId),
+            db
+                .select({
+                    courseId: pastPaper.courseId,
+                    paperCount: count(),
+                })
+                .from(pastPaper)
+                .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
+                .groupBy(pastPaper.courseId),
+        ]);
+
+        const noteCountByCourseId = new Map(
+            noteCounts
+                .filter((row) => row.courseId !== null)
+                .map((row) => [row.courseId, row.noteCount]),
+        );
+        const paperCountByCourseId = new Map(
+            paperCounts
+                .filter((row) => row.courseId !== null)
+                .map((row) => [row.courseId, row.paperCount]),
+        );
+
+        return courses.map((courseRow) => {
+            const baseAliases = courseRow.aliases ?? [];
+            const acronym = deriveCourseAcronym(courseRow.title);
+            const aliases =
+                acronym &&
+                !baseAliases.some((a) => a.toUpperCase() === acronym)
+                    ? [...baseAliases, acronym]
+                    : baseAliases;
+
+            return {
+                id: courseRow.id,
+                code: courseRow.code,
+                title: courseRow.title,
+                aliases,
+                sourceAliases: baseAliases,
+                paperCount: paperCountByCourseId.get(courseRow.id) ?? 0,
+                noteCount: noteCountByCourseId.get(courseRow.id) ?? 0,
+            };
+        });
+    };
+
+    // Next already owns persistence and tag invalidation on Workers. Avoid a
+    // second remote payload lookup and distributed lock when that cache misses.
+    if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
+        return loadRows();
+    }
     return withPastPapersSurfaceRedisCache(
-        {
-            keyParts: ["course-catalog-rows-v2"],
-        },
-        async () => {
-            const [courses, noteCounts, paperCounts] = await Promise.all([
-                db
-                    .select({
-                        id: course.id,
-                        code: course.code,
-                        title: course.title,
-                        aliases: course.aliases,
-                    })
-                    .from(course),
-                db
-                    .select({
-                        courseId: note.courseId,
-                        noteCount: count(),
-                    })
-                    .from(note)
-                    .where(and(eq(note.isClear, true), isNotNull(note.courseId)))
-                    .groupBy(note.courseId),
-                db
-                    .select({
-                        courseId: pastPaper.courseId,
-                        paperCount: count(),
-                    })
-                    .from(pastPaper)
-                    .where(and(eq(pastPaper.isClear, true), isNotNull(pastPaper.courseId)))
-                    .groupBy(pastPaper.courseId),
-            ]);
-
-            const noteCountByCourseId = new Map(
-                noteCounts
-                    .filter((row) => row.courseId !== null)
-                    .map((row) => [row.courseId, row.noteCount]),
-            );
-            const paperCountByCourseId = new Map(
-                paperCounts
-                    .filter((row) => row.courseId !== null)
-                    .map((row) => [row.courseId, row.paperCount]),
-            );
-
-            return courses.map((courseRow) => {
-                const baseAliases = courseRow.aliases ?? [];
-                const acronym = deriveCourseAcronym(courseRow.title);
-                const aliases =
-                    acronym &&
-                    !baseAliases.some((a) => a.toUpperCase() === acronym)
-                        ? [...baseAliases, acronym]
-                        : baseAliases;
-
-                return {
-                    id: courseRow.id,
-                    code: courseRow.code,
-                    title: courseRow.title,
-                    aliases,
-                    sourceAliases: baseAliases,
-                    paperCount: paperCountByCourseId.get(courseRow.id) ?? 0,
-                    noteCount: noteCountByCourseId.get(courseRow.id) ?? 0,
-                };
-            });
-        },
+        { keyParts: ["course-catalog-rows-v2"] },
+        loadRows,
     );
 }
 

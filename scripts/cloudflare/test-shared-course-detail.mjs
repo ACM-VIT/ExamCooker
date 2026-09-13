@@ -24,6 +24,13 @@ const { outputFiles } = await build({ stdin: { resolveDir: resolve("."), content
   assert.equal((await getCourseDetailByCode("BMAT202L")).paperCount, 25);
   assert.equal(control.queries, 6);
   console.log("PASS: invalidation reloads course details from the updated shared catalog");
+  Object.defineProperty(globalThis, "navigator", { value: { userAgent: "Cloudflare-Workers" }, configurable: true });
+  // The source changes without updating the inner shared cache. On Cloudflare,
+  // executing the Next cache loader must now read SQL directly.
+  control.papers = 26;
+  assert.equal((await getCourseDetailByCode("BMAT202L")).paperCount, 26);
+  assert.equal(control.queries, 9);
+  console.log("PASS: Cloudflare catalog misses bypass the redundant shared payload/lock and return current database counts");
 ` }, bundle: true, write: false, format: "esm", platform: "node", plugins: [{
   name: "isolated-course-storage", setup(build) {
     build.onResolve({ filter: /^(next\/cache|@\/db|@\/lib\/app-state)$/ }, args => ({ path: args.path, namespace: "test" }));

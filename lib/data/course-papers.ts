@@ -64,7 +64,7 @@ type CoursePaperFilterOptionRow = {
     hasAnswerKey: boolean;
 };
 
-type CoursePaperRow = CoursePaperListItem &
+export type CoursePaperRow = CoursePaperListItem &
     CoursePaperFilterOptionRow & {
         createdAtTime: number;
     };
@@ -80,7 +80,7 @@ function normalizeFiltersForCache(filters: CoursePaperFilters) {
     };
 }
 
-async function getCoursePaperRows(courseId: string): Promise<CoursePaperRow[]> {
+export async function getCoursePaperRows(courseId: string): Promise<CoursePaperRow[]> {
     "use cache";
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
@@ -226,6 +226,13 @@ export async function getOrderedCoursePapers(
     input: OrderedCoursePapersInput,
 ): Promise<CoursePaperListItem[]> {
     const rows = await getCoursePaperRows(input.courseId);
+    return orderCoursePaperRows(rows, input);
+}
+
+export function orderCoursePaperRows(
+    rows: CoursePaperRow[],
+    input: OrderedCoursePapersInput,
+): CoursePaperListItem[] {
     const filterSets = buildFilterSets(input.filters);
     const filteredRows: CoursePaperRow[] = [];
 
@@ -241,8 +248,16 @@ export async function getOrderedCoursePapers(
 export async function getCoursePapers(
     input: GetCoursePapersInput,
 ): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
+    const rows = await getCoursePaperRows(input.courseId);
+    return paginateCoursePaperRows(rows, input);
+}
+
+export function paginateCoursePaperRows(
+    rows: CoursePaperRow[],
+    input: GetCoursePapersInput,
+): { papers: CoursePaperListItem[]; totalCount: number } {
     const { page, pageSize, ...orderedInput } = input;
-    const orderedRows = await getOrderedCoursePapers(orderedInput);
+    const orderedRows = orderCoursePaperRows(rows, orderedInput);
 
     const skip = Math.max(0, (page - 1) * pageSize);
     const visibleRows = orderedRows.slice(skip, skip + pageSize);
@@ -258,6 +273,13 @@ export async function getCoursePaperFilterOptions(
     filters: CoursePaperFilters = {},
 ): Promise<CoursePaperFilterOptions> {
     const rows = await getCoursePaperRows(courseId);
+    return buildCoursePaperFilterOptions(rows, filters);
+}
+
+export function buildCoursePaperFilterOptions(
+    rows: CoursePaperRow[],
+    filters: CoursePaperFilters = {},
+): CoursePaperFilterOptions {
     const filterSets = buildFilterSets(filters);
 
     const examCounts: Partial<Record<ExamType, number>> = {};

@@ -5,6 +5,7 @@ const { build } = require("esbuild");
 const { Miniflare, convertV4MiniflareOptions } = require("miniflare");
 const { outputFiles } = await build({ stdin: { resolveDir: process.cwd(), contents: `
   import { AsyncLocalStorage } from "node:async_hooks";
+  import { recordCourseRequestPath } from "./cloudflare/course-request-path.ts";
   import { withCourseTagPrefetch } from "./cloudflare/course-tag-prefetch.ts";
   const storage = new AsyncLocalStorage();
   globalThis.__openNextAls = storage;
@@ -20,12 +21,13 @@ const { outputFiles } = await build({ stdin: { resolveDir: process.cwd(), conten
     return request.timestamp;
   }};
   const cache = withCourseTagPrefetch({ name:"test", async get() {
-    storage.getStore().events.push("shell"); return null;
+    storage.getStore().events.push("shell"); return storage.getStore().hit ? { value: {}, lastModified: 0 } : null;
   }, async set(){ storage.getStore().writes++; }, async delete(){ storage.getStore().deletes++; } });
   export default { async fetch(request, env, nativeCtx) {
     const input = await request.json();
     const pending=[];
     const state={env,events:[],writes:0,deletes:0,...input,ctx:{waitUntil(p){pending.push(p);nativeCtx.waitUntil(p);}}};
+    recordCourseRequestPath(state.ctx, "https://test"+(input.path??input.key));
     return storage.run(state,async()=>{
       await cache.get(input.key,input.type);
       const initial=[...state.events];
@@ -44,17 +46,31 @@ async function probe(input) {
 }
 try {
   await Promise.all(Array.from({length:8},async(_,i)=>{
-    const r=await probe({key:i%2?"/past_papers/[code]":"/past_papers/BMAT202L",type:"cache",timestamp:i+1});
+    const r=await probe({key:i%2?"/past_papers/[code]":"/past_papers/BMAT202L",type:"cache",path:"/past_papers/BCSE20"+i+"L",timestamp:i+1});
     assert.deepEqual(r.initial,["tags-start","shell"]);
     assert.equal(r.retained,1);
     assert.equal(r.events.filter(e=>e==="tags-start").length,1);
     assert.equal(r.timestamp,i+1,"tag results remain scoped to each request");
     assert.ok(r.tags.includes("past_papers"));
+    assert.ok(r.tags.includes("_N_T_/past_papers/BCSE20"+i+"L"));
+    assert.equal(r.tags.filter(tag=>tag.startsWith("_N_T_/past_papers/")).length,1,"actual URL tags stay request-local");
+    assert.ok(r.tags.includes("_N_T_/layout"));
+    assert.ok(r.tags.includes("_N_T_/(app)/past_papers/[code]/page"));
+    assert.equal(r.tags.some(tag => tag.includes("[exam]")), false);
     assert.equal(r.writes,1);assert.equal(r.deletes,1);
   }));
   for (const input of [{key:"/api/auth/session",type:"cache"},{key:"/past_papers/create",type:"cache"},{key:"/past_papers/BMAT202L",type:"composable"},{key:"/past_papers/BMAT202L",type:"fetch"}]) {
     assert.equal((await probe(input)).retained,0);
   }
+  for (const key of ["/past_papers/[code]/[exam]", "/past_papers/BMAT202L/cat1"]) {
+    const r = await probe({ key, type: "cache" });
+    assert.ok(r.tags.includes("_N_T_/(app)/past_papers/[code]/[exam]/layout"));
+    assert.ok(r.tags.includes("_N_T_/(app)/past_papers/[code]/[exam]/page"));
+    assert.equal(r.tags.includes("_N_T_/(app)/past_papers/[code]/page"), false);
+  }
+  const hit = await probe({key:"/past_papers/BMAT202L",type:"cache",hit:true});
+  assert.deepEqual(hit.initial,["tags-start","shell","tags-end"],"a fast shell hit joins its pending tag read before Next validates it");
+  assert.equal(hit.retained,1);
   const failed=await probe({key:"/past_papers/BMAT202L",type:"cache",fail:true});
   assert.equal(failed.timestamp,undefined);
   assert.equal(failed.events.filter(e=>e==="shell").length,2);

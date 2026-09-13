@@ -92,6 +92,8 @@ node scripts/cloudflare/test-state.mjs
 node scripts/cloudflare/test-regional-public-cache.mjs
 node scripts/cloudflare/test-shared-course-detail.mjs
 node scripts/cloudflare/test-course-paper-cache.mjs
+node scripts/cloudflare/test-course-paper-projections.mjs
+node scripts/cloudflare/test-course-tag-prefetch.mjs
 node scripts/cloudflare/test-regional-tags.mjs
 node scripts/cloudflare/test-incremental-retention.mjs
 node scripts/cloudflare/test-optional-cache.mjs
@@ -117,6 +119,14 @@ the backstop if the invocation is terminated. Node/Redis still waits for writes.
 Within one Cloudflare invocation, repeated reads can reuse a completed public
 value while its write is pending. These values are keyed by execution context,
 origin and versioned public cache key; sessions and mutable state cannot use them.
+
+The course-name paper page uses one tagged public collection for its metadata,
+title variants, paper rows and upcoming exam dates. Filters, pagination and the
+current exam focus are computed when rendering. On Cloudflare, catalog and paper
+row loaders query through Hyperdrive when Next's cache misses, avoiding a second
+application cache and lock. Their Node loaders retain the shared Redis cache.
+Course shell, layout and exact URL invalidation tags are prefetched together;
+Next's normal tag checks still decide whether cached content can be used.
 
 `wrangler.tag-cache.jsonc` owns `examcooker-test-tag-cache`; the application's
 `NEXT_TAG_CACHE_DO_SHARDED` binding refers to that script. Its initial transfer
@@ -237,3 +247,12 @@ are scoped to their Worker request, and remain readable until the persistent
 write finishes. This avoids sharing request-owned I/O and a read-before-write
 race during cache warming. The regression probe uses the actual adapter in
 workerd with twelve overlapping writers.
+
+## Latest latency deployment
+
+Version `e004785e-0633-47ba-b318-da53d58dea20` contains the public course
+collection, direct Cloudflare catalog loader and concurrent shell/exact-path tag
+checks. Diagnostics and `EC_PERF_TOKEN` were removed. See
+[the performance report](./cloudflare-performance.md) for the measured 801 to
+538.5 ms persisted-cache render improvement, browser results and remaining cold
+postdeployment delay. Azure production was not deployed.
