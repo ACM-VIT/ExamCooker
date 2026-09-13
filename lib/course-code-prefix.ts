@@ -1,30 +1,28 @@
-import { appendFileSync } from "node:fs";
-
 type NamedRow = {
   name: string;
 };
 
-type PrefixReplacer = (name: string, currentCode: string, nextCode: string) => string | null;
+type PrefixReplacer = (
+  name: string,
+  currentCode: string,
+  nextCode: string,
+) => string | null;
 
-function getPrefixCollision(
+function hasPrefixCollision(
   sourceRows: readonly NamedRow[],
   destinationRows: readonly NamedRow[],
   currentCode: string,
   nextCode: string,
   replacePrefix: PrefixReplacer,
 ) {
-  const sourceMatchCount = sourceRows.filter(
+  const hasSourceMatch = sourceRows.some(
     (row) => replacePrefix(row.name, currentCode, currentCode) !== null,
-  ).length;
-  const destinationMatchCount = destinationRows.filter(
+  );
+  const hasDestinationMatch = destinationRows.some(
     (row) => replacePrefix(row.name, nextCode, nextCode) !== null,
-  ).length;
+  );
 
-  return {
-    sourceMatchCount,
-    destinationMatchCount,
-    collision: sourceMatchCount > 0 && destinationMatchCount > 0,
-  };
+  return hasSourceMatch && hasDestinationMatch;
 }
 
 export function replaceSyllabusCodePrefix(
@@ -59,17 +57,13 @@ export function hasSyllabusCodePrefixCollision(
   currentCode: string,
   nextCode: string,
 ) {
-  const result = getPrefixCollision(
+  return hasPrefixCollision(
     sourceRows,
     destinationRows,
     currentCode,
     nextCode,
     replaceSyllabusCodePrefix,
   );
-  // #region agent log
-  appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H1,H4", location: "lib/course-code-prefix.ts:hasSyllabusCodePrefixCollision", message: "Evaluated exact syllabus prefix collision", data: { currentCode, nextCode, ...result }, timestamp: Date.now() }) + "\n");
-  // #endregion
-  return result.collision;
 }
 
 export function hasSubjectCodePrefixCollision(
@@ -78,15 +72,11 @@ export function hasSubjectCodePrefixCollision(
   currentCode: string,
   nextCode: string,
 ) {
-  const result = getPrefixCollision(
+  return hasPrefixCollision(
     sourceRows,
     destinationRows,
     currentCode,
     nextCode,
     replaceSubjectCodePrefix,
   );
-  // #region agent log
-  appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H2,H4", location: "lib/course-code-prefix.ts:hasSubjectCodePrefixCollision", message: "Evaluated exact subject prefix collision", data: { currentCode, nextCode, ...result }, timestamp: Date.now() }) + "\n");
-  // #endregion
-  return result.collision;
 }
