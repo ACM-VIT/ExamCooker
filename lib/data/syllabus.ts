@@ -1,3 +1,4 @@
+import { appendFileSync } from "node:fs";
 import { cacheLife, cacheTag } from "next/cache";
 import { asc, count, ilike, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
@@ -125,6 +126,10 @@ export async function getSyllabusDetailByCourseCode(code: string) {
         .where(ilike(syllabi.name, `${normalized}_%`))
         .orderBy(asc(syllabi.name))
         .limit(1);
+
+    // #region agent log
+    appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H1", location: "lib/data/syllabus.ts:getSyllabusDetailByCourseCode:selection", message: "Selected first syllabus for course prefix", data: { requestedCode: code, normalized, selected: rows[0] ? { id: rows[0].id, name: rows[0].name } : null }, timestamp: Date.now() }) + "\n");
+    // #endregion
 
     const syllabus = rows[0];
 

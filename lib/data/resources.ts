@@ -1,3 +1,4 @@
+import { appendFileSync } from "node:fs";
 import { cacheLife, cacheTag } from "next/cache";
 import { asc, count, eq, ilike, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
@@ -70,6 +71,10 @@ export async function getSubjectByCourseCode(code: string) {
         )
         .orderBy(asc(subject.name))
         .limit(1);
+
+    // #region agent log
+    appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H2", location: "lib/data/resources.ts:getSubjectByCourseCode:selection", message: "Selected first subject for course prefix", data: { requestedCode: code, normalized, selected: subjectRows[0] ?? null }, timestamp: Date.now() }) + "\n");
+    // #endregion
 
     const foundSubject = subjectRows[0];
     if (!foundSubject) return null;

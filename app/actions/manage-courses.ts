@@ -1,5 +1,6 @@
 "use server";
 
+import { appendFileSync } from "node:fs";
 import { asc, count, eq, ilike, isNotNull, or } from "drizzle-orm";
 import { updateTag, revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -217,6 +218,10 @@ export async function updateManagedCourse(
     const validated = validateCourseInput(input);
     if (!validated.success) return validated;
 
+    // #region agent log
+    appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H3", location: "app/actions/manage-courses.ts:updateManagedCourse:entry", message: "Validated course rename request", data: { courseId, requestedCode: validated.data.code }, timestamp: Date.now() }) + "\n");
+    // #endregion
+
     try {
         const updated = await db.transaction(async (tx) => {
             const [existing] = await tx
@@ -232,6 +237,14 @@ export async function updateManagedCourse(
                     .select({ id: syllabi.id, name: syllabi.name })
                     .from(syllabi)
                     .where(ilike(syllabi.name, `${existing.code}_%`));
+                const destinationSyllabusRows = await tx
+                    .select({ id: syllabi.id, name: syllabi.name })
+                    .from(syllabi)
+                    .where(ilike(syllabi.name, `${validated.data.code}_%`));
+
+                // #region agent log
+                appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H1,H4", location: "app/actions/manage-courses.ts:updateManagedCourse:syllabusRows", message: "Loaded source and destination syllabus prefix rows", data: { existingCode: existing.code, nextCode: validated.data.code, sourceRows: syllabusRows, destinationRows: destinationSyllabusRows, exactDestinationRows: destinationSyllabusRows.filter((row) => replaceSyllabusCodePrefix(row.name, validated.data.code, validated.data.code) !== null) }, timestamp: Date.now() }) + "\n");
+                // #endregion
 
                 for (const syllabusRow of syllabusRows) {
                     const nextName = replaceSyllabusCodePrefix(
@@ -244,6 +257,9 @@ export async function updateManagedCourse(
                         .update(syllabi)
                         .set({ name: nextName })
                         .where(eq(syllabi.id, syllabusRow.id));
+                    // #region agent log
+                    appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H1", location: "app/actions/manage-courses.ts:updateManagedCourse:syllabusUpdate", message: "Renamed source syllabus row", data: { id: syllabusRow.id, previousName: syllabusRow.name, nextName }, timestamp: Date.now() }) + "\n");
+                    // #endregion
                 }
 
                 const subjectRows = await tx
@@ -256,6 +272,20 @@ export async function updateManagedCourse(
                             ilike(subject.name, existing.code),
                         ),
                     );
+                const destinationSubjectRows = await tx
+                    .select({ id: subject.id, name: subject.name })
+                    .from(subject)
+                    .where(
+                        or(
+                            ilike(subject.name, `${validated.data.code} -%`),
+                            ilike(subject.name, `${validated.data.code}-%`),
+                            ilike(subject.name, validated.data.code),
+                        ),
+                    );
+
+                // #region agent log
+                appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H2,H4", location: "app/actions/manage-courses.ts:updateManagedCourse:subjectRows", message: "Loaded source and destination subject prefix rows", data: { existingCode: existing.code, nextCode: validated.data.code, sourceRows: subjectRows, destinationRows: destinationSubjectRows, exactDestinationRows: destinationSubjectRows.filter((row) => replaceSubjectCodePrefix(row.name, validated.data.code, validated.data.code) !== null) }, timestamp: Date.now() }) + "\n");
+                // #endregion
 
                 for (const subjectRow of subjectRows) {
                     const nextName = replaceSubjectCodePrefix(
@@ -268,6 +298,9 @@ export async function updateManagedCourse(
                         .update(subject)
                         .set({ name: nextName })
                         .where(eq(subject.id, subjectRow.id));
+                    // #region agent log
+                    appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H2", location: "app/actions/manage-courses.ts:updateManagedCourse:subjectUpdate", message: "Renamed source subject row", data: { id: subjectRow.id, previousName: subjectRow.name, nextName }, timestamp: Date.now() }) + "\n");
+                    // #endregion
                 }
             }
 
@@ -281,6 +314,9 @@ export async function updateManagedCourse(
                 ? { id: updated.id, codeChanged }
                 : null;
         });
+        // #region agent log
+        appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H3", location: "app/actions/manage-courses.ts:updateManagedCourse:transactionExit", message: "Course rename transaction completed", data: { courseId, requestedCode: validated.data.code, updated }, timestamp: Date.now() }) + "\n");
+        // #endregion
         if (!updated) return { success: false, error: "Course not found." };
 
         if (updated.codeChanged) {
