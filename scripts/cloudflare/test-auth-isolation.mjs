@@ -48,11 +48,16 @@ console.log("PASS: anonymous CSRF tokens are not shared");
 
 const redirect = await fetch(new URL("/api/auth/init?redirect=/", base), { redirect: "manual" });
 assert.equal(new URL(redirect.headers.get("location")).hostname, base.hostname);
-for (const headers of [{}, { rsc: "1" }, { cookie: cookie(0) }, { cookie: cookie(1) }]) {
-  const response = await fetch(base, { headers, signal: AbortSignal.timeout(30000) });
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("cache-control") ?? "", /no-store/);
-  assert.notEqual(response.headers.get("cf-cache-status"), "HIT");
-  assert.ok((await response.text()).length > 0, "Response stream must complete");
+for (const path of ["/", "/past_papers/BMAT202L"]) {
+  for (const headers of [{}, { rsc: "1" }, { cookie: cookie(0) }, { cookie: cookie(1) }]) {
+    const response = await fetch(new URL(path, base), { headers, signal: AbortSignal.timeout(30000) });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+    assert.notEqual(response.headers.get("cf-cache-status"), "HIT");
+    const body = await response.text();
+    assert.ok(body.length > 0, "Response stream must complete");
+    // Synthetic JWTs have no database user and must never appear in a public shell.
+    for (const name of names) assert.ok(!body.includes(name), `${path}: synthetic identity leaked`);
+  }
 }
 console.log("PASS: auth redirects stay on the test hostname; HTML and RSC responses are not shared HTTP cache hits");

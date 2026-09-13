@@ -250,9 +250,11 @@ workerd with twelve overlapping writers.
 
 ## Latest latency deployment
 
-Version `e004785e-0633-47ba-b318-da53d58dea20` contains the public course
-collection, direct Cloudflare catalog loader and concurrent shell/exact-path tag
-checks. Diagnostics and `EC_PERF_TOKEN` were removed. See
-[the performance report](./cloudflare-performance.md) for the measured 801 to
-538.5 ms persisted-cache render improvement, browser results and remaining cold
-postdeployment delay. Azure production was not deployed.
+Version `7b7a5f9a-092e-49fd-a784-24f9525e93a0` prerenders the 24 most-viewed
+course routes, preserves their public resume-cache entries during partial
+prefetching, and compresses large R2 cache entries at deployment and runtime.
+Legacy plain entries remain readable. Cache lifetimes, tags, dynamic filters
+and session isolation are unchanged. Diagnostics and `EC_PERF_TOKEN` were
+removed. See [the performance report](./cloudflare-performance.md) for the
+settled render and first-read storage improvements, browser measurements and
+remaining postdeployment delay. Azure production was not deployed.

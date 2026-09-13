@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { getExamFocusForDate } from "@/lib/exam-focus";
 import { getCoursePaperCollection, type CoursePaperCollection } from "@/lib/data/course-paper-collection";
+import { getCourseGrid, getPopularCourseGrid } from "@/lib/data/course-catalog";
 import {
     buildCoursePaperFilterOptions,
     paginateCoursePaperRows,
@@ -59,6 +60,17 @@ import {
 
 const PAGE_SIZE = 24;
 const CUID_REGEX = /^c[a-z0-9]{20,}$/i;
+
+// Put public course content in the PPR shell for the most visited courses.
+// Search params and session boundaries still resume separately per request.
+export async function generateStaticParams() {
+    const popular = await getPopularCourseGrid(24);
+    const courses = popular.length ? popular : (await getCourseGrid()).slice(0, 24);
+    // Cache Components requires a nonempty sample even on an empty dev database.
+    // This invalid course code follows the existing notFound() path.
+    if (!courses.length) return [{ code: "__empty_catalog__" }];
+    return courses.map(({ code }) => ({ code }));
+}
 
 function getCourseExamFocus(collection: CoursePaperCollection): ExamType {
     const cutoff = new Date(getUpcomingExamCutoffIso());

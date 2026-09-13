@@ -1008,3 +1008,157 @@ Final clean Worker version: `e004785e-0633-47ba-b318-da53d58dea20` (100% traffic
 The final deployment passed alternating/concurrent/chunked-cookie session and
 CSRF isolation, test-host auth redirects, search/empty-search checks, disjoint
 24-card pages, exam filtering and BMAT202L HEAD/GET forced revalidation.
+
+## September 13: preserve the PPR resume cache
+
+The course route now prerenders the 24 courses with the most recorded paper
+views. New catalogs without view history fall back to the first 24 catalog
+courses; empty development catalogs use a not-found sample because Cache
+Components rejects an empty `generateStaticParams` result. Unlisted courses
+still render on demand. BMAT202L and BCSE202L are in the current built set.
+The BMAT202L shell contains public course/syllabus resume entries and retains
+300-second revalidation and a 3600-second expiration. Search parameters and
+session APIs remain dynamic.
+
+Prerendering alone did not remove the second remote cache-read stage. In the
+installed Next 16.3.5 `app-render.js`, both HTML and RSC partial-prefetch setup
+create a new empty `createPrerenderResumeDataCache()` and assign it over the
+request's restored cache. A gated probe inside the built runtime confirmed
+`hasResume: true` but `hasEntry: false` for the course collection and syllabus
+when the request resumed. Their exact cache keys were present in the built
+postponed state.
+
+The Cloudflare adapter patch now passes the existing request resume cache to
+that factory. The factory copies the maps; it preserves timestamps, tags and
+request-owned entries. It does not introduce an isolate-global stream cache.
+Normal Next tag validation remains active, and partial prefetching remains on.
+The build fails if the patch no longer matches after a Next upgrade. The
+regression check covers both compiled Next renderers, their HTML/RSC setup
+sites, preservation of data age/tags, and separate request maps and streams.
+
+### Measured results and limits
+
+All persisted-cache probes bypass only the regional Next Cache API reads;
+R2 remains populated and normal tag checks stay enabled. Four sequential
+samples per run, six seconds apart, on the actual test hostname:
+
+| Candidate/run | Server completion samples (ms) | Median (ms) |
+|---|---|---:|
+| Previous generic shell, before changes | 719, 649, 591, 539 | 620 |
+| Course prerender, without resume fix | 4946, 1086, 606, 633 | 859.5 |
+| Resume fix, initial rollout | 2258, 282, 307, 2831 | 1282.5 |
+| Resume fix, settled after validation | 291, 323, 291, 309 | 300 |
+
+The final settled trace needs one full-route cache read and no foreground
+composable-cache reads. Previously it needed the shell followed by two
+parallel composable reads. Settled median client completion was 758 ms versus
+987 ms before; these include connection and network overhead. This is a small,
+sequential experiment, not a randomized p95 comparison. The 52% improvement
+in settled server median does not erase the initial rollout outliers.
+
+The two 2–3 second resume-fix outliers occurred inside the full-route cache
+read. The R2 `get` calls returned object handles in 659–662 ms, but the enclosing
+read finished much later; the existing tracing does not separate body download
+and JSON parsing. The new BMAT202L build cache object is about 270 KB (43 KB
+if gzipped), compared with the generic shell's 156 KB. At this stage no R2 encoding change had been made: previous experiments with
+repeated reads of the same objects had not shown a consistent win. The
+first-read experiment below led to a different result.
+
+A separate token-gated bootstrap response returned before `app.fetch` and
+Next.js. Its first invocation took 1992 ms from the client versus 65/74 ms
+for repeats. A later fresh-connection curl probe also saw a first invocation
+at 2388 ms versus 188–234 ms for repeats. This establishes that some observed
+first-request overhead is outside the Next page/cache logic, but does not
+prove its cause is bundle initialization. Curl's first-header timing can
+include an informational response and must not be read as final-header timing.
+Wrangler reported about 40 ms of startup CPU for the diagnostic Worker.
+
+Raw ignored artifacts: `prerender-before-r2-hits.jsonl`,
+`prerender-after-r2-hits.jsonl`, `resume-seed-r2-hits.jsonl`,
+`resume-seed-stable-r2-hits.jsonl`, `resume-probe-one.json`,
+`bootstrap-results.jsonl`, and `bootstrap-warm-connections.jsonl`.
+
+Validation passed: full Next/OpenNext build, app typecheck, all 28 PPR resume
+payloads decoded in workerd, resume-cache seeding/isolation, existing pending
+stream and scheduler tests, row projections, tag prefetch, A/B/anonymous and
+chunked-cookie sessions, CSRF isolation, no-store HTML/RSC including the course
+route, forced HEAD/GET revalidation, nine concurrent render streams, cancellation,
+runtime prefetch, search, exam filters and disjoint 24-card pagination. Azure
+production was not deployed.
+
+### Follow-up: compress first reads, including deployment uploads
+
+The first clean browser visit after resume seeding still took 5576 ms to show
+24 cards (`cfWorker=3143`, `cfEdge=1258`); its repeat took 2383 ms. Both matched
+the deployed build ID and had no browser errors. Production was also unusually
+slow in that session (18197 ms to cards), so it is not a useful production
+baseline. This prompted another isolated storage experiment rather than a
+claim that the first-visit problem was solved.
+
+Unlike the earlier repeated-read experiment, this probe created a fresh R2 key
+for each read. It tested eight pairs of the same 270 KB BMAT202L cache object,
+alternating plain/gzip order, through a small remote Worker in HYD:
+
+| Encoding | Stored bytes | First-read median, including decode | Range |
+|---|---:|---:|---:|
+| Plain JSON | 269746 | 1916.5 ms | 1210–2326 ms |
+| Gzip | 42509 | 622 ms | 384–839 ms |
+
+All 16 synthetic objects were deleted and the preview Worker was disposed.
+Raw results: `r2-first-encoding-results.json`. This isolates storage-body
+transfer from Next rendering, auth and tag checks. It does not measure full-page
+latency or guarantee the same gain in every Cloudflare location.
+
+The pinned adapter patch now encodes R2 entries of at least 32 KB with gzip
+when compression saves space. Both runtime cache writes and the normal
+`populateCache` deployment Worker use the same encoder. The reader recognizes
+`customMetadata.ecEncoding = "gzip-v1"` and still reads legacy plain JSON.
+Cache keys, timestamps, invalidation tags and HTTP response cache policies are
+unchanged. Small/incompressible entries stay plain. The optional rclone upload
+path remains plain and is compatible with the reader. A fresh Next build ID
+keeps the new deployment's objects separate from the prior rollback version.
+
+The storage test exercises the actual runtime adapter and deployment uploader
+in workerd: legacy reads, Unicode, large and small writes, gzip-to-plain
+overwrite, cache-age preservation and deletion all passed. Compression changes
+only the storage format of entries already in the Next data/PPR cache; it does
+not add shared HTTP caching or cache session responses.
+
+### Final deployment verification
+
+Clean Worker version `7b7a5f9a-092e-49fd-a784-24f9525e93a0` receives 100% of
+test traffic. `EC_PERF_TOKEN` is absent and the temporary runtime probe is not
+in the built server. A read of the actual regenerated BMAT202L R2 object
+confirmed gzip metadata and a 52835-byte object representing roughly 356 KB of
+JSON, with its postponed state intact.
+
+The final compressed-cache browser measurements were:
+
+- First visit after deployment: cards at **6344 ms**, HTML complete at 6265 ms,
+  `cfWorker=4355`, `cfEdge=1133`.
+- Repeat in that session: cards at **568 ms**, HTML complete at 569 ms,
+  `cfWorker=311`.
+- A later fresh browser profile: cards at **1023 ms**, HTML complete at 752 ms,
+  `cfWorker=291`. Its subsequent production navigation timed out; the browser
+  session was closed in `finally` and no repeat capture was obtained.
+
+All captured test pages matched the current build ID, contained 24 cards and
+reported no browser errors. Media remained blocked/muted. Raw artifacts use
+`bmat-browser-r2-encoding-final-*` and `bmat-browser-r2-encoding-settled-*`.
+These results do **not** show a first-postdeployment improvement: the earlier
+uncompressed seeded build showed cards at 5576 ms, versus 6344 ms here. The
+isolated storage improvement and eliminated data reads are real, but other
+startup delays remain unresolved.
+
+The final paired HTTP comparison could not complete: production timed out and
+returned HTTP 502. Test HTML completion medians over three measured samples
+were 690 ms for BMAT202L and 298 ms for the catalog, with no test failures.
+Production failures make a relative speed claim inappropriate. Raw results:
+`r2-encoding-final-comparison.jsonl`.
+
+The final clean build passed app and Worker typechecks, both new regression
+tests, PPR decoding, live session/CSRF isolation, no-store course HTML/RSC,
+HEAD/GET revalidation, cancellation, runtime prefetch and filters/pagination.
+Nine concurrent render streams completed with a 1036 ms maximum. That is
+correctness coverage, not a general latency guarantee. No Azure deployment,
+source-data modification or production cache purge was performed.

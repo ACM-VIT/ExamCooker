@@ -19,7 +19,7 @@ overrides:
 
 patchedDependencies:
   '@opennextjs/aws@4.1.4': d0610d19066921c4dbca50edbde31be3cc8f51a87eb279fdaf3bd60c420bd2f1
-  '@opennextjs/cloudflare@1.20.6': c48e702e5ff52a1d2e982df5c072a8e6f3fc047c27d46f856ab56f04bfc4d008
+  '@opennextjs/cloudflare@1.20.6': 915ad9f611be16835d7648467ccc91cbafd0788be996b193171295adfffa1f2d
 
 importers:
 
@@ -111,7 +111,7 @@ importers:
         version: 0.14.2(@aws-sdk/credential-provider-node@3.972.82)(@cfworker/json-schema@4.1.1)(@smithy/hash-node@4.5.2)(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.2)(zod@4.4.3)
       '@opennextjs/cloudflare':
         specifier: 1.20.6
-        version: 1.20.6(patch_hash=c48e702e5ff52a1d2e982df5c072a8e6f3fc047c27d46f856ab56f04bfc4d008)(next@16.3.5(@babel/core@8.0.1)(@types/node@26.1.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(supports-color@10.2.2)(wrangler@4.130.0(@cloudflare/workers-types@5.20260804.1))
+        version: 1.20.6(patch_hash=915ad9f611be16835d7648467ccc91cbafd0788be996b193171295adfffa1f2d)(next@16.3.5(@babel/core@8.0.1)(@types/node@26.1.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(supports-color@10.2.2)(wrangler@4.130.0(@cloudflare/workers-types@5.20260804.1))
       '@posthog/react':
         specifier: ^1.10.3
         version: 1.10.3(@types/react@19.2.18)(posthog-js@1.411.0(preact-render-to-string@5.2.6))(react@19.2.8)
@@ -8240,7 +8240,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@opennextjs/cloudflare@1.20.6(patch_hash=c48e702e5ff52a1d2e982df5c072a8e6f3fc047c27d46f856ab56f04bfc4d008)(next@16.3.5(@babel/core@8.0.1)(@types/node@26.1.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(supports-color@10.2.2)(wrangler@4.130.0(@cloudflare/workers-types@5.20260804.1))':
+  '@opennextjs/cloudflare@1.20.6(patch_hash=915ad9f611be16835d7648467ccc91cbafd0788be996b193171295adfffa1f2d)(next@16.3.5(@babel/core@8.0.1)(@types/node@26.1.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(supports-color@10.2.2)(wrangler@4.130.0(@cloudflare/workers-types@5.20260804.1))':
     dependencies:
       '@ast-grep/napi': 0.40.5
       '@dotenvx/dotenvx': 1.31.0

@@ -84,12 +84,11 @@ index f59e677181f1d0007993e36e05901f1f012689f9..4983bb09a10e07ca968fbc3ce21a1707
              patchPagesRouterContext(buildOpts),
              inlineFindDir(updater, buildOpts),
              inlineLoadManifest(updater, buildOpts),
-diff --git adist/cli/build/patches/plugins/cache-components.js b/dist/cli/build/patches/plugins/cache-components.js
+diff --git a/dist/cli/build/patches/plugins/cache-components.js b/dist/cli/build/patches/plugins/cache-components.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..69b074ed85fe2c21736adcdaab51001740bd3f14
 --- /dev/null
 +++ b/dist/cli/build/patches/plugins/cache-components.js
-@@ -0,0 +1,324 @@
+@@ -0,0 +1,345 @@
 +import { existsSync, readFileSync, writeFileSync } from "node:fs";
 +import path from "node:path";
 +import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
@@ -132,10 +131,20 @@ index 0000000000000000000000000000000000000000..69b074ed85fe2c21736adcdaab510017
 +    const schedulerPath = path.join(buildOpts.outputDir, "cloudflare-templates/cache-components-scheduler.js");
 +    // `ContentUpdater` silently skips a callback whose filter stops matching, so a renamed error
 +    // message or moved file would otherwise ship an unpatched build.
-+    const applied = { scheduler: false, "module loading signal": false, "request-owned cache fills": false };
++    const preserveResumeCache = !compareSemver(buildOpts.nextVersion, "<", "16.3.0");
++    const applied = { scheduler: false, "module loading signal": false, "request-owned cache fills": false, ...(preserveResumeCache ? { "resume cache seed": false } : {}) };
 +    // Next 16.3 shares in-flight use-cache streams across requests. Worker
 +    // streams belong to their initiating request; only completed R2 payloads
 +    // may be shared. Keep Next's intra-request deduplication unchanged.
++    if (preserveResumeCache) updater.updateContent("cache-components-resume-seed", [{
++        filter: cacheComponentsSchedulerFileFilter,
++        contentFilter: /\.resumeDataCache\s*=/,
++        callback: async ({ contents, path: runtimePath }) => {
++            const patched = patchResumeDataCache(contents, runtimePath);
++            applied["resume cache seed"] = true;
++            return patched;
++        },
++    }]);
 +    updater.updateContent("cache-components-request-owned-fills", [{
 +        filter: cacheComponentsSchedulerFileFilter,
 +        contentFilter: /joining pending cross-request invocation/,
@@ -414,6 +423,17 @@ index 0000000000000000000000000000000000000000..69b074ed85fe2c21736adcdaab510017
 +    )
 +  )) { $$$BODY }
 +`;
++
++/** Preserve restored public entries when partial prefetching creates a mutable request cache.
++ * Next 16.3 otherwise drops the PPR seed and rereads every entry from remote storage.
++ * The factory copies maps; the result and its streams remain owned by this request.
++ * Normal use-cache tag invalidation still runs when consuming seeded entries.
++ */
++export function patchResumeDataCache(contents, runtimePath) {
++    const patched = patchCode(contents, "\nrule:\n  pattern:\n    selector: variable_declarator\n    context: \"let $CACHE = $FACTORY();\"\n  inside:\n    kind: lexical_declaration\n    precedes:\n      pattern: \"$STORE.resumeDataCache = $CACHE;\"\nfix: $CACHE = $FACTORY($STORE.resumeDataCache)\n");
++    if (patched === contents) throw new Error("Failed to preserve the resume cache in " + runtimePath);
++    return patched;
++}
 diff --git adist/cli/templates/cache-components-scheduler.js b/dist/cli/templates/cache-components-scheduler.js
 new file mode 100644
 index 0000000000000000000000000000000000000000..703c2fb001c60d16bbebba80f0144a978084e803
@@ -666,3 +686,71 @@ diff --git a/dist/api/durable-objects/sharded-tag-cache.js b/dist/api/durable-ob
              }
          });
      }
+diff --git a/dist/api/overrides/incremental-cache/r2-incremental-cache.js b/dist/api/overrides/incremental-cache/r2-incremental-cache.js
+--- a/dist/api/overrides/incremental-cache/r2-incremental-cache.js
++++ b/dist/api/overrides/incremental-cache/r2-incremental-cache.js
+@@ -2,6 +2,7 @@
+ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
+ import { getCloudflareContext } from "../../cloudflare-context.js";
+ import { computeCacheKey, debugCache } from "../internal.js";
++import { encodeR2CacheEntry, decodeR2CacheEntry } from "./r2-encoding.js";
+ export const NAME = "cf-r2-incremental-cache";
+ export const BINDING_NAME = "NEXT_INC_CACHE_R2_BUCKET";
+ export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_R2_PREFIX";
+@@ -24,7 +25,7 @@
+             if (!r2Object)
+                 return null;
+             return {
+-                value: await r2Object.json(),
++                value: await decodeR2CacheEntry(r2Object),
+                 lastModified: r2Object.uploaded.getTime(),
+             };
+         }
+@@ -39,7 +40,8 @@
+             throw new IgnorableError("No R2 bucket");
+         debugCache("R2IncrementalCache", `set ${key}`);
+         try {
+-            await r2.put(this.getR2Key(key, cacheType), JSON.stringify(value));
++            const encoded = await encodeR2CacheEntry(JSON.stringify(value));
++            await r2.put(this.getR2Key(key, cacheType), encoded.body, encoded.options);
+         }
+         catch (e) {
+             error("Failed to set to cache", e);
+diff --git a/dist/cli/workers/r2-cache.js b/dist/cli/workers/r2-cache.js
+--- a/dist/cli/workers/r2-cache.js
++++ b/dist/cli/workers/r2-cache.js
+@@ -10,6 +10,7 @@
+  *
+  * This is used by the `populate-cache` command to bypass REST API rate limits when populating large caches.
+  */
++import { encodeR2CacheEntry } from "../../api/overrides/incremental-cache/r2-encoding.js";
+ import { ERR_BINDING_NOT_FOUND, ERR_INVALID_REQUEST, ERR_WRITE_FAILED, } from "./r2-cache-types.js";
+ /**
+  * Worker fetch handler.
+@@ -46,7 +47,8 @@
+             }, { status: 400 });
+         }
+         try {
+-            await r2.put(key, request.body);
++            const encoded = await encodeR2CacheEntry(request.body);
++            await r2.put(key, encoded.body, encoded.options);
+             return Response.json({ success: true }, { status: 200 });
+         }
+         catch (e) {
+diff --git a/dist/api/overrides/incremental-cache/r2-encoding.js b/dist/api/overrides/incremental-cache/r2-encoding.js
+new file mode 100644
+--- /dev/null
++++ b/dist/api/overrides/incremental-cache/r2-encoding.js
+@@ -0,0 +1,12 @@
++// Storage encoding only: cache keys, timestamps and tags remain unchanged.
++export async function encodeR2CacheEntry(value) {
++    const body = await new Response(value).arrayBuffer();
++    if (body.byteLength < 32 * 1024) return { body };
++    const compressed = await new Response(new Blob([body]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
++    if (compressed.byteLength >= body.byteLength) return { body };
++    return { body: compressed, options: { customMetadata: { ecEncoding: "gzip-v1" } } };
++}
++export async function decodeR2CacheEntry(object) {
++    if (object.customMetadata?.ecEncoding !== "gzip-v1") return object.json();
++    return new Response(object.body.pipeThrough(new DecompressionStream("gzip"))).json();
++}
