@@ -692,3 +692,92 @@ version metadata; a code rollback alone left it listed there.
 Final active deployment: `40d8048d-dc69-430b-a3fc-7029a020c632`. Verified the live BMAT
 HTML stream completes, the tracer is inactive, and `EC_PERF_TOKEN` is absent
 from the Worker secret listing.
+
+## September 13: remove public cache persistence from the response path
+
+The first ordinary BMAT202L request in this pass took 3239 ms, followed by
+163–278 ms requests. To reproduce the source-cache miss independently of idle
+timing, a temporary authenticated diagnostic removed only BMAT202L's versioned
+course-detail and paper-row payload entries from test R2 and the current regional
+cache. Each sample seeded the entries, waited two seconds, removed those two
+entries, then forced Next revalidation. The catalog, source database, tags and
+namespace generation were not cleared. This is a controlled public payload miss,
+not a completely cold Worker or a normal browser-navigation benchmark.
+
+Three samples per stage, median milliseconds:
+
+| Stage | Server headers | Server response complete | Client response complete |
+|---|---:|---:|---:|
+| Before | 1598 | 3422 | 3612 |
+| Background payload persistence | 747 | 2079 | 2313 |
+| Plus request-local reuse of pending public fills | 775 | 1854 | 2307 |
+
+Before the change, both course metadata and paper rows waited for R2 persistence
+and lock release after their loaders finished. Those operations accounted for
+roughly 1.7–2 seconds in the controlled traces. Cloudflare now registers that
+write-and-unlock chain with `ctx.waitUntil`, returning loaded data immediately.
+The producer retains ownership of the lock until persistence finishes; followers
+still wait for the fill. Loader failures release the lock, failed writes are
+recoverable, and Node/Redis retains synchronous persistence. If lifetime
+registration throws, the request waits for persistence and cleanup instead.
+Cloudflare permits HTTP background work for up to 30 seconds after the response;
+the existing 15-second lock expiry remains the termination backstop. See
+[Cloudflare's context documentation](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil).
+
+The first candidate exposed one extra R2 read when Next rendered the course
+metadata again before its background write finished. The final candidate reuses
+that loaded public value within the same execution context. A WeakMap holds only
+strings and expiry timestamps, keyed by context and origin-qualified versioned
+public key. It does not share promises or values with other requests. Failed
+writes and deletions remove local values; expiry and generation changes bypass
+them. All three final traces eliminated the extra read (four application R2 reads
+versus five in the first candidate). The small sample shows a further 225 ms
+server-median reduction but effectively no additional client-median improvement;
+do not attribute a precise end-to-end gain to this second change.
+
+The combined server median fell 46%, and the controlled client median fell 36%.
+Final server samples were 1796–2096 ms: fully missing public payloads still exceed
+one second. Remaining traces include R2 reads and two serial lock acquisitions
+of roughly 300–490 ms each. These results do not establish consistent subsecond
+cold loads. Raw local traces: `surface-miss-before.jsonl`,
+`surface-miss-deferred.jsonl`, and `surface-miss-deferred-local.jsonl` under the
+ignored `.cloudflare-deploy/` directory.
+
+Validation covers concurrent fills, failed persistence, invalidation during a
+fill, Node behavior and failed lifetime registration. The real regional cache
+test additionally checks request/origin separation, generation changes, expiry,
+failed writes and rejection of session/state keys. Next/OpenNext production
+build and both app/Worker typechecks passed. OpenNext still reports the previously
+documented optional browser-launch dependency copy warnings.
+
+On the clean final deployment, three warm paired samples gave these complete
+response medians (Cloudflare / production): BMAT HTML 282 / 700 ms, catalog HTML
+295 / 444 ms, BMAT RSC 146 / 221 ms, and catalog RSC 221 / 341 ms. First requests
+were recorded separately: BMAT HTML 3008 / 1242 ms and catalog 1109 / 4519 ms.
+Production also had warm outliers of 4368 ms BMAT HTML and 9673 ms catalog RSC.
+No samples were discarded. Raw rows: `deferred-final-http.jsonl`.
+
+Fresh headless browser sessions (media disabled) showed BMAT's 24 cards at
+1800 ms initially and 678 ms in a fresh-session recheck, compared with production
+at 1020 / 1440 ms. Repeat Cloudflare visits were 781 / 775 ms. The first slow
+browser response delivered HTML at 990 ms but a stylesheet and font finished
+around 1717 ms; visible content followed. A diagnostic HTTP/2-only browser showed
+cards at 703 / 534 ms, but the normal-settings recheck also fell below a second.
+There is no isolated evidence that HTTP/3 caused the first outlier, so no transport
+setting was changed. Browser server caches were not forcibly cleared. The course
+list showed 12 cards at 1152 ms initially / 572 ms on repeat, versus production
+822 ms. All browser runs closed their sessions and reported no page errors.
+
+The deployed app passed alternating/concurrent/chunked A/B/anonymous session
+isolation, distinct CSRF tokens, private HTML/RSC response headers, nine concurrent
+streams (maximum 1245 ms), response cancellation and runtime prefetch. Forced
+HEAD/GET revalidation completed on all four tested routes; BMAT forced GET was
+726 ms with its public payloads present. Exact/empty catalog search, CAT1 filtering
+and disjoint 24-card pagination passed. Temporary diagnostics were removed, the
+old token returns ordinary complete HTML, and `EC_PERF_TOKEN` is absent from
+Worker secrets. Final active Worker version: `c98b47ea-ef9e-416a-b665-f0327fe1c1f2`.
+
+After more than 75 seconds without further page probes, BMAT's complete HTML
+took 426 ms on Cloudflare versus 901 ms on production; the immediate repeats
+took 241 / 277 ms. This single idle check passed, but does not negate the recorded
+3008 ms first request after deployment. Raw: `deferred-final-idle.jsonl`.

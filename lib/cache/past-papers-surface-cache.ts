@@ -230,6 +230,19 @@ async function readNamespaceVersion() {
   }
 }
 
+async function finishCacheWrite(redis: AppStateClient, write: Promise<void>) {
+  if (redis.deferCacheWrite) {
+    try {
+      redis.deferCacheWrite(write);
+      return;
+    } catch (error) {
+      // If lifetime registration fails, finish the write before returning.
+      warnRecoverableCacheError("background write registration failed", error);
+    }
+  }
+  await write;
+}
+
 export async function withPastPapersSurfaceRedisCache<T>(
   input: {
     keyParts: readonly unknown[];
@@ -283,21 +296,21 @@ export async function withPastPapersSurfaceRedisCache<T>(
 
     const value = await loader();
 
-    try {
-      await storeCacheEntry({
-        cacheKey,
-        redis,
-        ttlSeconds: input.ttlSeconds,
-        cacheNull: input.cacheNull,
-        value,
-      });
-    } catch (error) {
+    const write = storeCacheEntry({
+      cacheKey,
+      redis,
+      ttlSeconds: input.ttlSeconds,
+      cacheNull: input.cacheNull,
+      value,
+    }).catch((error) => {
       warnRecoverableCacheError("fallback write failed", error);
-    }
+    });
+    await finishCacheWrite(redis, write);
 
     return value;
   }
 
+  let cleanupTransferred = false;
   try {
     const cachedValue = await readCacheEntry({
       cacheKey,
@@ -310,21 +323,24 @@ export async function withPastPapersSurfaceRedisCache<T>(
 
     const value = await loader();
 
-    try {
-      await storeCacheEntry({
-        cacheKey,
-        redis,
-        ttlSeconds: input.ttlSeconds,
-        cacheNull: input.cacheNull,
-        value,
-      });
-    } catch (error) {
+    const write = storeCacheEntry({
+      cacheKey,
+      redis,
+      ttlSeconds: input.ttlSeconds,
+      cacheNull: input.cacheNull,
+      value,
+    }).catch((error) => {
       warnRecoverableCacheError("cache write failed", error);
-    }
+    }).finally(() => releaseCacheLock(redis, cacheKey, lockToken));
+
+    // The response can use the loaded data immediately. The fill owns the lock
+    // until persistence finishes, so another visitor cannot race its write.
+    cleanupTransferred = true;
+    await finishCacheWrite(redis, write);
 
     return value;
   } finally {
-    await releaseCacheLock(redis, cacheKey, lockToken);
+    if (!cleanupTransferred) await releaseCacheLock(redis, cacheKey, lockToken);
   }
 }
 

@@ -15,6 +15,30 @@ const { outputFiles } = await build({
         put: (...args) => env.BUCKET.put(...args),
         delete: (...args) => env.BUCKET.delete(...args),
       };
+      if (operation === "pending-write") {
+        let rejectWrite;
+        const gate = new Promise((_, reject) => { rejectWrite = reject; });
+        const storage = { ...bucket, put: () => gate };
+        const ctx = { waitUntil: p => pending.push(p) };
+        const create = (context = ctx, origin = "https://ec-test.acmvit.in", clock = Date.now) =>
+          createRegionalPublicCache(storage, context, origin, clock);
+        const producer = create();
+        const write = producer.set(key, "pending public value", 60).catch(() => "failed");
+        const sameRequest = await create().get(key);
+        const otherRequest = await create({ waitUntil: p => pending.push(p) }).get(key);
+        const otherOrigin = await create(ctx, "https://other.invalid").get(key);
+        const newGeneration = await create().get(key.replace(":n0:", ":n1:"));
+        const expired = await create(ctx, undefined, () => Date.now() + 61000).get(key);
+        rejectWrite(Error("simulated write failure"));
+        await write;
+        const failed = await create().get(key);
+        const secondWrite = producer.set(key, "another value", 60).catch(() => undefined);
+        await secondWrite;
+        const failedWithoutExpiry = await create().get(key);
+        await Promise.all(pending);
+        return Response.json({ sameRequest, otherRequest, otherOrigin, newGeneration,
+          expired, failed, failedWithoutExpiry });
+      }
       const cache = createRegionalPublicCache(bucket, { waitUntil: p => pending.push(p) },
         "https://ec-test.acmvit.in", () => Date.now() + offset);
       try {
@@ -37,6 +61,13 @@ async function op(operation, fields = {}) {
   return { status: response.status, ...await response.json() };
 }
 try {
+  const pendingResponse = await mf.dispatchFetch("https://test/", { method: "POST",
+    body: JSON.stringify({ operation: "pending-write", key }) });
+  assert.deepEqual(await pendingResponse.json(), {
+    sameRequest: "pending public value", otherRequest: null, otherOrigin: null,
+    newGeneration: null, expired: null, failed: null, failedWithoutExpiry: null,
+  });
+  console.log("PASS: a request sees its pending public fill; other requests, origins, generations, expired and failed writes do not");
   const bucket = await mf.getR2Bucket("BUCKET");
   const sourceKey = key.replace("a".repeat(64), "b".repeat(64));
   await bucket.put(`app-state/${sourceKey}`, "from R2", {

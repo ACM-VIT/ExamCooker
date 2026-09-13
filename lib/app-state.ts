@@ -9,6 +9,8 @@ import { isCachePayload, stateObjectName, type StateOperation } from "@/lib/app-
 import { createRegionalPublicCache, isRegionalPublicCacheKey } from "@/lib/regional-public-cache";
 
 export interface AppStateClient extends Omit<AppRedisClient, "eval"> {
+  /** Keep a public cache fill alive after its request returns, when supported. */
+  deferCacheWrite?(write: Promise<void>): void;
   releaseLock(key: string, token: string): Promise<number>;
   slidingWindow(key: string, now: number, windowMs: number, limit: number): Promise<[number, number]>;
   recordVote(key: string, feedbackKey: string, vote: "up" | "down", updatedAt: string, ttlSeconds: number): Promise<[string, string, string]>;
@@ -36,6 +38,7 @@ function cloudflareClient(): AppStateClient {
   );
 
   return {
+    deferCacheWrite: (write) => ctx.waitUntil(write),
     async get<T>(key: string): Promise<T | null> {
       if (!isCachePayload(key)) return execute<T | null>({ type: "get", key });
       if (isRegionalPublicCacheKey(key)) return await publicCache().get(key) as T | null;

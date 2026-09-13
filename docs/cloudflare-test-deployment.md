@@ -93,6 +93,8 @@ node scripts/cloudflare/test-regional-public-cache.mjs
 node scripts/cloudflare/test-regional-tags.mjs
 node scripts/cloudflare/test-incremental-retention.mjs
 node scripts/cloudflare/test-optional-cache.mjs
+node scripts/cloudflare/test-deferred-surface-write.mjs
+node scripts/cloudflare/test-regional-public-cache.mjs
 node scripts/cloudflare/test-pending-cache.mjs
 node scripts/cloudflare/test-scheduler.mjs
 pnpm cf:build
@@ -106,6 +108,14 @@ node scripts/cloudflare/compare-response-times.mjs
 ```
 
 `pnpm cf:deploy` deploys the small tag-cache and app-state Workers first, then the application.
+Cloudflare public payload fills register persistence and lock cleanup with
+`ctx.waitUntil`, so returning loaded course data does not wait for R2 writes.
+The lock remains held until the write finishes; the existing lock expiry is
+the backstop if the invocation is terminated. Node/Redis still waits for writes.
+Within one Cloudflare invocation, repeated reads can reuse a completed public
+value while its write is pending. These values are keyed by execution context,
+origin and versioned public cache key; sessions and mutable state cannot use them.
+
 `wrangler.tag-cache.jsonc` owns `examcooker-test-tag-cache`; the application's
 `NEXT_TAG_CACHE_DO_SHARDED` binding refers to that script. Its initial transfer
 migration preserves the existing tag namespace and stored invalidation data from
