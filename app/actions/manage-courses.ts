@@ -7,6 +7,12 @@ import { z } from "zod";
 import { auth } from "@/app/auth";
 import { course, db, note, pastPaper, subject, syllabi } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
+import {
+    hasSubjectCodePrefixCollision,
+    hasSyllabusCodePrefixCollision,
+    replaceSubjectCodePrefix,
+    replaceSyllabusCodePrefix,
+} from "@/lib/course-code-prefix";
 import { normalizeCourseCode } from "@/lib/course-tags";
 
 const courseInputSchema = z.object({
@@ -156,23 +162,7 @@ function isUniqueViolation(error: unknown) {
     );
 }
 
-function replaceSyllabusCodePrefix(name: string, currentCode: string, nextCode: string) {
-    const prefix = `${currentCode}_`;
-    if (!name.toUpperCase().startsWith(prefix.toUpperCase())) return null;
-    return `${nextCode}${name.slice(currentCode.length)}`;
-}
-
-function replaceSubjectCodePrefix(name: string, currentCode: string, nextCode: string) {
-    const upperName = name.toUpperCase();
-    const upperCode = currentCode.toUpperCase();
-    if (upperName === upperCode) return nextCode;
-    if (!upperName.startsWith(upperCode)) return null;
-
-    const suffix = name.slice(currentCode.length);
-    return suffix.startsWith("-") || suffix.startsWith(" -")
-        ? `${nextCode}${suffix}`
-        : null;
-}
+const courseCodePrefixCollision = "course-code-prefix-collision" as const;
 
 export async function getModeratorCourseRegistry() {
     await requireModerator();
@@ -246,20 +236,15 @@ export async function updateManagedCourse(
                 appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H1,H4", location: "app/actions/manage-courses.ts:updateManagedCourse:syllabusRows", message: "Loaded source and destination syllabus prefix rows", data: { existingCode: existing.code, nextCode: validated.data.code, sourceRows: syllabusRows, destinationRows: destinationSyllabusRows, exactDestinationRows: destinationSyllabusRows.filter((row) => replaceSyllabusCodePrefix(row.name, validated.data.code, validated.data.code) !== null) }, timestamp: Date.now() }) + "\n");
                 // #endregion
 
-                for (const syllabusRow of syllabusRows) {
-                    const nextName = replaceSyllabusCodePrefix(
-                        syllabusRow.name,
+                if (
+                    hasSyllabusCodePrefixCollision(
+                        syllabusRows,
+                        destinationSyllabusRows,
                         existing.code,
                         validated.data.code,
-                    );
-                    if (!nextName) continue;
-                    await tx
-                        .update(syllabi)
-                        .set({ name: nextName })
-                        .where(eq(syllabi.id, syllabusRow.id));
-                    // #region agent log
-                    appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H1", location: "app/actions/manage-courses.ts:updateManagedCourse:syllabusUpdate", message: "Renamed source syllabus row", data: { id: syllabusRow.id, previousName: syllabusRow.name, nextName }, timestamp: Date.now() }) + "\n");
-                    // #endregion
+                    )
+                ) {
+                    return courseCodePrefixCollision;
                 }
 
                 const subjectRows = await tx
@@ -286,6 +271,33 @@ export async function updateManagedCourse(
                 // #region agent log
                 appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H2,H4", location: "app/actions/manage-courses.ts:updateManagedCourse:subjectRows", message: "Loaded source and destination subject prefix rows", data: { existingCode: existing.code, nextCode: validated.data.code, sourceRows: subjectRows, destinationRows: destinationSubjectRows, exactDestinationRows: destinationSubjectRows.filter((row) => replaceSubjectCodePrefix(row.name, validated.data.code, validated.data.code) !== null) }, timestamp: Date.now() }) + "\n");
                 // #endregion
+
+                if (
+                    hasSubjectCodePrefixCollision(
+                        subjectRows,
+                        destinationSubjectRows,
+                        existing.code,
+                        validated.data.code,
+                    )
+                ) {
+                    return courseCodePrefixCollision;
+                }
+
+                for (const syllabusRow of syllabusRows) {
+                    const nextName = replaceSyllabusCodePrefix(
+                        syllabusRow.name,
+                        existing.code,
+                        validated.data.code,
+                    );
+                    if (!nextName) continue;
+                    await tx
+                        .update(syllabi)
+                        .set({ name: nextName })
+                        .where(eq(syllabi.id, syllabusRow.id));
+                    // #region agent log
+                    appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H1", location: "app/actions/manage-courses.ts:updateManagedCourse:syllabusUpdate", message: "Renamed source syllabus row", data: { id: syllabusRow.id, previousName: syllabusRow.name, nextName }, timestamp: Date.now() }) + "\n");
+                    // #endregion
+                }
 
                 for (const subjectRow of subjectRows) {
                     const nextName = replaceSubjectCodePrefix(
@@ -317,6 +329,12 @@ export async function updateManagedCourse(
         // #region agent log
         appendFileSync("/opt/cursor/logs/debug.log", JSON.stringify({ hypothesisId: "H3", location: "app/actions/manage-courses.ts:updateManagedCourse:transactionExit", message: "Course rename transaction completed", data: { courseId, requestedCode: validated.data.code, updated }, timestamp: Date.now() }) + "\n");
         // #endregion
+        if (updated === courseCodePrefixCollision) {
+            return {
+                success: false,
+                error: `The code ${validated.data.code} is already used by syllabus or resource rows.`,
+            };
+        }
         if (!updated) return { success: false, error: "Course not found." };
 
         if (updated.codeChanged) {
