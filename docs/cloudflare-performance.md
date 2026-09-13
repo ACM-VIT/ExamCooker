@@ -781,3 +781,116 @@ After more than 75 seconds without further page probes, BMAT's complete HTML
 took 426 ms on Cloudflare versus 901 ms on production; the immediate repeats
 took 241 / 277 ms. This single idle check passed, but does not negate the recorded
 3008 ms first request after deployment. Raw: `deferred-final-idle.jsonl`.
+
+## September 13: reuse the shared catalog for course details
+
+The course page previously fetched its metadata/counts through a dedicated
+course-detail cache, then fetched the shared catalog to populate title variants.
+The catalog already contained all the required fields. `getCourseDetailByCode`
+now projects from the tagged catalog rows instead of maintaining another cache
+entry and performing a separate SQL lookup and two count queries on a miss.
+The shared catalog retains the existing tags and lifetimes. Its payload key is
+now `course-catalog-rows-v2`, with original database aliases stored separately
+from generated search acronyms so course-detail output remains unchanged.
+
+Repeated the same test-only reset of BMAT202L's course-detail and paper-row
+payload entries, followed by forced Next revalidation. The shared catalog was
+seeded before each reset in both stages. The removed course-detail key becomes
+unused in the candidate; the diagnostic locates BMAT's ID in the new catalog
+after that old entry is gone. It still deletes only the two course-specific
+payload keys. This models a cold course with a warm shared catalog, not a wholly
+cold site or Worker.
+
+Three samples per stage, median milliseconds:
+
+| Stage | Server headers | Server response complete | Client response complete |
+|---|---:|---:|---:|
+| Previous deployed code | 737 | 1748 | 2126 |
+| Shared course metadata | 54 | 834 | 1101 |
+
+All three candidate server samples were below one second: 939, 834 and 747 ms.
+The server median fell another 52%, and the client median fell 48%. Application
+R2 misses fell from four to two per response, and lock acquisitions fell from two
+to one. The remaining paper-row miss and lock are real work; these measurements
+do not imply every browser load completes in 834 ms. Raw traces are retained in
+`surface-miss-shared-catalog-before.jsonl` and
+`surface-miss-shared-catalog-after.jsonl` under `.cloudflare-deploy/`.
+
+The focused test exercises the actual catalog code and public cache helper with
+controlled database rows. Concurrent detail, title-variant and search readers
+share the three catalog queries. It verifies normalization, exact original
+aliases, derived search aliases, zero-count courses, unknown courses and updated
+counts following invalidation. Next/OpenNext production build and app typecheck
+passed, with the previously documented optional dependency copy warnings.
+
+### Remove the redundant Cloudflare paper-row cache layer
+
+The intermediate clean deployment still recorded a 3314 ms first BMAT HTML
+request, despite a 279 ms warm median. Its first catalog request was 1765 ms;
+warm median 373 ms. Raw: `shared-catalog-final-http.jsonl`. Removing the duplicate
+course metadata lookup had not eliminated first-request outliers.
+
+The paper-row loader itself also sat under two persistent caches: Next's tagged
+`use cache` entry and the older public surface-cache facade. On Cloudflare it now
+loads through Hyperdrive directly when Next's cache misses. Next retains the same
+`past_papers` tag, five-minute revalidation and one-hour expiry, including its R2
+and regional cache backends. The Node path retains the original surface-cache
+key and locking behavior. Other public payload caches and application-state
+locks are unchanged.
+
+With the shared catalog warm and forced Next revalidation, the same three-sample
+probe measured server completion at 157 / 187 / 171 ms and client completion at
+519 / 654 / 470 ms. Median server time fell from 834 to 171 ms; client time fell
+from 1101 to 519 ms. The final trace has no paper payload R2 reads or application
+cache-lock acquisition. Raw: `surface-miss-next-only-papers.jsonl`. This is still
+a controlled Next cache miss with shared catalog state present, not a cold site.
+
+An ordinary traced first request immediately after deployment took 1605 ms in
+the Worker and 4039 ms at the client. A 720 ms R2 read for the persisted page
+shell and subsequent sequential Next cache reads remained. This explicitly
+preserves evidence of the remaining first-request problem, rather than treating
+the 171 ms controlled result as a promise for every visitor.
+
+Six concurrent forced revalidations returned complete pages, with client times
+1207–4426 ms. A separate traced burst completed inside the Worker in 248–2021 ms
+and at the client in 2600–2771 ms. A follow-up log capture confirmed Next R2 cache
+write throttling (`10058`) and cache-warming warnings under forced concurrency;
+one paper query took 1524 ms and an upcoming-exam query 1430 ms. R2 limits
+[overlapping writes to the same key](https://developers.cloudflare.com/r2/platform/limits/)
+to one per second. These are limitations of the tested burst, not a clean
+subsecond concurrency result. The removed inner lock no longer deduplicates
+paper SQL fills across cold requests; warm requests still use Next's cache.
+Raw: `next-only-first-page.json`, `next-only-concurrent.json`, and the protected
+`next-only-tail.jsonl` in `.cloudflare-deploy/`.
+
+The runtime comparison test checks identical paper/filter data on Node and
+Cloudflare and confirms that only Node invokes the extra cache. Both production
+builds and the focused shared-catalog/runtime tests passed.
+
+Final clean browser verification deliberately ran before the HTTP warmups. BMAT
+cards appeared at 3627 ms on the fresh session, versus 5832 ms on production;
+the Cloudflare repeat showed cards at 697 ms. The first Cloudflare navigation
+reported `cfEdge=1778`, `cfWorker=746`, headers at 2915 ms and HTML at 3378 ms.
+These metrics and the controlled cache-miss trace measure different scopes;
+do not add edge and Worker timings or attribute all delay to SQL. Cloudflare
+describes its [edge processing interval](https://developers.cloudflare.com/ruleset-engine/rules-language/fields/reference/cf.timings.edge_msec/)
+as excluding client network transfer and exposes
+[Worker execution including subrequests](https://developers.cloudflare.com/changelog/post/2026-02-18-cfworker-server-timing/)
+separately. The exact cause of the first-load edge delay is not established.
+All browser sessions were headless, media-disabled and closed after measurement.
+
+Subsequent paired HTTP samples (three per route/type) gave median complete
+responses of 205 / 294 ms for BMAT HTML, 309 / 549 ms for catalog HTML,
+353 / 568 ms for BMAT RSC, and 260 / 450 ms for catalog RSC (Cloudflare /
+production). The separately recorded first HTTP requests were 733 / 877 ms
+for BMAT HTML and 408 / 655 ms for catalog HTML. Those are after the browser
+visits and must not be labeled cold. Raw rows: `next-only-final-http.jsonl`;
+browser records: `bmat-browser-next-only-final-*.json`.
+
+The final deployment passed A/B/anonymous and chunked-cookie session isolation,
+CSRF uniqueness, private HTML/RSC response policy, nine normal concurrent streams
+(maximum 1287 ms), cancellation recovery, runtime prefetch, forced HEAD/GET
+revalidation, exact/empty search, CAT1 filtering and disjoint pagination. BMAT's
+forced GET completed in 501 ms in the clean verification. Diagnostics and their
+secret were removed; the old token returns ordinary complete HTML. Active Worker
+version: `88494813-87a6-40b4-9c38-b6a9616dbc4f`. Azure production was not redeployed.

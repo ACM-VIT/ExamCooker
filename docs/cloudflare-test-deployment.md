@@ -90,6 +90,8 @@ pnpm exec tsc --noEmit
 pnpm exec tsc -p cloudflare/tsconfig.json
 node scripts/cloudflare/test-state.mjs
 node scripts/cloudflare/test-regional-public-cache.mjs
+node scripts/cloudflare/test-shared-course-detail.mjs
+node scripts/cloudflare/test-course-paper-cache.mjs
 node scripts/cloudflare/test-regional-tags.mjs
 node scripts/cloudflare/test-incremental-retention.mjs
 node scripts/cloudflare/test-optional-cache.mjs

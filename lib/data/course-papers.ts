@@ -85,44 +85,49 @@ async function getCoursePaperRows(courseId: string): Promise<CoursePaperRow[]> {
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    return withPastPapersSurfaceRedisCache(
-        {
-            keyParts: ["course-paper-rows-v2", { courseId }],
-        },
-        async () => {
-            const rows = await db
-                .select({
-                    id: pastPaper.id,
-                    title: pastPaper.title,
-                    fileUrl: pastPaper.fileUrl,
-                    thumbNailUrl: pastPaper.thumbNailUrl,
-                    examType: pastPaper.examType,
-                    slot: pastPaper.slot,
-                    year: pastPaper.year,
-                    semester: pastPaper.semester,
-                    campus: pastPaper.campus,
-                    hasAnswerKey: pastPaper.hasAnswerKey,
-                    pageEdits: pastPaper.pageEdits,
-                    createdAt: pastPaper.createdAt,
-                })
-                .from(pastPaper)
-                .where(and(eq(pastPaper.courseId, courseId), eq(pastPaper.isClear, true)));
+    const loadRows = async () => {
+        const rows = await db
+            .select({
+                id: pastPaper.id,
+                title: pastPaper.title,
+                fileUrl: pastPaper.fileUrl,
+                thumbNailUrl: pastPaper.thumbNailUrl,
+                examType: pastPaper.examType,
+                slot: pastPaper.slot,
+                year: pastPaper.year,
+                semester: pastPaper.semester,
+                campus: pastPaper.campus,
+                hasAnswerKey: pastPaper.hasAnswerKey,
+                pageEdits: pastPaper.pageEdits,
+                createdAt: pastPaper.createdAt,
+            })
+            .from(pastPaper)
+            .where(and(eq(pastPaper.courseId, courseId), eq(pastPaper.isClear, true)));
 
-            return rows.map((paper) => ({
-                id: paper.id,
-                title: paper.title,
-                fileUrl: normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl,
-                thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
-                examType: paper.examType,
-                slot: paper.slot,
-                year: paper.year,
-                semester: paper.semester,
-                campus: paper.campus,
-                hasAnswerKey: paper.hasAnswerKey,
-                pageEdits: paper.pageEdits ?? null,
-                createdAtTime: paper.createdAt.getTime(),
-            }));
-        },
+        return rows.map((paper) => ({
+            id: paper.id,
+            title: paper.title,
+            fileUrl: normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl,
+            thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
+            examType: paper.examType,
+            slot: paper.slot,
+            year: paper.year,
+            semester: paper.semester,
+            campus: paper.campus,
+            hasAnswerKey: paper.hasAnswerKey,
+            pageEdits: paper.pageEdits ?? null,
+            createdAtTime: paper.createdAt.getTime(),
+        }));
+    };
+
+    // Next's tagged cache already persists these rows on Cloudflare. On a miss,
+    // Hyperdrive can fetch them without another R2 lookup and distributed lock.
+    if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
+        return loadRows();
+    }
+    return withPastPapersSurfaceRedisCache(
+        { keyParts: ["course-paper-rows-v2", { courseId }] },
+        loadRows,
     );
 }
 

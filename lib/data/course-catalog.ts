@@ -49,6 +49,7 @@ type CourseCatalogRow = {
     code: string;
     title: string;
     aliases: string[];
+    sourceAliases: string[];
     paperCount: number;
     noteCount: number;
 };
@@ -166,7 +167,7 @@ async function getCourseCatalogRows(): Promise<CourseCatalogRow[]> {
 
     return withPastPapersSurfaceRedisCache(
         {
-            keyParts: ["course-catalog-rows"],
+            keyParts: ["course-catalog-rows-v2"],
         },
         async () => {
             const [courses, noteCounts, paperCounts] = await Promise.all([
@@ -221,6 +222,7 @@ async function getCourseCatalogRows(): Promise<CourseCatalogRow[]> {
                     code: courseRow.code,
                     title: courseRow.title,
                     aliases,
+                    sourceAliases: baseAliases,
                     paperCount: paperCountByCourseId.get(courseRow.id) ?? 0,
                     noteCount: noteCountByCourseId.get(courseRow.id) ?? 0,
                 };
@@ -345,59 +347,6 @@ async function getCourseGridBase(): Promise<CourseGridItem[]> {
         ...courseRow,
         viewCount: 0,
     }));
-}
-
-async function loadCourseDetailByCode(normalized: string) {
-    return withPastPapersSurfaceRedisCache(
-        {
-            keyParts: ["course-detail-by-code", normalized],
-        },
-        async () => {
-            const courseRows = await db
-                .select({
-                    id: course.id,
-                    code: course.code,
-                    title: course.title,
-                    aliases: course.aliases,
-                })
-                .from(course)
-                .where(eq(course.code, normalized))
-                .limit(1);
-
-            const courseRow = courseRows[0];
-            if (!courseRow) return null;
-
-            const [paperRows, noteRows] = await Promise.all([
-                db
-                    .select({ total: count() })
-                    .from(pastPaper)
-                    .where(
-                        and(
-                            eq(pastPaper.courseId, courseRow.id),
-                            eq(pastPaper.isClear, true),
-                        ),
-                    ),
-                db
-                    .select({ total: count() })
-                    .from(note)
-                    .where(
-                        and(
-                            eq(note.courseId, courseRow.id),
-                            eq(note.isClear, true),
-                        ),
-                    ),
-            ]);
-
-            return {
-                id: courseRow.id,
-                code: courseRow.code,
-                title: courseRow.title,
-                aliases: courseRow.aliases ?? [],
-                paperCount: paperRows[0]?.total ?? 0,
-                noteCount: noteRows[0]?.total ?? 0,
-            } satisfies CourseDetail;
-        },
-    );
 }
 
 export async function getPopularCourseGrid(limit = 6): Promise<CourseGridItem[]> {
@@ -604,13 +553,22 @@ export async function getRecentPapers(limit = 10): Promise<RecentPaper[]> {
 }
 
 export async function getCourseDetailByCode(code: string): Promise<CourseDetail | null> {
-    "use cache";
-    cacheTag("courses", "notes", "past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const normalized = normalizeCourseCode(code);
     if (!normalized) return null;
-    return loadCourseDetailByCode(normalized);
+
+    // The course picker already needs these tagged catalog rows. Reuse them
+    // instead of taking a second cache lock and querying the same counts.
+    const courses = await getCourseCatalogRows();
+    const row = courses.find((entry) => entry.code === normalized);
+    if (!row) return null;
+    return {
+        id: row.id,
+        code: row.code,
+        title: row.title,
+        aliases: row.sourceAliases,
+        paperCount: row.paperCount,
+        noteCount: row.noteCount,
+    };
 }
 
 //todo: we need build a way to get upcoming exams reliably and with least maintenance overhead
