@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import { packCourseSearch } from "@/lib/course-search-payload";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -234,7 +235,7 @@ function SearchControls({
             <div className="min-w-0 flex-1">
                 <NotesCourseSearch
                     key={search}
-                    courses={searchable}
+                    catalog={packCourseSearch(searchable)}
                     initialQuery={search}
                 />
             </div>

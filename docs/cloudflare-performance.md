@@ -1257,3 +1257,74 @@ no-store HTML/RSC, forced HEAD/GET revalidation, filters and disjoint pagination
 Nine concurrent HTML streams completed with a 985 ms maximum; cancellation and
 runtime prefetch checks also passed. Diagnostics remain absent, including
 `EC_PERF_TOKEN`. No Azure deployment or production Redis change was made.
+
+## September 15: smaller shared course-search transport
+
+Home, papers, notes and exam hubs previously sent full database-shaped course
+objects to their client search controls. The transport now uses compact tuples
+and omits unused database IDs; clients decode once into named fields. All 775
+courses, ordering, aliases, counts and syllabus destinations remain available
+without an extra fetch. Cache Components and partial prefetching remain enabled.
+
+Version `de4266e4-481a-462e-a4fd-c0f1c7619dda` receives 100% of ec-test traffic.
+The build used the same generated source data as the preceding version. An audit
+of the actual streamed responses checked every decoded catalog against the
+baseline, including order and all retained fields.
+
+| Complete HTML response | Before, raw bytes | After, raw bytes | Before, gzip bytes | After, gzip bytes |
+|---|---:|---:|---:|---:|
+| Home | 674332 | 495249 | 124264 | 93214 |
+| Papers | 731200 | 579483 | 109066 | 78812 |
+| Notes | 731636 | 579910 | 103100 | 73297 |
+
+This removes 21–27% of decoded HTML and 25–29% under the same local gzip
+compression. Actual Chromium navigation used zstd: home fell from 65762 to
+51983 encoded bytes, and papers from 55819 to 43123. The notes navigation was
+handled by the service worker, so its encoded-size reporting is not comparable.
+RSC responses fell from 504560 to 350277 bytes on home, 542943 to 412926 on
+papers, and 547972 to 417946 on notes.
+
+Warm complete-response medians from this workstation (milliseconds):
+
+| Route | Before HTML / RSC, 3 samples | Settled HTML / RSC, 5 samples | Paired Azure HTML / RSC, 5 samples |
+|---|---:|---:|---:|
+| Home | 209 / 312 | 564 / 221 | 1616 / 478 |
+| Papers | 309 / 732 | 295 / 226 | 4648 / 430 |
+| Notes | 437 / 200 | 291 / 182 | 884 / 879 |
+| Syllabus | 324 / 223 | 155 / 139 | 1197 / 270 |
+| BMAT202L | 200 / 210 | 180 / 219 | 327 / 353 |
+
+All settled samples matched the new build. The immediate postdeployment run
+contained one old-build warmup and exited unsuccessfully; it is retained in the
+raw evidence, not counted as a valid candidate warmup. The settled home warmup
+still took 2154 ms and its slowest measured HTML took 1767 ms. Payload savings
+are consistent; latency changes are mixed, and this does not resolve slow
+outliers. Syllabus and BMAT did not receive a search-payload change, illustrating
+how much latency can vary without a relevant code change.
+
+One fresh headless profile showed the search input at 804 ms on home, 561 ms on
+papers and 420 ms on notes; HTML completed at 772/533/503 ms. Baseline input
+visibility was 1139/6929/248 ms. The baseline papers request spent about 6.5
+seconds before final headers despite reporting 351 ms of Worker time; its
+large apparent improvement cannot be attributed to serialization alone.
+
+Two early-input probes typed before hydration and the input was subsequently
+cleared, with no browser errors. The final probe waited for DOMContentLoaded
+before typing, while still measuring input visibility independently. All three
+searches returned BMAT202L in 7–14 ms after input and had no browser errors.
+This establishes initialized search behavior, not reliable prehydration typing.
+All probes were headless, media-blocked/muted and closed after the run.
+
+Local validation passed: application and Worker typechecks, the production and
+OpenNext builds, all 28 PPR resume payloads, resume-cache seeding, Redis bundle
+exclusion, and catalog roundtrip/fuzzy-relevance tests. Raw evidence is in
+ignored `.cloudflare-deploy/general-{before,after,settled}-http.jsonl`,
+`general-after-payload-audit.jsonl` and `general-browser-*` files. Lint remains
+unavailable under the repository's current Next 16 setup.
+
+Live validation passed: A/B/anonymous and chunked-cookie session isolation,
+unique CSRF tokens, private/no-store HTML and RSC, nine concurrent render streams
+(1253 ms maximum), cancellation, runtime prefetch, search and empty results,
+CAT-1 filtering and disjoint pagination. The exam hub also rendered the new
+catalog without server errors. `EC_PERF_TOKEN` remains absent. Azure production
+was not deployed.

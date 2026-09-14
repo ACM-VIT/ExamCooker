@@ -6,6 +6,7 @@ import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { createCourseFuse } from "@/lib/course-search-fuse";
+import { unpackCourseSearch, type CourseSearchPayload } from "@/lib/course-search-payload";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     captureCourseSearchNoResults,
@@ -19,7 +20,6 @@ import {
 } from "@/lib/native-course-search";
 
 export type SearchableNoteCourseItem = {
-    id: string;
     code: string;
     title: string;
     noteCount: number;
@@ -28,16 +28,17 @@ export type SearchableNoteCourseItem = {
 };
 
 type Props = {
-    courses: SearchableNoteCourseItem[];
+    catalog: CourseSearchPayload;
     initialQuery?: string;
 };
 
 const MAX_RESULTS = 8;
 
 export default function NotesCourseSearch({
-    courses,
+    catalog,
     initialQuery = "",
 }: Props) {
+    const courses = useMemo(() => unpackCourseSearch(catalog), [catalog]);
     const { push } = useRouter();
     const [query, setQuery] = useState(() => initialQuery);
     const [isOpen, setIsOpen] = useState(false);
@@ -359,7 +360,7 @@ export default function NotesCourseSearch({
                     {filtered.length > 0 ? (
                         filtered.map((course, index) => (
                             <button
-                                key={course.id}
+                                key={course.code}
                                 type="button"
                                 onMouseDown={(e) => {
                                     e.preventDefault();

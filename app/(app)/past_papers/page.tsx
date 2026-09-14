@@ -10,6 +10,7 @@ import SmartCourseGrid from "@/app/components/past_papers/smart-course-grid";
 import CoursePagination from "@/app/components/past_papers/course-pagination";
 import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
 import PastPapersCourseSearch from "@/app/components/past_papers/past-papers-course-search";
+import { packCourseSearch } from "@/lib/course-search-payload";
 import SearchNoResultsBeacon from "@/app/components/past_papers/search-no-results-beacon";
 import UpcomingExamsStrip from "@/app/components/past_papers/upcoming-exams-strip";
 import {
@@ -403,7 +404,7 @@ function SearchControls({
             <div className="min-w-0 flex-1">
                 <PastPapersCourseSearch
                     key={search}
-                    courses={searchable}
+                    catalog={packCourseSearch(searchable)}
                     initialQuery={search}
                 />
             </div>

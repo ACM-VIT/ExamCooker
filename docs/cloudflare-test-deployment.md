@@ -261,8 +261,11 @@ workerd with twelve overlapping writers.
 
 ## Latest latency deployment
 
-Version `e16b7704-8ed1-47fe-8455-5b6299290782` excludes unused Node Redis/Entra
-dependencies from the Cloudflare bundle. It retains prerendering for the 24 most-viewed
+Version `de4266e4-481a-462e-a4fd-c0f1c7619dda` compacts the shared course-search
+transport on home, papers, notes and exam hubs, reducing the three measured
+pages' gzip HTML by 25–29% while preserving all 775 searchable courses. It also
+excludes unused Node Redis/Entra dependencies from the Cloudflare bundle and
+retains prerendering for the 24 most-viewed
 course routes, preserves their public resume-cache entries during partial
 prefetching, and compresses large R2 cache entries at deployment and runtime.
 Legacy plain entries remain readable. Cache lifetimes, tags, dynamic filters

@@ -8,6 +8,7 @@ import SearchIcon from "@/app/components/assets/seacrh.svg";
 import VoiceAgentButton from "@/app/components/voice/voice-agent-button";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { createCourseFuse } from "@/lib/course-search-fuse";
+import { unpackCourseSearch, type CourseSearchPayload } from "@/lib/course-search-payload";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import {
     captureCourseSearchFocused,
@@ -42,7 +43,7 @@ const MAX_RESULTS = 8;
 const MAX_SUGGESTIONS = 6;
 
 interface CourseSearchProps {
-    courses: CourseResult[];
+    catalog: CourseSearchPayload;
 }
 
 function runAfterCurrentTask(callback: () => void) {
@@ -54,7 +55,8 @@ function runAfterCurrentTask(callback: () => void) {
     window.setTimeout(callback, 0);
 }
 
-export default function CourseSearch({ courses }: CourseSearchProps) {
+export default function CourseSearch({ catalog }: CourseSearchProps) {
+    const courses = useMemo(() => unpackCourseSearch(catalog), [catalog]);
     const { prefetch, push } = useRouter();
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
