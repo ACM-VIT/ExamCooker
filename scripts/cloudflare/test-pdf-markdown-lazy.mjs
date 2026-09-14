@@ -8,6 +8,15 @@ const base = new URL(process.env.TEST_BASE_URL || "https://ec-test.acmvit.in");
 assert.ok(["ec-test.acmvit.in", "localhost", "127.0.0.1"].includes(base.hostname));
 const path = process.env.TEST_PDF_PATH || "/past_papers/BMAT202L/paper/e2cda739-02e8-4623-b15c-86b45c09af0e";
 const expectedBuild = readFileSync(".next/BUILD_ID", "utf8").trim();
+const htmlResponse = await fetch(new URL(path, base));
+assert.equal(htmlResponse.status, 200);
+const html = await htmlResponse.text();
+const preloadLinks = (html.match(/<link\b[^>]+>/g) ?? [])
+  .filter(tag => tag.includes('rel="preload"') && tag.includes('as="fetch"'));
+assert.ok(preloadLinks.some(tag => tag.includes("/vendor/embedpdf/immutable/")),
+  "Server HTML must start the engine download before hydration");
+assert.ok(preloadLinks.some(tag => tag.includes(".pdf")),
+  "Server HTML must start the PDF download before hydration");
 const mathStyles = readdirSync(".next/static/chunks")
   .filter(file => file.endsWith(".css") && readFileSync(`.next/static/chunks/${file}`, "utf8").includes("KaTeX"))
   .map(file => `/_next/static/chunks/${file}`);
@@ -63,6 +72,9 @@ try {
     "The wrapper and viewer must share one engine load");
   assert.equal(before.filter(url => new URL(url).pathname.endsWith(".pdf")).length, 1,
     "Early warming and the viewer must share one PDF download");
+  const documentFetches = read("performance.getEntriesByType('resource').filter(entry => entry.name.includes('/vendor/embedpdf/immutable/') || new URL(entry.name).pathname.endsWith('.pdf')).map(entry => entry.initiatorType)");
+  assert.deepEqual(documentFetches, ["link", "link"], "Both downloads must consume their HTML preloads");
+  console.log("PASS: server HTML starts PDF/engine downloads; the viewer consumes each preload once");
   run(["click", buttonRef("AI Markdown actions")]);
   run(["click", buttonRef("View as Markdown")]);
   run(["wait", "--fn", "!!document.querySelector('.ec-markdown-question .katex') && [...document.querySelectorAll('.ec-markdown-question pre')].some(pre => pre.textContent.includes('const answer = 42;'))"]);

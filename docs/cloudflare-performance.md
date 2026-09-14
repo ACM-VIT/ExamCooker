@@ -1495,3 +1495,76 @@ in [the benchmark data](benchmarks/pdf-loading-2026-09-15.json). Raw waterfalls
 remain in ignored `.cloudflare-deploy/pdf-{baseline,after,settled,parallel,immutable,immutable-settled}-{0,1}.json`;
 final search probes are `general-browser-pdf-immutable-*.json`. Final build/deploy
 logs are `pdf-immutable-{build,deploy}.log`. Azure production was not deployed.
+
+## September 15: BMEE209L paper visibility
+
+The reported route was
+`/past_papers/BMEE209L/paper/cmoeqmav202j7a8v3ls8bxdpl`. Starting from `9216a3f`,
+the final test Worker is `b38d1cb7-17f8-4dfd-a42b-08fe2ac4c6c9`.
+The source PDF is only 270,406 bytes. In the baseline fresh browser, its download
+started at 1481 ms and the approximately 2.1 MB compressed engine at 1762 ms;
+the engine finished at 3511 ms and the first PDF page appeared at 3821 ms.
+
+Two changes address different waits:
+
+- Shared document shells emit an engine fetch preload in their server HTML.
+  The viewer emits a PDF fetch preload once its published URL is available.
+  Both use anonymous CORS to match the consuming fetches; the browser reuses
+  each preload rather than downloading another copy. Calls run during render,
+  following [Next's resource-hint guidance](https://nextjs.org/docs/app/api-reference/functions/generate-metadata#resource-hints).
+  Engine compilation still starts in the browser. Unrelated prerendered routes
+  do not acquire the engine preload.
+- The paper route no longer awaits related papers, sibling/answer-key lookup,
+  and adjacent navigation together before returning the viewer. Those sections
+  stream within separate Suspense boundaries. The answer-key editor still
+  receives its linked question paper after the same lookup resolves. Existing
+  query functions, cache tags, filters and destinations are unchanged.
+
+One browser-only experiment first injected the hints without modifying the
+server. It confirmed earlier starts and single downloads, but its 4946 ms fresh
+load was slower overall. Preloads alone were insufficient; the page still held
+back the actual PDF URL while secondary sections loaded.
+
+| Deployed stage | Fresh-profile PDF visible | Repeat hard navigation |
+|---|---:|---:|
+| Baseline | 3821 ms | 897 ms |
+| Preloads only, settled sample 1 | 3653 ms | 929 ms |
+| Preloads only, settled sample 2 | 3656 ms | 1078 ms |
+| Preloads + independent sections, settled sample 1 | 2147 ms | 822 ms |
+| Preloads + independent sections, settled sample 2 | 2141 ms | 807 ms |
+
+The final fresh-profile checks were about 2.14 seconds, versus the 3.82-second
+baseline. These sequential workstation samples are not population percentiles
+or an isolated causal estimate: transfer speeds and cache state varied. Immediate
+postdeploy samples were slower: 5328/1378 ms for preloads only and 3820/1203 ms for
+the final version. All valid samples, including the browser-only experiment and
+outliers, are retained in [the benchmark data](benchmarks/bmee-paper-loading-2026-09-15.json).
+A fresh browser profile does not imply cold Cloudflare caches.
+
+In one final settled sample, engine retrieval began at 435 ms and the PDF at
+885 ms, versus 1762/1481 ms before. The PDF hint also demonstrably arrives before
+secondary sections finish: on `?sort=year_desc` it arrived at 136 ms while the
+full HTML stream completed at 722 ms; on `?sort=year_asc&exam=fat` those timings
+were 134/945 ms. Four default/sorted/filtered cases preserved exactly the same
+course, related-paper and previous/next destinations as the preceding deployment.
+
+A separate three-sample HTTP comparison had median complete HTML times of
+393 ms on ec-test and 438 ms on Azure production. It overlapped the final HTTP
+regression checks and is context, not an isolated speedup measurement. The
+remaining fresh-view delay is largely browser-side resource loading and startup;
+this change does not make all first visits subsecond.
+
+Validation passed: app typecheck, Next/OpenNext builds, all 28 PPR payloads,
+resume-cache seeding and Worker Redis exclusion. The live PDF/Markdown test now
+also verifies actual server-emitted hints and one consumed preload per file.
+The PDF rendered, text mode retained math/code/CJK content, and returning to PDF
+worked without browser errors or sending an AI generation request. Final checks
+passed A/B/anonymous and chunked-cookie isolation, unique CSRF values, private
+HTML/RSC, nine concurrent streams (maximum 861 ms), cancellation and runtime
+prefetch. No route `dynamic` option or shared HTML/session caching was added.
+Lint remains unavailable with the repository's Next 16 setup.
+
+Raw browser evidence is `.cloudflare-deploy/pdf-bmee-*.json`; HTTP comparisons
+are `bmee-http-{before,final}.jsonl`, and section checks are
+`bmee-sections-{before,after}.json`. Build/deploy logs are
+`pdf-{hints,stream}-{build,deploy}.log`. Azure production was not deployed.

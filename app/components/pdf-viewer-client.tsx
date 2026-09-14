@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import { preloadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import { preloadPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
+import { preloadPdfResources } from "@/lib/pdf/preload-resources";
 // PDF/WASM and Markdown plugins run in the browser. Including them in the
 // Worker SSR bundle exceeds its memory budget even on unrelated routes.
 const PDFViewer = dynamic(() => import("./pdfviewer"), {
@@ -47,6 +48,8 @@ export default function PDFViewerClient({
     | null;
   pageEdits?: PdfPageEdits | null;
 }) {
+  preloadPdfResources(fileUrl);
+
   useEffect(() => {
     // Start the two independent inputs while the viewer chunk is downloading.
     // The viewer consumes these same cached promises when it mounts.

@@ -2,6 +2,7 @@
 
 import { ChevronLeft } from "lucide-react";
 import { useParams } from "next/navigation";
+import { preloadPdfResources } from "@/lib/pdf/preload-resources";
 
 type DocumentViewerShellProps = {
   kind: "note" | "paper" | "syllabus";
@@ -18,6 +19,9 @@ function readRouteCode(value: string | string[] | undefined) {
 }
 
 export default function DocumentViewerShell({ kind }: DocumentViewerShellProps) {
+  // The engine is shared by every document; start it even while metadata is
+  // still streaming. The actual file is hinted once its published URL is known.
+  preloadPdfResources();
   const params = useParams<{ code?: string | string[] }>();
   const courseCode = readRouteCode(params.code);
   const documentLabel =
