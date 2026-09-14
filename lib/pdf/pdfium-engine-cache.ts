@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useReducer } from "react";
+import { PDFIUM_WASM_URL } from "@/lib/generated/pdfium-wasm";
 
-export const PDFIUM_WASM_URL = "/vendor/embedpdf/pdfium.wasm";
+export { PDFIUM_WASM_URL };
 
 // The engine-start phase (dynamic import + WASM instantiation of pdfium) had no
 // deadline at all: a `createPdfiumEngine` promise that never settled parked the

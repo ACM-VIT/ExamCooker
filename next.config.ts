@@ -111,6 +111,12 @@ const configuredRemotePatterns = Array.from(
 const uploadSourceMaps = process.env.POSTHOG_SOURCEMAP_UPLOAD === "true";
 
 const nextConfig: NextConfig = {
+    headers() {
+        return [{
+            source: "/vendor/embedpdf/immutable/:path*",
+            headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+        }];
+    },
     output: "standalone",
     // pg loads this transport only inside Workers; Node's build trace misses it.
     outputFileTracingIncludes: {

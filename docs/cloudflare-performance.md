@@ -1411,3 +1411,87 @@ Latest navigation evidence is `grid-navigation-input-final.jsonl`; search
 evidence is `early-search-input-verified.jsonl` and `general-browser-input-final-*.json`.
 Build/deploy logs are `general-{intent,motion,input}-{build,deploy}.log`.
 `EC_PERF_TOKEN` is absent. Azure production was not deployed.
+
+## September 15: shared document loading
+
+Deployed to ec-test as `8f660474-b554-4614-b7b0-5465f4c64ca2`, starting from
+`2a9eacd`. This affects the shared viewer used by papers, notes, syllabi and
+split-view papers, plus the global stylesheet:
+
+- Question-text rendering and its math/code/diagram dependencies are loaded when
+  the text view is requested. The renderer download overlaps the Markdown data
+  request. Copy-only actions do not download the renderer.
+- Streamdown/KaTeX CSS moved out of the global stylesheet into that optional
+  component. Its existing rendering components and plugin options are preserved.
+- The lightweight viewer wrapper starts the PDF buffer and engine promises while
+  viewer JavaScript downloads. Existing caches deduplicate these requests.
+- PDFium uses a SHA-256 filename generated from the installed package bytes.
+  Only `/vendor/embedpdf/immutable/*` receives year-long immutable caching in
+  Cloudflare static-asset headers and the Next configuration. The legacy URL
+  still revalidates; both paths bypass service-worker storage. This follows
+  [Cloudflare's fingerprinted-asset caching guidance](https://developers.cloudflare.com/workers/static-assets/headers/#configure-custom-browser-cache-behavior).
+  Normal dev/build commands regenerate the asset and URL together; direct
+  `next build` invocations must run `node scripts/sync-pdfium-wasm.js` first.
+
+A real two-page BMAT202L PDF was measured with one muted, media-blocked headless
+Chromium process at a time. Each stage used a fresh profile followed by a repeat
+hard navigation. The first-visible-PDF signal is a visible blob image's load
+followed by the next animation frame. These are workstation samples, not
+population percentiles or controlled Cloudflare cold starts.
+
+| Stage | Fresh-profile PDF visible | Repeat PDF visible |
+|---|---:|---:|
+| Baseline | 3293 ms | 1017 ms |
+| Renderer split, immediate postdeploy | 8784 ms | 1538 ms |
+| Renderer split, settled | 2444 ms | 1133 ms |
+| Split + early loading, immediate postdeploy | 5684 ms | 1283 ms |
+| Final immutable asset, immediate postdeploy | 9938 ms | 1244 ms |
+| Final immutable asset, settled | 2505 ms | 958 ms |
+
+The reliable reductions are in payload and repeat asset retrieval:
+
+| Metric | Baseline | Final |
+|---|---:|---:|
+| JavaScript resources on the PDF page | 56 | 47 |
+| Decoded JavaScript bytes, including shared/analytics scripts | 4,076,903 | 2,511,004 |
+| Global stylesheet, raw / gzip | 248,830 / 37,298 bytes | 223,194 / 33,097 bytes |
+| Repeat PDFium retrieval | 217 ms; 280 ms after split | 6–7 ms |
+| Repeat PDFium network transfer | 300 bytes (revalidation) | 0 bytes |
+
+Ordinary document views load 38.4% less decoded JavaScript. The optional math
+stylesheet is 25,638 bytes raw / 4,297 gzip and is absent from plain PDF loads.
+The early-loading waterfall shows the PDF request starting while the
+viewer chunk is in flight; live checks verify only one PDF and one WASM request.
+
+These results do **not** establish a universal cold-load latency improvement.
+The slowest final sample spent 7437 ms obtaining the HTML, including about
+1216 ms DNS and 1828 ms connection establishment; it cannot all be attributed to
+application CPU. That first final run overlapped HTTP auth/render probes. The
+settled final run had no concurrent probes. Sequential samples, changing network
+conditions and postdeploy cache state limit end-to-end comparisons. All measured
+PDFs rendered without browser errors, including the slow outliers.
+
+On the final build, the home/papers/notes visible search inputs appeared at
+623/593/321 ms and initialized searches returned results in 13.1/16.8/6 ms.
+These are smoke-check timings, not a claimed search improvement from this pass.
+
+Validation passed: application typecheck, Next/OpenNext builds, 28 PPR payloads,
+resume-cache seeding, Worker Redis exclusion, PDFium watchdog, service-worker
+cache policies, asset hash/legacy-copy consistency and idempotent generation.
+Live checks confirmed matching WASM bytes and immutable headers, legacy URL
+revalidation, isolated A/B/anonymous and chunked-cookie sessions, unique CSRF
+values, private/no-store HTML/RSC, nine concurrent streams (maximum 1878 ms),
+cancellation and runtime prefetch. Lint remains unavailable under Next 16.
+
+`node scripts/cloudflare/test-pdf-markdown-lazy.mjs` uses a browser-only mocked
+Markdown response, so it sends no AI generation request. It verifies ordinary PDF
+loading, lazy math CSS, math font rendering, CJK, existing fenced code/diagram
+source rendering, and return to PDF. The existing custom `pre` component renders
+fenced code/diagram definitions as text; this change does not introduce diagram
+SVG rendering. Set `AGENT_BROWSER_BIN` if the CLI is not on PATH.
+
+Compact measurements, including all valid slow samples and deployment IDs, are
+in [the benchmark data](benchmarks/pdf-loading-2026-09-15.json). Raw waterfalls
+remain in ignored `.cloudflare-deploy/pdf-{baseline,after,settled,parallel,immutable,immutable-settled}-{0,1}.json`;
+final search probes are `general-browser-pdf-immutable-*.json`. Final build/deploy
+logs are `pdf-immutable-{build,deploy}.log`. Azure production was not deployed.

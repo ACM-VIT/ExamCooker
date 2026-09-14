@@ -231,14 +231,15 @@ async function testEmbedPdfVendorAssetsBypassServiceWorkerCache() {
   const harness = makeServiceWorkerHarness();
   await loadServiceWorker(harness);
 
-  const event = makeFetchEvent(
-    makeRequest("https://examcooker.test/vendor/embedpdf/pdfium.wasm", {
-      headers: { accept: "application/wasm" },
-    }),
-  );
-  harness.listeners.get("fetch")(event);
-
-  assert.equal(event.responsePromise, null, "EmbedPDF vendor assets must use the network cache policy");
+  for (const path of ["/vendor/embedpdf/pdfium.wasm", "/vendor/embedpdf/immutable/content-hash.wasm"]) {
+    const event = makeFetchEvent(
+      makeRequest(`https://examcooker.test${path}`, {
+        headers: { accept: "application/wasm" },
+      }),
+    );
+    harness.listeners.get("fetch")(event);
+    assert.equal(event.responsePromise, null, "EmbedPDF vendor assets must use the network cache policy");
+  }
   assert.equal(harness.cachePuts.length, 0, "EmbedPDF vendor assets must not be stored by the service worker");
   assert.equal(harness.cacheMatches.length, 0, "EmbedPDF vendor assets must not be read from old caches");
 }
