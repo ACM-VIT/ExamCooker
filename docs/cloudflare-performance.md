@@ -1162,3 +1162,98 @@ HEAD/GET revalidation, cancellation, runtime prefetch and filters/pagination.
 Nine concurrent render streams completed with a 1036 ms maximum. That is
 correctness coverage, not a general latency guarantee. No Azure deployment,
 source-data modification or production cache purge was performed.
+
+## September 14: exclude the unused Redis backend from Workers
+
+The initial HTTP sample still took 2524 ms on test versus 1169 ms on production.
+The existing build's first fresh-profile browser visit showed cards at 449 ms,
+then 1206 ms on its repeat; production showed cards at 960 ms. These are different
+requests, not controlled cold starts, and show substantial variation.
+
+### Rejected: switching the Next bundler
+
+A Webpack experiment reduced the server handler from 22535978 to 19174078 bytes,
+but increased BMAT202L's initial scripts from 22 to 29 and their summed gzip size
+from 354074 to 385556 bytes. Cache Components, partial prefetching, resume seeding,
+PPR decoding and auth isolation passed. The experiment reached ec-test as
+`56feea06-b9b5-4692-a9c1-19fb5dde8341`, then was rolled back.
+
+Warm completion medians for BMAT202L:
+
+| Build / run | Samples per mode | HTML | RSC |
+|---|---:|---:|---:|
+| Original, before experiment | 5 | 315 ms | 255 ms |
+| Webpack, verified build | 7 | 267 ms | 205 ms |
+| Original, restored and verified | 7 | 241 ms | 163 ms |
+
+The restored original was faster than Webpack; the apparent initial improvement
+did not survive the comparison. The smaller Webpack artifact also did not prove
+a cold-start benefit. Its first HTTP request took 2532 ms. The first browser
+capture after deployment was still served by the old build and was discarded;
+the verified browser capture showed cards at 1589 ms, then 590 ms on repeat.
+The benchmark now supports `--test-build-id-file .next/BUILD_ID`, excludes
+mismatched responses from successful samples, and exits unsuccessfully on a
+mismatch. Raw files: `webpack-baseline-http.jsonl`, `webpack-verified-http.jsonl`,
+`webpack-restored-http.jsonl`, and `bmat-browser-webpack-*`.
+
+### Retained: remove the inactive Node Redis dependency graph
+
+Source-map inspection found multiple compiled copies of Redis and its Entra
+authentication dependencies. Cloudflare's `getOptionalAppState()` already uses
+Durable Objects/R2 before reaching the Node Redis fallback. The Cloudflare build
+now aliases that fallback to a small module returning `null` during Node
+prerendering. Ordinary Node/Azure builds keep the original backend. OpenNext's
+build command explicitly sets the target flag and selects Turbopack.
+
+With the same generated source data as the baseline:
+
+| Artifact | Before | After |
+|---|---:|---:|
+| Server handler | 22535978 bytes | 19646320 bytes |
+| Server handler, gzip | 5710316 bytes | 5050526 bytes |
+| Wrangler total upload | 35547.15 KiB | 30435.09 KiB |
+| Wrangler gzip upload | 7674.94 KiB | 6736.38 KiB |
+| BMAT initial scripts | 22 | 22 |
+| BMAT initial JS, uncompressed | 1120788 bytes | 1120788 bytes |
+
+Wrangler startup CPU was 71 ms versus the prior deployment log's 36 ms; smaller
+code is not evidence of lower startup CPU. A build check inspects the bundled
+dependencies and 536 Next source maps to verify the Redis SDKs are absent.
+The state test now goes through the application's actual facade with the
+Cloudflare alias, exercising R2 payloads, atomic locks, limits and votes against
+real local Durable Objects. A separate config check confirmed normal Node builds
+do not enable the alias.
+
+Clean deployment `e16b7704-8ed1-47fe-8455-5b6299290782` receives 100% of ec-test
+traffic. The first verified browser visit showed 24 cards at **2991 ms**
+(HTML 2790 ms, `cfWorker=799`, `cfEdge=1229`); its repeat showed cards at **585 ms**.
+Production in that session showed cards at 1542 ms. This still does not meet a
+subsecond first-visit target, and the historical 6344 ms postdeployment result
+is not a controlled before/after comparison.
+
+Seven verified warm HTTP samples per mode measured test medians of **213 ms
+HTML / 171 ms RSC**, versus production's **511 ms / 264 ms**. Test maximums were
+827 ms and 227 ms. Compared with the restored original's 241/163 ms, the HTML
+median improved and RSC was similar; network variation prevents attributing all
+of that difference to the code removal. Raw files:
+`redis-exclusion-final-http.jsonl`, `bmat-browser-redis-exclusion-final-*`.
+
+A later fresh browser profile showed cards at 1567 ms, then 333 ms on repeat,
+with no browser errors (`bmat-browser-redis-exclusion-settled-*`). The first
+navigation spent about 688 ms between `fetchStart` and `domainLookupStart`,
+then 103 ms connecting, before sending the request at 793 ms. Its reported
+Worker duration was 147 ms. There was no service worker or redirect involved.
+This distinguishes client connection/setup delay from the app response; it
+does not establish the cause of that initial gap.
+A subsequent browser run with QUIC disabled still spent 378 ms before DNS and
+284 ms connecting, showing cards at 1276 ms and 272 ms on repeat. This does not
+isolate HTTP/3 as the cause; no Cloudflare protocol setting was changed. All
+browser sessions were headless, media-blocked/muted and closed in `finally`.
+
+Validation passed: Next and OpenNext builds, app/Worker typechecks, all 28 PPR
+payloads, HTML/RSC resume-cache seeding for both bundlers, Redis exclusion,
+state/lock/limit/vote tests, live A/B/anonymous and chunked-cookie sessions, CSRF,
+no-store HTML/RSC, forced HEAD/GET revalidation, filters and disjoint pagination.
+Nine concurrent HTML streams completed with a 985 ms maximum; cancellation and
+runtime prefetch checks also passed. Diagnostics remain absent, including
+`EC_PERF_TOKEN`. No Azure deployment or production Redis change was made.

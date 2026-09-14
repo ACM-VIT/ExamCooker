@@ -15,7 +15,10 @@ const source = `let cache = factory(); store.resumeDataCache = cache;`;
 const patched = patchResumeDataCache(source, "fixture");
 assert.match(patched, /factory\(store\.resumeDataCache\)/);
 assert.throws(() => patchResumeDataCache("let unrelated = factory();", "drift"), /Failed to preserve/);
-for (const runtime of ["app-page-turbo.runtime.prod.js", "app-page-turbo-experimental.runtime.prod.js"]) {
+for (const runtime of [
+  "app-page-turbo.runtime.prod.js", "app-page-turbo-experimental.runtime.prod.js",
+  "app-page.runtime.prod.js", "app-page-experimental.runtime.prod.js",
+]) {
   const contents = await readFile(require.resolve(`next/dist/compiled/next-server/${runtime}`), "utf8");
   const result = patchResumeDataCache(contents, runtime);
   // Next has one HTML and one RSC partial-prefetch initialization site.

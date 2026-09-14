@@ -34,6 +34,11 @@ own configuration under `worker/`.
   test Worker. Existing Node/Azure instances retain their Redis backend until
   production cutover. Test caches and feedback are separate from production
   Redis; historical Redis feedback must be migrated before retiring production.
+  The Cloudflare build also excludes the unused Redis/Entra SDKs: OpenNext's
+  build command sets `EC_CLOUDFLARE_BUILD=1` and Turbopack aliases the Node Redis
+  fallback to `cloudflare/redis-unavailable.ts`. Prerendering runs without Redis;
+  runtime requests still require the existing AppState/R2 bindings. Ordinary
+  `pnpm build` and local development keep the Node Redis implementation.
 - CockroachDB Cloud is unchanged: AWS Mumbai (`ap-south-1`), database `defaultdb`.
   The `HYPERDRIVE` binding connects through `examcooker-test-db`, with SQL response
   caching disabled and a soft origin connection limit of 10. Worker database
@@ -81,8 +86,11 @@ Never commit the populated file, tokens, publishing profile, or build logs.
 
 Public `NEXT_PUBLIC_*` variables must also be present during the build, because
 Next.js embeds them in client bundles. Keep build values aligned with runtime
-values. Redis can be disabled in the local build environment; the Worker uses its
-native bindings regardless of the retained production Redis environment values.
+values. The Cloudflare build runs without Redis; the Worker uses its native
+bindings regardless of the retained production Redis environment values.
+Use `pnpm cf:build` for this target. An adapter-only `--skipNextBuild` rebuild
+must reuse a Next build made with the Cloudflare alias enabled; verify it with
+`node scripts/cloudflare/test-worker-bundle.mjs` before deployment.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -103,6 +111,7 @@ node scripts/cloudflare/test-pending-cache.mjs
 node scripts/cloudflare/test-scheduler.mjs
 pnpm cf:build
 node scripts/cloudflare/test-ppr.mjs
+node scripts/cloudflare/test-worker-bundle.mjs
 pnpm cf:deploy
 # AUTH_SECRET must be supplied securely; the script never prints it or JWTs.
 node scripts/cloudflare/test-auth-isolation.mjs
@@ -166,7 +175,9 @@ separate from changing the Worker's `DATABASE_URL` secret.
 See [the measured optimization results](cloudflare-performance.md) for the later
 latency comparison across course, paper, notes and syllabus pages. The comparison
 script supports `--rounds`, `--mode html|rsc|both`, comma-separated `--paths`,
-`--round-delay-ms` for spaced visits, and `--output`. It reports the first request
+`--round-delay-ms` for spaced visits, and `--output`. Supply
+`--test-build-id-file .next/BUILD_ID` to reject requests served by the previous
+deployment during propagation. It reports the first request
 and slowest measured response separately and validates response bodies so an
 error page cannot be counted as a fast successful response.
 
@@ -250,7 +261,8 @@ workerd with twelve overlapping writers.
 
 ## Latest latency deployment
 
-Version `7b7a5f9a-092e-49fd-a784-24f9525e93a0` prerenders the 24 most-viewed
+Version `e16b7704-8ed1-47fe-8455-5b6299290782` excludes unused Node Redis/Entra
+dependencies from the Cloudflare bundle. It retains prerendering for the 24 most-viewed
 course routes, preserves their public resume-cache entries during partial
 prefetching, and compresses large R2 cache entries at deployment and runtime.
 Legacy plain entries remain readable. Cache lifetimes, tags, dynamic filters

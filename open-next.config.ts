@@ -7,7 +7,7 @@ import { withCacheWriteLifetime } from "./cloudflare/cache-write-lifetime";
 import { withFullRouteMissCache } from "./cloudflare/full-route-misses";
 import { withCourseTagPrefetch } from "./cloudflare/course-tag-prefetch";
 
-export default defineCloudflareConfig({
+const config = defineCloudflareConfig({
   incrementalCache: withCourseTagPrefetch(withCacheWriteLifetime(
     withFullRouteMissCache(withRegionalCache(r2IncrementalCache, {
       // Keep local copies for their revalidation lifetime instead of expiring
@@ -35,3 +35,8 @@ export default defineCloudflareConfig({
   // PPR must resume dynamic Suspense boundaries through the Next.js server.
   enableCacheInterception: false,
 });
+
+// This target-specific alias must also apply when invoking the adapter directly.
+config.buildCommand = "EC_CLOUDFLARE_BUILD=1 pnpm build --turbopack";
+
+export default config;

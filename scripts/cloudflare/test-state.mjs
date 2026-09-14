@@ -7,12 +7,28 @@ const { build } = require("esbuild");
 
 const { outputFiles } = await build({
   stdin: { contents: `
+    import { AsyncLocalStorage } from "node:async_hooks";
     import { protectPersonalizedResponse } from "./cloudflare/cache-policy.ts";
-    import { stateObjectName } from "./lib/app-state-types.ts";
-    export default { async fetch(request, env) {
+    import { getOptionalAppState } from "./lib/app-state.ts";
+    import { getOptionalRedis } from "@/lib/redis";
+    const contexts = new AsyncLocalStorage();
+    Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {get: () => contexts.getStore()});
+    export default { async fetch(request, env, ctx) { return contexts.run({env,ctx}, async () => {
       if (new URL(request.url).pathname === "/state") {
         const op = await request.json();
-        return Response.json(await env.APP_STATE.getByName(stateObjectName(op.key)).execute(op));
+        if (getOptionalRedis() !== null) throw new Error("Cloudflare build must exclude Redis");
+        const state = getOptionalAppState();
+        if (!state) throw new Error("Redis exclusion must not disable application state");
+        let result;
+        switch(op.type) {
+          case "get": case "del": case "incr": case "hgetall": result = await state[op.type](op.key); break;
+          case "set": result = await state.set(op.key, op.value, {ex:op.ex,nx:op.nx}); break;
+          case "releaseLock": result = await state.releaseLock(op.key, op.token); break;
+          case "slidingWindow": result = await state.slidingWindow(op.key, op.now, op.windowMs, op.limit); break;
+          case "recordVote": result = await state.recordVote(op.key, op.feedbackKey, op.vote, op.updatedAt, op.ttlSeconds); break;
+          default: throw new Error("Unknown operation");
+        }
+        return Response.json(result);
       }
       const response = new Response("test", { headers: {
         "Cache-Control": "public, max-age=31536000, immutable",
@@ -20,16 +36,23 @@ const { outputFiles } = await build({
         ...(request.headers.has("test-set-cookie") ? { "Set-Cookie": "session=test; HttpOnly" } : {})
       }});
       return protectPersonalizedResponse(request, response);
-    }};`, resolveDir: resolve(".") },
-  bundle: true, write: false, format: "esm", platform: "neutral", external: ["cloudflare:workers"],
+    }); }};`, resolveDir: resolve(".") },
+  bundle: true, write: false, format: "esm", platform: "neutral", external: ["cloudflare:workers", "node:*"],
+  alias: { "@/lib/redis": resolve("cloudflare/redis-unavailable.ts") },
+  plugins: [{ name: "worker-context", setup(build) {
+    build.onResolve({ filter: /^(server-only|@opennextjs\/cloudflare)$/ }, args => ({ path: args.path, namespace: "test" }));
+    build.onLoad({ filter: /.*/, namespace: "test" }, args => ({ contents: args.path === "server-only" ? "" :
+      'export function getCloudflareContext() { return globalThis[Symbol.for("__cloudflare-context__")]; }' }));
+  } }],
 });
 const { outputFiles: stateWorker } = await build({
   entryPoints: ["cloudflare/app-state-worker.ts"], bundle: true, write: false,
   format: "esm", platform: "neutral", external: ["cloudflare:workers"],
 });
-const workerOptions = { modules: true, compatibilityDate: "2026-09-10" };
+const workerOptions = { modules: true, compatibilityDate: "2026-09-10", compatibilityFlags: ["nodejs_compat"] };
 const mf = new Miniflare(convertV4MiniflareOptions({ workers: [
   { ...workerOptions, name: "app-state-test", script: outputFiles[0].text,
+    r2Buckets: ["APP_CACHE_BUCKET"],
     durableObjects: { APP_STATE: {
       className: "AppState", scriptName: "examcooker-test-app-state", useSQLite: true,
     } },
@@ -46,6 +69,12 @@ const op = async (operation) => {
   return response.json();
 };
 try {
+  const payloadKey = "ec:pdf-markdown:entry:backend-test";
+  assert.equal(await op({type:"set", key:payloadKey, value:"public payload", ex:60}), "OK");
+  assert.equal(await op({type:"get", key:payloadKey}), "public payload");
+  assert.equal(await op({type:"del", key:payloadKey}), 1);
+  assert.equal(await op({type:"get", key:payloadKey}), null);
+  console.log("PASS: Redis-free application state facade uses R2 for public payloads");
   const locks = await Promise.all(Array.from({ length: 30 }, (_, i) =>
     op({ type: "set", key: "lock", value: String(i), ex: 60, nx: true })));
   assert.equal(locks.filter((value) => value === "OK").length, 1);

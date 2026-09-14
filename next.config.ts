@@ -142,6 +142,11 @@ const nextConfig: NextConfig = {
     turbopack: {
         root: __dirname,
         resolveAlias: {
+            // Workers use AppState Durable Objects/R2. Exclude the unused Node
+            // Redis/Entra SDK graph from this deployment's server bundle.
+            ...(process.env.EC_CLOUDFLARE_BUILD === "1" ? {
+                "@/lib/redis": "./cloudflare/redis-unavailable.ts",
+            } : {}),
             canvas: {
                 browser: "./lib/shims/canvas",
             },

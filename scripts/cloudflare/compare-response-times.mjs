@@ -8,6 +8,7 @@ const { values } = parseArgs({ options: {
   paths: { type: "string", default: "/,/past_papers,/notes" },
   output: { type: "string" },
   "perf-token-file": { type: "string" },
+  "test-build-id-file": { type: "string" },
   label: { type: "string", default: "benchmark" },
   "round-delay-ms": { type: "string", default: "0" },
 } });
@@ -23,6 +24,8 @@ const paths = values.paths.split(",");
 if (paths.some((path) => !path.startsWith("/") || path.startsWith("//"))) throw new Error("Expected relative route paths");
 const modes = values.mode === "both" ? ["html", "rsc"] : [values.mode];
 const token = values["perf-token-file"] ? readFileSync(values["perf-token-file"], "utf8").trim() : undefined;
+const testBuildId = values["test-build-id-file"]
+  ? readFileSync(values["test-build-id-file"], "utf8").trim() : undefined;
 if (values.output) writeFileSync(values.output, "");
 const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -82,6 +85,10 @@ for (const mode of modes) for (const path of paths) {
         }
         const body = Buffer.concat(chunks);
         const text = body.toString();
+        // Deployment propagation can serve the prior version for a short time.
+        // Do not attribute that response's latency to the candidate build.
+        const buildIdMatches = testBuildId && host === "ec-test.acmvit.in"
+          ? text.includes(testBuildId) : undefined;
         const digests = [...text.matchAll(/<template[^>]*data-dgst="([^"]*)"/g)]
           .map((match) => match[1]).filter((digest) => digest !== "BAILOUT_TO_CLIENT_SIDE_RENDERING");
         if (mode === "rsc") for (const match of text.matchAll(/^[0-9a-f]+:E(.+)$/gm)) {
@@ -93,11 +100,11 @@ for (const mode of modes) for (const path of paths) {
         const type = response.headers.get("content-type") ?? "";
         const complete = mode === "html" ? text.includes("</body></html>") : type.includes("text/x-component") && /^[0-9a-f]+:/m.test(text);
         row = { ...row, status: response.status, headersMs, firstByteMs,
-          totalMs: Math.round(performance.now() - start), bytes: body.length, complete, digests,
+          totalMs: Math.round(performance.now() - start), bytes: body.length, complete, digests, buildIdMatches,
           colo: response.headers.get("cf-ray")?.split("-").at(-1),
           serverTiming: response.headers.get("server-timing"),
           rscHashSupplied: mode === "rsc" && targets.get(base).searchParams.has("_rsc") };
-        if (response.status !== 200 || !complete || digests.length) process.exitCode = 1;
+        if (response.status !== 200 || !complete || digests.length || buildIdMatches === false) process.exitCode = 1;
       } catch (error) {
         row = { ...row, error: error.name, totalMs: Math.round(performance.now() - start) };
         process.exitCode = 1;
@@ -110,13 +117,13 @@ for (const mode of modes) for (const path of paths) {
   console.error(JSON.stringify({ mode, path, results: hosts.map((base) => {
     const host = new URL(base).hostname;
     const rows = samples.filter((row) => row.host === host && !row.warmup);
-    const successful = rows.filter((row) => row.status === 200 && row.complete && !row.digests.length);
+    const successful = rows.filter((row) => row.status === 200 && row.complete && !row.digests.length && row.buildIdMatches !== false);
     const firstRequest = samples.find((row) => row.host === host && row.warmup);
     return { host, samples: rows.length, failed: rows.length - successful.length,
       // Surface the first visit separately: a warm median can hide the delay
       // people experience when opening an infrequently visited course.
       firstRequestTotalMs: firstRequest?.totalMs ?? null,
-      firstRequestValid: firstRequest?.status === 200 && firstRequest.complete && !firstRequest.digests?.length,
+      firstRequestValid: firstRequest?.status === 200 && firstRequest.complete && !firstRequest.digests?.length && firstRequest.buildIdMatches !== false,
       firstByteMs: successful.length ? median(successful.map((row) => row.firstByteMs)) : null,
       totalMs: successful.length ? median(successful.map((row) => row.totalMs)) : null,
       slowestMeasuredMs: successful.length ? Math.max(...successful.map((row) => row.totalMs)) : null };
