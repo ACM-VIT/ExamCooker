@@ -8,6 +8,7 @@ import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { createCourseFuse } from "@/lib/course-search-fuse";
 import { unpackCourseSearch, type CourseSearchPayload } from "@/lib/course-search-payload";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { usePreserveSearchInput } from "@/lib/use-preserve-search-input";
 import {
     captureCourseSearchNoResults,
     captureCourseSearchSelection,
@@ -44,6 +45,7 @@ export default function NotesCourseSearch({
     const [isOpen, setIsOpen] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const inputRef = useRef<HTMLInputElement>(null);
+    usePreserveSearchInput(inputRef, setQuery, setIsOpen);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const hasSearchInteraction = useRef(false);
     const nativeCourseSearchAvailable = useNativeCourseSearchAvailable();

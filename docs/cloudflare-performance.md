@@ -1328,3 +1328,86 @@ unique CSRF tokens, private/no-store HTML and RSC, nine concurrent render stream
 CAT-1 filtering and disjoint pagination. The exam hub also rendered the new
 catalog without server errors. `EC_PERF_TOKEN` remains absent. Azure production
 was not deployed.
+
+## September 15: general navigation and background work
+
+The final test deployment is `39eaae16-46da-40ac-9097-7c65d6eabb1f`.
+This pass starts from `f6cc417` and changes four shared browser behaviors:
+
+- Papers, notes and resource course grids keep Next's default reusable shell
+  prefetch, but fetch complete destination content on hover, keyboard focus or
+  touch. The shared link tracks its destination and resets on invalidation.
+- Forward/back route transitions now take 120 ms, with a 24 px offset and no
+  delayed fade-in, instead of a 400 ms slide and 150 ms fade-in delay. Lateral,
+  filter, reduced-motion and native-shell behavior is preserved.
+- Home, papers and notes adopt text entered into their server-rendered search
+  inputs before hydration. Later controlled renders no longer clear that text.
+- The service worker serves an already-cached same-origin `/_next/static/`
+  response without a refresh when its cache policy permits caching and declares
+  it immutable. New asset URLs still fetch normally; mutable public assets still
+  refresh. HTML, RSC and auth retain their existing network-only/bypass policies.
+  Next's content-addressed assets support this policy; see the
+  [Next self-hosting cache guidance](https://nextjs.org/docs/app/guides/self-hosting#caching-and-isr).
+
+The animation change was tested separately before changing the CSS. A headless
+browser loaded the papers catalog, waited four seconds, hovered BMAT201L for
+250 ms, then measured the click until all 24 paper cards reached the next frame.
+Each row below contains three samples from this workstation:
+
+| Candidate | Median click to cards | Range |
+|---|---:|---:|
+| Baseline | 475 ms | 467–566 ms |
+| Intent prefetch only (`0a019484`) | 478 ms | 473–492 ms |
+| Same deployment, animations disabled in the probe browser | 166 ms | 142–333 ms |
+| 120 ms directional animation (`0be6da63`) | 247 ms | 198–290 ms |
+| Final build, also preserving early search text (`39eaae16`) | 246 ms | 195–270 ms |
+
+The final median is 48% lower than baseline. This is a navigation improvement,
+not evidence that every origin response got faster. The final keyboard-focus
+probe reached cards in 188 ms; the synthetic touch-start probe took 403 ms,
+including a 368 ms RSC request. Every probe rendered 24 cards without errors.
+
+Across the same five pages, background RSC requests in the eight-second window
+fell on the affected catalogs (captured on `0be6da63`, before the separate
+search-input fix):
+
+| Page | Before | Final |
+|---|---:|---:|
+| Papers | 25 | 21 |
+| Notes | 34 | 16 |
+| Resources | 27 | 15 |
+
+These counts include staged prefetches and redirects, not just unique URLs.
+Home and syllabus are controls and did not receive the grid policy change.
+Initial document times still vary; these samples do not establish a universal
+hard-load improvement. Service-worker responses conceal some transfer sizes,
+and its old refreshes could hit the browser HTTP cache, so no network-byte
+saving is claimed for the immutable-asset change.
+
+Validation: application and Worker typechecks, Next/OpenNext builds, all 28 PPR
+payloads, resume-cache seeding, Redis exclusion, and service-worker policy tests
+passed. The policy suite covers immutable hits, mutable refreshes, new asset
+URLs, navigation preload, offline fallback and auth/RSC isolation. Three stale
+expectations were corrected to match the existing root/sign-in bypass and
+native-prefetch exclusions; those behaviors were not changed. Live checks on
+the final deployment passed session/CSRF isolation, nine concurrent streams,
+stream cancellation and runtime prefetch. Final browser probes verify the new
+build; browser coverage spans home, papers, notes, resources and syllabus with media blocked.
+
+A real-browser hydration fixture reproduces lost text with restoration disabled,
+then verifies preservation, opening results, editing and clearing with the actual
+shared hook. Run `node scripts/test-search-input-hydration.mjs` with agent-browser
+on PATH (or set `AGENT_BROWSER_BIN`). The final visible-input probe verified
+Home typing before React attached its events, and all three search fields kept
+BMAT202L and displayed matching results. Papers and notes had already hydrated
+when that live probe reached them; the shared-hook fixture covers the race.
+Initialized searches returned results in 2.8/7.1/17 ms on home/papers/notes.
+The visible inputs appeared at 608/635/378 ms in that separate sample.
+Lint remains unavailable under the current Next 16 setup.
+
+Raw evidence remains in ignored `.cloudflare-deploy/general-{before,after,final}-*.json`
+and `grid-navigation-{before,after,after-no-motion,final,final-focus,final-touch}.jsonl`.
+Latest navigation evidence is `grid-navigation-input-final.jsonl`; search
+evidence is `early-search-input-verified.jsonl` and `general-browser-input-final-*.json`.
+Build/deploy logs are `general-{intent,motion,input}-{build,deploy}.log`.
+`EC_PERF_TOKEN` is absent. Azure production was not deployed.

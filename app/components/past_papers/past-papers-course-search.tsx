@@ -9,6 +9,7 @@ import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { createCourseFuse } from "@/lib/course-search-fuse";
 import { unpackCourseSearch, type CourseSearchPayload } from "@/lib/course-search-payload";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { usePreserveSearchInput } from "@/lib/use-preserve-search-input";
 import { getCoursePastPapersPath } from "@/lib/seo";
 import {
     captureCourseSearchNoResults,
@@ -52,6 +53,7 @@ export default function PastPapersCourseSearch({
     const nativeSearchAvailable =
         nativeCourseSearchAvailable && !nativeSearchUnavailable;
     const inputRef = useRef<HTMLInputElement>(null);
+    usePreserveSearchInput(inputRef, setQuery, setIsOpen);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const hasSearchInteraction = useRef(false);
     const deferredQuery = useDeferredValue(query);

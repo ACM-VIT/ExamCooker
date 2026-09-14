@@ -261,7 +261,11 @@ workerd with twelve overlapping writers.
 
 ## Latest latency deployment
 
-Version `de4266e4-481a-462e-a4fd-c0f1c7619dda` compacts the shared course-search
+Version `39eaae16-46da-40ac-9097-7c65d6eabb1f` adds intent-based course-grid
+prefetching, 120 ms directional navigation transitions and immutable static-asset
+reuse in the service worker. It also preserves text entered into the three
+shared course searches before hydration. The sampled median course navigation
+fell from 475 ms to 246 ms. It retains the compact shared course-search
 transport on home, papers, notes and exam hubs, reducing the three measured
 pages' gzip HTML by 25–29% while preserving all 775 searchable courses. It also
 excludes unused Node Redis/Entra dependencies from the Cloudflare bundle and

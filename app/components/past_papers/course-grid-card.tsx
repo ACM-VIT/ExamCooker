@@ -1,5 +1,5 @@
 import React from "react";
-import Link from "next/link";
+import IntentPrefetchLink from "@/app/components/common/intent-prefetch-link";
 
 type Props = {
     course: {
@@ -13,9 +13,8 @@ type Props = {
 export default function CourseGridCard({ course }: Props) {
     return (
         <div className="group relative h-full">
-            <Link
+            <IntentPrefetchLink
                 href={`/past_papers/${encodeURIComponent(course.code)}`}
-                prefetch
                 transitionTypes={["nav-forward"]}
                 className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 hover:scale-[1.03] hover:shadow-xl hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
             >
@@ -35,7 +34,7 @@ export default function CourseGridCard({ course }: Props) {
                         </span>
                     </div>
                 </div>
-            </Link>
+            </IntentPrefetchLink>
         </div>
     );
 }
