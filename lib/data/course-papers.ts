@@ -64,7 +64,7 @@ type CoursePaperFilterOptionRow = {
     hasAnswerKey: boolean;
 };
 
-type CoursePaperRow = CoursePaperListItem &
+export type CoursePaperRow = CoursePaperListItem &
     CoursePaperFilterOptionRow & {
         createdAtTime: number;
     };
@@ -80,49 +80,54 @@ function normalizeFiltersForCache(filters: CoursePaperFilters) {
     };
 }
 
-async function getCoursePaperRows(courseId: string): Promise<CoursePaperRow[]> {
+export async function getCoursePaperRows(courseId: string): Promise<CoursePaperRow[]> {
     "use cache";
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    return withPastPapersSurfaceRedisCache(
-        {
-            keyParts: ["course-paper-rows-v2", { courseId }],
-        },
-        async () => {
-            const rows = await db
-                .select({
-                    id: pastPaper.id,
-                    title: pastPaper.title,
-                    fileUrl: pastPaper.fileUrl,
-                    thumbNailUrl: pastPaper.thumbNailUrl,
-                    examType: pastPaper.examType,
-                    slot: pastPaper.slot,
-                    year: pastPaper.year,
-                    semester: pastPaper.semester,
-                    campus: pastPaper.campus,
-                    hasAnswerKey: pastPaper.hasAnswerKey,
-                    pageEdits: pastPaper.pageEdits,
-                    createdAt: pastPaper.createdAt,
-                })
-                .from(pastPaper)
-                .where(and(eq(pastPaper.courseId, courseId), eq(pastPaper.isClear, true)));
+    const loadRows = async () => {
+        const rows = await db
+            .select({
+                id: pastPaper.id,
+                title: pastPaper.title,
+                fileUrl: pastPaper.fileUrl,
+                thumbNailUrl: pastPaper.thumbNailUrl,
+                examType: pastPaper.examType,
+                slot: pastPaper.slot,
+                year: pastPaper.year,
+                semester: pastPaper.semester,
+                campus: pastPaper.campus,
+                hasAnswerKey: pastPaper.hasAnswerKey,
+                pageEdits: pastPaper.pageEdits,
+                createdAt: pastPaper.createdAt,
+            })
+            .from(pastPaper)
+            .where(and(eq(pastPaper.courseId, courseId), eq(pastPaper.isClear, true)));
 
-            return rows.map((paper) => ({
-                id: paper.id,
-                title: paper.title,
-                fileUrl: normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl,
-                thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
-                examType: paper.examType,
-                slot: paper.slot,
-                year: paper.year,
-                semester: paper.semester,
-                campus: paper.campus,
-                hasAnswerKey: paper.hasAnswerKey,
-                pageEdits: paper.pageEdits ?? null,
-                createdAtTime: paper.createdAt.getTime(),
-            }));
-        },
+        return rows.map((paper) => ({
+            id: paper.id,
+            title: paper.title,
+            fileUrl: normalizeGcsUrl(paper.fileUrl) ?? paper.fileUrl,
+            thumbNailUrl: normalizeGcsUrl(paper.thumbNailUrl) ?? paper.thumbNailUrl,
+            examType: paper.examType,
+            slot: paper.slot,
+            year: paper.year,
+            semester: paper.semester,
+            campus: paper.campus,
+            hasAnswerKey: paper.hasAnswerKey,
+            pageEdits: paper.pageEdits ?? null,
+            createdAtTime: paper.createdAt.getTime(),
+        }));
+    };
+
+    // Next's tagged cache already persists these rows on Cloudflare. On a miss,
+    // Hyperdrive can fetch them without another R2 lookup and distributed lock.
+    if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
+        return loadRows();
+    }
+    return withPastPapersSurfaceRedisCache(
+        { keyParts: ["course-paper-rows-v2", { courseId }] },
+        loadRows,
     );
 }
 
@@ -215,14 +220,19 @@ type GetCoursePapersInput = {
     pageSize: number;
 } & OrderedCoursePapersInput;
 
+// Sorting, filtering and pagination reuse the one cached set of course rows.
+// They must not create a new remote cache entry for every filter combination.
 export async function getOrderedCoursePapers(
     input: OrderedCoursePapersInput,
 ): Promise<CoursePaperListItem[]> {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const rows = await getCoursePaperRows(input.courseId);
+    return orderCoursePaperRows(rows, input);
+}
+
+export function orderCoursePaperRows(
+    rows: CoursePaperRow[],
+    input: OrderedCoursePapersInput,
+): CoursePaperListItem[] {
     const filterSets = buildFilterSets(input.filters);
     const filteredRows: CoursePaperRow[] = [];
 
@@ -238,12 +248,16 @@ export async function getOrderedCoursePapers(
 export async function getCoursePapers(
     input: GetCoursePapersInput,
 ): Promise<{ papers: CoursePaperListItem[]; totalCount: number }> {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+    const rows = await getCoursePaperRows(input.courseId);
+    return paginateCoursePaperRows(rows, input);
+}
 
+export function paginateCoursePaperRows(
+    rows: CoursePaperRow[],
+    input: GetCoursePapersInput,
+): { papers: CoursePaperListItem[]; totalCount: number } {
     const { page, pageSize, ...orderedInput } = input;
-    const orderedRows = await getOrderedCoursePapers(orderedInput);
+    const orderedRows = orderCoursePaperRows(rows, orderedInput);
 
     const skip = Math.max(0, (page - 1) * pageSize);
     const visibleRows = orderedRows.slice(skip, skip + pageSize);
@@ -258,11 +272,14 @@ export async function getCoursePaperFilterOptions(
     courseId: string,
     filters: CoursePaperFilters = {},
 ): Promise<CoursePaperFilterOptions> {
-    "use cache";
-    cacheTag("past_papers");
-    cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
-
     const rows = await getCoursePaperRows(courseId);
+    return buildCoursePaperFilterOptions(rows, filters);
+}
+
+export function buildCoursePaperFilterOptions(
+    rows: CoursePaperRow[],
+    filters: CoursePaperFilters = {},
+): CoursePaperFilterOptions {
     const filterSets = buildFilterSets(filters);
 
     const examCounts: Partial<Record<ExamType, number>> = {};

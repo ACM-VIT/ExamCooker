@@ -8,6 +8,7 @@ import ExamsMarquee, { ExamsMarqueeFallback } from "./exams-marquee";
 import { getSearchableCourses } from "@/lib/data/course-catalog";
 import { getUpcomingExams } from "@/lib/data/upcoming-exams";
 import CourseSearch from "./course-search";
+import { packCourseSearch } from "@/lib/course-search-payload";
 import HomeMarketingSections from "./home-marketing-sections";
 import HomeAuthSubtitle from "./home-auth-subtitle";
 import HomeAuthSignInCta from "./home-auth-sign-in-cta";
@@ -21,7 +22,7 @@ async function HomeSearchSection() {
 
     return (
         <div className="ec-home-search-shell mx-auto w-full max-w-4xl px-4 sm:px-0">
-            <CourseSearch courses={courses} />
+            <CourseSearch catalog={packCourseSearch(courses)} />
         </div>
     );
 }

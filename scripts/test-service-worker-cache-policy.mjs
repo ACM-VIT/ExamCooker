@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
-function makeServiceWorkerHarness({ fetchImpl, offlineResponse = null } = {}) {
+function makeServiceWorkerHarness({ fetchImpl, offlineResponse = null, cachedResponse = null } = {}) {
   const listeners = new Map();
   const cachePuts = [];
   const cacheMatches = [];
@@ -12,7 +12,7 @@ function makeServiceWorkerHarness({ fetchImpl, offlineResponse = null } = {}) {
     async addAll() {},
     async match(request) {
       cacheMatches.push(request);
-      return undefined;
+      return cachedResponse?.clone();
     },
     async put(request, response) {
       cachePuts.push({ request, response });
@@ -117,7 +117,7 @@ async function testHtmlNavigationIsNetworkOnly() {
   await loadServiceWorker(harness);
 
   const event = makeFetchEvent(
-    makeRequest("https://examcooker.test/", {
+    makeRequest("https://examcooker.test/notes", {
       headers: { accept: "text/html" },
       mode: "navigate",
     }),
@@ -156,7 +156,7 @@ async function testHtmlNavigationKeepsOfflineFallback() {
   assert.equal(harness.cachePuts.length, 0, "offline fallback should not cache failed HTML");
 }
 
-async function testUncacheableNavigationConsumesPreloadWithoutCaching() {
+async function testUncacheableNavigationBypassesServiceWorker() {
   let fetchCalls = 0;
   const harness = makeServiceWorkerHarness({
     fetchImpl: async () => {
@@ -177,12 +177,8 @@ async function testUncacheableNavigationConsumesPreloadWithoutCaching() {
   );
   harness.listeners.get("fetch")(event);
 
-  assert.ok(event.responsePromise, "uncacheable navigations should still be handled network-only");
-  assert.equal(event.waitUntilCount, 1, "navigation preload should be retained with waitUntil");
-  const response = await event.responsePromise;
-  assert.equal(await response.text(), "preloaded signin");
-  await event.settleWaitUntil();
-  assert.equal(fetchCalls, 0, "preloaded navigation response should avoid a duplicate fetch");
+  assert.equal(event.responsePromise, null, "sign-in uses the browser's network request directly");
+  assert.equal(fetchCalls, 0, "service worker must not duplicate a bypassed request");
   assert.equal(harness.cachePuts.length, 0, "uncacheable navigations must not be cached");
 }
 
@@ -209,30 +205,104 @@ async function testNativePrefetchDoesNotPersistPages() {
 
   assert.ok(waitUntilPromise, "prefetch message should schedule work");
   await waitUntilPromise;
-  assert.deepEqual(fetchedRoutes, ["/", "/notes"]);
+  assert.deepEqual(fetchedRoutes, ["/notes"]);
   assert.equal(harness.cachePuts.length, 0, "prefetched pages must not be cached");
+}
+
+async function testNavigationPreloadAvoidsDuplicateFetch() {
+  let fetchCalls = 0;
+  const harness = makeServiceWorkerHarness({ fetchImpl: async () => {
+    fetchCalls++;
+    return new Response("duplicate");
+  } });
+  await loadServiceWorker(harness);
+  const event = makeFetchEvent(
+    makeRequest("https://examcooker.test/notes", { mode: "navigate" }),
+    { preloadResponse: Promise.resolve(new Response("preloaded notes")) },
+  );
+  harness.listeners.get("fetch")(event);
+  assert.equal(await (await event.responsePromise).text(), "preloaded notes");
+  await event.settleWaitUntil();
+  assert.equal(fetchCalls, 0);
+  assert.equal(harness.cachePuts.length, 0);
 }
 
 async function testEmbedPdfVendorAssetsBypassServiceWorkerCache() {
   const harness = makeServiceWorkerHarness();
   await loadServiceWorker(harness);
 
-  const event = makeFetchEvent(
-    makeRequest("https://examcooker.test/vendor/embedpdf/pdfium.wasm", {
-      headers: { accept: "application/wasm" },
-    }),
-  );
-  harness.listeners.get("fetch")(event);
-
-  assert.equal(event.responsePromise, null, "EmbedPDF vendor assets must use the network cache policy");
+  for (const path of ["/vendor/embedpdf/pdfium.wasm", "/vendor/embedpdf/immutable/content-hash.wasm"]) {
+    const event = makeFetchEvent(
+      makeRequest(`https://examcooker.test${path}`, {
+        headers: { accept: "application/wasm" },
+      }),
+    );
+    harness.listeners.get("fetch")(event);
+    assert.equal(event.responsePromise, null, "EmbedPDF vendor assets must use the network cache policy");
+  }
   assert.equal(harness.cachePuts.length, 0, "EmbedPDF vendor assets must not be stored by the service worker");
   assert.equal(harness.cacheMatches.length, 0, "EmbedPDF vendor assets must not be read from old caches");
 }
 
+async function testStaticAssetRefreshPolicy() {
+  for (const [path, policy, expectedFetches] of [
+    ["/_next/static/chunks/abc123.js", "public, max-age=31536000, immutable", 0],
+    ["/_next/static/css/abc123.css", "public, max-age=31536000, immutable", 0],
+    ["/_next/static/chunks/abc123.js", "public, max-age=60", 1],
+    ["/assets/logo-icon.svg", "public, max-age=31536000, immutable", 1],
+    ["/manifest.webmanifest", "public, max-age=60", 1],
+  ]) {
+    let fetchCalls = 0;
+    const harness = makeServiceWorkerHarness({
+      cachedResponse: new Response("cached asset", { headers: { "cache-control": policy } }),
+      fetchImpl: async () => {
+        fetchCalls++;
+        return new Response("fresh asset", { headers: { "cache-control": policy } });
+      },
+    });
+    await loadServiceWorker(harness);
+    const event = makeFetchEvent(makeRequest(`https://examcooker.test${path}`));
+    harness.listeners.get("fetch")(event);
+    assert.equal(await (await event.responsePromise).text(), "cached asset");
+    await event.settleWaitUntil();
+    assert.equal(fetchCalls, expectedFetches, `${path}: ${policy}`);
+  }
+}
+
+async function testNewBuildAssetIsFetched() {
+  let fetchCalls = 0;
+  const harness = makeServiceWorkerHarness({ fetchImpl: async () => {
+    fetchCalls++;
+    return new Response("new chunk", { headers: { "cache-control": "public, max-age=31536000, immutable" } });
+  } });
+  await loadServiceWorker(harness);
+  const event = makeFetchEvent(makeRequest("https://examcooker.test/_next/static/chunks/new-hash.js"));
+  harness.listeners.get("fetch")(event);
+  assert.equal(await (await event.responsePromise).text(), "new chunk");
+  assert.equal(fetchCalls, 1);
+  assert.equal(harness.cachePuts.length, 1);
+}
+
+async function testSessionAndRscNeverUseStaticCache() {
+  for (const path of ["/api/auth/session", "/past_papers?_rsc=example"]) {
+    const harness = makeServiceWorkerHarness({ cachedResponse: new Response("another session") });
+    await loadServiceWorker(harness);
+    const event = makeFetchEvent(makeRequest(`https://examcooker.test${path}`));
+    harness.listeners.get("fetch")(event);
+    if (event.responsePromise) assert.equal(await (await event.responsePromise).text(), "ok");
+    assert.equal(harness.cacheMatches.length, 0);
+    assert.equal(harness.cachePuts.length, 0);
+  }
+}
+
 await testHtmlNavigationIsNetworkOnly();
 await testHtmlNavigationKeepsOfflineFallback();
-await testUncacheableNavigationConsumesPreloadWithoutCaching();
+await testUncacheableNavigationBypassesServiceWorker();
 await testNativePrefetchDoesNotPersistPages();
+await testNavigationPreloadAvoidsDuplicateFetch();
 await testEmbedPdfVendorAssetsBypassServiceWorkerCache();
+await testStaticAssetRefreshPolicy();
+await testNewBuildAssetIsFetched();
+await testSessionAndRscNeverUseStaticCache();
 
 console.log("Service worker cache policy tests passed");

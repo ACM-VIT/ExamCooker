@@ -1,0 +1,1570 @@
+# Cloudflare performance measurements
+
+Measured on September 12, 2026 against `examcooker.acmvit.in` and `ec-test.acmvit.in`. The first optimization pass ended on Worker `6828eb92-82b9-4ce0-a3c6-c4e90d470a5f`; the follow-up experiments below ended on `300bdd63-3ae4-4fd6-a158-ad374693165f`, with the same application source and default placement. Azure production was not redeployed.
+
+## Changes retained
+
+- Hyperdrive `examcooker-test-db` (`37449c92cf764de4b7c8be5b128c99cd`), SQL response caching disabled, soft origin connection limit 10. Worker pg clients remain request-scoped; Node still uses DATABASE_URL directly.
+- Regional Cache API reads for versioned public paper/course payloads, up to 60 seconds and never past R2 expiry. The DO namespace counter remains authoritative; edits switch cache keys. No sessions, locks, votes or counters enter this cache.
+- OpenNext tag replicas in six regions with reads selected by visitor continent. Tag metadata TTL remains five seconds. Invalidation writes reach every replica.
+- Explicit negative caching for the optional question/answer-key sibling lookup. The measured paper has no sibling: this valid absence previously repeated cache reads, lock operations and SQL queries. Primary resource misses and exceptions still bypass negative caching.
+
+## Component measurements
+
+An authenticated temporary endpoint on ec-test compared direct CockroachDB connections with Hyperdrive using SELECT 1 twice per connection. Three samples per mode, from MAA:
+
+| Measurement | Direct | Hyperdrive |
+|---|---:|---:|
+| Median connection setup | 505 ms | 6 ms |
+| Median connection plus two queries | 561 ms | 115 ms |
+
+The first Hyperdrive origin acquisition still incurs a cost; these results do not imply all queries take 6 ms. Pooling behavior is described in the [Hyperdrive documentation](https://developers.cloudflare.com/hyperdrive/concepts/how-hyperdrive-works/).
+
+The corrected binding trace measured original tag reads around 160 ms; regional replicas reduced their median to 48 ms. Cold outliers remained. R2 reads were typically 100–200 ms; after public regional caching, successful warm versioned payload reads no longer needed R2. Background Next cache refreshes still use R2, and parallel operation durations must not be added to estimate response latency.
+
+## Page latency
+
+Each stage used five paired samples per route/type, plus one separately recorded warmup. At most two requests were in flight. These are HTTP response completion times, not browser click-to-paint, hydration or PDF rendering times. RSC probes send RSC: 1 without a browser router-state tree; browser prefetch hits are not measured. No media playback was involved.
+
+Median complete HTML responses:
+
+| Route | CF before | CF final | Production during final run |
+|---|---:|---:|---:|
+| DSA course | 1047 ms | 853 ms | 493 ms |
+| Paper detail | 656 ms | 793 ms | 321 ms |
+| DSA notes | 920 ms | 856 ms | 440 ms |
+| DSA syllabus | 1400 ms | 855 ms | 492 ms |
+
+Median RSC responses and the median difference within each simultaneous pair:
+
+| Route | CF before | CF final | Production final | Paired CF penalty before | Paired CF penalty final |
+|---|---:|---:|---:|---:|---:|
+| DSA course | 580 ms | 652 ms | 372 ms | +158 ms | +237 ms |
+| Paper detail | 1121 ms | 1056 ms | 590 ms | +490 ms | +552 ms |
+| DSA notes | 1016 ms | 1461 ms | 835 ms | +714 ms | +498 ms |
+| DSA syllabus | 1349 ms | 864 ms | 569 ms | +980 ms | +283 ms |
+
+The end-to-end results are mixed. Database setup and tag reads improved, but production remains faster on these routes, and some final response medians regressed. Production/network timing also varied between stages, so sequential stage differences do not establish a precise causal speedup for each change. In particular, the optional-null optimization removes confirmed redundant work but has not demonstrated a clear page-level latency win in this sample. Do not treat this as performance parity or approval for a production cutover.
+
+## Experiment history
+
+Median Cloudflare complete responses (milliseconds):
+
+| Stage | Course HTML | Paper HTML | Notes HTML | Syllabus HTML | Course RSC | Paper RSC | Notes RSC | Syllabus RSC |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Baseline | 1047 | 656 | 920 | 1400 | 580 | 1121 | 1016 | 1349 |
+| Hyperdrive | 843 | 723 | 628 | 455 | 829 | 1047 | 822 | 716 |
+| Public regional cache | 812 | 1788 | 783 | 489 | 938 | 1564 | 1060 | 811 |
+| Regional tag replicas | 850 | 838 | 623 | 414 | 769 | 1029 | 830 | 588 |
+| Clean deployment | 868 | 928 | 619 | 447 | 979 | 1187 | 1133 | 613 |
+| Optional sibling cache (final) | 853 | 793 | 856 | 855 | 652 | 1056 | 1461 | 864 |
+
+The first temporary tracer used an incompatible RPC wrapper; its page samples (`optimization-before.jsonl`) were discarded. The baseline above is the corrected tracer run (`optimization-before-fixed.jsonl`). The final two runs have no tracer. The temporary endpoint and EC_PERF_TOKEN secret were removed. Raw timing JSONL and protected diagnostics are retained locally under `.cloudflare-deploy/`; they are intentionally not committed.
+
+## Validation and limits
+
+- Full Next/OpenNext production build and app/Worker typechecks passed.
+- workerd tests cover public-cache hits, expiry, namespace changes, deletion, and exclusion of session/state keys.
+- A test using the actual OpenNext configuration verifies invalidation reaches all six tag regions.
+- Optional-cache tests cover concurrent misses, new-sibling invalidation, primary 404s, and exception recovery.
+- Atomic-state tests passed locally; session-isolation, render-stream/cancellation and revalidation checks passed on the final deployment.
+- The known Next/OpenNext cache-warming warning still appears. The pinned compatibility patches remain required; no route-segment dynamic export was introduced and Cache Components stays enabled.
+- Five samples cannot establish p95/p99 or cold-start behavior. These runs are from one client/network with Cloudflare ingress at MAA.
+
+Reproduce without a browser (requires the repository dependencies):
+
+```sh
+node scripts/cloudflare/compare-response-times.mjs \
+  --rounds 5 --mode both \
+  --paths "/past_papers/BCSE202L,/past_papers/BCSE202L/paper/cmoeqh9nt022ka8v37i2rf75z,/notes/course/BCSE202L,/syllabus/course/BCSE202L" \
+  --output /tmp/examcooker-latency.jsonl
+```
+
+## Follow-up: cache warming and partial prefetching
+
+The next five-sample baseline measured HTML completion at 515/443/403/414 ms
+(course/paper/notes/syllabus), versus production at 268/222/263/222 ms. First
+bytes were similar, so most of the gap occurred after the initial response.
+
+A temporary diagnostic build (`f07e9989-638d-45d3-8394-98aa2aaa7d35`) observed
+46 cache-warming warnings across course, notes and syllabus probes. Every warning
+had an empty resume-data cache and an already pending invocation for the same
+key. This identifies premature runtime-prefetch rendering; it does not establish
+that the warning accounts for the entire latency gap. Only counts and route
+patterns were logged, not cache keys, arguments or session values.
+
+Tested `partialPrefetching: false` on Cloudflare while retaining Cache Components
+and PPR (`93cbabee-cf98-4122-b5d7-740c5fe7dbae`). The warnings disappeared, but
+course, paper and notes became slower. The table reports the median latency
+difference inside each simultaneous CF/production pair, in milliseconds:
+
+| Route | Baseline HTML | Disabled HTML | Restored HTML | Baseline RSC | Disabled RSC | Restored RSC |
+|---|---:|---:|---:|---:|---:|---:|
+| Course | +247 | +608 | +504 | +128 | +419 | +189 |
+| Paper | +174 | +747 | +238 | +245 | +591 | +376 |
+| Notes | +126 | +973 | +1 | +286 | +682 | +285 |
+| Syllabus | +204 | -67 | +7 | +285 | -215 | +23 |
+
+Rejected the candidate and rolled back to `6828eb92-82b9-4ce0-a3c6-c4e90d470a5f`.
+Both `cacheComponents` and `partialPrefetching` remain enabled. Runtime-prefetch
+behavior changes more than payload size, so disabling it is not a targeted fix
+for the scheduler. Raw reports: `warming-baseline.jsonl`, `warming-disabled.jsonl`
+and `warming-restored.jsonl` in the ignored diagnostics directory.
+
+Worker tail measurements on the diagnostic build recorded median CPU of 43–71 ms
+versus wall time of 336–647 ms on those routes. Wall time can include background
+work; this supports investigating I/O but is not a breakdown of response latency.
+A small sequential Brotli/gzip/identity comparison did not establish a reliable
+compression win, so compression configuration was unchanged.
+
+## Follow-up: Mumbai placement
+
+Tested `placement.region: "aws:ap-south-1"` with both caching features restored.
+Cloudflare accepted targeted placement (Worker `64e9afd3-6584-4d35-8362-b395e80bb651`).
+The execution-location header was not exposed in the captured request logs, so
+the requested placement is verified through the control plane only.
+
+Then disabled placement through the Worker settings API, preserving the same
+application build and cache keys (`300bdd63-3ae4-4fd6-a158-ad374693165f`). A fresh
+settings read confirmed empty placement settings. Five paired samples per case:
+
+| Route | Targeted HTML | Default HTML | Targeted RSC | Default RSC |
+|---|---:|---:|---:|---:|
+| Course | 1458 | 504 | 1337 | 628 |
+| Paper | 732 | 511 | 1168 | 668 |
+| Notes | 1198 | 528 | 974 | 788 |
+| Syllabus | 544 | 445 | 931 | 714 |
+
+These are Cloudflare completion medians in milliseconds. Default placement won
+in this sequence; targeted placement was removed from the configuration. The
+sequence is not randomized and local network/production timing varied, so these
+differences are not a precise causal estimate. Raw reports are
+`placement-mumbai.jsonl` and `placement-off.jsonl`.
+
+## Follow-up: combined syllabus cache
+
+Added a public `use cache` boundary around `loadCourseSyllabusContext`, preserving
+the child functions' propagated invalidation tags and using the same explicit
+60/300/3600-second stale/revalidate/expire profile. A warm hit could return the
+assembled result instead of making four independent child cache lookups.
+
+Built and deployed the candidate (`75763613-8aa7-4572-9d28-e037abc84d41`), then
+compared seven paired samples against a seven-sample baseline. Paper detail was
+an unchanged control. Median paired CF penalties, milliseconds:
+
+| Route | Before HTML | Combined HTML | Before RSC | Combined RSC |
+|---|---:|---:|---:|---:|
+| Syllabus | -10 | +164 | +131 | +209 |
+| Unchanged paper | +20 | +158 | +350 | +296 |
+
+This did not demonstrate a latency improvement. Reverted the source change and
+rolled back to `300bdd63-3ae4-4fd6-a158-ad374693165f`. The unsuccessful candidate's
+generated build artifacts were moved under the ignored diagnostics directory to
+prevent accidental deployment; run `pnpm cf:build` before another deployment.
+Raw reports: `aggregate-before.jsonl` and `aggregate-after.jsonl`.
+
+No new runtime optimization from these three follow-up experiments was retained.
+Cache Components, partial prefetching, Hyperdrive and the previously implemented
+regional caches remain enabled. Default Worker placement is restored. Build and
+PPR payload checks passed for the candidates; the final restored deployment was
+checked for session isolation, concurrent rendering, cancellation recovery and
+runtime-prefetch payloads. The known warming warning remains unresolved.
+The final serial render checks took 423 ms for home, 4057 ms for `/past_papers`
+and 3124 ms for `/notes`; nine subsequent concurrent renders completed with a
+2064 ms maximum. These were correctness checks, not controlled cold-start
+measurements, but they confirm that multi-second listing responses still occur.
+
+## Follow-up: retain late streaming cache writes
+
+A nested Worker-side trace exposed composable cache keys that repeatedly missed
+on warm requests. Their R2 writes started near stream completion but remained
+unfinished when the registered background work finished. The trace contained
+39 HTML cache writes, of which 17 were still unfinished. For example, the paper
+listing repeatedly missed keys `419d7598f604` and `5229db60eb35` (SHA-256 prefixes,
+not raw cache keys), adding 128–183 ms of R2 reads before loading public data.
+Paper detail showed the same behavior for `a31a3bb15e38`.
+
+Next starts some cache fills during streaming, after `app-render` snapshots the
+pending revalidation promises. The existing OpenNext incremental-cache `set`
+awaited R2 but did not itself register the write with the Worker context. This
+supports a request-lifetime failure: an outstanding promise alone does not retain
+an invocation after its response completes. See Cloudflare's
+[context lifetime documentation](https://developers.cloudflare.com/workers/runtime-apis/context/).
+
+Added `withCacheWriteLifetime` around the configured incremental cache. Each
+write registers its complete R2 and regional-cache promise with `ctx.waitUntil`,
+then returns that same promise to the caller. HTTP streaming does not await it.
+The wrapper does not alter cache keys, tags, data expiry, or response-cache policy.
+The normal Workers background execution limit still applies; this is not a
+persistent retry queue.
+
+Compared diagnostic baseline `4f4f42ec-6f43-4434-81af-4605b8c5e98c` with candidate
+`8392669a-ff5e-403d-be6a-3a48a78b800d`, retaining the exact Next build and cache keys
+with `--skipNextBuild`. The candidate trace contained five HTML cache writes;
+all five completed, including writes ending after the response. Previously
+missing keys subsequently returned hits. Some first follow-up requests still
+missed while the preceding request's write was in flight.
+
+Median Worker-internal stream completion, milliseconds, rounds 1–3 after a
+separately recorded first request:
+
+| Route | Before HTML | Retained writes HTML | Before RSC | Retained writes RSC |
+|---|---:|---:|---:|---:|
+| Home | 26 | 80 | 89 | 94 |
+| Paper listing | 237 | 34 | 32 | 33 |
+| Notes listing | 217 | 81 | 70 | 24 |
+| Paper detail | 247 | 66 | 746 | 198 |
+
+These are small, sequential diagnostic samples, not controlled cold-start or
+browser paint measurements. The temporary wrapper drains the response within the
+Worker and traces parent/child cache operations; background R2 refreshes are
+excluded from response time. Its fast drain can expose the lifetime failure more
+readily than a slow client. Intervening ordinary HTTP probes also warmed caches,
+so the complete numerical difference cannot be attributed solely to the wrapper.
+The completed writes and subsequent hits provide the direct correctness evidence.
+
+Ordinary HTML completion medians in the initial five-pair comparison were
+472→234 ms for home, 431→317 ms for papers, 528→633 ms for notes, and 557→329 ms
+for paper detail. Production changed substantially during the same sequence.
+A seven-pair paper repeat measured 271 ms on Cloudflare versus 286 ms on Azure.
+The improvement is not uniform, and occasional multi-second responses remain.
+
+Validation: application and Worker typechecks, OpenNext build, PPR resume-payload
+parsing in workerd, delayed R2 writes across eight concurrent workerd requests,
+write failure propagation, session A/B/anonymous isolation, chunked cookies,
+CSRF isolation, concurrent/canceled response streams, runtime prefetch payloads,
+and forced HEAD/GET revalidation passed. The new regression test is
+`node scripts/cloudflare/test-cache-write-lifetime.mjs`.
+
+Raw local reports: `critical-baseline-spans.jsonl`, `lifetime-spans.jsonl`,
+`critical-background-spans.jsonl`, `lifetime-before.jsonl`, `lifetime-after.jsonl`,
+`lifetime-paper-repeat.jsonl` under the ignored `.cloudflare-deploy/` directory.
+Wrangler's raw tail contains request headers and must not be published.
+
+### Corrected RSC measurement
+
+Earlier ordinary RSC probes sent `rsc: 1` without the matching `_rsc` query hash.
+Next responded with a 307 before serving the Flight response, and the benchmark
+included that extra round trip. Next's router supplies this hash itself; see the
+[Next CDN guide](https://nextjs.org/docs/app/guides/cdn-caching).
+
+The benchmark now discovers each deployed server's canonical RSC URL before
+measurement, accepts only the same URL with an added `_rsc` parameter, and rejects
+unexpected redirects during timed samples. It records whether the hash was sent.
+Earlier RSC numbers remain useful as synthetic redirect-plus-response timings,
+but must not be presented as direct client-navigation timings. The probe still
+requests a full Flight payload without a router-state tree and does not measure
+hydration, prefetch reuse, or click-to-paint latency.
+
+### Follow-up: missing full-route shell lookups
+
+After retaining writes, warm paper-detail RSC still waited 130–180 ms for a
+full-route cache lookup before reading its now-cached data. The key was the actual
+paper URL. R2 consistently returned no shell for that key; Next then rendered the
+page. HTML could use the PPR fallback shell, while the full Flight request still
+attempted this concrete-path lookup.
+
+Added `withFullRouteMissCache`, an isolate-local map of at most 256 timestamps
+with a five-second expiry and a 1024-character key limit. Only explicit full-route
+`cache` lookups are eligible. A remembered miss returns `null` to Next, which still
+renders the page and performs its normal data-cache/tag checks. No response,
+session, promise, stream, or data-cache value is retained. Local shell writes and
+deletions clear the marker before and after storage; a mutation generation stops
+an older in-flight read from installing a miss after a write. A shell created by
+another isolate may be bypassed for up to five seconds, causing an extra render
+rather than returning stale content. Upstream adapters can represent storage
+errors as misses; those also fall back to rendering during this short interval.
+
+Candidate `412d7da7-7130-4fef-95fb-96019e949e76` retained the same Next build.
+The initial two traced RSC requests still fetched R2 (166 and 287 ms); the next
+five skipped that lookup entirely and completed internal rendering in
+66, 74, 59, 35 and 39 ms. The six samples after the first request had a 62.5 ms
+median, compared with 198 ms after the write-lifetime fix alone. The map is local
+to an isolate, so first requests, other isolates and expired entries still read R2.
+
+Seven ordinary paired RSC samples, with the correct `_rsc` hash, measured:
+
+| Metric | Before miss cache | After miss cache |
+|---|---:|---:|
+| Cloudflare first byte | 286 ms | 164 ms |
+| Cloudflare complete response | 397 ms | 258 ms |
+| Production complete response | 351 ms | 335 ms |
+
+The Cloudflare completion median improved by 35% in this sequence. This is a
+small warm-request comparison, not a p95 or global latency guarantee. Raw reports:
+`route-misses-before.jsonl`, `route-misses-after.jsonl`, and
+`route-misses-spans.jsonl` in the ignored diagnostics directory.
+
+`node scripts/cloudflare/test-full-route-misses.mjs` verifies expiry, capacity,
+key length, exclusion of fetch/composable caches, write/delete invalidation,
+in-flight read/write ordering, and exception propagation. Both app and Worker
+typechecks and the OpenNext bundle passed.
+
+### Final clean deployment
+
+Both changes are active on `ec-test.acmvit.in`. The clean code deployment was
+`e8669a31-5a23-4dd3-bba2-a5bada8bddd7`; deleting the temporary diagnostic secret
+created active version `50855842-76d2-43a4-82ea-b90038e55fcc`. The tracing wrapper
+is absent and its tail process is stopped. Production was not deployed or edited.
+
+After cleanup and correctness checks, a final seven-pair anonymous comparison
+recorded these complete-response medians in milliseconds:
+
+| Route | Production HTML | Cloudflare HTML | Production RSC | Cloudflare RSC |
+|---|---:|---:|---:|---:|
+| Home | 553 | 319 | 1518 | 373 |
+| Paper listing | 367 | 251 | 680 | 375 |
+| Notes listing | 397 | 423 | 644 | 324 |
+| Paper detail | 352 | 281 | 322 | 200 |
+
+All samples returned complete, valid payloads. Warmup is excluded. Production
+also varied considerably between runs (particularly home RSC), so this final table
+is a contemporaneous comparison, not a causal estimate of the changes. Neither
+HTML nor full Flight completion is click-to-paint time. Raw samples are in
+`cache-fixes-final.jsonl` under the ignored diagnostics directory.
+
+Final live session isolation, CSRF, chunked-cookie, concurrent rendering,
+cancellation recovery, runtime prefetch, and forced HEAD/GET revalidation checks
+passed. Nine concurrent streams had a 3119 ms maximum; forced revalidation took
+1384–2614 ms. Cold/expired-cache rendering and latency under concurrency still
+need improvement even though the targeted warm-request penalties were reduced.
+Lint remains unavailable because the repository has no standalone ESLint setup
+and Next 16 removed `next lint`.
+
+## BMAT202L: first-visit and visible-page latency
+
+The user reported a 5–6 second load for `/past_papers/BMAT202L`. The earlier warm
+HTTP medians did not represent this experience. An isolated headless Chrome probe
+recorded cards becoming visible at 4504 ms, first contentful paint at 4840 ms and
+load completion at 5387 ms. That first capture included media interception.
+A repeat without interception recorded a 8318 ms load, with Cloudflare reporting
+5160 ms of Worker time in the navigation's `Server-Timing` header. A regular
+Chrome user-agent repeat took 2760 ms; results were variable. These were anonymous
+sessions with audio muted and playback disabled; the browser was closed afterward.
+
+A temporary nested server trace on BMAT202L then recorded 5250 ms of internal
+stream completion. The initial shell read took 282 ms, followed by a 1618 ms
+cache-tag validation. Course/syllabus data reads were hits, but their subsequent
+tag validation took up to 2110 ms. This identified sequential tag metadata I/O as
+a major delay rather than a missing paper query alone. The trace is in
+`bmat-trace-before.jsonl` in the ignored diagnostics directory.
+
+### Start course-tag reads alongside the shell
+
+`withCourseTagPrefetch` starts metadata reads for `courses`, `notes`, `past_papers`,
+`syllabus` and `upcoming_exams` at the first course-shell cache lookup. OpenNext
+stores the resolved metadata in its existing request-local tag cache, so later
+normal invalidation checks can reuse it. A WeakSet limits this work to once per
+request. Auth routes, upload/create routes and data-cache lookups do not trigger
+it. The normal tag checks, five-second regional TTL and cross-region writes remain
+unchanged. There are no cross-request promises or cached session values.
+
+Candidate `ebfbfde0-7377-42d6-a2a3-5ccc83431e60` retained the same Next build and
+cache keys. Its first traced HTML response took 3816 ms; the hard-tag prefetch ran
+from 0–1614 ms, and later course/syllabus invalidation checks completed immediately.
+Warm HTML internal completion was 85–143 ms. One forced revalidation still took
+6360 ms, so this change alone did not resolve the slow tail.
+
+### Avoid schema writes when tag objects restart
+
+OpenNext's tag Durable Object constructor executed `CREATE TABLE IF NOT EXISTS`
+and attempted `ALTER TABLE` on every activation. The compatibility patch now
+inspects `PRAGMA table_info(revalidations)` first, creates a missing table, and
+adds only missing columns individually. An initialized object performs no schema
+writes on restart. This also handles the partially migrated case where `stale`
+already exists but `expire` does not; the old combined ALTER would fail on the
+first existing column. Existing tag rows are preserved.
+
+Candidate `7f39c6e4-344f-4199-9f3b-cab0f6d55cfb` changed only the Durable Object
+module after the prefetch candidate. Its first trace completed internally in
+1489 ms. Tag-object reads in that trace took 46–64 ms, compared with 1204–2097 ms
+in the original trace. The first shell read was also faster, so this sequential
+comparison does not attribute the entire improvement to the schema change.
+These are first probes after deployment, not guaranteed empty-cache cold starts.
+Cloudflare can evict idle objects, and their constructors run again on activation;
+see the [Durable Object lifecycle](https://developers.cloudflare.com/durable-objects/concepts/durable-object-lifecycle/).
+
+Workerd tests verify that prefetch overlaps shell reads, runs once per request,
+isolates concurrent requests and does not block page reads after a failed prefetch.
+SQLite tests verify new, existing and partially migrated schemas, preserved rows,
+and no DDL or writes when reconstructing an initialized tag object. The real
+workerd regional-tag test still passes across all six regions. The complete
+Cloudflare patch was applied successfully to a pristine 1.20.6 package, and its
+schema source matches the tested/deployed module. The lockfile changes only the
+patch hash; pnpm's supply-chain verification passed. An offline reinstall could
+not complete because a pre-existing esbuild tarball was absent from the store.
+
+The benchmark now prints the first-request duration and the slowest measured
+sample alongside warm medians. Neither full HTML nor Flight completion is a
+browser paint measurement. Raw browser reports are `bmat-browser-*.json`; server
+reports are `bmat-trace-before.jsonl`, `bmat-trace-after.jsonl` and
+`bmat-trace-schema.jsonl`, all under the ignored diagnostics directory.
+
+### Clean deployment: visible latency is still unresolved
+
+The clean Worker deployment was `e0d458fa-52f5-43d8-ba54-5ad5993acee4`.
+Removing the temporary diagnostic secret activated the same code as
+`dcd5d8aa-e249-4341-bb9c-b895ff80ab2f`. The tracing wrapper is absent from this
+deployment. No production deployment or database data changed.
+
+A fresh, muted headless browser with a regular Chrome user agent and no network
+interception still reproduced a slow BMAT202L visit. The following visits were
+sequential on the same client, not a controlled statistical comparison:
+
+| Visit | HTML complete | First contentful paint | 24 cards visible | Window load |
+| --- | ---: | ---: | ---: | ---: |
+| Cloudflare, fresh browser | 5954 ms | 7076 ms | 6919 ms | 8228 ms |
+| Production, same browser | 1467 ms | 2428 ms | 2739 ms | 3523 ms |
+| Cloudflare repeat | 3520 ms | 2812 ms | 3616 ms | 3545 ms |
+
+The first Cloudflare navigation received an interim response at 851 ms but final
+response headers only at 4377 ms. Reporting `navigation.responseStart` as the HTML
+TTFB would therefore hide much of this delay: inspect `finalResponseHeadersStart`
+when Early Hints are present. The navigation reported 1875 ms of `cfWorker` time;
+the repeat reported 1301 ms. These header metrics do not describe full-body
+completion. After the first HTML completed, cards took another 966 ms to become
+visible. The same run had a 339 ms main-thread task and slow thumbnail and
+analytics requests. These observations identify remaining server delivery and
+browser work, but do not isolate one cause or prove the cache changes improved
+end-to-end first-visit latency. All probe browsers were closed afterward.
+
+A subsequent five-round HTTP comparison, after the browser visits had warmed the
+site, produced these completion times. The first request is reported separately
+and is not a controlled cold start:
+
+| Response | Production first / median / slowest measured | Cloudflare first / median / slowest measured |
+| --- | ---: | ---: |
+| HTML | 1352 / 685 / 3660 ms | 2052 / 653 / 742 ms |
+| Full RSC | 1023 / 452 / 596 ms | 435 / 278 / 702 ms |
+
+All HTTP samples completed without server-render error digests. These warm
+numbers must not replace the slow visible-load results above. The retained
+changes reduce measured tag-validation work; BMAT202L's first-visit experience
+still needs improvement. Browser reports are `bmat-browser-final-first.json`,
+`bmat-browser-final-prod.json`, and `bmat-browser-final-repeat.json`; paired HTTP
+samples are `bmat-clean-http.jsonl` in the ignored diagnostics directory.
+
+The clean deployment passed alternating/concurrent synthetic A/B/anonymous
+session isolation, chunked session cookies, CSRF uniqueness, and private/no-store
+HTML and RSC checks. Streaming checks now include BMAT202L: nine concurrent
+streams completed (maximum 2128 ms), cancellation did not break subsequent
+visitors, and runtime prefetches contained rendered Flight rows.
+Forced HEAD and GET revalidation also passed on all four routes; BMAT202L took
+657 ms and 1242 ms respectively. App and Worker type checks and the OpenNext
+build passed. Lint remains unavailable for the repository reasons noted above.
+
+## Follow-up: infrequent visits and dedicated tag Worker
+
+The next pass used 75-second gaps between requests to BMAT202L. The benchmark's
+new `--round-delay-ms` option makes this repeatable; it also records the response's
+`Server-Timing` header. These are single-client measurements at MAA, with two
+spaced samples per case, not p95 estimates or guaranteed cold starts.
+
+| Case | Production spaced HTML | Cloudflare spaced HTML | Cloudflare initial request |
+| --- | ---: | ---: | ---: |
+| 60-second regional retention | 1327, 1256 ms | 2585, 2064 ms | 3304 ms |
+| Revalidation-based regional retention | 1009, 1265 ms | 2256, 1642 ms | 5815 ms |
+
+The retained `long-lived` regional-cache mode avoids discarding local copies
+every minute. It uses each entry's revalidation lifetime (300 seconds for the
+tested composable data); fallback shell retention follows the adapter default.
+Tag checks remain enabled, including SWR invalidation, with the same five-second
+regional metadata TTL. Background refresh remains enabled by the adapter.
+This modest sequential comparison does not establish an end-to-end first-visit
+improvement: the initial candidate request was slower. A workerd test confirms
+retained data still becomes invalid when its tag changes.
+
+### Tag-object activation remained the main delay
+
+Tracing candidate `3b2e3469-f31e-40b4-820a-659e28ee7754` with longer retention
+showed a 2162 ms internal response, with headers at 1623 ms. Its five initial tag
+RPCs took 1338–1844 ms despite the earlier schema patch. Most page data reads hit
+the regional cache. The schema patch alone had therefore not eliminated slow
+tag-object activation.
+
+The tag class now runs in `examcooker-test-tag-cache`, a 5.19 KiB Worker (1.67 KiB
+gzipped), instead of sharing the approximately 35 MiB application Worker. It uses
+the same pinned, patched OpenNext class. The state-preserving transfer migration
+retains the existing namespace and invalidation rows. Existing bindings forward
+to the transferred class; `wrangler.jsonc` now explicitly names the destination
+Worker for subsequent deployments. The tag Worker has no HTTP deployment target
+or application secrets. Tag Worker version: `d46a5025-6ed0-4c34-bdd2-a837fcbb1ac9`.
+
+Only the tag Worker was deployed for the first comparison: the application build,
+running application Worker, cache keys, and cached data stayed in place. The first
+post-transfer trace completed in 730 ms, with headers at 290 ms. Its initial tag
+RPCs took 205–260 ms. After a further 150 seconds without our page probes, the
+first trace completed in 412 ms internally, headers at 211 ms, and 946 ms from the
+client. Tag RPCs took 149–200 ms. This supports keeping the bundle separation;
+the idle interval allows eviction but does not prove every object was evicted.
+Forced regeneration still had a 2307 ms internal outlier and must not be described
+as consistently subsecond.
+
+Raw reports are `bmat-idle-short.jsonl`, `bmat-idle-long.jsonl`,
+`bmat-trace-retention.jsonl`, `bmat-trace-split-tags.jsonl`, and
+`bmat-trace-split-tags-idle.jsonl` in the ignored diagnostics directory. The
+retention candidate changed only the mode literal in the two generated config
+copies, with exact single-match assertions and original copies retained. This
+kept the Next build/cache keys constant without another memory-heavy build.
+Future normal builds take the setting from `open-next.config.ts`.
+
+The regional-tag workerd test now runs the real dedicated Worker separately from
+its caller and verifies invalidation across all six regions. Schema migration,
+retained-entry invalidation, and app/Worker type checks also pass. Deployment and
+local-preview scripts now include both Workers. Azure production was unchanged.
+
+### Visible timing after tag separation
+
+The clean app deployment was `94d634de-6f98-4b6b-8514-d8494ccc67de`; deleting the
+temporary tracing secret activated `7b5ad4d6-f8c8-4e44-b586-cee86991b169` with the
+same code. One fresh muted Chrome session visited BMAT202L on Cloudflare, then
+production, then Cloudflare again. It used a verified regular Chrome user agent,
+no request interception, and disabled media playback. It closed after capture.
+
+| Visit | HTML complete | First contentful paint | 24 cards visible | Window load |
+| --- | ---: | ---: | ---: | ---: |
+| Cloudflare, fresh browser | 3206 ms | 2960 ms | 3252 ms | 4407 ms |
+| Production, same browser | 1183 ms | 1148 ms | 1442 ms | 2149 ms |
+| Cloudflare repeat | 576 ms | 208 ms | 619 ms | 593 ms |
+
+The fresh Cloudflare result improved from the previous 6919 ms card timing, but
+was still seconds long. Its final response headers arrived at 2556 ms and reported
+792 ms `cfWorker` time; the repeat reported 77 ms. Network/client conditions vary
+across these sequential runs; production was also faster than in the prior run.
+Raw captures are `bmat-browser-split-{first,prod,repeat}.json` in the ignored
+diagnostics directory. These are browser observations, not claims of a p95 bound.
+
+### Rejected: another minification pass
+
+Wrangler minification reduced the application upload from 35532.86 KiB to
+24857.29 KiB (gzip: 7689.85 to 6879.54 KiB). Candidate
+`d2321f7e-8317-43e8-874e-c50f789bdbc2` retained the same Next build/cache keys and
+dedicated tag Worker. In another fresh-browser sequence, Cloudflare cards became
+visible at 3641 ms initially and 2817 ms on repeat; production took 2564 ms.
+Cloudflare's first HTML completed at 3393 ms and window load at 5276 ms. The repeat
+HTML completed at 2786 ms despite the header reporting only 85 ms of Worker time:
+that header is not a measurement of the complete streamed body. Client/network
+conditions varied, and this did not demonstrate a visible-latency improvement.
+
+Removed the minification setting and rolled the application back to
+`7b5ad4d6-f8c8-4e44-b586-cee86991b169`. This version already has the external tag
+binding and no diagnostic secret, so the rollback preserves the successful tag
+transfer. The dedicated tag Worker remains on
+`d46a5025-6ed0-4c34-bdd2-a837fcbb1ac9`. Raw rejected-candidate browser captures are
+`bmat-browser-minify-{first,prod,repeat}.json` in the ignored diagnostics directory.
+All probe browsers are closed. This pass demonstrates subsecond observations,
+not a guarantee that every fresh visit or regeneration finishes below a second.
+
+After restoration, live checks passed for synthetic session isolation (including
+chunked cookies and anonymous CSRF tokens), complete/cancelled/concurrent HTML
+streams, and runtime prefetches. BMAT202L completed in 552 ms during the streaming
+check; the maximum across nine concurrent mixed routes was 2840 ms. Forced
+BMAT202L revalidation completed in 451 ms for HEAD and 853 ms for GET.
+
+Five subsequent paired samples were all valid. Warm HTML medians were 523 ms on
+Cloudflare and 491 ms on production; full RSC medians were 419 ms and 859 ms.
+Cloudflare's separately reported first requests were 485 ms HTML and 388 ms RSC.
+These checks followed other traffic and are not cold-start measurements. Raw
+rows are `bmat-split-final-http.jsonl` in the ignored diagnostics directory.
+The two-Worker local preview started successfully and served a static asset with
+HTTP 200, then was stopped. Its local tag configuration explicitly declares
+SQLite because Wrangler's local migration parser does not infer the backend
+from `transferred_classes`.
+
+## Course catalog and paper data projections (2026-09-12)
+
+The initial paired HTTP check reproduced a 5938 ms first `/past_papers` response
+on Cloudflare versus 1447 ms on production. Three following warm Cloudflare
+samples had a 452 ms median. BMAT202L's initial response was 1024 ms versus 287 ms
+on production, with a 295 ms warm Cloudflare median. Warm medians concealed misses.
+Raw rows: `.cloudflare-deploy/course-list-before.jsonl` (ignored).
+
+Removed persistent `use cache` wrappers from cheap catalog projections, static
+stats, paper sorting, filtering and pagination. Their source catalog/paper rows
+retain the same tagged cache and lifetime. This reduces network cache operations
+and filter-dependent cache entries without changing query/filter semantics.
+Upcoming-exam caches now have stable keys; time-based expiry is applied after
+reading cached rows and before pagination. This avoids forcing a new entry every
+five-minute clock bucket. Scheduled expiry still uses the existing five-minute
+cutoff, undated exams remain eligible, and additions/edits still invalidate the
+`upcoming_exams` tag. The expiry regression check covers limits after filtering,
+empty course groups, undated exams and non-mutation of the cached snapshot.
+
+Before/after server traces of forced revalidation (two samples each):
+
+| Route | Before server completion | After projections | Incremental writes before / after |
+| --- | ---: | ---: | ---: |
+| `/past_papers` | 2503 / 1655 ms | 1048 / 942 ms | 11 / 4 |
+| `/past_papers/BMAT202L` | 745 / 663 ms | 297 / 281 ms | 13 / 8 |
+
+These are forced regeneration measurements, not controlled empty-cache trials.
+Raw traces: `list-trace-{before,projections}.jsonl` and
+`bmat-trace-{app-before,projections}.jsonl` in `.cloudflare-deploy`.
+
+The first BMAT request after the new build still took 5774 ms inside the Worker
+(6147 ms client time). Its cache-lock acquisition calls took 1240 and 1224 ms;
+R2 writes and lock release added further serial waits. This remains a real slow
+observation, not a successful cold-load result.
+
+Moved the unchanged `AppState` class to `examcooker-test-app-state` using a transfer
+migration, preserving namespace `f10d6369cb704e6a94b2a4aa84734464`. Its first version
+is `3eea9146-e926-4b7f-96e4-6d95dd8151a6`: 4.38 KiB upload, 1.53 KiB gzip, reported
+startup 4 ms. Existing bindings forward after transfer; future app deployments
+explicitly bind to the new script. The state regression checks now exercise the
+actual separate Worker through RPC. All lock, rate-limit, expiry and vote tests
+passed, as did the three-Worker local preview; the preview was stopped afterwards.
+
+Five diagnostic probes creating new synthetic lock objects took 616, 998, 759,
+682 and 746 ms for acquisition, including provisioning and persistence. These
+are not a matched comparison against waking existing objects. The small bundle
+removes application loading from this path; it does not make durable lock
+creation sub-millisecond. Synthetic locks were released, with a 60-second expiry
+as a fallback. The state Worker has no application secrets or public endpoint.
+
+Fresh muted browser sessions (servers had received earlier probes):
+
+| Route / visit | HTML complete | Cards visible | Production cards, same session |
+| --- | ---: | ---: | ---: |
+| Catalog, before | 857 ms | 1089 ms | 1116 ms |
+| Catalog, projections | 593 ms | 832 ms | 1374 ms |
+| Catalog, repeat | 686 ms | 530 ms | — |
+| BMAT202L, projections | 779 ms | 1081 ms | 1005 ms |
+| BMAT202L, repeat | 764 ms | 866 ms | — |
+
+These browser observations precede the state transfer. They measure visible
+anchors, not image completion or an interaction-ready p95. The catalog's first
+window-load event still took 3411 ms. Browser sessions used a regular Chrome user
+agent, muted/rejected media playback, no request interception, and were closed.
+Raw captures: `list-browser-{before,projections}-{first,prod,repeat}.json` and
+`bmat-browser-projections-{first,prod,repeat}.json` under `.cloudflare-deploy`.
+
+Final clean-deployment verification: five warm paired requests gave full HTML
+medians of 363 ms Cloudflare / 524 ms production for the catalog and 251 / 250 ms
+for BMAT202L. Full RSC medians were 228 / 330 ms and 201 / 571 ms respectively.
+All responses were complete and valid. The first catalog HTML request was still
+3449 ms (2911 ms before headers), versus 1176 ms on production; the first BMAT
+request was 362 / 273 ms. These do not establish consistent subsecond first loads.
+Raw rows: `.cloudflare-deploy/course-final-http.jsonl`.
+
+Separate fresh-connection curl probes negotiated HTTP/2. Cloudflare DNS/TCP/TLS
+finished in 99–107 ms and full catalog responses took 602–757 ms, versus
+812–1094 ms on production. This does not explain the earlier 3449 ms outlier; it
+only establishes that fresh TLS connections were not inherently seconds long in
+these subsequent samples.
+
+The clean app passed A/B/anonymous session isolation, chunked cookies, distinct
+CSRF tokens, complete/cancelled/concurrent streams, runtime prefetch and forced
+HEAD/GET revalidation. Catalog forced GET took 1373 ms and BMAT 769 ms; the largest
+of nine concurrent mixed routes was 2316 ms. Full Next/OpenNext build, app/Worker
+typechecks, expiry checks and the separate-state Worker tests passed. OpenNext
+reported copy warnings for four optional browser-launch dependency directories;
+the completed bundle passed the deployed route checks. Lint remains unavailable
+because this repository still uses removed `next lint` without an ESLint setup.
+Temporary diagnostics and their secret were removed from the final deployment.
+
+A later 75-second idle probe reproduced an outlier: catalog HTML completed in
+573 ms on Cloudflare / 1091 ms on production, but BMAT completed in 6616 / 4023 ms.
+This was retained in `.cloudflare-deploy/course-final-idle.jsonl`, not discarded.
+Re-enabled the temporary server tracer to separate execution from delivery and
+ran two more 75-second idle intervals with no other page probes. BMAT completed
+inside the Worker in 241 / 190 ms, and at the client in 688 / 593 ms; paired
+production requests took 1028 / 977 ms. No traced operation exceeded 150 ms in
+the first idle request; the second had a 162 ms background R2 read. These runs
+did not reproduce or explain the 6616 ms outlier, so consistent subsecond latency
+is still unproven. Raw server traces: `.cloudflare-deploy/bmat-idle-trace.jsonl`.
+
+Measured two public thumbnails through the existing `/_next/image` Cloudflare
+Images path before considering any image-delivery changes. AVIF reduced 9199 /
+10700-byte JPEGs to 3608 / 4529 bytes, but repeated optimized requests took
+210–234 ms versus 101–116 ms directly from Azure. No image configuration or
+component change was retained. Raw: `thumbnail-response-times.jsonl` in the
+ignored diagnostics directory.
+
+Live query checks also passed for an exact course search, an empty fuzzy search,
+CAT1 filtering and two disjoint 24-card pages using recent-first ordering. An
+initial supposed empty-search fixture contained the word "course" and correctly
+returned 57 fuzzy matches; it was replaced with an actually unmatched query.
+The clean candidate `076002e1-7a15-4445-b22a-f44eb2248c52` contains both external
+Durable Object bindings. After the second tracing run, redeploying that same
+clean code and deleting the secret also clears it from Wrangler’s latest saved
+version metadata; a code rollback alone left it listed there.
+
+Final active deployment: `40d8048d-dc69-430b-a3fc-7029a020c632`. Verified the live BMAT
+HTML stream completes, the tracer is inactive, and `EC_PERF_TOKEN` is absent
+from the Worker secret listing.
+
+## September 13: remove public cache persistence from the response path
+
+The first ordinary BMAT202L request in this pass took 3239 ms, followed by
+163–278 ms requests. To reproduce the source-cache miss independently of idle
+timing, a temporary authenticated diagnostic removed only BMAT202L's versioned
+course-detail and paper-row payload entries from test R2 and the current regional
+cache. Each sample seeded the entries, waited two seconds, removed those two
+entries, then forced Next revalidation. The catalog, source database, tags and
+namespace generation were not cleared. This is a controlled public payload miss,
+not a completely cold Worker or a normal browser-navigation benchmark.
+
+Three samples per stage, median milliseconds:
+
+| Stage | Server headers | Server response complete | Client response complete |
+|---|---:|---:|---:|
+| Before | 1598 | 3422 | 3612 |
+| Background payload persistence | 747 | 2079 | 2313 |
+| Plus request-local reuse of pending public fills | 775 | 1854 | 2307 |
+
+Before the change, both course metadata and paper rows waited for R2 persistence
+and lock release after their loaders finished. Those operations accounted for
+roughly 1.7–2 seconds in the controlled traces. Cloudflare now registers that
+write-and-unlock chain with `ctx.waitUntil`, returning loaded data immediately.
+The producer retains ownership of the lock until persistence finishes; followers
+still wait for the fill. Loader failures release the lock, failed writes are
+recoverable, and Node/Redis retains synchronous persistence. If lifetime
+registration throws, the request waits for persistence and cleanup instead.
+Cloudflare permits HTTP background work for up to 30 seconds after the response;
+the existing 15-second lock expiry remains the termination backstop. See
+[Cloudflare's context documentation](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil).
+
+The first candidate exposed one extra R2 read when Next rendered the course
+metadata again before its background write finished. The final candidate reuses
+that loaded public value within the same execution context. A WeakMap holds only
+strings and expiry timestamps, keyed by context and origin-qualified versioned
+public key. It does not share promises or values with other requests. Failed
+writes and deletions remove local values; expiry and generation changes bypass
+them. All three final traces eliminated the extra read (four application R2 reads
+versus five in the first candidate). The small sample shows a further 225 ms
+server-median reduction but effectively no additional client-median improvement;
+do not attribute a precise end-to-end gain to this second change.
+
+The combined server median fell 46%, and the controlled client median fell 36%.
+Final server samples were 1796–2096 ms: fully missing public payloads still exceed
+one second. Remaining traces include R2 reads and two serial lock acquisitions
+of roughly 300–490 ms each. These results do not establish consistent subsecond
+cold loads. Raw local traces: `surface-miss-before.jsonl`,
+`surface-miss-deferred.jsonl`, and `surface-miss-deferred-local.jsonl` under the
+ignored `.cloudflare-deploy/` directory.
+
+Validation covers concurrent fills, failed persistence, invalidation during a
+fill, Node behavior and failed lifetime registration. The real regional cache
+test additionally checks request/origin separation, generation changes, expiry,
+failed writes and rejection of session/state keys. Next/OpenNext production
+build and both app/Worker typechecks passed. OpenNext still reports the previously
+documented optional browser-launch dependency copy warnings.
+
+On the clean final deployment, three warm paired samples gave these complete
+response medians (Cloudflare / production): BMAT HTML 282 / 700 ms, catalog HTML
+295 / 444 ms, BMAT RSC 146 / 221 ms, and catalog RSC 221 / 341 ms. First requests
+were recorded separately: BMAT HTML 3008 / 1242 ms and catalog 1109 / 4519 ms.
+Production also had warm outliers of 4368 ms BMAT HTML and 9673 ms catalog RSC.
+No samples were discarded. Raw rows: `deferred-final-http.jsonl`.
+
+Fresh headless browser sessions (media disabled) showed BMAT's 24 cards at
+1800 ms initially and 678 ms in a fresh-session recheck, compared with production
+at 1020 / 1440 ms. Repeat Cloudflare visits were 781 / 775 ms. The first slow
+browser response delivered HTML at 990 ms but a stylesheet and font finished
+around 1717 ms; visible content followed. A diagnostic HTTP/2-only browser showed
+cards at 703 / 534 ms, but the normal-settings recheck also fell below a second.
+There is no isolated evidence that HTTP/3 caused the first outlier, so no transport
+setting was changed. Browser server caches were not forcibly cleared. The course
+list showed 12 cards at 1152 ms initially / 572 ms on repeat, versus production
+822 ms. All browser runs closed their sessions and reported no page errors.
+
+The deployed app passed alternating/concurrent/chunked A/B/anonymous session
+isolation, distinct CSRF tokens, private HTML/RSC response headers, nine concurrent
+streams (maximum 1245 ms), response cancellation and runtime prefetch. Forced
+HEAD/GET revalidation completed on all four tested routes; BMAT forced GET was
+726 ms with its public payloads present. Exact/empty catalog search, CAT1 filtering
+and disjoint 24-card pagination passed. Temporary diagnostics were removed, the
+old token returns ordinary complete HTML, and `EC_PERF_TOKEN` is absent from
+Worker secrets. Final active Worker version: `c98b47ea-ef9e-416a-b665-f0327fe1c1f2`.
+
+After more than 75 seconds without further page probes, BMAT's complete HTML
+took 426 ms on Cloudflare versus 901 ms on production; the immediate repeats
+took 241 / 277 ms. This single idle check passed, but does not negate the recorded
+3008 ms first request after deployment. Raw: `deferred-final-idle.jsonl`.
+
+## September 13: reuse the shared catalog for course details
+
+The course page previously fetched its metadata/counts through a dedicated
+course-detail cache, then fetched the shared catalog to populate title variants.
+The catalog already contained all the required fields. `getCourseDetailByCode`
+now projects from the tagged catalog rows instead of maintaining another cache
+entry and performing a separate SQL lookup and two count queries on a miss.
+The shared catalog retains the existing tags and lifetimes. Its payload key is
+now `course-catalog-rows-v2`, with original database aliases stored separately
+from generated search acronyms so course-detail output remains unchanged.
+
+Repeated the same test-only reset of BMAT202L's course-detail and paper-row
+payload entries, followed by forced Next revalidation. The shared catalog was
+seeded before each reset in both stages. The removed course-detail key becomes
+unused in the candidate; the diagnostic locates BMAT's ID in the new catalog
+after that old entry is gone. It still deletes only the two course-specific
+payload keys. This models a cold course with a warm shared catalog, not a wholly
+cold site or Worker.
+
+Three samples per stage, median milliseconds:
+
+| Stage | Server headers | Server response complete | Client response complete |
+|---|---:|---:|---:|
+| Previous deployed code | 737 | 1748 | 2126 |
+| Shared course metadata | 54 | 834 | 1101 |
+
+All three candidate server samples were below one second: 939, 834 and 747 ms.
+The server median fell another 52%, and the client median fell 48%. Application
+R2 misses fell from four to two per response, and lock acquisitions fell from two
+to one. The remaining paper-row miss and lock are real work; these measurements
+do not imply every browser load completes in 834 ms. Raw traces are retained in
+`surface-miss-shared-catalog-before.jsonl` and
+`surface-miss-shared-catalog-after.jsonl` under `.cloudflare-deploy/`.
+
+The focused test exercises the actual catalog code and public cache helper with
+controlled database rows. Concurrent detail, title-variant and search readers
+share the three catalog queries. It verifies normalization, exact original
+aliases, derived search aliases, zero-count courses, unknown courses and updated
+counts following invalidation. Next/OpenNext production build and app typecheck
+passed, with the previously documented optional dependency copy warnings.
+
+### Remove the redundant Cloudflare paper-row cache layer
+
+The intermediate clean deployment still recorded a 3314 ms first BMAT HTML
+request, despite a 279 ms warm median. Its first catalog request was 1765 ms;
+warm median 373 ms. Raw: `shared-catalog-final-http.jsonl`. Removing the duplicate
+course metadata lookup had not eliminated first-request outliers.
+
+The paper-row loader itself also sat under two persistent caches: Next's tagged
+`use cache` entry and the older public surface-cache facade. On Cloudflare it now
+loads through Hyperdrive directly when Next's cache misses. Next retains the same
+`past_papers` tag, five-minute revalidation and one-hour expiry, including its R2
+and regional cache backends. The Node path retains the original surface-cache
+key and locking behavior. Other public payload caches and application-state
+locks are unchanged.
+
+With the shared catalog warm and forced Next revalidation, the same three-sample
+probe measured server completion at 157 / 187 / 171 ms and client completion at
+519 / 654 / 470 ms. Median server time fell from 834 to 171 ms; client time fell
+from 1101 to 519 ms. The final trace has no paper payload R2 reads or application
+cache-lock acquisition. Raw: `surface-miss-next-only-papers.jsonl`. This is still
+a controlled Next cache miss with shared catalog state present, not a cold site.
+
+An ordinary traced first request immediately after deployment took 1605 ms in
+the Worker and 4039 ms at the client. A 720 ms R2 read for the persisted page
+shell and subsequent sequential Next cache reads remained. This explicitly
+preserves evidence of the remaining first-request problem, rather than treating
+the 171 ms controlled result as a promise for every visitor.
+
+Six concurrent forced revalidations returned complete pages, with client times
+1207–4426 ms. A separate traced burst completed inside the Worker in 248–2021 ms
+and at the client in 2600–2771 ms. A follow-up log capture confirmed Next R2 cache
+write throttling (`10058`) and cache-warming warnings under forced concurrency;
+one paper query took 1524 ms and an upcoming-exam query 1430 ms. R2 limits
+[overlapping writes to the same key](https://developers.cloudflare.com/r2/platform/limits/)
+to one per second. These are limitations of the tested burst, not a clean
+subsecond concurrency result. The removed inner lock no longer deduplicates
+paper SQL fills across cold requests; warm requests still use Next's cache.
+Raw: `next-only-first-page.json`, `next-only-concurrent.json`, and the protected
+`next-only-tail.jsonl` in `.cloudflare-deploy/`.
+
+The runtime comparison test checks identical paper/filter data on Node and
+Cloudflare and confirms that only Node invokes the extra cache. Both production
+builds and the focused shared-catalog/runtime tests passed.
+
+Final clean browser verification deliberately ran before the HTTP warmups. BMAT
+cards appeared at 3627 ms on the fresh session, versus 5832 ms on production;
+the Cloudflare repeat showed cards at 697 ms. The first Cloudflare navigation
+reported `cfEdge=1778`, `cfWorker=746`, headers at 2915 ms and HTML at 3378 ms.
+These metrics and the controlled cache-miss trace measure different scopes;
+do not add edge and Worker timings or attribute all delay to SQL. Cloudflare
+describes its [edge processing interval](https://developers.cloudflare.com/ruleset-engine/rules-language/fields/reference/cf.timings.edge_msec/)
+as excluding client network transfer and exposes
+[Worker execution including subrequests](https://developers.cloudflare.com/changelog/post/2026-02-18-cfworker-server-timing/)
+separately. The exact cause of the first-load edge delay is not established.
+All browser sessions were headless, media-disabled and closed after measurement.
+
+Subsequent paired HTTP samples (three per route/type) gave median complete
+responses of 205 / 294 ms for BMAT HTML, 309 / 549 ms for catalog HTML,
+353 / 568 ms for BMAT RSC, and 260 / 450 ms for catalog RSC (Cloudflare /
+production). The separately recorded first HTTP requests were 733 / 877 ms
+for BMAT HTML and 408 / 655 ms for catalog HTML. Those are after the browser
+visits and must not be labeled cold. Raw rows: `next-only-final-http.jsonl`;
+browser records: `bmat-browser-next-only-final-*.json`.
+
+The final deployment passed A/B/anonymous and chunked-cookie session isolation,
+CSRF uniqueness, private HTML/RSC response policy, nine normal concurrent streams
+(maximum 1287 ms), cancellation recovery, runtime prefetch, forced HEAD/GET
+revalidation, exact/empty search, CAT1 filtering and disjoint pagination. BMAT's
+forced GET completed in 501 ms in the clean verification. Diagnostics and their
+secret were removed; the old token returns ordinary complete HTML. Active Worker
+version: `88494813-87a6-40b4-9c38-b6a9616dbc4f`. Azure production was not redeployed.
+
+## Follow-up: collapse the course data and invalidation waterfall
+
+The initial ordinary BMAT202L traces in this pass finished inside the Worker in
+1340 and 1436 ms. They performed a shell read, then catalog/syllabus reads, then
+paper/upcoming-exam reads. Immediate repeats took 26 and 10 ms internally, which
+shows why warm-only measurements hide the remaining problem.
+
+Changes:
+
+- The course page and its metadata share one tagged public collection containing
+  course details, title variants, clear paper rows and upcoming exam dates. Sort,
+  filter, pagination and time-dependent exam selection run outside that cache.
+  The collection retains the 60/300/3600-second stale/revalidate/expire profile
+  and the `courses`, `notes`, `past_papers` and `upcoming_exams` invalidation tags.
+- The Cloudflare catalog loader now queries through Hyperdrive on a Next cache
+  miss. Its previous inner payload read and distributed lock were redundant;
+  Node retains the existing shared-cache behavior. An intermediate collection
+  candidate still using that inner cache took 5047 ms on its first fill, including
+  a 1044 ms namespace read and a 900 ms lock operation. That path was removed.
+- Shell layout/page tags and the exact request-path tag are prefetched alongside
+  the shell read. A shell hit joins its pending prefetch before Next validates it,
+  preventing duplicate cold tag RPCs. Only a pathname is retained in a WeakMap
+  keyed by the current invocation context; no identities or responses are shared.
+
+A temporary token-protected diagnostic can bypass `incremental-cache` regional
+reads for an anonymous BMAT202L request. It does not delete cache entries or
+bypass invalidation checks. Four runs before adding the exact URL tag completed
+in 859/785/771/817 ms internally (801 ms median); headers had a 277 ms median.
+Each performed one shell and two parallel composable reads. The remaining
+serial request-path tag lookup added about 250 ms after the data read.
+This experiment measures an empty regional cache with populated R2, not a
+completely empty deployment or a browser's visible-content time.
+
+Compression was measured separately using a tiny remote preview Worker in MAA,
+with six alternating-order reads per format and identical public cache payloads.
+The course shell shrank from 143300 to 21013 bytes, but median read/decode time was
+151 ms plain versus 154 ms gzip. Catalog reads were 180.5 versus 153.5 ms. No
+compression format change was retained. Both R2 buckets already report APAC;
+all synthetic probe objects were deleted and the preview workers disposed.
+
+Projection tests cover sort orders, all filter dimensions, independent facet
+counts, pagination and non-mutation of shared rows. Catalog tests verify current
+SQL counts on Cloudflare and retained shared-cache behavior on Node. Workerd
+checks cover concurrent request-path isolation, shell/tag overlap, joining an
+in-flight tag read, failures and normal write/delete behavior. Exam-cutoff,
+undated-exam and seasonal-fallback behavior was also checked against the page's
+actual selection function.
+
+After the exact URL tag was added, rollout initially returned a mixture of old
+and new Worker versions. Those mixed samples are excluded from the comparison.
+The four subsequent stable probes all prefetched 11 tags and finished in
+537/547/533/540 ms (538.5 ms median); median headers were 277.5 ms and client
+completion 747 ms. Compared with the preceding identical regional-bypass probe,
+server completion fell from 801 to 538.5 ms, about 33%. The implicit-tag check
+now resolves from the request-local prefetch with no extra remote round trip.
+Raw results are `collection-r2-hits.jsonl` and
+`collection-path-stable-r2-hits.jsonl` in the ignored diagnostics directory.
+
+The first request that actually reached the new build took 1617 ms internally
+and 3660 ms at the client while its new composable entries missed in R2. This
+remains a slower path: the 538.5 ms result is not a claim of subsecond cold fills
+or subsecond browser rendering. An earlier direct-catalog candidate measured a
+1645 ms empty-build fill, confirming that eliminating the lock avoids the
+intermediate 5-second server regression but not all first-fill delay.
+
+### Browser check and remaining delay
+
+On the final clean deployment, a fresh muted headless Chrome session showed
+BMAT202L cards at 4583 ms, versus 1158 ms on production; the Cloudflare repeat
+was 918 ms. The slow first response had final headers at 3451 ms, HTML complete
+at 4287 ms, and `cfEdge=2003` / `cfWorker=1173` Server-Timing values. DNS plus
+connection setup ended at 173 ms. CSS completed at 3946–4248 ms, before the
+4312 ms first paint. This was a real slow first visit, not a successful
+subsecond browser result.
+
+A second fresh session after the deployment settled showed Cloudflare cards at
+945 ms versus 800 ms on production; Cloudflare final headers were 518 ms and
+HTML completion 905 ms (`cfEdge=12`, `cfWorker=315`). Its repeat showed cards at
+1067 ms. Both sessions had 24 cards, no recorded browser errors, media playback
+blocked/muted, and were closed afterward. Raw captures are
+`bmat-browser-collection-final-*.json` and
+`bmat-browser-collection-stable-recheck-*.json` in the ignored directory.
+These are fresh browser profiles against already exercised server caches, not
+controlled empty-cache browsers. They show that deployment/edge startup and
+asset delivery still need attention; the specific cause of the initial large
+`cfEdge` value has not been established. The roughly 35 MB uncompressed Worker
+bundle is a candidate for further investigation, not a proven explanation.
+
+The clean Worker contains no diagnostic endpoint and its `EC_PERF_TOKEN` secret
+was deleted. The old diagnostic header returns normal complete HTML. Existing
+session isolation, no-store HTML/RSC, filters, pagination and forced revalidation
+checks passed. Nine concurrent render streams also completed during candidate
+validation, with a 3708 ms maximum; that is correctness coverage rather than a
+claim of subsecond concurrency. Production Azure was not deployed.
+
+Final paired HTTP measurements used three samples per route/mode, with a
+separate warmup request and at most two requests in flight. Completion medians
+in milliseconds:
+
+| Route | Cloudflare HTML | Production HTML | Cloudflare RSC | Production RSC |
+|---|---:|---:|---:|---:|
+| BMAT202L | 263 | 398 | 395 | 244 |
+| Course catalog | 662 | 1490 | 242 | 553 |
+
+All streams were valid. Production also had large outliers (up to 8517 ms), so
+this small sequential comparison is not a controlled latency guarantee.
+In particular, course RSC remains slower than production in these samples.
+Raw results: `collection-final-comparison.jsonl`.
+
+Final clean Worker version: `e004785e-0633-47ba-b318-da53d58dea20` (100% traffic).
+The final deployment passed alternating/concurrent/chunked-cookie session and
+CSRF isolation, test-host auth redirects, search/empty-search checks, disjoint
+24-card pages, exam filtering and BMAT202L HEAD/GET forced revalidation.
+
+## September 13: preserve the PPR resume cache
+
+The course route now prerenders the 24 courses with the most recorded paper
+views. New catalogs without view history fall back to the first 24 catalog
+courses; empty development catalogs use a not-found sample because Cache
+Components rejects an empty `generateStaticParams` result. Unlisted courses
+still render on demand. BMAT202L and BCSE202L are in the current built set.
+The BMAT202L shell contains public course/syllabus resume entries and retains
+300-second revalidation and a 3600-second expiration. Search parameters and
+session APIs remain dynamic.
+
+Prerendering alone did not remove the second remote cache-read stage. In the
+installed Next 16.3.5 `app-render.js`, both HTML and RSC partial-prefetch setup
+create a new empty `createPrerenderResumeDataCache()` and assign it over the
+request's restored cache. A gated probe inside the built runtime confirmed
+`hasResume: true` but `hasEntry: false` for the course collection and syllabus
+when the request resumed. Their exact cache keys were present in the built
+postponed state.
+
+The Cloudflare adapter patch now passes the existing request resume cache to
+that factory. The factory copies the maps; it preserves timestamps, tags and
+request-owned entries. It does not introduce an isolate-global stream cache.
+Normal Next tag validation remains active, and partial prefetching remains on.
+The build fails if the patch no longer matches after a Next upgrade. The
+regression check covers both compiled Next renderers, their HTML/RSC setup
+sites, preservation of data age/tags, and separate request maps and streams.
+
+### Measured results and limits
+
+All persisted-cache probes bypass only the regional Next Cache API reads;
+R2 remains populated and normal tag checks stay enabled. Four sequential
+samples per run, six seconds apart, on the actual test hostname:
+
+| Candidate/run | Server completion samples (ms) | Median (ms) |
+|---|---|---:|
+| Previous generic shell, before changes | 719, 649, 591, 539 | 620 |
+| Course prerender, without resume fix | 4946, 1086, 606, 633 | 859.5 |
+| Resume fix, initial rollout | 2258, 282, 307, 2831 | 1282.5 |
+| Resume fix, settled after validation | 291, 323, 291, 309 | 300 |
+
+The final settled trace needs one full-route cache read and no foreground
+composable-cache reads. Previously it needed the shell followed by two
+parallel composable reads. Settled median client completion was 758 ms versus
+987 ms before; these include connection and network overhead. This is a small,
+sequential experiment, not a randomized p95 comparison. The 52% improvement
+in settled server median does not erase the initial rollout outliers.
+
+The two 2–3 second resume-fix outliers occurred inside the full-route cache
+read. The R2 `get` calls returned object handles in 659–662 ms, but the enclosing
+read finished much later; the existing tracing does not separate body download
+and JSON parsing. The new BMAT202L build cache object is about 270 KB (43 KB
+if gzipped), compared with the generic shell's 156 KB. At this stage no R2 encoding change had been made: previous experiments with
+repeated reads of the same objects had not shown a consistent win. The
+first-read experiment below led to a different result.
+
+A separate token-gated bootstrap response returned before `app.fetch` and
+Next.js. Its first invocation took 1992 ms from the client versus 65/74 ms
+for repeats. A later fresh-connection curl probe also saw a first invocation
+at 2388 ms versus 188–234 ms for repeats. This establishes that some observed
+first-request overhead is outside the Next page/cache logic, but does not
+prove its cause is bundle initialization. Curl's first-header timing can
+include an informational response and must not be read as final-header timing.
+Wrangler reported about 40 ms of startup CPU for the diagnostic Worker.
+
+Raw ignored artifacts: `prerender-before-r2-hits.jsonl`,
+`prerender-after-r2-hits.jsonl`, `resume-seed-r2-hits.jsonl`,
+`resume-seed-stable-r2-hits.jsonl`, `resume-probe-one.json`,
+`bootstrap-results.jsonl`, and `bootstrap-warm-connections.jsonl`.
+
+Validation passed: full Next/OpenNext build, app typecheck, all 28 PPR resume
+payloads decoded in workerd, resume-cache seeding/isolation, existing pending
+stream and scheduler tests, row projections, tag prefetch, A/B/anonymous and
+chunked-cookie sessions, CSRF isolation, no-store HTML/RSC including the course
+route, forced HEAD/GET revalidation, nine concurrent render streams, cancellation,
+runtime prefetch, search, exam filters and disjoint 24-card pagination. Azure
+production was not deployed.
+
+### Follow-up: compress first reads, including deployment uploads
+
+The first clean browser visit after resume seeding still took 5576 ms to show
+24 cards (`cfWorker=3143`, `cfEdge=1258`); its repeat took 2383 ms. Both matched
+the deployed build ID and had no browser errors. Production was also unusually
+slow in that session (18197 ms to cards), so it is not a useful production
+baseline. This prompted another isolated storage experiment rather than a
+claim that the first-visit problem was solved.
+
+Unlike the earlier repeated-read experiment, this probe created a fresh R2 key
+for each read. It tested eight pairs of the same 270 KB BMAT202L cache object,
+alternating plain/gzip order, through a small remote Worker in HYD:
+
+| Encoding | Stored bytes | First-read median, including decode | Range |
+|---|---:|---:|---:|
+| Plain JSON | 269746 | 1916.5 ms | 1210–2326 ms |
+| Gzip | 42509 | 622 ms | 384–839 ms |
+
+All 16 synthetic objects were deleted and the preview Worker was disposed.
+Raw results: `r2-first-encoding-results.json`. This isolates storage-body
+transfer from Next rendering, auth and tag checks. It does not measure full-page
+latency or guarantee the same gain in every Cloudflare location.
+
+The pinned adapter patch now encodes R2 entries of at least 32 KB with gzip
+when compression saves space. Both runtime cache writes and the normal
+`populateCache` deployment Worker use the same encoder. The reader recognizes
+`customMetadata.ecEncoding = "gzip-v1"` and still reads legacy plain JSON.
+Cache keys, timestamps, invalidation tags and HTTP response cache policies are
+unchanged. Small/incompressible entries stay plain. The optional rclone upload
+path remains plain and is compatible with the reader. A fresh Next build ID
+keeps the new deployment's objects separate from the prior rollback version.
+
+The storage test exercises the actual runtime adapter and deployment uploader
+in workerd: legacy reads, Unicode, large and small writes, gzip-to-plain
+overwrite, cache-age preservation and deletion all passed. Compression changes
+only the storage format of entries already in the Next data/PPR cache; it does
+not add shared HTTP caching or cache session responses.
+
+### Final deployment verification
+
+Clean Worker version `7b7a5f9a-092e-49fd-a784-24f9525e93a0` receives 100% of
+test traffic. `EC_PERF_TOKEN` is absent and the temporary runtime probe is not
+in the built server. A read of the actual regenerated BMAT202L R2 object
+confirmed gzip metadata and a 52835-byte object representing roughly 356 KB of
+JSON, with its postponed state intact.
+
+The final compressed-cache browser measurements were:
+
+- First visit after deployment: cards at **6344 ms**, HTML complete at 6265 ms,
+  `cfWorker=4355`, `cfEdge=1133`.
+- Repeat in that session: cards at **568 ms**, HTML complete at 569 ms,
+  `cfWorker=311`.
+- A later fresh browser profile: cards at **1023 ms**, HTML complete at 752 ms,
+  `cfWorker=291`. Its subsequent production navigation timed out; the browser
+  session was closed in `finally` and no repeat capture was obtained.
+
+All captured test pages matched the current build ID, contained 24 cards and
+reported no browser errors. Media remained blocked/muted. Raw artifacts use
+`bmat-browser-r2-encoding-final-*` and `bmat-browser-r2-encoding-settled-*`.
+These results do **not** show a first-postdeployment improvement: the earlier
+uncompressed seeded build showed cards at 5576 ms, versus 6344 ms here. The
+isolated storage improvement and eliminated data reads are real, but other
+startup delays remain unresolved.
+
+The final paired HTTP comparison could not complete: production timed out and
+returned HTTP 502. Test HTML completion medians over three measured samples
+were 690 ms for BMAT202L and 298 ms for the catalog, with no test failures.
+Production failures make a relative speed claim inappropriate. Raw results:
+`r2-encoding-final-comparison.jsonl`.
+
+The final clean build passed app and Worker typechecks, both new regression
+tests, PPR decoding, live session/CSRF isolation, no-store course HTML/RSC,
+HEAD/GET revalidation, cancellation, runtime prefetch and filters/pagination.
+Nine concurrent render streams completed with a 1036 ms maximum. That is
+correctness coverage, not a general latency guarantee. No Azure deployment,
+source-data modification or production cache purge was performed.
+
+## September 14: exclude the unused Redis backend from Workers
+
+The initial HTTP sample still took 2524 ms on test versus 1169 ms on production.
+The existing build's first fresh-profile browser visit showed cards at 449 ms,
+then 1206 ms on its repeat; production showed cards at 960 ms. These are different
+requests, not controlled cold starts, and show substantial variation.
+
+### Rejected: switching the Next bundler
+
+A Webpack experiment reduced the server handler from 22535978 to 19174078 bytes,
+but increased BMAT202L's initial scripts from 22 to 29 and their summed gzip size
+from 354074 to 385556 bytes. Cache Components, partial prefetching, resume seeding,
+PPR decoding and auth isolation passed. The experiment reached ec-test as
+`56feea06-b9b5-4692-a9c1-19fb5dde8341`, then was rolled back.
+
+Warm completion medians for BMAT202L:
+
+| Build / run | Samples per mode | HTML | RSC |
+|---|---:|---:|---:|
+| Original, before experiment | 5 | 315 ms | 255 ms |
+| Webpack, verified build | 7 | 267 ms | 205 ms |
+| Original, restored and verified | 7 | 241 ms | 163 ms |
+
+The restored original was faster than Webpack; the apparent initial improvement
+did not survive the comparison. The smaller Webpack artifact also did not prove
+a cold-start benefit. Its first HTTP request took 2532 ms. The first browser
+capture after deployment was still served by the old build and was discarded;
+the verified browser capture showed cards at 1589 ms, then 590 ms on repeat.
+The benchmark now supports `--test-build-id-file .next/BUILD_ID`, excludes
+mismatched responses from successful samples, and exits unsuccessfully on a
+mismatch. Raw files: `webpack-baseline-http.jsonl`, `webpack-verified-http.jsonl`,
+`webpack-restored-http.jsonl`, and `bmat-browser-webpack-*`.
+
+### Retained: remove the inactive Node Redis dependency graph
+
+Source-map inspection found multiple compiled copies of Redis and its Entra
+authentication dependencies. Cloudflare's `getOptionalAppState()` already uses
+Durable Objects/R2 before reaching the Node Redis fallback. The Cloudflare build
+now aliases that fallback to a small module returning `null` during Node
+prerendering. Ordinary Node/Azure builds keep the original backend. OpenNext's
+build command explicitly sets the target flag and selects Turbopack.
+
+With the same generated source data as the baseline:
+
+| Artifact | Before | After |
+|---|---:|---:|
+| Server handler | 22535978 bytes | 19646320 bytes |
+| Server handler, gzip | 5710316 bytes | 5050526 bytes |
+| Wrangler total upload | 35547.15 KiB | 30435.09 KiB |
+| Wrangler gzip upload | 7674.94 KiB | 6736.38 KiB |
+| BMAT initial scripts | 22 | 22 |
+| BMAT initial JS, uncompressed | 1120788 bytes | 1120788 bytes |
+
+Wrangler startup CPU was 71 ms versus the prior deployment log's 36 ms; smaller
+code is not evidence of lower startup CPU. A build check inspects the bundled
+dependencies and 536 Next source maps to verify the Redis SDKs are absent.
+The state test now goes through the application's actual facade with the
+Cloudflare alias, exercising R2 payloads, atomic locks, limits and votes against
+real local Durable Objects. A separate config check confirmed normal Node builds
+do not enable the alias.
+
+Clean deployment `e16b7704-8ed1-47fe-8455-5b6299290782` receives 100% of ec-test
+traffic. The first verified browser visit showed 24 cards at **2991 ms**
+(HTML 2790 ms, `cfWorker=799`, `cfEdge=1229`); its repeat showed cards at **585 ms**.
+Production in that session showed cards at 1542 ms. This still does not meet a
+subsecond first-visit target, and the historical 6344 ms postdeployment result
+is not a controlled before/after comparison.
+
+Seven verified warm HTTP samples per mode measured test medians of **213 ms
+HTML / 171 ms RSC**, versus production's **511 ms / 264 ms**. Test maximums were
+827 ms and 227 ms. Compared with the restored original's 241/163 ms, the HTML
+median improved and RSC was similar; network variation prevents attributing all
+of that difference to the code removal. Raw files:
+`redis-exclusion-final-http.jsonl`, `bmat-browser-redis-exclusion-final-*`.
+
+A later fresh browser profile showed cards at 1567 ms, then 333 ms on repeat,
+with no browser errors (`bmat-browser-redis-exclusion-settled-*`). The first
+navigation spent about 688 ms between `fetchStart` and `domainLookupStart`,
+then 103 ms connecting, before sending the request at 793 ms. Its reported
+Worker duration was 147 ms. There was no service worker or redirect involved.
+This distinguishes client connection/setup delay from the app response; it
+does not establish the cause of that initial gap.
+A subsequent browser run with QUIC disabled still spent 378 ms before DNS and
+284 ms connecting, showing cards at 1276 ms and 272 ms on repeat. This does not
+isolate HTTP/3 as the cause; no Cloudflare protocol setting was changed. All
+browser sessions were headless, media-blocked/muted and closed in `finally`.
+
+Validation passed: Next and OpenNext builds, app/Worker typechecks, all 28 PPR
+payloads, HTML/RSC resume-cache seeding for both bundlers, Redis exclusion,
+state/lock/limit/vote tests, live A/B/anonymous and chunked-cookie sessions, CSRF,
+no-store HTML/RSC, forced HEAD/GET revalidation, filters and disjoint pagination.
+Nine concurrent HTML streams completed with a 985 ms maximum; cancellation and
+runtime prefetch checks also passed. Diagnostics remain absent, including
+`EC_PERF_TOKEN`. No Azure deployment or production Redis change was made.
+
+## September 15: smaller shared course-search transport
+
+Home, papers, notes and exam hubs previously sent full database-shaped course
+objects to their client search controls. The transport now uses compact tuples
+and omits unused database IDs; clients decode once into named fields. All 775
+courses, ordering, aliases, counts and syllabus destinations remain available
+without an extra fetch. Cache Components and partial prefetching remain enabled.
+
+Version `de4266e4-481a-462e-a4fd-c0f1c7619dda` receives 100% of ec-test traffic.
+The build used the same generated source data as the preceding version. An audit
+of the actual streamed responses checked every decoded catalog against the
+baseline, including order and all retained fields.
+
+| Complete HTML response | Before, raw bytes | After, raw bytes | Before, gzip bytes | After, gzip bytes |
+|---|---:|---:|---:|---:|
+| Home | 674332 | 495249 | 124264 | 93214 |
+| Papers | 731200 | 579483 | 109066 | 78812 |
+| Notes | 731636 | 579910 | 103100 | 73297 |
+
+This removes 21–27% of decoded HTML and 25–29% under the same local gzip
+compression. Actual Chromium navigation used zstd: home fell from 65762 to
+51983 encoded bytes, and papers from 55819 to 43123. The notes navigation was
+handled by the service worker, so its encoded-size reporting is not comparable.
+RSC responses fell from 504560 to 350277 bytes on home, 542943 to 412926 on
+papers, and 547972 to 417946 on notes.
+
+Warm complete-response medians from this workstation (milliseconds):
+
+| Route | Before HTML / RSC, 3 samples | Settled HTML / RSC, 5 samples | Paired Azure HTML / RSC, 5 samples |
+|---|---:|---:|---:|
+| Home | 209 / 312 | 564 / 221 | 1616 / 478 |
+| Papers | 309 / 732 | 295 / 226 | 4648 / 430 |
+| Notes | 437 / 200 | 291 / 182 | 884 / 879 |
+| Syllabus | 324 / 223 | 155 / 139 | 1197 / 270 |
+| BMAT202L | 200 / 210 | 180 / 219 | 327 / 353 |
+
+All settled samples matched the new build. The immediate postdeployment run
+contained one old-build warmup and exited unsuccessfully; it is retained in the
+raw evidence, not counted as a valid candidate warmup. The settled home warmup
+still took 2154 ms and its slowest measured HTML took 1767 ms. Payload savings
+are consistent; latency changes are mixed, and this does not resolve slow
+outliers. Syllabus and BMAT did not receive a search-payload change, illustrating
+how much latency can vary without a relevant code change.
+
+One fresh headless profile showed the search input at 804 ms on home, 561 ms on
+papers and 420 ms on notes; HTML completed at 772/533/503 ms. Baseline input
+visibility was 1139/6929/248 ms. The baseline papers request spent about 6.5
+seconds before final headers despite reporting 351 ms of Worker time; its
+large apparent improvement cannot be attributed to serialization alone.
+
+Two early-input probes typed before hydration and the input was subsequently
+cleared, with no browser errors. The final probe waited for DOMContentLoaded
+before typing, while still measuring input visibility independently. All three
+searches returned BMAT202L in 7–14 ms after input and had no browser errors.
+This establishes initialized search behavior, not reliable prehydration typing.
+All probes were headless, media-blocked/muted and closed after the run.
+
+Local validation passed: application and Worker typechecks, the production and
+OpenNext builds, all 28 PPR resume payloads, resume-cache seeding, Redis bundle
+exclusion, and catalog roundtrip/fuzzy-relevance tests. Raw evidence is in
+ignored `.cloudflare-deploy/general-{before,after,settled}-http.jsonl`,
+`general-after-payload-audit.jsonl` and `general-browser-*` files. Lint remains
+unavailable under the repository's current Next 16 setup.
+
+Live validation passed: A/B/anonymous and chunked-cookie session isolation,
+unique CSRF tokens, private/no-store HTML and RSC, nine concurrent render streams
+(1253 ms maximum), cancellation, runtime prefetch, search and empty results,
+CAT-1 filtering and disjoint pagination. The exam hub also rendered the new
+catalog without server errors. `EC_PERF_TOKEN` remains absent. Azure production
+was not deployed.
+
+## September 15: general navigation and background work
+
+The final test deployment is `39eaae16-46da-40ac-9097-7c65d6eabb1f`.
+This pass starts from `f6cc417` and changes four shared browser behaviors:
+
+- Papers, notes and resource course grids keep Next's default reusable shell
+  prefetch, but fetch complete destination content on hover, keyboard focus or
+  touch. The shared link tracks its destination and resets on invalidation.
+- Forward/back route transitions now take 120 ms, with a 24 px offset and no
+  delayed fade-in, instead of a 400 ms slide and 150 ms fade-in delay. Lateral,
+  filter, reduced-motion and native-shell behavior is preserved.
+- Home, papers and notes adopt text entered into their server-rendered search
+  inputs before hydration. Later controlled renders no longer clear that text.
+- The service worker serves an already-cached same-origin `/_next/static/`
+  response without a refresh when its cache policy permits caching and declares
+  it immutable. New asset URLs still fetch normally; mutable public assets still
+  refresh. HTML, RSC and auth retain their existing network-only/bypass policies.
+  Next's content-addressed assets support this policy; see the
+  [Next self-hosting cache guidance](https://nextjs.org/docs/app/guides/self-hosting#caching-and-isr).
+
+The animation change was tested separately before changing the CSS. A headless
+browser loaded the papers catalog, waited four seconds, hovered BMAT201L for
+250 ms, then measured the click until all 24 paper cards reached the next frame.
+Each row below contains three samples from this workstation:
+
+| Candidate | Median click to cards | Range |
+|---|---:|---:|
+| Baseline | 475 ms | 467–566 ms |
+| Intent prefetch only (`0a019484`) | 478 ms | 473–492 ms |
+| Same deployment, animations disabled in the probe browser | 166 ms | 142–333 ms |
+| 120 ms directional animation (`0be6da63`) | 247 ms | 198–290 ms |
+| Final build, also preserving early search text (`39eaae16`) | 246 ms | 195–270 ms |
+
+The final median is 48% lower than baseline. This is a navigation improvement,
+not evidence that every origin response got faster. The final keyboard-focus
+probe reached cards in 188 ms; the synthetic touch-start probe took 403 ms,
+including a 368 ms RSC request. Every probe rendered 24 cards without errors.
+
+Across the same five pages, background RSC requests in the eight-second window
+fell on the affected catalogs (captured on `0be6da63`, before the separate
+search-input fix):
+
+| Page | Before | Final |
+|---|---:|---:|
+| Papers | 25 | 21 |
+| Notes | 34 | 16 |
+| Resources | 27 | 15 |
+
+These counts include staged prefetches and redirects, not just unique URLs.
+Home and syllabus are controls and did not receive the grid policy change.
+Initial document times still vary; these samples do not establish a universal
+hard-load improvement. Service-worker responses conceal some transfer sizes,
+and its old refreshes could hit the browser HTTP cache, so no network-byte
+saving is claimed for the immutable-asset change.
+
+Validation: application and Worker typechecks, Next/OpenNext builds, all 28 PPR
+payloads, resume-cache seeding, Redis exclusion, and service-worker policy tests
+passed. The policy suite covers immutable hits, mutable refreshes, new asset
+URLs, navigation preload, offline fallback and auth/RSC isolation. Three stale
+expectations were corrected to match the existing root/sign-in bypass and
+native-prefetch exclusions; those behaviors were not changed. Live checks on
+the final deployment passed session/CSRF isolation, nine concurrent streams,
+stream cancellation and runtime prefetch. Final browser probes verify the new
+build; browser coverage spans home, papers, notes, resources and syllabus with media blocked.
+
+A real-browser hydration fixture reproduces lost text with restoration disabled,
+then verifies preservation, opening results, editing and clearing with the actual
+shared hook. Run `node scripts/test-search-input-hydration.mjs` with agent-browser
+on PATH (or set `AGENT_BROWSER_BIN`). The final visible-input probe verified
+Home typing before React attached its events, and all three search fields kept
+BMAT202L and displayed matching results. Papers and notes had already hydrated
+when that live probe reached them; the shared-hook fixture covers the race.
+Initialized searches returned results in 2.8/7.1/17 ms on home/papers/notes.
+The visible inputs appeared at 608/635/378 ms in that separate sample.
+Lint remains unavailable under the current Next 16 setup.
+
+Raw evidence remains in ignored `.cloudflare-deploy/general-{before,after,final}-*.json`
+and `grid-navigation-{before,after,after-no-motion,final,final-focus,final-touch}.jsonl`.
+Latest navigation evidence is `grid-navigation-input-final.jsonl`; search
+evidence is `early-search-input-verified.jsonl` and `general-browser-input-final-*.json`.
+Build/deploy logs are `general-{intent,motion,input}-{build,deploy}.log`.
+`EC_PERF_TOKEN` is absent. Azure production was not deployed.
+
+## September 15: shared document loading
+
+Deployed to ec-test as `8f660474-b554-4614-b7b0-5465f4c64ca2`, starting from
+`2a9eacd`. This affects the shared viewer used by papers, notes, syllabi and
+split-view papers, plus the global stylesheet:
+
+- Question-text rendering and its math/code/diagram dependencies are loaded when
+  the text view is requested. The renderer download overlaps the Markdown data
+  request. Copy-only actions do not download the renderer.
+- Streamdown/KaTeX CSS moved out of the global stylesheet into that optional
+  component. Its existing rendering components and plugin options are preserved.
+- The lightweight viewer wrapper starts the PDF buffer and engine promises while
+  viewer JavaScript downloads. Existing caches deduplicate these requests.
+- PDFium uses a SHA-256 filename generated from the installed package bytes.
+  Only `/vendor/embedpdf/immutable/*` receives year-long immutable caching in
+  Cloudflare static-asset headers and the Next configuration. The legacy URL
+  still revalidates; both paths bypass service-worker storage. This follows
+  [Cloudflare's fingerprinted-asset caching guidance](https://developers.cloudflare.com/workers/static-assets/headers/#configure-custom-browser-cache-behavior).
+  Normal dev/build commands regenerate the asset and URL together; direct
+  `next build` invocations must run `node scripts/sync-pdfium-wasm.js` first.
+
+A real two-page BMAT202L PDF was measured with one muted, media-blocked headless
+Chromium process at a time. Each stage used a fresh profile followed by a repeat
+hard navigation. The first-visible-PDF signal is a visible blob image's load
+followed by the next animation frame. These are workstation samples, not
+population percentiles or controlled Cloudflare cold starts.
+
+| Stage | Fresh-profile PDF visible | Repeat PDF visible |
+|---|---:|---:|
+| Baseline | 3293 ms | 1017 ms |
+| Renderer split, immediate postdeploy | 8784 ms | 1538 ms |
+| Renderer split, settled | 2444 ms | 1133 ms |
+| Split + early loading, immediate postdeploy | 5684 ms | 1283 ms |
+| Final immutable asset, immediate postdeploy | 9938 ms | 1244 ms |
+| Final immutable asset, settled | 2505 ms | 958 ms |
+
+The reliable reductions are in payload and repeat asset retrieval:
+
+| Metric | Baseline | Final |
+|---|---:|---:|
+| JavaScript resources on the PDF page | 56 | 47 |
+| Decoded JavaScript bytes, including shared/analytics scripts | 4,076,903 | 2,511,004 |
+| Global stylesheet, raw / gzip | 248,830 / 37,298 bytes | 223,194 / 33,097 bytes |
+| Repeat PDFium retrieval | 217 ms; 280 ms after split | 6–7 ms |
+| Repeat PDFium network transfer | 300 bytes (revalidation) | 0 bytes |
+
+Ordinary document views load 38.4% less decoded JavaScript. The optional math
+stylesheet is 25,638 bytes raw / 4,297 gzip and is absent from plain PDF loads.
+The early-loading waterfall shows the PDF request starting while the
+viewer chunk is in flight; live checks verify only one PDF and one WASM request.
+
+These results do **not** establish a universal cold-load latency improvement.
+The slowest final sample spent 7437 ms obtaining the HTML, including about
+1216 ms DNS and 1828 ms connection establishment; it cannot all be attributed to
+application CPU. That first final run overlapped HTTP auth/render probes. The
+settled final run had no concurrent probes. Sequential samples, changing network
+conditions and postdeploy cache state limit end-to-end comparisons. All measured
+PDFs rendered without browser errors, including the slow outliers.
+
+On the final build, the home/papers/notes visible search inputs appeared at
+623/593/321 ms and initialized searches returned results in 13.1/16.8/6 ms.
+These are smoke-check timings, not a claimed search improvement from this pass.
+
+Validation passed: application typecheck, Next/OpenNext builds, 28 PPR payloads,
+resume-cache seeding, Worker Redis exclusion, PDFium watchdog, service-worker
+cache policies, asset hash/legacy-copy consistency and idempotent generation.
+Live checks confirmed matching WASM bytes and immutable headers, legacy URL
+revalidation, isolated A/B/anonymous and chunked-cookie sessions, unique CSRF
+values, private/no-store HTML/RSC, nine concurrent streams (maximum 1878 ms),
+cancellation and runtime prefetch. Lint remains unavailable under Next 16.
+
+`node scripts/cloudflare/test-pdf-markdown-lazy.mjs` uses a browser-only mocked
+Markdown response, so it sends no AI generation request. It verifies ordinary PDF
+loading, lazy math CSS, math font rendering, CJK, existing fenced code/diagram
+source rendering, and return to PDF. The existing custom `pre` component renders
+fenced code/diagram definitions as text; this change does not introduce diagram
+SVG rendering. Set `AGENT_BROWSER_BIN` if the CLI is not on PATH.
+
+Compact measurements, including all valid slow samples and deployment IDs, are
+in [the benchmark data](benchmarks/pdf-loading-2026-09-15.json). Raw waterfalls
+remain in ignored `.cloudflare-deploy/pdf-{baseline,after,settled,parallel,immutable,immutable-settled}-{0,1}.json`;
+final search probes are `general-browser-pdf-immutable-*.json`. Final build/deploy
+logs are `pdf-immutable-{build,deploy}.log`. Azure production was not deployed.
+
+## September 15: BMEE209L paper visibility
+
+The reported route was
+`/past_papers/BMEE209L/paper/cmoeqmav202j7a8v3ls8bxdpl`. Starting from `9216a3f`,
+the final test Worker is `b38d1cb7-17f8-4dfd-a42b-08fe2ac4c6c9`.
+The source PDF is only 270,406 bytes. In the baseline fresh browser, its download
+started at 1481 ms and the approximately 2.1 MB compressed engine at 1762 ms;
+the engine finished at 3511 ms and the first PDF page appeared at 3821 ms.
+
+Two changes address different waits:
+
+- Shared document shells emit an engine fetch preload in their server HTML.
+  The viewer emits a PDF fetch preload once its published URL is available.
+  Both use anonymous CORS to match the consuming fetches; the browser reuses
+  each preload rather than downloading another copy. Calls run during render,
+  following [Next's resource-hint guidance](https://nextjs.org/docs/app/api-reference/functions/generate-metadata#resource-hints).
+  Engine compilation still starts in the browser. Unrelated prerendered routes
+  do not acquire the engine preload.
+- The paper route no longer awaits related papers, sibling/answer-key lookup,
+  and adjacent navigation together before returning the viewer. Those sections
+  stream within separate Suspense boundaries. The answer-key editor still
+  receives its linked question paper after the same lookup resolves. Existing
+  query functions, cache tags, filters and destinations are unchanged.
+
+One browser-only experiment first injected the hints without modifying the
+server. It confirmed earlier starts and single downloads, but its 4946 ms fresh
+load was slower overall. Preloads alone were insufficient; the page still held
+back the actual PDF URL while secondary sections loaded.
+
+| Deployed stage | Fresh-profile PDF visible | Repeat hard navigation |
+|---|---:|---:|
+| Baseline | 3821 ms | 897 ms |
+| Preloads only, settled sample 1 | 3653 ms | 929 ms |
+| Preloads only, settled sample 2 | 3656 ms | 1078 ms |
+| Preloads + independent sections, settled sample 1 | 2147 ms | 822 ms |
+| Preloads + independent sections, settled sample 2 | 2141 ms | 807 ms |
+
+The final fresh-profile checks were about 2.14 seconds, versus the 3.82-second
+baseline. These sequential workstation samples are not population percentiles
+or an isolated causal estimate: transfer speeds and cache state varied. Immediate
+postdeploy samples were slower: 5328/1378 ms for preloads only and 3820/1203 ms for
+the final version. All valid samples, including the browser-only experiment and
+outliers, are retained in [the benchmark data](benchmarks/bmee-paper-loading-2026-09-15.json).
+A fresh browser profile does not imply cold Cloudflare caches.
+
+In one final settled sample, engine retrieval began at 435 ms and the PDF at
+885 ms, versus 1762/1481 ms before. The PDF hint also demonstrably arrives before
+secondary sections finish: on `?sort=year_desc` it arrived at 136 ms while the
+full HTML stream completed at 722 ms; on `?sort=year_asc&exam=fat` those timings
+were 134/945 ms. Four default/sorted/filtered cases preserved exactly the same
+course, related-paper and previous/next destinations as the preceding deployment.
+
+A separate three-sample HTTP comparison had median complete HTML times of
+393 ms on ec-test and 438 ms on Azure production. It overlapped the final HTTP
+regression checks and is context, not an isolated speedup measurement. The
+remaining fresh-view delay is largely browser-side resource loading and startup;
+this change does not make all first visits subsecond.
+
+Validation passed: app typecheck, Next/OpenNext builds, all 28 PPR payloads,
+resume-cache seeding and Worker Redis exclusion. The live PDF/Markdown test now
+also verifies actual server-emitted hints and one consumed preload per file.
+The PDF rendered, text mode retained math/code/CJK content, and returning to PDF
+worked without browser errors or sending an AI generation request. Final checks
+passed A/B/anonymous and chunked-cookie isolation, unique CSRF values, private
+HTML/RSC, nine concurrent streams (maximum 861 ms), cancellation and runtime
+prefetch. No route `dynamic` option or shared HTML/session caching was added.
+Lint remains unavailable with the repository's Next 16 setup.
+
+Raw browser evidence is `.cloudflare-deploy/pdf-bmee-*.json`; HTTP comparisons
+are `bmee-http-{before,final}.jsonl`, and section checks are
+`bmee-sections-{before,after}.json`. Build/deploy logs are
+`pdf-{hints,stream}-{build,deploy}.log`. Azure production was not deployed.

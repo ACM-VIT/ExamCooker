@@ -1,6 +1,5 @@
 "use client";
 
-import type { RealtimeOutputGuardrail } from "@openai/agents/realtime";
 import type { ZodError } from "zod";
 import type { VoiceTool } from "./voice-runtime-types";
 
@@ -31,7 +30,10 @@ function allow(outputInfo?: unknown): ToolGuardrailOutput {
   };
 }
 
-function rejectContent(message: string, outputInfo?: unknown): ToolGuardrailOutput {
+function rejectContent(
+  message: string,
+  outputInfo?: unknown,
+): ToolGuardrailOutput {
   return {
     behavior: {
       type: "rejectContent",
@@ -42,7 +44,9 @@ function rejectContent(message: string, outputInfo?: unknown): ToolGuardrailOutp
 }
 
 function readRecord(value: unknown) {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function parseToolCallArguments(toolCall: unknown) {
@@ -98,7 +102,9 @@ function validateToolPolicy(toolName: string, args: unknown) {
         ? null
         : "Inspect the current view and use a visible control ID before calling this tool.";
     case "go_to_pdf_page":
-      return typeof record?.page === "number" && Number.isInteger(record.page) && record.page >= 1
+      return typeof record?.page === "number" &&
+        Number.isInteger(record.page) &&
+        record.page >= 1
         ? null
         : "PDF page numbers must be positive whole numbers.";
     case "answer_question_about_open_pdf":
@@ -110,36 +116,6 @@ function validateToolPolicy(toolName: string, args: unknown) {
   }
 }
 
-function approximateOutputSize(output: unknown) {
-  if (typeof output === "string") {
-    return output.length;
-  }
-
-  try {
-    return JSON.stringify(output).length;
-  } catch {
-    return 0;
-  }
-}
-
-function readAgentOutputText(agentOutput: unknown) {
-  if (typeof agentOutput === "string") {
-    return agentOutput;
-  }
-
-  const record = readRecord(agentOutput);
-  if (!record) {
-    return "";
-  }
-
-  const value = record.text ?? record.output ?? record.finalOutput;
-  return typeof value === "string" ? value : "";
-}
-
-function countSentences(text: string) {
-  return text.split(/[.!?]+/).filter((part) => part.trim().length > 0).length;
-}
-
 export function parseVoiceToolInput<TArgs>(
   voiceTool: VoiceTool<TArgs>,
   input: unknown,
@@ -147,7 +123,9 @@ export function parseVoiceToolInput<TArgs>(
   return voiceTool.parameters.parse(input);
 }
 
-export function createVoiceToolInputGuardrail<TArgs>(voiceTool: VoiceTool<TArgs>) {
+export function createVoiceToolInputGuardrail<TArgs>(
+  voiceTool: VoiceTool<TArgs>,
+) {
   return {
     name: `${voiceTool.name}_input_policy`,
     run: async (data: ToolGuardrailData): Promise<ToolGuardrailOutput> => {
@@ -172,44 +150,3 @@ export function createVoiceToolInputGuardrail<TArgs>(voiceTool: VoiceTool<TArgs>
     },
   };
 }
-
-export const voiceToolOutputGuardrail = {
-  name: "voice_tool_output_policy",
-  run: async (data: ToolGuardrailData): Promise<ToolGuardrailOutput> => {
-    const outputSize = approximateOutputSize(data.output);
-    if (outputSize > 12000) {
-      return rejectContent("The tool returned too much data. Inspect the page again and summarize only what is needed.", {
-        outputSize,
-      });
-    }
-
-    return allow({
-      outputSize,
-    });
-  },
-};
-
-export const conciseVoiceOutputGuardrail: RealtimeOutputGuardrail = {
-  name: "examcooker_voice_concise_output",
-  policyHint:
-    "Keep spoken replies brief. For navigation and UI actions, use at most 10 words. For PDF answers, use 1-3 short sentences.",
-  execute: async ({ agentOutput }) => {
-    const text = readAgentOutputText(agentOutput);
-    const trimmed = text.trim();
-    const sentenceCount = countSentences(trimmed);
-    const tripwireTriggered =
-      trimmed.length > 900 || (sentenceCount > 5 && trimmed.length > 360);
-
-    return {
-      tripwireTriggered,
-      outputInfo: {
-        charCount: trimmed.length,
-        sentenceCount,
-      },
-    };
-  },
-};
-
-export const DEFAULT_VOICE_OUTPUT_GUARDRAILS = [
-  conciseVoiceOutputGuardrail,
-] satisfies RealtimeOutputGuardrail[];

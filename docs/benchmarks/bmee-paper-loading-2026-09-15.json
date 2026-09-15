@@ -1,0 +1,405 @@
+{
+  "route": "/past_papers/BMEE209L/paper/cmoeqmav202j7a8v3ls8bxdpl",
+  "method": "Sequential workstation samples with one muted, media-blocked headless Chromium process at a time. Each pair is a fresh profile then repeat hard navigation. PDF visibility is the first visible blob image load plus the next animation frame. Fresh browser profiles do not imply cold Cloudflare caches. Live-labelled runs immediately followed deployment; settled and repeat labels use additional fresh profiles. No other probes overlapped final browser runs. These are not randomized population percentiles.",
+  "experiment": "bmee-hints-isolated injected both resource hints into the target page at head creation. It did not modify the deployed application. An earlier interrupted experiment could preload on about:blank; it is excluded.",
+  "samples": [
+    {
+      "stage": "bmee-before",
+      "version": "8f660474-b554-4614-b7b0-5465f4c64ca2",
+      "visit": "fresh browser profile",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 3821,
+      "htmlEndMs": 788,
+      "downloads": [
+        {
+          "kind": "pdf",
+          "startMs": 1481,
+          "endMs": 2617,
+          "initiator": "fetch"
+        },
+        {
+          "kind": "engine",
+          "startMs": 1762,
+          "endMs": 3511,
+          "initiator": "fetch"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-before",
+      "version": "8f660474-b554-4614-b7b0-5465f4c64ca2",
+      "visit": "repeat hard navigation",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 897,
+      "htmlEndMs": 532,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 541,
+          "endMs": 547,
+          "initiator": "fetch"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 644,
+          "endMs": 645,
+          "initiator": "fetch"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-hints-isolated",
+      "version": "8f660474-b554-4614-b7b0-5465f4c64ca2",
+      "visit": "fresh browser profile",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 4946,
+      "htmlEndMs": 4031,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 657,
+          "endMs": 3674,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 657,
+          "endMs": 4110,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-hints-isolated",
+      "version": "8f660474-b554-4614-b7b0-5465f4c64ca2",
+      "visit": "repeat hard navigation",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 1300,
+      "htmlEndMs": 735,
+      "downloads": [
+        {
+          "kind": "pdf",
+          "startMs": 382,
+          "endMs": 388,
+          "initiator": "link"
+        },
+        {
+          "kind": "engine",
+          "startMs": 382,
+          "endMs": 407,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-preload-live",
+      "version": "cde7f81b-5749-4f55-950d-32ade0c61ddc",
+      "visit": "fresh browser profile",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 5328,
+      "htmlEndMs": 4702,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 2416,
+          "endMs": 3370,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 4667,
+          "endMs": 5006,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-preload-live",
+      "version": "cde7f81b-5749-4f55-950d-32ade0c61ddc",
+      "visit": "repeat hard navigation",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 1378,
+      "htmlEndMs": 1055,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 764,
+          "endMs": 780,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 853,
+          "endMs": 854,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-preload-settled",
+      "version": "cde7f81b-5749-4f55-950d-32ade0c61ddc",
+      "visit": "fresh browser profile",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 3653,
+      "htmlEndMs": 1966,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 499,
+          "endMs": 1963,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 1966,
+          "endMs": 3356,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-preload-settled",
+      "version": "cde7f81b-5749-4f55-950d-32ade0c61ddc",
+      "visit": "repeat hard navigation",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 929,
+      "htmlEndMs": 554,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 242,
+          "endMs": 256,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 521,
+          "endMs": 522,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-preload-repeat",
+      "version": "cde7f81b-5749-4f55-950d-32ade0c61ddc",
+      "visit": "fresh browser profile",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 3656,
+      "htmlEndMs": 2379,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 1455,
+          "endMs": 2391,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 2379,
+          "endMs": 2754,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-preload-repeat",
+      "version": "cde7f81b-5749-4f55-950d-32ade0c61ddc",
+      "visit": "repeat hard navigation",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 1078,
+      "htmlEndMs": 627,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 173,
+          "endMs": 192,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 579,
+          "endMs": 580,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-stream-live",
+      "version": "b38d1cb7-17f8-4dfd-a42b-08fe2ac4c6c9",
+      "visit": "fresh browser profile",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 3820,
+      "htmlEndMs": 3545,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 2313,
+          "endMs": 3115,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 3124,
+          "endMs": 3471,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-stream-live",
+      "version": "b38d1cb7-17f8-4dfd-a42b-08fe2ac4c6c9",
+      "visit": "repeat hard navigation",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 1203,
+      "htmlEndMs": 707,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 258,
+          "endMs": 274,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 406,
+          "endMs": 407,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-stream-settled",
+      "version": "b38d1cb7-17f8-4dfd-a42b-08fe2ac4c6c9",
+      "visit": "fresh browser profile",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 2147,
+      "htmlEndMs": 1266,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 435,
+          "endMs": 1217,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 885,
+          "endMs": 1524,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-stream-settled",
+      "version": "b38d1cb7-17f8-4dfd-a42b-08fe2ac4c6c9",
+      "visit": "repeat hard navigation",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 822,
+      "htmlEndMs": 461,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 181,
+          "endMs": 201,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 335,
+          "endMs": 336,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-stream-repeat",
+      "version": "b38d1cb7-17f8-4dfd-a42b-08fe2ac4c6c9",
+      "visit": "fresh browser profile",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 2141,
+      "htmlEndMs": 1238,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 495,
+          "endMs": 1260,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 794,
+          "endMs": 1730,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    },
+    {
+      "stage": "bmee-stream-repeat",
+      "version": "b38d1cb7-17f8-4dfd-a42b-08fe2ac4c6c9",
+      "visit": "repeat hard navigation",
+      "buildIdMatches": true,
+      "pdfVisibleMs": 807,
+      "htmlEndMs": 399,
+      "downloads": [
+        {
+          "kind": "engine",
+          "startMs": 168,
+          "endMs": 185,
+          "initiator": "link"
+        },
+        {
+          "kind": "pdf",
+          "startMs": 273,
+          "endMs": 274,
+          "initiator": "link"
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "sections": [
+    {
+      "query": "",
+      "pdfHintMs": 430,
+      "relatedMs": 440,
+      "completeMs": 539,
+      "links": 5
+    },
+    {
+      "query": "?sort=newest",
+      "pdfHintMs": 268,
+      "relatedMs": 303,
+      "completeMs": 304,
+      "links": 6
+    },
+    {
+      "query": "?sort=year_desc",
+      "pdfHintMs": 136,
+      "relatedMs": 146,
+      "completeMs": 722,
+      "links": 6
+    },
+    {
+      "query": "?sort=year_asc&exam=fat",
+      "pdfHintMs": 134,
+      "relatedMs": 136,
+      "completeMs": 945,
+      "links": 6
+    }
+  ]
+}

@@ -42,6 +42,8 @@ scripts/reports/
 prisma/generated
 /lib/generated/*
 !/lib/generated/vinTogether.json
+!/lib/generated/pdfium-wasm.ts
+/public/vendor/embedpdf/immutable/
 import-answer-key-papers.ts
 import-missing-courses.ts
 
@@ -78,3 +80,8 @@ mobile/android/keystores/examcooker-upload.jks
 .deepsec
 .wrangler
 .pnpm-store/
+
+# Cloudflare build output and local secrets
+.open-next/
+.dev.vars*
+.cloudflare-deploy/

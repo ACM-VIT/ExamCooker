@@ -142,6 +142,124 @@ function PaperNavButton({
     );
 }
 
+type PaperDetail = NonNullable<Awaited<ReturnType<typeof getPastPaperDetail>>>;
+type SiblingPaperPromise = ReturnType<typeof getSiblingPastPaper>;
+
+function appendSearchString(href: string, queryString: string) {
+    return queryString ? `${href}?${queryString}` : href;
+}
+
+async function PaperMetadataEditor({ paper, canonicalCode, siblingPaperPromise }: {
+    paper: PaperDetail;
+    canonicalCode: string;
+    siblingPaperPromise: SiblingPaperPromise;
+}) {
+    const siblingPaper = paper.hasAnswerKey ? await siblingPaperPromise : null;
+    return (
+        <LazyPastPaperInlineEditor
+            paperId={paper.id}
+            canonicalCode={canonicalCode}
+            initialTitle={paper.title}
+            initialCourseId={paper.courseId}
+            initialExamType={paper.examType}
+            initialSlot={paper.slot}
+            initialYear={paper.year}
+            initialSemester={paper.semester}
+            initialCampus={paper.campus}
+            initialHasAnswerKey={paper.hasAnswerKey}
+            initialQuestionPaper={paper.hasAnswerKey ? siblingPaper : null}
+            initialTags={paper.tags.map((tag) => tag.name)}
+        />
+    );
+}
+
+async function SiblingPaperLink({ siblingPaperPromise, canonicalCode, siblingSearchString }: {
+    siblingPaperPromise: SiblingPaperPromise;
+    canonicalCode: string;
+    siblingSearchString: string;
+}) {
+    const siblingPaper = await siblingPaperPromise;
+    return (
+        <>
+            {siblingPaper ? (
+                <Link
+                    href={appendSearchString(
+                        getPastPaperDetailPath(
+                            siblingPaper.id,
+                            siblingPaper.course?.code ?? canonicalCode,
+                        ),
+                        siblingSearchString,
+                    )}
+                    prefetch
+                    transitionTypes={["nav-forward"]}
+                    className="inline-flex items-center justify-center border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black transition hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5"
+                >
+                    {siblingPaper.hasAnswerKey ? "Answer key" : "Question paper"}
+                </Link>
+            ) : null}
+        </>
+    );
+}
+
+async function AdjacentPaperNavigation({ adjacentPapersPromise, canonicalCode, searchString }: {
+    adjacentPapersPromise: ReturnType<typeof getAdjacentPapersInCourse>;
+    canonicalCode: string;
+    searchString: string;
+}) {
+    const adjacentPapers = await adjacentPapersPromise;
+    const buildSideNavHref = (
+        item: NonNullable<typeof adjacentPapers.prev> | NonNullable<typeof adjacentPapers.next>,
+    ) => appendSearchString(`/past_papers/${canonicalCode}/paper/${item.id}`, searchString);
+    return (
+        <>
+            {adjacentPapers.prev && (
+                <PaperNavButton
+                    direction="prev"
+                    href={buildSideNavHref(adjacentPapers.prev)}
+                    year={adjacentPapers.prev.year}
+                    examType={adjacentPapers.prev.examType}
+                    slot={adjacentPapers.prev.slot}
+                />
+            )}
+            {adjacentPapers.next && (
+                <PaperNavButton
+                    direction="next"
+                    href={buildSideNavHref(adjacentPapers.next)}
+                    year={adjacentPapers.next.year}
+                    examType={adjacentPapers.next.examType}
+                    slot={adjacentPapers.next.slot}
+                />
+            )}
+        </>
+    );
+}
+
+async function RelatedPaperSection({ relatedPapersPromise }: {
+    relatedPapersPromise: ReturnType<typeof getRelatedPapersForCourse>;
+}) {
+    const relatedPapers = await relatedPapersPromise;
+    const relatedItems = relatedPapers.map((item) => ({
+        id: item.id,
+        title: item.title,
+        thumbNailUrl: item.thumbNailUrl,
+        courseCode: item.course?.code ?? null,
+        courseTitle: item.course?.title ?? null,
+        examType: item.examType,
+        slot: item.slot,
+        year: item.year,
+    }));
+    return (
+        <>
+            {relatedItems.length > 0 && (
+                <RecentPaperStrip
+                    items={relatedItems}
+                    title="Related papers"
+                />
+            )}
+        </>
+    );
+}
+
 async function PaperViewerContent({
     paramsPromise,
     searchParamsPromise,
@@ -223,22 +341,8 @@ async function PaperViewerContent({
                   sort: parsedSearchParams.sort,
               })
         : Promise.resolve({ prev: null, next: null });
-    const [relatedPapers, siblingPaper, adjacentPapers] = await Promise.all([
-        relatedPapersPromise,
-        siblingPaperPromise,
-        adjacentPapersPromise,
-    ]);
-
-    const relatedItems = relatedPapers.map((item) => ({
-        id: item.id,
-        title: item.title,
-        thumbNailUrl: item.thumbNailUrl,
-        courseCode: item.course?.code ?? null,
-        courseTitle: item.course?.title ?? null,
-        examType: item.examType,
-        slot: item.slot,
-        year: item.year,
-    }));
+    // Start secondary lookups together, but stream each section independently.
+    // The PDF URL and viewer must not wait for recommendations or navigation.
 
     const metaPills: Array<{ className?: string; value: string }> = [];
     if (displayExam) metaPills.push({ value: displayExam });
@@ -246,14 +350,8 @@ async function PaperViewerContent({
     if (displayYear) metaPills.push({ value: displayYear });
     if (paper.course?.code) metaPills.push({ className: "hidden sm:inline-flex", value: paper.course.code });
 
-    const appendSearchString = (href: string, queryString = searchString) =>
-        queryString ? `${href}?${queryString}` : href;
-    const courseHref = appendSearchString(`/past_papers/${canonicalCode}`);
+    const courseHref = appendSearchString(`/past_papers/${canonicalCode}`, searchString);
     const backLabel = paper.course?.code ?? "Past papers";
-
-    const buildSideNavHref = (
-        item: NonNullable<typeof adjacentPapers.prev> | NonNullable<typeof adjacentPapers.next>,
-    ) => appendSearchString(`/past_papers/${canonicalCode}/paper/${item.id}`);
 
     return (
         <>
@@ -268,20 +366,9 @@ async function PaperViewerContent({
                         <div className="min-w-0 flex-1">
                             <h1 className="text-pretty text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-4xl">
                                 {headingTitle}
-                                <LazyPastPaperInlineEditor
-                                    paperId={paper.id}
-                                    canonicalCode={canonicalCode}
-                                    initialTitle={paper.title}
-                                    initialCourseId={paper.courseId}
-                                    initialExamType={paper.examType}
-                                    initialSlot={paper.slot}
-                                    initialYear={paper.year}
-                                    initialSemester={paper.semester}
-                                    initialCampus={paper.campus}
-                                    initialHasAnswerKey={paper.hasAnswerKey}
-                                    initialQuestionPaper={paper.hasAnswerKey ? siblingPaper : null}
-                                    initialTags={paper.tags.map((tag) => tag.name)}
-                                />
+                                <Suspense fallback={null}>
+                                    <PaperMetadataEditor paper={paper} canonicalCode={canonicalCode} siblingPaperPromise={siblingPaperPromise} />
+                                </Suspense>
                             </h1>
                             {metaPills.length > 0 && (
                                 <div className="mt-3 flex flex-wrap gap-1.5">
@@ -297,22 +384,9 @@ async function PaperViewerContent({
                             )}
                         </div>
                         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:pt-1">
-                            {siblingPaper ? (
-                                <Link
-                                    href={appendSearchString(
-                                        getPastPaperDetailPath(
-                                            siblingPaper.id,
-                                            siblingPaper.course?.code ?? canonicalCode,
-                                        ),
-                                        siblingSearchString,
-                                    )}
-                                    prefetch
-                                    transitionTypes={["nav-forward"]}
-                                    className="inline-flex items-center justify-center border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black transition hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5"
-                                >
-                                    {siblingPaper.hasAnswerKey ? "Answer key" : "Question paper"}
-                                </Link>
-                            ) : null}
+                            <Suspense fallback={null}>
+                                <SiblingPaperLink siblingPaperPromise={siblingPaperPromise} canonicalCode={canonicalCode} siblingSearchString={siblingSearchString} />
+                            </Suspense>
                             <ShareLink
                                 fileType="this Past Paper"
                                 resourceTitle={displayTitle}
@@ -322,24 +396,9 @@ async function PaperViewerContent({
                     </header>
 
                     <div className="relative">
-                        {adjacentPapers.prev && (
-                            <PaperNavButton
-                                direction="prev"
-                                href={buildSideNavHref(adjacentPapers.prev)}
-                                year={adjacentPapers.prev.year}
-                                examType={adjacentPapers.prev.examType}
-                                slot={adjacentPapers.prev.slot}
-                            />
-                        )}
-                        {adjacentPapers.next && (
-                            <PaperNavButton
-                                direction="next"
-                                href={buildSideNavHref(adjacentPapers.next)}
-                                year={adjacentPapers.next.year}
-                                examType={adjacentPapers.next.examType}
-                                slot={adjacentPapers.next.slot}
-                            />
-                        )}
+                        <Suspense fallback={null}>
+                            <AdjacentPaperNavigation adjacentPapersPromise={adjacentPapersPromise} canonicalCode={canonicalCode} searchString={searchString} />
+                        </Suspense>
                         <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
                             <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]">
                                 <PDFViewerClient
@@ -356,12 +415,9 @@ async function PaperViewerContent({
                         </div>
                     </div>
 
-                    {relatedItems.length > 0 && (
-                        <RecentPaperStrip
-                            items={relatedItems}
-                            title="Related papers"
-                        />
-                    )}
+                    <Suspense fallback={null}>
+                        <RelatedPaperSection relatedPapersPromise={relatedPapersPromise} />
+                    </Suspense>
                 </div>
         </>
     );

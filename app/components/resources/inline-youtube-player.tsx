@@ -7,7 +7,7 @@ import {
     useRef,
     useState,
 } from "react";
-import ReactPlayer from "react-player";
+import dynamic from "next/dynamic";
 import {
     ExternalLink,
     Loader2,
@@ -26,6 +26,8 @@ import {
 } from "@/lib/media/inline-youtube-watchdog";
 import { captureInlineVideoLoadFailed } from "@/lib/posthog/client";
 import { cn } from "@/lib/utils";
+
+const ReactPlayer = dynamic(() => import("react-player"), { ssr: false });
 
 type InlineYouTubePlayerProps = {
     videoId: string;

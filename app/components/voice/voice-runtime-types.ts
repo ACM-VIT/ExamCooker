@@ -1,4 +1,3 @@
-import type { RealtimeOutputGuardrail } from "@openai/agents/realtime";
 import type { ZodType } from "zod";
 
 export type JsonSchema = {
@@ -14,34 +13,6 @@ export type JsonSchema = {
   allOf?: JsonSchema[];
   [key: string]: unknown;
 };
-
-export type RealtimeServerEvent = {
-  type: string;
-  [key: string]: unknown;
-};
-
-export type RealtimeClientEvent = {
-  type: string;
-  [key: string]: unknown;
-};
-
-export type RealtimeUserInput =
-  | string
-  | {
-      type: "message";
-      role: "user";
-      content: Array<
-        | {
-            type: "input_text";
-            text: string;
-          }
-        | {
-            type: "input_image";
-            image: string;
-            providerData?: Record<string, unknown>;
-          }
-      >;
-    };
 
 export type ToolCallStatus = "running" | "success" | "error" | "skipped";
 
@@ -76,56 +47,6 @@ export type VoiceControlStatus =
   | "listening"
   | "processing"
   | "error";
-
-export type ActivationMode = "push-to-talk" | "vad";
-export type OutputMode = "tool-only" | "text" | "audio" | "text+audio";
-export type RealtimeAudioFormat = "pcm16" | "g711_ulaw" | "g711_alaw";
-export type RealtimeVoice =
-  | "alloy"
-  | "ash"
-  | "ballad"
-  | "cedar"
-  | "coral"
-  | "echo"
-  | "marin"
-  | "sage"
-  | "shimmer"
-  | "verse"
-  | (string & {});
-
-export type RealtimeTurnDetection =
-  | {
-      type: "server_vad";
-      createResponse?: boolean;
-      interruptResponse?: boolean;
-      prefixPaddingMs?: number;
-      silenceDurationMs?: number;
-      threshold?: number;
-    }
-  | {
-      type: "semantic_vad";
-      createResponse?: boolean;
-      interruptResponse?: boolean;
-      eagerness?: "low" | "medium" | "high" | "auto";
-      idleTimeoutMs?: number;
-      modelVersion?: string;
-    };
-
-export type RealtimeAudioConfig = {
-  input?: {
-    format?: RealtimeAudioFormat;
-    capture?: MediaTrackConstraints;
-    noiseReduction?: {
-      type: "near_field" | "far_field" | (string & {});
-    } | null;
-    turnDetection?: RealtimeTurnDetection | null;
-  };
-  output?: {
-    format?: RealtimeAudioFormat;
-    speed?: number;
-    voice?: RealtimeVoice;
-  };
-};
 
 export type VoiceToolDefinition<TArgs = unknown> = {
   name: string;
@@ -162,41 +83,17 @@ export type VoiceToolCallRecord = {
 
 export type VoiceControlResolvedSessionConfig = {
   model: string;
-  instructions: string;
   tools: RealtimeFunctionTool[];
-  activationMode: ActivationMode;
-  outputMode: OutputMode;
-  audio?: RealtimeAudioConfig;
-  maxOutputTokens?: number | "inf";
+  activationMode: "vad";
+  outputMode: "audio";
+  audio?: { input?: { capture?: MediaTrackConstraints } };
 };
-
-export type VoiceControlTraceConfig = {
-  workflowName?: string;
-  groupId?: string;
-  metadata?: Record<string, unknown>;
-  disabled?: boolean;
-};
-
-export type VoiceControlTraceOptions =
-  | VoiceControlTraceConfig
-  | (() => VoiceControlTraceConfig | null | undefined);
 
 export type UseVoiceControlOptions = {
-  auth: {
-    sessionEndpoint: string;
-    sessionRequestInit?: RequestInit;
-  };
+  auth: { sessionEndpoint: string; sessionRequestInit?: RequestInit };
   tools: VoiceTool<any>[];
-  instructions?: string;
-  model?: string;
-  activationMode?: ActivationMode;
-  outputMode?: OutputMode;
-  audio?: RealtimeAudioConfig;
-  maxOutputTokens?: number | "inf";
-  outputGuardrails?: RealtimeOutputGuardrail[];
-  postToolResponse?: boolean;
+  audio?: { input?: { capture?: MediaTrackConstraints } };
   debug?: boolean;
-  trace?: VoiceControlTraceOptions;
   onGenerationCompleted?: (generation: VoiceControlGeneration) => void;
   onError?: (error: VoiceControlError) => void;
 };
@@ -221,7 +118,6 @@ export type VoiceControlSnapshot = {
   activity: VoiceControlActivity;
   connected: boolean;
   muted: boolean;
-  transcript: string;
   toolCalls: VoiceToolCallRecord[];
   latestToolCall: VoiceToolCallRecord | null;
   sessionConfig: VoiceControlResolvedSessionConfig;
@@ -232,19 +128,8 @@ export type UseVoiceControlReturn = VoiceControlSnapshot & {
   disconnect: () => void;
   setMuted: (muted: boolean) => void;
   interrupt: () => void;
-  addImage: (
-    image: string,
-    options?: {
-      triggerResponse?: boolean;
-    },
-  ) => void;
-  requestResponse: () => void;
+  getOutputAudioLevel: () => number;
   sendContextMessage: (text: string) => void;
-  sendClientEvent: (event: RealtimeClientEvent) => void;
-  sendMessage: (
-    message: RealtimeUserInput,
-    otherEventData?: Record<string, unknown>,
-  ) => void;
 };
 
 export type VoiceControlController = UseVoiceControlReturn & {

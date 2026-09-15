@@ -7,7 +7,9 @@ import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { createCourseFuse } from "@/lib/course-search-fuse";
+import { unpackCourseSearch, type CourseSearchPayload } from "@/lib/course-search-payload";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { usePreserveSearchInput } from "@/lib/use-preserve-search-input";
 import { getCoursePastPapersPath } from "@/lib/seo";
 import {
     captureCourseSearchNoResults,
@@ -21,7 +23,6 @@ import {
 } from "@/lib/native-course-search";
 
 export type SearchableCourse = {
-    id: string;
     code: string;
     title: string;
     paperCount: number;
@@ -30,7 +31,7 @@ export type SearchableCourse = {
 };
 
 type Props = {
-    courses: SearchableCourse[];
+    catalog: CourseSearchPayload;
     initialQuery?: string;
 };
 
@@ -38,9 +39,10 @@ const MAX_RESULTS = 8;
 const EAGER_PREFETCH_RESULTS = 4;
 
 export default function PastPapersCourseSearch({
-    courses,
+    catalog,
     initialQuery = "",
 }: Props) {
+    const courses = useMemo(() => unpackCourseSearch(catalog), [catalog]);
     const { prefetch, push } = useRouter();
     const initialQueryRef = useRef(initialQuery);
     const [query, setQuery] = useState(initialQueryRef.current);
@@ -51,6 +53,7 @@ export default function PastPapersCourseSearch({
     const nativeSearchAvailable =
         nativeCourseSearchAvailable && !nativeSearchUnavailable;
     const inputRef = useRef<HTMLInputElement>(null);
+    usePreserveSearchInput(inputRef, setQuery, setIsOpen);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const hasSearchInteraction = useRef(false);
     const deferredQuery = useDeferredValue(query);
@@ -400,7 +403,7 @@ export default function PastPapersCourseSearch({
                     {filtered.length > 0 ? (
                         filtered.map((course, index) => (
                             <Link
-                                key={course.id}
+                                key={course.code}
                                 href={getCoursePastPapersPath(course.code)}
                                 prefetch={
                                     index < EAGER_PREFETCH_RESULTS ? true : null

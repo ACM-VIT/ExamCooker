@@ -202,6 +202,9 @@ export async function getSiblingPastPaper(input: {
     return withPastPapersSurfaceRedisCache(
         {
             keyParts: ["published-sibling-past-paper", input],
+            // Absence is a valid result. Upload/edit invalidation changes the
+            // namespace key, so a newly linked paper becomes visible normally.
+            cacheNull: true,
         },
         async () => {
             const select = {

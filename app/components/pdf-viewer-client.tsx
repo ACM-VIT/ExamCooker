@@ -1,14 +1,23 @@
 "use client";
 
 import { preconnect } from "react-dom";
+import { useEffect } from "react";
+import dynamic from "next/dynamic";
 
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
+import { preloadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import { preloadPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
-import PDFViewer from "./pdfviewer";
-
-if (typeof window !== "undefined") {
-  void preloadPdfiumEngine().catch(() => undefined);
-}
+import { preloadPdfResources } from "@/lib/pdf/preload-resources";
+// PDF/WASM and Markdown plugins run in the browser. Including them in the
+// Worker SSR bundle exceeds its memory budget even on unrelated routes.
+const PDFViewer = dynamic(() => import("./pdfviewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-300" role="status">
+      Loading PDF
+    </div>
+  ),
+});
 
 function getRemoteOrigin(url: string) {
   try {
@@ -39,6 +48,15 @@ export default function PDFViewerClient({
     | null;
   pageEdits?: PdfPageEdits | null;
 }) {
+  preloadPdfResources(fileUrl);
+
+  useEffect(() => {
+    // Start the two independent inputs while the viewer chunk is downloading.
+    // The viewer consumes these same cached promises when it mounts.
+    preloadPdfBuffer(fileUrl);
+    void preloadPdfiumEngine().catch(() => undefined);
+  }, [fileUrl]);
+
   const remoteOrigin = getRemoteOrigin(fileUrl);
   if (remoteOrigin) {
     preconnect(remoteOrigin, { crossOrigin: "anonymous" });

@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "examcooker-test-app-state",
+  "account_id": "4ee36e42cabfd44e8ce61b2a6bd637c5",
+  "main": "cloudflare/app-state-worker.ts",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "durable_objects": {
+    "bindings": [
+      { "name": "APP_STATE", "class_name": "AppState" }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-transfer-app-state",
+      "transferred_classes": [
+        {
+          "from": "AppState",
+          "from_script": "examcooker-test",
+          "to": "AppState"
+        }
+      ]
+    }
+  ],
+  "observability": { "enabled": true }
+}

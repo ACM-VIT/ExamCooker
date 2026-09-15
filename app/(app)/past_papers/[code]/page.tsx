@@ -5,13 +5,11 @@ import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { getExamFocusForDate } from "@/lib/exam-focus";
+import { getCoursePaperCollection, type CoursePaperCollection } from "@/lib/data/course-paper-collection";
+import { getCourseGrid, getPopularCourseGrid } from "@/lib/data/course-catalog";
 import {
-    getCourseDetailByCode,
-    getCourseTitleVariants,
-} from "@/lib/data/course-catalog";
-import {
-    getCoursePaperFilterOptions,
-    getCoursePapers,
+    buildCoursePaperFilterOptions,
+    paginateCoursePaperRows,
 } from "@/lib/data/course-papers";
 import {
     buildPastPaperSearchString,
@@ -20,7 +18,7 @@ import {
     type PastPaperSearchParams,
 } from "@/lib/past-paper-search-params";
 import { getSyllabusByCourseCode } from "@/lib/data/syllabus";
-import { getUpcomingExamsForCourses } from "@/lib/data/upcoming-exams";
+import { getUpcomingExamCutoffIso } from "@/lib/data/upcoming-exams";
 import StructuredData from "@/app/components/seo/structured-data";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import {
@@ -63,14 +61,22 @@ import {
 const PAGE_SIZE = 24;
 const CUID_REGEX = /^c[a-z0-9]{20,}$/i;
 
-async function getCourseExamFocus(courseId: string): Promise<ExamType> {
-    const upcomingExamsByCourse = await getUpcomingExamsForCourses([courseId]);
-    return (
-        upcomingExamsByCourse
-            .get(courseId)
-            ?.find((exam) => exam.examType !== null)?.examType ??
-        getExamFocusForDate(new Date())
-    );
+// Put public course content in the PPR shell for the most visited courses.
+// Search params and session boundaries still resume separately per request.
+export async function generateStaticParams() {
+    const popular = await getPopularCourseGrid(24);
+    const courses = popular.length ? popular : (await getCourseGrid()).slice(0, 24);
+    // Cache Components requires a nonempty sample even on an empty dev database.
+    // This invalid course code follows the existing notFound() path.
+    if (!courses.length) return [{ code: "__empty_catalog__" }];
+    return courses.map(({ code }) => ({ code }));
+}
+
+function getCourseExamFocus(collection: CoursePaperCollection): ExamType {
+    const cutoff = new Date(getUpcomingExamCutoffIso());
+    return collection.upcomingExams.find((exam) =>
+        exam.examType !== null && (exam.scheduledAt === null || exam.scheduledAt >= cutoff),
+    )?.examType ?? getExamFocusForDate(new Date());
 }
 
 /**
@@ -109,7 +115,8 @@ export async function generateMetadata({
         return { robots: { index: false, follow: true } };
 
     const normalized = normalizeCourseCode(code);
-    const course = await getCourseDetailByCode(normalized);
+    const collection = await getCoursePaperCollection(normalized);
+    const course = collection?.course;
     if (!course) return { robots: { index: false, follow: true } };
 
     const raw = (await searchParams) ?? {};
@@ -151,12 +158,13 @@ export async function generateMetadata({
 }
 
 async function CoursePastPapersContent({
-    course,
+    collection,
     searchParamsPromise,
 }: {
-    course: NonNullable<Awaited<ReturnType<typeof getCourseDetailByCode>>>;
+    collection: CoursePaperCollection;
     searchParamsPromise: Promise<PastPaperSearchParams> | undefined;
 }) {
+    const { course, rows } = collection;
     const raw = (await searchParamsPromise) ?? {};
     const filters = parsePastPaperSearchParams(raw);
     const searchString = buildPastPaperSearchString(raw);
@@ -168,25 +176,13 @@ async function CoursePastPapersContent({
         page: filters.page,
         pageSize: PAGE_SIZE,
     };
-    const papersPromise =
-        filters.sort === "seasonal"
-            ? getCourseExamFocus(course.id).then((examFocus) =>
-                  getCoursePapers({
-                      ...paperQuery,
-                      sort: "seasonal",
-                      examFocus,
-                  }),
-              )
-            : getCoursePapers({
-                  ...paperQuery,
-                  sort: filters.sort,
-              });
-    const [options, { papers, totalCount }] = await Promise.all([
-        getCoursePaperFilterOptions(course.id, {
-            ...coursePaperFilters,
-        }),
-        papersPromise,
-    ]);
+    const options = buildCoursePaperFilterOptions(rows, coursePaperFilters);
+    const { papers, totalCount } = paginateCoursePaperRows(rows, {
+        ...paperQuery,
+        ...(filters.sort === "seasonal"
+            ? { sort: "seasonal" as const, examFocus: getCourseExamFocus(collection) }
+            : { sort: filters.sort }),
+    });
 
     const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
     if (filters.page > totalPages) {
@@ -323,11 +319,11 @@ async function CoursePastPapersPageContent({
     const normalized = normalizeCourseCode(code);
     if (!normalized) notFound();
 
-    const coursePromise = getCourseDetailByCode(normalized);
+    const collectionPromise = getCoursePaperCollection(normalized);
     const syllabusPromise = getSyllabusByCourseCode(normalized);
-    const course = await coursePromise;
-    if (!course) notFound();
-    const courseOptions = await getCourseTitleVariants(course.title);
+    const collection = await collectionPromise;
+    if (!collection) notFound();
+    const { course, courseOptions } = collection;
 
     const description = `Browse ${course.paperCount} past papers and ${course.noteCount} notes for ${course.title} on ExamCooker.`;
     const faq = [
@@ -381,7 +377,7 @@ async function CoursePastPapersPageContent({
 
                 <Suspense fallback={<CoursePastPapersSectionsShell />}>
                     <CoursePastPapersContent
-                        course={course}
+                        collection={collection}
                         searchParamsPromise={searchParamsPromise}
                     />
                 </Suspense>

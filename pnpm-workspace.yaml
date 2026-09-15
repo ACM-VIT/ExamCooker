@@ -31,6 +31,16 @@ minimumReleaseAgeExclude:
   - posthog-node@5.47.3
   - undici@7.29.0
   - wrangler@4.118.0
+  - '@next/env@16.3.5'
+  - '@next/swc-darwin-arm64@16.3.5'
+  - '@next/swc-darwin-x64@16.3.5'
+  - '@next/swc-linux-arm64-gnu@16.3.5'
+  - '@next/swc-linux-arm64-musl@16.3.5'
+  - '@next/swc-linux-x64-gnu@16.3.5'
+  - '@next/swc-linux-x64-musl@16.3.5'
+  - '@next/swc-win32-arm64-msvc@16.3.5'
+  - '@next/swc-win32-x64-msvc@16.3.5'
+  - next@16.3.5
 
 overrides:
   dompurify: 3.4.13
@@ -44,3 +54,7 @@ overrides:
   tar: 7.5.22
   undici: 7.29.0
   uuid: 14.0.1
+
+patchedDependencies:
+  '@opennextjs/aws@4.1.4': patches/@opennextjs__aws@4.1.4.patch
+  '@opennextjs/cloudflare@1.20.6': patches/@opennextjs__cloudflare@1.20.6.patch

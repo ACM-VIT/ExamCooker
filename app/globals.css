@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "streamdown/styles.css";
-@import "katex/dist/katex.min.css";
 @source "../node_modules/streamdown/dist/*.js";
 @source "../node_modules/@streamdown/cjk/dist/*.js";
 @source "../node_modules/@streamdown/code/dist/*.js";
@@ -1196,32 +1194,39 @@ html[data-native-tabs-pending="true"] .ec-mobile-tab-bar {
         var(--duration-move) ease-in-out both slide reverse;
 }
 
+/* Keep route snapshots brief: a long transition delays streamed content and
+   subsequent navigation even when the next response is already available. */
+::view-transition-group(.nav-forward),
+::view-transition-group(.nav-back) {
+    animation-duration: 120ms;
+}
+
 ::view-transition-old(.nav-forward) {
-    --slide-offset: -60px;
+    --slide-offset: -24px;
     animation:
-        var(--duration-exit) ease-in both fade reverse,
-        var(--duration-move) ease-in-out both slide reverse;
+        120ms ease-out both fade reverse,
+        120ms ease-out both slide reverse;
 }
 
 ::view-transition-new(.nav-forward) {
-    --slide-offset: 60px;
+    --slide-offset: 24px;
     animation:
-        var(--duration-enter) ease-out var(--duration-exit) both fade,
-        var(--duration-move) ease-in-out both slide;
+        120ms ease-out both fade,
+        120ms ease-out both slide;
 }
 
 ::view-transition-old(.nav-back) {
-    --slide-offset: 60px;
+    --slide-offset: 24px;
     animation:
-        var(--duration-exit) ease-in both fade reverse,
-        var(--duration-move) ease-in-out both slide reverse;
+        120ms ease-out both fade reverse,
+        120ms ease-out both slide reverse;
 }
 
 ::view-transition-new(.nav-back) {
-    --slide-offset: -60px;
+    --slide-offset: -24px;
     animation:
-        var(--duration-enter) ease-out var(--duration-exit) both fade,
-        var(--duration-move) ease-in-out both slide;
+        120ms ease-out both fade,
+        120ms ease-out both slide;
 }
 
 ::view-transition-group(.morph) {

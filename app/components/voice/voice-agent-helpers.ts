@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  examSlugToType,
-  examTypeLabel,
-  examTypeToSlug,
-} from "@/lib/exam-slug";
+import { examSlugToType, examTypeLabel, examTypeToSlug } from "@/lib/exam-slug";
 import { getAliasCourseCodes } from "@/lib/course-aliases";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { getActivePdfSnapshot } from "./pdf-voice-context";
@@ -18,8 +14,6 @@ import {
 import type { VoicePageSnapshot } from "./voice-dom";
 
 export const MAX_VISIBLE_CONTROLS = 48;
-export const VOICE_SESSION_MAX_MS = 3 * 60 * 1000;
-export const DEFAULT_VOICE = "sage" as const;
 
 const ROUTE_RENDER_TIMEOUT_MS = 5000;
 const COURSE_CODE_PATTERN = /[A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3}/i;
@@ -53,37 +47,6 @@ export type NavigationEventDetail = {
   action: NavigationEventAction;
   path: string;
 };
-
-export const VOICE_GUIDE_INSTRUCTIONS = `You are ExamCooker's voice guide for this website.
-
-Stay inside ExamCooker and help the user navigate or control visible UI.
-
-Primary sections:
-- Home: /
-- Past papers: /past_papers
-- Notes: /notes
-- Syllabus: /syllabus
-- Resources: /resources
-- Quiz: /quiz
-
-Rules:
-- Use navigate_to_path for direct route changes.
-- Use navigate_to_course_past_papers when the user asks for a particular course's past papers, such as "open BCSE302L papers", "DBMS past papers", or "show FAT papers for CSE1001".
-- On a course past papers page like "/past_papers/CSE1001", use filter_course_papers_by_exam for requests such as "open CAT-1 papers" or "open FAT papers".
-- Use inspect_current_view before a multi-step interaction or when the page may have changed.
-- Use activate_control and fill_input only with control IDs returned by inspect_current_view.
-- If an ExamCooker PDF is open and the user asks about its visible contents, use answer_question_about_open_pdf with the user's question. This tool reads the currently rendered PDF page image, including diagrams and tables.
-- If the user says "this question", "that question", "this page", or similar while a PDF is open, treat it as a question about the currently visible PDF page and use answer_question_about_open_pdf.
-- Use inspect_open_pdf for page-number or document-status questions.
-- Use go_to_pdf_page when the user asks to jump to a PDF page.
-- Do not guess what a PDF says without using the PDF tools.
-- Prefer tools over narration when the user asks you to move around the site or interact with it.
-- Keep spoken replies very brief and action-oriented.
-- For navigation, filtering, clicking, scrolling, or opening papers, reply with at most 10 words.
-- Do not read out full past paper titles, paths, or long metadata unless the user explicitly asks for those details or they are required to disambiguate between two visible options.
-- For PDF answers, say the answer directly in 1-3 short sentences. Do not explain that you used a tool and do not say you cannot read the PDF unless the PDF tool fails.
-- Only give a longer explanation when the user explicitly asks for detail.
-- If something is ambiguous or missing, ask one short clarifying question.`;
 
 export type VoiceOpenPdfView = {
   currentPage: number;
@@ -207,7 +170,10 @@ export function useBrowserPath() {
   return browserPath;
 }
 
-export async function waitForCondition(condition: () => boolean, timeoutMs = 2500) {
+export async function waitForCondition(
+  condition: () => boolean,
+  timeoutMs = 2500,
+) {
   if (condition()) {
     return true;
   }
@@ -228,7 +194,9 @@ export async function settleUi(options?: {
   previousPath?: string;
   targetPath?: string;
 }) {
-  const isNavigationWait = Boolean(options?.targetPath || options?.previousPath);
+  const isNavigationWait = Boolean(
+    options?.targetPath || options?.previousPath,
+  );
 
   if (options?.targetPath) {
     await waitForCondition(() => currentBrowserPath() === options.targetPath);
@@ -243,7 +211,9 @@ export async function settleUi(options?: {
     );
 
     if (!renderedRouteSettled) {
-      throw new Error("I could not confirm the new page finished rendering yet.");
+      throw new Error(
+        "I could not confirm the new page finished rendering yet.",
+      );
     }
   }
 
@@ -312,7 +282,10 @@ export function getCoursePastPapersContext(path = currentBrowserRoutePath()) {
 function cleanCourseRequest(rawCourse: string) {
   return rawCourse
     .trim()
-    .replace(/\b(past\s+papers?|papers?|question\s+papers?|course|subject|for|of|the)\b/gi, " ")
+    .replace(
+      /\b(past\s+papers?|papers?|question\s+papers?|course|subject|for|of|the)\b/gi,
+      " ",
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -344,7 +317,9 @@ export function resolveCourseCodeForNavigation(rawCourse: string) {
     return compactCandidate;
   }
 
-  throw new Error("I need a course code or a clearer course alias to open past papers.");
+  throw new Error(
+    "I need a course code or a clearer course alias to open past papers.",
+  );
 }
 
 function normalizeCourseExamRequest(rawExam: string) {
@@ -396,7 +371,10 @@ export function buildCourseExamFilterPath(basePath: string, examSlug: string) {
   return queryString ? `${basePath}?${queryString}` : basePath;
 }
 
-export function buildCoursePastPapersPath(courseCode: string, exam?: string | null) {
+export function buildCoursePastPapersPath(
+  courseCode: string,
+  exam?: string | null,
+) {
   const basePath = `/past_papers/${encodeURIComponent(courseCode)}`;
   if (!exam?.trim()) {
     return {
@@ -498,9 +476,7 @@ function chooseVisibleCanvas() {
       }
 
       return (
-        isRenderableElement(canvas) &&
-        canvas.width > 0 &&
-        canvas.height > 0
+        isRenderableElement(canvas) && canvas.width > 0 && canvas.height > 0
       );
     })
     .map((canvas) => ({
@@ -551,13 +527,11 @@ function captureSourceForVoice(
   sourceWidth: number,
   sourceHeight: number,
 ) {
-  let fallback:
-    | {
-        height: number;
-        image: string;
-        width: number;
-      }
-    | null = null;
+  let fallback: {
+    height: number;
+    image: string;
+    width: number;
+  } | null = null;
 
   for (const attempt of VOICE_IMAGE_CAPTURE_ATTEMPTS) {
     const captured = drawSourceToJpegDataUrl(
@@ -675,6 +649,8 @@ export function buildPageContextMessage(snapshot: VoiceGuideSnapshot) {
     );
   }
 
-  parts.push("Use inspect_current_view if you need the live list of visible controls.");
+  parts.push(
+    "Use inspect_current_view if you need the live list of visible controls.",
+  );
   return parts.join(" ");
 }

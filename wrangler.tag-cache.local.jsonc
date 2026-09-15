@@ -1,0 +1,17 @@
+{
+  // Local development only: Wrangler cannot infer SQLite storage from a
+  // cross-Worker transfer migration. Production uses wrangler.tag-cache.jsonc.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "examcooker-test-tag-cache",
+  "main": "cloudflare/tag-cache-worker.ts",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "durable_objects": {
+    "bindings": [{ "name": "TAG_CACHE", "class_name": "DOShardedTagCache" }]
+  },
+  "migrations": [
+    { "tag": "v1-local", "new_sqlite_classes": ["DOShardedTagCache"] }
+  ]
+}

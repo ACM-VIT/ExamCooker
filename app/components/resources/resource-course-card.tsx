@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import Link from "next/link";
+import IntentPrefetchLink from "@/app/components/common/intent-prefetch-link";
 import type { VinCourse } from "@/lib/data/vin-together";
 
 type ResourceCourseCardProps = {
@@ -19,9 +19,8 @@ function ResourceCourseCard({ course }: ResourceCourseCardProps) {
 
     return (
         <div className="group relative h-full">
-            <Link
+            <IntentPrefetchLink
                 href={href}
-                prefetch
                 transitionTypes={["nav-forward"]}
                 className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 hover:scale-[1.03] hover:shadow-xl hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
             >
@@ -50,7 +49,7 @@ function ResourceCourseCard({ course }: ResourceCourseCardProps) {
                         </span>
                     )}
                 </div>
-            </Link>
+            </IntentPrefetchLink>
         </div>
     );
 }

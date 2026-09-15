@@ -40,6 +40,8 @@
     "node_modules",
     "drizzle",
     "packages",
-    "worker"
+    "worker",
+    ".open-next",
+    "cloudflare"
   ]
 }

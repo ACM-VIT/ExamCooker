@@ -13,6 +13,7 @@ import {
     getExamHubSummaries,
 } from "@/lib/data/course-exams";
 import { getSearchableCourseRecords } from "@/lib/data/course-catalog";
+import { packCourseSearch } from "@/lib/course-search-payload";
 import { examSlugToType } from "@/lib/exam-slug";
 import {
     buildExamHubKeywordSet,
@@ -225,7 +226,7 @@ async function ExamHubContent({
                     </div>
                 </header>
 
-                <PastPapersCourseSearch courses={searchable} />
+                <PastPapersCourseSearch catalog={packCourseSearch(searchable)} />
 
                 <section className="flex flex-col gap-4">
                     <div className="flex items-end justify-between gap-3">

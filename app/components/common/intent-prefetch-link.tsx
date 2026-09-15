@@ -11,21 +11,22 @@ type IntentPrefetchLinkProps = Omit<ComponentProps<typeof Link>, "href" | "prefe
 export default function IntentPrefetchLink({
   onFocus,
   onMouseEnter,
+  onTouchStart,
   href,
   ...props
 }: IntentPrefetchLinkProps) {
   const router = useRouter();
-  const prefetched = useRef(false);
+  const prefetched = useRef<string | null>(null);
 
   const prefetchOnIntent = () => {
-    if (prefetched.current) return;
-    prefetched.current = true;
+    if (prefetched.current === href) return;
+    prefetched.current = href;
     router.prefetch(
       href,
       {
         kind: "full",
         onInvalidate: () => {
-          prefetched.current = false;
+          if (prefetched.current === href) prefetched.current = null;
         },
       } as NonNullable<Parameters<typeof router.prefetch>[1]>,
     );
@@ -42,6 +43,10 @@ export default function IntentPrefetchLink({
       onFocus={(event) => {
         prefetchOnIntent();
         onFocus?.(event);
+      }}
+      onTouchStart={(event) => {
+        prefetchOnIntent();
+        onTouchStart?.(event);
       }}
     />
   );
