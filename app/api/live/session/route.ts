@@ -1,14 +1,11 @@
 import OpenAI from "openai";
 import { NextResponse, type NextRequest } from "next/server";
-import { z } from "zod";
 import { auth } from "@/app/auth";
 import { buildLiveSessionConfig } from "@/lib/voice/config";
 import { createVoiceOpenAIClient } from "@/lib/voice/server";
 import { isVoiceRequestSameOrigin } from "@/lib/voice/request-origin";
+import { VoiceSessionOfferSchema } from "@/lib/voice/session-offer";
 
-const OfferSchema = z
-  .object({ sdp: z.string().trim().min(1).max(65_536) })
-  .strict();
 const headers = { "Cache-Control": "no-store" };
 
 export async function POST(request: NextRequest) {
@@ -47,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
     let parsed;
     try {
-      parsed = OfferSchema.safeParse(JSON.parse(body));
+      parsed = VoiceSessionOfferSchema.safeParse(JSON.parse(body));
     } catch {
       /* Invalid JSON. */
     }
@@ -77,6 +74,9 @@ export async function POST(request: NextRequest) {
     }
     console.error("[voice-agent] Live session creation failed", {
       status: error instanceof OpenAI.APIError ? error.status : undefined,
+      code: error instanceof OpenAI.APIError ? error.code : undefined,
+      param: error instanceof OpenAI.APIError ? error.param : undefined,
+      requestId: error instanceof OpenAI.APIError ? error.requestID : undefined,
     });
     return NextResponse.json(
       { error: "Could not start voice study. Please try again." },
