@@ -12,6 +12,8 @@ Use the existing server-side `OPENAI_API_KEY`, with access to `gpt-live-1` and `
 
 ## Study tools
 
+The retired `POST /api/realtime/session` endpoint returns a non-cacheable JSON 410 asking students to refresh. Keep it for previously loaded tabs: the old client displays raw error bodies, so removing the route exposes the entire Next.js HTML 404 in a toast. The Live client validates JSON session answers and replaces page payloads with short recovery messages.
+
 - Search public courses, notes, past papers, syllabi, and module resources with `search_study_materials`.
 - Fetch catalog details and analyze a catalog PDF with `read_study_material`. PDF URLs come from catalog records, not arbitrary client input. A result explicitly identifies whether the PDF was analyzed or only catalog metadata was returned.
 - Analyze the currently rendered PDF page with `answer_question_about_open_pdf`, including diagrams and tables. The returned source page stays associated with the answer if the user navigates during analysis.
@@ -27,7 +29,7 @@ Run:
 ```sh
 pnpm exec next typegen
 pnpm exec tsc --noEmit
-node --import tsx --test app/components/voice/voice-runtime.test.ts app/components/voice/voice-live-responses.test.ts lib/voice/config.test.ts
+node --import tsx --test app/components/voice/voice-runtime.test.ts app/components/voice/voice-live-responses.test.ts lib/voice/*.test.ts
 pnpm dev
 ```
 
