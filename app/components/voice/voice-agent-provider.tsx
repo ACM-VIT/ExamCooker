@@ -21,12 +21,13 @@ import {
   type VoiceControlController,
 } from "./voice-runtime";
 import { GhostCursorOverlay, useGhostCursor } from "./voice-ghost-cursor";
-import { answerVisiblePdfPageQuestionAction } from "./voice-agent-actions";
 import {
-  DEFAULT_VOICE,
+  searchVoiceStudyMaterialsAction,
+  readVoiceStudyMaterialAction,
+  answerVisiblePdfPageQuestionAction,
+} from "./voice-agent-actions";
+import {
   MAX_VISIBLE_CONTROLS,
-  VOICE_GUIDE_INSTRUCTIONS,
-  VOICE_SESSION_MAX_MS,
   buildCourseExamFilterPath,
   buildCoursePastPapersPath,
   buildPageContextMessage,
@@ -43,7 +44,7 @@ import {
   type NavigationEventDetail,
   type VoiceGuideSnapshot,
 } from "./voice-agent-helpers";
-import { z } from "zod";
+import { VOICE_TOOL_DEFINITIONS } from "@/lib/voice/config";
 import { toast } from "@/app/components/ui/use-toast";
 import {
   collectVoicePageSnapshot,
@@ -100,14 +101,8 @@ export default function VoiceAgentProvider({
   const browserPath = useBrowserPath();
   const [controller] = useState(() =>
     createVoiceControlController({
-      activationMode: "vad",
-      auth: { sessionEndpoint: "/api/realtime/session" },
+      auth: { sessionEndpoint: "/api/live/session" },
       debug: VOICE_DEBUG,
-      instructions: "Voice guide is preparing.",
-      model: "gpt-realtime-2",
-      maxOutputTokens: 90,
-      outputMode: "audio",
-      postToolResponse: true,
       tools: [],
     }),
   );
@@ -116,8 +111,9 @@ export default function VoiceAgentProvider({
   const sessionEntryPointRef = useRef<VoiceAgentEntryPoint>(entryPoint);
   const voiceAnalyticsSessionIdRef = useRef<string | null>(null);
   const pendingDisconnectReasonRef = useRef<
-    "manual" | "timeout" | "error" | "unexpected_disconnect" | null
+    "manual" | "error" | "unexpected_disconnect" | null
   >(null);
+  const studyNotesRef = useRef("");
   const controlRegistryRef = useRef<VoiceControlRegistryEntry[]>([]);
   const inAppHistoryRef = useRef<{ entries: string[]; index: number }>({
     entries: [],
@@ -141,13 +137,19 @@ export default function VoiceAgentProvider({
 
   const resolveRegistryEntry = useCallback(
     (controlId: string) => {
-      const currentMatch = findRegistryEntryById(controlRegistryRef.current, controlId);
+      const currentMatch = findRegistryEntryById(
+        controlRegistryRef.current,
+        controlId,
+      );
       if (currentMatch) {
         return currentMatch;
       }
 
       const snapshot = getFreshSnapshot();
-      const refreshedMatch = findRegistryEntryById(controlRegistryRef.current, controlId);
+      const refreshedMatch = findRegistryEntryById(
+        controlRegistryRef.current,
+        controlId,
+      );
       if (refreshedMatch) {
         return refreshedMatch;
       }
@@ -187,6 +189,16 @@ export default function VoiceAgentProvider({
     if (!visualContext) {
       throw new Error("I could not capture the visible PDF page.");
     }
+    const capturedPdf = getActivePdfSnapshot();
+    if (
+      !capturedPdf ||
+      capturedPdf.viewerId !== activePdf.viewerId ||
+      capturedPdf.currentPage !== activePdf.currentPage
+    ) {
+      throw new Error(
+        "The PDF page changed while reading it. Please ask again on the page you want to study.",
+      );
+    }
 
     if (VOICE_DEBUG) {
       console.debug("[voice-agent] visible PDF capture", {
@@ -216,12 +228,19 @@ export default function VoiceAgentProvider({
     }
 
     if (!result.answer.trim()) {
-      throw new Error("The visible PDF answer service returned an empty answer.");
+      throw new Error(
+        "The visible PDF answer service returned an empty answer.",
+      );
     }
 
     return {
       answer: result.answer.trim(),
-      openPdf: getOpenPdfView(),
+      openPdf: {
+        fileName: result.fileName,
+        currentPage: result.currentPage,
+        totalPages: result.totalPages,
+      },
+      currentOpenPdf: getOpenPdfView(),
     };
   }, []);
 
@@ -270,7 +289,9 @@ export default function VoiceAgentProvider({
       }
 
       const previousPath =
-        historyState.index > 0 ? historyState.entries[historyState.index - 1] : null;
+        historyState.index > 0
+          ? historyState.entries[historyState.index - 1]
+          : null;
       const nextForwardPath =
         historyState.index + 1 < historyState.entries.length
           ? historyState.entries[historyState.index + 1]
@@ -305,24 +326,42 @@ export default function VoiceAgentProvider({
   const tools = useMemo(
     () => [
       defineVoiceTool({
-        name: "inspect_current_view",
-        description:
-          "Inspect the current page before acting. Use this to see the current route, headings, scroll position, and visible controls with their control IDs.",
-        parameters: z.object({}),
+        ...VOICE_TOOL_DEFINITIONS.search_study_materials,
+        execute: (args) => searchVoiceStudyMaterialsAction(args),
+      }),
+      defineVoiceTool({
+        ...VOICE_TOOL_DEFINITIONS.read_study_material,
+        execute: (args) => readVoiceStudyMaterialAction(args),
+      }),
+      defineVoiceTool({
+        ...VOICE_TOOL_DEFINITIONS.get_study_notes,
+        execute: () => ({
+          notes: studyNotesRef.current,
+          scope: "This tab until the page is reloaded.",
+        }),
+      }),
+      defineVoiceTool({
+        ...VOICE_TOOL_DEFINITIONS.save_study_notes,
+        execute: ({ notes }) => {
+          studyNotesRef.current = notes;
+          return { ok: true, scope: "This tab until the page is reloaded." };
+        },
+      }),
+      defineVoiceTool({
+        ...VOICE_TOOL_DEFINITIONS.inspect_current_view,
         execute: async () => ({
           ok: true as const,
           currentView: getFreshSnapshot(),
         }),
       }),
       defineVoiceTool({
-        name: "inspect_open_pdf",
-        description:
-          "Inspect the currently open ExamCooker PDF. Use this for the file name, current page, and total page count.",
-        parameters: z.object({}),
+        ...VOICE_TOOL_DEFINITIONS.inspect_open_pdf,
         execute: async () => {
           const openPdf = getOpenPdfView();
           if (!openPdf) {
-            return buildToolFailure("There is no open PDF on the current page.");
+            return buildToolFailure(
+              "There is no open PDF on the current page.",
+            );
           }
 
           return {
@@ -333,16 +372,13 @@ export default function VoiceAgentProvider({
         },
       }),
       defineVoiceTool({
-        name: "go_to_pdf_page",
-        description:
-          "Jump to a page inside the currently open ExamCooker PDF.",
-        parameters: z.object({
-          page: z.number().int().min(1).max(10000),
-        }),
+        ...VOICE_TOOL_DEFINITIONS.go_to_pdf_page,
         execute: async ({ page }) => {
           const activePdf = getActivePdfSnapshot();
           if (!activePdf) {
-            return buildToolFailure("There is no open PDF on the current page.");
+            return buildToolFailure(
+              "There is no open PDF on the current page.",
+            );
           }
 
           const targetPage = Math.min(Math.max(page, 1), activePdf.totalPages);
@@ -372,12 +408,7 @@ export default function VoiceAgentProvider({
         },
       }),
       defineVoiceTool({
-        name: "answer_question_about_open_pdf",
-        description:
-          "Answer a question about the currently visible page of the open ExamCooker PDF by reading its rendered page image.",
-        parameters: z.object({
-          question: z.string().min(1).max(1200),
-        }),
+        ...VOICE_TOOL_DEFINITIONS.answer_question_about_open_pdf,
         execute: async ({ question }) => {
           try {
             const result = await requestOpenPdfAnswer(question);
@@ -396,12 +427,7 @@ export default function VoiceAgentProvider({
         },
       }),
       defineVoiceTool({
-        name: "filter_course_papers_by_exam",
-        description:
-          "Apply a course-specific exam filter on the current past papers page, like pressing the CAT-1 or FAT filter chip without leaving the page.",
-        parameters: z.object({
-          exam: z.string().min(1).max(80),
-        }),
+        ...VOICE_TOOL_DEFINITIONS.filter_course_papers_by_exam,
         execute: async ({ exam }) => {
           try {
             const courseContext = getCoursePastPapersContext();
@@ -450,29 +476,12 @@ export default function VoiceAgentProvider({
         },
       }),
       defineVoiceTool({
-        name: "navigate_to_course_past_papers",
-        description:
-          "Navigate directly to a specific course's past papers page. Accepts course codes like BCSE302L or CSE1001, common aliases like DBMS when unambiguous, and can optionally apply an exam filter such as CAT-1 or FAT.",
-        parameters: z.object({
-          course: z
-            .string()
-            .min(1)
-            .max(120)
-            .describe("Course code or course alias from the user's request."),
-          exam: z
-            .string()
-            .min(1)
-            .max(80)
-            .optional()
-            .describe("Optional exam filter, such as CAT-1, CAT-2, FAT, Quiz, or Model FAT."),
-        }),
+        ...VOICE_TOOL_DEFINITIONS.navigate_to_course_past_papers,
         execute: async ({ course, exam }) => {
           try {
             const courseCode = resolveCourseCodeForNavigation(course);
-            const { exam: examLabel, path: nextPath } = buildCoursePastPapersPath(
-              courseCode,
-              exam,
-            );
+            const { exam: examLabel, path: nextPath } =
+              buildCoursePastPapersPath(courseCode, exam);
 
             if (currentBrowserPath() === nextPath) {
               return {
@@ -508,12 +517,7 @@ export default function VoiceAgentProvider({
         },
       }),
       defineVoiceTool({
-        name: "navigate_to_path",
-        description:
-          'Navigate to an internal ExamCooker route such as "/", "/notes", or "/past_papers". Use only internal paths that start with "/".',
-        parameters: z.object({
-          path: z.string().min(1),
-        }),
+        ...VOICE_TOOL_DEFINITIONS.navigate_to_path,
         execute: async ({ path }) => {
           try {
             const nextPath = resolveInternalPath(path);
@@ -539,19 +543,21 @@ export default function VoiceAgentProvider({
             };
           } catch (error) {
             return buildToolFailure(
-              error instanceof Error ? error.message : "Unable to navigate to that path.",
+              error instanceof Error
+                ? error.message
+                : "Unable to navigate to that path.",
             );
           }
         },
       }),
       defineVoiceTool({
-        name: "go_back",
-        description: "Go back one step in the browser history inside the current tab.",
-        parameters: z.object({}),
+        ...VOICE_TOOL_DEFINITIONS.go_back,
         execute: async () => {
           const historyState = inAppHistoryRef.current;
           const previousPath =
-            historyState.index > 0 ? historyState.entries[historyState.index - 1] : null;
+            historyState.index > 0
+              ? historyState.entries[historyState.index - 1]
+              : null;
           if (!previousPath) {
             return buildToolFailure(
               "There is no earlier ExamCooker page in this tab to go back to.",
@@ -578,13 +584,7 @@ export default function VoiceAgentProvider({
         },
       }),
       defineVoiceTool({
-        name: "scroll_view",
-        description:
-          "Scroll the current page when the target content is not visible yet.",
-        parameters: z.object({
-          direction: z.enum(["up", "down", "top", "bottom"]),
-          amount: z.enum(["small", "medium", "large"]).optional(),
-        }),
+        ...VOICE_TOOL_DEFINITIONS.scroll_view,
         execute: async ({ direction, amount = "medium" }) => {
           const distance = {
             small: window.innerHeight * 0.45,
@@ -616,17 +616,14 @@ export default function VoiceAgentProvider({
         },
       }),
       defineVoiceTool({
-        name: "activate_control",
-        description:
-          "Click or focus a visible control by its control ID from inspect_current_view.",
-        parameters: z.object({
-          controlId: z.string().min(1),
-        }),
+        ...VOICE_TOOL_DEFINITIONS.activate_control,
         execute: async ({ controlId }) => {
           try {
             const entry = resolveRegistryEntry(controlId);
             if (entry.control.disabled) {
-              return buildToolFailure(`"${entry.control.label}" is currently disabled.`);
+              return buildToolFailure(
+                `"${entry.control.label}" is currently disabled.`,
+              );
             }
 
             const internalPath =
@@ -634,7 +631,10 @@ export default function VoiceAgentProvider({
                 ? getInternalPathFromHref(entry.element.getAttribute("href"))
                 : null;
 
-            if (entry.element instanceof HTMLAnchorElement && internalPath === null) {
+            if (
+              entry.element instanceof HTMLAnchorElement &&
+              internalPath === null
+            ) {
               return buildToolFailure(
                 `"${entry.control.label}" leaves ExamCooker. Ask the user before opening external destinations.`,
               );
@@ -650,7 +650,15 @@ export default function VoiceAgentProvider({
 
                 if (entry.element instanceof HTMLInputElement) {
                   const inputType = entry.element.type.toLowerCase();
-                  if (!["checkbox", "radio", "button", "submit", "reset"].includes(inputType)) {
+                  if (
+                    ![
+                      "checkbox",
+                      "radio",
+                      "button",
+                      "submit",
+                      "reset",
+                    ].includes(inputType)
+                  ) {
                     return;
                   }
                 }
@@ -671,25 +679,22 @@ export default function VoiceAgentProvider({
             };
           } catch (error) {
             return buildToolFailure(
-              error instanceof Error ? error.message : "Unable to activate that control.",
+              error instanceof Error
+                ? error.message
+                : "Unable to activate that control.",
             );
           }
         },
       }),
       defineVoiceTool({
-        name: "fill_input",
-        description:
-          "Fill a visible text input, search field, textarea, or select using a control ID from inspect_current_view. Use submit=true if the change should also submit the surrounding form.",
-        parameters: z.object({
-          controlId: z.string().min(1),
-          submit: z.boolean().optional(),
-          value: z.string().max(240),
-        }),
+        ...VOICE_TOOL_DEFINITIONS.fill_input,
         execute: async ({ controlId, submit = false, value }) => {
           try {
             const entry = resolveRegistryEntry(controlId);
             if (entry.control.disabled) {
-              return buildToolFailure(`"${entry.control.label}" is currently disabled.`);
+              return buildToolFailure(
+                `"${entry.control.label}" is currently disabled.`,
+              );
             }
 
             if (
@@ -736,7 +741,9 @@ export default function VoiceAgentProvider({
             };
           } catch (error) {
             return buildToolFailure(
-              error instanceof Error ? error.message : "Unable to fill that control.",
+              error instanceof Error
+                ? error.message
+                : "Unable to fill that control.",
             );
           }
         },
@@ -755,7 +762,6 @@ export default function VoiceAgentProvider({
 
   const controllerOptions = useMemo<UseVoiceControlOptions>(
     () => ({
-      activationMode: "vad",
       audio: {
         input: {
           capture: {
@@ -764,23 +770,10 @@ export default function VoiceAgentProvider({
             echoCancellation: { ideal: true },
             noiseSuppression: { ideal: true },
           },
-          noiseReduction: { type: "near_field" },
-          turnDetection: {
-            type: "semantic_vad",
-            createResponse: true,
-            interruptResponse: true,
-            eagerness: "low",
-          },
-        },
-        output: {
-          voice: DEFAULT_VOICE,
         },
       },
-      auth: { sessionEndpoint: "/api/realtime/session" },
+      auth: { sessionEndpoint: "/api/live/session" },
       debug: VOICE_DEBUG,
-      instructions: VOICE_GUIDE_INSTRUCTIONS,
-      maxOutputTokens: 400,
-      model: "gpt-realtime-2",
       onGenerationCompleted: (generation) => {
         const voiceSessionId = voiceAnalyticsSessionIdRef.current;
         if (!voiceSessionId) {
@@ -825,18 +818,6 @@ export default function VoiceAgentProvider({
           variant: "destructive",
         });
       },
-      outputMode: "audio",
-      postToolResponse: true,
-      trace: () => ({
-        workflowName: "ExamCooker Voice Guide",
-        groupId: voiceAnalyticsSessionIdRef.current ?? undefined,
-        metadata: {
-          browserPath: currentBrowserPath(),
-          entryPoint: sessionEntryPointRef.current,
-          posthogSessionId: getPostHogSessionId() ?? undefined,
-          surface: "voice_agent",
-        },
-      }),
       tools,
     }),
     [entryPoint, tools],
@@ -853,7 +834,12 @@ export default function VoiceAgentProvider({
 
     const timeout = window.setTimeout(() => {
       const snapshot = getFreshSnapshot();
-      controller.sendContextMessage(buildPageContextMessage(snapshot));
+      controller.sendContextMessage(
+        buildPageContextMessage(snapshot) +
+          (studyNotesRef.current
+            ? " Study notes are available via get_study_notes."
+            : ""),
+      );
     }, 220);
 
     return () => {
@@ -888,27 +874,6 @@ export default function VoiceAgentProvider({
     voiceAnalyticsSessionIdRef.current = null;
     pendingDisconnectReasonRef.current = null;
   }, [entryPoint, lastError, runtime.connected]);
-
-  useEffect(() => {
-    if (!runtime.connected) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setLastError(null);
-      pendingDisconnectReasonRef.current = "timeout";
-      controller.disconnect();
-      hide();
-      toast({
-        title: "Voice session ended",
-        description: "Voice sessions are limited to 3 minutes. Start it again to continue.",
-      });
-    }, VOICE_SESSION_MAX_MS);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [controller, hide, runtime.connected]);
 
   const startVoiceAgent = useCallback(() => {
     if (runtime.activity === "connecting") {
@@ -945,14 +910,13 @@ export default function VoiceAgentProvider({
     startVoiceAgent();
   }, [controller, hide, runtime.activity, runtime.connected, startVoiceAgent]);
 
-  const buttonLabel =
-    runtime.connected
-      ? "Disconnect the voice guide"
-      : runtime.activity === "connecting"
-        ? "Stop the voice guide while it connects"
-        : runtime.activity === "error"
-          ? "Retry the voice guide"
-          : "Start the voice guide";
+  const buttonLabel = runtime.connected
+    ? "Disconnect the voice guide"
+    : runtime.activity === "connecting"
+      ? "Stop the voice guide while it connects"
+      : runtime.activity === "error"
+        ? "Retry the voice guide"
+        : "Start the voice guide";
 
   const contextValue = useMemo<VoiceAgentContextValue>(
     () => ({
@@ -963,7 +927,14 @@ export default function VoiceAgentProvider({
       startVoiceAgent,
       toggleVoiceAgent,
     }),
-    [buttonLabel, controller, lastError, runtime, startVoiceAgent, toggleVoiceAgent],
+    [
+      buttonLabel,
+      controller,
+      lastError,
+      runtime,
+      startVoiceAgent,
+      toggleVoiceAgent,
+    ],
   );
 
   return (

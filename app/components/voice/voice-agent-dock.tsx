@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Mic, MicOff, RefreshCcw, Square, X } from "lucide-react";
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useRef, useReducer, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import type {
@@ -19,19 +19,6 @@ type VoiceAgentDockProps = {
 
 const TOOL_ACTION_HOLD_MS = 4500;
 const DOCK_EXIT_MS = 220;
-const LISTENING_TIP_INTERVAL_MS = 3200;
-const MAX_TRANSCRIPT_CHARS = 220;
-
-const LISTENING_TIPS = [
-  "Say hi, I'm listening",
-  'Try "take me to notes"',
-  'Try "show me previous papers"',
-  'Try "open the schedule"',
-  "Ask me anything on this page",
-  'Try "scroll down"',
-  'Try "go back"',
-];
-
 type DockVisibilityState = {
   entered: boolean;
   mounted: boolean;
@@ -57,10 +44,6 @@ function dockVisibilityReducer(
     case "unmount":
       return { mounted: false, entered: false };
   }
-}
-
-function splitWords(text: string) {
-  return text.split(/\s+/).filter(Boolean);
 }
 
 function describeToolArgs(name: string, args: unknown): string | null {
@@ -89,7 +72,9 @@ function describeToolOutput(name: string, output: unknown): string | null {
       const control =
         (record.activated as Record<string, unknown> | undefined) ??
         (record.control as Record<string, unknown> | undefined);
-      return control && typeof control.label === "string" ? control.label : null;
+      return control && typeof control.label === "string"
+        ? control.label
+        : null;
     }
     default:
       return null;
@@ -118,6 +103,16 @@ function formatToolAction(toolCall: VoiceToolCallRecord): string | null {
         return { running: "Filling", done: "Filled" };
       case "go_to_pdf_page":
         return { running: "Jumping to", done: "Jumped to" };
+      case "search_study_materials":
+        return {
+          running: "Finding study materials",
+          done: "Found study materials",
+        };
+      case "read_study_material":
+        return {
+          running: "Reading study material",
+          done: "Read study material",
+        };
       case "answer_question_about_open_pdf":
         return { running: "Reading PDF", done: "Read PDF" };
       default:
@@ -168,27 +163,9 @@ function useToolActionCaption(runtime: UseVoiceControlReturn) {
   return caption;
 }
 
-function useListeningTip(active: boolean) {
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    if (!active) {
-      setIndex(0);
-      return;
-    }
-    const id = window.setInterval(() => {
-      setIndex((i) => (i + 1) % LISTENING_TIPS.length);
-    }, LISTENING_TIP_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, [active]);
-
-  return active ? LISTENING_TIPS[index] : null;
-}
-
 function getStatusFallback(
   runtime: UseVoiceControlReturn,
   lastError: string | null,
-  listeningTip: string | null,
 ): { text: string; tone: "default" | "error" | "muted" } | null {
   if (lastError) return { text: "Couldn't reach voice", tone: "error" };
   if (!runtime.connected) {
@@ -197,8 +174,9 @@ function getStatusFallback(
       : null;
   }
   if (runtime.muted) return { text: "Muted. Tap mic to talk", tone: "muted" };
-  if (runtime.activity === "processing") return { text: "Thinking…", tone: "default" };
-  return { text: listeningTip ?? "Say hi, I'm listening", tone: "default" };
+  if (runtime.activity === "processing")
+    return { text: "Thinking…", tone: "default" };
+  return { text: "Voice study", tone: "default" };
 }
 
 function StatusCaption({
@@ -226,32 +204,49 @@ function StatusCaption({
   );
 }
 
-function LyricLine({ text }: { text: string }) {
-  const displayText = useMemo(() => {
-    if (text.length <= MAX_TRANSCRIPT_CHARS) {
-      return text;
-    }
-
-    return text.slice(-MAX_TRANSCRIPT_CHARS).replace(/^\S+\s*/, "");
-  }, [text]);
-  const words = useMemo(() => {
-    const counts = new Map<string, number>();
-    return splitWords(displayText).map((word) => {
-      const count = counts.get(word) ?? 0;
-      counts.set(word, count + 1);
-      return { key: `${word}-${count}`, value: word };
-    });
-  }, [displayText]);
+function VoiceSoundWave({ runtime }: { runtime: UseVoiceControlReturn }) {
+  const bars = useRef<Array<HTMLSpanElement | null>>([]);
+  useEffect(() => {
+    if (!runtime.connected) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let frame = 0;
+    let level = 0;
+    const draw = (time: number) => {
+      level += (runtime.getOutputAudioLevel() - level) * 0.25;
+      bars.current.forEach((bar, index) => {
+        if (!bar) return;
+        const shape = Math.sin(((index + 1) / 10) * Math.PI);
+        const scale = reducedMotion.matches
+          ? 0.18 + shape * 0.5
+          : 0.14 + level * shape * (0.65 + 0.2 * Math.sin(time / 160 + index));
+        bar.style.transform = `scaleY(${scale})`;
+      });
+      frame = window.requestAnimationFrame(draw);
+    };
+    frame = window.requestAnimationFrame(draw);
+    return () => window.cancelAnimationFrame(frame);
+  }, [runtime, runtime.connected]);
 
   return (
-    <p className="text-balance text-center text-[15px] sm:text-[17px] font-semibold leading-snug tracking-[-0.005em] text-[#0E5876] dark:text-[#3BF4C7]">
-      {words.map((word, i) => (
-        <span key={word.key} className="voice-lyric-word inline-block whitespace-pre">
-          {word.value}
-          {i < words.length - 1 ? " " : ""}
-        </span>
+    <div
+      role="img"
+      aria-label={
+        runtime.connected ? "Voice study audio" : "Voice study disconnected"
+      }
+      className="flex h-7 items-center justify-center gap-[3px] text-[#0E5876] dark:text-[#3BF4C7]"
+    >
+      {Array.from({ length: 9 }, (_, index) => (
+        <span
+          key={index}
+          ref={(element) => {
+            bars.current[index] = element;
+          }}
+          aria-hidden="true"
+          className="block h-6 w-[3px] rounded-full bg-current"
+          style={{ transform: "scaleY(0.14)" }}
+        />
       ))}
-    </p>
+    </div>
   );
 }
 
@@ -263,14 +258,6 @@ export default function VoiceAgentDock({
   runtime,
 }: VoiceAgentDockProps) {
   const toolCaption = useToolActionCaption(runtime);
-
-  const showListeningTip =
-    runtime.connected &&
-    !runtime.muted &&
-    runtime.activity === "listening" &&
-    !toolCaption &&
-    runtime.transcript.trim().length === 0;
-  const listeningTip = useListeningTip(showListeningTip);
 
   const visible =
     runtime.connected ||
@@ -305,8 +292,7 @@ export default function VoiceAgentDock({
   if (!mounted) return null;
   if (typeof document === "undefined") return null;
 
-  const currentTranscript = runtime.transcript.trim();
-  const fallback = getStatusFallback(runtime, lastError, listeningTip);
+  const fallback = getStatusFallback(runtime, lastError);
   const captionText = toolCaption ?? fallback?.text ?? "";
   const captionTone =
     lastError != null
@@ -315,10 +301,7 @@ export default function VoiceAgentDock({
         ? "default"
         : (fallback?.tone ?? "default");
   const showSpinner = !runtime.connected && !lastError;
-  const canInterrupt =
-    runtime.connected &&
-    !lastError &&
-    (runtime.activity === "processing" || runtime.activity === "executing");
+  const canInterrupt = runtime.connected && !lastError;
 
   return createPortal(
     <div
@@ -327,13 +310,6 @@ export default function VoiceAgentDock({
       aria-live="polite"
     >
       <style>{`
-        @keyframes voice-lyric-word-in {
-          from { opacity: 0; transform: translateY(5px); filter: blur(3px); }
-          to { opacity: 1; transform: translateY(0); filter: blur(0); }
-        }
-        .voice-lyric-word {
-          animation: voice-lyric-word-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
-        }
         @keyframes voice-caption-in {
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
@@ -342,7 +318,7 @@ export default function VoiceAgentDock({
           animation: voice-caption-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
         }
         @media (prefers-reduced-motion: reduce) {
-          .voice-lyric-word, .voice-caption-line { animation: none; }
+          .voice-caption-line { animation: none; }
         }
       `}</style>
 
@@ -368,9 +344,7 @@ export default function VoiceAgentDock({
       >
         <StatusCaption text={captionText} tone={captionTone} />
 
-        <div className="min-h-[24px] w-full">
-          {currentTranscript ? <LyricLine text={currentTranscript} /> : null}
-        </div>
+        <VoiceSoundWave runtime={runtime} />
 
         <div className="flex items-center gap-1.5">
           {lastError ? (
@@ -386,7 +360,9 @@ export default function VoiceAgentDock({
           ) : (
             <button
               type="button"
-              aria-label={runtime.muted ? "Unmute microphone" : "Mute microphone"}
+              aria-label={
+                runtime.muted ? "Unmute microphone" : "Mute microphone"
+              }
               title={runtime.muted ? "Unmute microphone" : "Mute microphone"}
               onClick={() => runtime.setMuted(!runtime.muted)}
               disabled={!runtime.connected}
