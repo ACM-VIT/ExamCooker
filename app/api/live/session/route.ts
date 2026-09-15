@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auth } from "@/app/auth";
 import { buildLiveSessionConfig } from "@/lib/voice/config";
 import { createVoiceOpenAIClient } from "@/lib/voice/server";
+import { isVoiceRequestSameOrigin } from "@/lib/voice/request-origin";
 
 const OfferSchema = z
   .object({ sdp: z.string().trim().min(1).max(65_536) })
@@ -19,8 +20,7 @@ export async function POST(request: NextRequest) {
         { status: 401, headers },
       );
     }
-    const origin = request.headers.get("origin");
-    if (origin && origin !== request.nextUrl.origin) {
+    if (!isVoiceRequestSameOrigin(request)) {
       return NextResponse.json(
         { error: "Unexpected request origin." },
         { status: 403, headers },

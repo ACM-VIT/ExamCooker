@@ -5,10 +5,10 @@ import { toJSONSchema } from "zod";
 import type {
   ClientEvent,
   ServerEvent,
-  LiveCreateResponse,
 } from "openai/resources/live/live";
 import type { ResponseStreamEvent } from "openai/resources/responses/responses";
 import { VOICE_MODEL, VOICE_BACKEND_MODEL } from "@/lib/voice/config";
+import { readVoiceSessionResponse, voiceErrorMessage } from "@/lib/voice/session-response";
 import {
   createVoiceToolInputGuardrail,
   parseVoiceToolInput,
@@ -53,7 +53,7 @@ function abortError() {
 }
 function errorDetails(error: unknown): VoiceControlError {
   const message =
-    error instanceof Error ? error.message : "Voice study failed.";
+    voiceErrorMessage(error instanceof Error ? error.message : undefined);
   const name = error instanceof Error ? error.name : "";
   return {
     message,
@@ -318,22 +318,18 @@ class VoiceControlControllerImpl implements VoiceControlController {
         throw new Error(
           "The browser could not create a voice connection offer.",
         );
+      const headers = new Headers(this.options.auth.sessionRequestInit?.headers);
+      headers.set("Content-Type", "application/json");
+      headers.set("Accept", "application/json");
       const response = await fetch(this.options.auth.sessionEndpoint, {
         ...this.options.auth.sessionRequestInit,
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
+        cache: "no-store",
         body: JSON.stringify({ sdp }),
         signal: abort.signal,
       });
-      const result = (await response.json()) as LiveCreateResponse & {
-        error?: string;
-      };
-      if (!response.ok)
-        throw new Error(result.error || "Could not start voice study.");
-      if (!result.transport?.sdp || !result.session?.id)
-        throw new Error(
-          "The voice service returned an invalid connection answer.",
-        );
+      const result = await readVoiceSessionResponse(response);
       if (!current()) return;
       this.sessionId = result.session.id;
       await peer.setRemoteDescription({

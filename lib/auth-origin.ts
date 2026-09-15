@@ -195,6 +195,28 @@ export function getPublicAuthOrigin(request: RequestLike) {
     );
 }
 
+// For request-origin checks, use only the destination host reported by the
+// proxy/server. Origin, Referer, and callback cookies describe the caller and
+// must not be used to establish which destination is trusted.
+export function getPublicRequestOrigin(request: RequestLike) {
+    const forwardedProto = getForwardedProto(request.headers);
+    for (const name of [
+        "x-forwarded-host",
+        "x-original-host",
+        "x-ms-original-host",
+        "host",
+    ]) {
+        const parsed = getOriginFromHeaderValue(request.headers.get(name), forwardedProto);
+        if (parsed) {
+            if (!forwardedProto && LOCAL_AUTH_HOSTS.has(parsed.hostname)) {
+                return parseAllowedOrigin(`${new URL(request.url).protocol}//${parsed.host}`);
+            }
+            return parsed;
+        }
+    }
+    return parseAllowedOrigin(request.url);
+}
+
 export function buildNormalizedAuthHeaders(request: RequestLike, publicOrigin: AllowedOrigin) {
     const headers = new Headers(request.headers);
     headers.set("host", publicOrigin.host);
