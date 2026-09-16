@@ -1,20 +1,42 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { asc, count, eq, ilike, or } from "drizzle-orm";
+import { and, asc, count, eq, ilike, or } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { db, module, subject } from "@/db";
 
-function buildWhere(search: string) {
+function buildWhere(search: string, courseCode?: string) {
     const value = search.trim();
-    if (!value) return undefined;
-    return ilike(subject.name, `%${value}%`);
+    const normalizedCourseCode = courseCode
+        ? normalizeCourseCode(courseCode)
+        : "";
+    const predicates = [];
+
+    if (value) {
+        predicates.push(ilike(subject.name, `%${value}%`));
+    }
+
+    if (normalizedCourseCode) {
+        predicates.push(
+            or(
+                ilike(subject.name, `${normalizedCourseCode} -%`),
+                ilike(subject.name, `${normalizedCourseCode}-%`),
+                ilike(subject.name, normalizedCourseCode),
+            ),
+        );
+    }
+
+    return predicates.length ? and(...predicates) : undefined;
 }
 
-export async function getResourcesCount(input: { search: string }) {
+
+export async function getResourcesCount(input: {
+    search: string;
+    courseCode?: string;
+}) {
     "use cache";
     cacheTag("resources");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const where = buildWhere(input.search);
+    const where = buildWhere(input.search, input.courseCode);
     const rows = await db
         .select({ total: count() })
         .from(subject)
@@ -25,6 +47,7 @@ export async function getResourcesCount(input: { search: string }) {
 
 export async function getResourcesPage(input: {
     search: string;
+    courseCode?: string;
     page: number;
     pageSize: number;
 }) {
@@ -32,7 +55,7 @@ export async function getResourcesPage(input: {
     cacheTag("resources");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    const where = buildWhere(input.search);
+    const where = buildWhere(input.search, input.courseCode);
     const skip = (input.page - 1) * input.pageSize;
 
     return db
