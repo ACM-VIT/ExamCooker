@@ -771,7 +771,10 @@ export async function reviewUploadedResource(input: {
       (await semanticDuplicate(resource, analysis, data, contentHash, corpus));
 
     const canAutoApprove =
-      input.autoApprove !== false && issues.length === 0 && duplicate === null;
+      input.autoApprove !== false &&
+      !resource.isClear &&
+      issues.length === 0 &&
+      duplicate === null;
     const status = duplicate
       ? "duplicate"
       : issues.length > 0
