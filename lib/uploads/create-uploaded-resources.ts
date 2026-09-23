@@ -36,6 +36,8 @@ export type CreateUploadedResourcesInput = {
     hasAnswerKey?: boolean;
 };
 
+type UploadResourceDatabase = Pick<typeof db, "insert" | "select">;
+
 function normalizeOptionalUrl(url: string | null | undefined) {
     if (!url) {
         return null;
@@ -55,8 +57,9 @@ export async function createUploadedResources({
     semester,
     campus,
     hasAnswerKey,
-}: CreateUploadedResourcesInput) {
-    const userRows = await db
+    database = db,
+}: CreateUploadedResourcesInput & { database?: UploadResourceDatabase }) {
+    const userRows = await database
         .select({
             id: user.id,
         })
@@ -99,7 +102,7 @@ export async function createUploadedResources({
                   results.map(async (result) => {
                       const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
                       const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                      const rows = await db
+                      const rows = await database
                           .insert(note)
                           .values({
                               title: result.filename,
@@ -117,7 +120,7 @@ export async function createUploadedResources({
                   results.map(async (result) => {
                       const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
                       const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                      const rows = await db
+                      const rows = await database
                           .insert(pastPaper)
                           .values({
                               title: result.filename,
@@ -144,6 +147,13 @@ export async function createUploadedResources({
                   }),
               );
 
+    return { success: true as const, data };
+}
+
+export async function runUploadedResourcePostSaveTasks(
+    variant: UploadVariant,
+    data: Array<{ id: string }>,
+) {
     const uploadedType = variant === "Notes" ? ("note" as const) : ("pastPaper" as const);
     const createdResources = data.map((resource) => ({
         id: resource.id,
@@ -179,6 +189,4 @@ export async function createUploadedResources({
         revalidateTag("past_papers", "minutes");
         await invalidatePastPapersSurfaceCache();
     }
-
-    return { success: true as const, data };
 }

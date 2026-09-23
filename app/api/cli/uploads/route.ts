@@ -13,6 +13,7 @@ import { normalizeCourseCode } from "@/lib/course-tags";
 import { requireCliRequestUser } from "@/lib/cli/request-auth";
 import {
   createUploadedResources,
+  runUploadedResourcePostSaveTasks,
   type UploadVariant,
 } from "@/lib/uploads/create-uploaded-resources";
 import { processUploadFile } from "@/lib/uploads/processor-client";
@@ -244,6 +245,8 @@ export async function POST(request: NextRequest) {
     if (!result.success) {
       return NextResponse.json(result, { status: 400 });
     }
+
+    await runUploadedResourcePostSaveTasks(variant, result.data);
 
     const created = result.data?.[0] ?? null;
     return NextResponse.json({
