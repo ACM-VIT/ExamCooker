@@ -1,8 +1,9 @@
 "use client";
 
-import React, { ViewTransition, useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { OptionalViewTransition as ViewTransition } from "@/app/components/common/react-transition";
 import {
     Check,
     Download,
