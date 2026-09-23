@@ -2,7 +2,6 @@
 
 import React, {
   Activity,
-  addTransitionType,
   startTransition,
   useEffect,
   useEffectEvent,
@@ -10,6 +9,7 @@ import React, {
   useReducer,
   useState,
 } from "react";
+import { addTransitionType } from "@/app/components/common/react-transition";
 import { Command } from "cmdk";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useAgent } from "agents/react";
