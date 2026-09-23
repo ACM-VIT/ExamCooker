@@ -1,7 +1,8 @@
 "use client";
 
-import React, { ViewTransition, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { ViewTransitionClass } from "react";
+import { OptionalViewTransition } from "@/app/components/common/react-transition";
 
 // `<ViewTransition>` is an experimental React API. It used to be keyed on
 // `pathname`, which forced the whole page subtree to remount on every
@@ -14,10 +15,11 @@ import type { ViewTransitionClass } from "react";
 // The directional animation never depended on that key: the forward / back /
 // lateral direction comes from React transition *types* (`transitionTypes` on
 // `<Link>` and `addTransitionType(...)` on programmatic navigations), which are
-// mapped to CSS classes below. So we keep a single, persistent `<ViewTransition>`
-// (no `key`) that is never remounted, and animate route changes through the
-// `update` path instead of key-driven enter/exit. Suspense boundaries are no
-// longer torn down mid-transition, which removes the crash at its root.
+// mapped to CSS classes below. So we keep a single, persistent transition
+// wrapper (no `key`) that is never remounted, and animate route changes through
+// the `update` path instead of key-driven enter/exit. Suspense boundaries are no
+// longer torn down mid-transition, which removes the crash at its root. The
+// wrapper renders children directly when the React runtime lacks this API.
 
 function hasNativeShellAttributes() {
     if (typeof document === "undefined") return false;
@@ -70,12 +72,12 @@ export default function DirectionalTransition({
     }
 
     return (
-        <ViewTransition
+        <OptionalViewTransition
             enter={NAV_TRANSITION_CLASSES}
             update={NAV_TRANSITION_CLASSES}
             default="none"
         >
             {children}
-        </ViewTransition>
+        </OptionalViewTransition>
     );
 }
