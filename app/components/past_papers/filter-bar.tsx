@@ -1,7 +1,8 @@
 "use client";
 
-import React, { addTransitionType, memo, useCallback, useMemo, useTransition } from "react";
+import React, { memo, useCallback, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { addTransitionType } from "@/app/components/common/react-transition";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/exam-slug";
 import type { Campus, ExamType, Semester } from "@/db";
 
