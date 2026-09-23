@@ -6,6 +6,12 @@ import { z } from "zod";
 import { auth } from "@/app/auth";
 import { course, db, note, pastPaper, subject, syllabi } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
+import {
+    hasSubjectCodePrefixCollision,
+    hasSyllabusCodePrefixCollision,
+    replaceSubjectCodePrefix,
+    replaceSyllabusCodePrefix,
+} from "@/lib/course-code-prefix";
 import { normalizeCourseCode } from "@/lib/course-tags";
 
 const courseInputSchema = z.object({
@@ -155,23 +161,7 @@ function isUniqueViolation(error: unknown) {
     );
 }
 
-function replaceSyllabusCodePrefix(name: string, currentCode: string, nextCode: string) {
-    const prefix = `${currentCode}_`;
-    if (!name.toUpperCase().startsWith(prefix.toUpperCase())) return null;
-    return `${nextCode}${name.slice(currentCode.length)}`;
-}
-
-function replaceSubjectCodePrefix(name: string, currentCode: string, nextCode: string) {
-    const upperName = name.toUpperCase();
-    const upperCode = currentCode.toUpperCase();
-    if (upperName === upperCode) return nextCode;
-    if (!upperName.startsWith(upperCode)) return null;
-
-    const suffix = name.slice(currentCode.length);
-    return suffix.startsWith("-") || suffix.startsWith(" -")
-        ? `${nextCode}${suffix}`
-        : null;
-}
+const courseCodePrefixCollision = "course-code-prefix-collision" as const;
 
 export async function getModeratorCourseRegistry() {
     await requireModerator();
@@ -232,6 +222,53 @@ export async function updateManagedCourse(
                     .select({ id: syllabi.id, name: syllabi.name })
                     .from(syllabi)
                     .where(ilike(syllabi.name, `${existing.code}_%`));
+                const destinationSyllabusRows = await tx
+                    .select({ id: syllabi.id, name: syllabi.name })
+                    .from(syllabi)
+                    .where(ilike(syllabi.name, `${validated.data.code}_%`));
+
+                if (
+                    hasSyllabusCodePrefixCollision(
+                        syllabusRows,
+                        destinationSyllabusRows,
+                        existing.code,
+                        validated.data.code,
+                    )
+                ) {
+                    return courseCodePrefixCollision;
+                }
+
+                const subjectRows = await tx
+                    .select({ id: subject.id, name: subject.name })
+                    .from(subject)
+                    .where(
+                        or(
+                            ilike(subject.name, `${existing.code} -%`),
+                            ilike(subject.name, `${existing.code}-%`),
+                            ilike(subject.name, existing.code),
+                        ),
+                    );
+                const destinationSubjectRows = await tx
+                    .select({ id: subject.id, name: subject.name })
+                    .from(subject)
+                    .where(
+                        or(
+                            ilike(subject.name, `${validated.data.code} -%`),
+                            ilike(subject.name, `${validated.data.code}-%`),
+                            ilike(subject.name, validated.data.code),
+                        ),
+                    );
+
+                if (
+                    hasSubjectCodePrefixCollision(
+                        subjectRows,
+                        destinationSubjectRows,
+                        existing.code,
+                        validated.data.code,
+                    )
+                ) {
+                    return courseCodePrefixCollision;
+                }
 
                 for (const syllabusRow of syllabusRows) {
                     const nextName = replaceSyllabusCodePrefix(
@@ -245,17 +282,6 @@ export async function updateManagedCourse(
                         .set({ name: nextName })
                         .where(eq(syllabi.id, syllabusRow.id));
                 }
-
-                const subjectRows = await tx
-                    .select({ id: subject.id, name: subject.name })
-                    .from(subject)
-                    .where(
-                        or(
-                            ilike(subject.name, `${existing.code} -%`),
-                            ilike(subject.name, `${existing.code}-%`),
-                            ilike(subject.name, existing.code),
-                        ),
-                    );
 
                 for (const subjectRow of subjectRows) {
                     const nextName = replaceSubjectCodePrefix(
@@ -281,6 +307,12 @@ export async function updateManagedCourse(
                 ? { id: updated.id, codeChanged }
                 : null;
         });
+        if (updated === courseCodePrefixCollision) {
+            return {
+                success: false,
+                error: `The code ${validated.data.code} is already used by syllabus or resource rows.`,
+            };
+        }
         if (!updated) return { success: false, error: "Course not found." };
 
         if (updated.codeChanged) {
