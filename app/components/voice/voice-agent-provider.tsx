@@ -1,7 +1,6 @@
 "use client";
 
 import React, {
-  addTransitionType,
   createContext,
   startTransition,
   useCallback,
@@ -12,6 +11,7 @@ import React, {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import { addTransitionType } from "@/app/components/common/react-transition";
 import {
   createVoiceControlController,
   defineVoiceTool,
