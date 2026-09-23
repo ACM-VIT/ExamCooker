@@ -1,7 +1,6 @@
 "use client";
 
 import React, {
-  addTransitionType,
   createContext,
   startTransition,
   useCallback,
@@ -46,6 +45,7 @@ import {
 } from "./voice-agent-helpers";
 import { VOICE_TOOL_DEFINITIONS } from "@/lib/voice/config";
 import { toast } from "@/app/components/ui/use-toast";
+import { addReactTransitionType } from "@/app/components/common/react-transition";
 import {
   collectVoicePageSnapshot,
   findRegistryEntryById,
@@ -454,7 +454,7 @@ export default function VoiceAgentProvider({
             }
 
             startTransition(() => {
-              addTransitionType("filter-results");
+              addReactTransitionType("filter-results");
               replace(nextPath);
             });
             await settleUi({ targetPath: nextPath });
