@@ -1,6 +1,7 @@
 "use client";
 
-import React, { addTransitionType, useTransition } from "react";
+import React, { useTransition } from "react";
+import { addReactTransitionType } from "@/app/components/common/react-transition";
 import { useRouter } from "next/navigation";
 
 type Props = {
@@ -23,7 +24,7 @@ export default function AnswerKeyToggle({ basePath, count, searchString }: Props
 
         const qs = params.toString();
         startTransition(() => {
-            addTransitionType("filter-results");
+            addReactTransitionType("filter-results");
             replace(qs ? `${basePath}?${qs}` : basePath);
         });
     };

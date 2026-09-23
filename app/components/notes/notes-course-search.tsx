@@ -1,6 +1,7 @@
 "use client";
 
-import React, { Activity, addTransitionType, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import React, { Activity, startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { addReactTransitionType } from "@/app/components/common/react-transition";
 import Image from "@/app/components/common/app-image";
 import SearchIcon from "@/app/components/assets/seacrh.svg";
 import { useRouter } from "next/navigation";
@@ -159,7 +160,7 @@ export default function NotesCourseSearch({
         });
 
         startTransition(() => {
-            addTransitionType("nav-forward");
+            addReactTransitionType("nav-forward");
             push(`/notes/course/${encodeURIComponent(course.code)}`);
         });
         setIsOpen(false);
@@ -183,7 +184,7 @@ export default function NotesCourseSearch({
             return;
         }
         startTransition(() => {
-            addTransitionType("filter-results");
+            addReactTransitionType("filter-results");
             push(`/notes?search=${encodeURIComponent(trimmed)}`);
         });
         setIsOpen(false);
@@ -249,7 +250,7 @@ export default function NotesCourseSearch({
                     hasSyllabus: false,
                 });
                 startTransition(() => {
-                    addTransitionType("nav-forward");
+                    addReactTransitionType("nav-forward");
                     push(`/notes/course/${encodeURIComponent(course.code)}`);
                 });
                 return;
@@ -280,13 +281,13 @@ export default function NotesCourseSearch({
                     hasSyllabus: false,
                 });
                 startTransition(() => {
-                    addTransitionType("nav-forward");
+                    addReactTransitionType("nav-forward");
                     push(`/notes/course/${encodeURIComponent(exact.code)}`);
                 });
                 return;
             }
             startTransition(() => {
-                addTransitionType("filter-results");
+                addReactTransitionType("filter-results");
                 push(`/notes?search=${encodeURIComponent(trimmed)}`);
             });
         } catch {

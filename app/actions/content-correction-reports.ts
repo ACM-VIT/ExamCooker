@@ -553,7 +553,7 @@ export async function resolveContentCorrectionReport(
             thumbNailUrl: source.thumbNailUrl,
             title: suggestion.title.trim() || source.title,
             contentHash: source.contentHash,
-            isClear: false,
+            isClear: true,
             ...(suggestion.examType ? { examType: suggestion.examType } : {}),
             ...(suggestion.slot ? { slot: suggestion.slot } : {}),
             ...(suggestion.year ? { year: suggestion.year } : {}),
@@ -619,7 +619,7 @@ export async function resolveContentCorrectionReport(
             thumbNailUrl: source.thumbNailUrl,
             title: suggestion.title.trim() || source.title,
             contentHash: source.contentHash,
-            isClear: false,
+            isClear: true,
           })
           .returning({ id: note.id });
         if (!created) throw new Error("Could not create the converted note.");

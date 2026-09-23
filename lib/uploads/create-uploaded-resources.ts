@@ -36,6 +36,8 @@ export type CreateUploadedResourcesInput = {
     hasAnswerKey?: boolean;
 };
 
+type UploadResourceDatabase = Pick<typeof db, "insert" | "select">;
+
 function normalizeOptionalUrl(url: string | null | undefined) {
     if (!url) {
         return null;
@@ -55,8 +57,8 @@ export async function createUploadedResources({
     semester,
     campus,
     hasAnswerKey,
-}: CreateUploadedResourcesInput) {
-    const userRows = await db
+}: CreateUploadedResourcesInput, database: UploadResourceDatabase = db) {
+    const userRows = await database
         .select({
             id: user.id,
         })
@@ -93,56 +95,59 @@ export async function createUploadedResources({
     const parsedSemester = semester as Semester | null | undefined;
     const parsedCampus = campus as Campus | null | undefined;
 
-    const data =
-        variant === "Notes"
-            ? await Promise.all(
-                  results.map(async (result) => {
-                      const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
-                      const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                      const rows = await db
-                          .insert(note)
-                          .values({
-                              title: result.filename,
-                              fileUrl,
-                              ...(thumbNailUrl ? { thumbNailUrl } : {}),
-                              authorId: currentUser.id,
-                              ...(courseId ? { courseId } : {}),
-                          })
-                          .returning();
+    const data = [];
 
-                      return rows[0];
-                  }),
-              )
-            : await Promise.all(
-                  results.map(async (result) => {
-                      const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
-                      const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                      const rows = await db
-                          .insert(pastPaper)
-                          .values({
-                              title: result.filename,
-                              fileUrl,
-                              ...(thumbNailUrl ? { thumbNailUrl } : {}),
-                              authorId: currentUser.id,
-                              ...(courseId ? { courseId } : {}),
-                              ...(parsedExamType ? { examType: parsedExamType } : {}),
-                              ...(slot ? { slot } : {}),
-                              ...(yearInt !== null && !Number.isNaN(yearInt)
-                                  ? { year: yearInt }
-                                  : {}),
-                              ...(parsedSemester ? { semester: parsedSemester } : {}),
-                              ...(parsedCampus ? { campus: parsedCampus } : {}),
-                              hasAnswerKey: hasAnswerKey ?? false,
-                          })
-                          .returning({
-                              id: pastPaper.id,
-                              title: pastPaper.title,
-                              fileUrl: pastPaper.fileUrl,
-                          });
+    if (variant === "Notes") {
+        for (const result of results) {
+            const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
+            const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
+            const rows = await database
+                .insert(note)
+                .values({
+                    title: result.filename,
+                    fileUrl,
+                    ...(thumbNailUrl ? { thumbNailUrl } : {}),
+                    authorId: currentUser.id,
+                    ...(courseId ? { courseId } : {}),
+                })
+                .returning();
 
-                      return rows[0];
-                  }),
-              );
+            const created = rows[0];
+            if (!created) throw new Error("Could not create uploaded note.");
+            data.push(created);
+        }
+    } else {
+        for (const result of results) {
+            const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
+            const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
+            const rows = await database
+                .insert(pastPaper)
+                .values({
+                    title: result.filename,
+                    fileUrl,
+                    ...(thumbNailUrl ? { thumbNailUrl } : {}),
+                    authorId: currentUser.id,
+                    ...(courseId ? { courseId } : {}),
+                    ...(parsedExamType ? { examType: parsedExamType } : {}),
+                    ...(slot ? { slot } : {}),
+                    ...(yearInt !== null && !Number.isNaN(yearInt)
+                        ? { year: yearInt }
+                        : {}),
+                    ...(parsedSemester ? { semester: parsedSemester } : {}),
+                    ...(parsedCampus ? { campus: parsedCampus } : {}),
+                    hasAnswerKey: hasAnswerKey ?? false,
+                })
+                .returning({
+                    id: pastPaper.id,
+                    title: pastPaper.title,
+                    fileUrl: pastPaper.fileUrl,
+                });
+
+            const created = rows[0];
+            if (!created) throw new Error("Could not create uploaded past paper.");
+            data.push(created);
+        }
+    }
 
     const uploadedType = variant === "Notes" ? ("note" as const) : ("pastPaper" as const);
     const createdResources = data.map((resource) => ({
