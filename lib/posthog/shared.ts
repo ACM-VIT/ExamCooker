@@ -611,6 +611,54 @@ function isInstagramPostMessageTeardownNoise(event: CaptureResult): boolean {
     return exceptionList.every(isInstagramPostMessageTeardownException);
 }
 
+// posthog-js aborts its own network request when the request passes the SDK
+// timeout (3000ms for the flags call this app routes through the `/ecp` reverse
+// proxy). Its `timeoutAbortReason` helper builds a plain `Error` named
+// `AbortError` with the message `PostHog request timed out after <N>ms` (or
+// `PostHog request timed out` when no timeout is set) and aborts the fetch with
+// it. Because `capture_exceptions` is on, that rejected fetch comes back as an
+// unhandled exception. The SDK retries the request on its own and nothing
+// user-facing breaks, so this is pure SDK self-report noise, not an app bug.
+//
+// The exception carries an `in_app` minified bundle frame, so the frame-less
+// guards above never catch it. Match narrowly: type `AbortError` AND the exact
+// SDK timeout message, which only posthog-js emits, so a genuine app-code abort
+// still surfaces.
+const POSTHOG_REQUEST_TIMEOUT_SIGNATURE =
+    /^PostHog request timed out(?: after \d+ms)?$/;
+
+function isPostHogRequestTimeoutException(exception: unknown): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as { type?: unknown; value?: unknown };
+
+    if (entry.type !== "AbortError") {
+        return false;
+    }
+
+    return (
+        typeof entry.value === "string" &&
+        POSTHOG_REQUEST_TIMEOUT_SIGNATURE.test(entry.value)
+    );
+}
+
+function isPostHogRequestTimeoutNoise(event: CaptureResult): boolean {
+    if (event.event !== "$exception") {
+        return false;
+    }
+
+    const exceptionList = event.properties?.$exception_list;
+    if (!Array.isArray(exceptionList) || exceptionList.length === 0) {
+        return false;
+    }
+
+    // Only drop when EVERY entry is the SDK's own timeout abort, so an event
+    // chaining it with a genuine exception keeps its actionable detail.
+    return exceptionList.every(isPostHogRequestTimeoutException);
+}
+
 function beforeSend(result: CaptureResult | null): CaptureResult | null {
     const filteredResult = dropScriptErrorNoise(result);
     if (!filteredResult) {
@@ -634,6 +682,10 @@ function beforeSend(result: CaptureResult | null): CaptureResult | null {
     }
 
     if (isInstagramPostMessageTeardownNoise(filteredResult)) {
+        return null;
+    }
+
+    if (isPostHogRequestTimeoutNoise(filteredResult)) {
         return null;
     }
 
