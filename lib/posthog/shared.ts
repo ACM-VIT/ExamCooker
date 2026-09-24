@@ -40,6 +40,19 @@ const EXTENSION_RPC_REJECTION_SIGNATURE =
 const EXTENSION_SENDMESSAGE_SIGNATURE =
     /^'Error' captured as exception with message: 'Invalid call to runtime\.sendMessage\(\)\. Tab not found\.'$/;
 
+// When a browser extension, in-app browser, or third-party embed throws or
+// rejects with a value that is not an Error, posthog-js builds a synthetic
+// message from the value's own keys: "Object captured as exception with keys:
+// id, url", "'Foo' captured as exception with keys: ...", or, for a DOM event,
+// "Event captured as exception with keys: isTrusted". It carries no stack and no
+// examcooker code, and each new key combination opens a new error tracking
+// issue, so it is pure noise we drop before it reaches error tracking.
+//
+// Match only the SDK wrapper prefix. The frame-less check below keeps any
+// wrapped value that does carry a stack.
+const NON_ERROR_KEYS_WRAPPER_SIGNATURE =
+    /^(?:\w+|'[^']+') captured as exception with keys: /;
+
 function hasNoFrames(entry: { stacktrace?: { frames?: unknown[] } | null }) {
     // A genuinely sanitized/synthetic exception carries no usable stack. If the
     // entry has frames, it is a real, actionable exception that merely happens
@@ -105,11 +118,32 @@ function isUnactionableExtensionSendMessage(exception: unknown): boolean {
     return hasNoFrames(entry);
 }
 
+function isUnactionableNonErrorKeysWrapper(exception: unknown): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as {
+        value?: unknown;
+        stacktrace?: { frames?: unknown[] } | null;
+    };
+
+    if (
+        typeof entry.value !== "string" ||
+        !NON_ERROR_KEYS_WRAPPER_SIGNATURE.test(entry.value)
+    ) {
+        return false;
+    }
+
+    return hasNoFrames(entry);
+}
+
 function isUnactionableEntry(exception: unknown): boolean {
     return (
         isUnactionableScriptError(exception) ||
         isUnactionableExtensionRejection(exception) ||
-        isUnactionableExtensionSendMessage(exception)
+        isUnactionableExtensionSendMessage(exception) ||
+        isUnactionableNonErrorKeysWrapper(exception)
     );
 }
 
