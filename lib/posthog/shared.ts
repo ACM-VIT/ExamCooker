@@ -40,6 +40,13 @@ const EXTENSION_RPC_REJECTION_SIGNATURE =
 const EXTENSION_SENDMESSAGE_SIGNATURE =
     /^'Error' captured as exception with message: 'Invalid call to runtime\.sendMessage\(\)\. Tab not found\.'$/;
 
+// When third-party code throws a value that is not an Error, posthog-js wraps it
+// as "Object captured as exception with keys: id, url" (or "'Foo' ..." for a
+// class instance, "Event ..." for a DOM event). Each new key combination opens a
+// new issue, so drop the frame-less ones.
+const NON_ERROR_KEYS_WRAPPER_SIGNATURE =
+    /^(?:\w+|'[^']+') captured as exception with keys: /;
+
 function hasNoFrames(entry: { stacktrace?: { frames?: unknown[] } | null }) {
     // A genuinely sanitized/synthetic exception carries no usable stack. If the
     // entry has frames, it is a real, actionable exception that merely happens
@@ -105,11 +112,32 @@ function isUnactionableExtensionSendMessage(exception: unknown): boolean {
     return hasNoFrames(entry);
 }
 
+function isUnactionableNonErrorKeysWrapper(exception: unknown): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as {
+        value?: unknown;
+        stacktrace?: { frames?: unknown[] } | null;
+    };
+
+    if (
+        typeof entry.value !== "string" ||
+        !NON_ERROR_KEYS_WRAPPER_SIGNATURE.test(entry.value)
+    ) {
+        return false;
+    }
+
+    return hasNoFrames(entry);
+}
+
 function isUnactionableEntry(exception: unknown): boolean {
     return (
         isUnactionableScriptError(exception) ||
         isUnactionableExtensionRejection(exception) ||
-        isUnactionableExtensionSendMessage(exception)
+        isUnactionableExtensionSendMessage(exception) ||
+        isUnactionableNonErrorKeysWrapper(exception)
     );
 }
 
