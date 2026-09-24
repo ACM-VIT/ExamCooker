@@ -40,16 +40,10 @@ const EXTENSION_RPC_REJECTION_SIGNATURE =
 const EXTENSION_SENDMESSAGE_SIGNATURE =
     /^'Error' captured as exception with message: 'Invalid call to runtime\.sendMessage\(\)\. Tab not found\.'$/;
 
-// When a browser extension, in-app browser, or third-party embed throws or
-// rejects with a value that is not an Error, posthog-js builds a synthetic
-// message from the value's own keys: "Object captured as exception with keys:
-// id, url", "'Foo' captured as exception with keys: ...", or, for a DOM event,
-// "Event captured as exception with keys: isTrusted". It carries no stack and no
-// examcooker code, and each new key combination opens a new error tracking
-// issue, so it is pure noise we drop before it reaches error tracking.
-//
-// Match only the SDK wrapper prefix. The frame-less check below keeps any
-// wrapped value that does carry a stack.
+// When third-party code throws a value that is not an Error, posthog-js wraps it
+// as "Object captured as exception with keys: id, url" (or "'Foo' ..." for a
+// class instance, "Event ..." for a DOM event). Each new key combination opens a
+// new issue, so drop the frame-less ones.
 const NON_ERROR_KEYS_WRAPPER_SIGNATURE =
     /^(?:\w+|'[^']+') captured as exception with keys: /;
 
