@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/app/auth";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { db, pastPaper } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { normalizePdfPageEdits } from "@/lib/pdf/page-edits";
@@ -53,9 +53,9 @@ export async function updatePastPaperPageEdits(input: z.input<typeof schema>) {
     throw new Error("Past paper not found.");
   }
 
-  revalidateTag("past_papers", "minutes");
-  revalidateTag(`past_paper:${parsed.id}`, "minutes");
   await invalidatePastPapersSurfaceCache();
+  updateTag("past_papers");
+  updateTag(`past_paper:${parsed.id}`);
 
   return {
     success: true,

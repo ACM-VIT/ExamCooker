@@ -6,6 +6,7 @@ import { useDocumentState } from "@embedpdf/core/react";
 import { PdfErrorCode, Rotation } from "@embedpdf/models";
 import { useRenderCapability } from "@embedpdf/plugin-render/react";
 import type { PdfPageRotation } from "@/lib/pdf/page-edits";
+import { getEffectivePdfRotation } from "@/lib/pdf/render-rotation";
 
 const THUMB_SCALE = 0.22;
 
@@ -63,6 +64,10 @@ export default function PdfPageThumbnail({
 }: PdfPageThumbnailProps) {
   const { provides: renderProvides } = useRenderCapability();
   const documentState = useDocumentState(documentId);
+  const renderRotation = getEffectivePdfRotation(
+    documentState?.document?.pages[pageIndex]?.rotation,
+    toRotationEnum(rotation),
+  );
   const [previewState, dispatchPreview] = useReducer(previewReducer, {
     status: "loading",
     imageUrl: null,
@@ -82,7 +87,7 @@ export default function PdfPageThumbnail({
       pageIndex,
       options: {
         scaleFactor: THUMB_SCALE,
-        rotation: toRotationEnum(rotation),
+        rotation: renderRotation,
         dpr: 1,
       },
     });
@@ -118,7 +123,7 @@ export default function PdfPageThumbnail({
         }
       }
     };
-  }, [documentId, documentState?.status, pageIndex, renderProvides, rotation]);
+  }, [documentId, documentState?.status, pageIndex, renderProvides, renderRotation]);
 
   useEffect(
     () => () => {

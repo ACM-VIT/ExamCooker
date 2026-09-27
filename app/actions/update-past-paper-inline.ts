@@ -3,7 +3,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/app/auth";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { db, pastPaper, pastPaperToTag } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { campusValues, examTypeValues, semesterValues } from "@/db/enums";
@@ -231,19 +231,18 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
     throw error;
   }
 
-  revalidateTag("past_papers", "minutes");
-  revalidateTag(`past_paper:${parsed.id}`, "minutes");
-  revalidateTag("courses", "minutes");
+  await invalidatePastPapersSurfaceCache();
+  updateTag("past_papers");
+  updateTag(`past_paper:${parsed.id}`);
+  updateTag("courses");
 
   if (existingPaper.questionPaperId) {
-    revalidateTag(`past_paper:${existingPaper.questionPaperId}`, "minutes");
+    updateTag(`past_paper:${existingPaper.questionPaperId}`);
   }
 
   if (questionPaperId && questionPaperId !== existingPaper.questionPaperId) {
-    revalidateTag(`past_paper:${questionPaperId}`, "minutes");
+    updateTag(`past_paper:${questionPaperId}`);
   }
-
-  await invalidatePastPapersSurfaceCache();
 
   return { success: true };
 }

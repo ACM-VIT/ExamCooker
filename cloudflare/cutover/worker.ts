@@ -74,6 +74,14 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
     if (url.pathname === `${PREFIX}/event`) return telemetry(request, env, ctx);
+    if (url.pathname === `${PREFIX}/revalidate-past-papers` && url.origin === ORIGIN && request.method === "POST") {
+      // The canary validates a short-lived signature using the shared app secret.
+      // Ordinary API requests and authenticated visitors still go to Azure.
+      return env.CANARY.fetch(new Request(`${ORIGIN}/api/internal/revalidate-past-papers`, {
+        method: "POST",
+        headers: { "x-ec-paper-revalidation": request.headers.get("x-ec-paper-revalidation") || "" },
+      }));
+    }
     if (url.pathname.startsWith(PREFIX)) return new Response(null, { status: 404, headers: noStore });
     const probe = request.headers.get("x-ec-probe") === env.PROBE_SECRET;
     // Preview access is authenticated; production traffic never needs a probe.

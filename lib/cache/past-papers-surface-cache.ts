@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { AppStateClient } from "@/lib/app-state";
 import { getOptionalAppState } from "@/lib/app-state";
+import { revalidateCloudflarePaperCache } from "@/lib/cache/past-papers-revalidation";
 
 const CACHE_KEY_PREFIX = "ec:past-papers-surface-cache";
 const CACHE_SCHEMA_VERSION = 2;
@@ -344,16 +345,24 @@ export async function withPastPapersSurfaceRedisCache<T>(
   }
 }
 
-export async function invalidatePastPapersSurfaceCache() {
+export async function invalidatePastPapersSurfaceCache({ propagate = true } = {}) {
   const redis = getOptionalAppState();
-  if (!redis) {
-    return null;
+  let namespaceVersion: number | null = null;
+  if (redis) {
+    try {
+      namespaceVersion = await redis.incr(NAMESPACE_VERSION_KEY);
+    } catch (error) {
+      warnRecoverableCacheError("namespace bump failed", error);
+    }
   }
-
-  try {
-    return await redis.incr(NAMESPACE_VERSION_KEY);
-  } catch (error) {
-    warnRecoverableCacheError("namespace bump failed", error);
-    return null;
+  if (propagate) {
+    try {
+      await revalidateCloudflarePaperCache();
+    } catch (error) {
+      // The database write already succeeded. Keep the local invalidation and
+      // report propagation failures instead of claiming that the edit failed.
+      console.error("[past-papers-surface-cache] remote invalidation failed", error);
+    }
   }
+  return namespaceVersion;
 }

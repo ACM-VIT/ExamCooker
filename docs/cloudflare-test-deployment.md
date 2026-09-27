@@ -282,3 +282,21 @@ and session isolation are unchanged. Diagnostics and `EC_PERF_TOKEN` were
 removed. See [the performance report](./cloudflare-performance.md) for the
 settled render and first-read storage improvements, browser measurements and
 remaining postdeployment delay. Azure production was not deployed.
+
+### Edits during the production canary
+
+Authenticated paper edits run on Azure. Page fixes and metadata edits now expire
+their Next.js tags immediately, after advancing the public Redis cache namespace,
+so an action refresh reads the saved values. Public cache invalidations also
+notify the canary through `POST /__ec_cutover/revalidate-past-papers`. The rollout
+Worker forwards that one path to the canary's internal route; normal API and
+authenticated traffic still go to Azure.
+
+The request uses a purpose-specific HMAC, valid for 60 seconds, signed with the
+shared `AUTH_SECRET` (or `NEXTAUTH_SECRET`). The receiver accepts no caller-supplied
+tags or database operations: it only expires `past_papers`, `courses`, and `notes`
+and advances its local public-cache namespace. Both deployments must keep the
+same application secret. No new secret or environment variable is required.
+Test deployments and Worker-originated invalidations do not notify production.
+Cloudflare's regional tag cache can still take up to five seconds to observe an
+invalidation. Remote failures are logged; a completed database save is retained.

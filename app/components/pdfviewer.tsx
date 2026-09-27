@@ -66,6 +66,7 @@ import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { foregroundTimeout } from "@/lib/pdf/foreground-timeout";
 import { pdfRenderOptions } from "@/lib/pdf/render-budget";
+import { getEffectivePdfRotation } from "@/lib/pdf/render-rotation";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import {
   PDFIUM_ENGINE_LOAD_TIMEOUT_MS,
@@ -1050,6 +1051,10 @@ function PageRenderLayer({
 }) {
   const { provides: renderProvides } = useRenderCapability();
   const documentState = useDocumentState(documentId);
+  const renderRotation = getEffectivePdfRotation(
+    documentState?.document?.pages[pageIndex]?.rotation,
+    documentState?.rotation ?? 0,
+  );
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [hasRenderError, setHasRenderError] = useState(false);
   const [retryVersion, setRetryVersion] = useState(0);
@@ -1090,7 +1095,7 @@ function PageRenderLayer({
   useEffect(() => {
     if (!renderProvides || documentState?.status !== "loaded") return;
 
-    const renderKey = `${documentId}:${pageIndex}:${documentState.scale}:${documentState.rotation}:${refreshVersion}`;
+    const renderKey = `${documentId}:${pageIndex}:${documentState.scale}:${renderRotation}:${refreshVersion}`;
     if (attemptRef.current.key !== renderKey) attemptRef.current = { key: renderKey, retried: false };
     let isCurrentRender = true;
     let didSettle = false;
@@ -1114,7 +1119,7 @@ function PageRenderLayer({
     const task = renderProvides.forDocument(documentId).renderPage({
       pageIndex,
       options: {
-        rotation: documentState.rotation,
+        rotation: renderRotation,
         ...pdfRenderOptions(pageSize?.width ?? 612, pageSize?.height ?? 792,
           documentState.scale || 1, window.devicePixelRatio || 1, attemptRef.current.retried),
       },
@@ -1264,7 +1269,7 @@ function PageRenderLayer({
     };
   }, [
     documentId,
-    documentState?.rotation,
+    renderRotation,
     documentState?.scale,
     documentState?.status,
     pageIndex,
@@ -1361,6 +1366,7 @@ function PageRenderLayer({
       data-ec-pdf-page-image="true"
       data-ec-pdf-page-index={pageIndex}
       data-ec-pdf-page-number={pageIndex + 1}
+      data-ec-pdf-page-rotation={renderRotation * 90}
       draggable={false}
       loading="eager"
       onError={handleImageError}
