@@ -7,7 +7,7 @@
   "workers_dev": true,
   "preview_urls": false,
   "services": [{ "binding": "CANARY", "service": "examcooker-canary" }],
-  "vars": { "CF_PERCENT": "5" },
+  "vars": { "CF_PERCENT": "50" },
   "routes": [{ "pattern": "examcooker.acmvit.in/*", "zone_id": "8e6e67e2f97951b41fa96cdbd40a0f50" }],
   "observability": { "enabled": true },
   "rules": [{ "type": "Text", "globs": ["**/*.txt"], "fallthrough": true }]

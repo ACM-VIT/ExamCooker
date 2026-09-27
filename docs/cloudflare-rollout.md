@@ -4,20 +4,25 @@ Production remains at `https://examcooker.acmvit.in`. Its proxied CNAME still
 targets `examcooker-2024.azurewebsites.net`; the `examcooker-rollout` Worker
 selects Azure or the `examcooker-canary` service binding.
 
-The initial target is **5% of new anonymous browsing sessions**, not 5% of all
+The current target is **50% of new anonymous browsing sessions**, not 50% of all
 requests. Assignment occurs on a public document navigation and stays in a
 signed, Secure, HttpOnly, host-only cookie for 24 hours. Bots, speculative
 prefetches, and existing tabs without a cookie do not enroll. Signed-in users,
 auth, APIs, uploads, moderation, MCP and PostHog's existing proxy stay on Azure.
 The `exam-cooker.acmvit.in` alias is outside this initial rollout.
 
-Enabled on 2026-09-27 at approximately 01:15 UTC (06:45 IST). Router version:
+Initially enabled at 5% on 2026-09-27 at approximately 01:15 UTC (06:45 IST). Initial router version:
 `7b945fdd-ded2-4b5e-9751-7e516db0371c`. Production-host probes verified both
 backends, visible PDFs, RSC affinity, Azure session APIs, immutable chunk
 fallback, blocked mismatched Server Actions, and PostHog ingestion. Seven
 policy/signature tests and the router typecheck passed. The first report had
 only four eligible Azure documents and no real Cloudflare sample; it cannot
 support a performance comparison yet.
+
+Raised to 50% on 2026-09-27 at the user's request. Existing 24-hour assignments
+remain unchanged; the new percentage applies as new visitors enroll or their
+assignment cookies expire. Signed-in traffic and APIs continue to use Azure.
+The 50% router version is `05a6f636-43f7-4580-be71-045712c4d1b5`.
 
 `ec-test.acmvit.in` remains independent. Canary uses its own R2 buckets and
 Durable Objects, the existing production Hyperdrive connection, production
