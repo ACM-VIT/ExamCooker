@@ -131,16 +131,15 @@ export default async function proxy(request: NextRequest) {
     }
   }
 
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-url", request.url);
-
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/:path*"],
+  // Public browsing does not need the Node proxy. Keep upload rate limiting
+  // and native association responses on their existing paths.
+  matcher: [
+    "/:path*/create",
+    "/.well-known/apple-app-site-association",
+    "/.well-known/assetlinks.json",
+  ],
 };

@@ -1,0 +1,169 @@
+{
+  "measuredAt": "2026-09-27T22:42:00.391Z",
+  "method": "Sequential ec-test HTTP probes, 6.1 seconds apart; three public routes and three rounds per stage. Single client in India, Cloudflare colocations recorded. firstInvocation is the first request to an isolate, not a controlled cold-cache reset. Instrumented test Worker. Worker/edge timings from Cloudflare Server-Timing; responseMs comes from request-local tracing and excludes some CPU clock time. No browser paint claim or population latency estimate.",
+  "summary": [
+    {
+      "variant": "proxy-before",
+      "firstInvocation": true,
+      "colo": "SIN",
+      "n": 3,
+      "headersMs": 51,
+      "responseMs": 51,
+      "workerMs": 506,
+      "edgeMs": 738,
+      "clientMs": 1640,
+      "renderErrors": 0
+    },
+    {
+      "variant": "proxy-before",
+      "firstInvocation": true,
+      "colo": "BOS",
+      "n": 1,
+      "headersMs": 608,
+      "responseMs": 608,
+      "workerMs": 1229,
+      "edgeMs": 1009,
+      "clientMs": 3275,
+      "renderErrors": 0
+    },
+    {
+      "variant": "proxy-before",
+      "firstInvocation": false,
+      "colo": "SIN",
+      "n": 5,
+      "headersMs": 19,
+      "responseMs": 19,
+      "workerMs": 115,
+      "edgeMs": 10,
+      "clientMs": 444,
+      "renderErrors": 0
+    },
+    {
+      "variant": "proxy-after",
+      "firstInvocation": true,
+      "colo": "SIN",
+      "n": 6,
+      "headersMs": 117,
+      "responseMs": 117,
+      "workerMs": 768,
+      "edgeMs": 771,
+      "clientMs": 2067.5,
+      "renderErrors": 0
+    },
+    {
+      "variant": "proxy-after",
+      "firstInvocation": true,
+      "colo": "BOS",
+      "n": 1,
+      "headersMs": 599,
+      "responseMs": 599,
+      "workerMs": 923,
+      "edgeMs": 652,
+      "clientMs": 2634,
+      "renderErrors": 0
+    },
+    {
+      "variant": "proxy-after",
+      "firstInvocation": false,
+      "colo": "SIN",
+      "n": 2,
+      "headersMs": 11.5,
+      "responseMs": 11.5,
+      "workerMs": 129,
+      "edgeMs": 10.5,
+      "clientMs": 451,
+      "renderErrors": 0
+    },
+    {
+      "variant": "minified",
+      "firstInvocation": true,
+      "colo": "SIN",
+      "n": 6,
+      "headersMs": 60.5,
+      "responseMs": 60.5,
+      "workerMs": 1024,
+      "edgeMs": 557,
+      "clientMs": 2076,
+      "renderErrors": 0
+    },
+    {
+      "variant": "minified",
+      "firstInvocation": true,
+      "colo": "BOS",
+      "n": 2,
+      "headersMs": 401,
+      "responseMs": 401,
+      "workerMs": 1299,
+      "edgeMs": 609,
+      "clientMs": 2804,
+      "renderErrors": 0
+    },
+    {
+      "variant": "minified",
+      "firstInvocation": true,
+      "colo": "EWR",
+      "n": 1,
+      "headersMs": 1454,
+      "responseMs": 3304,
+      "workerMs": 3575,
+      "edgeMs": 728,
+      "clientMs": 5219,
+      "renderErrors": 0
+    },
+    {
+      "variant": "single-names",
+      "firstInvocation": true,
+      "colo": "BOS",
+      "n": 1,
+      "headersMs": 1856,
+      "responseMs": 2403,
+      "workerMs": 2656,
+      "edgeMs": 454,
+      "clientMs": 4349,
+      "renderErrors": 0
+    },
+    {
+      "variant": "single-names",
+      "firstInvocation": true,
+      "colo": "SIN",
+      "n": 6,
+      "headersMs": 51,
+      "responseMs": 51,
+      "workerMs": 871.5,
+      "edgeMs": 546,
+      "clientMs": 1825.5,
+      "renderErrors": 0
+    },
+    {
+      "variant": "single-names",
+      "firstInvocation": false,
+      "colo": "SIN",
+      "n": 2,
+      "headersMs": 11.5,
+      "responseMs": 11.5,
+      "workerMs": 102,
+      "edgeMs": 10,
+      "clientMs": 430,
+      "renderErrors": 0
+    }
+  ],
+  "decisions": {
+    "proxy": "Retained to avoid executing the Node proxy on browsing routes. This small sequential test does not establish an end-to-end latency improvement.",
+    "minification": "Rejected: neither minification configuration improved first-invocation latency consistently. Production stays unminified.",
+    "telemetry": "Record Worker version and first-isolate-invocation status alongside real origin timings to measure startup incidence and cost in production."
+  },
+  "bundleKiB": {
+    "before": {
+      "raw": 31874.12,
+      "gzip": 6969.87
+    },
+    "rejectedMinified": {
+      "raw": 22441.41,
+      "gzip": 6232.92
+    },
+    "rejectedSingleNames": {
+      "raw": 22123.18,
+      "gzip": 6147.07
+    }
+  }
+}

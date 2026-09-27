@@ -134,7 +134,15 @@ export default {
         synthetic: probe || /bot|crawler|spider|headless/i.test(request.headers.get("user-agent") || ""), eligible,
         country: String(request.cf?.country || "unknown"), device: /mobile|android/i.test(request.headers.get("user-agent") || "") ? "mobile" : "desktop",
       };
-      ctx.waitUntil(capture(env, context, "ec_cutover_request", { status: response.status, origin_ms: elapsed }));
+      const firstRequest = response.headers.get("x-ec-worker-first-request");
+      ctx.waitUntil(capture(env, context, "ec_cutover_request", {
+        status: response.status,
+        origin_ms: elapsed,
+        ...(backend === "cloudflare" ? {
+          worker_first_request: firstRequest === "1" ? true : firstRequest === "0" ? false : null,
+          worker_version: response.headers.get("x-ec-worker-version"),
+        } : {}),
+      }));
       if (response.headers.get("content-type")?.includes("text/html")) {
         const token = await sign(context, env.SIGNING_SECRET);
         response = new HTMLRewriter().on("head", { element(element) {

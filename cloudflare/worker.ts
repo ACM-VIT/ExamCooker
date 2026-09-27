@@ -7,9 +7,20 @@ export { AppState } from "./app-state";
 // @ts-ignore .open-next is generated at build time.
 export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "../.open-next/worker.js";
 
+let receivedRequest = false;
+
 export default {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext) {
+    const firstRequest = !receivedRequest;
+    receivedRequest = true;
     recordPublicRequestPath(ctx, request.url, request.method);
-    return protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
+    const response = protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
+    // This marks the first invocation of an isolate, not a cache miss or a
+    // visitor's first page. The router records it with origin response time.
+    const observed = new Response(response.body, response);
+    observed.headers.set("x-ec-worker-first-request", firstRequest ? "1" : "0");
+    const version = (env as { CF_VERSION_METADATA?: { id?: string } }).CF_VERSION_METADATA?.id;
+    if (version) observed.headers.set("x-ec-worker-version", version);
+    return observed;
   },
 };
