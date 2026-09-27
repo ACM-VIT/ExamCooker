@@ -65,7 +65,7 @@ import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { foregroundTimeout } from "@/lib/pdf/foreground-timeout";
-import { pdfRenderDpr } from "@/lib/pdf/render-budget";
+import { pdfRenderOptions } from "@/lib/pdf/render-budget";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import {
   PDFIUM_ENGINE_LOAD_TIMEOUT_MS,
@@ -1114,9 +1114,8 @@ function PageRenderLayer({
     const task = renderProvides.forDocument(documentId).renderPage({
       pageIndex,
       options: {
-        scaleFactor: documentState.scale || 1,
         rotation: documentState.rotation,
-        dpr: pdfRenderDpr(pageSize?.width ?? 612, pageSize?.height ?? 792,
+        ...pdfRenderOptions(pageSize?.width ?? 612, pageSize?.height ?? 792,
           documentState.scale || 1, window.devicePixelRatio || 1, attemptRef.current.retried),
       },
     });

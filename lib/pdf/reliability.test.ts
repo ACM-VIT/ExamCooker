@@ -3,7 +3,7 @@ import { afterEach, test } from "node:test";
 import { foregroundTimeout } from "./foreground-timeout";
 import { engineDeadline, PDFIUM_ENGINE_LOAD_TIMEOUT_MS } from "./load-engine";
 import { fetchPdfResource, PDF_DOWNLOAD_STALL_TIMEOUT_MS } from "./fetch-resource";
-import { pdfRenderDpr } from "./render-budget";
+import { pdfRenderOptions } from "./render-budget";
 
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
 const originalFetch = globalThis.fetch;
@@ -132,9 +132,13 @@ test("explicit cancellation stops a transfer without retrying", async () => {
 
 test("rendering stays within the pixel budget at high zoom and retries at lower resolution", () => {
   for (const [width, height, scale, deviceDpr] of [[612, 792, 2, 3], [4000, 6000, 4, 2], [50000, 1000, 8, 2]]) {
-    const dpr = pdfRenderDpr(width, height, scale, deviceDpr);
-    assert.ok(width * height * scale ** 2 * dpr ** 2 <= 6_000_001);
-    assert.ok(Math.max(width, height) * scale * dpr <= 8193);
-    assert.ok(pdfRenderDpr(width, height, scale, deviceDpr, true) < dpr);
+    // Match the SDK's actual scale computation, including its dpr clamp.
+    const renderedScale = (retry = false) => {
+      const options = pdfRenderOptions(width, height, scale, deviceDpr, retry);
+      return Math.max(0.01, options.scaleFactor) * Math.max(1, options.dpr);
+    };
+    assert.ok(width * height * renderedScale() ** 2 <= 6_000_001);
+    assert.ok(Math.max(width, height) * renderedScale() <= 8193);
+    assert.ok(renderedScale(true) < renderedScale());
   }
 });
