@@ -64,23 +64,23 @@ function ExamHubShell() {
             aria-hidden="true"
         >
             <header className="flex flex-col gap-4">
-                <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
-                <span className="h-8 w-3/4 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+                <span className="ec-skeleton h-3 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="ec-skeleton h-8 w-3/4 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
                 <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
                     {Array.from({ length: 3 }).map((_, index) => (
                         <span
                             key={index}
-                            className="block h-5 w-24 bg-black/10 dark:bg-white/10"
+                            className="ec-skeleton block h-5 w-24 bg-black/10 dark:bg-white/10"
                         />
                     ))}
                 </div>
             </header>
-            <div className="h-12 w-full border border-black/25 bg-white dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]" />
+            <div className="ec-skeleton h-12 w-full border border-black/25 bg-white dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]" />
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
                 {Array.from({ length: 8 }).map((_, index) => (
                     <div
                         key={index}
-                        className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222]"
+                        className="ec-skeleton flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222]"
                     >
                         <span className="block h-3 w-20 bg-black/10 dark:bg-white/10" />
                         <span className="block h-5 w-full bg-black/10 dark:bg-white/10" />

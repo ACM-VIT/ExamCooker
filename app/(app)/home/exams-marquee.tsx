@@ -92,8 +92,13 @@ export function ExamsMarqueeFallback() {
     return (
         <div aria-hidden="true" className={marqueeShellClassName}>
             <div className="flex flex-col gap-3 md:gap-4">
-                <div className="h-6 md:h-7" />
-                <div className="h-6 md:h-7" />
+                {[0, 1].map((row) => (
+                    <div key={row} className="flex h-6 gap-10 overflow-hidden px-4 md:h-7 md:gap-14">
+                        {Array.from({ length: 5 }, (_, index) => (
+                            <span key={index} className="ec-skeleton h-full w-64 shrink-0 bg-black/10 dark:bg-white/10 md:bg-white/15" />
+                        ))}
+                    </div>
+                ))}
             </div>
         </div>
     );

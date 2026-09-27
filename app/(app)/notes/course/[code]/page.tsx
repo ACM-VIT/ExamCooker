@@ -112,14 +112,14 @@ function CourseNotesShell() {
             aria-hidden="true"
         >
             <header className="flex flex-col gap-4">
-                <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
-                <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+                <span className="ec-skeleton h-3 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="ec-skeleton h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
             </header>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {Array.from({ length: 8 }).map((_, index) => (
                     <div
                         key={index}
-                        className="h-40 border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
+                        className="ec-skeleton h-40 border border-black/10 bg-white dark:border-[#D5D5D5]/10 dark:bg-[#0C1222]"
                     />
                 ))}
             </div>

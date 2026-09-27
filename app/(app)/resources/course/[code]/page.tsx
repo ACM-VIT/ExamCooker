@@ -153,14 +153,14 @@ function CourseResourcesShell() {
             aria-hidden="true"
         >
             <div className="mx-auto flex max-w-6xl flex-col gap-4">
-                <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
-                <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+                <span className="ec-skeleton h-3 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="ec-skeleton h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
             </div>
             <div className="mx-auto mt-6 flex max-w-6xl flex-wrap items-baseline gap-x-5 gap-y-1">
                 {Array.from({ length: 3 }).map((_, index) => (
                     <span
                         key={index}
-                        className="block h-5 w-24 bg-black/10 dark:bg-white/10"
+                        className="ec-skeleton block h-5 w-24 bg-black/10 dark:bg-white/10"
                     />
                 ))}
             </div>
@@ -168,7 +168,7 @@ function CourseResourcesShell() {
                 {Array.from({ length: 4 }).map((_, index) => (
                     <div
                         key={index}
-                        className="h-11 bg-[#82BEE9]/60 dark:bg-[#232530]/60"
+                        className="ec-skeleton h-11 bg-[#82BEE9]/60 dark:bg-[#232530]/60"
                     />
                 ))}
             </div>

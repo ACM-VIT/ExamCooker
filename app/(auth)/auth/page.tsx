@@ -74,7 +74,7 @@ function AuthShell({ children }: { children: React.ReactNode }) {
 function AuthFallback() {
     return (
         <div className="flex w-full max-w-sm flex-col items-stretch gap-3">
-            <div className="h-12 rounded-lg border border-black/15 bg-white/60 dark:border-white/15 dark:bg-white/[0.05]" />
+            <div className="ec-skeleton h-12 rounded-lg border border-black/15 bg-white/60 dark:border-white/15 dark:bg-white/[0.05]" />
         </div>
     );
 }

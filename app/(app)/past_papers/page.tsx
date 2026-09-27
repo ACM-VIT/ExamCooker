@@ -140,8 +140,8 @@ function HeroStatsShell() {
                     key={index}
                     className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-baseline sm:gap-1.5"
                 >
-                    <span className="block h-7 w-12 bg-black/10 dark:bg-white/10 sm:h-5" />
-                    <span className="block h-2.5 w-14 bg-black/10 dark:bg-white/10 sm:h-3" />
+                    <span className="ec-skeleton block h-7 w-12 bg-black/10 dark:bg-white/10 sm:h-5" />
+                    <span className="ec-skeleton block h-2.5 w-14 bg-black/10 dark:bg-white/10 sm:h-3" />
                 </div>
             ))}
         </div>
@@ -153,7 +153,7 @@ function CourseCardsShell({ count }: { count: number }) {
         <div className={COURSE_GRID_CLASS} aria-hidden="true">
             {Array.from({ length: count }).map((_, index) => (
                 <div className="group relative h-full" key={index}>
-                    <div className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]">
+                    <div className="ec-skeleton flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]">
                         <span className="font-mono text-xs font-bold uppercase tracking-wide text-black/75 dark:text-[#D5D5D5]/70">
                             <span className="block h-[1em] w-20 bg-black/10 dark:bg-white/10" />
                         </span>
@@ -242,7 +242,7 @@ function RecentSectionShell() {
                 {Array.from({ length: 6 }).map((_, index) => (
                     <div
                         key={index}
-                        className="flex w-40 shrink-0 flex-col overflow-hidden border-2 border-[#5FC4E7] bg-[#5FC4E7] dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] sm:w-44"
+                        className="ec-skeleton flex w-40 shrink-0 flex-col overflow-hidden border-2 border-[#5FC4E7] bg-[#5FC4E7] dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222] sm:w-44"
                     >
                         <div className="aspect-[4/5] w-full bg-[#d9d9d9] dark:bg-white/5" />
                         <div className="flex min-h-[5.75rem] flex-1 flex-col gap-2 p-2.5">
@@ -421,8 +421,8 @@ function SearchControlsShell() {
             className="past-papers-search-controls flex w-full items-stretch gap-2 sm:gap-3"
             aria-hidden="true"
         >
-            <div className="h-12 min-w-0 flex-1 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11" />
-            <div className="h-12 w-12 shrink-0 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11 sm:w-11" />
+            <div className="ec-skeleton h-12 min-w-0 flex-1 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11" />
+            <div className="ec-skeleton h-12 w-12 shrink-0 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11 sm:w-11" />
         </div>
     );
 }

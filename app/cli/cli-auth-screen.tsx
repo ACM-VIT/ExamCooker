@@ -490,7 +490,7 @@ export function CliAuthScreenFallback() {
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="flex items-center">
                 {i === 4 ? <span className="w-3 sm:w-4" /> : null}
-                <div className="h-12 w-9 rounded-lg border border-black/15 bg-white/60 dark:border-white/15 dark:bg-white/[0.05] sm:h-14 sm:w-11" />
+                <div className="ec-skeleton h-12 w-9 rounded-lg border border-black/15 bg-white/60 dark:border-white/15 dark:bg-white/[0.05] sm:h-14 sm:w-11" />
               </div>
             ))}
           </div>

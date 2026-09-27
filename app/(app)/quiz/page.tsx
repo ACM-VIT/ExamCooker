@@ -1,3 +1,4 @@
+import PageLoadingShell from "@/app/components/common/page-loading-shell";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import QuizClient from "./quiz-client";
@@ -9,17 +10,6 @@ type QuizSearchParams = {
     time?: string;
     course?: string;
 };
-
-function QuizShell() {
-    return (
-        <div
-            className="flex min-h-screen items-center justify-center bg-[#F5FAFD] dark:bg-transparent"
-            aria-hidden="true"
-        >
-            <div className="size-8 animate-spin border-2 border-black border-t-transparent dark:border-[#D5D5D5] dark:border-t-transparent" />
-        </div>
-    );
-}
 
 async function QuizPageContent({
     searchParamsPromise,
@@ -68,7 +58,7 @@ export default function QuizPage({
     searchParams?: Promise<QuizSearchParams>;
 }) {
     return (
-        <Suspense fallback={<QuizShell />}>
+        <Suspense fallback={<PageLoadingShell />}>
             <QuizPageContent searchParamsPromise={searchParams} />
         </Suspense>
     );

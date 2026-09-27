@@ -32,7 +32,7 @@ function HomeSearchFallback() {
         <div className="ec-home-search-shell mx-auto w-full max-w-4xl px-4 sm:px-0">
             <div className="mx-auto w-full min-w-0 text-left">
                 <div className="relative">
-                    <div className="ec-focus-ring relative flex h-12 w-full min-w-0 items-center overflow-hidden border border-black/25 bg-white pl-4 pr-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E] sm:h-14 lg:h-16">
+                    <div className="ec-skeleton ec-focus-ring relative flex h-12 w-full min-w-0 items-center overflow-hidden border border-black/25 bg-white pl-4 pr-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E] sm:h-14 lg:h-16">
                         <Image
                             src={SearchIcon}
                             alt=""

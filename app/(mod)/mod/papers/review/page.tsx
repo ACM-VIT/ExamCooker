@@ -1,3 +1,4 @@
+import PageLoadingShell from "@/app/components/common/page-loading-shell";
 import React, { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -15,17 +16,6 @@ export const metadata = {
 };
 
 export const instant = true;
-
-function PaperReviewShell() {
-    return (
-        <div
-            className="flex min-h-screen items-center justify-center bg-[#F5FAFD] dark:bg-transparent"
-            aria-hidden="true"
-        >
-            <div className="size-8 animate-spin border-2 border-black border-t-transparent dark:border-[#D5D5D5] dark:border-t-transparent" />
-        </div>
-    );
-}
 
 async function PaperReviewContent() {
     const session = await auth();
@@ -159,7 +149,7 @@ async function PaperReviewContent() {
 
 export default function PaperReviewPage() {
     return (
-        <Suspense fallback={<PaperReviewShell />}>
+        <Suspense fallback={<PageLoadingShell />}>
             <PaperReviewContent />
         </Suspense>
     );

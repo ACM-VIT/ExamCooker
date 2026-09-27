@@ -823,42 +823,42 @@ export function ModerationWorkbenchSkeleton() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-3 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
         <header className="border-b-2 border-black/20 pb-5 dark:border-white/20">
           <div className="flex items-center justify-between gap-3">
-            <div className="h-5 w-28 animate-pulse bg-black/10 dark:bg-white/10" />
+            <div className="ec-skeleton h-5 w-28 bg-black/10 dark:bg-white/10" />
             <div className="flex gap-2">
-              <div className="h-9 w-36 animate-pulse bg-black/10 dark:bg-white/10" />
-              <div className="h-9 w-32 animate-pulse bg-black/10 dark:bg-white/10" />
+              <div className="ec-skeleton h-9 w-36 bg-black/10 dark:bg-white/10" />
+              <div className="ec-skeleton h-9 w-32 bg-black/10 dark:bg-white/10" />
             </div>
           </div>
           <div className="mt-5">
-            <div className="h-3 w-52 animate-pulse bg-black/10 dark:bg-white/10" />
-            <div className="mt-2 h-9 w-72 animate-pulse bg-black/15 dark:bg-white/15" />
+            <div className="ec-skeleton h-3 w-52 bg-black/10 dark:bg-white/10" />
+            <div className="ec-skeleton mt-2 h-9 w-72 bg-black/15 dark:bg-white/15" />
           </div>
         </header>
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {Array.from({ length: 5 }, (_, index) => (
             <div
               key={index}
-              className={`min-h-32 animate-pulse border-2 border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5 ${index === 4 ? "hidden lg:block" : ""}`}
+              className={`ec-skeleton min-h-32 border-2 border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5 ${index === 4 ? "hidden lg:block" : ""}`}
             />
           ))}
         </section>
         <section className="grid items-start gap-3 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
           <div className="border-2 border-black/20 dark:border-white/20">
             <div className="space-y-2 border-b border-black/10 p-3 dark:border-white/10">
-              <div className="h-9 w-full animate-pulse bg-black/10 dark:bg-white/10" />
+              <div className="ec-skeleton h-9 w-full bg-black/10 dark:bg-white/10" />
               <div className="flex gap-2">
-                <div className="h-8 w-16 animate-pulse bg-black/10 dark:bg-white/10" />
-                <div className="h-8 w-20 animate-pulse bg-black/10 dark:bg-white/10" />
-                <div className="h-8 w-24 animate-pulse bg-black/10 dark:bg-white/10" />
+                <div className="ec-skeleton h-8 w-16 bg-black/10 dark:bg-white/10" />
+                <div className="ec-skeleton h-8 w-20 bg-black/10 dark:bg-white/10" />
+                <div className="ec-skeleton h-8 w-24 bg-black/10 dark:bg-white/10" />
               </div>
             </div>
             <ul>
               {Array.from({ length: 5 }, (_, index) => (
                 <li key={index} className="flex gap-3 border-t border-black/10 p-3 first:border-t-0 dark:border-white/10">
-                  <div className="h-13 w-10 shrink-0 animate-pulse bg-black/10 dark:bg-white/10" />
+                  <div className="ec-skeleton h-13 w-10 shrink-0 bg-black/10 dark:bg-white/10" />
                   <div className="min-w-0 flex-1 space-y-2 py-0.5">
-                    <div className="h-3.5 w-3/4 animate-pulse bg-black/15 dark:bg-white/15" />
-                    <div className="h-3 w-1/2 animate-pulse bg-black/10 dark:bg-white/10" />
+                    <div className="ec-skeleton h-3.5 w-3/4 bg-black/15 dark:bg-white/15" />
+                    <div className="ec-skeleton h-3 w-1/2 bg-black/10 dark:bg-white/10" />
                   </div>
                 </li>
               ))}
@@ -866,21 +866,21 @@ export function ModerationWorkbenchSkeleton() {
           </div>
           <div className="border-2 border-black/20 p-5 dark:border-white/20">
             <div className="flex gap-5">
-              <div className="h-40 w-28 shrink-0 animate-pulse bg-black/10 dark:bg-white/10" />
+              <div className="ec-skeleton h-40 w-28 shrink-0 bg-black/10 dark:bg-white/10" />
               <div className="min-w-0 flex-1 space-y-3 py-1">
-                <div className="h-3 w-48 animate-pulse bg-black/10 dark:bg-white/10" />
-                <div className="h-7 w-2/3 animate-pulse bg-black/15 dark:bg-white/15" />
-                <div className="h-3 w-1/2 animate-pulse bg-black/10 dark:bg-white/10" />
+                <div className="ec-skeleton h-3 w-48 bg-black/10 dark:bg-white/10" />
+                <div className="ec-skeleton h-7 w-2/3 bg-black/15 dark:bg-white/15" />
+                <div className="ec-skeleton h-3 w-1/2 bg-black/10 dark:bg-white/10" />
                 <div className="mt-4 flex gap-2">
-                  <div className="h-9 w-36 animate-pulse bg-black/15 dark:bg-white/15" />
-                  <div className="h-9 w-40 animate-pulse bg-black/10 dark:bg-white/10" />
+                  <div className="ec-skeleton h-9 w-36 bg-black/15 dark:bg-white/15" />
+                  <div className="ec-skeleton h-9 w-40 bg-black/10 dark:bg-white/10" />
                 </div>
               </div>
             </div>
             <div className="mt-5 space-y-2 border-t border-black/10 pt-4 dark:border-white/10">
-              <div className="h-4 w-32 animate-pulse bg-black/10 dark:bg-white/10" />
-              <div className="h-3 w-full animate-pulse bg-black/10 dark:bg-white/10" />
-              <div className="h-3 w-2/3 animate-pulse bg-black/10 dark:bg-white/10" />
+              <div className="ec-skeleton h-4 w-32 bg-black/10 dark:bg-white/10" />
+              <div className="ec-skeleton h-3 w-full bg-black/10 dark:bg-white/10" />
+              <div className="ec-skeleton h-3 w-2/3 bg-black/10 dark:bg-white/10" />
             </div>
           </div>
         </section>

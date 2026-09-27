@@ -46,8 +46,8 @@ export default function DocumentViewerShell({ kind }: DocumentViewerShellProps) 
           <div className="mt-3 flex flex-wrap gap-1.5">
             {kind === "paper" ? (
               <>
-                <span className="inline-flex h-7 w-16 border border-black/12 bg-white dark:border-[#D5D5D5]/12 dark:bg-[#0C1222]" />
-                <span className="inline-flex h-7 w-12 border border-black/12 bg-white dark:border-[#D5D5D5]/12 dark:bg-[#0C1222]" />
+                <span className="ec-skeleton inline-flex h-7 w-16 border border-black/12 bg-white dark:border-[#D5D5D5]/12 dark:bg-[#0C1222]" />
+                <span className="ec-skeleton inline-flex h-7 w-12 border border-black/12 bg-white dark:border-[#D5D5D5]/12 dark:bg-[#0C1222]" />
               </>
             ) : null}
             {courseCode ? (
@@ -58,7 +58,7 @@ export default function DocumentViewerShell({ kind }: DocumentViewerShellProps) 
                 <span>{courseCode}</span>
               </span>
             ) : (
-              <span className="inline-flex h-7 w-24 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]" />
+              <span className="ec-skeleton inline-flex h-7 w-24 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]" />
             )}
             {kind === "syllabus" ? (
               <span className="inline-flex h-7 items-center gap-1.5 border border-black/15 bg-white px-2.5 text-xs font-semibold text-black dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5]">
@@ -70,16 +70,16 @@ export default function DocumentViewerShell({ kind }: DocumentViewerShellProps) 
             ) : null}
           </div>
           {kind === "note" ? (
-            <span className="mt-3 block h-3 w-44 bg-black/10 dark:bg-white/10" />
+            <span className="ec-skeleton mt-3 block h-3 w-44 bg-black/10 dark:bg-white/10" />
           ) : null}
         </div>
         {kind !== "syllabus" ? (
-          <div className="h-9 w-28 shrink-0 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]" />
+          <div className="ec-skeleton h-9 w-28 shrink-0 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]" />
         ) : null}
       </header>
 
       <div className="overflow-hidden border border-black/15 bg-white shadow-[0_4px_28px_-14px_rgba(0,0,0,0.25)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:shadow-[0_4px_28px_-14px_rgba(0,0,0,0.6)]">
-        <div className="h-[70dvh] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]" />
+        <div className="ec-skeleton h-[70dvh] bg-black/[0.03] dark:bg-white/[0.02] sm:h-[78dvh] lg:h-[84dvh] xl:h-[86dvh]" />
       </div>
     </div>
   );

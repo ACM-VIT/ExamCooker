@@ -966,7 +966,7 @@ function RecentSkeletonRow({ widthHint }: { widthHint: "lg" | "md" | "sm" }) {
   return (
     <div
       aria-hidden="true"
-      className="ec-command-skeleton-row flex min-h-[3.1rem] items-center justify-between gap-3 rounded-md px-3 py-2"
+      className="ec-command-skeleton-row ec-skeleton flex min-h-[3.1rem] items-center justify-between gap-3 rounded-md px-3 py-2"
     >
       <span className="min-w-0 flex-1">
         <span
@@ -999,16 +999,16 @@ function CommandSuspenseFallback({
       </div>
       <div className="flex flex-1 flex-col justify-center gap-2.5 py-3">
         <div className="rounded-md bg-[#EEF6F8] px-3 py-2.5 dark:bg-white/[0.045]">
-          <div className="h-2.5 w-7/12 rounded-full bg-black/[0.12] dark:bg-white/[0.14]" />
-          <div className="mt-2 h-2 w-4/12 rounded-full bg-black/[0.08] dark:bg-white/[0.10]" />
+          <div className="ec-skeleton h-2.5 w-7/12 rounded-full bg-black/[0.12] dark:bg-white/[0.14]" />
+          <div className="ec-skeleton mt-2 h-2 w-4/12 rounded-full bg-black/[0.08] dark:bg-white/[0.10]" />
         </div>
         <div className="rounded-md bg-[#F4FAFB] px-3 py-2.5 dark:bg-white/[0.03]">
-          <div className="h-2.5 w-8/12 rounded-full bg-black/[0.09] dark:bg-white/[0.11]" />
-          <div className="mt-2 h-2 w-5/12 rounded-full bg-black/[0.06] dark:bg-white/[0.08]" />
+          <div className="ec-skeleton h-2.5 w-8/12 rounded-full bg-black/[0.09] dark:bg-white/[0.11]" />
+          <div className="ec-skeleton mt-2 h-2 w-5/12 rounded-full bg-black/[0.06] dark:bg-white/[0.08]" />
         </div>
         <div className="rounded-md bg-[#F7FBFC] px-3 py-2.5 dark:bg-white/[0.025]">
-          <div className="h-2.5 w-6/12 rounded-full bg-black/[0.07] dark:bg-white/[0.09]" />
-          <div className="mt-2 h-2 w-3/12 rounded-full bg-black/[0.05] dark:bg-white/[0.07]" />
+          <div className="ec-skeleton h-2.5 w-6/12 rounded-full bg-black/[0.07] dark:bg-white/[0.09]" />
+          <div className="ec-skeleton mt-2 h-2 w-3/12 rounded-full bg-black/[0.05] dark:bg-white/[0.07]" />
         </div>
       </div>
     </div>

@@ -77,12 +77,12 @@ function CourseExamShell() {
             aria-hidden="true"
         >
             <div className="flex flex-col gap-3">
-                <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
-                <span className="h-8 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10" />
+                <span className="ec-skeleton h-3 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="ec-skeleton h-8 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10" />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="h-6 w-32 bg-black/10 dark:bg-white/10" />
-                <span className="h-9 w-28 border border-black/20 bg-white dark:border-[#D5D5D5]/20 dark:bg-[#0C1222]" />
+                <span className="ec-skeleton h-6 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="ec-skeleton h-9 w-28 border border-black/20 bg-white dark:border-[#D5D5D5]/20 dark:bg-[#0C1222]" />
             </div>
             <div className="flex flex-wrap gap-3">
                 {Array.from({ length: 8 }).map((_, index) => (
@@ -90,7 +90,7 @@ function CourseExamShell() {
                         key={index}
                         className="min-w-0 basis-[calc((100%-0.75rem)/2)] sm:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-2.25rem)/4)] xl:basis-[calc((100%-3rem)/5)]"
                     >
-                        <div className="flex h-full flex-col border-2 border-[#5FC4E7] bg-[#5FC4E7] p-3 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222]">
+                        <div className="ec-skeleton flex h-full flex-col border-2 border-[#5FC4E7] bg-[#5FC4E7] p-3 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:lg:bg-[#0C1222]">
                             <div className="flex flex-col gap-1.5 pb-2">
                                 <div className="flex flex-wrap items-center gap-1.5">
                                     <span className="h-[18px] w-12 bg-black/10 dark:bg-[#D5D5D5]/15" />

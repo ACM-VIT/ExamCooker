@@ -78,7 +78,7 @@ function CourseGridShell() {
                 {Array.from({ length: PAGE_SIZE }).map((_, index) => (
                     <div
                         key={index}
-                        className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]"
+                        className="ec-skeleton flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]"
                     >
                         <span className="font-mono text-xs font-bold uppercase tracking-wide text-black/75 dark:text-[#D5D5D5]/70">
                             <span className="block h-[1em] w-20 bg-black/10 dark:bg-white/10" />
@@ -252,8 +252,8 @@ function SearchControlsShell() {
             className="flex w-full items-stretch gap-2 sm:gap-3"
             aria-hidden="true"
         >
-            <div className="h-12 min-w-0 flex-1 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11" />
-            <div className="h-12 w-12 shrink-0 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11 sm:w-11" />
+            <div className="ec-skeleton h-12 min-w-0 flex-1 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11" />
+            <div className="ec-skeleton h-12 w-12 shrink-0 border border-black/15 bg-white dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] sm:h-11 sm:w-11" />
         </div>
     );
 }

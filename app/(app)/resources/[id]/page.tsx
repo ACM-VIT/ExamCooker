@@ -70,12 +70,12 @@ function SubjectDetailShell() {
             className="container mx-auto p-2 sm:p-4"
             aria-hidden="true"
         >
-            <span className="block h-8 w-1/2 bg-black/10 dark:bg-white/10" />
+            <span className="ec-skeleton block h-8 w-1/2 bg-black/10 dark:bg-white/10" />
             <div className="mt-6 space-y-2">
                 {Array.from({ length: 4 }).map((_, index) => (
                     <div
                         key={index}
-                        className="h-11 bg-[#82BEE9]/60 dark:bg-[#232530]/60"
+                        className="ec-skeleton h-11 bg-[#82BEE9]/60 dark:bg-[#232530]/60"
                     />
                 ))}
             </div>

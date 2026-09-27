@@ -32,9 +32,9 @@ function ShellChip({
 }) {
     return (
         <div className="inline-flex h-9 shrink-0 items-center gap-1.5 border border-black/15 bg-white px-3 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]">
-            <span className={`h-3 ${labelW} bg-black/15 dark:bg-white/15`} />
+            <span className={`ec-skeleton h-3 ${labelW} bg-black/15 dark:bg-white/15`} />
             {countW && (
-                <span className={`h-3 ${countW} bg-black/10 dark:bg-white/10`} />
+                <span className={`ec-skeleton h-3 ${countW} bg-black/10 dark:bg-white/10`} />
             )}
         </div>
     );
@@ -48,15 +48,15 @@ export function CoursePastPapersSectionsShell() {
                 <div className="flex items-center justify-between gap-2 sm:hidden">
                     <div className="flex items-center gap-2">
                         <div className="inline-flex h-10 items-center gap-2 border border-black/15 bg-white px-3.5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]">
-                            <span className="size-4 bg-black/15 dark:bg-white/15" />
-                            <span className="h-3 w-12 bg-black/15 dark:bg-white/15" />
+                            <span className="ec-skeleton size-4 bg-black/15 dark:bg-white/15" />
+                            <span className="ec-skeleton h-3 w-12 bg-black/15 dark:bg-white/15" />
                         </div>
                         <div className="inline-flex h-10 items-center gap-2 border border-black/15 bg-white px-3.5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222]">
-                            <span className="size-3.5 bg-black/15 dark:bg-white/15" />
-                            <span className="h-3 w-6 bg-black/15 dark:bg-white/15" />
+                            <span className="ec-skeleton size-3.5 bg-black/15 dark:bg-white/15" />
+                            <span className="ec-skeleton h-3 w-6 bg-black/15 dark:bg-white/15" />
                         </div>
                     </div>
-                    <span className="h-3 w-20 bg-black/10 dark:bg-white/10" />
+                    <span className="ec-skeleton h-3 w-20 bg-black/10 dark:bg-white/10" />
                 </div>
 
                 {/* Desktop: stacked chip rows + bottom toolbar */}
@@ -91,15 +91,15 @@ export function CoursePastPapersSectionsShell() {
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-[#D5D5D5]/10">
                         <div className="flex flex-wrap items-center gap-3">
                             <div className="inline-flex items-center gap-2">
-                                <span className="h-3 w-20 bg-black/15 dark:bg-white/15" />
-                                <span className="size-4 border border-black/30 bg-white dark:border-[#D5D5D5]/30 dark:bg-[#0C1222]" />
+                                <span className="ec-skeleton h-3 w-20 bg-black/15 dark:bg-white/15" />
+                                <span className="ec-skeleton size-4 border border-black/30 bg-white dark:border-[#D5D5D5]/30 dark:bg-[#0C1222]" />
                             </div>
                             <div className="inline-flex items-center gap-2">
-                                <span className="h-3 w-8 bg-black/15 dark:bg-white/15" />
-                                <span className="h-7 w-36 border border-black/25 bg-white dark:border-[#D5D5D5]/25 dark:bg-[#0C1222]" />
+                                <span className="ec-skeleton h-3 w-8 bg-black/15 dark:bg-white/15" />
+                                <span className="ec-skeleton h-7 w-36 border border-black/25 bg-white dark:border-[#D5D5D5]/25 dark:bg-[#0C1222]" />
                             </div>
                         </div>
-                        <span className="h-3 w-24 bg-black/10 dark:bg-white/10" />
+                        <span className="ec-skeleton h-3 w-24 bg-black/10 dark:bg-white/10" />
                     </div>
                 </div>
             </section>
@@ -110,7 +110,7 @@ export function CoursePastPapersSectionsShell() {
                         key={shellKey}
                         className="min-w-0 basis-[calc((100%-0.75rem)/2)] sm:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-2.25rem)/4)] xl:basis-[calc((100%-3rem)/5)]"
                     >
-                        <div className="flex h-full flex-col border-2 border-[#5FC4E7] bg-[#5FC4E7] p-3 text-black dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]">
+                        <div className="ec-skeleton flex h-full flex-col border-2 border-[#5FC4E7] bg-[#5FC4E7] p-3 text-black dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222]">
                             <div className="flex flex-col gap-1.5 pb-2">
                                 <div className="flex flex-wrap items-center gap-1.5">
                                     <span className="inline-flex h-[18px] w-12 items-center bg-black/10 dark:bg-[#D5D5D5]/15" />
@@ -155,8 +155,8 @@ export function CoursePastPapersHeaderShell() {
             aria-hidden="true"
         >
             <header className="flex flex-col gap-4">
-                <span className="h-3 w-32 bg-black/10 dark:bg-white/10" />
-                <span className="h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
+                <span className="ec-skeleton h-3 w-32 bg-black/10 dark:bg-white/10" />
+                <span className="ec-skeleton h-9 w-2/3 bg-black/10 dark:bg-white/10 sm:h-10 lg:h-12" />
             </header>
             <CoursePastPapersSectionsShell />
         </div>
