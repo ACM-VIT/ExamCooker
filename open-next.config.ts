@@ -5,10 +5,10 @@ import doQueue from "@opennextjs/cloudflare/overrides/queue/do-queue";
 import doShardedTagCache from "@opennextjs/cloudflare/overrides/tag-cache/do-sharded-tag-cache";
 import { withCacheWriteLifetime } from "./cloudflare/cache-write-lifetime";
 import { withFullRouteMissCache } from "./cloudflare/full-route-misses";
-import { withCourseTagPrefetch } from "./cloudflare/course-tag-prefetch";
+import { withPublicRouteTagPrefetch } from "./cloudflare/public-route-tag-prefetch";
 
 const config = defineCloudflareConfig({
-  incrementalCache: withCourseTagPrefetch(withCacheWriteLifetime(
+  incrementalCache: withPublicRouteTagPrefetch(withCacheWriteLifetime(
     withFullRouteMissCache(withRegionalCache(r2IncrementalCache, {
       // Keep local copies for their revalidation lifetime instead of expiring
       // every minute. Next still checks tags and serves/revalidates stale data.

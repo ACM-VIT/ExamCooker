@@ -1,31 +1,16 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { COURSE_PATH, getCourseRequestPath } from "./course-request-path";
+import { getPublicRequestPath, publicRouteTags } from "./public-route-tags";
 import type { withRegionalCache } from "@opennextjs/cloudflare/overrides/incremental-cache/regional-cache";
 
 type IncrementalCache = Parameters<typeof withRegionalCache>[0];
-const COURSE_TAGS = ["courses", "notes", "past_papers", "syllabus", "upcoming_exams"];
-
-function getCourseShellTags(key: string) {
-  const root = "/(app)/past_papers/[code]";
-  const exam = key.split("/").length > 3;
-  return [
-    "_N_T_/layout",
-    "_N_T_/(app)/layout",
-    "_N_T_/(app)/past_papers/layout",
-    `_N_T_${root}/layout`,
-    ...(exam ? [`_N_T_${root}/[exam]/layout`] : []),
-    `_N_T_${root}${exam ? "/[exam]" : ""}/page`,
-  ];
-}
-
-/** Overlap both shell and course-data tag checks with the initial cache read. */
-export function withCourseTagPrefetch(cache: IncrementalCache): IncrementalCache {
+/** Batch public shell/data invalidation checks alongside the first cache read. */
+export function withPublicRouteTagPrefetch(cache: IncrementalCache): IncrementalCache {
   const prefetches = new WeakMap<object, Promise<unknown>>();
   return {
     name: cache.name,
     get(key, cacheType) {
       let prefetch: Promise<unknown> | undefined;
-      if (cacheType === "cache" && COURSE_PATH.test(key)) {
+      if (cacheType === "cache" && key.startsWith("/")) {
         const runtime = globalThis as typeof globalThis & {
           tagCache?: { getLastRevalidated(tags: string[]): Promise<number> };
           __openNextAls?: { getStore(): unknown };
@@ -35,12 +20,10 @@ export function withCourseTagPrefetch(cache: IncrementalCache): IncrementalCache
         if (runtime.tagCache && runtime.__openNextAls?.getStore()) {
           const { ctx } = getCloudflareContext();
           prefetch = prefetches.get(ctx);
-          if (!prefetch) {
-            const pathname = getCourseRequestPath(ctx);
-            prefetch = runtime.tagCache.getLastRevalidated([
-              ...COURSE_TAGS, ...getCourseShellTags(key),
-              ...(pathname ? [`_N_T_${pathname}`] : []),
-            ]).catch(() => undefined);
+          const pathname = getPublicRequestPath(ctx);
+          const tags = pathname ? publicRouteTags(pathname) : undefined;
+          if (!prefetch && tags) {
+            prefetch = runtime.tagCache.getLastRevalidated(tags).catch(() => undefined);
             prefetches.set(ctx, prefetch);
             ctx.waitUntil(prefetch);
           }

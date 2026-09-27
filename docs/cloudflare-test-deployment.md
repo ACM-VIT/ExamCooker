@@ -1,7 +1,7 @@
 # Cloudflare test deployment
 
 The root Wrangler configuration deploys `examcooker-test` to
-https://ec-test.acmvit.in using Next.js 16.3.5 and OpenNext 1.20.6. This is a test
+https://ec-test.acmvit.in using Next.js 16.3.6 and OpenNext 1.20.6. This is a test
 of the existing app against the production database and services. The original
 Azure production deployment remains in service. The command-agent Worker has its
 own configuration under `worker/`.
@@ -16,6 +16,11 @@ own configuration under `worker/`.
   across six regions; reads select the visitor's region and writes update every
   replica. Personalized HTTP responses are never in that cache.
   The Next.js Node proxy remains an experimental OpenNext integration.
+- Public home, catalogue, exam, course, and paper GET/HEAD requests prefetch their
+  shell and data tag metadata alongside the initial shell read. Next's normal
+  invalidation checks reuse the resolved metadata within that request, avoiding
+  sequential Durable Object round trips. This does not extend cache lifetimes
+  or bypass tag validation. Mutations and private routes do not prefetch tags.
 - Public paper/course payloads and generated PDF Markdown use the private R2
   bucket `examcooker-test-app-cache`. Expiry metadata governs reads. A 31-day
   lifecycle rule removes old payloads; cache misses regenerate normally.
@@ -101,7 +106,7 @@ node scripts/cloudflare/test-regional-public-cache.mjs
 node scripts/cloudflare/test-shared-course-detail.mjs
 node scripts/cloudflare/test-course-paper-cache.mjs
 node scripts/cloudflare/test-course-paper-projections.mjs
-node scripts/cloudflare/test-course-tag-prefetch.mjs
+node scripts/cloudflare/test-public-route-tag-prefetch.mjs
 node scripts/cloudflare/test-regional-tags.mjs
 node scripts/cloudflare/test-incremental-retention.mjs
 node scripts/cloudflare/test-optional-cache.mjs
