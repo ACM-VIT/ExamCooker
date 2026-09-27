@@ -193,12 +193,13 @@ function attachQueryRetry(pool: Pool) {
     return (async () => {
       const queryText = getQueryText(args);
       const queryLabel = queryText ? summarizeQueryText(queryText) : "unknown query";
-      const startedAt = Date.now();
+      // Telemetry must not introduce a wall-clock dependency into prerenders.
+      const startedAt = performance.now();
 
       for (let attempt = 0; ; attempt += 1) {
         try {
           const result = await rawQuery(...args);
-          const totalDurationMs = Date.now() - startedAt;
+          const totalDurationMs = Math.round(performance.now() - startedAt);
 
           if (slowQueryThresholdMs > 0 && totalDurationMs >= slowQueryThresholdMs) {
             console.warn(
@@ -208,7 +209,7 @@ function attachQueryRetry(pool: Pool) {
 
           return result;
         } catch (error) {
-          const totalDurationMs = Date.now() - startedAt;
+          const totalDurationMs = Math.round(performance.now() - startedAt);
 
           if (attempt >= maxRetries || !isTransientDbError(error)) {
             console.error(
