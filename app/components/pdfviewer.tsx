@@ -64,6 +64,8 @@ import type { PdfPaperDocument } from "@/lib/ai/pdf-markdown";
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
+import { foregroundTimeout } from "@/lib/pdf/foreground-timeout";
+import { pdfRenderDpr } from "@/lib/pdf/render-budget";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import {
   PDFIUM_ENGINE_LOAD_TIMEOUT_MS,
@@ -1061,7 +1063,19 @@ function PageRenderLayer({
   // Tracks whether the current render attempt has actually painted, so the
   // first-paint watchdog can tell a blank page apart from a rendered one.
   const hasPaintedRef = useRef(false);
-  const firstPaintTimeoutRef = useRef<number | null>(null);
+  const firstPaintTimeoutRef = useRef<(() => void) | null>(null);
+  const attemptRef = useRef({ key: "", retried: false });
+  const retryAutomatically = useCallback(() => {
+    if (attemptRef.current.retried) return false;
+    attemptRef.current.retried = true;
+    activeImageUrlRef.current = null;
+    firstPaintTimeoutRef.current?.();
+    firstPaintTimeoutRef.current = null;
+    setImageUrl(null);
+    setHasRenderError(false);
+    setRetryVersion((version) => version + 1);
+    return true;
+  }, []);
 
   // Reset the "already reported" guard whenever this slot starts showing a new
   // document or page. The render effect below also resets it, but only once the
@@ -1076,6 +1090,8 @@ function PageRenderLayer({
   useEffect(() => {
     if (!renderProvides || documentState?.status !== "loaded") return;
 
+    const renderKey = `${documentId}:${pageIndex}:${documentState.scale}:${documentState.rotation}:${refreshVersion}`;
+    if (attemptRef.current.key !== renderKey) attemptRef.current = { key: renderKey, retried: false };
     let isCurrentRender = true;
     let didSettle = false;
     // `didSettle` marks the render *task* as resolved/rejected/timed-out; a
@@ -1089,17 +1105,19 @@ function PageRenderLayer({
 
     const clearFirstPaintWatchdog = () => {
       if (firstPaintTimeoutRef.current !== null) {
-        window.clearTimeout(firstPaintTimeoutRef.current);
+        firstPaintTimeoutRef.current();
         firstPaintTimeoutRef.current = null;
       }
     };
 
+    const pageSize = documentState.document?.pages[pageIndex]?.size;
     const task = renderProvides.forDocument(documentId).renderPage({
       pageIndex,
       options: {
         scaleFactor: documentState.scale || 1,
         rotation: documentState.rotation,
-        dpr: Math.min(window.devicePixelRatio || 1, 2),
+        dpr: pdfRenderDpr(pageSize?.width ?? 612, pageSize?.height ?? 792,
+          documentState.scale || 1, window.devicePixelRatio || 1, attemptRef.current.retried),
       },
     });
 
@@ -1115,6 +1133,7 @@ function PageRenderLayer({
       didSettle = true;
       promotedError = true;
       clearFirstPaintWatchdog();
+      if (retryAutomatically()) return;
       capturePdfPageRenderFailed({
         documentId,
         pageIndex,
@@ -1125,7 +1144,7 @@ function PageRenderLayer({
       setHasRenderError(true);
     };
 
-    const timeoutId = window.setTimeout(() => {
+    const cancelRenderTimeout = foregroundTimeout(() => {
       if (!isCurrentRender || didSettle) return;
       console.error("[PDFViewer] Page render timed out", {
         documentId,
@@ -1147,7 +1166,7 @@ function PageRenderLayer({
 
     const armFirstPaintWatchdog = (expectedImageUrl: string) => {
       clearFirstPaintWatchdog();
-      firstPaintTimeoutRef.current = window.setTimeout(() => {
+      firstPaintTimeoutRef.current = foregroundTimeout(() => {
         if (
           !isCurrentRender ||
           activeImageUrlRef.current !== expectedImageUrl ||
@@ -1157,6 +1176,7 @@ function PageRenderLayer({
         ) {
           return;
         }
+        if (retryAutomatically()) return;
         promotedError = true;
         // Claim the shared reporting guard before scheduling React's error UI.
         // An image error can fire in the same turn, before that fallback commits.
@@ -1225,12 +1245,12 @@ function PageRenderLayer({
         );
       })
       .finally(() => {
-        window.clearTimeout(timeoutId);
+        cancelRenderTimeout();
       });
 
     return () => {
       isCurrentRender = false;
-      window.clearTimeout(timeoutId);
+      cancelRenderTimeout();
       clearFirstPaintWatchdog();
       if (!didSettle) {
         try {
@@ -1252,6 +1272,7 @@ function PageRenderLayer({
     refreshVersion,
     retryVersion,
     renderProvides,
+    retryAutomatically,
   ]);
 
   useEffect(
@@ -1267,6 +1288,7 @@ function PageRenderLayer({
   );
 
   const handleRetry = useCallback(() => {
+    attemptRef.current.retried = false;
     setHasRenderError(false);
     activeImageUrlRef.current = null;
     // Drop any stale blob (e.g. one that failed to decode) so the fresh render
@@ -1288,9 +1310,10 @@ function PageRenderLayer({
       return;
     }
     if (didReportRenderErrorRef.current) return;
+    if (retryAutomatically()) return;
     didReportRenderErrorRef.current = true;
     if (firstPaintTimeoutRef.current !== null) {
-      window.clearTimeout(firstPaintTimeoutRef.current);
+      firstPaintTimeoutRef.current();
       firstPaintTimeoutRef.current = null;
     }
     console.error("[PDFViewer] Page image failed to decode or paint", {
@@ -1303,9 +1326,9 @@ function PageRenderLayer({
       reason: "image_decode",
     });
     setHasRenderError(true);
-  }, [documentId, pageIndex]);
+  }, [documentId, pageIndex, retryAutomatically]);
 
-  // The <Image> painting is the only signal that the page actually became
+  // The <img> painting is the only signal that the page actually became
   // visible, so it also disarms the first-paint watchdog. Without this a
   // successfully painted page would still be judged a stall at the deadline.
   const handleImageLoad = useCallback((event: SyntheticEvent<HTMLImageElement>) => {
@@ -1316,7 +1339,7 @@ function PageRenderLayer({
     }
     hasPaintedRef.current = true;
     if (firstPaintTimeoutRef.current !== null) {
-      window.clearTimeout(firstPaintTimeoutRef.current);
+      firstPaintTimeoutRef.current();
       firstPaintTimeoutRef.current = null;
     }
     onRendered();
@@ -1331,13 +1354,11 @@ function PageRenderLayer({
   if (!imageUrl) return null;
 
   return (
-    <Image
+    <img
       src={imageUrl}
       alt=""
-      fill
-      unoptimized
-      sizes="100vw"
-      className="absolute inset-0 select-none object-fill"
+      decoding="async"
+      className="absolute inset-0 h-full w-full select-none object-fill"
       data-ec-pdf-page-image="true"
       data-ec-pdf-page-index={pageIndex}
       data-ec-pdf-page-number={pageIndex + 1}
@@ -2184,11 +2205,11 @@ function DocumentLoadPhase({
     // slow-but-advancing load keep going.
     setHasStalled(false);
 
-    const stallNoticeId = window.setTimeout(() => {
+    const cancelStallNotice = foregroundTimeout(() => {
       setHasStalled(true);
     }, DOCUMENT_LOAD_STALL_NOTICE_MS);
 
-    const timeoutId = window.setTimeout(() => {
+    const cancelLoadTimeout = foregroundTimeout(() => {
       console.error("[PDFViewer] Document load timed out", {
         documentId,
         loadingProgress,
@@ -2198,8 +2219,8 @@ function DocumentLoadPhase({
     }, DOCUMENT_LOAD_TIMEOUT_MS);
 
     return () => {
-      window.clearTimeout(stallNoticeId);
-      window.clearTimeout(timeoutId);
+      cancelStallNotice();
+      cancelLoadTimeout();
     };
   }, [documentId, hasTimedOut, isError, loadingProgress]);
 

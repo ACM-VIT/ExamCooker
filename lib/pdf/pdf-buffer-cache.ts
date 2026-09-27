@@ -1,3 +1,5 @@
+import { fetchPdfResource } from "./fetch-resource";
+
 type ProgressListener = (progress: number | null) => void;
 
 type PdfBufferCacheEntry = {
@@ -8,7 +10,7 @@ type PdfBufferCacheEntry = {
 };
 
 const MAX_CACHE_ENTRIES = 8;
-const PDF_DOWNLOAD_STALL_TIMEOUT_MS = 15000;
+const MAX_CACHED_BYTES = 32 * 1024 * 1024;
 const pdfBufferCache = new Map<string, PdfBufferCacheEntry>();
 
 function evictPdfBufferEntry(fileUrl: string, entry: PdfBufferCacheEntry) {
@@ -20,7 +22,8 @@ function evictPdfBufferEntry(fileUrl: string, entry: PdfBufferCacheEntry) {
 }
 
 function trimCache() {
-  while (pdfBufferCache.size > MAX_CACHE_ENTRIES) {
+  const cachedBytes = () => [...pdfBufferCache.values()].reduce((sum, entry) => sum + (entry.buffer?.byteLength ?? 0), 0);
+  while (pdfBufferCache.size > MAX_CACHE_ENTRIES || cachedBytes() > MAX_CACHED_BYTES) {
     const oldestKey = pdfBufferCache.keys().next().value as string | undefined;
     if (!oldestKey) return;
     const oldestEntry = pdfBufferCache.get(oldestKey);
@@ -45,91 +48,21 @@ function createPdfBufferEntry(fileUrl: string): PdfBufferCacheEntry {
     promise: Promise.resolve(new ArrayBuffer(0)),
   };
 
-  entry.promise = (async () => {
-    const controller = new AbortController();
-    let stallTimer: ReturnType<typeof setTimeout> | null = null;
-    entry.abort = () => controller.abort();
-
-    const refreshStallTimer = () => {
-      if (stallTimer) {
-        clearTimeout(stallTimer);
-      }
-
-      stallTimer = setTimeout(() => {
-        controller.abort();
-      }, PDF_DOWNLOAD_STALL_TIMEOUT_MS);
-    };
-
-    try {
-      refreshStallTimer();
-
-      const response = await fetch(fileUrl, {
-        cache: "force-cache",
-        mode: "cors",
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`PDF request failed with ${response.status}`);
-      }
-
-      const contentLength = Number(response.headers.get("content-length"));
-      const totalBytes =
-        Number.isFinite(contentLength) && contentLength > 0
-          ? contentLength
-          : null;
-
-      if (!response.body) {
-        const buffer = await response.arrayBuffer();
-        entry.buffer = buffer;
-        notify(entry, 100);
-        return buffer;
-      }
-
-      const reader = response.body.getReader();
-      const chunks: Uint8Array[] = [];
-      let receivedBytes = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        refreshStallTimer();
-        if (done) break;
-        if (!value) continue;
-
-        chunks.push(value);
-        receivedBytes += value.byteLength;
-
-        if (totalBytes) {
-          notify(entry, Math.min(99, (receivedBytes / totalBytes) * 100));
-        }
-      }
-
-      const bytes = new Uint8Array(receivedBytes);
-      let offset = 0;
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-
-      entry.buffer = bytes.buffer;
-      notify(entry, 100);
-      return entry.buffer;
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        throw new Error("PDF download stalled. Open the original file or retry.");
-      }
-
-      throw error;
-    } finally {
-      if (stallTimer) {
-        clearTimeout(stallTimer);
-      }
-      entry.abort = undefined;
-    }
-  })().catch((error) => {
-    pdfBufferCache.delete(fileUrl);
+  const controller = new AbortController();
+  entry.abort = () => controller.abort();
+  entry.promise = fetchPdfResource(fileUrl, {
+    kind: "pdf",
+    signal: controller.signal,
+    onProgress: (progress) => notify(entry, progress),
+  }).then((buffer) => {
+    entry.buffer = buffer;
+    trimCache();
+    return buffer;
+  }).catch((error) => {
+    // A cancelled/preloaded request can settle after a replacement has started.
+    if (pdfBufferCache.get(fileUrl) === entry) pdfBufferCache.delete(fileUrl);
     throw error;
-  });
+  }).finally(() => { entry.abort = undefined; });
 
   pdfBufferCache.set(fileUrl, entry);
   trimCache();

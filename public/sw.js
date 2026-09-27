@@ -193,7 +193,9 @@ async function networkOnlyWithOfflineFallback(event, preloadResponsePromise = nu
 
 async function cacheFirst(event) {
   const cache = await caches.open(STATIC_CACHE);
-  const cached = await cache.match(event.request);
+  // Recovery requests must reach the network instead of reusing bad bytes.
+  const bypassCache = event.request.cache === "reload" || event.request.cache === "no-store";
+  const cached = bypassCache ? null : await cache.match(event.request);
   if (cached) {
     // Next build assets have content-addressed URLs. A new build requests a
     // new URL; checking the old bytes again only adds work on every page load.
@@ -220,7 +222,7 @@ async function cacheFirst(event) {
   }
   try {
     const response = await fetch(event.request);
-    if (isCacheableResponse(response)) {
+    if (event.request.cache !== "no-store" && isCacheableResponse(response)) {
       cache.put(event.request, response.clone()).catch(() => undefined);
     }
     return response;

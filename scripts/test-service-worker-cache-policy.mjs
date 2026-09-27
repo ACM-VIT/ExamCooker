@@ -101,6 +101,7 @@ function makeRequest(url, options = {}) {
     headers: new Headers(options.headers),
     method: options.method ?? "GET",
     mode: options.mode ?? "same-origin",
+    cache: options.cache ?? "default",
     url,
   };
 }
@@ -295,6 +296,24 @@ async function testSessionAndRscNeverUseStaticCache() {
   }
 }
 
+async function testExplicitCacheBypass() {
+  for (const policy of ["reload", "no-store"]) {
+    let fetchCalls = 0;
+    const harness = makeServiceWorkerHarness({
+      cachedResponse: new Response("broken cached bytes"),
+      fetchImpl: async () => { fetchCalls++; return new Response("repaired bytes"); },
+    });
+    await loadServiceWorker(harness);
+    const event = makeFetchEvent(makeRequest("https://examcooker.test/_next/static/chunks/abc.js", { cache: policy }));
+    harness.listeners.get("fetch")(event);
+    assert.equal(await (await event.responsePromise).text(), "repaired bytes");
+    assert.equal(fetchCalls, 1);
+    assert.equal(harness.cacheMatches.length, 0);
+    assert.equal(harness.cachePuts.length, policy === "reload" ? 1 : 0);
+  }
+}
+
+await testExplicitCacheBypass();
 await testHtmlNavigationIsNetworkOnly();
 await testHtmlNavigationKeepsOfflineFallback();
 await testUncacheableNavigationBypassesServiceWorker();
