@@ -1,0 +1,55 @@
+/* Loaded by the traffic router on both backends, independent of app releases. */
+(() => {
+  const script = document.currentScript;
+  if (!script || window.__ecCutover) return;
+  const backend = script.dataset.backend;
+  const token = script.dataset.token;
+  const state = window.__ecCutover = { backend };
+  const originalFetch = window.fetch.bind(window);
+  const send = (event, values = {}) => {
+    const body = JSON.stringify({ token, event, ...values });
+    navigator.sendBeacon('/__ec_cutover/event', new Blob([body], {type:'application/json'}));
+  };
+  // A tab opened before sign-in or rollback must reload instead of mixing RSC
+  // or action payloads from independently built applications. Never replay writes.
+  window.fetch = async function(input, init) {
+    const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url, location.href);
+    if (url.origin !== location.origin || url.pathname.startsWith('/__ec_cutover/') || /^\/(api|ecp)(\/|$)/.test(url.pathname)) return originalFetch(input, init);
+    const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+    headers.set('x-ec-document-backend', backend);
+    const response = await originalFetch(input, {...init, headers});
+    if (response.headers.get('x-ec-reload') === '1') {
+      location.reload();
+      throw new Error('Reloading after hosting assignment changed');
+    }
+    return response;
+  };
+  const observe = (type, callback) => {
+    try { new PerformanceObserver(list => list.getEntries().forEach(callback)).observe({type, buffered:true}); } catch {}
+  };
+  let lcp = null, cls = 0, clsWindow = 0, clsStart = 0, clsLast = 0, flushed = false;
+  observe('largest-contentful-paint', entry => { lcp = entry.startTime; });
+  observe('layout-shift', entry => {
+    if (entry.hadRecentInput) return;
+    if (entry.startTime - clsLast > 1000 || entry.startTime - clsStart > 5000) { clsWindow = 0; clsStart = entry.startTime; }
+    clsWindow += entry.value; clsLast = entry.startTime; cls = Math.max(cls, clsWindow);
+  });
+  const flush = () => { if (flushed) return; flushed = true; if (lcp !== null) send('ec_cutover_vital', {metric:'LCP', value:lcp}); send('ec_cutover_vital', {metric:'CLS', value:cls}); };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+  window.addEventListener('pagehide', flush);
+  const loaded = () => {
+    const navigation = performance.getEntriesByType('navigation')[0];
+    if (navigation) send('ec_cutover_page', {ttfb_ms:navigation.responseStart, html_ms:navigation.responseEnd, dom_ms:navigation.domContentLoadedEventEnd});
+  };
+  if (document.readyState === 'complete') loaded(); else window.addEventListener('load', loaded, {once:true});
+  // This is the actual rendered PDF blob, not a thumbnail or loading placeholder.
+  document.addEventListener('load', event => {
+    const img = event.target;
+    if (state.pdf || !(img instanceof HTMLImageElement) || !img.src.startsWith('blob:') || img.naturalWidth < 200) return;
+    requestAnimationFrame(() => { if (!state.pdf && img.checkVisibility()) { state.pdf = true; send('ec_cutover_pdf', {value:performance.now()}); } });
+  }, true);
+  let errors = 0;
+  const error = () => { if (errors++ < 5) send('ec_cutover_error'); };
+  window.addEventListener('error', error);
+  window.addEventListener('unhandledrejection', error);
+})();

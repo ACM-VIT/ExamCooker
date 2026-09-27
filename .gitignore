@@ -85,3 +85,4 @@ mobile/android/keystores/examcooker-upload.jks
 .open-next/
 .dev.vars*
 .cloudflare-deploy/
+.cloudflare/
