@@ -1,5 +1,5 @@
 import rum from "./rum.js.txt";
-import { Backend, COOKIE, PREFIX, ROLLOUT, chooseBackend, hasSession, isAzureOnly, isDocument, isPublicPage, originUrl, routeLabel } from "./policy";
+import { Backend, COOKIE, PREFIX, ROLLOUT, backendMismatchResponse, chooseBackend, hasSession, isAzureOnly, isDocument, isPublicPage, originUrl, routeLabel } from "./policy";
 import { sign, verify } from "./tokens";
 
 interface Env {
@@ -90,7 +90,7 @@ export default {
     if (minted) assignment = { backend, id: crypto.randomUUID(), rollout: ROLLOUT, exp: Date.now() + 86400000 };
     const requestedBackend = request.headers.get("x-ec-document-backend");
     if (!document && requestedBackend && requestedBackend !== backend) {
-      return new Response(null, { status: 409, headers: { ...noStore, "x-ec-reload": "1" } });
+      return backendMismatchResponse(request);
     }
     const headers = new Headers(request.headers);
     for (const name of ["x-ec-probe", "x-ec-force-backend", "x-ec-document-backend", "host"]) headers.delete(name);

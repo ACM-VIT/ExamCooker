@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { chooseBackend, hasSession, originUrl, routeLabel } from "./policy";
+import { backendMismatchResponse, chooseBackend, hasSession, originUrl, routeLabel } from "./policy";
 import { sign, verify } from "./tokens";
 
 function request(path = "/past_papers/BMAT202L", headers: Record<string, string> = {}, method = "GET") {
@@ -48,4 +48,21 @@ test("a double-slash path cannot change the upstream origin", () => {
   assert.equal(result.origin, "https://examcooker.acmvit.in");
   assert.equal(result.pathname, "//example.com/path");
   assert.equal(result.search, "?q=1");
+});
+test("Azure-only link prefetches cannot cause a Cloudflare reload loop", () => {
+  for (const prefetch of ["1", "2", "3"]) {
+    const req = request("/past_papers/create?_rsc=test", { rsc: "1", "next-router-prefetch": prefetch, "x-ec-document-backend": "cloudflare" });
+    assert.equal(chooseBackend(req, "cloudflare", 50, 0), "azure");
+    const response = backendMismatchResponse(req);
+    assert.equal(response.status, 409);
+    assert.equal(response.headers.get("x-ec-reload"), null);
+    assert.match(response.headers.get("cache-control")!, /no-store/);
+  }
+});
+test("foreground RSC reads use Next's destination fallback; writes never replay", () => {
+  const read = backendMismatchResponse(request("/auth?_rsc=test", { rsc: "1" }));
+  assert.equal(read.headers.get("x-ec-reload"), null);
+  const write = backendMismatchResponse(request("/past_papers/BMAT202L", { "next-action": "test" }, "POST"));
+  assert.equal(write.status, 409);
+  assert.equal(write.headers.get("x-ec-reload"), "1");
 });

@@ -24,6 +24,15 @@ remain unchanged; the new percentage applies as new visitors enroll or their
 assignment cookies expire. Signed-in traffic and APIs continue to use Azure.
 The 50% router version is `05a6f636-43f7-4580-be71-045712c4d1b5`.
 
+Reload-loop fix: version `9b5e8e6d-bdf8-41f3-8a6a-aed84e083f91` retains 50%.
+Prefetching the Azure-only upload link from a Cloudflare page previously
+triggered a reload of the current page, which repeated the same prefetch.
+Mismatched GET/HEAD requests now return an uncached 409 without a reload header.
+Next treats these as unavailable prefetches and performs a full destination
+navigation when needed. Mismatched writes remain blocked and are never replayed.
+The fix deployed at 01:37:50 UTC. The comparison report excludes measurements
+before 01:40 UTC because the reload loop inflated document and error counts.
+
 `ec-test.acmvit.in` remains independent. Canary uses its own R2 buckets and
 Durable Objects, the existing production Hyperdrive connection, production
 database and environment values, and the production base/auth URLs. No Azure
@@ -73,8 +82,10 @@ pnpm exec wrangler deploy --config wrangler.rollout.jsonc
 
 **Rollback: set it to `"0"` and deploy.** This overrides existing canary
 cookies. Keep the routing Worker installed during rollback: stale Cloudflare
-tabs receive a reload signal before mismatched RSC or Server Action requests
-are forwarded, and missing immutable chunks can be read from the other build.
+tabs cannot send mismatched RSC or Server Action requests to the other build.
+Next falls back to a full destination navigation for RSC reads; blocked actions
+signal a reload without replaying the mutation. Background prefetches never
+reload the current page. Missing immutable chunks can be read from the other build.
 Mutations are never retried across backends. Do not delete the canary Worker or
 its assets while old browser tabs may still need them.
 

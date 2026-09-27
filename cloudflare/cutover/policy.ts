@@ -3,6 +3,18 @@ export const COOKIE = "__Host-ec-rollout";
 export const ROLLOUT = "cf-canary-2026-09-27";
 export const PREFIX = "/__ec_cutover";
 
+export function backendMismatchResponse(request: Request) {
+  const headers = new Headers({
+    "cache-control": "private, no-store",
+    "cloudflare-cdn-cache-control": "no-store",
+  });
+  // Next treats a failed RSC read as an unavailable prefetch or a hard
+  // navigation to the requested destination. Never reload the current page
+  // for a GET: visible links can prefetch Azure-only routes on every load.
+  if (request.method !== "GET" && request.method !== "HEAD") headers.set("x-ec-reload", "1");
+  return new Response(null, { status: 409, headers });
+}
+
 export function originUrl(input: URL) {
   const url = new URL("https://examcooker.acmvit.in");
   // Assign path separately: new URL("//host/path", origin) changes the host.
