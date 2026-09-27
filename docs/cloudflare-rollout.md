@@ -111,12 +111,18 @@ public route: traffic reaches the app through the router's service binding.
 ```sh
 pnpm exec wrangler deploy --config wrangler.canary-app-state.jsonc
 pnpm exec wrangler deploy --config wrangler.canary-tag-cache.jsonc
-pnpm exec opennextjs-cloudflare build --config wrangler.canary.jsonc
+POSTHOG_SOURCEMAP_UPLOAD=true pnpm exec opennextjs-cloudflare build --config wrangler.canary.jsonc
 pnpm exec opennextjs-cloudflare deploy --config wrangler.canary.jsonc
 pnpm exec wrangler secret bulk /private/path/canary-secrets.json --config wrangler.canary.jsonc
 ```
 
 The router needs `SIGNING_SECRET`, `PROBE_SECRET` and `POSTHOG_KEY` secrets.
+Deployment builds also require PostHog CLI authentication for EU project 169929,
+either a local CLI login or `POSTHOG_CLI_API_KEY`, `POSTHOG_CLI_PROJECT_ID`, and
+`POSTHOG_CLI_HOST`. Source maps are generated, checked, injected and uploaded
+before OpenNext copies the static assets; upload failure stops the build. Maps
+are then removed from public output. `pnpm cf:build` enables this automatically.
+Azure uses the same upload script and credentials configured in GitHub Actions.
 Do not rotate the signing key casually; rotation invalidates cohort cookies.
 Privileged smoke tests use `x-ec-probe` plus `x-ec-force-backend` to select a
 backend; the router removes these headers before forwarding and marks all such

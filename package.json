@@ -36,7 +36,7 @@
     "prod:paper_cutover": "tsx scripts/prod/run-paper-cutover.ts",
     "prod:export_paper_snapshot": "tsx scripts/prod/export-paper-snapshot.ts",
     "prod:repair_blocked_papers": "tsx scripts/prod/repair-blocked-paper-groups.ts",
-    "cf:build": "opennextjs-cloudflare build",
+    "cf:build": "POSTHOG_SOURCEMAP_UPLOAD=true opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare populateCache local && CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler dev --config wrangler.jsonc --config wrangler.tag-cache.local.jsonc --config wrangler.app-state.local.jsonc",
     "cf:tag-cache:deploy": "wrangler deploy --config wrangler.tag-cache.jsonc",
     "cf:deploy": "pnpm cf:tag-cache:deploy && pnpm cf:app-state:deploy && opennextjs-cloudflare deploy",
