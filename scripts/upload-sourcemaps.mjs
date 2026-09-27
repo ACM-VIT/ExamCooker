@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, unlink } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
@@ -33,7 +33,13 @@ await new Promise((resolve, reject) => {
   child.on("error", reject);
   child.on("exit", code => code === 0 ? resolve() : reject(new Error(`Source-map upload failed (${code}); deployment stopped.`)));
 });
-if ((await files(directory)).some(file => file.endsWith(".map"))) {
-  throw new Error("Source maps remain in public build output; deployment stopped.");
+const remaining = await files(directory);
+for (const file of remaining.filter(file => file.endsWith(".map"))) {
+  // Turbopack also emits orphan maps for chunks removed during prerendering.
+  // The CLI cannot upload those (no JS exists), but they must not be public.
+  if (file.endsWith(".js.map") && remaining.includes(file.slice(0, -4))) {
+    throw new Error(`A browser chunk's source map was not processed: ${path.basename(file)}`);
+  }
+  await unlink(file);
 }
 console.log(`Uploaded source maps for ${mapped} browser chunks (${revision}, build ${build}); public maps removed.`);
