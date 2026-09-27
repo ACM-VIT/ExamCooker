@@ -52,6 +52,7 @@ async function telemetry(request: Request, env: Env, ctx: ExecutionContext) {
   const context = await verify<Context>(body.token || "", env.SIGNING_SECRET);
   if (!context || context.rollout !== ROLLOUT || context.exp < Date.now() || !context.page) return new Response(null, { status: 403, headers: noStore });
   const values: Record<string, number | string> = {};
+  values.measurement_version = body.measurement_version === 2 ? 2 : 1;
   if (body.event === "ec_cutover_page") {
     for (const field of ["ttfb_ms", "html_ms", "dom_ms"]) {
       if (!Number.isFinite(body[field]) || body[field] < 0 || body[field] > 3600000) return new Response(null, { status: 400, headers: noStore });

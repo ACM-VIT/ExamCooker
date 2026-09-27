@@ -7,7 +7,7 @@
   const state = window.__ecCutover = { backend };
   const originalFetch = window.fetch.bind(window);
   const send = (event, values = {}) => {
-    const body = JSON.stringify({ token, event, ...values });
+    const body = JSON.stringify({ token, event, measurement_version: 2, ...values });
     navigator.sendBeacon('/__ec_cutover/event', new Blob([body], {type:'application/json'}));
   };
   // A tab opened before sign-in or rollback must reload instead of mixing RSC
@@ -25,16 +25,52 @@
     return response;
   };
   const observe = (type, callback) => {
-    try { new PerformanceObserver(list => list.getEntries().forEach(callback)).observe({type, buffered:true}); } catch {}
+    try {
+      const observer = new PerformanceObserver(list => list.getEntries().forEach(callback));
+      observer.observe({type, buffered:true});
+      return observer;
+    } catch { return null; }
   };
+  // The signed context belongs to this document's initial route. SPA activity
+  // and time spent in a background tab must not become its PDF/LCP duration.
+  const initialPath = location.pathname;
+  let measuring = document.visibilityState !== 'hidden', lcpStopped = false;
   let lcp = null, cls = 0, clsWindow = 0, clsStart = 0, clsLast = 0, flushed = false;
-  observe('largest-contentful-paint', entry => { lcp = entry.startTime; });
-  observe('layout-shift', entry => {
-    if (entry.hadRecentInput) return;
+  const onLcp = entry => { if (measuring && !lcpStopped) lcp = entry.startTime; };
+  const lcpObserver = observe('largest-contentful-paint', onLcp);
+  const onShift = entry => {
+    if (!measuring || entry.hadRecentInput) return;
     if (entry.startTime - clsLast > 1000 || entry.startTime - clsStart > 5000) { clsWindow = 0; clsStart = entry.startTime; }
     clsWindow += entry.value; clsLast = entry.startTime; cls = Math.max(cls, clsWindow);
-  });
-  const flush = () => { if (flushed) return; flushed = true; if (lcp !== null) send('ec_cutover_vital', {metric:'LCP', value:lcp}); send('ec_cutover_vital', {metric:'CLS', value:cls}); };
+  };
+  const clsObserver = observe('layout-shift', onShift);
+  const stopLcp = () => {
+    lcpObserver?.takeRecords().forEach(onLcp);
+    lcpStopped = true;
+    lcpObserver?.disconnect();
+  };
+  const flush = () => {
+    if (flushed) return;
+    stopLcp();
+    clsObserver?.takeRecords().forEach(onShift);
+    clsObserver?.disconnect();
+    if (measuring) {
+      if (lcp !== null) send('ec_cutover_vital', {metric:'LCP', value:lcp});
+      send('ec_cutover_vital', {metric:'CLS', value:cls});
+    }
+    measuring = false;
+    flushed = true;
+  };
+  for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, stopLcp, {once:true, capture:true});
+  for (const method of ['pushState', 'replaceState']) {
+    const original = history[method];
+    history[method] = function(...args) {
+      const result = original.apply(this, args);
+      if (location.pathname !== initialPath) flush();
+      return result;
+    };
+  }
+  window.addEventListener('popstate', () => { if (location.pathname !== initialPath) flush(); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
   window.addEventListener('pagehide', flush);
   const loaded = () => {
@@ -45,8 +81,15 @@
   // This is the actual rendered PDF blob, not a thumbnail or loading placeholder.
   document.addEventListener('load', event => {
     const img = event.target;
-    if (state.pdf || !(img instanceof HTMLImageElement) || !img.src.startsWith('blob:') || img.naturalWidth < 200) return;
-    requestAnimationFrame(() => { if (!state.pdf && img.checkVisibility()) { state.pdf = true; send('ec_cutover_pdf', {value:performance.now()}); } });
+    if (!measuring || state.pdf || !/^\/past_papers\/[^/]+\/paper\/[^/]+\/?$/.test(initialPath) ||
+        !(img instanceof HTMLImageElement) || img.dataset.ecPdfPageImage !== 'true' || !img.src.startsWith('blob:') || img.naturalWidth < 1) return;
+    requestAnimationFrame(() => {
+      if (!measuring || state.pdf || location.pathname !== initialPath || !img.checkVisibility()) return;
+      const box = img.getBoundingClientRect();
+      if (box.bottom <= 0 || box.right <= 0 || box.top >= innerHeight || box.left >= innerWidth) return;
+      state.pdf = true;
+      send('ec_cutover_pdf', {value:performance.now()});
+    });
   }, true);
   let errors = 0;
   const error = () => { if (errors++ < 5) send('ec_cutover_error'); };
