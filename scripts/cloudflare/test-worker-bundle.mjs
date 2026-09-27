@@ -27,5 +27,7 @@ for (const input of Object.keys(meta.inputs)) {
 assert.ok(maps > 0, "Expected source maps for the bundled Next server chunks");
 const redis = [...sources].filter(source => /\/node_modules\/(?:redis|@redis\/[^/]+)(?:\/|$)/.test(source));
 assert.deepEqual(redis, [], "Worker must not load the unused Node Redis/Entra SDKs");
+const pdfium = [...sources].filter(source => /\/node_modules\/@embedpdf\/(?:engines|pdfium)(?:\/|$)/.test(source));
+assert.deepEqual(pdfium, [], "Browser PDFium engines must not enter the Worker through preload hooks");
 const handler = await readFile(`${root}/handler.mjs`);
-console.log(`PASS: ${maps} server source maps contain no Redis SDK; handler ${handler.length} bytes / ${gzipSync(handler).length} gzip bytes`);
+console.log(`PASS: ${maps} server source maps contain no Redis SDK or browser PDFium engine; handler ${handler.length} bytes / ${gzipSync(handler).length} gzip bytes`);
