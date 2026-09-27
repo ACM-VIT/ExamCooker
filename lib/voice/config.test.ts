@@ -34,7 +34,7 @@ test("OpenAI SDK sends a Live WebRTC session with study tools to the correct end
   assert.equal(requestBody!.session.audio.output.voice, "sage");
   assert.equal(requestBody!.session.delegation.type, "responses");
   const backend = requestBody!.session.delegation.responses;
-  assert.equal(backend.model, "gpt-5.6-terra");
+  assert.equal(backend.model, "gpt-6-luna");
   assert.equal("max_output_tokens" in backend, false);
   assert.deepEqual(
     backend.tools.map((t: { name: string }) => t.name).sort(),

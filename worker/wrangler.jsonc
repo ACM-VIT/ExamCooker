@@ -19,7 +19,7 @@
     }
   ],
   "vars": {
-    "OPENAI_COMMAND_MODEL": "gpt-5.4-nano",
+    "OPENAI_COMMAND_MODEL": "gpt-6-luna",
     "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small"
   },
   "observability": {

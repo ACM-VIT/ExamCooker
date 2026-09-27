@@ -2,7 +2,7 @@ import { z, toJSONSchema } from "zod";
 import type { MediaSessionConfig } from "openai/resources/live/live";
 
 export const VOICE_MODEL = "gpt-live-1";
-export const VOICE_BACKEND_MODEL = "gpt-5.6-terra";
+export const VOICE_BACKEND_MODEL = "gpt-6-luna";
 export const DEFAULT_VOICE = "sage";
 
 export const LIVE_VOICE_INSTRUCTIONS = `You are ExamCooker's voice study companion. Help the student understand things and make progress on whatever they are studying. Be natural, thoughtful, and responsive to what they want.

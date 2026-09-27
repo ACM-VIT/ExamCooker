@@ -147,7 +147,7 @@ export async function resolveCommandIntentWithAI(
 
   try {
     const openai = createOpenAI({ apiKey });
-    const model = env.OPENAI_COMMAND_MODEL?.trim() || "gpt-5.4-nano";
+    const model = env.OPENAI_COMMAND_MODEL?.trim() || "gpt-6-luna";
     const { output: object } = await generateText({
       model: openai(model),
       output: Output.object({

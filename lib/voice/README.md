@@ -1,12 +1,12 @@
 # Voice study companion
 
-The voice frontend uses `gpt-live-1` through the official `openai` SDK's Live API. GPT-Live handles speech; its managed Responses backend uses `gpt-5.6-terra` for reasoning and tool selection. The application executes tools and validates their arguments. This replaces the former Realtime Agents SDK integration; Live is a separate API, not a Realtime model-name override.
+The voice frontend uses `gpt-live-1` through the official `openai` SDK's Live API. GPT-Live handles speech; its managed Responses backend uses `gpt-6-luna` for reasoning and tool selection. The application executes tools and validates their arguments. This replaces the former Realtime Agents SDK integration; Live is a separate API, not a Realtime model-name override.
 
 The model chooses how to teach based on the conversation. There is no application-imposed reply length, teaching sequence, output-token budget, or three-minute session cutoff. OpenAI's own session, model, and API limits still apply. The audio-reactive wave replaces live output captions and respects reduced-motion preferences.
 
 ## Setup
 
-Use the existing server-side `OPENAI_API_KEY`, with access to `gpt-live-1` and `gpt-5.6-terra`. `OPENAI_PDF_QA_MODEL` remains the optional model override for document/image analysis (default `gpt-5.4-mini`). No database migration or new environment variable is required.
+Use the existing server-side `OPENAI_API_KEY`, with access to `gpt-live-1` and `gpt-6-luna`. `OPENAI_PDF_QA_MODEL` remains the optional model override for document/image analysis (default `gpt-6-luna`). No database migration or new environment variable is required.
 
 `POST /api/live/session` requires a signed-in user and accepts only an SDP offer. It builds the model, prompts, voice, and tool definitions on the server, then uses `client.live.create`. The browser never receives a project API key. The WebRTC client waits for `session.started`, streams microphone audio continuously, and receives audio through its remote media track. Ending sends `session.close` and waits for `session.closed`, with a timeout to release resources if finalization fails.
 

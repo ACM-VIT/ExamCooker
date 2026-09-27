@@ -1,6 +1,6 @@
 import type { Campus, ExamType, Semester } from "@/db/enums";
 
-export const AI_MODERATION_MODEL = "gpt-5.6-luna";
+export const AI_MODERATION_MODEL = "gpt-6-luna";
 
 export type ModerationResourceType = "note" | "pastPaper";
 export type ModerationReviewStatus =

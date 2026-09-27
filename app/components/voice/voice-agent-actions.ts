@@ -17,7 +17,7 @@ import {
 } from "@/lib/posthog/llm";
 
 const DEFAULT_VISIBLE_PDF_QA_MODEL =
-  process.env.OPENAI_PDF_QA_MODEL?.trim() || "gpt-5.4-mini";
+  process.env.OPENAI_PDF_QA_MODEL?.trim() || "gpt-6-luna";
 const VISIBLE_PDF_ANSWER_SYSTEM_PROMPT =
   "You answer questions about the currently visible ExamCooker PDF page from an image. " +
   "Read the page image directly, including diagrams, tables, and visual layout. " +
