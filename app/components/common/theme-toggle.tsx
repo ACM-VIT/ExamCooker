@@ -2,6 +2,7 @@
 
 import React, { useRef, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
+import { writeLocalStorage } from "@/lib/safe-storage";
 
 type ThemeToggleSwitchProps = {
     children?: React.ReactNode;
@@ -44,7 +45,7 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
         root.style.colorScheme = next ? "dark" : "light";
         root.style.setProperty("--ec-app-bg", background);
         root.style.backgroundColor = background;
-        localStorage.setItem("theme", next ? "dark" : "light");
+        writeLocalStorage("theme", next ? "dark" : "light");
     };
 
     const toggleTheme = async () => {
