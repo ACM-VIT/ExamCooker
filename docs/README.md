@@ -23,3 +23,13 @@ This folder provides a high-level map of the ExamCooker codebase and the main co
 - Keep pages general unless the topic is inherently operational.
 - Prefer explaining system boundaries and workflows over file-by-file inventories.
 - When adding new docs, link them here so contributors can discover them quickly.
+
+## Public MCP Endpoint
+
+ExamCooker exposes an unauthenticated, read-only MCP endpoint at
+`https://examcooker.acmvit.in/mcp`. It supports `search`, `fetch`,
+`list_courses`, `list_notes`, `list_past_papers`, `list_syllabi`,
+`list_resources`, `get_course`, and `get_resource`. `list_resources` combines
+all public resource sources by default and accepts an optional `year` filter.
+List tools return bounded typed pages; returned canonical ExamCooker URLs can
+be followed for full pages and downloadable details.
