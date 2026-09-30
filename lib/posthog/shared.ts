@@ -529,6 +529,67 @@ function isFirefoxIosReaderNoise(event: CaptureResult): boolean {
     );
 }
 
+// Brave for iOS injects a wallet provider script into every page. It assigns to
+// `window.ethereum.selectedAddress` before `window.ethereum` exists, so WebKit
+// throws at document scope before any examcooker code runs:
+//   TypeError: undefined is not an object (evaluating 'window.ethereum.selectedAddress = undefined')
+// `ethereum` appears nowhere in examcooker and the page keeps working, so it is
+// third-party noise. Like the Firefox for iOS throw above, it carries one
+// document-level frame, so the `hasNoFrames()`-based guards let it through.
+//
+// We match narrowly: EVERY exception value mentions `window.ethereum` AND every
+// frame is document-level. An app-code error that mentioned `window.ethereum`
+// would carry a real bundle frame and still surface.
+const BRAVE_IOS_WALLET_SIGNATURE = /window\.ethereum\b/;
+
+function isBraveIosWalletException(
+    exception: unknown,
+    pageUrl: string | undefined,
+): boolean {
+    if (!exception || typeof exception !== "object") {
+        return false;
+    }
+
+    const entry = exception as {
+        value?: unknown;
+        stacktrace?: { frames?: unknown[] } | null;
+    };
+
+    if (
+        typeof entry.value !== "string" ||
+        !BRAVE_IOS_WALLET_SIGNATURE.test(entry.value)
+    ) {
+        return false;
+    }
+
+    const frames = entry.stacktrace?.frames;
+    if (!Array.isArray(frames) || frames.length === 0) {
+        return false;
+    }
+
+    return frames.every((frame) => isDocumentLevelFrame(frame, pageUrl));
+}
+
+function isBraveIosWalletNoise(event: CaptureResult): boolean {
+    if (event.event !== "$exception") {
+        return false;
+    }
+
+    const exceptionList = event.properties?.$exception_list;
+    if (!Array.isArray(exceptionList) || exceptionList.length === 0) {
+        return false;
+    }
+
+    const currentUrl = event.properties?.$current_url;
+    const pageUrl = typeof currentUrl === "string" ? currentUrl : undefined;
+
+    // Only drop when EVERY entry is the wallet script throw, so an event chaining
+    // it with a genuine exception keeps its actionable detail.
+    return exceptionList.every((exception) =>
+        isBraveIosWalletException(exception, pageUrl),
+    );
+}
+
 // Meta's Instagram in-app browser (Android System WebView; user agent contains
 // `... Instagram <version> Android (...; IABMV/1)`) injects its own
 // JS-blocking-time telemetry into every page it renders. That instrumentation
@@ -630,6 +691,10 @@ function beforeSend(result: CaptureResult | null): CaptureResult | null {
     }
 
     if (isFirefoxIosReaderNoise(filteredResult)) {
+        return null;
+    }
+
+    if (isBraveIosWalletNoise(filteredResult)) {
         return null;
     }
 
