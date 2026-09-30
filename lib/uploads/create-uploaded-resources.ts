@@ -34,7 +34,10 @@ export type CreateUploadedResourcesInput = {
     semester?: string | null;
     campus?: string | null;
     hasAnswerKey?: boolean;
+    dbClient?: UploadResourceDbClient;
 };
+
+type UploadResourceDbClient = Pick<typeof db, "insert" | "select">;
 
 function normalizeOptionalUrl(url: string | null | undefined) {
     if (!url) {
@@ -55,8 +58,9 @@ export async function createUploadedResources({
     semester,
     campus,
     hasAnswerKey,
+    dbClient = db,
 }: CreateUploadedResourcesInput) {
-    const userRows = await db
+    const userRows = await dbClient
         .select({
             id: user.id,
         })
@@ -99,7 +103,7 @@ export async function createUploadedResources({
                   results.map(async (result) => {
                       const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
                       const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                      const rows = await db
+                      const rows = await dbClient
                           .insert(note)
                           .values({
                               title: result.filename,
@@ -117,7 +121,7 @@ export async function createUploadedResources({
                   results.map(async (result) => {
                       const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
                       const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                      const rows = await db
+                      const rows = await dbClient
                           .insert(pastPaper)
                           .values({
                               title: result.filename,
