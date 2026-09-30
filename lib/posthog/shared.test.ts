@@ -11,7 +11,10 @@ const beforeSend = getPostHogClientConfig().before_send as (
   result: CaptureResult | null,
 ) => CaptureResult | null;
 
-function exceptionEvent(frames: unknown[]): CaptureResult {
+function exceptionEvent(
+  frames: unknown[],
+  value = WALLET_MESSAGE,
+): CaptureResult {
   return {
     uuid: "test",
     event: "$exception",
@@ -20,7 +23,7 @@ function exceptionEvent(frames: unknown[]): CaptureResult {
       $exception_list: [
         {
           type: "TypeError",
-          value: WALLET_MESSAGE,
+          value,
           stacktrace: { type: "raw", frames },
         },
       ],
@@ -57,10 +60,9 @@ test("keeps a window.ethereum error with no frames", () => {
 });
 
 test("keeps a document-level error that does not mention window.ethereum", () => {
-  const event = exceptionEvent([{ function: "global code" }]);
-  const entry = (
-    event.properties.$exception_list as { value: string }[]
-  )[0];
-  entry.value = "undefined is not an object (evaluating 'window.app.init')";
+  const event = exceptionEvent(
+    [{ function: "global code" }],
+    "undefined is not an object (evaluating 'window.app.init')",
+  );
   assert.equal(beforeSend(event), event);
 });
