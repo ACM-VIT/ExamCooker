@@ -133,7 +133,6 @@ test("a preload that stalls on every attempt fails without an unhandled rejectio
     t.mock.timers.tick(PDF_DOWNLOAD_STALL_TIMEOUT_MS);
   }
   await drain();
-  await drain();
   assert.equal(reasons.length, 2);
   assert.deepEqual(unhandled, []);
 });
