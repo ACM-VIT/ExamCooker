@@ -33,13 +33,11 @@ export async function fetchPdfResource(
     const abort = () => controller.abort(signal?.reason);
     signal?.addEventListener("abort", abort, { once: true });
     let stopStallTimer = () => {};
-    let stalled = false;
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     const progress = () => {
       stopStallTimer();
       stopStallTimer = foregroundTimeout(() => {
-        stalled = true;
-        controller.abort();
+        controller.abort(new PdfDownloadError("PDF download stalled. Open the original file or retry."));
       }, PDF_DOWNLOAD_STALL_TIMEOUT_MS);
     };
     try {
@@ -84,7 +82,8 @@ export async function fetchPdfResource(
       return buffer;
     } catch (error) {
       signal?.throwIfAborted();
-      const failure = stalled ? new PdfDownloadError("PDF download stalled. Open the original file or retry.") : error;
+      // Only the stall watchdog aborts this controller once the caller's signal is ruled out.
+      const failure = controller.signal.aborted ? controller.signal.reason : error;
       const retryable = failure instanceof PdfDownloadError ? failure.retryable : failure instanceof TypeError;
       if (attempt >= 1 || !retryable) throw failure;
     } finally {

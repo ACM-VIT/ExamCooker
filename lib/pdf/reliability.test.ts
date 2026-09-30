@@ -3,6 +3,7 @@ import { afterEach, test } from "node:test";
 import { foregroundTimeout } from "./foreground-timeout";
 import { engineDeadline, PDFIUM_ENGINE_LOAD_TIMEOUT_MS } from "./load-engine";
 import { fetchPdfResource, PDF_DOWNLOAD_STALL_TIMEOUT_MS } from "./fetch-resource";
+import { preloadPdfBuffer } from "./pdf-buffer-cache";
 import { pdfRenderOptions } from "./render-budget";
 
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
@@ -88,27 +89,52 @@ test("WASM validates the response and retries an upstream 503", async () => {
   assert.equal(requests, 2);
 });
 
-test("a stalled transfer is aborted and retried once with fresh bytes", async t => {
-  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
-  let requests = 0;
-  let aborted = false;
+// Browsers error the fetch body with the signal's reason, so mirror that here.
+function stallingFetch(recovered: boolean) {
+  const reasons: unknown[] = [];
   globalThis.fetch = async (_url, options) => {
-    if (++requests > 1) return new Response("%PDF-1.7\nrecovered");
+    if (recovered && reasons.length > 0) return new Response("%PDF-1.7\nrecovered");
     return new Response(new ReadableStream({
       start(controller) {
         options?.signal?.addEventListener("abort", () => {
-          aborted = true;
-          controller.error(new DOMException("Aborted", "AbortError"));
+          reasons.push(options.signal?.reason);
+          controller.error(options.signal?.reason);
         });
       },
     }));
   };
+  return reasons;
+}
+
+test("a stalled transfer is aborted with a named reason and retried once with fresh bytes", async t => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  const reasons = stallingFetch(true);
   const pending = fetchPdfResource("https://example.test/stalled.pdf", { kind: "pdf" });
   await new Promise(resolve => setImmediate(resolve));
   t.mock.timers.tick(PDF_DOWNLOAD_STALL_TIMEOUT_MS);
   assert.ok((await pending).byteLength > 0);
-  assert.equal(aborted, true);
-  assert.equal(requests, 2);
+  assert.equal(reasons.length, 1);
+  assert.ok(reasons[0] instanceof Error);
+  assert.equal(reasons[0].name, "PdfDownloadError");
+  assert.match(reasons[0].message, /stalled/);
+});
+
+test("a preload that stalls on every attempt fails without an unhandled rejection", async t => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  const unhandled: unknown[] = [];
+  const onUnhandled = (reason: unknown) => { unhandled.push(reason); };
+  process.on("unhandledRejection", onUnhandled);
+  t.after(() => { process.off("unhandledRejection", onUnhandled); });
+  const reasons = stallingFetch(false);
+  const drain = () => new Promise(resolve => setImmediate(resolve));
+  preloadPdfBuffer("https://example.test/preload-stalled.pdf");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await drain();
+    t.mock.timers.tick(PDF_DOWNLOAD_STALL_TIMEOUT_MS);
+  }
+  await drain();
+  assert.equal(reasons.length, 2);
+  assert.deepEqual(unhandled, []);
 });
 
 test("explicit cancellation stops a transfer without retrying", async () => {
