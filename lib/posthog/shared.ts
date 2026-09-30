@@ -538,9 +538,27 @@ function isFirefoxIosReaderNoise(event: CaptureResult): boolean {
 // document-level frame, so the `hasNoFrames()`-based guards let it through.
 //
 // We match narrowly: EVERY exception value mentions `window.ethereum` AND every
-// frame is document-level. An app-code error that mentioned `window.ethereum`
-// would carry a real bundle frame and still surface.
+// frame's filename is the page document. The frame filename has no query string
+// or hash, so we compare it to `$current_url` without them. A `global code` frame
+// alone is not enough, because a top-level app bundle frame can have that label
+// too; its bundle filename keeps it visible.
 const BRAVE_IOS_WALLET_SIGNATURE = /window\.ethereum\b/;
+
+function stripQueryAndHash(url: string): string {
+    return url.split(/[?#]/, 1)[0];
+}
+
+function isPageDocumentFrame(frame: unknown, pageUrl: string): boolean {
+    if (!frame || typeof frame !== "object") {
+        return false;
+    }
+
+    const filename = (frame as { filename?: unknown }).filename;
+    return (
+        typeof filename === "string" &&
+        stripQueryAndHash(filename) === stripQueryAndHash(pageUrl)
+    );
+}
 
 function isBraveIosWalletException(
     exception: unknown,
@@ -563,11 +581,11 @@ function isBraveIosWalletException(
     }
 
     const frames = entry.stacktrace?.frames;
-    if (!Array.isArray(frames) || frames.length === 0) {
+    if (!pageUrl || !Array.isArray(frames) || frames.length === 0) {
         return false;
     }
 
-    return frames.every((frame) => isDocumentLevelFrame(frame, pageUrl));
+    return frames.every((frame) => isPageDocumentFrame(frame, pageUrl));
 }
 
 function isBraveIosWalletNoise(event: CaptureResult): boolean {

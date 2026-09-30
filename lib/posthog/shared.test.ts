@@ -38,9 +38,25 @@ test("drops the Brave for iOS wallet throw from a global code frame", () => {
   assert.equal(beforeSend(event), null);
 });
 
-test("drops the Brave for iOS wallet throw from a page document frame", () => {
-  const event = exceptionEvent([{ function: "?", filename: PAGE_URL }]);
+test("drops the Brave for iOS wallet throw when the page URL has a query string", () => {
+  const event = exceptionEvent([{ function: "global code", filename: PAGE_URL }]);
+  event.properties.$current_url = `${PAGE_URL}?exam=cat-2&sort=year_desc`;
   assert.equal(beforeSend(event), null);
+});
+
+test("keeps a window.ethereum error from a global code frame in an app bundle", () => {
+  const event = exceptionEvent([
+    {
+      function: "global code",
+      filename: "https://examcooker.acmvit.in/_next/static/chunks/app.js",
+    },
+  ]);
+  assert.equal(beforeSend(event), event);
+});
+
+test("keeps a window.ethereum error from a global code frame with no filename", () => {
+  const event = exceptionEvent([{ function: "global code" }]);
+  assert.equal(beforeSend(event), event);
 });
 
 test("keeps a window.ethereum error that has an app bundle frame", () => {
@@ -61,7 +77,7 @@ test("keeps a window.ethereum error with no frames", () => {
 
 test("keeps a document-level error that does not mention window.ethereum", () => {
   const event = exceptionEvent(
-    [{ function: "global code" }],
+    [{ function: "global code", filename: PAGE_URL }],
     "undefined is not an object (evaluating 'window.app.init')",
   );
   assert.equal(beforeSend(event), event);
