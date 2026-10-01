@@ -10,7 +10,7 @@
   // Keep the server out of the entry bundle. Include only its runtime binaries,
   // not the browser PDFium WASM or prerendered HTML under .open-next/assets.
   "rules": [
-    { "type": "ESModule", "globs": ["native/handler.mjs", "**/native/handler.mjs"], "fallthrough": false },
+    { "type": "ESModule", "globs": ["**/native/handler.mjs"], "fallthrough": false },
     { "type": "Text", "globs": ["native/*.txt"], "fallthrough": false },
     { "type": "Data", "globs": ["**/next/dist/compiled/@vercel/og/*.bin"], "fallthrough": false },
     { "type": "CompiledWasm", "globs": ["**/next/dist/compiled/@vercel/og/*.wasm", "**/next/dist/compiled/@vercel/og/*.wasm?module"], "fallthrough": false }
