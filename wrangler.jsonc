@@ -4,6 +4,17 @@
   "account_id": "4ee36e42cabfd44e8ce61b2a6bd637c5",
   "main": "cloudflare/worker.ts",
   "minify": true,
+  "build": { "command": "node scripts/cloudflare/prepare-native-server.mjs" },
+  "base_dir": ".open-next",
+  "find_additional_modules": true,
+  // Keep the server out of the entry bundle. Include only its runtime binaries,
+  // not the browser PDFium WASM or prerendered HTML under .open-next/assets.
+  "rules": [
+    { "type": "ESModule", "globs": ["native/handler.mjs", "**/native/handler.mjs"], "fallthrough": false },
+    { "type": "Text", "globs": ["native/*.txt"], "fallthrough": false },
+    { "type": "Data", "globs": ["**/next/dist/compiled/@vercel/og/*.bin"], "fallthrough": false },
+    { "type": "CompiledWasm", "globs": ["**/next/dist/compiled/@vercel/og/*.wasm", "**/next/dist/compiled/@vercel/og/*.wasm?module"], "fallthrough": false }
+  ],
   "version_metadata": { "binding": "CF_VERSION_METADATA" },
   "compatibility_date": "2026-09-10",
   "compatibility_flags": [
