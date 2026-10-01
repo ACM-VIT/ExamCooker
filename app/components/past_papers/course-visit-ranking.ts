@@ -1,5 +1,7 @@
 "use client";
 
+import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage";
+
 export type CourseVisitRecord = {
     count: number;
     lastVisitedAt: number;
@@ -14,7 +16,7 @@ const MAX_TRACKED = 80;
 function readRecords(): Record<string, CourseVisitRecord> {
     if (typeof window === "undefined") return {};
     try {
-        const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
+        const parsed = JSON.parse(readLocalStorage(STORAGE_KEY) || "{}");
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
 
         const records: Record<string, CourseVisitRecord> = {};
@@ -41,7 +43,7 @@ function writeRecords(records: Record<string, CourseVisitRecord>) {
             .sort(([, a], [, b]) => b.lastVisitedAt - a.lastVisitedAt)
             .slice(0, MAX_TRACKED),
     );
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+    if (!writeLocalStorage(STORAGE_KEY, JSON.stringify(trimmed))) return;
     window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
