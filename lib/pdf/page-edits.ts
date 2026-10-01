@@ -217,6 +217,12 @@ export function applyPdfPageEditsLocally(
   return normalizePdfPageEdits(recipe(current), totalPages);
 }
 
+export function preloadPdfPageEdits() {
+  // Warm only for edited documents. The actual edit operation still owns
+  // error handling and retries if this speculative import fails.
+  void import("pdf-lib").catch(() => undefined);
+}
+
 export async function applyPdfPageEditsToBuffer(
   buffer: ArrayBuffer | Uint8Array,
   edits: PdfPageEdits | null | undefined,

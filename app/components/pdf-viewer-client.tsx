@@ -4,7 +4,7 @@ import { preconnect } from "react-dom";
 import { useEffect } from "react";
 import dynamic from "next/dynamic";
 
-import type { PdfPageEdits } from "@/lib/pdf/page-edits";
+import { normalizePdfPageEdits, preloadPdfPageEdits, type PdfPageEdits } from "@/lib/pdf/page-edits";
 import { preloadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import { preloadPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
 import { preloadPdfResources } from "@/lib/pdf/preload-resources";
@@ -56,6 +56,14 @@ export default function PDFViewerClient({
     preloadPdfBuffer(fileUrl);
     void preloadPdfiumEngine().catch(() => undefined);
   }, [fileUrl]);
+
+  useEffect(() => {
+    // Download the edit library alongside the PDF, not after all PDF bytes
+    // arrive. Unedited documents do not need this additional library.
+    if (normalizePdfPageEdits(pageEdits ?? moderation?.pageEdits)) {
+      preloadPdfPageEdits();
+    }
+  }, [pageEdits, moderation?.pageEdits]);
 
   const remoteOrigin = getRemoteOrigin(fileUrl);
   if (remoteOrigin) {
