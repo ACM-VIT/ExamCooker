@@ -434,7 +434,7 @@ new file mode 100644
 +    if (patched === contents) throw new Error("Failed to preserve the resume cache in " + runtimePath);
 +    return patched;
 +}
-diff --git adist/cli/templates/cache-components-scheduler.js b/dist/cli/templates/cache-components-scheduler.js
+diff --git a/dist/cli/templates/cache-components-scheduler.js b/dist/cli/templates/cache-components-scheduler.js
 new file mode 100644
 index 0000000000000000000000000000000000000000..703c2fb001c60d16bbebba80f0144a978084e803
 --- /dev/null
