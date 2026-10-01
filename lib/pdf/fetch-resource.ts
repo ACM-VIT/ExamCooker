@@ -51,7 +51,9 @@ export async function fetchPdfResource(
       onProgress?.(null);
       progress();
       const response = await fetch(attempt > 0 ? fallbackUrl ?? initialUrl : initialUrl, {
-        cache: attempt === 0 ? "force-cache" : "reload",
+        // PDFs can be replaced at the same URL. Respect their freshness headers;
+        // force-cache can reuse a stale PDF even after the mirror has updated.
+        cache: attempt === 0 ? (kind === "pdf" ? "default" : "force-cache") : "reload",
         mode: "cors",
         signal: controller.signal,
       });

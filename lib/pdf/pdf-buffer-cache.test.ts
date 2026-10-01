@@ -42,7 +42,7 @@ test("a transient network failure recovers without a manual retry", async () => 
   };
   const result = await loadPdfBuffer("https://example.test/retry.pdf").promise;
   assert.ok(result.byteLength > 0);
-  assert.deepEqual(cacheModes, ["force-cache", "reload"]);
+  assert.deepEqual(cacheModes, ["default", "reload"]);
 });
 
 test("a missing PDF fails once rather than retrying a permanent HTTP error", async () => {
