@@ -11,6 +11,7 @@ import {
 } from "@/lib/native-downloads";
 import { applyPdfPageEditsToBuffer, hasPdfPageEdits } from "@/lib/pdf/page-edits";
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
+import { fetchPdfResource } from "@/lib/pdf/fetch-resource";
 
 export type DownloadablePdf = {
     fileUrl: string;
@@ -163,16 +164,11 @@ async function fetchPdfBlob(
     const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-        const response = await fetch(fileUrl, {
-            cache: "force-cache",
+        const buffer = await fetchPdfResource(fileUrl, {
+            kind: "pdf",
             signal: controller.signal,
         });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch PDF: ${response.status}`);
-        }
-
-        return await preparePdfDownloadBlob(await response.blob(), pageEdits);
+        return await preparePdfDownloadBlob(new Blob([buffer], { type: "application/pdf" }), pageEdits);
     } finally {
         window.clearTimeout(timeoutId);
     }

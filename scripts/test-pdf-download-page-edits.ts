@@ -87,6 +87,7 @@ async function main() {
   const alerts: string[] = [];
   const createdObjectUrls: string[] = [];
   let objectUrlCount = 0;
+  const timers: ReturnType<typeof setTimeout>[] = [];
 
   const createAnchor = () => {
     const anchor = {
@@ -122,13 +123,12 @@ async function main() {
         return;
       },
     },
-    setTimeout(callback: () => void) {
-      callback();
-      return 1;
+    setTimeout(callback: () => void, delay: number) {
+      const timer = setTimeout(callback, delay);
+      timers.push(timer);
+      return timer;
     },
-    clearTimeout() {
-      return;
-    },
+    clearTimeout,
     alert(message: string) {
       alerts.push(message);
     },
@@ -137,6 +137,9 @@ async function main() {
     },
   };
   const documentMock = {
+    visibilityState: "visible",
+    addEventListener() {},
+    removeEventListener() {},
     body: {
       appendChild() {
         return;
@@ -206,6 +209,7 @@ async function main() {
       rel: "",
     });
   } finally {
+    timers.forEach(clearTimeout);
     globalThis.fetch = originalFetch;
 
     if (typeof originalWindow === "undefined") {

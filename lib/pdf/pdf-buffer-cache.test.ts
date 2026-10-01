@@ -63,3 +63,34 @@ test("permanently broken downloads have a bounded retry count", async () => {
   await assert.rejects(loadPdfBuffer("https://example.test/offline.pdf").promise, /fetch/);
   assert.equal(requests, 2);
 });
+
+test("a blocked public paper host recovers through same-origin delivery", async () => {
+  const urls: string[] = [];
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    if (urls.length === 1) throw new TypeError("Failed to fetch");
+    return pdf();
+  };
+  const url = "https://examcookerprodsi.blob.core.windows.net/exam-assets/past-papers/cmoeqcw9201s8a8v3n2fetot5/paper.pdf";
+  const result = await loadPdfBuffer(url).promise;
+  assert.ok(result.byteLength > 0);
+  assert.deepEqual(urls, [url, "/api/pdf/paper/cmoeqcw9201s8a8v3n2fetot5"]);
+});
+
+test("syllabus loading avoids the origin that rejects browser CORS", async () => {
+  const urls: string[] = [];
+  globalThis.fetch = async (url) => { urls.push(String(url)); return pdf(); };
+  await loadPdfBuffer("https://ec-syllabus.acmvit.in/files/syllabi/BCSE332L_Deep_Learning.pdf").promise;
+  assert.deepEqual(urls, ["/api/pdf/syllabus/BCSE332L_Deep_Learning.pdf"]);
+});
+
+test("fallback failure stops after two requests and cancellation never starts it", async () => {
+  const url = "https://examcookerprodsi.blob.core.windows.net/exam-assets/past-papers/cmoeq1rlo00lra8v3fqhl2qpy/paper.pdf";
+  let requests = 0;
+  globalThis.fetch = async () => { requests++; throw new TypeError("Failed to fetch"); };
+  await assert.rejects(loadPdfBuffer(url).promise, /fetch/);
+  assert.equal(requests, 2);
+  globalThis.fetch = async () => { requests++; throw new DOMException("Cancelled", "AbortError"); };
+  await assert.rejects(loadPdfBuffer(url).promise, /Cancelled/);
+  assert.equal(requests, 3);
+});

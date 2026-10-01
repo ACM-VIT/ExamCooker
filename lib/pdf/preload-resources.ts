@@ -2,6 +2,7 @@
 
 import { preload } from "react-dom";
 import { PDFIUM_WASM_URL } from "@/lib/generated/pdfium-wasm";
+import { getPdfDeliveryUrl } from "./delivery-url";
 
 // Render-time hints are emitted in the server HTML. An effect would wait for
 // hydration before starting these downloads. Match the viewer's CORS fetches
@@ -13,6 +14,6 @@ export function preloadPdfResources(fileUrl?: string) {
     crossOrigin: "anonymous",
   });
   if (fileUrl && !fileUrl.startsWith("blob:") && !fileUrl.startsWith("data:")) {
-    preload(fileUrl, { as: "fetch", crossOrigin: "anonymous" });
+    preload(getPdfDeliveryUrl(fileUrl), { as: "fetch", crossOrigin: "anonymous" });
   }
 }
