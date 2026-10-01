@@ -27,6 +27,16 @@ import {
     type Semester,
 } from "@/db";
 
+// These loaders are already inside Next's tagged cache. Cloudflare misses can
+// use Hyperdrive directly instead of another R2 read, namespace read, and lock.
+// Keep Redis caching for the existing Azure/Node deployment.
+const withPaperSurfaceCache: typeof withPastPapersSurfaceRedisCache = (input, loader) => {
+    if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
+        return loader();
+    }
+    return withPastPapersSurfaceRedisCache(input, loader);
+};
+
 function normalizePaperLinkSummary<T extends {
     id: string;
     title: string;
@@ -165,7 +175,7 @@ async function getCachedPastPaperDetail(id: string) {
     cacheTag(`past_paper:${id}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    return withPastPapersSurfaceRedisCache(
+    return withPaperSurfaceCache(
         {
             keyParts: ["published-past-paper-detail", { id }],
             deserialize: deserializePastPaperDetail,
@@ -199,7 +209,7 @@ export async function getSiblingPastPaper(input: {
     cacheTag(`past_paper:${input.paperId}`);
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    return withPastPapersSurfaceRedisCache(
+    return withPaperSurfaceCache(
         {
             keyParts: ["published-sibling-past-paper", input],
             // Absence is a valid result. Upload/edit invalidation changes the
@@ -306,7 +316,7 @@ export async function getAdjacentPapersInCourse(input: AdjacentPapersInCourseInp
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    return withPastPapersSurfaceRedisCache(
+    return withPaperSurfaceCache(
         {
             keyParts: ["adjacent-past-papers-in-course", input],
         },
@@ -346,7 +356,7 @@ export async function getRelatedPapersForCourse(input: {
     cacheTag("past_papers");
     cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
 
-    return withPastPapersSurfaceRedisCache(
+    return withPaperSurfaceCache(
         {
             keyParts: ["related-papers-for-course", input],
         },
