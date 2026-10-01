@@ -6,6 +6,22 @@ of the existing app against the production database and services. The original
 Azure production deployment remains in service. The command-agent Worker has its
 own configuration under `worker/`.
 
+## Server module experiment
+
+The test configuration uses [Wrangler partial bundling](https://developers.cloudflare.com/workers/wrangler/bundling/#find-additional-modules)
+to keep the generated Next server in a separate ES module. The deploy build hook
+`scripts/cloudflare/prepare-native-server.mjs` creates `.open-next/native/handler.mjs`,
+supplies the Node globals normally injected by Wrangler, and makes binary import
+paths portable. It leaves the original server intact and redirects the generated
+Worker's lazy import. Its regression test is `node scripts/cloudflare/test-native-server.mjs`.
+
+This experiment targets first-request server compilation. It does not change
+cache lifetimes, session handling, or the 50% production rollout. Early ec-test
+cold samples improved, but there are too few to claim a population improvement.
+`wrangler.canary.jsonc` retains the previous packaging. Build each target before
+deploying it; do not reuse the test target's rewritten `.open-next` output for
+the canary.
+
 ## Runtime and storage
 
 - OpenNext handles PPR and Cache Components. R2 `examcooker-test-next-cache` holds
