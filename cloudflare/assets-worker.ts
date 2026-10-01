@@ -77,7 +77,12 @@ export async function mirrorObject(
     redirect: "manual", signal: AbortSignal.timeout(25_000),
     headers: { "accept-encoding": "identity", ...(expected?.etag ? { "if-match": `"${expected.etag.replaceAll('"', '')}"` } : {}) },
   });
-  const condition = existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: "*" };
+  // ETags cannot distinguish metadata-only updates. uploadedBefore is exclusive;
+  // allow the observed millisecond, using R2's subsecond comparison. Keys remain
+  // present as tombstones on deletion, so an old write cannot recreate a gap.
+  const condition = existing
+    ? { uploadedBefore: new Date(existing.uploaded.getTime() + 1), secondsGranularity: false }
+    : { etagDoesNotMatch: "*" };
   if (response.status === 404) {
     await response.body?.cancel();
     if (allowDelete && existing) {

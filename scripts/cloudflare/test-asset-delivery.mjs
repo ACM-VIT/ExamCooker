@@ -5,12 +5,14 @@ const require=createRequire(import.meta.resolve('wrangler/package.json'));
 const {Miniflare,convertV4MiniflareOptions}=require('miniflare');
 const {build}=require('esbuild');
 const {outputFiles}=await build({entryPoints:['cloudflare/assets-worker.ts'],bundle:true,write:false,format:'esm',platform:'browser',external:['node:crypto']});
+let holdNext=false,releaseHeld,notifyHeld;let heldStarted;
 let calls=0;let original=Buffer.from('%PDF-1.7\noriginal fixture');let sourceVersion='azure-v1';let missing=false;let stale=false;
 const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:outputFiles[0].text,compatibilityDate:'2026-09-10',compatibilityFlags:['nodejs_compat'],r2Buckets:['BUCKET'],bindings:{MIRROR_TOKEN:'test-only-secret'},outboundService:async req=>{
  calls++;assert.match(req.url,/^https:\/\/examcookerprodsi.blob.core.windows.net\/exam-assets\//);assert.equal(req.headers.get('cookie'),null);assert.equal(req.headers.get('authorization'),null);
  if(missing)return new Response(null,{status:404});
  if(stale || (req.headers.has('if-match')&&req.headers.get('if-match')!==`"${sourceVersion}"`))return new Response(null,{status:412});
- return new Response(original,{headers:{etag:`"${sourceVersion}"`,'content-type':'application/pdf','content-length':String(original.length),'content-md5':createHash('md5').update(original).digest('base64'),'last-modified':'Thu, 01 Oct 2026 00:00:00 GMT'}});
+ const response=new Response(original,{headers:{etag:`"${sourceVersion}"`,'content-type':'application/pdf','content-length':String(original.length),'content-md5':createHash('md5').update(original).digest('base64'),'last-modified':'Thu, 01 Oct 2026 00:00:00 GMT'}});
+ if(holdNext){holdNext=false;notifyHeld();await new Promise(resolve=>{releaseHeld=resolve;});}return response;
 }}));
 const host='https://ec-assets.acmvit.in';const admin=(body,path='/_mirror')=>mf.dispatchFetch(host+path,{method:'POST',headers:{'x-ec-mirror-token':'test-only-secret'},body:JSON.stringify(body)});
 try {
@@ -32,6 +34,14 @@ try {
  const event={eventType:'Microsoft.Storage.BlobCreated',topic:resource,data:{url:'https://examcookerprodsi.blob.core.windows.net/exam-assets/past-papers/fixture/paper.pdf'}};
  const update=await admin([event],'/_events');assert.equal(update.status,204);
  const replaced=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{'cache-control':'no-cache'}});assert.deepEqual(Buffer.from(await replaced.arrayBuffer()),original);
+ // Identical bytes retain the same ETag: the upload timestamp must also guard
+ // against an older in-flight copy replacing newer source metadata.
+ sourceVersion='metadata-older';holdNext=true;heldStarted=new Promise(resolve=>{notifyHeld=resolve;});
+ const delayed=admin({key:'past-papers/fixture/paper.pdf'});await heldStarted;
+ await new Promise(resolve=>setTimeout(resolve,10));sourceVersion='metadata-newer';
+ const metadataUpdate=await admin({key:'past-papers/fixture/paper.pdf'});assert.equal(metadataUpdate.status,200);
+ releaseHeld();assert.equal((await delayed).status,503);
+ assert.equal((await(await mf.getR2Bucket('BUCKET')).head('past-papers/fixture/paper.pdf')).customMetadata.azureEtag,'metadata-newer');
  const invalid=await admin([{...event,data:{url:'https://private.invalid/secret'}}],'/_events');assert.equal(invalid.status,400);
  const mismatch=await admin({key:'mismatch.pdf',expected:{etag:'outdated'}});assert.equal(mismatch.status,503);assert.equal(await(await mf.getR2Bucket('BUCKET')).head('mismatch.pdf'),null);
  missing=true;const deleted=await admin([{...event,eventType:'Microsoft.Storage.BlobDeleted'}],'/_events');assert.equal(deleted.status,204);assert.equal((await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{'cache-control':'no-cache'}})).status,404);
