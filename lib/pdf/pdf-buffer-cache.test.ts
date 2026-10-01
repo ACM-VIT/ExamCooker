@@ -3,10 +3,15 @@ import { afterEach, test } from "node:test";
 import { invalidatePdfBuffer, loadPdfBuffer } from "./pdf-buffer-cache";
 
 const realFetch = globalThis.fetch;
+const originalAssetBase = process.env.NEXT_PUBLIC_ASSET_BASE_URL;
 const pdf = () => new Response("%PDF-1.7\nexample", {
   headers: { "content-type": "application/pdf" },
 });
-afterEach(() => { globalThis.fetch = realFetch; });
+afterEach(() => {
+  globalThis.fetch = realFetch;
+  if (originalAssetBase === undefined) delete process.env.NEXT_PUBLIC_ASSET_BASE_URL;
+  else process.env.NEXT_PUBLIC_ASSET_BASE_URL = originalAssetBase;
+});
 
 test("a cancelled download cannot evict its replacement", async () => {
   let rejectOld!: (error: Error) => void;
@@ -82,6 +87,29 @@ test("syllabus loading avoids the origin that rejects browser CORS", async () =>
   globalThis.fetch = async (url) => { urls.push(String(url)); return pdf(); };
   await loadPdfBuffer("https://ec-syllabus.acmvit.in/files/syllabi/BCSE332L_Deep_Learning.pdf").promise;
   assert.deepEqual(urls, ["/api/pdf/syllabus/BCSE332L_Deep_Learning.pdf"]);
+});
+
+test("Cloudflare loads legacy PDFs through R2 and recovers a failed R2 request from Azure", async () => {
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL = "https://ec-assets.acmvit.in";
+  const source = "https://examcookerprodsi.blob.core.windows.net/exam-assets/r2-recovery.pdf";
+  const urls: string[] = [];
+  globalThis.fetch = async url => {
+    urls.push(String(url));
+    if (urls.length === 1) throw new TypeError("Failed to fetch");
+    return pdf();
+  };
+  assert.ok((await loadPdfBuffer(source).promise).byteLength > 0);
+  assert.deepEqual(urls, ["https://ec-assets.acmvit.in/r2-recovery.pdf", source]);
+});
+
+test("R2 paper recovery retains the same-origin route and the two-attempt limit", async () => {
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL = "https://ec-assets.acmvit.in";
+  const id = "r2-paper-recovery-fixture";
+  const source = `https://examcookerprodsi.blob.core.windows.net/exam-assets/past-papers/${id}/paper.pdf`;
+  const urls: string[] = [];
+  globalThis.fetch = async url => { urls.push(String(url)); return new Response(null, { status: 503 }); };
+  await assert.rejects(loadPdfBuffer(source).promise, /503/);
+  assert.deepEqual(urls, [`https://ec-assets.acmvit.in/past-papers/${id}/paper.pdf`, `/api/pdf/paper/${id}`]);
 });
 
 test("fallback failure stops after two requests and cancellation never starts it", async () => {

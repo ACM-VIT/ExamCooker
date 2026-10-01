@@ -1,3 +1,5 @@
+import { getAssetDeliveryUrl } from "@/lib/storage/public-assets";
+
 const PAPER_ORIGIN = "https://examcookerprodsi.blob.core.windows.net";
 const SYLLABUS_ORIGIN = "https://ec-syllabus.acmvit.in";
 
@@ -34,6 +36,8 @@ export function getPdfFallbackUrl(fileUrl: string): string | null {
 }
 
 export function getPdfDeliveryUrl(fileUrl: string): string {
+  const assetUrl = getAssetDeliveryUrl(fileUrl);
+  if (assetUrl !== fileUrl) return assetUrl;
   const fallback = getPdfFallbackUrl(fileUrl);
   // The syllabus service rejects browser CORS requests from the app. Papers
   // keep their direct storage path unless that download actually fails.

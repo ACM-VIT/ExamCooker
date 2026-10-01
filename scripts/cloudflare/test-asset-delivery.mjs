@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.resolve('wrangler/package.json'));
+const {Miniflare,convertV4MiniflareOptions}=require('miniflare');
+const {build}=require('esbuild');
+const {outputFiles}=await build({entryPoints:['cloudflare/assets-worker.ts'],bundle:true,write:false,format:'esm',platform:'browser',external:['node:crypto']});
+let calls=0;let original=Buffer.from('%PDF-1.7\noriginal fixture');let sourceVersion='azure-v1';let missing=false;let stale=false;
+const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:outputFiles[0].text,compatibilityDate:'2026-09-10',compatibilityFlags:['nodejs_compat'],r2Buckets:['BUCKET'],bindings:{MIRROR_TOKEN:'test-only-secret'},outboundService:async req=>{
+ calls++;assert.match(req.url,/^https:\/\/examcookerprodsi.blob.core.windows.net\/exam-assets\//);assert.equal(req.headers.get('cookie'),null);assert.equal(req.headers.get('authorization'),null);
+ if(missing)return new Response(null,{status:404});
+ if(stale || (req.headers.has('if-match')&&req.headers.get('if-match')!==`"${sourceVersion}"`))return new Response(null,{status:412});
+ return new Response(original,{headers:{etag:`"${sourceVersion}"`,'content-type':'application/pdf','content-length':String(original.length),'content-md5':createHash('md5').update(original).digest('base64'),'last-modified':'Thu, 01 Oct 2026 00:00:00 GMT'}});
+}}));
+const host='https://ec-assets.acmvit.in';const admin=(body,path='/_mirror')=>mf.dispatchFetch(host+path,{method:'POST',headers:{'x-ec-mirror-token':'test-only-secret'},body:JSON.stringify(body)});
+try {
+ assert.equal((await mf.dispatchFetch(host+'/_mirror',{method:'POST',body:'{}'})).status,401);
+ const first=await admin({key:'past-papers/fixture/paper.pdf',expected:{etag:'azure-v1',size:original.length}});assert.equal(first.status,200);const result=await first.json();assert.equal(result.status,'copied');assert.equal(result.md5,createHash('md5').update(original).digest('hex'));assert.equal(result.sha256,createHash('sha256').update(original).digest('hex'));
+ const afterCopy=calls;
+ const served=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{cookie:'session=private',authorization:'Bearer private'}});assert.equal(served.status,200);assert.deepEqual(Buffer.from(await served.arrayBuffer()),original);assert.equal(served.headers.get('x-ec-asset-source'),'r2');assert.equal(served.headers.get('set-cookie'),null);assert.equal(calls,afterCopy);
+ const head=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');assert.equal(Number(head.headers.get('content-length')),original.length);
+ const cached=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{'if-none-match':head.headers.get('etag')}});assert.equal(cached.status,304);
+ const range=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{range:'bytes=0-7'}});assert.equal(range.status,206);assert.equal(await range.text(),original.subarray(0,8).toString());
+ const suffix=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{range:'bytes=-7'}});assert.equal(suffix.status,206);assert.equal(await suffix.text(),original.subarray(-7).toString());
+ const invalidRange=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{range:'bytes=999999-'}});assert.equal(invalidRange.status,416);assert.equal(invalidRange.headers.get('content-range'),`bytes */${original.length}`);
+ const ifRange=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{range:'bytes=0-7','if-range':'"stale"'}});assert.equal(ifRange.status,200);assert.deepEqual(Buffer.from(await ifRange.arrayBuffer()),original);
+ const ifMatch=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{'if-match':'"stale"'}});assert.equal(ifMatch.status,412);
+ const conditionalHead=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{method:'HEAD',headers:{'if-none-match':'*'}});assert.equal(conditionalHead.status,304);
+ const unchanged=await admin({key:'past-papers/fixture/paper.pdf'});assert.equal((await unchanged.json()).status,'unchanged');
+ original=Buffer.from('%PDF-1.7\nreplacement bytes');sourceVersion='azure-v2';
+ const resource='/subscriptions/b88416d5-3d98-4d1c-bd30-8df01b99dfac/resourceGroups/rg-examcooker-prod/providers/Microsoft.Storage/storageAccounts/examcookerprodsi';
+ const event={eventType:'Microsoft.Storage.BlobCreated',topic:resource,data:{url:'https://examcookerprodsi.blob.core.windows.net/exam-assets/past-papers/fixture/paper.pdf'}};
+ const update=await admin([event],'/_events');assert.equal(update.status,204);
+ const replaced=await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{'cache-control':'no-cache'}});assert.deepEqual(Buffer.from(await replaced.arrayBuffer()),original);
+ const invalid=await admin([{...event,data:{url:'https://private.invalid/secret'}}],'/_events');assert.equal(invalid.status,400);
+ const mismatch=await admin({key:'mismatch.pdf',expected:{etag:'outdated'}});assert.equal(mismatch.status,503);assert.equal(await(await mf.getR2Bucket('BUCKET')).head('mismatch.pdf'),null);
+ missing=true;const deleted=await admin([{...event,eventType:'Microsoft.Storage.BlobDeleted'}],'/_events');assert.equal(deleted.status,204);assert.equal((await mf.dispatchFetch(host+'/past-papers/fixture/paper.pdf',{headers:{'cache-control':'no-cache'}})).status,404);
+ missing=false;sourceVersion='azure-v3';const fresh=await mf.dispatchFetch(host+'/new-upload.pdf');assert.equal(fresh.status,200);assert.deepEqual(Buffer.from(await fresh.arrayBuffer()),original);
+ assert.equal((await mf.dispatchFetch(host+'/new-upload.pdf?token=secret')).status,404);
+ assert.equal((await mf.dispatchFetch(host+'/new-upload.pdf',{method:'POST'})).status,405);
+ console.log('PASS: streamed copy checksums, R2 delivery, ranges, conditional requests, new uploads, overwrite/delete events, private admin operations, and safe origins');
+} finally {await mf.dispose();}

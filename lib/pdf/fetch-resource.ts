@@ -27,7 +27,9 @@ export async function fetchPdfResource(
   },
 ): Promise<ArrayBuffer> {
   const initialUrl = kind === "pdf" ? getPdfDeliveryUrl(url) : url;
-  const fallbackUrl = kind === "pdf" ? getPdfFallbackUrl(url) : null;
+  const fallbackUrl = kind === "pdf"
+    ? getPdfFallbackUrl(url) ?? (initialUrl !== url ? url : null)
+    : null;
   // One fresh network attempt repairs transient failures and poisoned browser
   // cache entries. Permanent HTTP failures and explicit cancellations stop now.
   for (let attempt = 0; ; attempt++) {
