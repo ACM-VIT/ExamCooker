@@ -6,6 +6,7 @@ import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { db, upcomingExam } from "@/db";
 import { examTypeValues } from "@/db/enums";
+import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 
 const slotsSchema = z
     .array(z.string().min(1).max(20))
@@ -41,6 +42,7 @@ export async function createUpcomingExam(input: z.input<typeof upsertSchema>) {
     });
     revalidateTag("upcoming_exams", "minutes");
     revalidatePath("/mod/upcoming");
+    await invalidatePastPapersSurfaceCache();
     return { success: true };
 }
 
@@ -62,6 +64,7 @@ export async function updateUpcomingExam(
         .where(eq(upcomingExam.id, id));
     revalidateTag("upcoming_exams", "minutes");
     revalidatePath("/mod/upcoming");
+    await invalidatePastPapersSurfaceCache();
     return { success: true };
 }
 
@@ -71,5 +74,6 @@ export async function deleteUpcomingExam(id: string) {
     await db.delete(upcomingExam).where(eq(upcomingExam.id, id));
     revalidateTag("upcoming_exams", "minutes");
     revalidatePath("/mod/upcoming");
+    await invalidatePastPapersSurfaceCache();
     return { success: true };
 }
