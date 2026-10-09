@@ -4,5 +4,7 @@ export async function GET(request: Request, context: {
   params: Promise<{ source: string; file: string }>;
 }) {
   const { source, file } = await context.params;
-  return servePublicPdf(source, file, request.signal);
+  return servePublicPdf(source, file, request.signal, {
+    cacheControl: request.headers.get("cache-control"),
+  });
 }
