@@ -32,7 +32,7 @@ GitHub initially reported 55 open Dependabot alerts. Both Swift lockfiles and th
 - iOS simulator build passes without code signing. Xcode resolves Capacitor 8.5.3.
 - Android debug build passes (Gradle 8.14.3, 306 tasks).
 - The actual development catalog works through the local MCP HTTP endpoint and preview host: BMAT101L search, resource details, and model-context attachment. This does not establish hosted ChatGPT validation.
-- Desktop and 390px browser checks cover catalog search, shared styling, widget filters, detail/back navigation, deep links, theme changes, empty results and failed-host-result recovery. No horizontal overflow or browser errors were observed.
+- Desktop and 390px browser checks cover catalog search, shared styling, widget filters, detail/back navigation, deep links, theme changes, empty results and failed-host-result recovery, and search retention when the initial opening result arrives late. No horizontal overflow or browser errors were observed.
 - `pnpm lint` remains unavailable: the repository still invokes the removed `next lint` command.
 
 ## Incoming changes

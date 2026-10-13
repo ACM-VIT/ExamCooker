@@ -17,6 +17,7 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
   const kindOf = (item) => String(item.id || '').split(':')[0];
   const state = { query: '', results: [], searched: false, filter: 'all', detail: null, busy: false, ready: false, error: '', operation: 0 };
   const pending = new Map();
+  let initialToolResultSeen = false, localNavigationStarted = false;
   let sequence = 0, sizeFrame = 0, lastSize = '', hostCapabilities = {}, lastDeepLink = '', toolQuery = '', contextQueue = Promise.resolve(), contextVersion = 0;
   const notify = (method, params) => window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
   const request = (method, params, timeout = 25000) => new Promise((resolve, reject) => {
@@ -112,6 +113,11 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
     sendSize();
   };
   const applyResult = (result) => {
+    const initial = !initialToolResultSeen;
+    initialToolResultSeen = true;
+    // The opening tool can finish after the user has already searched or
+    // followed a deep link. Its initial payload must not replace that navigation.
+    if (initial && localNavigationStarted) return;
     // Host results, including failures, finish the previous operation.
     state.operation++; state.busy = false;
     let output;
@@ -127,6 +133,7 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
   };
   const callTool = async (name, args) => { await bridgeReady; return extract(await request('tools/call', { name, arguments: args })); };
   const runSearch = async (query) => {
+    localNavigationStarted = true;
     const operation = ++state.operation;
     state.query = query.trim().slice(0, 240); state.busy = true; state.error = ''; state.detail = null; syncContext(); render();
     try {
@@ -137,6 +144,7 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
     finally { if (operation === state.operation) { state.busy = false; render(); } }
   };
   const openResource = async (id) => {
+    localNavigationStarted = true;
     const operation = ++state.operation;
     state.busy = true; state.error = ''; render();
     try {
