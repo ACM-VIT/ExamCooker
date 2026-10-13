@@ -2,6 +2,7 @@ import NextImage, {
   type ImageProps as NextImageProps,
   type StaticImageData,
 } from "next/image";
+import { getAssetDeliveryUrl } from "@/lib/storage/public-assets";
 
 type StaticImageLike = StaticImageData | {
   src: string;
@@ -65,7 +66,7 @@ export default function AppImage({
   return (
     <NextImage
       {...rest}
-      src={resolvedSource.src}
+      src={getAssetDeliveryUrl(resolvedSource.src)}
       alt={alt}
       width={resolvedWidth}
       height={resolvedHeight}

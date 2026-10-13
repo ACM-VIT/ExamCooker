@@ -118,7 +118,7 @@ export default function RootLayout({
             <head>
                 <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-                <link rel="preconnect" href="https://examcookerprodsi.blob.core.windows.net" crossOrigin="" />
+                <link rel="preconnect" href={process.env.NEXT_PUBLIC_ASSET_BASE_URL || "https://examcookerprodsi.blob.core.windows.net"} crossOrigin="" />
                 <link rel="preconnect" href="https://examcookerdevsi.blob.core.windows.net" crossOrigin="" />
                 <link rel="dns-prefetch" href="https://i.ytimg.com" />
                 <link rel="dns-prefetch" href="https://storage.googleapis.com" />

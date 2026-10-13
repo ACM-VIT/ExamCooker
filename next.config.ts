@@ -111,6 +111,11 @@ const configuredRemotePatterns = Array.from(
 const uploadSourceMaps = process.env.POSTHOG_SOURCEMAP_UPLOAD === "true";
 
 const nextConfig: NextConfig = {
+    env: {
+        NEXT_PUBLIC_ASSET_BASE_URL: process.env.EC_CLOUDFLARE_BUILD === "1"
+            ? "https://ec-assets.acmvit.in"
+            : "",
+    },
     headers() {
         return [{
             source: "/vendor/embedpdf/immutable/:path*",

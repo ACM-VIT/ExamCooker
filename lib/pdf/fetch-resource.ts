@@ -1,4 +1,5 @@
 import { foregroundTimeout } from "./foreground-timeout";
+import { getPdfDeliveryUrl, getPdfFallbackUrl } from "./delivery-url";
 
 export const PDF_DOWNLOAD_STALL_TIMEOUT_MS = 15000;
 
@@ -25,6 +26,10 @@ export async function fetchPdfResource(
     onProgress?: (progress: number | null) => void;
   },
 ): Promise<ArrayBuffer> {
+  const initialUrl = kind === "pdf" ? getPdfDeliveryUrl(url) : url;
+  const fallbackUrl = kind === "pdf"
+    ? getPdfFallbackUrl(url) ?? (initialUrl !== url ? url : null)
+    : null;
   // One fresh network attempt repairs transient failures and poisoned browser
   // cache entries. Permanent HTTP failures and explicit cancellations stop now.
   for (let attempt = 0; ; attempt++) {
@@ -45,8 +50,10 @@ export async function fetchPdfResource(
     try {
       onProgress?.(null);
       progress();
-      const response = await fetch(url, {
-        cache: attempt === 0 ? "force-cache" : "reload",
+      const response = await fetch(attempt > 0 ? fallbackUrl ?? initialUrl : initialUrl, {
+        // PDFs can be replaced at the same URL. Respect their freshness headers;
+        // force-cache can reuse a stale PDF even after the mirror has updated.
+        cache: attempt === 0 ? (kind === "pdf" ? "default" : "force-cache") : "reload",
         mode: "cors",
         signal: controller.signal,
       });
