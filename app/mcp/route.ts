@@ -1,4 +1,4 @@
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import { NextResponse, type NextRequest } from "next/server";
 import { createExamCookerMcpServer } from "@/lib/mcp/examcooker-server";
 

@@ -1,10 +1,10 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import {
   registerAppResource,
   registerAppTool,
   RESOURCE_MIME_TYPE,
 } from "@modelcontextprotocol/ext-apps/server";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type {
   McpFetchOutput,
@@ -183,8 +183,8 @@ export function createExamCookerMcpServer(
       title: "Search ExamCooker",
       description:
         "Use this when the user wants VIT courses, notes, past papers, syllabi, or module resources. Search by course code, subject, exam type, year, or keyword. Returns stable ids and citation URLs; fetch selected ids for details.",
-      inputSchema: { query: querySchema },
-      outputSchema: { results: z.array(searchSchema) },
+      inputSchema: z.object({ query: querySchema }),
+      outputSchema: z.object({ results: z.array(searchSchema) }),
       annotations,
       _meta: {
         ui: { visibility: ["model", "app"] },
@@ -204,7 +204,7 @@ export function createExamCookerMcpServer(
       title: "Fetch ExamCooker resource",
       description:
         "Use this when the user wants details or a citation for a public ExamCooker resource found by search. Accepts a result id, course code, or canonical ExamCooker URL. Returns catalog text and PDF links, not extracted PDF contents.",
-      inputSchema: { id: idSchema },
+      inputSchema: z.object({ id: idSchema }),
       outputSchema: fetchSchema,
       annotations,
       _meta: {
@@ -228,16 +228,16 @@ export function createExamCookerMcpServer(
       title: "ExamCooker",
       description:
         "Use this when the user wants to browse ExamCooker visually or open a study resource. Opens the compact resource browser. Optionally pass a search query or a resourceId already found by search; no prerequisites for an empty workspace.",
-      inputSchema: {
+      inputSchema: z.object({
         query: querySchema.optional(),
         resourceId: idSchema.optional(),
-      },
-      outputSchema: {
+      }),
+      outputSchema: z.object({
         view: z.literal("workspace"),
         query: z.string(),
         results: z.array(searchSchema),
         detail: fetchSchema.nullable(),
-      },
+      }),
       annotations,
       _meta: {
         ui: {
@@ -275,8 +275,8 @@ export function createExamCookerMcpServer(
       title: "Mention an ExamCooker resource",
       description:
         "Use this when the composer needs ExamCooker resource suggestions for an at-mention.",
-      inputSchema: { query: querySchema },
-      outputSchema: {
+      inputSchema: z.object({ query: querySchema }),
+      outputSchema: z.object({
         items: z.array(
           z.object({
             type: z.literal("resource_link"),
@@ -285,7 +285,7 @@ export function createExamCookerMcpServer(
             description: z.string(),
           }),
         ),
-      },
+      }),
       annotations,
       _meta: {
         ui: { visibility: ["app"] },

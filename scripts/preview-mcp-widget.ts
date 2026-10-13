@@ -1,8 +1,10 @@
 /** Local MCP Apps host harness. Default data is illustrative, never production. */
 import { createServer } from "node:http";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+  Client,
+  InMemoryTransport,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
 import { createExamCookerMcpServer } from "@/lib/mcp/examcooker-server";
 import { EXAMCOOKER_WIDGET_HTML } from "@/lib/mcp/examcooker-widget";
 
