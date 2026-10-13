@@ -14,8 +14,9 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
   const validSummary = (item) => item && typeof item.id === 'string' && item.id.length <= 500 && typeof item.title === 'string' && item.title.length <= 1000 && safeUrl(item.url);
   const summary = (item) => ({ id: item.id, title: item.title, url: item.url });
   const kinds = { all: 'All', course: 'Courses', past_paper: 'Past papers', note: 'Notes', syllabus: 'Syllabi', resource: 'Resources' };
+  const kindLabels = { course: 'Course', past_paper: 'Past paper', note: 'Note', syllabus: 'Syllabus', resource: 'Resource' };
   const kindOf = (item) => String(item.id || '').split(':')[0];
-  const state = { query: '', results: [], searched: false, filter: 'all', detail: null, busy: false, ready: false, error: '', operation: 0 };
+  const state = { query: '', results: [], cards: {}, searched: false, filter: 'all', detail: null, busy: false, ready: false, error: '', operation: 0 };
   const pending = new Map();
   let initialToolResultSeen = false, localNavigationStarted = false;
   let sequence = 0, sizeFrame = 0, lastSize = '', hostCapabilities = {}, lastDeepLink = '', toolQuery = '', contextQueue = Promise.resolve(), contextVersion = 0;
@@ -74,15 +75,19 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
     sendSize();
   };
   const cardTitle = (item) => String(item.title).replace(/^(Course|Past paper|Note|Syllabus|Resource):\s*/i, '');
-  const displayTitle = (item) => kindOf(item) === 'course' ? cardTitle(item).replace(/^[A-Z0-9]+\s*[-–]\s*/, '').replace(/\s*\(\d+ papers?(?:, \d+ notes?)?\)$/, '') : cardTitle(item);
+  const displayTitle = (item) => {
+    const title = item.metadata?.displayTitle || state.cards[item.id]?.title;
+    if (typeof title === 'string' && title.trim()) return title;
+    return kindOf(item) === 'course' ? cardTitle(item).replace(/^[A-Z0-9]+\s*[-–]\s*/, '').replace(/\s*\(\d+ papers?(?:, \d+ notes?)?\)$/, '') : cardTitle(item);
+  };
+  const renderLabels = (labels) => Array.isArray(labels) ? labels.filter((label) => typeof label === 'string' && label).map((label) => '<span class="paper-label">' + escape(label) + '</span>').join('') : '';
   const renderCard = (item) => {
-    const course = kindOf(item) === 'course';
-    const code = course ? item.id.slice(7) : kinds[kindOf(item)] || 'Resource';
-    const raw = cardTitle(item);
-    const counts = /\((\d+) papers?(?:, (\d+) notes?)?\)$/.exec(raw);
-    const title = displayTitle(item);
-    const stats = counts ? '<div class="ec-catalog-stats"><span class="ec-catalog-number">' + counts[1] + '</span><span class="ec-catalog-unit">paper' + (counts[1] === '1' ? '' : 's') + '</span></div>' : '';
-    return '<button class="card ec-catalog-card" type="button" data-action="open" data-id="' + escape(item.id) + '"><span class="ec-catalog-code">' + escape(code) + '</span><h3 class="ec-catalog-title">' + escape(title) + '</h3>' + stats + '</button>';
+    const kind = kindOf(item), display = state.cards[item.id] || {};
+    const code = display.courseCode || (kind === 'course' ? item.id.slice(7) : '');
+    const counts = /\((\d+) papers?(?:, (\d+) notes?)?\)$/.exec(cardTitle(item));
+    const paperCount = typeof display.paperCount === 'number' ? display.paperCount : counts ? Number(counts[1]) : null;
+    const stats = paperCount !== null ? '<div class="ec-catalog-stats"><span class="ec-catalog-number">' + escape(paperCount) + '</span><span class="ec-catalog-unit">paper' + (paperCount === 1 ? '' : 's') + '</span></div>' : '';
+    return '<button class="card ec-catalog-card" type="button" data-action="open" data-id="' + escape(item.id) + '"><span class="ec-catalog-code">' + escape(kindLabels[kind] || 'Resource') + (code ? ' · ' + escape(code) : '') + '</span><div class="paper-labels">' + renderLabels(display.labels) + '</div><h3 class="ec-catalog-title">' + escape(displayTitle(item)) + '</h3>' + stats + '</button>';
   };
   const renderBody = (text) => String(text || '').split(/\r?\n/).map((line) => {
     if (!line.trim() || /^#\s/.test(line)) return '';
@@ -95,10 +100,11 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
   }).join('');
   const renderDetail = () => {
     const doc = state.detail, meta = doc.metadata || {};
-    const stats = [['paperCount','papers'],['noteCount','notes'],['moduleCount','modules'],['topicCount','topics'],['year','year']].filter(([key]) => typeof meta[key] === 'number').map(([key, label]) => '<span><b>' + escape(meta[key]) + '</b> ' + label + '</span>').join('');
+    const stats = [['paperCount','papers'],['noteCount','notes'],['moduleCount','modules'],['topicCount','topics']].filter(([key]) => typeof meta[key] === 'number').map(([key, label]) => '<span><b>' + escape(meta[key]) + '</b> ' + label + '</span>').join('');
     const pdf = safeUrl(meta.fileUrl) || safeUrl(/^PDF:\s*(\S+)/m.exec(doc.text || '')?.[1]);
     const page = safeUrl(doc.url);
-    return '<button class="text-button" data-action="back">← Back to results</button><div class="detail-heading"><span class="eyebrow">' + escape(meta.courseCode || kinds[kindOf(doc)] || 'Resource') + '</span><h1>' + escape(displayTitle(doc)) + '</h1><div class="stats">' + stats + '</div></div><div class="detail-actions">' + (pdf ? '<a class="button" href="' + escape(pdf) + '" target="_blank" rel="noopener noreferrer">Open PDF ↗</a>' : '') + (page ? '<a class="button" href="' + escape(page) + '" target="_blank" rel="noopener noreferrer">View on ExamCooker ↗</a>' : '') + '</div><div class="body-text">' + renderBody(doc.text) + '</div>';
+    const labels = kindOf(doc) === 'past_paper' ? [meta.examTypeLabel, meta.slot, meta.year?.toString(), meta.hasAnswerKey ? 'Answer key' : null] : [];
+    return '<button class="text-button" data-action="back">← Back to results</button><div class="detail-heading"><span class="eyebrow">' + escape(kindLabels[kindOf(doc)] || 'Resource') + (meta.courseCode ? ' · ' + escape(meta.courseCode) : '') + '</span><div class="paper-labels">' + renderLabels(labels) + '</div><h1>' + escape(displayTitle(doc)) + '</h1><div class="stats">' + stats + '</div></div><div class="detail-actions">' + (pdf ? '<a class="button" href="' + escape(pdf) + '" target="_blank" rel="noopener noreferrer">Open PDF ↗</a>' : '') + (page ? '<a class="button" href="' + escape(page) + '" target="_blank" rel="noopener noreferrer">View on ExamCooker ↗</a>' : '') + '</div><div class="body-text">' + renderBody(doc.text) + '</div>';
   };
   const renderResults = () => {
     if (!state.searched) return '<div class="empty"><h2>Find your study resources</h2><p>Search a course code or subject for past papers, notes, syllabi, and resources.</p><div class="suggestions">' + ['Calculus', 'Data structures', 'Engineering physics', 'Browse courses'].map((label) => '<button class="suggestion" data-action="suggest" data-query="' + escape(label === 'Browse courses' ? '' : label) + '"' + (!state.ready ? ' disabled' : '') + '>' + label + '</button>').join('') + '</div></div>';
@@ -125,21 +131,23 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
     state.error = '';
     if (Array.isArray(output.results)) {
       state.results = output.results.filter(validSummary).map(summary);
+      state.cards = result._meta?.cards || {};
       state.query = typeof output.query === 'string' ? output.query : typeof result._meta?.query === 'string' ? result._meta.query : toolQuery;
       state.searched = output.view !== 'workspace' || Boolean(state.query || state.results.length);
       state.detail = validSummary(output.detail) && typeof output.detail.text === 'string' ? output.detail : null;
     } else if (validSummary(output) && typeof output.text === 'string') { state.detail = output; }
     render(); syncContext();
   };
-  const callTool = async (name, args) => { await bridgeReady; return extract(await request('tools/call', { name, arguments: args })); };
+  const callTool = async (name, args) => { await bridgeReady; return request('tools/call', { name, arguments: args }); };
   const runSearch = async (query) => {
     localNavigationStarted = true;
     const operation = ++state.operation;
     state.query = query.trim().slice(0, 240); state.busy = true; state.error = ''; state.detail = null; syncContext(); render();
     try {
-      const output = await callTool('search', { query: state.query });
+      const result = await callTool('search', { query: state.query });
+      const output = extract(result);
       if (operation !== state.operation) return;
-      state.results = (output.results || []).filter(validSummary).map(summary); state.searched = true;
+      state.results = (output.results || []).filter(validSummary).map(summary); state.cards = result._meta?.cards || {}; state.searched = true;
     } catch (error) { if (operation === state.operation) state.error = error.message; }
     finally { if (operation === state.operation) { state.busy = false; render(); } }
   };
@@ -148,7 +156,7 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
     const operation = ++state.operation;
     state.busy = true; state.error = ''; render();
     try {
-      const output = await callTool('fetch', { id });
+      const output = extract(await callTool('fetch', { id }));
       if (operation !== state.operation) return;
       if (!validSummary(output) || typeof output.text !== 'string') throw new Error('This resource is unavailable. Try another source.');
       state.detail = output; syncContext();

@@ -37,8 +37,16 @@ export type McpSearchResult = {
   url: string;
 };
 
+export type McpCardDisplay = {
+  title: string;
+  courseCode?: string | null;
+  labels?: string[];
+  paperCount?: number;
+};
+
 export type McpSearchOutput = {
   results: McpSearchResult[];
+  cards?: Record<string, McpCardDisplay>;
 };
 
 export type McpFetchOutput = {
@@ -52,6 +60,7 @@ export type McpFetchOutput = {
 type InternalResult = McpSearchResult & {
   _courseCode?: string | null;
   _kindRank: number;
+  _display: McpCardDisplay;
 };
 type SearchProvider = (query: string) => Promise<InternalResult[]> | InternalResult[];
 type FetchProvider = (ref: ResourceRef) => Promise<McpFetchOutput | null>;
@@ -99,7 +108,7 @@ function joinSections(sections: Array<string | null | undefined>) {
 function dedupeAndSort(
   results: InternalResult[],
   coursePaperRank: Map<string, number>,
-): McpSearchResult[] {
+): InternalResult[] {
   const byId = new Map<string, { item: InternalResult; pos: number }>();
   results.forEach((item, pos) => {
     if (!byId.has(item.id)) byId.set(item.id, { item, pos });
@@ -114,7 +123,7 @@ function dedupeAndSort(
   });
   return entries
     .slice(0, MAX_SEARCH_RESULTS)
-    .map(({ item }) => ({ id: item.id, title: item.title, url: item.url }));
+    .map(({ item }) => item);
 }
 
 async function searchCourses(query: string): Promise<InternalResult[]> {
@@ -138,6 +147,11 @@ async function searchCourses(query: string): Promise<InternalResult[]> {
       url: absoluteUrl(getCoursePastPapersPath(course.code)),
       _courseCode: course.code,
       _kindRank: KIND_RANK.course,
+      _display: {
+        title: course.title,
+        courseCode: course.code,
+        paperCount: course.paperCount,
+      },
     };
   });
 }
@@ -180,6 +194,16 @@ async function searchPastPapers(query: string): Promise<InternalResult[]> {
       url: paper.pageUrl,
       _courseCode: paper.course?.code ?? null,
       _kindRank: KIND_RANK.past_paper,
+      _display: {
+        title: paper.course?.title || stripPdfExtension(paper.title),
+        courseCode: paper.course?.code,
+        labels: [
+          paper.examTypeLabel,
+          paper.slot,
+          paper.year?.toString(),
+          paper.hasAnswerKey ? "Answer key" : null,
+        ].filter((label): label is string => Boolean(label)),
+      },
     };
   });
 }
@@ -198,6 +222,10 @@ async function searchNotes(query: string): Promise<InternalResult[]> {
     url: absoluteUrl(`/notes/${encodeURIComponent(note.id)}`),
     _courseCode: inferCourseCodeFromTitle(note.title),
     _kindRank: KIND_RANK.note,
+    _display: {
+      title: stripPdfExtension(note.title),
+      courseCode: inferCourseCodeFromTitle(note.title),
+    },
   }));
 }
 
@@ -218,6 +246,7 @@ async function searchSyllabi(query: string): Promise<InternalResult[]> {
       url: absoluteUrl(`/syllabus/${encodeURIComponent(syllabus.id)}`),
       _courseCode: parsed.courseCode ?? null,
       _kindRank: KIND_RANK.syllabus,
+      _display: { title: name, courseCode: parsed.courseCode },
     };
   });
 }
@@ -231,6 +260,7 @@ function searchVinResources(query: string): InternalResult[] {
       url: absoluteUrl(`/resources/${encodeURIComponent(course.slug)}`),
       _courseCode: null,
       _kindRank: KIND_RANK.resource,
+      _display: { title: course.displayName },
     }));
 }
 
@@ -259,8 +289,10 @@ export async function searchExamCookerResources(
   const allCourses = await searchCourseGrid(trimmedQuery);
   for (const c of allCourses) coursePaperRank.set(c.code, c.paperCount);
 
+  const sorted = dedupeAndSort(all, coursePaperRank);
   return {
-    results: dedupeAndSort(all, coursePaperRank),
+    results: sorted.map(({ id, title, url }) => ({ id, title, url })),
+    cards: Object.fromEntries(sorted.map((item) => [item.id, item._display])),
   };
 }
 
@@ -311,6 +343,7 @@ function formatVinCourse(course: VinCourse): McpFetchOutput {
     metadata: compactMetadata({
       type: "resource",
       source: "VInTogether",
+      displayTitle: course.displayName,
       moduleCount: course.counts.moduleCount,
       topicCount: course.counts.topicCount,
       videoCount: course.counts.videoCount,
@@ -421,6 +454,7 @@ async function fetchCourse(ref: ResourceRef) {
     metadata: compactMetadata({
       type: "course",
       courseCode: canonicalCode,
+      displayTitle: courseTitle,
       paperCount: courseDetail?.paperCount ?? papers.total,
       noteCount: courseDetail?.noteCount ?? notes.length,
       hasSyllabus: Boolean(syllabus),
@@ -462,6 +496,9 @@ async function fetchPastPaper(ref: ResourceRef) {
     metadata: compactMetadata({
       type: "past_paper",
       courseCode: paper.course?.code ?? null,
+      displayTitle: paper.course?.title || stripPdfExtension(paper.title),
+      examTypeLabel: paper.examTypeLabel,
+      slot: paper.slot,
       examType: paper.examType,
       year: paper.year,
       hasAnswerKey: paper.hasAnswerKey,
@@ -521,6 +558,7 @@ async function fetchSyllabus(ref: ResourceRef) {
     metadata: compactMetadata({
       type: "syllabus",
       courseCode: parsed.courseCode,
+      displayTitle: parsed.courseName ?? formatSyllabusDisplayName(syllabus.name),
       fileUrl: syllabus.fileUrl,
     }),
   };
@@ -552,6 +590,7 @@ async function fetchResource(ref: ResourceRef) {
     metadata: compactMetadata({
       type: "resource",
       courseCode: parsed.courseCode,
+      displayTitle: parsed.courseName,
       moduleCount: subject.modules.length,
     }),
   };

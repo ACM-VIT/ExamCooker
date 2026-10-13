@@ -194,9 +194,10 @@ export function createExamCookerMcpServer(
       },
     },
     async ({ query }) =>
-      withResourceErrors(async () =>
-        jsonResult(await resources.search(query), { query }),
-      ),
+      withResourceErrors(async () => {
+        const { results, cards } = await resources.search(query);
+        return jsonResult({ results }, { query, ...(cards ? { cards } : {}) });
+      }),
   );
   server.registerTool(
     "fetch",
@@ -256,16 +257,19 @@ export function createExamCookerMcpServer(
         const [search, detail] = await Promise.all([
           query !== undefined
             ? resources.search(query)
-            : Promise.resolve({ results: [] }),
+            : Promise.resolve<McpSearchOutput>({ results: [] }),
           resourceId ? resources.fetch(resourceId) : Promise.resolve(null),
         ]);
         if (resourceId && !detail) return notFound(resourceId);
-        return jsonResult({
-          view: "workspace",
-          query: query ?? "",
-          results: search.results,
-          detail,
-        });
+        return jsonResult(
+          {
+            view: "workspace",
+            query: query ?? "",
+            results: search.results,
+            detail,
+          },
+          search.cards ? { cards: search.cards } : undefined,
+        );
       }),
   );
   // The legacy metadata alias remains for older hosts.

@@ -23,12 +23,13 @@ const detail = {
   text: "# Calculus\n## Module resources\n- Limits and derivatives",
   metadata: { type: "course", paperCount: 4 },
 };
+const cards = { [source.id]: { title: "Calculus", courseCode: "BMAT101L", paperCount: 4 } };
 let searches = 0;
 const server = createExamCookerMcpServer({
   search: async (query) => {
     searches++;
     if (query === "unavailable") throw new Error("secret-database-connection");
-    return { results: query === "no matches" ? [] : [source] };
+    return { results: query === "no matches" ? [] : [source], cards };
   },
   fetch: async (id) => (id === source.id ? detail : null),
 });
@@ -100,6 +101,17 @@ describe("ExamCooker plugin protocol", () => {
       assert.equal(content.length, 1);
       assert.equal(content[0].type, "text");
       assert.deepEqual(JSON.parse(content[0].text), expected);
+    }
+  });
+
+  it("sends display titles only to the widget while retaining citation titles", async () => {
+    for (const name of ["search", "open_study_workspace"]) {
+      const result = await client.callTool({ name, arguments: { query: "Calculus" } });
+      assert.deepEqual(result._meta?.cards, cards);
+      const output = result.structuredContent as { results: typeof source[]; cards?: unknown };
+      assert.deepEqual(output.results, [source]);
+      assert.equal(output.cards, undefined);
+      assert.equal(JSON.parse((result.content as Array<{ text: string }>)[0].text).cards, undefined);
     }
   });
 
