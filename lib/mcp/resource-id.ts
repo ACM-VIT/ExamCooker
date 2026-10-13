@@ -1,4 +1,5 @@
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { getBaseUrl } from "@/lib/seo";
 
 export const resourceKinds = [
   "course",
@@ -71,6 +72,13 @@ export function parseResourceRef(value: string): ResourceRef | null {
 
   try {
     const url = new URL(trimmed);
+    const allowedOrigins = new Set([
+      "https://examcooker.acmvit.in",
+      "https://beta.examcooker.acmvit.in",
+      new URL(getBaseUrl()).origin,
+    ]);
+    if (!allowedOrigins.has(url.origin) || url.username || url.password)
+      return null;
     const fromPath = fromExamCookerPath(url.pathname);
     if (fromPath) return fromPath;
   } catch {
@@ -81,5 +89,7 @@ export function parseResourceRef(value: string): ResourceRef | null {
   }
 
   const courseCode = normalizeCourseCode(trimmed);
-  return courseCode ? { kind: "course", id: courseCode } : null;
+  return /^[A-Z]{2,6}\d{3,5}[A-Z]?$/.test(courseCode)
+    ? { kind: "course", id: courseCode }
+    : null;
 }
