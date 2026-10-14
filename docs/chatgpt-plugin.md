@@ -6,9 +6,13 @@ The implementation follows the official [Plugin Extensions](https://developers.o
 
 ## UI and capabilities
 
-The browser uses the website's Plus Jakarta Sans font, original SVG logo, blue branding, cyan/light and navy/dark palettes, and square catalog cards. Website and plugin share `app/components/common/catalog-appearance.css`. `scripts/sync-mcp-ui.mjs` embeds that exact stylesheet and the website SVG into the widget at build/dev startup. Run `pnpm mcp:sync-ui` after changing either source.
+The browser uses the website's Plus Jakarta Sans font, original SVG logo, blue branding, cyan/light and navy/dark palettes, and square catalog cards. Website and plugin share `app/components/common/catalog-appearance.css`. `scripts/sync-mcp-ui.mjs` embeds that exact stylesheet, the website SVG, and the local variable font into the widget at build/dev startup. Run `pnpm mcp:sync-ui` after changing any of those sources.
 
 The UI consists of a compact brand/search row, resource-type tabs, a results grid, and resource details with original PDF/site links. The current resource is attached to model context in supporting hosts. There is no large marketing heading or revision panel.
+
+The wordmark uses weight 700 with relaxed spacing. The bundled variable font keeps its appearance consistent when external font requests are blocked.
+
+![Widget wordmark](images/examcooker-mcp-wordmark.jpg)
 
 - **Sidebar and conversation panel:** `open_study_workspace` accepts `{}` or optional query/resourceId inputs. The name is retained as a stable tool identifier.
 - **Composer mentions:** `search_resource_mentions` returns canonical resource links. The current official docs describe mentions as a desktop capability; support depends on host and account.
@@ -69,7 +73,7 @@ Test prompts: “Open ExamCooker”, “Find BMAT101L notes and past papers”, 
 
 The existing Next.js deployment serves both MCP and embedded UI. No schema migration is needed. Configure normal database secrets on the host and set `NEXT_PUBLIC_BASE_URL` to the public origin so citations, UI metadata, and icons agree.
 
-The UI resource cache key is `ui://examcooker/resource-browser/v5.html`. Bump it for component contract changes. Cards use normal sans-serif labels and the website display titles; past papers show the course name with separate exam, slot, and year badges. Search returns these presentation fields in widget-only `_meta.cards`, retaining the standard citation results. The mixed search remains capped at 20 results; `_meta.filterResults` retains the complete per-type matches so a type tab does not hide matches excluded from the mixed list. The CSP allows only the Google font stylesheet/font origins for resources, with no external API connections; tool calls go through the host bridge.
+The UI resource cache key is `ui://examcooker/resource-browser/v6.html`. Bump it for component contract changes. Cards use normal sans-serif labels and the website display titles; past papers show the course name with separate exam, slot, and year badges. Search returns these presentation fields in widget-only `_meta.cards`, retaining the standard citation results. The mixed search remains capped at 20 results; `_meta.filterResults` retains the complete per-type matches so a type tab does not hide matches excluded from the mixed list. The font is embedded in the HTML, so the CSP needs no external resource or API domains; tool calls go through the host bridge.
 
 For local ChatGPT desktop packaging, register the MCP connection first. If the host requires a registered app mapping, add `.app.json` with the actual `plugin_asdk_app...` technical id and declare it under `extensions.com.openai.apps`; do not invent an id. Follow the official packaging guide for local/repo marketplace setup.
 

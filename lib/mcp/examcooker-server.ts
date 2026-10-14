@@ -161,10 +161,7 @@ export function createExamCookerMcpServer(
               prefersBorder: true,
               csp: {
                 connectDomains: [],
-                resourceDomains: [
-                  "https://fonts.googleapis.com",
-                  "https://fonts.gstatic.com",
-                ],
+                resourceDomains: [],
               },
             },
             "openai/ui": { availableDisplayModes: ["inline", "fullscreen"] },

@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { Script } from "node:vm";
 import { readFileSync } from "node:fs";
-import { EXAMCOOKER_CATALOG_CSS } from "./generated/website-appearance";
+import {
+  EXAMCOOKER_CATALOG_CSS,
+  EXAMCOOKER_FONT_CSS,
+} from "./generated/website-appearance";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import { NextRequest } from "next/server";
@@ -165,7 +168,7 @@ describe("ExamCooker plugin protocol", () => {
     }
   });
 
-  it("serves versioned UI with a CSP limited to the website font providers", async () => {
+  it("serves versioned UI without external resource or connection permissions", async () => {
     const result = await client.readResource({ uri: EXAMCOOKER_WIDGET_URI });
     const content = result.contents[0];
     assert.equal(content.mimeType, "text/html;profile=mcp-app");
@@ -175,23 +178,28 @@ describe("ExamCooker plugin protocol", () => {
       content._meta?.ui && (content._meta.ui as { csp: unknown }).csp,
       {
         connectDomains: [],
-        resourceDomains: [
-          "https://fonts.googleapis.com",
-          "https://fonts.gstatic.com",
-        ],
+        resourceDomains: [],
       },
     );
     assert.doesNotThrow(() => new Script(EXAMCOOKER_WIDGET_SCRIPT));
     assert.ok(!EXAMCOOKER_WIDGET_HTML.includes('src="https://'));
   });
 
-  it("embeds the exact stylesheet shared with the website catalog", () => {
+  it("embeds the website stylesheet and font without a network dependency", () => {
     const shared = readFileSync(
       "app/components/common/catalog-appearance.css",
       "utf8",
     );
     assert.equal(EXAMCOOKER_CATALOG_CSS, shared);
     assert.ok(EXAMCOOKER_WIDGET_HTML.includes(shared));
+    const encodedFont = EXAMCOOKER_FONT_CSS.match(/base64,([^)]*)/);
+    assert.ok(encodedFont);
+    assert.deepEqual(
+      Buffer.from(encodedFont[1], "base64"),
+      readFileSync("public/assets/fonts/plus-jakarta-sans-bold.woff2"),
+    );
+    assert.ok(EXAMCOOKER_WIDGET_HTML.includes(EXAMCOOKER_FONT_CSS));
+    assert.ok(!EXAMCOOKER_WIDGET_HTML.includes("fonts.googleapis.com"));
   });
 });
 
