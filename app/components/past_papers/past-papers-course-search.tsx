@@ -341,7 +341,7 @@ export default function PastPapersCourseSearch({
 
     return (
         <div className="relative w-full text-left">
-            <div className="relative flex h-12 w-full items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]">
+            <div className="ec-catalog-search">
                 <Image src={SearchIcon} alt="search" className="dark:invert-[.835]" />
                 {nativeSearchAvailable ? (
                     <button

@@ -1,5 +1,5 @@
 diff --git a/dist/api/durable-objects/queue.js b/dist/api/durable-objects/queue.js
-index 9042330e64bd617058d75514315c08e11ef35d79..a1b7803ccd8754828ac2c229ee631747a96b1b69 100644
+index 9042330..a1b7803 100644
 --- a/dist/api/durable-objects/queue.js
 +++ b/dist/api/durable-objects/queue.js
 @@ -94,7 +94,12 @@ export class DOQueueHandler extends DurableObject {
@@ -16,8 +16,90 @@ index 9042330e64bd617058d75514315c08e11ef35d79..a1b7803ccd8754828ac2c229ee631747
                  this.routeInFailedState.delete(msg.MessageDeduplicationId);
                  throw new FatalError(`The revalidation for ${host}${url} cannot be done. This error should never happen.`);
              }
+diff --git a/dist/api/durable-objects/sharded-tag-cache.js b/dist/api/durable-objects/sharded-tag-cache.js
+index 80795f3..868f0c3 100644
+--- a/dist/api/durable-objects/sharded-tag-cache.js
++++ b/dist/api/durable-objects/sharded-tag-cache.js
+@@ -11,15 +11,20 @@ export class DOShardedTagCache extends DurableObject {
+             //   revalidatedAt - Timestamp (ms) when the tag was last revalidated.
+             //   stale         - Timestamp (ms) when the cached entry becomes stale. Added in v1.19.
+             //   expire        - Timestamp (ms) when the cached entry expires. NULL means no expire. Added in v1.19.
+-            this.sql.exec(`CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER, stale INTEGER, expire INTEGER DEFAULT NULL)`);
+-            // Schema migration: Add `stale` and `expire` columns for existing DO - those have been introduced to support SWR in v1.19
+-            try {
+-                // SQLite does not support adding multiple columns in a single ALTER TABLE statement.
+-                this.sql.exec(`ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER DEFAULT NULL`);
++            const columns = this.sql.exec("PRAGMA table_info(revalidations)").toArray();
++            if (columns.length === 0) {
++                this.sql.exec(`CREATE TABLE revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER, stale INTEGER, expire INTEGER DEFAULT NULL)`);
+             }
+-            catch {
+-                // The ALTER TABLE statement fails if the columns already exist.
+-                // It only means the DO has already been migrated.
++            else {
++                // An initialized shard only needs a read on wake-up. Avoid DDL
++                // and its storage write gate on every new object instance.
++                const names = new Set(columns.map((column) => column.name));
++                if (!names.has("stale")) {
++                    this.sql.exec(`ALTER TABLE revalidations ADD COLUMN stale INTEGER`);
++                }
++                if (!names.has("expire")) {
++                    this.sql.exec(`ALTER TABLE revalidations ADD COLUMN expire INTEGER DEFAULT NULL`);
++                }
+             }
+         });
+     }
+diff --git a/dist/api/overrides/incremental-cache/r2-encoding.js b/dist/api/overrides/incremental-cache/r2-encoding.js
+new file mode 100644
+index 0000000..4c52a5a
+--- /dev/null
++++ b/dist/api/overrides/incremental-cache/r2-encoding.js
+@@ -0,0 +1,12 @@
++// Storage encoding only: cache keys, timestamps and tags remain unchanged.
++export async function encodeR2CacheEntry(value) {
++    const body = await new Response(value).arrayBuffer();
++    if (body.byteLength < 32 * 1024) return { body };
++    const compressed = await new Response(new Blob([body]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
++    if (compressed.byteLength >= body.byteLength) return { body };
++    return { body: compressed, options: { customMetadata: { ecEncoding: "gzip-v1" } } };
++}
++export async function decodeR2CacheEntry(object) {
++    if (object.customMetadata?.ecEncoding !== "gzip-v1") return object.json();
++    return new Response(object.body.pipeThrough(new DecompressionStream("gzip"))).json();
++}
+diff --git a/dist/api/overrides/incremental-cache/r2-incremental-cache.js b/dist/api/overrides/incremental-cache/r2-incremental-cache.js
+index f11097c..59b44c0 100644
+--- a/dist/api/overrides/incremental-cache/r2-incremental-cache.js
++++ b/dist/api/overrides/incremental-cache/r2-incremental-cache.js
+@@ -2,6 +2,7 @@ import { error } from "@opennextjs/aws/adapters/logger.js";
+ import { IgnorableError } from "@opennextjs/aws/utils/error.js";
+ import { getCloudflareContext } from "../../cloudflare-context.js";
+ import { computeCacheKey, debugCache } from "../internal.js";
++import { encodeR2CacheEntry, decodeR2CacheEntry } from "./r2-encoding.js";
+ export const NAME = "cf-r2-incremental-cache";
+ export const BINDING_NAME = "NEXT_INC_CACHE_R2_BUCKET";
+ export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_R2_PREFIX";
+@@ -24,7 +25,7 @@ class R2IncrementalCache {
+             if (!r2Object)
+                 return null;
+             return {
+-                value: await r2Object.json(),
++                value: await decodeR2CacheEntry(r2Object),
+                 lastModified: r2Object.uploaded.getTime(),
+             };
+         }
+@@ -39,7 +40,8 @@ class R2IncrementalCache {
+             throw new IgnorableError("No R2 bucket");
+         debugCache("R2IncrementalCache", `set ${key}`);
+         try {
+-            await r2.put(this.getR2Key(key, cacheType), JSON.stringify(value));
++            const encoded = await encodeR2CacheEntry(JSON.stringify(value));
++            await r2.put(this.getR2Key(key, cacheType), encoded.body, encoded.options);
+         }
+         catch (e) {
+             error("Failed to set to cache", e);
 diff --git a/dist/cli/build/build.js b/dist/cli/build/build.js
-index ff65e677da64fc73cb245ac83aad102afd5fb9ea..8ff4e98a45a87e97fd488602ecdcafd9a41d8b4f 100644
+index ff65e67..8ff4e98 100644
 --- a/dist/cli/build/build.js
 +++ b/dist/cli/build/build.js
 @@ -16,6 +16,7 @@ import { compileInit } from "./open-next/compile-init.js";
@@ -37,7 +119,7 @@ index ff65e677da64fc73cb245ac83aad102afd5fb9ea..8ff4e98a45a87e97fd488602ecdcafd9
          await bundleNodeMiddleware(options);
      }
 diff --git a/dist/cli/build/bundle-server.js b/dist/cli/build/bundle-server.js
-index f59e677181f1d0007993e36e05901f1f012689f9..4983bb09a10e07ca968fbc3ce21a1707356209d1 100644
+index 61db775..3e053ed 100644
 --- a/dist/cli/build/bundle-server.js
 +++ b/dist/cli/build/bundle-server.js
 @@ -10,6 +10,7 @@ import { getOpenNextConfig } from "../../api/config.js";
@@ -86,9 +168,10 @@ index f59e677181f1d0007993e36e05901f1f012689f9..4983bb09a10e07ca968fbc3ce21a1707
              inlineLoadManifest(updater, buildOpts),
 diff --git a/dist/cli/build/patches/plugins/cache-components.js b/dist/cli/build/patches/plugins/cache-components.js
 new file mode 100644
+index 0000000..9e338e8
 --- /dev/null
 +++ b/dist/cli/build/patches/plugins/cache-components.js
-@@ -0,0 +1,345 @@
+@@ -0,0 +1,350 @@
 +import { existsSync, readFileSync, writeFileSync } from "node:fs";
 +import path from "node:path";
 +import { loadConfig } from "@opennextjs/aws/adapters/config/util.js";
@@ -149,7 +232,7 @@ new file mode 100644
 +        filter: cacheComponentsSchedulerFileFilter,
 +        contentFilter: /joining pending cross-request invocation/,
 +        callback: async ({ contents, path: runtimePath }) => {
-+            const patched = patchCode(contents, "\nrule:\n  pattern:\n    selector: variable_declarator\n    context: \"let $SKIP = $PRIVATE && !0;\"\n  inside:\n    kind: function_declaration\n    has:\n      regex: joining pending cross-request invocation\n      stopBy: end\n    stopBy: end\nfix: \"$SKIP = true\"\n");
++            const patched = patchCode(contents, "\nrule:\n  pattern:\n    selector: variable_declarator\n    context: \"let $SKIP = $PRIVATE && !0 || $STORE.isDraftMode;\"\n  inside:\n    kind: function_declaration\n    has:\n      regex: joining pending cross-request invocation\n      stopBy: end\n    stopBy: end\nfix: \"$SKIP = true\"\n");
 +            if (patched === contents) throw new Error("Failed to isolate cache fills in " + runtimePath);
 +            applied["request-owned cache fills"] = true;
 +            return patched;
@@ -282,7 +365,7 @@ new file mode 100644
 +rule:
 +  pattern:
 +    selector: function_declaration
-+    context: "function $FUNCTION() { if (!$SIGNAL) { $SIGNAL = new $CTOR(); } return $SIGNAL; }"
++    context: "function $FUNCTION() { if (!$SIGNAL) { $SIGNAL = new $CTOR($$$CTOR_ARGS); } return $SIGNAL; }"
 +fix: |-
 +  function $FUNCTION() {
 +    if (!$SIGNAL) {
@@ -296,7 +379,7 @@ new file mode 100644
 +    const requestScope = globalThis[Symbol.for("__cloudflare-context__")] ?? globalThis;
 +    let requestModuleLoadingSignal = $SIGNAL.requestSignals.get(requestScope);
 +    if (!requestModuleLoadingSignal) {
-+      requestModuleLoadingSignal = new $CTOR();
++      requestModuleLoadingSignal = new $CTOR($$$CTOR_ARGS);
 +      const trackedModuleLoads = new Set();
 +
 +      requestModuleLoadingSignal.__openNextModuleLoadingRegistry = $SIGNAL;
@@ -431,12 +514,17 @@ new file mode 100644
 + */
 +export function patchResumeDataCache(contents, runtimePath) {
 +    const patched = patchCode(contents, "\nrule:\n  pattern:\n    selector: variable_declarator\n    context: \"let $CACHE = $FACTORY();\"\n  inside:\n    kind: lexical_declaration\n    precedes:\n      pattern: \"$STORE.resumeDataCache = $CACHE;\"\nfix: $CACHE = $FACTORY($STORE.resumeDataCache)\n");
-+    if (patched === contents) throw new Error("Failed to preserve the resume cache in " + runtimePath);
++    if (patched === contents) {
++        // Next 16.4 now copies the existing resume cache itself. Fail closed if
++        // neither the old patch target nor the upstream fix can be verified.
++        const seeded = /\blet\s+([$\w]+)\s*=\s*[$\w]+\(\s*([$\w]+)\.resumeDataCache\s*\?\?\s*void 0\s*\)\s*;\s*\2\.resumeDataCache\s*=\s*\1\s*;/;
++        if (!seeded.test(contents)) throw new Error("Failed to preserve the resume cache in " + runtimePath);
++    }
 +    return patched;
 +}
 diff --git a/dist/cli/templates/cache-components-scheduler.js b/dist/cli/templates/cache-components-scheduler.js
 new file mode 100644
-index 0000000000000000000000000000000000000000..703c2fb001c60d16bbebba80f0144a978084e803
+index 0000000..703c2fb
 --- /dev/null
 +++ b/dist/cli/templates/cache-components-scheduler.js
 @@ -0,0 +1,214 @@
@@ -654,69 +742,8 @@ index 0000000000000000000000000000000000000000..703c2fb001c60d16bbebba80f0144a97
 +        void previousRun.then(() => schedule(enterStage));
 +    });
 +}
-diff --git a/dist/api/durable-objects/sharded-tag-cache.js b/dist/api/durable-objects/sharded-tag-cache.js
---- a/dist/api/durable-objects/sharded-tag-cache.js
-+++ b/dist/api/durable-objects/sharded-tag-cache.js
-@@ -11,15 +11,20 @@
-             //   revalidatedAt - Timestamp (ms) when the tag was last revalidated.
-             //   stale         - Timestamp (ms) when the cached entry becomes stale. Added in v1.19.
-             //   expire        - Timestamp (ms) when the cached entry expires. NULL means no expire. Added in v1.19.
--            this.sql.exec(`CREATE TABLE IF NOT EXISTS revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER, stale INTEGER, expire INTEGER DEFAULT NULL)`);
--            // Schema migration: Add `stale` and `expire` columns for existing DO - those have been introduced to support SWR in v1.19
--            try {
--                // SQLite does not support adding multiple columns in a single ALTER TABLE statement.
--                this.sql.exec(`ALTER TABLE revalidations ADD COLUMN stale INTEGER; ALTER TABLE revalidations ADD COLUMN expire INTEGER DEFAULT NULL`);
-+            const columns = this.sql.exec("PRAGMA table_info(revalidations)").toArray();
-+            if (columns.length === 0) {
-+                this.sql.exec(`CREATE TABLE revalidations (tag TEXT PRIMARY KEY, revalidatedAt INTEGER, stale INTEGER, expire INTEGER DEFAULT NULL)`);
-             }
--            catch {
--                // The ALTER TABLE statement fails if the columns already exist.
--                // It only means the DO has already been migrated.
-+            else {
-+                // An initialized shard only needs a read on wake-up. Avoid DDL
-+                // and its storage write gate on every new object instance.
-+                const names = new Set(columns.map((column) => column.name));
-+                if (!names.has("stale")) {
-+                    this.sql.exec(`ALTER TABLE revalidations ADD COLUMN stale INTEGER`);
-+                }
-+                if (!names.has("expire")) {
-+                    this.sql.exec(`ALTER TABLE revalidations ADD COLUMN expire INTEGER DEFAULT NULL`);
-+                }
-             }
-         });
-     }
-diff --git a/dist/api/overrides/incremental-cache/r2-incremental-cache.js b/dist/api/overrides/incremental-cache/r2-incremental-cache.js
---- a/dist/api/overrides/incremental-cache/r2-incremental-cache.js
-+++ b/dist/api/overrides/incremental-cache/r2-incremental-cache.js
-@@ -2,6 +2,7 @@
- import { IgnorableError } from "@opennextjs/aws/utils/error.js";
- import { getCloudflareContext } from "../../cloudflare-context.js";
- import { computeCacheKey, debugCache } from "../internal.js";
-+import { encodeR2CacheEntry, decodeR2CacheEntry } from "./r2-encoding.js";
- export const NAME = "cf-r2-incremental-cache";
- export const BINDING_NAME = "NEXT_INC_CACHE_R2_BUCKET";
- export const PREFIX_ENV_NAME = "NEXT_INC_CACHE_R2_PREFIX";
-@@ -24,7 +25,7 @@
-             if (!r2Object)
-                 return null;
-             return {
--                value: await r2Object.json(),
-+                value: await decodeR2CacheEntry(r2Object),
-                 lastModified: r2Object.uploaded.getTime(),
-             };
-         }
-@@ -39,7 +40,8 @@
-             throw new IgnorableError("No R2 bucket");
-         debugCache("R2IncrementalCache", `set ${key}`);
-         try {
--            await r2.put(this.getR2Key(key, cacheType), JSON.stringify(value));
-+            const encoded = await encodeR2CacheEntry(JSON.stringify(value));
-+            await r2.put(this.getR2Key(key, cacheType), encoded.body, encoded.options);
-         }
-         catch (e) {
-             error("Failed to set to cache", e);
 diff --git a/dist/cli/workers/r2-cache.js b/dist/cli/workers/r2-cache.js
+index a95f403..4c64dd5 100644
 --- a/dist/cli/workers/r2-cache.js
 +++ b/dist/cli/workers/r2-cache.js
 @@ -10,6 +10,7 @@
@@ -727,7 +754,7 @@ diff --git a/dist/cli/workers/r2-cache.js b/dist/cli/workers/r2-cache.js
  import { ERR_BINDING_NOT_FOUND, ERR_INVALID_REQUEST, ERR_WRITE_FAILED, } from "./r2-cache-types.js";
  /**
   * Worker fetch handler.
-@@ -46,7 +47,8 @@
+@@ -46,7 +47,8 @@ export default {
              }, { status: 400 });
          }
          try {
@@ -737,20 +764,3 @@ diff --git a/dist/cli/workers/r2-cache.js b/dist/cli/workers/r2-cache.js
              return Response.json({ success: true }, { status: 200 });
          }
          catch (e) {
-diff --git a/dist/api/overrides/incremental-cache/r2-encoding.js b/dist/api/overrides/incremental-cache/r2-encoding.js
-new file mode 100644
---- /dev/null
-+++ b/dist/api/overrides/incremental-cache/r2-encoding.js
-@@ -0,0 +1,12 @@
-+// Storage encoding only: cache keys, timestamps and tags remain unchanged.
-+export async function encodeR2CacheEntry(value) {
-+    const body = await new Response(value).arrayBuffer();
-+    if (body.byteLength < 32 * 1024) return { body };
-+    const compressed = await new Response(new Blob([body]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
-+    if (compressed.byteLength >= body.byteLength) return { body };
-+    return { body: compressed, options: { customMetadata: { ecEncoding: "gzip-v1" } } };
-+}
-+export async function decodeR2CacheEntry(object) {
-+    if (object.customMetadata?.ecEncoding !== "gzip-v1") return object.json();
-+    return new Response(object.body.pipeThrough(new DecompressionStream("gzip"))).json();
-+}

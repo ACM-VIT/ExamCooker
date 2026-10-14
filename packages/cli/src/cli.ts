@@ -307,12 +307,12 @@ function exitWithCancel(message = "Canceled."): never {
   process.exit(0);
 }
 
-function unwrapPrompt<T>(value: T | symbol, message?: string): T {
+function unwrapPrompt<T>(value: T, message?: string): Exclude<T, symbol> {
   if (p.isCancel(value)) {
     exitWithCancel(message);
   }
 
-  return value as T;
+  return value as Exclude<T, symbol>;
 }
 
 function pluralize(word: string, count: number) {

@@ -1,86 +1,153 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import {
   registerAppResource,
   registerAppTool,
   RESOURCE_MIME_TYPE,
 } from "@modelcontextprotocol/ext-apps/server";
+import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import {
-  fetchExamCookerResource,
-  searchExamCookerResources,
+import type {
+  McpFetchOutput,
+  McpSearchOutput,
 } from "@/lib/mcp/examcooker-resources";
 import {
   EXAMCOOKER_WIDGET_HTML,
   EXAMCOOKER_WIDGET_URI,
 } from "@/lib/mcp/examcooker-widget";
+import { logMcpError } from "./error-logging";
+import { absoluteUrl, getBaseUrl } from "@/lib/seo";
 
-const WIDGET_DOMAIN = "https://examcooker.acmvit.in";
-
-const WIDGET_UI_META = {
-  domain: WIDGET_DOMAIN,
-  prefersBorder: true,
-  csp: {
-    connectDomains: [] as string[],
-    resourceDomains: [
-      "https://fonts.googleapis.com",
-      "https://fonts.gstatic.com",
-    ] as string[],
-  },
-} as const;
-
-const ToolAnnotations = {
+// Lazy data loading lets discovery and the empty workspace start without a
+// database connection. The injectable boundary also permits protocol tests.
+export type ExamCookerResources = {
+  search: (query: string) => Promise<McpSearchOutput>;
+  fetch: (id: string) => Promise<McpFetchOutput | null>;
+};
+const defaultResources: ExamCookerResources = {
+  search: async (query) =>
+    (await import("./examcooker-resources")).searchExamCookerResources(query),
+  fetch: async (id) =>
+    (await import("./examcooker-resources")).fetchExamCookerResource(id),
+};
+const annotations = {
   readOnlyHint: true,
   openWorldHint: false,
   destructiveHint: false,
   idempotentHint: true,
 } as const;
-
-const SearchResultSchema = z.object({
+const searchSchema = z.object({
   id: z.string(),
   title: z.string(),
-  url: z.string().url(),
+  url: z.url(),
 });
-
-const SearchOutputSchema = {
-  results: z.array(SearchResultSchema),
-};
-
-const FetchOutputSchema = {
+const fetchSchema = z.object({
   id: z.string(),
   title: z.string(),
   text: z.string(),
-  url: z.string().url(),
+  url: z.url(),
   metadata: z
     .record(
       z.string(),
       z.union([z.string(), z.number(), z.boolean(), z.null()]),
     )
     .optional(),
-};
+});
+const querySchema = z
+  .string()
+  .trim()
+  .max(240)
+  .describe(
+    "Course code, subject, exam type, year, or resource keyword; empty lists popular courses.",
+  );
+const idSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .describe(
+    "A stable id returned by search, course code, or canonical ExamCooker URL.",
+  );
 
-export function createExamCookerMcpServer() {
+function jsonResult(
+  output: Record<string, unknown>,
+  meta?: Record<string, unknown>,
+): CallToolResult {
+  return {
+    structuredContent: output,
+    content: [{ type: "text", text: JSON.stringify(output) }],
+    ...(meta ? { _meta: meta } : {}),
+  };
+}
+function notFound(id: string): CallToolResult {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          id,
+          error:
+            "No public ExamCooker resource was found for this id. Search again for a valid resource.",
+        }),
+      },
+    ],
+  };
+}
+async function withResourceErrors(
+  action: () => Promise<CallToolResult>,
+): Promise<CallToolResult> {
+  try {
+    return await action();
+  } catch (error) {
+    logMcpError("ExamCooker MCP resource request failed", error);
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "ExamCooker could not load these resources. Please retry shortly.",
+        },
+      ],
+    };
+  }
+}
+
+export function createExamCookerMcpServer(
+  resources: ExamCookerResources = defaultResources,
+) {
+  const icons = [
+    {
+      src: absoluteUrl("/examcooker-plugin.svg"),
+      mimeType: "image/svg+xml",
+      sizes: ["any"],
+    },
+  ];
   const server = new McpServer(
     {
       name: "examcooker",
       title: "ExamCooker",
-      version: "0.1.0",
-      websiteUrl: WIDGET_DOMAIN,
+      version: "0.3.0",
+      websiteUrl: getBaseUrl(),
+      icons,
       description:
-        "Read-only access to ExamCooker courses, notes, past papers, syllabi, and module resources.",
+        "Search and browse VIT courses, past papers, notes, syllabi, and resources.",
     },
     {
+      capabilities: {
+        extensions: {
+          "openai/mentions": { searchTool: "search_resource_mentions" },
+        },
+      },
       instructions:
-        "Use search to find public ExamCooker study resources, then use fetch with an id or ExamCooker URL to retrieve the selected resource. Do not expect authentication or private user data.",
+        "Search public ExamCooker resources, then fetch stable ids for source details and citations. Use open_study_workspace when the user wants to browse or collect resources visually. PDF links and catalog metadata are not extracted PDF contents: do not claim to have read a PDF or invent its questions. The resource currently open in the browser can be attached to model context. No private account access or uploads are available.",
     },
   );
-
   registerAppResource(
     server,
-    "ExamCooker widget",
+    "ExamCooker resource browser",
     EXAMCOOKER_WIDGET_URI,
     {
-      description:
-        "Renders ExamCooker search results and resource detail cards inside ChatGPT.",
+      description: "Search, filter and inspect ExamCooker study resources.",
     },
     async () => ({
       contents: [
@@ -89,105 +156,166 @@ export function createExamCookerMcpServer() {
           mimeType: RESOURCE_MIME_TYPE,
           text: EXAMCOOKER_WIDGET_HTML,
           _meta: {
-            ui: WIDGET_UI_META,
+            ui: {
+              domain: getBaseUrl(),
+              prefersBorder: true,
+              csp: {
+                connectDomains: [],
+                resourceDomains: [],
+              },
+            },
+            "openai/ui": { availableDisplayModes: ["inline", "fullscreen"] },
             "openai/widgetDescription":
-              "Shows ExamCooker search results or a selected resource (course, past paper, note, or syllabus) with a link out to ExamCooker.",
+              "Compact ExamCooker resource browser with course search, resource-type filters, and source details. Open a resource to attach its source to the conversation.",
           },
         },
       ],
     }),
   );
 
-  registerAppTool(
-    server,
+  // Data tools don't remount the workspace; knowledge clients keep the standard contract.
+  server.registerTool(
     "search",
     {
       title: "Search ExamCooker",
       description:
-        "Search the public ExamCooker catalog for courses, notes, past papers, syllabi, and module resources by course code, subject, exam type, year, or keyword. Returns a ranked list of matching resources with stable ids and canonical ExamCooker URLs.",
-      inputSchema: {
-        query: z
-          .string()
-          .trim()
-          .max(240)
-          .describe("Search terms such as a course code, subject, exam type, year, or resource keyword."),
-      },
-      outputSchema: SearchOutputSchema,
-      annotations: ToolAnnotations,
+        "Use this when the user wants VIT courses, notes, past papers, syllabi, or module resources. Search by course code, subject, exam type, year, or keyword. Returns stable ids and citation URLs; fetch selected ids for details.",
+      inputSchema: z.object({ query: querySchema }),
+      outputSchema: z.object({ results: z.array(searchSchema) }),
+      annotations,
       _meta: {
-        ui: { resourceUri: EXAMCOOKER_WIDGET_URI },
-        "openai/outputTemplate": EXAMCOOKER_WIDGET_URI,
+        ui: { visibility: ["model", "app"] },
+        securitySchemes: [{ type: "noauth" }],
         "openai/toolInvocation/invoking": "Searching ExamCooker",
-        "openai/toolInvocation/invoked": "Found ExamCooker resources",
+        "openai/toolInvocation/invoked": "Resources found",
       },
     },
-    async ({ query }) => {
-      const output = await searchExamCookerResources(query);
-      return {
-        structuredContent: output,
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(output),
-          },
-        ],
-      };
-    },
+    async ({ query }) =>
+      withResourceErrors(async () => {
+        const { results, cards, filterResults } = await resources.search(query);
+        return jsonResult({ results }, {
+          query,
+          ...(cards ? { cards } : {}),
+          ...(filterResults ? { filterResults } : {}),
+        });
+      }),
   );
-
-  registerAppTool(
-    server,
+  server.registerTool(
     "fetch",
     {
-      title: "Fetch ExamCooker Resource",
+      title: "Fetch ExamCooker resource",
       description:
-        "Fetch the full details of a single public ExamCooker resource (course, past paper, note, syllabus, or module resource). Accepts a search-result id, a course code, or a canonical ExamCooker URL.",
-      inputSchema: {
-        id: z
-          .string()
-          .trim()
-          .min(1)
-          .max(500)
-          .describe("A search result id, course code, or ExamCooker resource URL."),
-      },
-      outputSchema: FetchOutputSchema,
-      annotations: ToolAnnotations,
+        "Use this when the user wants details or a citation for a public ExamCooker resource found by search. Accepts a result id, course code, or canonical ExamCooker URL. Returns catalog text and PDF links, not extracted PDF contents.",
+      inputSchema: z.object({ id: idSchema }),
+      outputSchema: fetchSchema,
+      annotations,
       _meta: {
-        ui: { resourceUri: EXAMCOOKER_WIDGET_URI },
-        "openai/outputTemplate": EXAMCOOKER_WIDGET_URI,
-        "openai/toolInvocation/invoking": "Fetching ExamCooker resource",
-        "openai/toolInvocation/invoked": "Fetched ExamCooker resource",
+        ui: { visibility: ["model", "app"] },
+        securitySchemes: [{ type: "noauth" }],
+        "openai/toolInvocation/invoking": "Loading resource",
+        "openai/toolInvocation/invoked": "Resource loaded",
       },
     },
-    async ({ id }) => {
-      const output = await fetchExamCookerResource(id);
-
-      if (!output) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                id,
-                error: "No public ExamCooker resource was found for this id.",
-              }),
-            },
-          ],
-        };
-      }
-
-      return {
-        structuredContent: output,
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(output),
-          },
-        ],
-      };
-    },
+    async ({ id }) =>
+      withResourceErrors(async () => {
+        const output = await resources.fetch(id);
+        return output ? jsonResult(output) : notFound(id);
+      }),
   );
-
+  registerAppTool(
+    server,
+    "open_study_workspace",
+    {
+      // This SDK version uses serverInfo.icons as the entrypoint icon fallback.
+      title: "ExamCooker",
+      description:
+        "Use this when the user wants to browse ExamCooker visually or open a study resource. Opens the compact resource browser. Optionally pass a search query or a resourceId already found by search; no prerequisites for an empty workspace.",
+      inputSchema: z.object({
+        query: querySchema.optional(),
+        resourceId: idSchema.optional(),
+      }),
+      outputSchema: z.object({
+        view: z.literal("workspace"),
+        query: z.string(),
+        results: z.array(searchSchema),
+        detail: fetchSchema.nullable(),
+      }),
+      annotations,
+      _meta: {
+        ui: {
+          resourceUri: EXAMCOOKER_WIDGET_URI,
+          visibility: ["model", "app"],
+        },
+        "openai/outputTemplate": EXAMCOOKER_WIDGET_URI,
+        "openai/ui": { entrypoints: [{ type: "global" }, { type: "thread" }] },
+        securitySchemes: [{ type: "noauth" }],
+        "openai/toolInvocation/invoking": "Opening ExamCooker",
+        "openai/toolInvocation/invoked": "ExamCooker ready",
+      },
+    },
+    async ({ query, resourceId }) =>
+      withResourceErrors(async () => {
+        const [search, detail] = await Promise.all([
+          query !== undefined
+            ? resources.search(query)
+            : Promise.resolve<McpSearchOutput>({ results: [] }),
+          resourceId ? resources.fetch(resourceId) : Promise.resolve(null),
+        ]);
+        if (resourceId && !detail) return notFound(resourceId);
+        return jsonResult(
+          {
+            view: "workspace",
+            query: query ?? "",
+            results: search.results,
+            detail,
+          },
+          {
+            ...(search.cards ? { cards: search.cards } : {}),
+            ...(search.filterResults ? { filterResults: search.filterResults } : {}),
+          },
+        );
+      }),
+  );
+  // The legacy metadata alias remains for older hosts.
+  server.registerTool(
+    "search_resource_mentions",
+    {
+      title: "Mention an ExamCooker resource",
+      description:
+        "Use this when the composer needs ExamCooker resource suggestions for an at-mention.",
+      inputSchema: z.object({ query: querySchema }),
+      outputSchema: z.object({
+        items: z.array(
+          z.object({
+            type: z.literal("resource_link"),
+            uri: z.string(),
+            name: z.string(),
+            description: z.string(),
+          }),
+        ),
+      }),
+      annotations,
+      _meta: {
+        ui: { visibility: ["app"] },
+        "openai/extensions": { "mentions/search": {} },
+        securitySchemes: [{ type: "noauth" }],
+      },
+    },
+    async ({ query }) =>
+      withResourceErrors(async () => {
+        const output = await resources.search(query);
+        return {
+          content: [],
+          structuredContent: {
+            items: output.results.slice(0, 10).map((item) => ({
+              type: "resource_link",
+              uri: item.url,
+              name: item.title,
+              description: `Public ExamCooker resource. Use fetch with id ${item.id} for details.`,
+            })),
+          },
+        };
+      }),
+  );
   return server;
 }

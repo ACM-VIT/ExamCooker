@@ -80,6 +80,7 @@ mobile/android/keystores/examcooker-upload.jks
 .deepsec
 .wrangler
 .pnpm-store/
+/mobile/android/.kotlin/
 
 # Cloudflare build output and local secrets
 .open-next/
