@@ -1,7 +1,7 @@
 import { EXAMCOOKER_WIDGET_SCRIPT } from "./examcooker-widget-script";
 import { EXAMCOOKER_CATALOG_CSS } from "./generated/website-appearance";
 
-export const EXAMCOOKER_WIDGET_URI = "ui://examcooker/resource-browser/v4.html";
+export const EXAMCOOKER_WIDGET_URI = "ui://examcooker/resource-browser/v5.html";
 
 export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

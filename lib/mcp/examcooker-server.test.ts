@@ -4,6 +4,7 @@ import { Script } from "node:vm";
 import { readFileSync } from "node:fs";
 import { EXAMCOOKER_CATALOG_CSS } from "./generated/website-appearance";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import { NextRequest } from "next/server";
 import { POST, OPTIONS } from "@/app/mcp/route";
 import { createExamCookerMcpServer } from "./examcooker-server";
@@ -24,12 +25,13 @@ const detail = {
   metadata: { type: "course", paperCount: 4 },
 };
 const cards = { [source.id]: { title: "Calculus", courseCode: "BMAT101L", paperCount: 4 } };
+const filterResults = [source, { id: "resource:extra", title: "Extra module resources", url: "https://examcooker.acmvit.in/resources/extra" }];
 let searches = 0;
 const server = createExamCookerMcpServer({
   search: async (query) => {
     searches++;
     if (query === "unavailable") throw new Error("secret-database-connection");
-    return { results: query === "no matches" ? [] : [source], cards };
+    return { results: query === "no matches" ? [] : [source], cards, filterResults };
   },
   fetch: async (id) => (id === source.id ? detail : null),
 });
@@ -108,9 +110,11 @@ describe("ExamCooker plugin protocol", () => {
     for (const name of ["search", "open_study_workspace"]) {
       const result = await client.callTool({ name, arguments: { query: "Calculus" } });
       assert.deepEqual(result._meta?.cards, cards);
+      assert.deepEqual(result._meta?.filterResults, filterResults);
       const output = result.structuredContent as { results: typeof source[]; cards?: unknown };
       assert.deepEqual(output.results, [source]);
       assert.equal(output.cards, undefined);
+      assert.equal("filterResults" in output, false);
       assert.equal(JSON.parse((result.content as Array<{ text: string }>)[0].text).cards, undefined);
     }
   });
@@ -239,6 +243,20 @@ describe("stateless /mcp route", () => {
       "workspace",
     );
   });
+  it("logs a redacted transport cause while returning a generic response", async (t) => {
+    const cause = Object.assign(new Error("connection interrupted postgres://user:private@db.invalid/study"), { code: "ECONNRESET" });
+    t.mock.method(WebStandardStreamableHTTPServerTransport.prototype, "handleRequest", async () => { throw new Error("Transport failed", { cause }); });
+    const logs = t.mock.method(console, "error", () => {});
+    const response = await POST(new NextRequest("https://examcooker.acmvit.in/mcp", { method: "POST" }));
+    assert.equal(response.status, 500);
+    const body = JSON.stringify(await response.json());
+    assert.ok(!body.includes("ECONNRESET"));
+    const diagnostic = JSON.stringify(logs.mock.calls[0].arguments);
+    assert.match(diagnostic, /Transport failed/);
+    assert.match(diagnostic, /ECONNRESET/);
+    assert.ok(!diagnostic.includes("user:private"));
+  });
+
   it("allows MCP browser preflight", () => {
     const response = OPTIONS();
     assert.equal(response.status, 204);

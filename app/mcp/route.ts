@@ -2,6 +2,8 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { NextResponse, type NextRequest } from "next/server";
 import { createExamCookerMcpServer } from "@/lib/mcp/examcooker-server";
 
+import { logMcpError } from "@/lib/mcp/error-logging";
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
@@ -29,8 +31,8 @@ async function handleMcpRequest(request: NextRequest) {
       statusText: response.statusText,
       headers,
     });
-  } catch {
-    console.error("ExamCooker MCP transport request failed");
+  } catch (error) {
+    logMcpError("ExamCooker MCP transport request failed", error);
     return NextResponse.json(
       {
         jsonrpc: "2.0",

@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Node.js `20+`
-- `pnpm`
+- `pnpm` 12.8.1 (pinned in `package.json`); use Corepack or install that version.
 - A valid `.env` or `.env.local` with the database and provider settings needed for the flows you are testing
 
 ## Common Commands

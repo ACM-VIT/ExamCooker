@@ -39,3 +39,13 @@ GitHub initially reported 55 open Dependabot alerts. Both Swift lockfiles and th
 ## Incoming changes
 
 Merged all 15 incoming commits from `origin/dev` through `f03d834` in local merge `bccd941`. This also contains `origin/main`. Reviewed PDF fallback/delivery, asset mirroring, caching, PostHog filtering, and the separate Worker module experiment. The only update conflicts were the obsolete OpenNext patch file and its old lockfile hash; the new patch and regenerated lockfile retain the incoming header correction. The merged PDF, asset and PostHog regression tests are included in the 79 passing tests.
+
+## Review fixes — 15 October 2026
+
+- Type filters preserve pending searches, search drafts, and keyboard focus. Search controls stay mounted across result redraws; navigating away from a pending detail still prevents that detail from reopening.
+- Widget-only `filterResults` retains every provider's matches before the mixed 20-result cutoff. Standard search text and structured citation results remain capped and unchanged in shape.
+- Module rendering preserves every URL on a line and removes trailing separator punctuation.
+- DOM tests execute the embedded script with delayed host responses, covering opening/search races, filtering, drafts/focus, detail/back navigation, and module links. Error tests cover redacted nested causes, codes, stack frames, SQL messages, and transport responses.
+- All 89 repository tests pass. Web type-checking, a frozen pnpm install, the Cloudflare adapter build, and Wrangler deployment dry run pass. Source-map upload was disabled for the local build.
+- Live catalog checks confirm that switching to Resources while a broad search is pending displays five resources after completion; changing another filter retains an unsubmitted `BMAT101L` draft and filter focus.
+- Both Vercel and Cloudflare failed their prior dependency installation using pnpm 10. The repository now pins pnpm 12.8.1, and the Cloudflare non-production trigger has `PNPM_VERSION=12.8.1`. Hosted build success still requires a new CI run; the separate Vercel account-blocked check is an external account issue.

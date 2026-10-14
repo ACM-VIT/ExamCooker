@@ -14,6 +14,7 @@ import {
   EXAMCOOKER_WIDGET_HTML,
   EXAMCOOKER_WIDGET_URI,
 } from "@/lib/mcp/examcooker-widget";
+import { logMcpError } from "./error-logging";
 import { absoluteUrl, getBaseUrl } from "@/lib/seo";
 
 // Lazy data loading lets discovery and the empty workspace start without a
@@ -97,9 +98,8 @@ async function withResourceErrors(
 ): Promise<CallToolResult> {
   try {
     return await action();
-  } catch {
-    // Never return database errors, connection strings, or stack traces.
-    console.error("ExamCooker MCP resource request failed");
+  } catch (error) {
+    logMcpError("ExamCooker MCP resource request failed", error);
     return {
       isError: true,
       content: [
@@ -195,8 +195,12 @@ export function createExamCookerMcpServer(
     },
     async ({ query }) =>
       withResourceErrors(async () => {
-        const { results, cards } = await resources.search(query);
-        return jsonResult({ results }, { query, ...(cards ? { cards } : {}) });
+        const { results, cards, filterResults } = await resources.search(query);
+        return jsonResult({ results }, {
+          query,
+          ...(cards ? { cards } : {}),
+          ...(filterResults ? { filterResults } : {}),
+        });
       }),
   );
   server.registerTool(
@@ -268,7 +272,10 @@ export function createExamCookerMcpServer(
             results: search.results,
             detail,
           },
-          search.cards ? { cards: search.cards } : undefined,
+          {
+            ...(search.cards ? { cards: search.cards } : {}),
+            ...(search.filterResults ? { filterResults: search.filterResults } : {}),
+          },
         );
       }),
   );

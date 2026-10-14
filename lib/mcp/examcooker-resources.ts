@@ -47,6 +47,7 @@ export type McpCardDisplay = {
 export type McpSearchOutput = {
   results: McpSearchResult[];
   cards?: Record<string, McpCardDisplay>;
+  filterResults?: McpSearchResult[];
 };
 
 export type McpFetchOutput = {
@@ -121,9 +122,7 @@ function dedupeAndSort(
     if (a.item._kindRank !== b.item._kindRank) return a.item._kindRank - b.item._kindRank;
     return a.pos - b.pos;
   });
-  return entries
-    .slice(0, MAX_SEARCH_RESULTS)
-    .map(({ item }) => item);
+  return entries.map(({ item }) => item);
 }
 
 async function searchCourses(query: string): Promise<InternalResult[]> {
@@ -291,7 +290,8 @@ export async function searchExamCookerResources(
 
   const sorted = dedupeAndSort(all, coursePaperRank);
   return {
-    results: sorted.map(({ id, title, url }) => ({ id, title, url })),
+    results: sorted.slice(0, MAX_SEARCH_RESULTS).map(({ id, title, url }) => ({ id, title, url })),
+    filterResults: sorted.map(({ id, title, url }) => ({ id, title, url })),
     cards: Object.fromEntries(sorted.map((item) => [item.id, item._display])),
   };
 }
