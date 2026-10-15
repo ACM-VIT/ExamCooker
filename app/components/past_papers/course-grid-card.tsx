@@ -16,20 +16,20 @@ export default function CourseGridCard({ course }: Props) {
             <IntentPrefetchLink
                 href={`/past_papers/${encodeURIComponent(course.code)}`}
                 transitionTypes={["nav-forward"]}
-                className="flex h-full flex-col gap-3 border-2 border-[#5FC4E7] bg-[#5FC4E7] p-4 text-black transition duration-200 hover:scale-[1.03] hover:shadow-xl hover:border-b-2 hover:border-b-white dark:border-[#ffffff]/20 dark:bg-[#ffffff]/10 dark:text-[#D5D5D5] dark:lg:bg-[#0C1222] dark:hover:border-b-[#3BF4C7] dark:hover:bg-[#ffffff]/10"
+                className="ec-catalog-card"
             >
-                <span className="font-mono text-xs font-bold uppercase tracking-wide text-black/75 dark:text-[#D5D5D5]/70">
+                <span className="ec-catalog-code">
                     {course.code}
                 </span>
-                <h3 className="line-clamp-3 text-base font-bold leading-snug text-black dark:text-[#D5D5D5]">
+                <h3 className="ec-catalog-title">
                     {course.title}
                 </h3>
                 <div className="mt-auto flex items-end justify-between pt-1">
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold leading-none text-black dark:text-[#D5D5D5]">
+                    <div className="ec-catalog-stats">
+                        <span className="ec-catalog-number">
                             {course.paperCount}
                         </span>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-black/55 dark:text-[#D5D5D5]/55">
+                        <span className="ec-catalog-unit">
                             paper{course.paperCount === 1 ? "" : "s"}
                         </span>
                     </div>

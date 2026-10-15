@@ -1,0 +1,120 @@
+/* Shared by the website catalog and the ChatGPT resource browser. The widget embeds
+   this exact file through scripts/sync-mcp-ui.mjs. */
+.ec-catalog-card {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 12px;
+  border: 2px solid #5fc4e7;
+  background: #5fc4e7;
+  padding: 16px;
+  color: #000;
+  text-decoration: none;
+  border-radius: 0;
+  transition:
+    transform 200ms,
+    box-shadow 200ms,
+    border-color 200ms,
+    background-color 200ms;
+}
+.ec-catalog-card:hover {
+  transform: scale(1.03);
+  box-shadow:
+    0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1);
+  border-bottom-color: #fff;
+}
+.ec-catalog-code {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  color: rgb(0 0 0 / 0.75);
+}
+.ec-catalog-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+  color: #000;
+}
+.ec-catalog-stats {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: auto;
+}
+.ec-catalog-number {
+  font-size: 30px;
+  line-height: 30px;
+  font-weight: 700;
+}
+.ec-catalog-unit {
+  font-size: 10px;
+  line-height: 15px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgb(0 0 0 / 0.55);
+}
+.ec-catalog-search {
+  position: relative;
+  display: flex;
+  height: 48px;
+  width: 100%;
+  align-items: center;
+  border: 1px solid rgb(0 0 0 / 0.25);
+  background: #fff;
+  padding: 0 8px;
+  border-radius: 0;
+}
+.ec-gradient-text {
+  color: transparent;
+  background-clip: text;
+  background-image: linear-gradient(to top right, #253ee0, #27baec);
+}
+.dark .ec-catalog-card {
+  border-color: rgb(255 255 255 / 0.2);
+  background: rgb(255 255 255 / 0.1);
+  color: #d5d5d5;
+}
+.dark .ec-catalog-card:hover {
+  border-bottom-color: #3bf4c7;
+  background: rgb(255 255 255 / 0.1);
+}
+.dark .ec-catalog-code {
+  color: rgb(213 213 213 / 0.7);
+}
+.dark .ec-catalog-title {
+  color: #d5d5d5;
+}
+.dark .ec-catalog-unit {
+  color: rgb(213 213 213 / 0.55);
+}
+.dark .ec-catalog-search {
+  border-color: rgb(213 213 213 / 0.3);
+  background: #3d414e;
+}
+@media (min-width: 1024px) {
+  .dark .ec-catalog-card {
+    background: #0c1222;
+  }
+  .dark .ec-catalog-card:hover {
+    background: rgb(255 255 255 / 0.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-catalog-card {
+    transition: none;
+  }
+  .ec-catalog-card:hover {
+    transform: none;
+  }
+}

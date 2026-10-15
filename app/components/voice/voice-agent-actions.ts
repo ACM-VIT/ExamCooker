@@ -344,10 +344,8 @@ export async function searchVoiceStudyMaterialsAction(input: unknown) {
   if (!parsed.success)
     return { ok: false as const, error: "Provide a search query." };
   try {
-    return {
-      ok: true as const,
-      ...(await searchExamCookerResources(parsed.data.query)),
-    };
+    const { results } = await searchExamCookerResources(parsed.data.query);
+    return { ok: true as const, results };
   } catch {
     return {
       ok: false as const,

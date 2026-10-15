@@ -1,0 +1,31 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "examcooker",
+  "version": "0.3.0",
+  "description": "Search and browse VIT study resources with source-backed guidance.",
+  "homepage": "https://examcooker.acmvit.in",
+  "keywords": ["education", "vit", "revision", "past-papers"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "ExamCooker",
+        "shortDescription": "VIT papers, notes, and resources",
+        "longDescription": "Search courses, past papers, notes, syllabi, and module resources. Browse in the sidebar or beside your conversation, open source details, and follow links to the original resources.",
+        "developerName": "ExamCooker",
+        "category": "Education",
+        "capabilities": ["Read"],
+        "websiteURL": "https://examcooker.acmvit.in",
+        "privacyPolicyURL": "https://examcooker.acmvit.in/privacy",
+        "termsOfServiceURL": "https://examcooker.acmvit.in/terms",
+        "brandColor": "#2562E3",
+        "composerIcon": "./assets/icon.svg",
+        "logo": "./assets/logo.svg",
+        "defaultPrompt": [
+          "Open ExamCooker and show Calculus resources.",
+          "Find BCSE202L past papers and notes, then help me plan three days of revision.",
+          "Quiz me one question at a time using available text from Calculus resources."
+        ]
+      }
+    }
+  }
+}
