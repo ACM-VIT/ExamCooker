@@ -25,6 +25,7 @@ import {
     type ReactNode,
 } from "react";
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
+import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage";
 
 const PDFViewerClient = dynamic(
     () => import("@/app/components/pdf-viewer-client"),
@@ -87,14 +88,13 @@ function getDefaultPanelWidth(viewportWidth = getViewportWidth()) {
 }
 
 function readStoredSide(): PaperSplitSide {
-    if (typeof window === "undefined") return "right";
-    return window.localStorage.getItem(STORAGE_SIDE_KEY) === "left" ? "left" : "right";
+    return readLocalStorage(STORAGE_SIDE_KEY) === "left" ? "left" : "right";
 }
 
 function readStoredWidth(): number {
     if (typeof window === "undefined") return getDefaultPanelWidth();
 
-    const stored = Number(window.localStorage.getItem(STORAGE_WIDTH_KEY));
+    const stored = Number(readLocalStorage(STORAGE_WIDTH_KEY));
     return Number.isFinite(stored) && stored > 0
         ? clampPanelWidth(stored)
         : getDefaultPanelWidth();
@@ -359,20 +359,20 @@ export function PaperSplitViewProvider({ children }: { children: ReactNode }) {
         (paper: PaperSplitItem, nextSide: PaperSplitSide) => {
             if (!window.matchMedia("(min-width: 768px)").matches) return;
             dispatch({ type: "open", paper, side: nextSide });
-            window.localStorage.setItem(STORAGE_SIDE_KEY, nextSide);
+            writeLocalStorage(STORAGE_SIDE_KEY, nextSide);
         },
         [],
     );
 
     const movePaperSplit = useCallback((nextSide: PaperSplitSide) => {
         dispatch({ type: "move", side: nextSide });
-        window.localStorage.setItem(STORAGE_SIDE_KEY, nextSide);
+        writeLocalStorage(STORAGE_SIDE_KEY, nextSide);
     }, []);
 
     const resizePaperSplit = useCallback((nextWidth: number) => {
         const clampedWidth = clampPanelWidth(nextWidth);
         dispatch({ type: "resize", width: clampedWidth });
-        window.localStorage.setItem(STORAGE_WIDTH_KEY, String(clampedWidth));
+        writeLocalStorage(STORAGE_WIDTH_KEY, String(clampedWidth));
     }, []);
 
     const closePaperSplit = useCallback(() => {

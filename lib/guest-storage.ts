@@ -1,3 +1,5 @@
+import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage";
+
 export type GuestRecentItemType =
     | "note"
     | "pastpaper"
@@ -32,7 +34,7 @@ function safeParse<T>(value: string | null, fallback: T): T {
 
 export function loadGuestRecentViews(): GuestRecentItem[] {
     if (!isBrowser()) return [];
-    const data = safeParse<GuestRecentItem[]>(localStorage.getItem(RECENTS_KEY), []);
+    const data = safeParse<GuestRecentItem[]>(readLocalStorage(RECENTS_KEY), []);
     if (!Array.isArray(data)) return [];
     return data.filter(
         (item) =>
@@ -51,6 +53,6 @@ export function recordGuestRecentView(input: Omit<GuestRecentItem, "viewedAt">) 
         { ...input, viewedAt: now },
         ...existing.filter((item) => !(item.id === input.id && item.type === input.type)),
     ].slice(0, MAX_RECENTS);
-    localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
+    if (!writeLocalStorage(RECENTS_KEY, JSON.stringify(next))) return;
     window.dispatchEvent(new Event(GUEST_RECENTS_EVENT));
 }
