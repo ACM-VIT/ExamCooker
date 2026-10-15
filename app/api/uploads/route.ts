@@ -46,6 +46,8 @@ function validateOptionalEnum(
     return { error: `${fieldName} is invalid.` };
 }
 
+class UploadSaveValidationError extends Error {}
+
 export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id || !session.user.email) {
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
             { status: 401 },
         );
     }
+    const userEmail = session.user.email;
 
     const rateLimit = await checkSlidingWindowRateLimit({
         identifier: session.user.id,
@@ -127,7 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const results = await db.transaction(async (transaction) => {
+        const result = await db.transaction(async (transaction) => {
             const now = new Date();
             const consumed = await transaction
                 .update(uploadResultReceipt)
@@ -148,28 +151,34 @@ export async function POST(request: NextRequest) {
                 throw new Error("One or more upload receipts are invalid, expired, or already used.");
             }
             const resultById = new Map(consumed.map((receipt) => [receipt.id, receipt.result]));
-            return receiptIds.map((receiptId) => resultById.get(receiptId)!);
+            const results = receiptIds.map((receiptId) => resultById.get(receiptId)!);
+            const created = await createUploadedResources({
+                userEmail,
+                results,
+                year: stringValue(body.year),
+                slot: stringValue(body.slot),
+                variant,
+                courseId: nullableStringValue(body.courseId),
+                examType,
+                semester,
+                campus,
+                hasAnswerKey: body.hasAnswerKey === true,
+                dbClient: transaction,
+            });
+            if (!created.success) {
+                throw new UploadSaveValidationError(created.error);
+            }
+            return created;
         });
-
-        const result = await createUploadedResources({
-            userEmail: session.user.email,
-            results,
-            year: stringValue(body.year),
-            slot: stringValue(body.slot),
-            variant,
-            courseId: nullableStringValue(body.courseId),
-            examType,
-            semester,
-            campus,
-            hasAnswerKey: body.hasAnswerKey === true,
-        });
-
-        if (!result.success) {
-            return NextResponse.json(result, { status: 400 });
-        }
 
         return NextResponse.json({ success: true, count: result.data?.length ?? 0 });
     } catch (error) {
+        if (error instanceof UploadSaveValidationError) {
+            return NextResponse.json(
+                { success: false, error: error.message },
+                { status: 400 },
+            );
+        }
         console.error("upload save api error", error);
         const message =
             error instanceof Error
