@@ -4,6 +4,20 @@ Welcome to **ExamCooker** – a one-stop solution to all your exam problems, pow
 
 (PS: We know that you probably left everything for the last minute :D)
 
+## Run locally
+
+Use Node.js 20.9 or newer, `pnpm` 12.8.1, and a **disposable CockroachDB database**. From the repository root:
+
+```bash
+pnpm install --no-frozen-lockfile
+cp env.example .env
+# Edit .env: set DATABASE_URL and replace AUTH_SECRET.
+pnpm exec drizzle-kit push --config drizzle.config.ts
+pnpm dev
+```
+
+Open <http://localhost:3000>. The example Google credentials allow startup but not sign-in; use a real Google OAuth client to test authentication. Schema push changes the database named in `DATABASE_URL`, so check that it points to your development database first. See the [development guide](docs/development.md) for database setup, build and CLI commands, and current setup limitations.
+
 ## Tech Stack
 
 ExamCooker uses scalable tech stacks to ensure optimal performance and ease of maintenance.

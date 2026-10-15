@@ -5,7 +5,7 @@ This folder provides a high-level map of the ExamCooker codebase and the main co
 ## Start Here
 
 - [Architecture](./architecture.md): application shape, major modules, and runtime responsibilities.
-- [Development](./development.md): local setup, common commands, and validation expectations.
+- [Development](./development.md): database and environment setup, running the web app and CLI, and validation commands.
 - [Data Access](./data-access.md): database layout, migration ownership, and query-layer guidance.
 - [ChatGPT Plugin](./chatgpt-plugin.md): MCP tools, sidebar workspace, composer mentions, local testing, and installation.
 - [Prisma vs Drizzle Benchmarks](./benchmarks/prisma-vs-drizzle.md): summary of the migration-era performance comparison that informed the current data-layer direction.
