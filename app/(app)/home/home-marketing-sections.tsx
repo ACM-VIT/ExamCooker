@@ -6,11 +6,8 @@ import Resources from "@/public/LandingPage/landing-page-resource-repo.svg";
 import Syllabus from "@/public/LandingPage/landing-page-syllabus.svg";
 import GradientHeart from "@/public/LandingPage/gradient-heart.svg";
 import GradientACMLogo from "@/public/assets/acm-logo.svg";
-import {
-    GradientText,
-    LandingPageCard,
-    WordBetweenLine,
-} from "@/app/components/landing/landing";
+import { LandingPageCard } from "@/app/components/landing/landing";
+import { GradientText, WordBetweenLine } from "@/app/components/landing/landing-primitives";
 
 export default function HomeMarketingSections({ authSlot }: { authSlot?: React.ReactNode }) {
     return (
