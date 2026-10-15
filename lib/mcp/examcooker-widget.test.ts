@@ -43,8 +43,66 @@ async function browser(t: { after: (fn: () => Promise<void>) => void }) {
   };
   const text = () => window.document.querySelector("#results")!.textContent!;
   const heading = () => window.document.querySelector("#results h2, #results h1")?.textContent;
-  return { window, messages, input, click, search, result, opening, text, heading };
+  return { window, messages, input, click, search, result, opening, text, heading, send };
 }
+
+for (const openingDelivered of [false, true]) {
+  it(`keeps a local search alive after host cancellation (opening delivered: ${openingDelivered})`, async (t) => {
+    const b = await browser(t);
+    if (openingDelivered) await b.opening({ view: "workspace", query: "", results: [] });
+    const request = await b.search("calculus");
+    b.send({ method: "ui/notifications/tool-cancelled", params: { reason: "user action" } });
+    assert.match(b.text(), /Loading resources/);
+    assert.equal(b.window.document.querySelector('[role="alert"]'), null);
+    if (!openingDelivered) await b.opening({ query: "old query", results: [source("course", "old")] });
+    await b.result(request, { results: [source("course", "new", "Calculus")] });
+    assert.equal(b.heading(), "calculus");
+    assert.equal(b.window.document.querySelectorAll(".card").length, 1);
+    assert.match(b.text(), /Calculus/);
+  });
+}
+
+it("keeps a deep-linked resource request alive after host cancellation", async (t) => {
+  const b = await browser(t);
+  b.send({ method: "ui/notifications/host-context-changed", params: { "openai/deepLink": { url: "/resource?id=course%3Aone" } } });
+  await flush();
+  const request = b.messages.find((message) => message.params?.name === "fetch")!;
+  assert.ok(request);
+  b.send({ method: "ui/notifications/tool-cancelled", params: {} });
+  await b.result(request, { ...source("course", "one", "Deep-linked course"), text: "# Course\nDetails" });
+  assert.equal(b.heading(), "Deep-linked course");
+  assert.equal(b.window.document.querySelector('[role="alert"]'), null);
+});
+
+it("still reports cancellation when no local navigation has started", async (t) => {
+  const b = await browser(t);
+  b.send({ method: "ui/notifications/tool-cancelled", params: {} });
+  assert.match(b.window.document.querySelector('[role="alert"]')!.textContent!, /request was cancelled/);
+});
+
+for (const draft of ["unsubmitted draft", ""]) {
+  it(`preserves an edited opening draft (${draft ? "typed" : "cleared"})`, async (t) => {
+    const b = await browser(t);
+    const input = b.input();
+    input.value = draft;
+    input.dispatchEvent(new b.window.Event("input", { bubbles: true }));
+    input.focus();
+    input.setSelectionRange(0, draft.length);
+    await b.opening({ view: "workspace", query: "opening query", results: [source("course", "one")] });
+    assert.equal(b.input(), input);
+    assert.equal(input.value, draft);
+    assert.equal(b.window.document.activeElement, input);
+    assert.equal(input.selectionEnd, draft.length);
+    assert.equal(b.heading(), "opening query");
+    assert.equal(b.window.document.querySelectorAll(".card").length, 1);
+  });
+}
+
+it("uses the opening query when the search draft has not been edited", async (t) => {
+  const b = await browser(t);
+  await b.opening({ view: "workspace", query: "calculus", results: [] });
+  assert.equal(b.input().value, "calculus");
+});
 
 it("keeps a pending first search alive when filters change", async (t) => {
   const b = await browser(t);
@@ -123,4 +181,16 @@ it("renders every module URL without separator punctuation", async (t) => {
   await b.opening({ ...source("course", "one"), text: "# One\nModule (reference: https://example.com/chapter, video: https://example.com/watch)." });
   const links = Array.from(b.window.document.querySelectorAll(".body-text a"), (link) => link.getAttribute("href"));
   assert.deepEqual(links, ["https://example.com/chapter", "https://example.com/watch"]);
+});
+
+it("preserves balanced URL parentheses while removing surrounding punctuation", async (t) => {
+  const b = await browser(t);
+  await b.opening({ ...source("course", "one"), text: "# One\nModule (reference: https://example.com/lecture_(1).pdf, video: https://example.com/topic_(part_(2))).\n[Notes](https://example.com/notes_(3))\nreference: https://example.com/encoded_%281%29.pdf" });
+  const links = Array.from(b.window.document.querySelectorAll(".body-text a"), (link) => link.getAttribute("href"));
+  assert.deepEqual(links, [
+    "https://example.com/lecture_(1).pdf",
+    "https://example.com/topic_(part_(2))",
+    "https://example.com/notes_(3)",
+    "https://example.com/encoded_%281%29.pdf",
+  ]);
 });

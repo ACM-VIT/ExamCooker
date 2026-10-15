@@ -4,7 +4,7 @@ import {
   EXAMCOOKER_FONT_CSS,
 } from "./generated/website-appearance";
 
-export const EXAMCOOKER_WIDGET_URI = "ui://examcooker/resource-browser/v6.html";
+export const EXAMCOOKER_WIDGET_URI = "ui://examcooker/resource-browser/v7.html";
 
 export const EXAMCOOKER_WIDGET_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

@@ -18,7 +18,7 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
   const kindOf = (item) => String(item.id || '').split(':')[0];
   const state = { query: '', draft: '', results: [], filterResults: [], cards: {}, searched: false, filter: 'all', detail: null, loading: '', ready: false, error: '', operation: 0 };
   const pending = new Map();
-  let initialToolResultSeen = false, localNavigationStarted = false;
+  let initialToolResultSeen = false, localNavigationStarted = false, draftEdited = false;
   let sequence = 0, sizeFrame = 0, lastSize = '', hostCapabilities = {}, lastDeepLink = '', toolQuery = '', contextQueue = Promise.resolve(), contextVersion = 0;
   const notify = (method, params) => window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
   const request = (method, params, timeout = 25000) => new Promise((resolve, reject) => {
@@ -93,9 +93,12 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
     if (!line.trim() || /^#\s/.test(line)) return '';
     if (/^###\s/.test(line)) return '<h4>' + escape(line.replace(/^###\s*/, '')) + '</h4>';
     if (/^##\s/.test(line)) return '<h3>' + escape(line.replace(/^##\s*/, '')) + '</h3>';
-    const matches = [...line.matchAll(/https?:\/\/[^\s)]+/g)];
+    const matches = [...line.matchAll(/https?:\/\/[^\s<>]+/g)];
     if (matches.length) return matches.map((match, index) => {
-      const href = safeUrl(match[0].replace(/[.,;]+$/, ''));
+      let url = match[0].replace(/[.,;]+$/, '');
+      let balance = (url.match(/\(/g) || []).length - (url.match(/\)/g) || []).length;
+      while (url.endsWith(')') && balance < 0) { url = url.slice(0, -1).replace(/[.,;]+$/, ''); balance++; }
+      const href = safeUrl(url);
       if (!href) return '';
       const previousEnd = index ? matches[index - 1].index + matches[index - 1][0].length : 0;
       const label = line.slice(previousEnd, match.index).replace(/^[-\s(,;]+|[-\s:()]+$/g, '') || 'Open resource';
@@ -146,7 +149,7 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
       state.filterResults = (result._meta?.filterResults || output.results).filter(validSummary).map(summary);
       state.cards = result._meta?.cards || {};
       state.query = typeof output.query === 'string' ? output.query : typeof result._meta?.query === 'string' ? result._meta.query : toolQuery;
-      state.draft = state.query;
+      if (!draftEdited) state.draft = state.query;
       state.searched = output.view !== 'workspace' || Boolean(state.query || state.results.length);
       state.detail = validSummary(output.detail) && typeof output.detail.text === 'string' ? output.detail : null;
     } else if (validSummary(output) && typeof output.text === 'string') { state.detail = output; }
@@ -156,7 +159,7 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
   const runSearch = async (query) => {
     localNavigationStarted = true;
     const operation = ++state.operation;
-    state.query = query.trim().slice(0, 240); state.draft = state.query; state.loading = 'search';
+    state.query = query.trim().slice(0, 240); state.draft = state.query; draftEdited = false; state.loading = 'search';
     state.results = []; state.filterResults = []; state.cards = {}; state.searched = true; state.error = ''; state.detail = null; syncContext(); render();
     try {
       const result = await callTool('search', { query: state.query });
@@ -179,7 +182,7 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
     } catch (error) { if (operation === state.operation) state.error = error.message; }
     finally { if (operation === state.operation) { state.loading = ''; render(); } }
   };
-  root.addEventListener('input', (event) => { if (event.target.id === 'search-input') state.draft = event.target.value; });
+  root.addEventListener('input', (event) => { if (event.target.id === 'search-input') { state.draft = event.target.value; draftEdited = true; } });
   root.addEventListener('submit', (event) => { if (event.target.id !== 'search-form') return; event.preventDefault(); if (state.ready) void runSearch(root.querySelector('#search-input').value); });
   root.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-action]');
@@ -204,7 +207,11 @@ export const EXAMCOOKER_WIDGET_SCRIPT = String.raw`
     if (message.method === 'ui/notifications/tool-result') applyResult(message.params);
     else if (message.method === 'ui/notifications/tool-input') toolQuery = typeof message.params?.arguments?.query === 'string' ? message.params.arguments.query : '';
     else if (message.method === 'ui/notifications/host-context-changed') applyHostContext(message.params);
-    else if (message.method === 'ui/notifications/tool-cancelled') { state.operation++; state.loading = ''; state.error = 'The request was cancelled. You can try again.'; render(); }
+    else if (message.method === 'ui/notifications/tool-cancelled') {
+      // Opening-tool cancellation does not cancel requests made by the widget.
+      if (localNavigationStarted) return;
+      state.operation++; state.loading = ''; state.error = 'The request was cancelled. You can try again.'; render();
+    }
     else if (message.method === 'ui/resource-teardown' && message.id != null) {
       for (const handler of pending.values()) { clearTimeout(handler.timer); handler.reject(new Error('Resource browser closed.')); }
       pending.clear(); window.parent.postMessage({ jsonrpc: '2.0', id: message.id, result: {} }, '*');
