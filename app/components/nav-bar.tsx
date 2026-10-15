@@ -391,6 +391,14 @@ const NavBar: React.FC<Props> = ({
           {session?.user?.email}
         </p>
         <Link
+          href="/account"
+          prefetch
+          className="mb-2 block text-xs font-semibold text-black hover:underline dark:text-[#D5D5D5]"
+          onClick={() => dispatch({ type: "close-profile" })}
+        >
+          My uploads
+        </Link>
+        <Link
           href="/delete"
           prefetch
           className="mb-2 block text-xs font-semibold text-red-500 hover:underline dark:text-red-400"
