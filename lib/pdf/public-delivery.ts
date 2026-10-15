@@ -1,7 +1,7 @@
 import { publicPdfUpstream } from "./delivery-url";
 
 const MAX_PDF_BYTES = 32 * 1024 * 1024;
-const TIMEOUT_MS = 30_000;
+const UPSTREAM_IDLE_TIMEOUT_MS = 30_000;
 const errorResponse = (status: number) => new Response("PDF unavailable", {
   status,
   headers: { "Cache-Control": "no-store" },
@@ -14,16 +14,25 @@ export async function servePublicPdf(source: string, file: string, signal?: Abor
   const controller = new AbortController();
   const abort = () => controller.abort(signal?.reason);
   signal?.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const clearTimer = () => {
+    if (timer !== undefined) clearTimeout(timer);
+    timer = undefined;
+  };
+  const armTimer = () => {
+    clearTimer();
+    timer = setTimeout(() => controller.abort(), UPSTREAM_IDLE_TIMEOUT_MS);
+  };
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   const cleanup = () => {
-    clearTimeout(timer);
+    clearTimer();
     signal?.removeEventListener("abort", abort);
   };
   const cancel = () => { void reader?.cancel().catch(() => undefined); cleanup(); };
 
   try {
     signal?.throwIfAborted();
+    armTimer();
     // No cookies, authorization, Origin, or user-supplied headers are forwarded.
     const response = await fetch(upstream, {
       // workerd supports manual/follow, but rejects redirect: "error".
@@ -32,6 +41,7 @@ export async function servePublicPdf(source: string, file: string, signal?: Abor
       signal: controller.signal,
       headers: { Accept: "application/pdf" },
     });
+    clearTimer();
     if (!response.ok || !response.body) {
       void response.body?.cancel().catch(() => undefined);
       cleanup();
@@ -50,12 +60,20 @@ export async function servePublicPdf(source: string, file: string, signal?: Abor
     }
 
     reader = response.body.getReader();
+    const read = async () => {
+      armTimer();
+      try {
+        return await reader!.read();
+      } finally {
+        clearTimer();
+      }
+    };
     // Validate before sending a cacheable 200, then stream without buffering the
     // whole document in Worker memory. A storage error page must never be cached.
     const prefix: Uint8Array[] = [];
     let received = 0;
     while (received < 1024) {
-      const { done, value } = await reader.read();
+      const { done, value } = await read();
       if (done) break;
       prefix.push(value);
       received += value.byteLength;
@@ -78,7 +96,7 @@ export async function servePublicPdf(source: string, file: string, signal?: Abor
       async pull(output) {
         try {
           if (prefix.length) { output.enqueue(prefix.shift()!); return; }
-          const { done, value } = await reader!.read();
+          const { done, value } = await read();
           if (done) {
             if (length > 0 && received !== length) throw new Error("Incomplete PDF");
             cleanup();

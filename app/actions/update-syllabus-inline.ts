@@ -5,6 +5,7 @@ import { z } from "zod";
 import { auth } from "@/app/auth";
 import { revalidateTag } from "next/cache";
 import { course, db, syllabi } from "@/db";
+import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 
 const schema = z.object({
   id: z.string().min(1),
@@ -120,6 +121,7 @@ export async function updateSyllabusInline(input: z.input<typeof schema>) {
   revalidateTag("syllabus", "minutes");
   revalidateTag(`syllabus:${parsed.id}`, "minutes");
   revalidateTag("courses", "minutes");
+  await invalidatePastPapersSurfaceCache();
 
   return {
     success: true,

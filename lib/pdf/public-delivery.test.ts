@@ -40,6 +40,37 @@ test("public delivery validates split PDF headers and forwards no client credent
   assert.match(response.headers.get("cache-control")!, /public/);
 });
 
+test("downstream backpressure does not consume the upstream idle timeout", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  const bytes = new Uint8Array(1034);
+  bytes.set(new TextEncoder().encode("%PDF-1.7\n"));
+  let upstream!: ReadableStreamDefaultController<Uint8Array>;
+  let aborted = false;
+  globalThis.fetch = async (_url, init) => new Response(new ReadableStream({
+    start(output) {
+      upstream = output;
+      init?.signal?.addEventListener("abort", () => {
+        aborted = true;
+        output.error(new DOMException("Aborted", "AbortError"));
+      });
+      output.enqueue(bytes.subarray(0, 1033));
+    },
+  }), { headers: { "content-length": String(bytes.byteLength) } });
+
+  const response = await servePublicPdf("paper", id);
+  const reader = response.body!.getReader();
+  await new Promise(resolve => setImmediate(resolve));
+  t.mock.timers.tick(30_000);
+  assert.equal(aborted, false);
+
+  assert.equal((await reader.read()).value?.byteLength, 1033);
+  upstream.enqueue(bytes.subarray(1033));
+  upstream.close();
+  assert.equal((await reader.read()).value?.byteLength, 1);
+  assert.equal((await reader.read()).done, true);
+  assert.equal(aborted, false);
+});
+
 test("missing, invalid, oversize, and unavailable upstream files are never cached", async () => {
   for (const [upstream, expected] of [
     [new Response("missing", { status: 404 }), 404],

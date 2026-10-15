@@ -12,7 +12,14 @@ export async function POST(request: Request) {
   // This endpoint only expires public data. No caller-supplied tags or paths,
   // database writes, or forwarding back to the other deployment.
   await invalidatePastPapersSurfaceCache({ propagate: false });
-  for (const tag of ["past_papers", "courses", "notes"]) {
+  for (const tag of [
+    "past_papers",
+    "courses",
+    "notes",
+    "syllabus",
+    "resources",
+    "upcoming_exams",
+  ]) {
     revalidateTag(tag, { expire: 0 });
   }
   return new Response(null, { status: 204, headers });
