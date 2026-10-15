@@ -1,28 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { SignIn } from "@/app/components/sign-in";
-
-function GradientText({ children }: { children: ReactNode }) {
-    return (
-        <span className="bg-gradient-to-tr from-[#253EE0] to-[#27BAEC] bg-clip-text text-transparent">
-            {children}
-        </span>
-    );
-}
-
-function WordBetweenLine({ children }: { children: ReactNode }) {
-    return (
-        <div className="relative flex items-center justify-between gap-3 md:gap-6">
-            <div className="flex-grow border-t border-black dark:border-[#D5D5D5]" />
-            <span className="min-w-0 flex-shrink text-center text-3xl font-extrabold text-black dark:text-[#D5D5D5] md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl [@media(max-height:560px)]:lg:text-3xl [@media(max-height:720px)]:lg:text-4xl">
-                {children}
-            </span>
-            <div className="flex-grow border-t border-black dark:border-[#D5D5D5]" />
-        </div>
-    );
-}
+import { GradientText, WordBetweenLine } from "@/app/components/landing/landing-primitives";
 
 export default function HomeAuthSignInCta() {
     const [showSignIn, setShowSignIn] = useState(false);
