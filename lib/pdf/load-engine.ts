@@ -1,5 +1,4 @@
-import { PDFIUM_WASM_URL } from "../generated/pdfium-wasm";
-import { fetchPdfResource } from "./fetch-resource";
+import { loadPdfiumWasm, releasePdfiumWasm } from "./pdfium-wasm";
 import { foregroundTimeout } from "./foreground-timeout";
 
 export const PDFIUM_ENGINE_LOAD_TIMEOUT_MS = 15000;
@@ -34,11 +33,13 @@ export async function loadPdfiumEngine(signal: AbortSignal) {
     // transfer must not consume the engine's separate initialization deadline.
     const [{ createBrowserPdfiumEngine }, wasmBinary] = await Promise.all([
       engineDeadline(import("./browser-engine")),
-      fetchPdfResource(PDFIUM_WASM_URL, { kind: "wasm", signal }),
+      loadPdfiumWasm(),
     ]);
     signal.throwIfAborted();
-    return engineDeadline(createBrowserPdfiumEngine(wasmBinary),
-      (engine) => { void engine.destroy().toPromise().catch(() => undefined); });
+    const engine = await engineDeadline(createBrowserPdfiumEngine(wasmBinary),
+      (lateEngine) => { void lateEngine.destroy().toPromise().catch(() => undefined); });
+    releasePdfiumWasm();
+    return engine;
   }
   throw new Error("PDF rendering requires a browser");
 }

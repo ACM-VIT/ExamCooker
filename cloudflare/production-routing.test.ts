@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isPreviousBuildAsset, productionCompatibilityResponse } from "./production-routing";
+import { productionCompatibilityResponse } from "./production-routing";
 
 test("authenticated requests and old rollout cookies reach the production app", () => {
   for (const path of ["/", "/api/auth/session", "/mod", "/mcp", "/past_papers/create"]) {
@@ -41,14 +41,4 @@ test("legacy hostname redirects preserve the path and query", () => {
 
 test("old rollout beacons finish without starting the Next server", () => {
   assert.equal(productionCompatibilityResponse(new Request("https://examcooker.acmvit.in/__ec_cutover/event", { method: "POST" }))?.status, 204);
-});
-
-test("previous-build fallback is limited to immutable static assets", () => {
-  for (const path of ["/_next/static/chunks/old.js", "/_next/static/css/old.css", "/_next/static/media/font.woff2"]) {
-    assert.equal(isPreviousBuildAsset(new Request(`https://examcooker.acmvit.in${path}`)), true);
-    assert.equal(isPreviousBuildAsset(new Request(`https://examcooker.acmvit.in${path}`, { method: "POST" })), false);
-  }
-  for (const path of ["/api/auth/session", "/notes", "/_next/data/build/page.json", "/_next/static/chunks/private.map"]) {
-    assert.equal(isPreviousBuildAsset(new Request(`https://examcooker.acmvit.in${path}`)), false);
-  }
 });

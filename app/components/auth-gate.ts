@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Session } from "next-auth";
 import { captureAuthPromptOpened } from "@/lib/posthog/client";
 import { scheduleIdleWork } from "@/lib/schedule-idle-work";
+import { clearSessionCache, loadAuthSession, readCachedSession } from "@/lib/auth/session-cache";
 
 type AuthGate = {
     isAuthed: boolean;
@@ -17,47 +18,13 @@ type AuthGate = {
 
 type AuthSessionState = Pick<AuthGate, "session" | "status">;
 
-let sessionPromise: Promise<Session | null> | null = null;
-let cachedSession: Session | null | undefined;
-
 const SESSION_CACHE_INVALIDATED_EVENT = "examcooker:session-cache-invalidated";
 
 export function invalidateAuthSessionCache() {
-    sessionPromise = null;
-    cachedSession = undefined;
+    clearSessionCache();
     if (typeof window !== "undefined") {
         window.dispatchEvent(new Event(SESSION_CACHE_INVALIDATED_EVENT));
     }
-}
-
-function readSessionPayload(payload: unknown): Session | null {
-    if (!payload || typeof payload !== "object") return null;
-    if (!("user" in payload) || !(payload as { user?: unknown }).user) return null;
-    return payload as Session;
-}
-
-function loadSession() {
-    if (cachedSession !== undefined) {
-        return Promise.resolve(cachedSession);
-    }
-
-    if (!sessionPromise) {
-        sessionPromise = fetch("/api/auth/session", {
-            credentials: "same-origin",
-            cache: "no-store",
-        })
-            .then((response) => (response.ok ? response.json() : null))
-            .then((payload) => {
-                cachedSession = readSessionPayload(payload);
-                return cachedSession;
-            })
-            .catch(() => {
-                cachedSession = null;
-                return null;
-            });
-    }
-
-    return sessionPromise;
 }
 
 function getCurrentRedirect() {
@@ -86,36 +53,42 @@ function getAuthHref(action?: string) {
 export function useGuestPrompt(): AuthGate {
     const router = useRouter();
     const [{ session, status }, setAuthSessionState] = useState<AuthSessionState>(
-        () => getAuthSessionState(cachedSession),
+        () => getAuthSessionState(readCachedSession()),
     );
     const isAuthed = Boolean(session?.user);
 
     useEffect(() => {
         let cancelled = false;
 
+        // The loader answers from its cache while that is fresh and re-reads
+        // it once it is old, so a session that ended elsewhere is noticed.
         function syncSession() {
-            setAuthSessionState(getAuthSessionState(cachedSession));
+            setAuthSessionState(getAuthSessionState(readCachedSession()));
 
-            if (cachedSession !== undefined) return;
-
-            void loadSession().then((nextSession) => {
-                if (cancelled) return;
-                setAuthSessionState(getAuthSessionState(nextSession));
-            });
+            void loadAuthSession()
+                .then((nextSession) => {
+                    if (cancelled) return;
+                    setAuthSessionState(getAuthSessionState(nextSession));
+                })
+                // Unknown session: show signed-out controls here without
+                // remembering it, so the next read asks again. The sign-in
+                // page sends signed-in users back.
+                .catch(() => {
+                    if (cancelled) return;
+                    setAuthSessionState(getAuthSessionState(null));
+                });
         }
 
-        const cancelInitialSync = cachedSession === undefined
-            ? scheduleIdleWork(
-                syncSession,
-                { fallbackDelayMs: 1200, timeoutMs: 2500 },
-            )
-            : null;
+        const cancelInitialSync = scheduleIdleWork(
+            syncSession,
+            { fallbackDelayMs: 1200, timeoutMs: 2500 },
+        );
 
         window.addEventListener(SESSION_CACHE_INVALIDATED_EVENT, syncSession);
 
         return () => {
             cancelled = true;
-            cancelInitialSync?.();
+            cancelInitialSync();
             window.removeEventListener(SESSION_CACHE_INVALIDATED_EVENT, syncSession);
         };
     }, []);
@@ -128,12 +101,14 @@ export function useGuestPrompt(): AuthGate {
         (action?: string) => {
             if (isAuthed) return true;
             if (status === "loading") {
-                void loadSession().then((nextSession) => {
-                    setAuthSessionState(getAuthSessionState(nextSession));
-                    if (!nextSession?.user) {
-                        router.push(getAuthHref(action));
-                    }
-                });
+                void loadAuthSession()
+                    .then((nextSession) => {
+                        setAuthSessionState(getAuthSessionState(nextSession));
+                        if (!nextSession?.user) {
+                            router.push(getAuthHref(action));
+                        }
+                    })
+                    .catch(() => router.push(getAuthHref(action)));
                 return false;
             }
             router.push(getAuthHref(action));

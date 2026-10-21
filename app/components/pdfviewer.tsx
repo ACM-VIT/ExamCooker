@@ -115,7 +115,10 @@ const TOOLBAR_BUTTON_CLASS =
   "inline-flex size-8 shrink-0 items-center justify-center rounded text-gray-600 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-500";
 const PAGE_INPUT_CLASS =
   "h-8 w-12 rounded border border-gray-300 bg-white px-1 text-center text-sm tabular-nums text-gray-700 outline-none transition focus:border-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 sm:w-14";
-const MIN_ZOOM = 0.2;
+// Scanned papers are often embedded at camera resolution (~2,300 pt wide), so
+// fitting a phone-width viewport needs ~15% zoom. A higher floor left the
+// page wider than the viewer and clipped its right edge.
+const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 3;
 const SLOW_LOAD_NOTICE_MS = 3500;
 // Promote an indefinitely-hung (or empty-blob) page render into the visible,

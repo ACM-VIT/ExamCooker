@@ -6,6 +6,7 @@ import { PDFIUM_WASM_URL } from "@/lib/generated/pdfium-wasm";
 export { PDFIUM_WASM_URL };
 
 import { loadPdfiumEngine, PdfiumEngineTimeoutError } from "./load-engine";
+import { loadPdfiumWasm } from "./pdfium-wasm";
 export { PDFIUM_ENGINE_LOAD_TIMEOUT_MS } from "./load-engine";
 
 type PdfiumEngine = Awaited<
@@ -27,6 +28,16 @@ type PdfiumEngineState =
     };
 
 let cachedEngine: PdfiumEngine | null = null;
+/**
+ * Start the engine download at idle, without compiling it, so a later paper
+ * open reuses it. Skipped when the visitor asked to save data or is on 2G.
+ */
+export function prefetchPdfiumWasm() {
+  if (cachedEngine || typeof navigator === "undefined") return;
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (connection?.saveData || /2g/.test(connection?.effectiveType ?? "")) return;
+  void loadPdfiumWasm().catch(() => undefined);
+}
 
 let pendingEngine: Promise<PdfiumEngine> | null = null;
 

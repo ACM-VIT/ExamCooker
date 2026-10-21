@@ -7,10 +7,11 @@ import { withIncrementalCacheTiming, withTagCacheTiming } from "./cloudflare/cac
 import { withCacheWriteLifetime } from "./cloudflare/cache-write-lifetime";
 import { withFullRouteMissCache } from "./cloudflare/full-route-misses";
 import { withPublicRouteTagPrefetch } from "./cloudflare/public-route-tag-prefetch";
+import { withRegionalOnlyDataCache } from "./cloudflare/regional-data-cache";
 
 const config = defineCloudflareConfig({
   incrementalCache: withIncrementalCacheTiming(withPublicRouteTagPrefetch(withCacheWriteLifetime(
-    withFullRouteMissCache(withRegionalCache(r2IncrementalCache, {
+    withFullRouteMissCache(withRegionalCache(withRegionalOnlyDataCache(r2IncrementalCache), {
       // Keep local copies for their revalidation lifetime instead of expiring
       // every minute. Next still checks tags and serves/revalidates stale data.
       mode: "long-lived",
@@ -20,11 +21,12 @@ const config = defineCloudflareConfig({
   queue: doQueue,
   tagCache: withTagCacheTiming(doShardedTagCache({
     baseShardSize: 4,
-    // Route reads to the visitor's region; writes invalidate every replica.
+    // No regional replicas: every request runs in the ap-south-1 placement,
+    // so replicas chosen by the visitor's continent only added a round trip
+    // to another continent. Objects are created next to the placed Worker.
     shardReplication: {
       numberOfSoftReplicas: 1,
       numberOfHardReplicas: 1,
-      regionalReplication: { defaultRegion: "apac" },
     },
     regionalCache: true,
     regionalCacheTtlSec: 5,
@@ -37,6 +39,6 @@ const config = defineCloudflareConfig({
 });
 
 // This target-specific alias must also apply when invoking the adapter directly.
-config.buildCommand = "EC_CLOUDFLARE_BUILD=1 pnpm build --turbopack && node scripts/upload-sourcemaps.mjs";
+config.buildCommand = "EC_CLOUDFLARE_BUILD=1 pnpm build --turbopack && node scripts/upload-sourcemaps.mjs && node scripts/static-asset-manifest.mjs";
 
 export default config;

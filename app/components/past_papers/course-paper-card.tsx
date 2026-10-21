@@ -3,6 +3,7 @@
 import React, { memo, useCallback, useRef } from "react";
 import Image from "@/app/components/common/app-image";
 import IntentPrefetchLink from "@/app/components/common/intent-prefetch-link";
+import { getPdfFirstPagePreviewUrl } from "@/lib/pdf/preview-url";
 import {
     Check,
     Download,
@@ -90,6 +91,15 @@ function CoursePaperCard({
             return;
         }
         hasWarmedPdf.current = true;
+
+        // The paper page shows this image first; fetching it now lets the
+        // page's <img> come straight from the HTTP cache.
+        const preview = getPdfFirstPagePreviewUrl(paper.fileUrl, paper.pageEdits);
+        if (preview) {
+            const image = new window.Image();
+            image.fetchPriority = "high";
+            image.src = preview;
+        }
 
         const warm = () => {
             void preloadPdfiumEngine().catch(() => undefined);

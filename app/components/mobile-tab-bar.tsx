@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import IntentPrefetchLink from "@/app/components/common/intent-prefetch-link";
 import Image from "@/app/components/common/app-image";
 import { usePathname, useRouter } from "next/navigation";
 import { addTransitionType, startTransition, useEffect, useReducer, type MouseEvent } from "react";
@@ -222,9 +222,8 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
             : pathname === link.href;
           return (
             <li key={link.href} className="relative z-[1] min-w-0 flex-1">
-              <Link
+              <IntentPrefetchLink
                 href={link.href}
-                prefetch
                 transitionTypes={isActive ? undefined : ["nav-lateral"]}
                 onClickCapture={(event) => setNavTransitionOrigin(event.currentTarget)}
                 onClick={(event) => handleTabClick(event, link.href, isActive)}
@@ -266,7 +265,7 @@ export default function MobileTabBar({ toolsSheetOpen = false }: Props) {
                 <span className={`max-w-full truncate ${nativeAndroid ? "text-[12px]" : ""}`}>
                   {link.label}
                 </span>
-              </Link>
+              </IntentPrefetchLink>
             </li>
           );
         })}

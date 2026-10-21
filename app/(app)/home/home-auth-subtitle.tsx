@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { loadAuthSession } from "@/lib/auth/session-cache";
 import { getDisplayUserName } from "./display-name";
 import WelcomeBackSubtitle from "./welcome-back-subtitle";
 
@@ -12,8 +13,7 @@ export default function HomeAuthSubtitle({ className }: { className: string }) {
     useEffect(() => {
         let active = true;
 
-        void import("next-auth/react")
-            .then(({ getSession }) => getSession())
+        void loadAuthSession()
             .then((session) => {
                 if (!active) return;
                 setUserName(
