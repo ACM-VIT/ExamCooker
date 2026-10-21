@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { loadAuthSession } from "@/lib/auth/session-cache";
 import { SignIn } from "@/app/components/sign-in";
 
 function GradientText({ children }: { children: ReactNode }) {
@@ -30,8 +31,7 @@ export default function HomeAuthSignInCta() {
     useEffect(() => {
         let active = true;
 
-        void import("next-auth/react")
-            .then(({ getSession }) => getSession())
+        void loadAuthSession()
             .then((session) => {
                 if (active) {
                     setShowSignIn(!session?.user);
