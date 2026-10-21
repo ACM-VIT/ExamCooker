@@ -3,6 +3,7 @@
 import handler from "../.open-next/worker.js";
 import { recordPublicRequestPath } from "./public-route-tags";
 import { protectPersonalizedResponse } from "./cache-policy";
+import { isPreviousBuildAsset, productionCompatibilityResponse } from "./production-routing";
 export { AppState } from "./app-state";
 // @ts-ignore .open-next is generated at build time.
 export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "../.open-next/worker.js";
@@ -11,15 +12,29 @@ let receivedRequest = false;
 
 export default {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext) {
+    const bindings = env as {
+      PRODUCTION_FULL_CUTOVER?: string;
+      PREVIOUS_APP?: Fetcher;
+      CF_VERSION_METADATA?: { id?: string };
+    };
+    if (bindings.PRODUCTION_FULL_CUTOVER === "1") {
+      const compatibilityResponse = productionCompatibilityResponse(request);
+      if (compatibilityResponse) return compatibilityResponse;
+    }
     const firstRequest = !receivedRequest;
     receivedRequest = true;
     recordPublicRequestPath(ctx, request.url, request.method);
-    const response = protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
+    let response = protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
+    if (response.status === 404 && bindings.PREVIOUS_APP && isPreviousBuildAsset(request)) {
+      const previous = await bindings.PREVIOUS_APP.fetch(new Request(request.url, { method: request.method }));
+      if (previous.ok) response = previous;
+    }
     // This marks the first invocation of an isolate, not a cache miss or a
     // visitor's first page. The router records it with origin response time.
     const observed = new Response(response.body, response);
     observed.headers.set("x-ec-worker-first-request", firstRequest ? "1" : "0");
-    const version = (env as { CF_VERSION_METADATA?: { id?: string } }).CF_VERSION_METADATA?.id;
+    observed.headers.set("x-ec-backend", "cloudflare");
+    const version = bindings.CF_VERSION_METADATA?.id;
     if (version) observed.headers.set("x-ec-worker-version", version);
     return observed;
   },

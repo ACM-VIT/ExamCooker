@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getBuildRevision } from "./build-revision.mjs";
 
-// Run after Next's final build and before OpenNext copies or Azure packages it.
+// Run after Next's final build and before OpenNext packages it.
 // Deployment builds opt in; ordinary local builds need no PostHog credentials.
 if (process.env.POSTHOG_SOURCEMAP_UPLOAD !== "true") process.exit(0);
 

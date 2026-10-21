@@ -1214,7 +1214,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
               </Link>
               <Link href="/mod/observability" className={quietButton}>
                 <ChartLine className="size-4" aria-hidden />
-                <span className="hidden sm:inline">Azure metrics</span>
+                <span className="hidden sm:inline">Cloudflare metrics</span>
               </Link>
             </nav>
           </div>
