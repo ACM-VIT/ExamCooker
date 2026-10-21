@@ -3,6 +3,7 @@
 import pdfiumWasm from "@embedpdf/pdfium/pdfium.wasm";
 // The browser build runs in workerd once given a precompiled module.
 import { init } from "@embedpdf/pdfium";
+import { getPreviewDocument } from "../lib/pdf/preview-source";
 
 type Env = { BUCKET: R2Bucket; IMAGES: ImagesBinding };
 
@@ -12,7 +13,6 @@ const MAX_PREVIEW_HEIGHT = 2400;
 // Match the viewer, which renders without annotations or forms. Reverse byte
 // order makes PDFium write RGBA instead of BGRA.
 const RENDER_FLAGS = 0x10;
-const SOURCE_KEY = /^past-papers\/[a-zA-Z0-9-]{20,64}\/paper\.pdf$/;
 
 export class Unrenderable extends Error {}
 
@@ -125,7 +125,7 @@ export default {
     const key = url.searchParams.get("key") ?? "";
     const pageIndex = Number(url.searchParams.get("page"));
     const rotation = Number(url.searchParams.get("rotation"));
-    if (url.pathname !== "/render" || !SOURCE_KEY.test(key) || !Number.isInteger(pageIndex) ||
+    if (url.pathname !== "/render" || !getPreviewDocument(key) || !Number.isInteger(pageIndex) ||
         pageIndex < 0 || pageIndex > 63 || ![0, 90, 180, 270].includes(rotation)) {
       return new Response("Invalid preview request", { status: 400 });
     }

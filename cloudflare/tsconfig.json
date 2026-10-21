@@ -4,6 +4,6 @@
     "lib": ["ES2022"], "types": ["@cloudflare/workers-types"],
     "strict": true, "noEmit": true, "skipLibCheck": true
   },
-  "include": ["*.ts", "../lib/app-state-types.ts"],
+  "include": ["*.ts", "../lib/app-state-types.ts", "../lib/pdf/preview-source.ts"],
   "exclude": ["*.test.ts"]
 }
