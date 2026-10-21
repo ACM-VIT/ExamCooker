@@ -7,9 +7,9 @@ const {build}=require('esbuild');
 const {outputFiles}=await build({entryPoints:['cloudflare/assets-worker.ts'],bundle:true,write:false,format:'esm',platform:'browser',external:['node:crypto']});
 let holdNext=false,releaseHeld,notifyHeld;let heldStarted;
 let calls=0;let original=Buffer.from('%PDF-1.7\noriginal fixture');let sourceVersion='azure-v1';let missing=false;let stale=false;
-let renders=0;let renderStatus=200;
+let renders=0;let renderStatus=200;let renderedKey=null;
 const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:outputFiles[0].text,compatibilityDate:'2026-09-10',compatibilityFlags:['nodejs_compat'],r2Buckets:['BUCKET'],ratelimits:{PREVIEW_RENDERS:{namespace_id:'6061',simple:{limit:6,period:60}}},bindings:{MIRROR_TOKEN:'test-only-secret'},serviceBindings:{PDF_PREVIEW:async req=>{
- renders++;const params=new URL(req.url).searchParams;const source=await(await mf.getR2Bucket('BUCKET')).head(params.get('key'));
+ renders++;const params=new URL(req.url).searchParams;renderedKey=params.get('key');const source=await(await mf.getR2Bucket('BUCKET')).head(params.get('key'));
  return new Response(renderStatus===200?`webp:${params.get('page')}:${params.get('rotation')}:${source.etag}`:'unrenderable',{status:renderStatus,headers:{'x-ec-source-etag':source.etag}});
 }},outboundService:async req=>{
  calls++;assert.match(req.url,/^https:\/\/examcookerprodsi.blob.core.windows.net\/exam-assets\//);assert.equal(req.headers.get('cookie'),null);assert.equal(req.headers.get('authorization'),null);
@@ -76,10 +76,17 @@ try {
  assert.equal(renders,5,'concurrent cold requests share one render');
  for(const path of ['/_preview/v1/past-papers/previewfixture000000001/p64-r0.webp','/_preview/v1/past-papers/short/p0-r0.webp','/_preview/v1/past-papers/previewfixture000000001/p0-r45.webp','/_preview/v2/x',
   '/_preview/v1/past-papers/previewfixture000000001/p1-r90.webp?nonce=1','/_previews/v1/past-papers/previewfixture000000001/p1-r90.webp',
-  '/%5Fpreviews/v1/past-papers/previewfixture000000001/p1-r90.webp','/_previews%2Fv1%2Fpast-papers%2Fpreviewfixture000000001%2Fp1-r90.webp']){
+  '/%5Fpreviews/v1/past-papers/previewfixture000000001/p1-r90.webp','/_previews%2Fv1%2Fpast-papers%2Fpreviewfixture000000001%2Fp1-r90.webp',
+  '/_preview/v1/0F8E2C6A-1B3D-4E5F-8A9B-0C1D2E3F4A5B/p0-r0.webp','/_preview/v1/new-upload/p0-r0.webp','/_preview/v1/uploads/1755409749964_past_paper/p0-r0.webp']){
   assert.equal((await mf.dispatchFetch(host+path)).status,404);
  }
  assert.equal(renders,5);
+ // Papers uploaded before past-papers/<id>/paper.pdf keep a root <uuid>.pdf key.
+ const legacyId='0f8e2c6a-1b3d-4e5f-8a9b-0c1d2e3f4a5b';
+ // Another client: this one has spent its render allowance above.
+ const legacy=await mf.dispatchFetch(host+`/_preview/v1/${legacyId}/p0-r0.webp`,{headers:{'cf-connecting-ip':'203.0.113.9'}});assert.equal(legacy.status,200);assert.match(await legacy.text(),/^webp:0:0:/);
+ assert.equal(renderedKey,`${legacyId}.pdf`);assert.equal(renders,6);
+ assert.ok(await(await mf.getR2Bucket('BUCKET')).head(`_previews/v1/${legacyId}/p0-r0.webp`),'the legacy preview is stored');
  // Over its allowance, a client is throttled before any render starts.
  let throttled=null;
  for(const variant of ['p1-r270','p1-r0','p0-r90']){
@@ -89,5 +96,5 @@ try {
  }
  assert.ok(throttled,'the client is throttled after its allowance');assert.equal(throttled.headers.get('retry-after'),'60');
  assert.equal((await mf.dispatchFetch(previewUrl,fresh_)).status,200,'stored previews are not throttled');
- console.log('PASS: streamed copy checksums, R2 delivery, ranges, conditional requests, new uploads, overwrite/delete events, private admin operations, safe origins, and first-page previews');
+ console.log('PASS: streamed copy checksums, R2 delivery, ranges, conditional requests, new uploads, overwrite/delete events, private admin operations, safe origins, and first-page previews (including legacy root keys)');
 } finally {await mf.dispose();}

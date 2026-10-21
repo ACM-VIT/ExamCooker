@@ -77,8 +77,11 @@ try {
  const largeKey='past-papers/handlerfixture00000000003/paper.pdf';await bucket.put(largeKey,new Uint8Array(24*1024*1024+1));
  assert.equal((await handler(`key=${largeKey}&page=0&rotation=0`)).status,422);
  assert.equal((await handler('key=past-papers/handlerfixture00000000009/paper.pdf&page=0&rotation=0')).status,404);
- for(const query of [`key=${key}&page=-1&rotation=0`,`key=${key}&page=0&rotation=45`,'key=notes/x/paper.pdf&page=0&rotation=0',`key=${key}&page=64&rotation=0`]){
+ // Papers uploaded before past-papers/<id>/paper.pdf keep a root <uuid>.pdf key.
+ const legacyKey='0f8e2c6a-1b3d-4e5f-8a9b-0c1d2e3f4a5b.pdf';const legacyStored=await bucket.put(legacyKey,await fixture());
+ const legacy=await handler(`key=${legacyKey}&page=0&rotation=0`);assert.equal(legacy.status,200);assert.equal(legacy.headers.get('x-ec-source-etag'),legacyStored.etag);await legacy.arrayBuffer();
+ for(const query of [`key=${key}&page=-1&rotation=0`,`key=${key}&page=0&rotation=45`,'key=notes/x/paper.pdf&page=0&rotation=0',`key=${key}&page=64&rotation=0`,'key=0F8E2C6A-1B3D-4E5F-8A9B-0C1D2E3F4A5B.pdf&page=0&rotation=0','key=new-upload.pdf&page=0&rotation=0']){
   assert.equal((await handler(query)).status,400,query);
  }
- console.log('PASS: PDFium preview rendering, PNG encoding, intrinsic and edit rotation, page bounds, invalid documents, and the deployed R2/Images handler');
+ console.log('PASS: PDFium preview rendering, PNG encoding, intrinsic and edit rotation, page bounds, invalid documents, and the deployed R2/Images handler (including legacy root keys)');
 } finally {await mf.dispose();await rm(dir,{recursive:true,force:true});}

@@ -27,7 +27,10 @@ Keep `MIRROR_TOKEN` in Worker secrets.
 
 Paper pages show an image of the first displayed page while the PDF and its
 4.6 MB rendering engine download. `/_preview/v1/past-papers/<id>/p<page>-r<rotation>.webp`
-is served from `_previews/v1/…` in the same bucket, outside the Azure key space.
+renders `past-papers/<id>/paper.pdf`; papers uploaded before that layout keep a
+root `<uuid>.pdf` key and use `/_preview/v1/<uuid>/p<page>-r<rotation>.webp`
+(`lib/pdf/preview-source.ts` defines both for the app and Workers). Previews are
+served from `_previews/v1/…` in the same bucket, outside the Azure key space.
 A stored preview is used only while its `sourceEtag` matches the current PDF
 object; otherwise `examcooker-pdf-preview` (`wrangler.pdf-preview.jsonc`, no
 public route) renders it with PDFium and the Images binding. PDFs that cannot be
