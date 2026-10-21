@@ -6,6 +6,7 @@ import { PDFIUM_WASM_URL } from "@/lib/generated/pdfium-wasm";
 export { PDFIUM_WASM_URL };
 
 import { loadPdfiumEngine, PdfiumEngineTimeoutError } from "./load-engine";
+import { loadPdfiumWasm } from "./pdfium-wasm";
 export { PDFIUM_ENGINE_LOAD_TIMEOUT_MS } from "./load-engine";
 
 type PdfiumEngine = Awaited<
@@ -27,24 +28,15 @@ type PdfiumEngineState =
     };
 
 let cachedEngine: PdfiumEngine | null = null;
-let wasmPrefetched = false;
-
 /**
- * Download the engine into the HTTP cache at low priority, without compiling
- * it, so a later paper open skips its largest request. Skipped when the
- * visitor asked to save data or is on a 2G connection.
+ * Start the engine download at idle, without compiling it, so a later paper
+ * open reuses it. Skipped when the visitor asked to save data or is on 2G.
  */
 export function prefetchPdfiumWasm() {
-  if (wasmPrefetched || cachedEngine || typeof navigator === "undefined") return;
+  if (cachedEngine || typeof navigator === "undefined") return;
   const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
   if (connection?.saveData || /2g/.test(connection?.effectiveType ?? "")) return;
-  wasmPrefetched = true;
-  void fetch(PDFIUM_WASM_URL, { cache: "force-cache", priority: "low" } as RequestInit)
-    .then((response) => {
-      if (!response.ok) throw new Error(`PDF engine prefetch failed with ${response.status}`);
-      return response.arrayBuffer();
-    })
-    .catch(() => { wasmPrefetched = false; });
+  void loadPdfiumWasm().catch(() => undefined);
 }
 
 let pendingEngine: Promise<PdfiumEngine> | null = null;
