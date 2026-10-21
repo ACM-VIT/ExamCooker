@@ -1,11 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { Window } from "happy-dom";
+import { PDFIUM_WASM_URL } from "../generated/pdfium-wasm";
 
 const PAPER_ID = "cmoeqf27601vqa8v3nk8b8gdf";
 const PAPER = `https://examcookerprodsi.blob.core.windows.net/exam-assets/past-papers/${PAPER_ID}/paper.pdf`;
 
-test("the engine preload is skipped while the shared download runs, not the PDF preload", async (t) => {
+test("a cold load's server HTML preloads the engine and the PDF", async () => {
+  const { preloadPdfResources } = await import("./preload-resources");
+  function Hints() {
+    preloadPdfResources(PAPER);
+    return null;
+  }
+  const html = renderToStaticMarkup(createElement("html", null, createElement("head"), createElement("body", null, createElement(Hints))));
+  assert.match(html, new RegExp(`<link rel="preload" href="${PDFIUM_WASM_URL}"`));
+  assert.match(html, new RegExp(`<link rel="preload" href="[^"]*${PAPER_ID}[^"]*"`));
+});
+
+test("once this page requested the engine, only the PDF is preloaded", async (t) => {
   const window = new Window({ url: "https://examcooker.acmvit.in/past_papers/BMAT101L" });
   const globals: Record<string, unknown> = {
     window,
@@ -37,18 +51,17 @@ test("the engine preload is skipped while the shared download runs, not the PDF 
   await import("react-dom/client");
   const { preloadPdfResources } = await import("./preload-resources");
   const { loadPdfiumWasm, releasePdfiumWasm } = await import("./pdfium-wasm");
-  const { PDFIUM_WASM_URL } = await import("../generated/pdfium-wasm");
   const preloads = () => [...window.document.head.querySelectorAll('link[rel="preload"]')]
     .map((link) => link.getAttribute("href") ?? "");
 
   const download = loadPdfiumWasm();
   preloadPdfResources(PAPER);
-  assert.equal(preloads().some((href) => href.endsWith(PDFIUM_WASM_URL)), false);
+  assert.equal(preloads().some((href) => href.endsWith(PDFIUM_WASM_URL)), false, "no second download while one runs");
   assert.equal(preloads().some((href) => href.includes(PAPER_ID)), true);
 
   finishDownload();
   await download;
   releasePdfiumWasm();
   preloadPdfResources(PAPER);
-  assert.equal(preloads().some((href) => href.endsWith(PDFIUM_WASM_URL)), true);
+  assert.equal(preloads().some((href) => href.endsWith(PDFIUM_WASM_URL)), false, "no unused preload after the engine is built");
 });

@@ -19,7 +19,7 @@ test("every consumer shares one engine download until it is released", async (t)
   assert.equal(requests, 1);
 
   releasePdfiumWasm();
-  assert.equal(isPdfiumWasmRequested(), false);
+  assert.equal(isPdfiumWasmRequested(), true, "a released engine is still in the HTTP cache");
   await loadPdfiumWasm();
   assert.equal(requests, 2, "after release a rebuild fetches again (from the HTTP cache)");
 });
