@@ -36,6 +36,8 @@ import {
     MOBILE_SELECT_ALL_HOST_ID,
 } from "./course-paper-grid-controls";
 import { getPastPaperDetailPath } from "@/lib/seo";
+import { prefetchPdfiumWasm } from "@/lib/pdf/pdfium-engine-cache";
+import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 
 type Props = {
     papers: CoursePaperListItem[];
@@ -194,6 +196,10 @@ export default function CoursePaperGrid({
     const { isSupported: splitViewSupported, openPaperSplit } = usePaperSplitView();
     const wideRemainder = papers.length % 5;
     const wideStretchClass = WIDE_STRETCH_CLASS_BY_REMAINDER[wideRemainder] ?? "";
+
+    // Students on a course page usually open a paper next. Phones have no
+    // hover to warm the viewer, so fetch the PDF engine once the page is idle.
+    useEffect(() => scheduleIdleWork(prefetchPdfiumWasm, { fallbackDelayMs: 2500, timeoutMs: 5000 }), []);
 
     const toggle = useCallback((id: string) => {
         dispatch({ type: "toggle-selected", id });
