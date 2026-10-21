@@ -43,7 +43,7 @@ function FirstPagePreview({ src, fileUrl, onUnavailable }: { src: string; fileUr
   return (
     <div
       data-ec-pdf-preview-layer="true"
-      className="pointer-events-none absolute inset-0 z-10 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-950"
+      className="pointer-events-none absolute inset-0 z-10 flex flex-col overflow-hidden bg-gray-100 dark:bg-gray-950"
     >
       <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-black/10 bg-white px-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:bg-gray-800 dark:text-gray-300">
         <span role="status">Loading PDF</span>
@@ -57,7 +57,10 @@ function FirstPagePreview({ src, fileUrl, onUnavailable }: { src: string; fileUr
           Open original
         </a>
       </div>
-      <div className="p-4">
+      {/* Match the viewer's fit-width page box (edge to edge, below its
+          py-3/sm:py-4 scroller padding), so the real page that replaces this
+          is not a larger paint and LCP keeps the preview's time. */}
+      <div className="pt-3 sm:pt-4">
         <img
           ref={image}
           src={src}
@@ -65,7 +68,7 @@ function FirstPagePreview({ src, fileUrl, onUnavailable }: { src: string; fileUr
           decoding="async"
           fetchPriority="high"
           data-ec-pdf-preview="true"
-          className="h-auto w-full bg-white shadow-sm"
+          className="h-auto w-full bg-white shadow-[0_3px_18px_-10px_rgba(0,0,0,0.45)]"
           onError={onUnavailable}
         />
       </div>
