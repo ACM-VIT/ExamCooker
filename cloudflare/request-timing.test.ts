@@ -21,3 +21,27 @@ test("work outside a timed request is not recorded", async () => {
   assert.equal(timing.spans.length, 1);
   assert.equal(timing.spans[0][0], "dbConnect");
 });
+
+test("work still pending at the summary counts up to the boundary", async () => {
+  const ctx = {};
+  const timing = beginRequestTiming(ctx);
+  let finish!: () => void;
+  const pending = timeRequestWork(ctx, "tags", () => new Promise<void>((resolve) => { finish = resolve; }));
+  const span = timing.spans[0];
+  assert.equal(span[2], undefined);
+  span[1] = timing.startedAt + 20;
+  const summary = summarizeRequestTiming(timing, timing.startedAt + 50, timing.startedAt + 80);
+  assert.equal(summary.tagsN, 1);
+  assert.equal(summary.tagsHeadMs, 30);
+  assert.equal(summary.tagsMs, 60);
+  finish();
+  await pending;
+});
+
+test("spans beyond the cap are counted as dropped", async () => {
+  const ctx = {};
+  const timing = beginRequestTiming(ctx);
+  for (let i = 0; i < 520; i++) await timeRequestWork(ctx, "dbQuery", async () => undefined);
+  assert.equal(timing.spans.length, 512);
+  assert.equal(summarizeRequestTiming(timing, timing.startedAt, timing.startedAt).droppedSpans, 8);
+});

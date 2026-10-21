@@ -22,11 +22,16 @@ export function withIncrementalCacheTiming(cache: IncrementalCache): Incremental
   };
 }
 
+// Speculative reads use the untimed instance. Validation that awaits their
+// shared results is still timed, so only time the request waited counts.
+export const UNTIMED_TAG_CACHE = Symbol.for("examcooker.untimed-tag-cache");
+
 /** Attribute tag invalidation reads; writes and other members pass through unchanged. */
 export function withTagCacheTiming<T extends TagCacheReads>(tagCache: T): T {
   const reads = new Set<PropertyKey>(["getLastRevalidated", "hasBeenRevalidated", "isStale"]);
   return new Proxy(tagCache, {
     get(target, property) {
+      if (property === UNTIMED_TAG_CACHE) return target;
       const value = Reflect.get(target, property, target);
       if (typeof value !== "function") return value;
       // Bind to the original instance: the adapter keeps state in private fields.

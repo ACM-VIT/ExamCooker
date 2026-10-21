@@ -13,10 +13,36 @@ let receivedRequest = false;
 
 function requestKind(request: Request) {
   if (request.headers.has("next-action")) return "action";
-  if (request.headers.has("next-router-prefetch")) return "prefetch";
+  // Match the prefetch forms recognized by proxy.ts and production-routing.ts.
+  if (request.headers.has("next-router-prefetch") || request.headers.has("x-middleware-prefetch") ||
+    /prefetch/i.test(`${request.headers.get("purpose") ?? ""} ${request.headers.get("sec-purpose") ?? ""}`)) return "prefetch";
   if (request.headers.has("rsc") || new URL(request.url).searchParams.has("_rsc")) return "rsc";
   if (request.method === "HEAD") return "head";
   return (request.headers.get("accept") ?? "").includes("text/html") ? "document" : "other";
+}
+
+/** Report when a body finishes or errors. Client cancellations are not reported. */
+function observeStreamEnd(body: ReadableStream<Uint8Array>, ended: (failed: boolean) => void) {
+  const reader = body.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          ended(false);
+          controller.close();
+        } else {
+          controller.enqueue(value);
+        }
+      } catch (error) {
+        ended(true);
+        controller.error(error);
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
 }
 
 export default {
@@ -46,15 +72,15 @@ export default {
     let response: Response;
     try {
       response = protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
+      if (response.status === 404 && bindings.PREVIOUS_APP && isPreviousBuildAsset(request)) {
+        const previous = await bindings.PREVIOUS_APP.fetch(new Request(request.url, { method: request.method }));
+        if (previous.ok) response = previous;
+      }
     } catch (error) {
       // Failed requests can be the slowest ones; keep them in the dataset.
       const failedAt = performance.now();
       log(500, failedAt, failedAt, true);
       throw error;
-    }
-    if (response.status === 404 && bindings.PREVIOUS_APP && isPreviousBuildAsset(request)) {
-      const previous = await bindings.PREVIOUS_APP.fetch(new Request(request.url, { method: request.method }));
-      if (previous.ok) response = previous;
     }
     const headersAt = performance.now();
     const status = response.status;
@@ -62,9 +88,8 @@ export default {
     // body chunk. Other responses (assets, ranges, redirects) keep their body.
     const contentType = response.headers.get("content-type") ?? "";
     let body = response.body;
-    // Abandoned streams never flush and are not logged.
     if (body && (contentType.includes("text/html") || contentType.includes("text/x-component"))) {
-      body = body.pipeThrough(new TransformStream({ flush: () => log(status, headersAt, performance.now()) }));
+      body = observeStreamEnd(body, (failed) => log(status, headersAt, performance.now(), failed));
     } else {
       log(status, headersAt, headersAt);
     }
