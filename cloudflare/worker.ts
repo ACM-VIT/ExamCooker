@@ -4,11 +4,46 @@ import handler from "../.open-next/worker.js";
 import { recordPublicRequestPath } from "./public-route-tags";
 import { protectPersonalizedResponse } from "./cache-policy";
 import { isPreviousBuildAsset, productionCompatibilityResponse } from "./production-routing";
+import { beginRequestTiming, summarizeRequestTiming } from "./request-timing";
 export { AppState } from "./app-state";
 // @ts-ignore .open-next is generated at build time.
 export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "../.open-next/worker.js";
 
 let receivedRequest = false;
+
+function requestKind(request: Request) {
+  if (request.headers.has("next-action")) return "action";
+  // Match the prefetch forms recognized by proxy.ts and production-routing.ts.
+  if (request.headers.has("next-router-prefetch") || request.headers.has("x-middleware-prefetch") ||
+    /prefetch|prerender/i.test(`${request.headers.get("purpose") ?? ""} ${request.headers.get("sec-purpose") ?? ""}`)) return "prefetch";
+  if (request.headers.has("rsc") || new URL(request.url).searchParams.has("_rsc")) return "rsc";
+  if (request.method === "HEAD") return "head";
+  return (request.headers.get("accept") ?? "").includes("text/html") ? "document" : "other";
+}
+
+/** Report when a body finishes or errors. Client cancellations are not reported. */
+function observeStreamEnd(body: ReadableStream<Uint8Array>, ended: (failed: boolean) => void) {
+  const reader = body.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          ended(false);
+          controller.close();
+        } else {
+          controller.enqueue(value);
+        }
+      } catch (error) {
+        ended(true);
+        controller.error(error);
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
+}
 
 export default {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext) {
@@ -23,15 +58,44 @@ export default {
     }
     const firstRequest = !receivedRequest;
     receivedRequest = true;
+    const timing = beginRequestTiming(ctx);
+    const log = (status: number, headersAt: number, endedAt: number, failed = false) => console.log({
+      message: "ec.request.timing",
+      path: new URL(request.url).pathname,
+      kind: requestKind(request),
+      status,
+      failed,
+      firstRequest,
+      ...summarizeRequestTiming(timing, headersAt, endedAt),
+    });
     recordPublicRequestPath(ctx, request.url, request.method);
-    let response = protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
-    if (response.status === 404 && bindings.PREVIOUS_APP && isPreviousBuildAsset(request)) {
-      const previous = await bindings.PREVIOUS_APP.fetch(new Request(request.url, { method: request.method }));
-      if (previous.ok) response = previous;
+    let response: Response;
+    try {
+      response = protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
+      if (response.status === 404 && bindings.PREVIOUS_APP && isPreviousBuildAsset(request)) {
+        const previous = await bindings.PREVIOUS_APP.fetch(new Request(request.url, { method: request.method }));
+        if (previous.ok) response = previous;
+      }
+    } catch (error) {
+      // Failed requests can be the slowest ones; keep them in the dataset.
+      const failedAt = performance.now();
+      log(500, failedAt, failedAt, true);
+      throw error;
+    }
+    const headersAt = performance.now();
+    const status = response.status;
+    // Rendered pages stream after their headers; time those through the last
+    // body chunk. Other responses (assets, ranges, redirects) keep their body.
+    const contentType = response.headers.get("content-type") ?? "";
+    let body = response.body;
+    if (body && (contentType.includes("text/html") || contentType.includes("text/x-component"))) {
+      body = observeStreamEnd(body, (failed) => log(status, headersAt, performance.now(), failed));
+    } else {
+      log(status, headersAt, headersAt);
     }
     // This marks the first invocation of an isolate, not a cache miss or a
     // visitor's first page. The router records it with origin response time.
-    const observed = new Response(response.body, response);
+    const observed = new Response(body, response);
     observed.headers.set("x-ec-worker-first-request", firstRequest ? "1" : "0");
     observed.headers.set("x-ec-backend", "cloudflare");
     const version = bindings.CF_VERSION_METADATA?.id;

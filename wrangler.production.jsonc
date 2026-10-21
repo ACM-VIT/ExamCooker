@@ -73,7 +73,11 @@
     "binding": "IMAGES"
   },
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    }
   },
   "cache": {
     "enabled": false

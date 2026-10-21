@@ -1,4 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { UNTIMED_TAG_CACHE } from "./cache-timing";
 import { getPublicRequestPath, publicRouteTags } from "./public-route-tags";
 import type { withRegionalCache } from "@opennextjs/cloudflare/overrides/incremental-cache/regional-cache";
 
@@ -11,8 +12,9 @@ export function withPublicRouteTagPrefetch(cache: IncrementalCache): Incremental
     get(key, cacheType) {
       let prefetch: Promise<unknown> | undefined;
       if (cacheType === "cache" && key.startsWith("/")) {
+        type TagReads = { getLastRevalidated(tags: string[]): Promise<number> };
         const runtime = globalThis as typeof globalThis & {
-          tagCache?: { getLastRevalidated(tags: string[]): Promise<number> };
+          tagCache?: TagReads & { [UNTIMED_TAG_CACHE]?: TagReads };
           __openNextAls?: { getStore(): unknown };
         };
         // The patched adapter shares in-flight reads within this request.
@@ -23,7 +25,8 @@ export function withPublicRouteTagPrefetch(cache: IncrementalCache): Incremental
           const pathname = getPublicRequestPath(ctx);
           const tags = pathname ? publicRouteTags(pathname) : undefined;
           if (!prefetch && tags) {
-            prefetch = runtime.tagCache.getLastRevalidated(tags).catch(() => undefined);
+            const tagCache = runtime.tagCache[UNTIMED_TAG_CACHE] ?? runtime.tagCache;
+            prefetch = tagCache.getLastRevalidated(tags).catch(() => undefined);
             prefetches.set(ctx, prefetch);
             ctx.waitUntil(prefetch);
           }

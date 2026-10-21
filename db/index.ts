@@ -2,6 +2,7 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { timeRequestWork } from "@/cloudflare/request-timing";
 
 function readPositiveInt(name: string, fallback: number) {
   const value = Number.parseInt(process.env[name] ?? "", 10);
@@ -230,11 +231,52 @@ function attachQueryRetry(pool: Pool) {
   }) as typeof pool.query;
 }
 
+type TimedClient = {
+  query: (...args: unknown[]) => unknown;
+};
+
+function attachRequestTiming(pool: Pool, ctx: object) {
+  const connect = pool.connect.bind(pool);
+
+  // pg-pool's query() acquires through this.connect(callback), so connection
+  // setup is timed for both pool.query() and transactions.
+  pool.connect = ((callback?: (...results: unknown[]) => void) => {
+    if (!callback) return timeRequestWork(ctx, "dbConnect", () => connect());
+    void timeRequestWork(ctx, "dbConnect", () => new Promise<void>((resolve) => {
+      connect((...results: unknown[]) => {
+        resolve();
+        callback(...results);
+      });
+    }));
+  }) as typeof pool.connect;
+
+  // Every statement runs on a checked-out client, including pool.query()
+  // (which passes a callback) and Drizzle transactions (which await).
+  pool.on("connect", (client) => {
+    const timedClient = client as unknown as TimedClient;
+    const query = timedClient.query.bind(client);
+    timedClient.query = (...args: unknown[]) => {
+      const [config] = args;
+      if (config && typeof (config as { submit?: unknown }).submit === "function") return query(...args);
+      const callback = typeof args.at(-1) === "function" ? args.pop() as (...results: unknown[]) => void : undefined;
+      if (!callback) return timeRequestWork(ctx, "dbQuery", () => Promise.resolve(query(...args)));
+      void timeRequestWork(ctx, "dbQuery", () => new Promise<void>((resolve) => {
+        query(...args, (...results: unknown[]) => {
+          resolve();
+          callback(...results);
+        });
+      }));
+      return undefined;
+    };
+  });
+}
+
 function createPool(workers = false) {
   // Hyperdrive owns the persistent origin pool. Worker sockets still stay
   // request-scoped; a fresh pg connection now connects to the local proxy.
-  const hyperdrive = workers
-    ? (getCloudflareContext().env as unknown as {
+  const cloudflare = workers ? getCloudflareContext() : undefined;
+  const hyperdrive = cloudflare
+    ? (cloudflare.env as unknown as {
         HYPERDRIVE?: { connectionString: string };
       }).HYPERDRIVE
     : undefined;
@@ -285,8 +327,22 @@ function createPool(workers = false) {
   );
 
   attachQueryRetry(pool);
+  if (cloudflare) attachRequestTiming(pool, cloudflare.ctx);
 
-  pool.on("error", (error) => {
+  // pg-pool closes a client after its last permitted use. On Workers, closing
+  // the socket rejects its pending read with an uncoded error that pg does not
+  // filter (it only ignores ECONNRESET/EPIPE while ending). Mark those clients
+  // on release, before the pool removes them; real idle failures still log.
+  const retiringClients = new WeakSet<object>();
+  if (maxUses !== undefined) {
+    pool.on("release", (error, client) => {
+      const useCount = (client as typeof client & { _poolUseCount?: number })._poolUseCount ?? 0;
+      if (!error && useCount >= maxUses) retiringClients.add(client);
+    });
+  }
+
+  pool.on("error", (error, client) => {
+    if (retiringClients.has(client) && error.message === "This socket has been closed.") return;
     console.error(`[db] pg pool error (${describePoolState(pool)})`, describeDbError(error));
   });
 
