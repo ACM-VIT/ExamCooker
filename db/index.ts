@@ -287,7 +287,7 @@ function createPool(workers = false) {
   attachQueryRetry(pool);
 
   pool.on("error", (error) => {
-    console.error(`[db] pg pool error (${describePoolState(pool)})`, error);
+    console.error(`[db] pg pool error (${describePoolState(pool)})`, describeDbError(error));
   });
 
   return pool;

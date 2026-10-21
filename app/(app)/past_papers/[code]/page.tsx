@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { io } from "next/cache";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { normalizeCourseCode } from "@/lib/course-tags";
@@ -72,7 +73,8 @@ export async function generateStaticParams() {
     return courses.map(({ code }) => ({ code }));
 }
 
-function getCourseExamFocus(collection: CoursePaperCollection): ExamType {
+async function getCourseExamFocus(collection: CoursePaperCollection): Promise<ExamType> {
+    await io();
     const cutoff = new Date(getUpcomingExamCutoffIso());
     return collection.upcomingExams.find((exam) =>
         exam.examType !== null && (exam.scheduledAt === null || exam.scheduledAt >= cutoff),
@@ -180,7 +182,7 @@ async function CoursePastPapersContent({
     const { papers, totalCount } = paginateCoursePaperRows(rows, {
         ...paperQuery,
         ...(filters.sort === "seasonal"
-            ? { sort: "seasonal" as const, examFocus: getCourseExamFocus(collection) }
+            ? { sort: "seasonal" as const, examFocus: await getCourseExamFocus(collection) }
             : { sort: filters.sort }),
     });
 
