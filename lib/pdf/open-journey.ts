@@ -45,6 +45,7 @@ export function installPdfOpenJourneyTracking(options: {
   let intersectionObserver: IntersectionObserver | null = null;
   const intersections = new Map<Element, boolean>();
   let frame: number | null = null;
+  let decodedImage: { image: HTMLImageElement; source: string; ready: boolean } | null = null;
 
   const send = (event: Parameters<Capture>[0], properties: Properties, immediate = false) => {
     try { options.capture(event, properties, immediate); } catch { /* Telemetry cannot block navigation. */ }
@@ -55,6 +56,7 @@ export function installPdfOpenJourneyTracking(options: {
     intersectionObserver?.disconnect();
     intersectionObserver = null;
     intersections.clear();
+    decodedImage = null;
     root = null;
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
@@ -84,7 +86,21 @@ export function installPdfOpenJourneyTracking(options: {
       image.complete && image.naturalWidth > 0 &&
       (image.src.startsWith("blob:") || image.src.startsWith("data:image/")) && visible(image));
     if (image) {
-      finish("visible", { image_source: image.src.startsWith("blob:") ? "blob" : "inline" });
+      if (decodedImage?.image !== image || decodedImage.source !== image.src) {
+        const current = attempt;
+        const pending = { image, source: image.src, ready: false };
+        decodedImage = pending;
+        void image.decode().then(() => {
+          if (attempt !== current || decodedImage !== pending) return;
+          pending.ready = true;
+          // Recheck visibility after decoding and another paint boundary.
+          scheduleCheck();
+        }, () => {
+          if (decodedImage === pending) decodedImage = null;
+        });
+      } else if (decodedImage.ready) {
+        finish("visible", { image_source: image.src.startsWith("blob:") ? "blob" : "inline" });
+      }
     } else if ([...root.querySelectorAll('[data-ec-pdf-page-error="true"], [data-ec-pdf-load-error="true"]')].some(visible)) {
       finish("render_error");
     }
