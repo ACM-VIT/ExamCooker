@@ -254,6 +254,11 @@ export async function withPastPapersSurfaceRedisCache<T>(
   },
   loader: () => Promise<T>,
 ): Promise<T> {
+  // On Workers these loaders already sit inside Next's tagged cache, so a
+  // second payload lookup, namespace read and lock only add round trips.
+  if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
+    return loader();
+  }
   const redis = getOptionalAppState();
   if (!redis) {
     return loader();

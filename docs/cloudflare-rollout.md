@@ -45,8 +45,11 @@ production database and are not disposable data sandboxes.
 
 Production runs near the database in AWS Mumbai using a dedicated Hyperdrive
 pool with a 100-connection origin limit. Query caching stays disabled so auth,
-upload receipts, and moderation reads remain current. Public application data
-uses R2 and regional caches with explicit invalidation.
+upload receipts, and moderation reads remain current. `use cache` data lives
+in the regional Cache API and recomputes from Hyperdrive on a miss, which is
+faster than an R2 read from Mumbai; route shells persist in R2. Tag
+invalidation applies to both. Tag-cache Durable Objects have no regional
+replicas, so they sit next to the placed Worker.
 
 The production Worker allows 300,000 ms CPU and 10,000 subrequests per request.
 These limits provide execution headroom; latency still depends on application

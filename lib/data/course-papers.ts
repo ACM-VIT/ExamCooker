@@ -120,11 +120,6 @@ export async function getCoursePaperRows(courseId: string): Promise<CoursePaperR
         }));
     };
 
-    // Next's tagged cache already persists these rows on Cloudflare. On a miss,
-    // Hyperdrive can fetch them without another R2 lookup and distributed lock.
-    if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
-        return loadRows();
-    }
     return withPastPapersSurfaceRedisCache(
         { keyParts: ["course-paper-rows-v2", { courseId }] },
         loadRows,
