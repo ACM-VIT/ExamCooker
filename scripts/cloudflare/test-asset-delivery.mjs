@@ -8,7 +8,7 @@ const {outputFiles}=await build({entryPoints:['cloudflare/assets-worker.ts'],bun
 let holdNext=false,releaseHeld,notifyHeld;let heldStarted;
 let calls=0;let original=Buffer.from('%PDF-1.7\noriginal fixture');let sourceVersion='azure-v1';let missing=false;let stale=false;
 let renders=0;let renderStatus=200;
-const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:outputFiles[0].text,compatibilityDate:'2026-09-10',compatibilityFlags:['nodejs_compat'],r2Buckets:['BUCKET'],bindings:{MIRROR_TOKEN:'test-only-secret'},serviceBindings:{PDF_PREVIEW:async req=>{
+const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:outputFiles[0].text,compatibilityDate:'2026-09-10',compatibilityFlags:['nodejs_compat'],r2Buckets:['BUCKET'],ratelimits:{PREVIEW_RENDERS:{namespace_id:'6061',simple:{limit:6,period:60}}},bindings:{MIRROR_TOKEN:'test-only-secret'},serviceBindings:{PDF_PREVIEW:async req=>{
  renders++;const params=new URL(req.url).searchParams;const source=await(await mf.getR2Bucket('BUCKET')).head(params.get('key'));
  return new Response(renderStatus===200?`webp:${params.get('page')}:${params.get('rotation')}:${source.etag}`:'unrenderable',{status:renderStatus,headers:{'x-ec-source-etag':source.etag}});
 }},outboundService:async req=>{
@@ -80,5 +80,14 @@ try {
   assert.equal((await mf.dispatchFetch(host+path)).status,404);
  }
  assert.equal(renders,5);
+ // Over its allowance, a client is throttled before any render starts.
+ let throttled=null;
+ for(const variant of ['p1-r270','p1-r0','p0-r90']){
+  const before=renders;const response=await mf.dispatchFetch(host+`/_preview/v1/past-papers/previewfixture000000001/${variant}.webp`);await response.arrayBuffer();
+  if(response.status===429){throttled=response;assert.equal(renders,before,'a throttled request starts no render');break;}
+  assert.equal(response.status,200);
+ }
+ assert.ok(throttled,'the client is throttled after its allowance');assert.equal(throttled.headers.get('retry-after'),'60');
+ assert.equal((await mf.dispatchFetch(previewUrl,fresh_)).status,200,'stored previews are not throttled');
  console.log('PASS: streamed copy checksums, R2 delivery, ranges, conditional requests, new uploads, overwrite/delete events, private admin operations, safe origins, and first-page previews');
 } finally {await mf.dispose();}

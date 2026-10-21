@@ -9,6 +9,8 @@
   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "examcooker-prod-assets" }],
   // Deploy wrangler.pdf-preview.jsonc first; it renders first-page previews.
   "services": [{ "binding": "PDF_PREVIEW", "service": "examcooker-pdf-preview" }],
+  // New preview renders per client IP; stored previews are not limited.
+  "ratelimits": [{ "name": "PREVIEW_RENDERS", "namespace_id": "6061", "simple": { "limit": 60, "period": 60 } }],
   "routes": [{ "pattern": "ec-assets.acmvit.in", "custom_domain": true }],
   "workers_dev": false,
   "preview_urls": false,

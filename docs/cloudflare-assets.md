@@ -34,6 +34,10 @@ public route) renders it with PDFium and the Images binding. PDFs that cannot be
 rendered (encrypted, over 24 MB, page out of range) get an empty failure marker
 for that source version, so they are not retried on every view.
 
+New renders are limited to 60 per client IP per minute (`PREVIEW_RENDERS`);
+stored and edge-cached previews are not. A throttled or failed preview returns
+an error and the page shows the normal viewer.
+
 Deploy `wrangler.pdf-preview.jsonc` before `wrangler.assets.jsonc`, which binds it.
 
 Coverage: `scripts/cloudflare/test-asset-delivery.mjs` exercises the Worker
