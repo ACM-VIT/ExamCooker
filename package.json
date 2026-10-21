@@ -39,6 +39,7 @@
     "cf:app-state:deploy": "wrangler deploy --config wrangler.app-state.jsonc",
     "cf:build:canary": "NEXT_PUBLIC_BASE_URL=https://examcooker.acmvit.in NEXTAUTH_URL=https://examcooker.acmvit.in AUTH_URL=https://examcooker.acmvit.in POSTHOG_SOURCEMAP_UPLOAD=true opennextjs-cloudflare build --config wrangler.canary.jsonc",
     "cf:upload:canary": "opennextjs-cloudflare upload --config wrangler.canary.jsonc --cacheChunkSize 5",
+    "cf:deploy:canary": "opennextjs-cloudflare deploy --config wrangler.canary.jsonc --cacheChunkSize 5",
     "cf:build:prod": "NEXT_PUBLIC_BASE_URL=https://examcooker.acmvit.in NEXTAUTH_URL=https://examcooker.acmvit.in AUTH_URL=https://examcooker.acmvit.in POSTHOG_SOURCEMAP_UPLOAD=true opennextjs-cloudflare build --config wrangler.production.jsonc",
     "cf:deploy:prod": "opennextjs-cloudflare deploy --config wrangler.production.jsonc --cacheChunkSize 5"
   },
