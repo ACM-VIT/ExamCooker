@@ -1,7 +1,7 @@
 "use client";
 
-import { preconnect } from "react-dom";
-import { useEffect, useRef } from "react";
+import { preconnect, preload } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import { PDF_JOURNEY_READY_EVENT } from "@/lib/pdf/open-journey";
 import dynamic from "next/dynamic";
 
@@ -31,6 +31,41 @@ function getRemoteOrigin(url: string) {
   }
 }
 
+// A server-rendered image of the first page, shown while the PDF and its
+// engine download. The real page replaces it as soon as it paints.
+function FirstPagePreview({ src, fileUrl, onUnavailable }: { src: string; fileUrl: string; onUnavailable: () => void }) {
+  return (
+    <div
+      data-ec-pdf-preview-layer="true"
+      className="pointer-events-none absolute inset-0 z-10 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-950"
+    >
+      <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-black/10 bg-white px-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:bg-gray-800 dark:text-gray-300">
+        <span role="status">Loading PDF</span>
+        {/* The viewer's own slow-load actions are underneath this layer. */}
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="pointer-events-auto font-semibold text-gray-700 underline-offset-2 hover:underline dark:text-gray-100"
+        >
+          Open original
+        </a>
+      </div>
+      <div className="p-4">
+        <img
+          src={src}
+          alt=""
+          decoding="async"
+          fetchPriority="high"
+          data-ec-pdf-preview="true"
+          className="h-auto w-full bg-white shadow-sm"
+          onError={onUnavailable}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function PDFViewerClient({
   enableQuestionMarkdown = false,
   fileUrl,
@@ -38,11 +73,13 @@ export default function PDFViewerClient({
   moderation,
   pageEdits,
   journeyPath,
+  previewUrl,
 }: {
   enableQuestionMarkdown?: boolean;
   journeyPath?: string;
   fileUrl: string;
   fileName?: string;
+  previewUrl?: string | null;
   moderation?:
     | {
         paperId: string;
@@ -52,7 +89,33 @@ export default function PDFViewerClient({
   pageEdits?: PdfPageEdits | null;
 }) {
   preloadPdfResources(fileUrl);
+  if (previewUrl) preload(previewUrl, { as: "image", fetchPriority: "high" });
   const journeyRoot = useRef<HTMLDivElement>(null);
+  const viewerRoot = useRef<HTMLDivElement>(null);
+  const [replacedPreview, setReplacedPreview] = useState<string | null>(null);
+  const showPreview = Boolean(previewUrl) && replacedPreview !== previewUrl;
+
+  useEffect(() => {
+    const root = viewerRoot.current;
+    if (!root || !previewUrl) return;
+    const replace = () => setReplacedPreview(previewUrl);
+    // Image load events do not bubble; capture them from the viewer subtree.
+    const painted = (event: Event) => {
+      if (event.target instanceof HTMLImageElement && event.target.dataset.ecPdfPageImage === "true") replace();
+    };
+    // Error states carry their own recovery actions; do not cover them.
+    const failed = () => {
+      if (root.querySelector('[data-ec-pdf-load-error="true"], [data-ec-pdf-page-error="true"]')) replace();
+    };
+    root.addEventListener("load", painted, true);
+    const observer = new MutationObserver(failed);
+    observer.observe(root, { childList: true, subtree: true });
+    failed();
+    return () => {
+      root.removeEventListener("load", painted, true);
+      observer.disconnect();
+    };
+  }, [previewUrl]);
   useEffect(() => {
     if (journeyPath) journeyRoot.current?.dispatchEvent(new Event(PDF_JOURNEY_READY_EVENT, { bubbles: true }));
   }, [journeyPath]);
@@ -77,7 +140,7 @@ export default function PDFViewerClient({
     preconnect(remoteOrigin, { crossOrigin: "anonymous" });
   }
 
-  const viewer = (
+  const pdfViewer = (
     <PDFViewer
       key={fileUrl}
       enableQuestionMarkdown={enableQuestionMarkdown}
@@ -87,6 +150,14 @@ export default function PDFViewerClient({
       pageEdits={pageEdits}
     />
   );
+  const viewer = previewUrl ? (
+    <div ref={viewerRoot} className="relative h-full w-full">
+      {pdfViewer}
+      {showPreview ? (
+        <FirstPagePreview key={previewUrl} src={previewUrl} fileUrl={fileUrl} onUnavailable={() => setReplacedPreview(previewUrl)} />
+      ) : null}
+    </div>
+  ) : pdfViewer;
   return journeyPath ? (
     <div ref={journeyRoot} className="contents" data-ec-pdf-journey-path={journeyPath}>
       {viewer}

@@ -13,6 +13,7 @@ type Attempt = {
   properties: Properties;
   timer: number;
   viewerReadyAt?: number;
+  previewVisibleAt?: number;
 };
 
 const paperRoute = /^\/past_papers\/[^/]+\/paper\/[^/]+$/;
@@ -73,6 +74,11 @@ export function installPdfOpenJourneyTracking(options: {
       ...(current.viewerReadyAt === undefined ? {} : {
         viewer_ready_ms: current.viewerReadyAt - current.startedAt,
       }),
+      // The server-rendered first-page image, when it appeared before the
+      // interactive page. It does not count as the PDF becoming visible.
+      ...(current.previewVisibleAt === undefined ? {} : {
+        preview_visible_ms: current.previewVisibleAt - current.startedAt,
+      }),
       ...extra,
     }, outcome === "pagehide" || outcome === "backgrounded");
   };
@@ -82,6 +88,10 @@ export function installPdfOpenJourneyTracking(options: {
   };
   const check = () => {
     if (!attempt || !root || cleanPath(location.pathname) !== attempt.path || document.visibilityState !== "visible") return;
+    if (attempt.previewVisibleAt === undefined && [...root.querySelectorAll<HTMLImageElement>('img[data-ec-pdf-preview="true"]')]
+      .some(preview => preview.complete && preview.naturalWidth > 0 && visible(preview))) {
+      attempt.previewVisibleAt = performance.now();
+    }
     const image = [...root.querySelectorAll<HTMLImageElement>('img[data-ec-pdf-page-image="true"]')].find(image =>
       image.complete && image.naturalWidth > 0 &&
       (image.src.startsWith("blob:") || image.src.startsWith("data:image/")) && visible(image));
@@ -123,7 +133,7 @@ export function installPdfOpenJourneyTracking(options: {
       root = candidate;
       const collect = () => {
         if (!attempt || root !== candidate) return;
-        for (const element of candidate.querySelectorAll('img[data-ec-pdf-page-image="true"], [data-ec-pdf-page-error="true"], [data-ec-pdf-load-error="true"]')) {
+        for (const element of candidate.querySelectorAll('img[data-ec-pdf-page-image="true"], img[data-ec-pdf-preview="true"], [data-ec-pdf-page-error="true"], [data-ec-pdf-load-error="true"]')) {
           if (intersections.has(element)) continue;
           intersections.set(element, false);
           intersectionObserver?.observe(element);

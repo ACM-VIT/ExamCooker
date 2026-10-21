@@ -7,7 +7,11 @@ const {build}=require('esbuild');
 const {outputFiles}=await build({entryPoints:['cloudflare/assets-worker.ts'],bundle:true,write:false,format:'esm',platform:'browser',external:['node:crypto']});
 let holdNext=false,releaseHeld,notifyHeld;let heldStarted;
 let calls=0;let original=Buffer.from('%PDF-1.7\noriginal fixture');let sourceVersion='azure-v1';let missing=false;let stale=false;
-const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:outputFiles[0].text,compatibilityDate:'2026-09-10',compatibilityFlags:['nodejs_compat'],r2Buckets:['BUCKET'],bindings:{MIRROR_TOKEN:'test-only-secret'},outboundService:async req=>{
+let renders=0;let renderStatus=200;
+const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:outputFiles[0].text,compatibilityDate:'2026-09-10',compatibilityFlags:['nodejs_compat'],r2Buckets:['BUCKET'],bindings:{MIRROR_TOKEN:'test-only-secret'},serviceBindings:{PDF_PREVIEW:async req=>{
+ renders++;const params=new URL(req.url).searchParams;const source=await(await mf.getR2Bucket('BUCKET')).head(params.get('key'));
+ return new Response(renderStatus===200?`webp:${params.get('page')}:${params.get('rotation')}:${source.etag}`:'unrenderable',{status:renderStatus,headers:{'x-ec-source-etag':source.etag}});
+}},outboundService:async req=>{
  calls++;assert.match(req.url,/^https:\/\/examcookerprodsi.blob.core.windows.net\/exam-assets\//);assert.equal(req.headers.get('cookie'),null);assert.equal(req.headers.get('authorization'),null);
  if(missing)return new Response(null,{status:404});
  if(stale || (req.headers.has('if-match')&&req.headers.get('if-match')!==`"${sourceVersion}"`))return new Response(null,{status:412});
@@ -48,5 +52,21 @@ try {
  missing=false;sourceVersion='azure-v3';const fresh=await mf.dispatchFetch(host+'/new-upload.pdf');assert.equal(fresh.status,200);assert.deepEqual(Buffer.from(await fresh.arrayBuffer()),original);
  assert.equal((await mf.dispatchFetch(host+'/new-upload.pdf?token=secret')).status,404);
  assert.equal((await mf.dispatchFetch(host+'/new-upload.pdf',{method:'POST'})).status,405);
- console.log('PASS: streamed copy checksums, R2 delivery, ranges, conditional requests, new uploads, overwrite/delete events, private admin operations, and safe origins');
+ const previewUrl=host+'/_preview/v1/past-papers/previewfixture000000001/p1-r90.webp';
+ const rendered=await mf.dispatchFetch(previewUrl);assert.equal(rendered.status,200);assert.equal(rendered.headers.get('content-type'),'image/webp');assert.equal(rendered.headers.get('x-ec-asset-source'),'render');assert.match(await rendered.text(),/^webp:1:90:/);assert.equal(renders,1);
+ await new Promise(resolve=>setTimeout(resolve,50));
+ const edgeCached=await mf.dispatchFetch(previewUrl);assert.equal(edgeCached.headers.get('x-ec-asset-cache'),'HIT');await edgeCached.text();
+ const fresh_={headers:{'cache-control':'no-cache'}};
+ const reused=await mf.dispatchFetch(previewUrl,fresh_);assert.equal(reused.headers.get('x-ec-asset-source'),'r2');assert.match(await reused.text(),/^webp:1:90:/);assert.equal(renders,1);
+ original=Buffer.from('%PDF-1.7\nreplaced preview source');sourceVersion='azure-v4';
+ await admin({key:'past-papers/previewfixture000000001/paper.pdf'});
+ const rerendered=await mf.dispatchFetch(previewUrl,fresh_);assert.equal(rerendered.headers.get('x-ec-asset-source'),'render');await rerendered.text();assert.equal(renders,2);
+ renderStatus=422;const unrenderable=host+'/_preview/v1/past-papers/previewfixture000000001/p0-r0.webp';
+ assert.equal((await mf.dispatchFetch(unrenderable)).status,404);await new Promise(resolve=>setTimeout(resolve,50));
+ assert.equal((await mf.dispatchFetch(unrenderable,fresh_)).status,404);assert.equal(renders,3);
+ for(const path of ['/_preview/v1/past-papers/previewfixture000000001/p64-r0.webp','/_preview/v1/past-papers/short/p0-r0.webp','/_preview/v1/past-papers/previewfixture000000001/p0-r45.webp','/_preview/v2/x']){
+  assert.equal((await mf.dispatchFetch(host+path)).status,404);
+ }
+ assert.equal(renders,3);
+ console.log('PASS: streamed copy checksums, R2 delivery, ranges, conditional requests, new uploads, overwrite/delete events, private admin operations, safe origins, and first-page previews');
 } finally {await mf.dispose();}

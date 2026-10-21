@@ -4,7 +4,7 @@ const SOURCE = "https://examcookerprodsi.blob.core.windows.net/exam-assets/";
 const SOURCE_RESOURCE = "/subscriptions/b88416d5-3d98-4d1c-bd30-8df01b99dfac/resourceGroups/rg-examcooker-prod/providers/Microsoft.Storage/storageAccounts/examcookerprodsi";
 const MAX_BYTES = 256 * 1024 * 1024;
 const CACHE_SECONDS = 60;
-type Env = { BUCKET: R2Bucket; MIRROR_TOKEN: string };
+type Env = { BUCKET: R2Bucket; MIRROR_TOKEN: string; PDF_PREVIEW?: Fetcher };
 type ByteRange = { offset: number; length: number };
 
 function parseRange(header: string, size: number): ByteRange | null {
@@ -253,10 +253,95 @@ async function serve(request: Request, env: Env, ctx: ExecutionContext) {
   return response;
 }
 
+// First-page previews let the paper page show readable content before the
+// PDF and its rendering engine download. They live outside the Azure key space.
+const PREVIEW_PATH = /^\/_preview\/v1\/(past-papers\/[a-zA-Z0-9-]{20,64})\/p(\d{1,2})-r(0|90|180|270)\.webp$/;
+
+async function preview(request: Request, env: Env, ctx: ExecutionContext, match: RegExpExecArray) {
+  if (request.method !== "GET" && request.method !== "HEAD") return error(405);
+  const [, paper, page, rotation] = match;
+  const url = new URL(request.url);
+  const cacheKey = new Request(url.href);
+  const cache = (caches as CacheStorage & { default: Cache }).default;
+  if (request.method === "GET" && !/no-cache|no-store|max-age=0/.test(request.headers.get("cache-control") || "")) {
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      const response = new Response(cached.body, cached);
+      response.headers.set("x-ec-asset-cache", "HIT");
+      return response;
+    }
+  }
+  const sourceKey = `${paper}/paper.pdf`;
+  let source = await env.BUCKET.head(sourceKey);
+  if (!source && (await mirrorObject(env.BUCKET, sourceKey)).status !== "missing") source = await env.BUCKET.head(sourceKey);
+  if (!source || source.customMetadata?.azureDeleted === "true") return error(404);
+
+  // A preview is valid only for the PDF bytes it was rendered from.
+  const previewKey = `_previews/v1/${paper}/p${page}-r${rotation}.webp`;
+  const stored = await env.BUCKET.get(previewKey);
+  let body: ReadableStream | ArrayBuffer | null = null;
+  let origin = "r2";
+  if (stored?.customMetadata?.sourceEtag === source.etag) {
+    if (stored.customMetadata.failed === "true") {
+      await stored.body.cancel();
+      return error(404);
+    }
+    body = stored.body;
+  } else {
+    await stored?.body.cancel();
+    if (!env.PDF_PREVIEW) return error(404);
+    const rendered = await env.PDF_PREVIEW.fetch(
+      `https://pdf-preview/render?${new URLSearchParams({ key: sourceKey, page, rotation })}`,
+    );
+    const renderedEtag = rendered.headers.get("x-ec-source-etag");
+    if (rendered.status === 422 && renderedEtag) {
+      // Encrypted, oversized or out-of-range pages: do not render again
+      // until the PDF itself changes.
+      await rendered.body?.cancel();
+      ctx.waitUntil(env.BUCKET.put(previewKey, new Uint8Array(), {
+        customMetadata: { sourceEtag: renderedEtag, failed: "true" },
+      }));
+      return error(404);
+    }
+    if (!rendered.ok || !renderedEtag) {
+      await rendered.body?.cancel();
+      return error(rendered.status === 404 ? 404 : 503);
+    }
+    body = await rendered.arrayBuffer();
+    origin = "render";
+    // The response may take ownership of the buffer; store an independent copy.
+    ctx.waitUntil(env.BUCKET.put(previewKey, body.slice(0), {
+      httpMetadata: { contentType: "image/webp" },
+      customMetadata: { sourceEtag: renderedEtag },
+    }));
+  }
+  const headers = new Headers({
+    "content-type": "image/webp",
+    "cache-control": `public, max-age=${CACHE_SECONDS}, s-maxage=${CACHE_SECONDS}`,
+    "access-control-allow-origin": "*",
+    "cross-origin-resource-policy": "cross-origin",
+    "timing-allow-origin": "*",
+    "x-content-type-options": "nosniff",
+    "x-ec-asset-source": origin,
+    "x-ec-asset-cache": "MISS",
+  });
+  if (request.method === "HEAD") {
+    if (body instanceof ReadableStream) await body.cancel();
+    return new Response(null, { headers });
+  }
+  const response = new Response(body, { headers });
+  ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(() => undefined));
+  return response;
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     try {
       const path = new URL(request.url).pathname;
+      if (path.startsWith("/_preview/")) {
+        const match = PREVIEW_PATH.exec(path);
+        return match && Number(match[2]) <= 63 ? await preview(request, env, ctx, match) : error(404);
+      }
       return await (path === "/_mirror" || path === "/_events" ? admin(request, env) : serve(request, env, ctx));
     } catch (cause) {
       console.error("[asset-delivery]", cause instanceof Error ? cause.message : "Asset request failed");
