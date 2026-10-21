@@ -40,7 +40,10 @@ export function prefetchPdfiumWasm() {
   if (connection?.saveData || /2g/.test(connection?.effectiveType ?? "")) return;
   wasmPrefetched = true;
   void fetch(PDFIUM_WASM_URL, { cache: "force-cache", priority: "low" } as RequestInit)
-    .then((response) => response.arrayBuffer())
+    .then((response) => {
+      if (!response.ok) throw new Error(`PDF engine prefetch failed with ${response.status}`);
+      return response.arrayBuffer();
+    })
     .catch(() => { wasmPrefetched = false; });
 }
 
