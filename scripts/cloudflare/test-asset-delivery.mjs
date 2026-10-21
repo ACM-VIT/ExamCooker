@@ -64,14 +64,19 @@ try {
  renderStatus=422;const unrenderable=host+'/_preview/v1/past-papers/previewfixture000000001/p0-r0.webp';
  assert.equal((await mf.dispatchFetch(unrenderable)).status,404);await new Promise(resolve=>setTimeout(resolve,50));
  assert.equal((await mf.dispatchFetch(unrenderable,fresh_)).status,404);assert.equal(renders,3);
+ // A cold PDF read and a cold preview mirror the same source concurrently.
+ const coldPaper='past-papers/previewfixture000000002/paper.pdf';
+ const [coldPdf,coldPreview]=await Promise.all([mf.dispatchFetch(host+'/'+coldPaper),mf.dispatchFetch(host+'/_preview/v1/past-papers/previewfixture000000002/p0-r0.webp')]);
+ assert.equal(coldPdf.status,200);assert.deepEqual(Buffer.from(await coldPdf.arrayBuffer()),original);assert.equal(coldPreview.status,404);assert.equal(renders,4);
  const concurrent=host+'/_preview/v1/past-papers/previewfixture000000001/p1-r180.webp';renderStatus=200;
  const pair=await Promise.all([mf.dispatchFetch(concurrent),mf.dispatchFetch(concurrent)]);
  for(const response of pair){assert.equal(response.status,200);assert.match(await response.text(),/^webp:1:180:/);}
- assert.equal(renders,4,'concurrent cold requests share one render');
+ assert.equal(renders,5,'concurrent cold requests share one render');
  for(const path of ['/_preview/v1/past-papers/previewfixture000000001/p64-r0.webp','/_preview/v1/past-papers/short/p0-r0.webp','/_preview/v1/past-papers/previewfixture000000001/p0-r45.webp','/_preview/v2/x',
-  '/_preview/v1/past-papers/previewfixture000000001/p1-r90.webp?nonce=1','/_previews/v1/past-papers/previewfixture000000001/p1-r90.webp']){
+  '/_preview/v1/past-papers/previewfixture000000001/p1-r90.webp?nonce=1','/_previews/v1/past-papers/previewfixture000000001/p1-r90.webp',
+  '/%5Fpreviews/v1/past-papers/previewfixture000000001/p1-r90.webp','/_previews%2Fv1%2Fpast-papers%2Fpreviewfixture000000001%2Fp1-r90.webp']){
   assert.equal((await mf.dispatchFetch(host+path)).status,404);
  }
- assert.equal(renders,4);
+ assert.equal(renders,5);
  console.log('PASS: streamed copy checksums, R2 delivery, ranges, conditional requests, new uploads, overwrite/delete events, private admin operations, safe origins, and first-page previews');
 } finally {await mf.dispose();}

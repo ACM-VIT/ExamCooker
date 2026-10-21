@@ -1,7 +1,7 @@
 "use client";
 
 import { preconnect, preload } from "react-dom";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PDF_JOURNEY_READY_EVENT } from "@/lib/pdf/open-journey";
 import dynamic from "next/dynamic";
 
@@ -34,6 +34,11 @@ function getRemoteOrigin(url: string) {
 // A server-rendered image of the first page, shown while the PDF and its
 // engine download. The real page replaces it as soon as it paints.
 function FirstPagePreview({ src, fileUrl, onUnavailable }: { src: string; fileUrl: string; onUnavailable: () => void }) {
+  const image = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    // A server-rendered image can fail before hydration attaches onError.
+    if (image.current?.complete && image.current.naturalWidth === 0) onUnavailable();
+  }, [onUnavailable]);
   return (
     <div
       data-ec-pdf-preview-layer="true"
@@ -53,6 +58,7 @@ function FirstPagePreview({ src, fileUrl, onUnavailable }: { src: string; fileUr
       </div>
       <div className="p-4">
         <img
+          ref={image}
           src={src}
           alt=""
           decoding="async"
@@ -94,6 +100,7 @@ export default function PDFViewerClient({
   const viewerRoot = useRef<HTMLDivElement>(null);
   const [replacedPreview, setReplacedPreview] = useState<string | null>(null);
   const showPreview = Boolean(previewUrl) && replacedPreview !== previewUrl;
+  const replacePreview = useCallback(() => setReplacedPreview(previewUrl ?? null), [previewUrl]);
 
   useEffect(() => {
     const root = viewerRoot.current;
@@ -158,7 +165,7 @@ export default function PDFViewerClient({
     <div ref={viewerRoot} className="relative h-full w-full">
       {pdfViewer}
       {showPreview ? (
-        <FirstPagePreview key={previewUrl} src={previewUrl} fileUrl={fileUrl} onUnavailable={() => setReplacedPreview(previewUrl)} />
+        <FirstPagePreview key={previewUrl} src={previewUrl} fileUrl={fileUrl} onUnavailable={replacePreview} />
       ) : null}
     </div>
   ) : pdfViewer;

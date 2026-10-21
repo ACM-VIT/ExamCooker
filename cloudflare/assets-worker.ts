@@ -143,6 +143,22 @@ export async function mirrorObject(
   return { key, status: "copied", size, etag, md5: checksum, sha256: sha256.digest("hex") };
 }
 
+// Read-through copies for one key share work within an isolate. Another
+// isolate can still win the conditional write; then the object is present.
+const pendingMirrors = new Map<string, Promise<{ status: string }>>();
+
+function mirrorOnRead(bucket: R2Bucket, key: string) {
+  let pending = pendingMirrors.get(key);
+  if (!pending) {
+    pending = mirrorObject(bucket, key).catch(async (cause) => {
+      if (await bucket.head(key)) return { status: "present" };
+      throw cause;
+    }).finally(() => pendingMirrors.delete(key));
+    pendingMirrors.set(key, pending);
+  }
+  return pending;
+}
+
 async function admin(request: Request, env: Env) {
   if (!authorized(request, env)) return error(401);
   if (request.method !== "POST") return error(405);
@@ -182,7 +198,8 @@ async function serve(request: Request, env: Env, ctx: ExecutionContext) {
   const url = new URL(request.url);
   let key: string;
   try { key = decodeURIComponent(url.pathname.slice(1)); } catch { return error(400); }
-  if (!validKey(key) || url.search) return error(404);
+  // Previews are served only by preview(), which checks the source PDF.
+  if (!validKey(key) || url.search || key.startsWith("_previews/")) return error(404);
   const cacheKey = new Request(url.href);
   const cache = (caches as CacheStorage & { default: Cache }).default;
   const cacheable = request.method === "GET" &&
@@ -214,7 +231,7 @@ async function serve(request: Request, env: Env, ctx: ExecutionContext) {
   };
   let object = await get();
   if (!object) {
-    const result = await mirrorObject(env.BUCKET, key);
+    const result = await mirrorOnRead(env.BUCKET, key);
     if (result.status === "missing") return error(404);
     object = await get();
   }
@@ -299,7 +316,7 @@ async function preview(request: Request, env: Env, ctx: ExecutionContext, match:
   }
   const sourceKey = `${paper}/paper.pdf`;
   let source = await env.BUCKET.head(sourceKey);
-  if (!source && (await mirrorObject(env.BUCKET, sourceKey)).status !== "missing") source = await env.BUCKET.head(sourceKey);
+  if (!source && (await mirrorOnRead(env.BUCKET, sourceKey)).status !== "missing") source = await env.BUCKET.head(sourceKey);
   if (!source || source.customMetadata?.azureDeleted === "true") return error(404);
 
   // A preview is valid only for the PDF bytes it was rendered from.
