@@ -9,6 +9,7 @@ import { normalizePdfPageEdits, preloadPdfPageEdits, type PdfPageEdits } from "@
 import { preloadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import { preloadPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
 import { preloadPdfResources } from "@/lib/pdf/preload-resources";
+import { isPdfPreviewShown, watchPdfPreviewTakeover } from "@/lib/pdf/preview-takeover";
 // PDF/WASM and Markdown plugins run in the browser. Including them in the
 // Worker SSR bundle exceeds its memory budget even on unrelated routes.
 const PDFViewer = dynamic(() => import("./pdfviewer"), {
@@ -101,36 +102,13 @@ export default function PDFViewerClient({
   // Once a document's viewer has taken over, a later preview URL for it (for
   // example after a moderator saves page edits) must not cover it again.
   const [settledFile, setSettledFile] = useState<string | null>(null);
-  const showPreview = Boolean(previewUrl) && settledFile !== fileUrl;
+  const showPreview = isPdfPreviewShown(previewUrl, fileUrl, settledFile);
   const replacePreview = useCallback(() => setSettledFile(fileUrl), [fileUrl]);
 
   useEffect(() => {
     const root = viewerRoot.current;
     if (!root || !previewUrl) return;
-    const replace = () => setSettledFile(fileUrl);
-    // Image load events do not bubble; capture them from the viewer subtree.
-    // Only the first displayed page replaces the preview: a buffered later
-    // page can finish first.
-    const painted = (event: Event) => {
-      const image = event.target;
-      if (image instanceof HTMLImageElement && image.dataset.ecPdfPageImage === "true" && image.dataset.ecPdfPageIndex === "0") replace();
-    };
-    // Error states carry their own recovery actions, and the Markdown view has
-    // no page images; do not cover either.
-    const failed = () => {
-      if (root.querySelector('[data-ec-pdf-load-error="true"], [data-ec-pdf-page-error="true"], [data-ec-pdf-view-mode]:not([data-ec-pdf-view-mode="pdf"])')) replace();
-      // A first page that painted before this listener attached also counts.
-      const firstPage = root.querySelector<HTMLImageElement>('img[data-ec-pdf-page-image="true"][data-ec-pdf-page-index="0"]');
-      if (firstPage?.complete && firstPage.naturalWidth > 0) replace();
-    };
-    root.addEventListener("load", painted, true);
-    const observer = new MutationObserver(failed);
-    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-ec-pdf-view-mode"] });
-    failed();
-    return () => {
-      root.removeEventListener("load", painted, true);
-      observer.disconnect();
-    };
+    return watchPdfPreviewTakeover(root, () => setSettledFile(fileUrl));
   }, [fileUrl, previewUrl]);
   useEffect(() => {
     if (journeyPath) journeyRoot.current?.dispatchEvent(new Event(PDF_JOURNEY_READY_EVENT, { bubbles: true }));

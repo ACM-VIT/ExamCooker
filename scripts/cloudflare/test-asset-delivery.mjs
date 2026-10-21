@@ -80,8 +80,9 @@ try {
   assert.equal((await mf.dispatchFetch(host+path)).status,404);
  }
  assert.equal(renders,5);
- // Six renders were allowed for this client; the next uncached variant is throttled.
- const throttled=await mf.dispatchFetch(host+'/_preview/v1/past-papers/previewfixture000000001/p1-r270.webp');assert.equal(throttled.status,429);assert.equal(renders,5);
+ // Five renders started so far; joined requests were free. One more is allowed, then throttled.
+ assert.equal((await mf.dispatchFetch(host+'/_preview/v1/past-papers/previewfixture000000001/p1-r270.webp')).status,200);assert.equal(renders,6);
+ const throttled=await mf.dispatchFetch(host+'/_preview/v1/past-papers/previewfixture000000001/p1-r0.webp');assert.equal(throttled.status,429);assert.equal(renders,6);
  assert.equal((await mf.dispatchFetch(previewUrl)).status,200,'stored previews are not throttled');
  console.log('PASS: streamed copy checksums, R2 delivery, ranges, conditional requests, new uploads, overwrite/delete events, private admin operations, safe origins, and first-page previews');
 } finally {await mf.dispose();}
