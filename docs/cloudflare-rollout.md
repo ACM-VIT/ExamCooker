@@ -11,15 +11,16 @@ Cloudflare Workers Builds connects directly to this repository:
 | Branch | Worker | Build | Deploy |
 | --- | --- | --- | --- |
 | `main` | `examcooker-prod` | `pnpm cf:build:prod` | `pnpm cf:deploy:prod` |
-| `dev` | `examcooker-canary` | `pnpm cf:build:canary` | `pnpm cf:deploy:canary` |
-| Other branches | `examcooker-canary` | `pnpm cf:build:canary` | `pnpm cf:upload:canary` |
+| `dev` | `examcooker-canary` | `pnpm cf:build:canary` | `pnpm cf:release:canary` (deploys) |
+| Other branches | `examcooker-canary` | `pnpm cf:build:canary` | `pnpm cf:release:canary` (uploads only) |
 
 Pull requests merge into `dev` first. `dev` deploys the canary site,
 `https://examcooker-canary.acmvit.workers.dev`, which uses production data,
 placement and limits; sign-in links still point at the production hostname.
 After checking a change there, merge `dev` into `main` to deploy production.
-Other branches upload inactive canary versions. No canary build can replace
-production. There are no GitHub Actions deployment workflows.
+One canary trigger serves every non-`main` branch; `cf:release:canary` deploys
+only when `WORKERS_CI_BRANCH` is `dev` and otherwise uploads an inactive
+version. No canary build can replace production. There are no GitHub Actions deployment workflows.
 
 Build settings require `DATABASE_URL`, build-time `AUTH_*` values,
 `NEXT_PUBLIC_MICROSERVICE_URL`, and `NEXT_PUBLIC_POSTHOG_*`. Source maps require

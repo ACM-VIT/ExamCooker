@@ -40,6 +40,7 @@
     "cf:build:canary": "NEXT_PUBLIC_BASE_URL=https://examcooker.acmvit.in NEXTAUTH_URL=https://examcooker.acmvit.in AUTH_URL=https://examcooker.acmvit.in POSTHOG_SOURCEMAP_UPLOAD=true opennextjs-cloudflare build --config wrangler.canary.jsonc",
     "cf:upload:canary": "opennextjs-cloudflare upload --config wrangler.canary.jsonc --cacheChunkSize 5",
     "cf:deploy:canary": "opennextjs-cloudflare deploy --config wrangler.canary.jsonc --cacheChunkSize 5",
+    "cf:release:canary": "if [ \"$WORKERS_CI_BRANCH\" = dev ]; then echo 'dev: deploying the canary site'; pnpm cf:deploy:canary; else echo \"${WORKERS_CI_BRANCH:-unknown branch}: uploading an inactive canary version\"; pnpm cf:upload:canary; fi",
     "cf:build:prod": "NEXT_PUBLIC_BASE_URL=https://examcooker.acmvit.in NEXTAUTH_URL=https://examcooker.acmvit.in AUTH_URL=https://examcooker.acmvit.in POSTHOG_SOURCEMAP_UPLOAD=true opennextjs-cloudflare build --config wrangler.production.jsonc",
     "cf:deploy:prod": "opennextjs-cloudflare deploy --config wrangler.production.jsonc --cacheChunkSize 5"
   },
