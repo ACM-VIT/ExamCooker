@@ -56,9 +56,12 @@ small separate Workers to avoid loading Next.js for each Durable Object call.
 Keep `enableCacheInterception: false` so Next resumes dynamic PPR boundaries.
 Personalized HTTP responses must remain private/no-store.
 
-Old Azure pages must reload before submitting Server Actions. Old canary
-JavaScript, CSS, and font requests can fall back to the previous canary Worker;
-application requests and mutations never use that fallback.
+Old Azure pages must reload before submitting Server Actions. Tabs opened on an
+earlier build keep loading that build's hashed files after a deploy: each
+production version copies its `/_next/static` chunks, CSS, media and PDF engine
+into the `examcooker-prod-static-archive` R2 bucket once (10-minute cron), and
+requests for files the current build lacks are served from there. Objects
+expire after 30 days. Application requests and mutations never use the archive.
 
 ## Validation and rollback
 

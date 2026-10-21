@@ -1,0 +1,64 @@
+// Tabs opened on an earlier build keep requesting that build's hashed files
+// after a deploy removes them. Each version copies its own immutable files
+// into R2 once; a request for a file the current build lacks reads it back.
+// Names are content hashes, so an archived file is exactly what was requested.
+export const STATIC_MANIFEST_PATH = "/_next/static/ec-asset-manifest.json";
+const ARCHIVED_PATH = /^\/(?:_next\/static\/(?:chunks|css|media)\/|vendor\/embedpdf\/immutable\/)[A-Za-z0-9._~/@%+=-]+$/;
+const CONCURRENCY = 8;
+
+export function isArchivedAssetPath(pathname: string) {
+  return ARCHIVED_PATH.test(pathname) && !pathname.includes("..");
+}
+
+/** Serve a previous build's immutable file, or null when it was never archived. */
+export async function archivedAssetResponse(request: Request, archive: R2Bucket | undefined): Promise<Response | null> {
+  if (!archive || (request.method !== "GET" && request.method !== "HEAD")) return null;
+  const { pathname } = new URL(request.url);
+  if (!isArchivedAssetPath(pathname)) return null;
+  const object = request.method === "HEAD"
+    ? await archive.head(pathname.slice(1))
+    : await archive.get(pathname.slice(1));
+  if (!object) return null;
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("cache-control", "public, max-age=31536000, immutable");
+  headers.set("etag", object.httpEtag);
+  headers.set("x-ec-asset-source", "archive");
+  return new Response("body" in object ? (object as R2ObjectBody).body : null, { headers });
+}
+
+/** Copy this version's immutable files into the archive once. */
+export async function archiveCurrentAssets(input: {
+  assets: Fetcher;
+  archive: R2Bucket;
+  versionId: string;
+  origin: string;
+}) {
+  const marker = `versions/${input.versionId}`;
+  if (await input.archive.head(marker)) return { status: "already-archived" as const, files: 0 };
+  const manifest = await input.assets.fetch(new Request(`${input.origin}${STATIC_MANIFEST_PATH}`));
+  if (!manifest.ok) return { status: "no-manifest" as const, files: 0 };
+  const paths = (await manifest.json() as string[]).filter(isArchivedAssetPath);
+  let next = 0;
+  let failed = 0;
+  // Re-put every file so a still-current file's lifecycle age restarts.
+  const worker = async () => {
+    while (next < paths.length) {
+      const path = paths[next++];
+      const response = await input.assets.fetch(new Request(`${input.origin}${path}`));
+      if (!response.ok) {
+        await response.body?.cancel();
+        failed++;
+        continue;
+      }
+      // R2 needs a known length; these files are small and immutable.
+      await input.archive.put(path.slice(1), await response.arrayBuffer(), {
+        httpMetadata: { contentType: response.headers.get("content-type") ?? "application/octet-stream" },
+      });
+    }
+  };
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  // Leave the marker unset after failures so the next run retries.
+  if (failed === 0) await input.archive.put(marker, JSON.stringify({ files: paths.length }));
+  return { status: failed === 0 ? "archived" as const : "partial" as const, files: paths.length - failed };
+}
