@@ -1,0 +1,74 @@
+name: PDF performance contracts
+
+on:
+  pull_request:
+    paths:
+      - 'app/components/past_papers/course-paper-card.tsx'
+      - 'app/components/pdf-viewer-client.tsx'
+      - 'app/components/pdfviewer.tsx'
+      - 'app/(app)/past_papers/**/page.tsx'
+      - 'instrumentation-client.ts'
+      - 'next.config.ts'
+      - 'lib/pdf/**'
+      - 'lib/generated/pdfium-wasm.ts'
+      - 'cloudflare/cutover/rum*'
+      - 'cloudflare/public-route-tags.ts'
+      - 'cloudflare/public-route-tag-prefetch.ts'
+      - 'scripts/cloudflare/test-public-route-tag-prefetch.mjs'
+      - 'scripts/cloudflare/test-tag-read-coalescing.mjs'
+      - 'scripts/cloudflare/test-manifests.mjs'
+      - 'scripts/cloudflare/test-pending-cache.mjs'
+      - 'scripts/cloudflare/test-regional-tags.mjs'
+      - 'scripts/cloudflare/test-tag-schema.mjs'
+      - 'scripts/cloudflare/test-scheduler.mjs'
+      - 'open-next.config.ts'
+      - 'wrangler*.jsonc'
+      - 'scripts/test-pdf-page-image.mjs'
+      - 'scripts/bench-pdf-intent.mjs'
+      - 'scripts/test-pdf-open-journey.mjs'
+      - 'scripts/sync-pdfium-wasm.js'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'patches/**'
+      - '.github/workflows/pdf-performance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pdf-inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.8.1
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/sync-pdfium-wasm.js
+      - run: npm install --global agent-browser@0.33.2
+      - run: agent-browser install --with-deps
+      - name: Validate timing population and saved edits
+        run: |
+          node --test cloudflare/cutover/rum.test.mjs
+          pnpm exec tsx --test lib/pdf/reliability.test.ts lib/pdf/pdf-buffer-cache.test.ts lib/pdf/render-rotation.test.ts
+      - name: Guard PDF input ordering, transfer counts, and rendered pixels
+        run: node scripts/bench-pdf-intent.mjs --rounds 1
+      - name: Guard public paper tag-prefetch ordering
+        run: |
+          node scripts/cloudflare/test-public-route-tag-prefetch.mjs
+          node scripts/cloudflare/test-tag-read-coalescing.mjs
+          node scripts/cloudflare/test-regional-tags.mjs
+          node --test scripts/cloudflare/test-manifests.mjs
+          node scripts/cloudflare/test-pending-cache.mjs
+          node scripts/cloudflare/test-tag-schema.mjs
+          node scripts/cloudflare/test-scheduler.mjs
+      - name: Guard PDF image recovery and cancellation
+        run: node scripts/test-pdf-page-image.mjs
+      - name: Guard paper-open journey coverage and visible-page attribution
+        run: node scripts/test-pdf-open-journey.mjs

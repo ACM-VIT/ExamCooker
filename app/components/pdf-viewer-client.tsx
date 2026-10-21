@@ -1,7 +1,8 @@
 "use client";
 
 import { preconnect } from "react-dom";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { PDF_JOURNEY_READY_EVENT } from "@/lib/pdf/open-journey";
 import dynamic from "next/dynamic";
 
 import { normalizePdfPageEdits, preloadPdfPageEdits, type PdfPageEdits } from "@/lib/pdf/page-edits";
@@ -36,8 +37,10 @@ export default function PDFViewerClient({
   fileName,
   moderation,
   pageEdits,
+  journeyPath,
 }: {
   enableQuestionMarkdown?: boolean;
+  journeyPath?: string;
   fileUrl: string;
   fileName?: string;
   moderation?:
@@ -49,6 +52,10 @@ export default function PDFViewerClient({
   pageEdits?: PdfPageEdits | null;
 }) {
   preloadPdfResources(fileUrl);
+  const journeyRoot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (journeyPath) journeyRoot.current?.dispatchEvent(new Event(PDF_JOURNEY_READY_EVENT, { bubbles: true }));
+  }, [journeyPath]);
 
   useEffect(() => {
     // Start the two independent inputs while the viewer chunk is downloading.
@@ -70,7 +77,7 @@ export default function PDFViewerClient({
     preconnect(remoteOrigin, { crossOrigin: "anonymous" });
   }
 
-  return (
+  const viewer = (
     <PDFViewer
       key={fileUrl}
       enableQuestionMarkdown={enableQuestionMarkdown}
@@ -80,4 +87,9 @@ export default function PDFViewerClient({
       pageEdits={pageEdits}
     />
   );
+  return journeyPath ? (
+    <div ref={journeyRoot} className="contents" data-ec-pdf-journey-path={journeyPath}>
+      {viewer}
+    </div>
+  ) : viewer;
 }

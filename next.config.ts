@@ -112,6 +112,8 @@ const uploadSourceMaps = process.env.POSTHOG_SOURCEMAP_UPLOAD === "true";
 
 const nextConfig: NextConfig = {
     env: {
+        NEXT_PUBLIC_APP_REVISION: process.env.GITHUB_SHA || "local",
+        NEXT_PUBLIC_HOSTING_BACKEND: process.env.EC_CLOUDFLARE_BUILD === "1" ? "cloudflare" : "azure",
         NEXT_PUBLIC_ASSET_BASE_URL: process.env.EC_CLOUDFLARE_BUILD === "1"
             ? "https://ec-assets.acmvit.in"
             : "",

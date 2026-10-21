@@ -68,13 +68,13 @@ try {
     assert.ok(r.tags.includes("_N_T_/(app)/past_papers/[code]/[exam]/page"));
     assert.equal(r.tags.includes("_N_T_/(app)/past_papers/[code]/page"), false);
   }
-  for (const path of ["/", "/past_papers", "/past_papers/exam/cat-2", "/past_papers/BEEE1001", "/past_papers/BMEE209L/paper/cmoeqmav202j7a8v3ls8bxdpl"]) {
+  for (const path of ["/", "/past_papers", "/past_papers/exam/cat-2", "/past_papers/BEEE1001", "/past_papers/BMEE209L/paper/cmoeqmav202j7a8v3ls8bxdpl", "/past_papers/BCSE203E/paper/e39aab7d-9607-406e-a9f1-8a7c5bed4b31"]) {
     const r = await probe({key:"/cached-shell",path,type:"cache",hit:true});
     assert.equal(r.retained,1,path);
-    assert.deepEqual(r.initial,["tags-start","shell","tags-end"]);
+    assert.deepEqual(r.initial,["tags-start","shell"]);
     assert.ok(r.tags.includes("_N_T_"+path));
     if (path.includes("/paper/")) {
-      assert.ok(r.tags.includes("past_paper:cmoeqmav202j7a8v3ls8bxdpl"));
+      assert.ok(r.tags.includes("past_paper:" + path.split("/").at(-1)));
       assert.ok(r.tags.includes("upcoming_exams"));
       assert.ok(r.tags.includes("_N_T_/(app)/past_papers/[code]/paper/[id]/page"));
       assert.equal(r.tags.includes("_N_T_/(app)/past_papers/[code]/page"),false);
@@ -84,13 +84,13 @@ try {
       assert.ok(r.tags.includes("_N_T_/index"));
     }
   }
-  for (const path of ["/api/auth/session", "/auth", "/mod", "/past_papers/create", "/past_papers/BMAT202L/unknown", "/past_papers/BMAT202L/paper/invalid%20id", "/past_papers/BMAT202L/paper/id/extra"]) {
+  for (const path of ["/api/auth/session", "/auth", "/mod", "/past_papers/create", "/past_papers/BMAT202L/unknown", "/past_papers/BMAT202L/paper/invalid%20id", "/past_papers/BMAT202L/paper/invalid-id", "/past_papers/BMAT202L/paper/e39aab7d-9607-406e-a9f1-8a7c5bed4b3", "/past_papers/BMAT202L/paper/e39aab7d-9607-406e-a9f1-8a7c5bed4b3z", "/past_papers/BMAT202L/paper/id/extra"]) {
     assert.equal((await probe({key:"/cached-shell",path,type:"cache"})).retained,0,path);
   }
   assert.equal((await probe({key:"/",type:"cache",method:"POST"})).retained,0,"mutations must not prefetch pre-write tag state");
   assert.equal((await probe({key:"/",type:"cache",method:"HEAD"})).retained,1);
   const hit = await probe({key:"/past_papers/BMAT202L",type:"cache",hit:true});
-  assert.deepEqual(hit.initial,["tags-start","shell","tags-end"],"a fast shell hit joins its pending tag read before Next validates it");
+  assert.deepEqual(hit.initial,["tags-start","shell"],"a fast shell hit does not wait for unrelated prefetched tags; Next validates its own tags");
   assert.equal(hit.retained,1);
   const failed=await probe({key:"/past_papers/BMAT202L",type:"cache",fail:true});
   assert.equal(failed.timestamp,undefined);

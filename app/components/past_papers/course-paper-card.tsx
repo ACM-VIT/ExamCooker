@@ -15,7 +15,11 @@ import { buildPastPaperPdfFileName } from "@/lib/downloads/resource-names";
 import { preloadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import { preloadPdfiumEngine } from "@/lib/pdf/pdfium-engine-cache";
 import type { ExamType } from "@/db";
-import type { PdfPageEdits } from "@/lib/pdf/page-edits";
+import {
+    normalizePdfPageEdits,
+    preloadPdfPageEdits,
+    type PdfPageEdits,
+} from "@/lib/pdf/page-edits";
 
 type Paper = {
     id: string;
@@ -90,6 +94,9 @@ function CoursePaperCard({
         const warm = () => {
             void preloadPdfiumEngine().catch(() => undefined);
             preloadPdfBuffer(paper.fileUrl);
+            // Saved edits are another independent input. Warm their library
+            // with the PDF so opening a preloaded paper has no extra waterfall.
+            if (normalizePdfPageEdits(paper.pageEdits)) preloadPdfPageEdits();
         };
 
         if (typeof window !== "undefined" && "requestIdleCallback" in window) {
@@ -98,7 +105,7 @@ function CoursePaperCard({
         }
 
         globalThis.setTimeout(warm, 0);
-    }, [paper.fileUrl]);
+    }, [paper.fileUrl, paper.pageEdits]);
 
     const handleToggleSelect = useCallback((e: React.MouseEvent | React.ChangeEvent) => {
         e.stopPropagation();
