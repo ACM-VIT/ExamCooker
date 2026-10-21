@@ -260,8 +260,9 @@ const PREVIEW_PATH = /^\/_preview\/v1\/(past-papers\/[a-zA-Z0-9-]{20,64})\/p(\d{
 // Concurrent cold requests in one isolate share a render instead of repeating it.
 const pendingRenders = new Map<string, Promise<{ status: number; etag: string | null; body: ArrayBuffer | null }>>();
 
-function renderPreview(env: Env, sourceKey: string, page: string, rotation: string) {
-  const key = `${sourceKey}:${page}:${rotation}`;
+function renderPreview(env: Env, sourceKey: string, sourceEtag: string, page: string, rotation: string) {
+  // Different versions of a replaced PDF never share a render.
+  const key = `${sourceKey}:${sourceEtag}:${page}:${rotation}`;
   let pending = pendingRenders.get(key);
   if (!pending) {
     pending = (async () => {
@@ -315,7 +316,7 @@ async function preview(request: Request, env: Env, ctx: ExecutionContext, match:
   } else {
     await stored?.body.cancel();
     if (!env.PDF_PREVIEW) return error(404);
-    const rendered = await renderPreview(env, sourceKey, page, rotation);
+    const rendered = await renderPreview(env, sourceKey, source.etag, page, rotation);
     if (rendered.status === 422 && rendered.etag) {
       // Encrypted, oversized or out-of-range pages: do not render again
       // until the PDF itself changes.
