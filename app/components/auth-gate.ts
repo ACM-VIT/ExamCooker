@@ -38,31 +38,34 @@ function readSessionPayload(payload: unknown): Session | null {
 
 /**
  * One shared, cached `/api/auth/session` request for every client caller.
- * `refresh` re-reads it (e.g. after another tab may have signed in) without
- * putting already-rendered auth state back into loading.
+ * `refresh` re-reads it (e.g. after another tab may have signed in) while the
+ * previous answer stays readable; a failed refresh keeps that answer.
  */
 export function loadAuthSession({ refresh = false }: { refresh?: boolean } = {}) {
     if (refresh && cachedSession !== undefined) {
         sessionPromise = null;
-        cachedSession = undefined;
-    }
-    if (cachedSession !== undefined) {
+    } else if (cachedSession !== undefined) {
         return Promise.resolve(cachedSession);
     }
 
     if (!sessionPromise) {
+        const previous = cachedSession;
         sessionPromise = fetch("/api/auth/session", {
             credentials: "same-origin",
             cache: "no-store",
         })
-            .then((response) => (response.ok ? response.json() : null))
+            .then((response) => {
+                if (!response.ok) throw new Error(`Session request failed: ${response.status}`);
+                return response.json();
+            })
             .then((payload) => {
                 cachedSession = readSessionPayload(payload);
                 return cachedSession;
             })
             .catch(() => {
-                cachedSession = null;
-                return null;
+                // Only a successful response may change what we know.
+                cachedSession = previous ?? null;
+                return cachedSession;
             });
     }
 
