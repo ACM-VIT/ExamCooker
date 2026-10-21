@@ -12,7 +12,9 @@
   ],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // Only the PDF engine: the Worker serves its build-time brotli copy.
+    "run_worker_first": ["/vendor/embedpdf/immutable/*"]
   },
   "services": [
     {
