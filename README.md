@@ -24,7 +24,7 @@ ExamCooker uses scalable tech stacks to ensure optimal performance and ease of m
 
 -   **Partial Prerendering**: With Cache Components enabled, Next.js uses Partial Prerendering to combine a static shell with streamed dynamic content for faster page delivery.
 
--   **Azure App Service**: Microsoft's managed hosting platform is used to deploy and run the web application reliably at scale.
+-   **Cloudflare Workers**: The production app runs on `examcooker-prod`, with Hyperdrive database connections and R2/Durable Object caches.
 
 
 

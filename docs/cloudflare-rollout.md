@@ -1,59 +1,59 @@
 # Cloudflare deployment
 
-Azure App Service serves production alongside the `examcooker-canary` Worker.
-The `examcooker-rollout` router assigns **50% of new anonymous browsing
-sessions** to Cloudflare, using a signed cookie that lasts 24 hours. Signed-in
-traffic, auth, APIs, uploads, moderation, and MCP remain on Azure.
+`examcooker-prod` serves production at `examcooker.acmvit.in`. The legacy
+`exam-cooker.acmvit.in` hostname redirects to it. All application traffic,
+including sign-in, APIs, uploads, moderation, and MCP, runs on Cloudflare.
 
 ## Direct GitHub builds
 
-Cloudflare Workers Builds connects directly to this repository. The main and
-branch triggers both target `examcooker-canary`:
+Cloudflare Workers Builds connects directly to this repository:
 
-| Setting | Command |
-| --- | --- |
-| Build | `pnpm cf:build:canary` |
-| Deploy | `pnpm cf:upload:canary` |
+| Branch | Worker | Build | Deploy |
+| --- | --- | --- | --- |
+| `main` | `examcooker-prod` | `pnpm cf:build:prod` | `pnpm cf:deploy:prod` |
+| Other branches | `examcooker-canary` | `pnpm cf:build:canary` | `pnpm cf:upload:canary` |
 
-The upload command populates the build-specific R2 cache and uploads a Worker
-version. It does **not** activate the version or change traffic allocation.
-Azure deployment remains in `.github/workflows/deploy-appservice.yml`.
+Canary builds upload inactive versions. They cannot replace production.
+There are no GitHub Actions deployment workflows.
 
-Set build variables in Cloudflare's build settings: `DATABASE_URL`, the
-`AUTH_*` values needed to build, `NEXT_PUBLIC_MICROSERVICE_URL`, and the
-`NEXT_PUBLIC_POSTHOG_*` values used by the app. Source-map uploads require
+Build settings require `DATABASE_URL`, build-time `AUTH_*` values,
+`NEXT_PUBLIC_MICROSERVICE_URL`, and `NEXT_PUBLIC_POSTHOG_*`. Source maps require
 `POSTHOG_CLI_API_KEY`, `POSTHOG_CLI_PROJECT_ID`, and `POSTHOG_CLI_HOST`.
-Use the same PostHog settings in the Azure workflow. Runtime secrets are
-configured separately on each Worker.
+Runtime secrets are configured separately. Preserve the application auth secret
+when moving hosts so existing sessions remain valid.
 
 Source maps are checked, uploaded, and removed before packaging. Upload failure
-stops the build. The source-map release and browser telemetry use the same Git
-revision.
+stops the build. Browser telemetry and source maps use the same Git revision.
 
-## Targets and validation
+## Runtime and performance
 
-- `wrangler.jsonc`: `examcooker-test` at `ec-test.acmvit.in`.
-- `wrangler.canary.jsonc`: production canary, reached through the router.
-- `wrangler.rollout.jsonc`: routing policy and `CF_PERCENT`.
+`wrangler.production.jsonc` defines production. `wrangler.canary.jsonc` defines
+preview uploads; `wrangler.jsonc` defines ec-test. These environments use the
+production database and are not disposable data sandboxes.
 
-Build each target fresh with its own public/auth URLs. Test and canary use
-separate R2 buckets and Durable Objects. Both use production services, so
-ec-test is not a disposable data sandbox.
+Production runs near the database in AWS Mumbai using a dedicated Hyperdrive
+pool with a 100-connection origin limit. Query caching stays disabled so auth,
+upload receipts, and moderation reads remain current. Public application data
+uses R2 and regional caches with explicit invalidation.
+
+The production Worker allows 300,000 ms CPU and 10,000 subrequests per request.
+These limits provide execution headroom; latency still depends on application
+work, cache hits, and network round trips. Tag caches and application state use
+small separate Workers to avoid loading Next.js for each Durable Object call.
 
 Keep `enableCacheInterception: false` so Next resumes dynamic PPR boundaries.
-Application data may use the R2/regional caches; personalized HTTP responses
-must remain private/no-store.
+Personalized HTTP responses must remain private/no-store.
 
-Before activating a canary version, verify complete document/RSC streams,
-visible PDFs, session isolation, assets, and source-map upload. Use the
-production hostname with the router's `x-ec-probe` and
-`x-ec-force-backend` headers for synthetic checks; storage CORS and Server
-Action origin checks depend on that hostname. Keep the rollout at 50%.
+Old Azure pages must reload before submitting Server Actions. Old canary
+JavaScript, CSS, and font requests can fall back to the previous canary Worker;
+application requests and mutations never use that fallback.
 
-## Rollback
+## Validation and rollback
 
-Restore the previous canary deployment with the Cloudflare CLI. To send all
-traffic to Azure, set `CF_PERCENT` to `"0"` and deploy the router; this
-overrides existing canary cookies. Retain the router and old canary assets so
-open tabs keep their build affinity. Mutations are never replayed between
-backends.
+Before deploying, verify complete HTML/RSC streams, visible PDFs, authentication
+and CSRF isolation, private responses, CLI/MCP access, uploads, and source maps.
+Use `cf` to inspect deployments and restore an earlier production Worker version
+if needed. Do not restore traffic to the retired Azure App Service.
+
+Azure Blob Storage and the separate upload processor remain part of the asset
+pipeline; see [cloudflare-assets.md](cloudflare-assets.md).

@@ -19,7 +19,7 @@ Include screenshots for visible UI changes.
 
 Never commit populated environment files or production secrets. Review
 database and storage utilities before running them against live services.
-Cloudflare deployment and the 50% canary policy are documented in
+Cloudflare production and preview deployment are documented in
 [docs/cloudflare-rollout.md](docs/cloudflare-rollout.md).
 
 <!-- BEGIN:nextjs-agent-rules -->
