@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { getPreviewSourceKey, PREVIEW_DOCUMENT } from "../lib/pdf/preview-source";
 
 const SOURCE = "https://examcookerprodsi.blob.core.windows.net/exam-assets/";
 const SOURCE_RESOURCE = "/subscriptions/b88416d5-3d98-4d1c-bd30-8df01b99dfac/resourceGroups/rg-examcooker-prod/providers/Microsoft.Storage/storageAccounts/examcookerprodsi";
@@ -272,7 +273,7 @@ async function serve(request: Request, env: Env, ctx: ExecutionContext) {
 
 // First-page previews let the paper page show readable content before the
 // PDF and its rendering engine download. They live outside the Azure key space.
-const PREVIEW_PATH = /^\/_preview\/v1\/(past-papers\/[a-zA-Z0-9-]{20,64})\/p(\d{1,2})-r(0|90|180|270)\.webp$/;
+const PREVIEW_PATH = new RegExp(`^/_preview/v1/(${PREVIEW_DOCUMENT})/p(\\d{1,2})-r(0|90|180|270)\\.webp$`);
 
 // Concurrent cold requests in one isolate share a render instead of repeating it.
 const pendingRenders = new Map<string, Promise<{ status: number; etag: string | null; body: ArrayBuffer | null }>>();
@@ -308,7 +309,7 @@ async function renderPreview(env: Env, sourceKey: string, sourceEtag: string, pa
 
 async function preview(request: Request, env: Env, ctx: ExecutionContext, match: RegExpExecArray) {
   if (request.method !== "GET" && request.method !== "HEAD") return error(405);
-  const [, paper, page, rotation] = match;
+  const [, previewDocument, page, rotation] = match;
   const url = new URL(request.url);
   // The path alone identifies a preview; queries would only split the cache.
   if (url.search) return error(404);
@@ -322,13 +323,13 @@ async function preview(request: Request, env: Env, ctx: ExecutionContext, match:
       return response;
     }
   }
-  const sourceKey = `${paper}/paper.pdf`;
+  const sourceKey = getPreviewSourceKey(previewDocument);
   let source = await env.BUCKET.head(sourceKey);
   if (!source && (await mirrorOnRead(env.BUCKET, sourceKey)).status !== "missing") source = await env.BUCKET.head(sourceKey);
   if (!source || source.customMetadata?.azureDeleted === "true") return error(404);
 
   // A preview is valid only for the PDF bytes it was rendered from.
-  const previewKey = `_previews/v1/${paper}/p${page}-r${rotation}.webp`;
+  const previewKey = `_previews/v1/${previewDocument}/p${page}-r${rotation}.webp`;
   const stored = await env.BUCKET.get(previewKey);
   let body: ReadableStream | ArrayBuffer | null = null;
   let origin = "r2";

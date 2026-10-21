@@ -1,7 +1,7 @@
 import { getAssetDeliveryUrl } from "@/lib/storage/public-assets";
 import { normalizePdfPageEdits, type PdfPageEdits } from "./page-edits";
+import { getPreviewDocument } from "./preview-source";
 
-const PAPER_PDF = /^\/(past-papers\/[a-zA-Z0-9-]{20,64})\/paper\.pdf$/;
 const MAX_PREVIEW_PAGE = 63;
 
 /**
@@ -16,11 +16,11 @@ export function getPdfFirstPagePreviewUrl(
   const deliveryUrl = getAssetDeliveryUrl(fileUrl, baseUrl);
   if (deliveryUrl === fileUrl) return null;
   const url = new URL(deliveryUrl);
-  const match = PAPER_PDF.exec(url.pathname);
-  if (!match) return null;
+  const previewDocument = getPreviewDocument(url.pathname.slice(1));
+  if (!previewDocument) return null;
   const edits = normalizePdfPageEdits(pageEdits);
   const page = edits?.pageOrder?.[0] ?? 0;
   if (page > MAX_PREVIEW_PAGE) return null;
   const rotation = edits?.pageRotations?.[String(page)] ?? 0;
-  return `${url.origin}/_preview/v1/${match[1]}/p${page}-r${rotation}.webp`;
+  return `${url.origin}/_preview/v1/${previewDocument}/p${page}-r${rotation}.webp`;
 }

@@ -14,9 +14,19 @@ test("papers on the asset host preview the first displayed page", () => {
     `${BASE}/_preview/v1/past-papers/cmoeqf27601vqa8v3nk8b8gdf/p0-r270.webp`);
 });
 
+test("papers uploaded before per-paper folders preview from their root key", () => {
+  const legacy = "https://examcookerprodsi.blob.core.windows.net/exam-assets/91ee5165-65b3-468d-a736-b57eee54fc03.pdf";
+  assert.equal(getPdfFirstPagePreviewUrl(legacy, null, BASE),
+    `${BASE}/_preview/v1/91ee5165-65b3-468d-a736-b57eee54fc03/p0-r0.webp`);
+  assert.equal(getPdfFirstPagePreviewUrl(legacy, { pageRotations: { "0": 90 } }, BASE),
+    `${BASE}/_preview/v1/91ee5165-65b3-468d-a736-b57eee54fc03/p0-r90.webp`);
+});
+
 test("other documents and deployments have no preview", () => {
   assert.equal(getPdfFirstPagePreviewUrl(PAPER, null, ""), null);
   assert.equal(getPdfFirstPagePreviewUrl("https://examcookerprodsi.blob.core.windows.net/exam-assets/notes/abc/note.pdf", null, BASE), null);
   assert.equal(getPdfFirstPagePreviewUrl("https://ec-syllabus.acmvit.in/files/syllabi/BMAT101L_x.pdf", null, BASE), null);
   assert.equal(getPdfFirstPagePreviewUrl(`${PAPER}?sig=private`, null, BASE), null);
+  assert.equal(getPdfFirstPagePreviewUrl("https://examcookerprodsi.blob.core.windows.net/exam-assets/uploads/1755409749964_past_paper.pdf", null, BASE), null);
+  assert.equal(getPdfFirstPagePreviewUrl("https://examcookerprodsi.blob.core.windows.net/exam-assets/notes/91ee5165-65b3-468d-a736-b57eee54fc03.pdf", null, BASE), null);
 });
