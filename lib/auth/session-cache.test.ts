@@ -30,24 +30,25 @@ test("callers share one request; a failed refresh keeps the last answer", async 
 
   const refresh = loadAuthSession({ refresh: true });
   const reader = loadAuthSession();
+  assert.equal(reader, refresh, "readers share the running refresh instead of reading the old cache");
   assert.equal(http.pending.length, 1);
   http.reply({ ok: false });
   assert.equal((await refresh)?.user?.id, "u1", "a failed refresh keeps the signed-in session");
-  assert.equal((await reader)?.user?.id, "u1", "readers wait for the running refresh");
 });
 
 test("a request started before sign-out cannot restore the old session", async (t) => {
-  const { loadAuthSession, clearSessionCache } = await import("./session-cache");
+  const { loadAuthSession, clearSessionCache, readCachedSession } = await import("./session-cache");
   clearSessionCache();
   const http = controlledFetch(t);
   const stale = loadAuthSession();
   clearSessionCache();
   const fresh = loadAuthSession();
   assert.equal(http.pending.length, 2);
-  http.reply({ ok: true, body: {} });
-  assert.equal(await stale, null);
-  http.reply(signedIn);
-  await fresh;
-  // The later answer wins; the earlier one was discarded by generation.
-  assert.equal((await loadAuthSession())?.user?.id, "u1");
+  const [staleReply, freshReply] = http.pending.splice(0, 2);
+  // The signed-out answer arrives first; the older signed-in answer arrives last.
+  freshReply({ ok: true, body: {} });
+  assert.equal(await fresh, null);
+  staleReply(signedIn);
+  assert.equal((await stale)?.user?.id, "u1");
+  assert.equal(readCachedSession(), null, "the older request must not overwrite the newer answer");
 });
