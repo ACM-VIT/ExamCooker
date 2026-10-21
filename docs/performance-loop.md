@@ -101,3 +101,17 @@ The local browser checks passed on the upgraded dependencies: five PDF image rec
 The fixed candidate is live on ec-test as `61001490-f5d8-4057-ba70-77fc67cff3f2`. Full live session/stream checks and actual edited, plain, and forced-recovery PDF opens passed. Cold browser PDF visibility remained 5.88–10.02 seconds in two fresh opens, so a startup performance win is still unproven.
 
 Production preparation and the promotion/rollback checklist are recorded in `docs/cloudflare-release-readiness.md`. Keep the production assignment at 50% while evaluating matched post-release measurements; first-invocation startup remains a separate performance risk.
+
+## Release follow-up: consistent attribution and build target
+
+The journey tracker now normalizes only the course-code segment when matching a
+paper URL, retaining case-sensitive paper IDs. This matches the server's accepted
+lowercase course URLs and their canonical viewer path. The old tracker fails the
+new browser contract; all 14 contracts pass with the fix. Telemetry and source
+maps now share the same CI/Git revision resolver, so manual Cloudflare builds do
+not group unrelated releases under `local`. The test deployment guide now reflects
+the same Worker packaging used by the canary.
+
+Workers Builds is configured against the canary's existing Durable Object
+namespaces and uploads candidate versions without activating them. This removes
+the legacy Worker/name/migration mismatch while preserving 50% assignment.
