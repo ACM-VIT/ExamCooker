@@ -11,6 +11,7 @@ const result = await build({
     import { AsyncLocalStorage } from "node:async_hooks";
     import cache from ${JSON.stringify(cacheModule)};
     const als = new AsyncLocalStorage();
+    globalThis.__openNextAls = als;
     Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), { get: () => als.getStore() });
     globalThis.tagCache = { mode: "nextMode" };
     globalThis.incrementalCache = {
@@ -18,7 +19,12 @@ const result = await build({
       set: async () => new Promise(resolve => setTimeout(resolve, 100)),
     };
     export default { fetch(request) {
-      return als.run({ ctx: {} }, async () => {
+      const caches = new Map();
+      const requestCache = { getOrCreate(key) {
+        if (!caches.has(key)) caches.set(key, new Map());
+        return caches.get(key);
+      } };
+      return als.run({ ctx: {}, requestCache }, async () => {
         const value = new URL(request.url).searchParams.get("value");
         const write = cache.set("same-public-key", new Promise(resolve => setTimeout(() => resolve({
           value: new ReadableStream({start(controller) {

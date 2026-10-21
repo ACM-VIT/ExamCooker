@@ -2,6 +2,8 @@
 // this module. A shared symbol connects them without retaining request objects.
 const PATHS = Symbol.for("examcooker.public-request-paths");
 const COURSE = /^[a-z]{2,8}\d{3,4}[a-z]?$/i;
+// Public papers use both older alphanumeric IDs and UUIDs.
+const PAPER_ID = /^(?:[a-z0-9]{1,64}|[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})$/i;
 const EXAM = /^(?:cat-[12]|fat|model-cat-[12]|model-fat|mid|quiz|cia|other)$/;
 const CATALOG_TAGS = ["courses", "notes", "past_papers", "syllabus", "upcoming_exams"];
 
@@ -20,7 +22,7 @@ export function publicRouteTags(pathname: string): string[] | undefined {
   } else if (segments[0] === "past_papers" && COURSE.test(segments[1] ?? "")) {
     route = ["past_papers", "[code]"];
     if (segments.length === 3 && EXAM.test(segments[2])) route.push("[exam]");
-    else if (segments.length === 4 && segments[2] === "paper" && /^[a-z0-9]{1,64}$/i.test(segments[3])) {
+    else if (segments.length === 4 && segments[2] === "paper" && PAPER_ID.test(segments[3])) {
       route.push("paper", "[id]");
       dataTags = ["past_papers", `past_paper:${segments[3]}`, "upcoming_exams"];
     } else if (segments.length !== 2) return;

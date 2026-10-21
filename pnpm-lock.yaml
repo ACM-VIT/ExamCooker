@@ -190,7 +190,7 @@ overrides:
 
 patchedDependencies:
   '@opennextjs/aws@4.1.9': 8cc86dd161e297b8782c0370b04ea43d9c039368b4548f085203fbe8c35a2563
-  '@opennextjs/cloudflare@1.20.10': 85d917e5c06622162bcf3347ff633978d77f319435e967e9ccf03327dd87f9b2
+  '@opennextjs/cloudflare@1.20.10': 79cbfcf645b87b41e9f68be02b41ea6992d40cdcf596fe587c2e51777b9853ae
 
 importers:
 
@@ -285,7 +285,7 @@ importers:
         version: 2.3.1
       '@opennextjs/cloudflare':
         specifier: 1.20.10
-        version: 1.20.10(patch_hash=85d917e5c06622162bcf3347ff633978d77f319435e967e9ccf03327dd87f9b2)(next@16.4.0(@babel/core@8.0.1)(@types/node@26.6.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(supports-color@10.2.2)(wrangler@4.149.0(@cloudflare/workers-types@5.20261012.1)(@types/node@26.6.5))
+        version: 1.20.10(patch_hash=79cbfcf645b87b41e9f68be02b41ea6992d40cdcf596fe587c2e51777b9853ae)(next@16.4.0(@babel/core@8.0.1)(@types/node@26.6.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(supports-color@10.2.2)(wrangler@4.149.0(@cloudflare/workers-types@5.20261012.1)(@types/node@26.6.5))
       '@posthog/react':
         specifier: ^1.11.3
         version: 1.11.3(@types/react@19.3.0)(posthog-js@1.438.8(@types/react@19.3.0)(preact-render-to-string@5.2.6)(react@19.3.0))(react@19.3.0)
@@ -8113,7 +8113,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@opennextjs/cloudflare@1.20.10(patch_hash=85d917e5c06622162bcf3347ff633978d77f319435e967e9ccf03327dd87f9b2)(next@16.4.0(@babel/core@8.0.1)(@types/node@26.6.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(supports-color@10.2.2)(wrangler@4.149.0(@cloudflare/workers-types@5.20261012.1)(@types/node@26.6.5))':
+  '@opennextjs/cloudflare@1.20.10(patch_hash=79cbfcf645b87b41e9f68be02b41ea6992d40cdcf596fe587c2e51777b9853ae)(next@16.4.0(@babel/core@8.0.1)(@types/node@26.6.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(supports-color@10.2.2)(wrangler@4.149.0(@cloudflare/workers-types@5.20261012.1)(@types/node@26.6.5))':
     dependencies:
       '@ast-grep/napi': 0.45.3
       '@dotenvx/dotenvx': 2.34.2

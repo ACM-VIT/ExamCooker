@@ -1,26 +1,22 @@
 # Cloudflare test deployment
 
 The root Wrangler configuration deploys `examcooker-test` to
-https://ec-test.acmvit.in using Next.js 16.3.6 and OpenNext 1.20.6. This is a test
+https://ec-test.acmvit.in using Next.js 16.4.0 and OpenNext 1.20.10. This is a test
 of the existing app against the production database and services. The original
 Azure production deployment remains in service. The command-agent Worker has its
 own configuration under `worker/`.
 
-## Server module experiment
+## Worker packaging
 
-The test configuration uses [Wrangler partial bundling](https://developers.cloudflare.com/workers/wrangler/bundling/#find-additional-modules)
-to keep the generated Next server in a separate ES module. The deploy build hook
-`scripts/cloudflare/prepare-native-server.mjs` creates `.open-next/native/handler.mjs`,
-supplies the Node globals normally injected by Wrangler, and makes binary import
-paths portable. It leaves the original server intact and redirects the generated
-Worker's lazy import. Its regression test is `node scripts/cloudflare/test-native-server.mjs`.
+Test and canary now use the same ordinary Worker packaging. The earlier separate
+server-module experiment did not establish a reliable first-request improvement.
+Its helper and test remain as historical experiment code, but the root deployment
+configuration no longer invokes `prepare-native-server.mjs` or uses
+`.open-next/native/handler.mjs`.
 
-This experiment targets first-request server compilation. It does not change
-cache lifetimes, session handling, or the 50% production rollout. Early ec-test
-cold samples improved, but there are too few to claim a population improvement.
-`wrangler.canary.jsonc` retains the previous packaging. Build each target before
-deploying it; do not reuse the test target's rewritten `.open-next` output for
-the canary.
+Build each target fresh with its own public URLs and configuration. See
+[the release readiness guide](cloudflare-release-readiness.md) for production
+promotion, version attribution, and rollback. Production assignment stays at 50%.
 
 ## Runtime and storage
 
@@ -114,6 +110,7 @@ must reuse a Next build made with the Cloudflare alias enabled; verify it with
 `node scripts/cloudflare/test-worker-bundle.mjs` before deployment.
 
 ```sh
+git submodule update --init --recursive
 pnpm install --frozen-lockfile
 pnpm exec tsc --noEmit
 pnpm exec tsc -p cloudflare/tsconfig.json

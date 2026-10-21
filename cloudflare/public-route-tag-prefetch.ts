@@ -15,8 +15,8 @@ export function withPublicRouteTagPrefetch(cache: IncrementalCache): Incremental
           tagCache?: { getLastRevalidated(tags: string[]): Promise<number> };
           __openNextAls?: { getStore(): unknown };
         };
-        // The adapter stores resolved tag metadata in OpenNext's request cache.
-        // Later normal checks reuse it; their invalidation decisions are intact.
+        // The patched adapter shares in-flight reads within this request.
+        // Next still awaits the specific tags needed for each cache entry.
         if (runtime.tagCache && runtime.__openNextAls?.getStore()) {
           const { ctx } = getCloudflareContext();
           prefetch = prefetches.get(ctx);
@@ -29,14 +29,8 @@ export function withPublicRouteTagPrefetch(cache: IncrementalCache): Incremental
           }
         }
       }
-      const entry = cache.get(key, cacheType);
-      if (!prefetch) return entry;
-      return entry.then(async (value) => {
-        // Next must validate a hit before serving it. If the local shell arrives
-        // first, let the in-flight tag read finish rather than duplicate its RPCs.
-        if (value) await prefetch;
-        return value;
-      });
+      // A slow data-tag shard must not hold up an unrelated shell-tag check.
+      return cache.get(key, cacheType);
     },
     set: cache.set.bind(cache),
     delete: cache.delete.bind(cache),

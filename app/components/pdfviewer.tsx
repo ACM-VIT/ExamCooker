@@ -66,6 +66,7 @@ import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
 import { foregroundTimeout } from "@/lib/pdf/foreground-timeout";
 import { pdfRenderOptions } from "@/lib/pdf/render-budget";
+import { readPdfPageImageDataUrl } from "@/lib/pdf/page-image";
 import { getEffectivePdfRotation } from "@/lib/pdf/render-rotation";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import {
@@ -705,7 +706,7 @@ function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 bg-gray-100 px-4 text-center text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
+    <div data-ec-pdf-load-error="true" className="flex h-full min-h-[320px] flex-col items-center justify-center gap-3 bg-gray-100 px-4 text-center text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
       <p>{message}</p>
       <div className="flex flex-wrap items-center justify-center gap-2">
         {onRetry ? (
@@ -1069,10 +1070,12 @@ function PageRenderLayer({
   // first-paint watchdog can tell a blank page apart from a rendered one.
   const hasPaintedRef = useRef(false);
   const firstPaintTimeoutRef = useRef<(() => void) | null>(null);
-  const attemptRef = useRef({ key: "", retried: false });
-  const retryAutomatically = useCallback(() => {
+  const imageDescriptionRef = useRef("");
+  const attemptRef = useRef({ key: "", retried: false, inlineImage: false });
+  const retryAutomatically = useCallback((inlineImage = false) => {
     if (attemptRef.current.retried) return false;
     attemptRef.current.retried = true;
+    attemptRef.current.inlineImage = inlineImage;
     activeImageUrlRef.current = null;
     firstPaintTimeoutRef.current?.();
     firstPaintTimeoutRef.current = null;
@@ -1096,7 +1099,9 @@ function PageRenderLayer({
     if (!renderProvides || documentState?.status !== "loaded") return;
 
     const renderKey = `${documentId}:${pageIndex}:${documentState.scale}:${renderRotation}:${refreshVersion}`;
-    if (attemptRef.current.key !== renderKey) attemptRef.current = { key: renderKey, retried: false };
+    if (attemptRef.current.key !== renderKey) attemptRef.current = { key: renderKey, retried: false, inlineImage: false };
+    const imageController = new AbortController();
+    const inlineImage = attemptRef.current.inlineImage;
     let isCurrentRender = true;
     let didSettle = false;
     // `didSettle` marks the render *task* as resolved/rejected/timed-out; a
@@ -1203,7 +1208,7 @@ function PageRenderLayer({
 
     task
       .toPromise()
-      .then((blob) => {
+      .then(async (blob) => {
         if (!isCurrentRender || didSettle) return;
         // An empty blob paints nothing, so treat it as a recoverable failure
         // rather than rendering a silent blank page.
@@ -1215,8 +1220,18 @@ function PageRenderLayer({
           failRender("empty_blob");
           return;
         }
+        // Retrying the same blob URL mechanism cannot recover a browser that
+        // rejects blob images. The one existing lower-resolution retry uses
+        // an inline image instead, without downloading the PDF again.
+        const nextImageUrl = inlineImage
+          ? await readPdfPageImageDataUrl(blob, imageController.signal)
+          : blobToObjectUrl(blob);
+        if (!isCurrentRender || didSettle) {
+          if (!inlineImage) URL.revokeObjectURL(nextImageUrl);
+          return;
+        }
         didSettle = true;
-        const nextImageUrl = blobToObjectUrl(blob);
+        imageDescriptionRef.current = `${inlineImage ? "data" : "blob"} image, ${blob.type}, ${blob.size} bytes`;
         activeImageUrlRef.current = nextImageUrl;
         didReportRenderErrorRef.current = false;
         setHasRenderError(false);
@@ -1254,6 +1269,7 @@ function PageRenderLayer({
 
     return () => {
       isCurrentRender = false;
+      imageController.abort();
       cancelRenderTimeout();
       clearFirstPaintWatchdog();
       if (!didSettle) {
@@ -1293,6 +1309,7 @@ function PageRenderLayer({
 
   const handleRetry = useCallback(() => {
     attemptRef.current.retried = false;
+    attemptRef.current.inlineImage = false;
     setHasRenderError(false);
     activeImageUrlRef.current = null;
     // Drop any stale blob (e.g. one that failed to decode) so the fresh render
@@ -1314,7 +1331,7 @@ function PageRenderLayer({
       return;
     }
     if (didReportRenderErrorRef.current) return;
-    if (retryAutomatically()) return;
+    if (retryAutomatically(true)) return;
     didReportRenderErrorRef.current = true;
     if (firstPaintTimeoutRef.current !== null) {
       firstPaintTimeoutRef.current();
@@ -1328,6 +1345,7 @@ function PageRenderLayer({
       documentId,
       pageIndex,
       reason: "image_decode",
+      errorMessage: imageDescriptionRef.current,
     });
     setHasRenderError(true);
   }, [documentId, pageIndex, retryAutomatically]);
@@ -1359,6 +1377,7 @@ function PageRenderLayer({
 
   return (
     <img
+      key={imageUrl}
       src={imageUrl}
       alt=""
       decoding="async"

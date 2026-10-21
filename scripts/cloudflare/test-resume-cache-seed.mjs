@@ -21,9 +21,10 @@ for (const runtime of [
 ]) {
   const contents = await readFile(require.resolve(`next/dist/compiled/next-server/${runtime}`), "utf8");
   const result = patchResumeDataCache(contents, runtime);
-  // Next has one HTML and one RSC partial-prefetch initialization site.
-  assert.equal((result.match(/\w+\(\w+\.resumeDataCache\)/g)?.length ?? 0) -
-    (contents.match(/\w+\(\w+\.resumeDataCache\)/g)?.length ?? 0), 2, runtime);
+  // Next 16.4 seeds both sites upstream; older versions need our patch.
+  // Count verified factory-to-store pairs, not the number of replacements.
+  const seeded = /\blet\s+([$\w]+)\s*=\s*[$\w]+\(\s*([$\w]+)\.resumeDataCache(?:\s*\?\?\s*void 0)?\s*\)\s*;\s*\2\.resumeDataCache\s*=\s*\1\s*;/g;
+  assert.equal([...result.matchAll(seeded)].length, 2, runtime);
 }
 
 const { postponed } = JSON.parse(await readFile(".next/server/app/past_papers/BMAT202L.meta", "utf8"));

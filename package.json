@@ -44,7 +44,9 @@
     "cf:preview": "opennextjs-cloudflare populateCache local && CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler dev --config wrangler.jsonc --config wrangler.tag-cache.local.jsonc --config wrangler.app-state.local.jsonc",
     "cf:tag-cache:deploy": "wrangler deploy --config wrangler.tag-cache.jsonc",
     "cf:deploy": "pnpm cf:tag-cache:deploy && pnpm cf:app-state:deploy && opennextjs-cloudflare deploy",
-    "cf:app-state:deploy": "wrangler deploy --config wrangler.app-state.jsonc"
+    "cf:app-state:deploy": "wrangler deploy --config wrangler.app-state.jsonc",
+    "cf:build:canary": "NEXT_PUBLIC_BASE_URL=https://examcooker.acmvit.in NEXTAUTH_URL=https://examcooker.acmvit.in AUTH_URL=https://examcooker.acmvit.in POSTHOG_SOURCEMAP_UPLOAD=true opennextjs-cloudflare build --config wrangler.canary.jsonc",
+    "cf:upload:canary": "opennextjs-cloudflare upload --config wrangler.canary.jsonc --cacheChunkSize 5"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.91",

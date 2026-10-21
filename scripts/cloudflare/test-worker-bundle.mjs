@@ -30,4 +30,8 @@ assert.deepEqual(redis, [], "Worker must not load the unused Node Redis/Entra SD
 const pdfium = [...sources].filter(source => /\/node_modules\/@embedpdf\/(?:engines|pdfium)(?:\/|$)/.test(source));
 assert.deepEqual(pdfium, [], "Browser PDFium engines must not enter the Worker through preload hooks");
 const handler = await readFile(`${root}/handler.mjs`);
+assert.match(handler.toString(), /scheduleMacrotask\s*\?\?=\s*previousSetImmediate/,
+  "The deployed scheduler must retain the native drain hop after Next wraps timers");
+assert.ok(handler.includes("/server/preview-props.json"),
+  "Next 16.4 preview props must be inlined into the deployed Worker");
 console.log(`PASS: ${maps} server source maps contain no Redis SDK or browser PDFium engine; handler ${handler.length} bytes / ${gzipSync(handler).length} gzip bytes`);

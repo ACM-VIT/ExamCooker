@@ -78,11 +78,11 @@
     if (navigation) send('ec_cutover_page', {ttfb_ms:navigation.responseStart, html_ms:navigation.responseEnd, dom_ms:navigation.domContentLoadedEventEnd});
   };
   if (document.readyState === 'complete') loaded(); else window.addEventListener('load', loaded, {once:true});
-  // This is the actual rendered PDF blob, not a thumbnail or loading placeholder.
+  // Measure actual PDF page images, including the bounded inline recovery path.
   document.addEventListener('load', event => {
     const img = event.target;
     if (!measuring || state.pdf || !/^\/past_papers\/[^/]+\/paper\/[^/]+\/?$/.test(initialPath) ||
-        !(img instanceof HTMLImageElement) || img.dataset.ecPdfPageImage !== 'true' || !img.src.startsWith('blob:') || img.naturalWidth < 1) return;
+        !(img instanceof HTMLImageElement) || img.dataset.ecPdfPageImage !== 'true' || !(img.src.startsWith('blob:') || img.src.startsWith('data:image/')) || img.naturalWidth < 1) return;
     requestAnimationFrame(() => {
       if (!measuring || state.pdf || location.pathname !== initialPath || !img.checkVisibility()) return;
       const box = img.getBoundingClientRect();

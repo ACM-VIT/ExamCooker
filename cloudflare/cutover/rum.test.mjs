@@ -94,3 +94,24 @@ test("a document opened in the background does not report foreground vitals", ()
   h.emit("window", "pagehide");
   assert.equal(h.events.length, 0);
 });
+
+test("inline image recovery contributes one visible PDF timing", () => {
+  const h = harness();
+  const recovered = new h.Image();
+  recovered.src = "data:image/png;base64,recovered";
+  h.emit("document", "load", { target: recovered });
+  h.emit("document", "load", { target: new h.Image() });
+  assert.equal(h.events.filter(e => e.event === "ec_cutover_pdf").length, 1);
+});
+
+test("thumbnails and failed inline images do not count as visible PDFs", () => {
+  const h = harness();
+  const image = new h.Image();
+  image.src = "data:image/png;base64,thumbnail";
+  image.dataset = {};
+  h.emit("document", "load", { target: image });
+  image.dataset = { ecPdfPageImage: "true" };
+  image.naturalWidth = 0;
+  h.emit("document", "load", { target: image });
+  assert.equal(h.events.filter(e => e.event === "ec_cutover_pdf").length, 0);
+});
