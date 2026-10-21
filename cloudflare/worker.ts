@@ -4,13 +4,22 @@ import handler from "../.open-next/worker.js";
 import { recordPublicRequestPath } from "./public-route-tags";
 import { protectPersonalizedResponse } from "./cache-policy";
 import { precompressedAssetResponse } from "./precompressed-assets";
-import { isPreviousBuildAsset, productionCompatibilityResponse } from "./production-routing";
+import { productionCompatibilityResponse } from "./production-routing";
 import { beginRequestTiming, summarizeRequestTiming } from "./request-timing";
+import { archiveCurrentAssets, archivedAssetResponse } from "./static-archive";
 export { AppState } from "./app-state";
 // @ts-ignore .open-next is generated at build time.
 export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "../.open-next/worker.js";
 
 let receivedRequest = false;
+let archiveStarted = false;
+
+type Bindings = {
+  ASSETS: Fetcher;
+  STATIC_ARCHIVE?: R2Bucket;
+  PRODUCTION_FULL_CUTOVER?: string;
+  CF_VERSION_METADATA?: { id?: string };
+};
 
 function requestKind(request: Request) {
   if (request.headers.has("next-action")) return "action";
@@ -46,21 +55,37 @@ function observeStreamEnd(body: ReadableStream<Uint8Array>, ended: (failed: bool
   });
 }
 
+async function archiveAssets(bindings: Bindings, versionId: string) {
+  const result = await archiveCurrentAssets({
+    assets: bindings.ASSETS, archive: bindings.STATIC_ARCHIVE!, versionId, origin: "https://assets.local",
+  }).catch((error) => ({ status: "failed" as const, files: 0, error: error instanceof Error ? error.message : String(error) }));
+  if (result.status !== "already-archived" && result.status !== "in-progress") {
+    console.log({ message: "ec.static.archive", versionId, ...result });
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext) {
-    const bindings = env as {
-      ASSETS: Fetcher;
-      PRODUCTION_FULL_CUTOVER?: string;
-      PREVIOUS_APP?: Fetcher;
-      CF_VERSION_METADATA?: { id?: string };
-    };
+    const bindings = env as Bindings;
     if (bindings.PRODUCTION_FULL_CUTOVER === "1") {
       const compatibilityResponse = productionCompatibilityResponse(request);
       if (compatibilityResponse) return compatibilityResponse;
     }
     const firstRequest = !receivedRequest;
     receivedRequest = true;
+    // Archive a new version from its first requests, so a quick redeploy
+    // cannot replace it before the cron runs. Most isolates find it done.
+    const versionId = bindings.CF_VERSION_METADATA?.id;
+    if (!archiveStarted && bindings.STATIC_ARCHIVE && versionId) {
+      archiveStarted = true;
+      ctx.waitUntil(archiveAssets(bindings, versionId));
+    }
     const assetResponse = await precompressedAssetResponse(request, bindings.ASSETS);
+    if (assetResponse && assetResponse.status !== 404) return assetResponse;
+    // Hashed static files reach the Worker only when this build lacks them:
+    // an older tab is asking for its own build's file.
+    const archived = await archivedAssetResponse(request, bindings.STATIC_ARCHIVE);
+    if (archived) return archived;
     if (assetResponse) return assetResponse;
     const timing = beginRequestTiming(ctx);
     const log = (status: number, headersAt: number, endedAt: number, failed = false) => console.log({
@@ -76,10 +101,6 @@ export default {
     let response: Response;
     try {
       response = protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
-      if (response.status === 404 && bindings.PREVIOUS_APP && isPreviousBuildAsset(request)) {
-        const previous = await bindings.PREVIOUS_APP.fetch(new Request(request.url, { method: request.method }));
-        if (previous.ok) response = previous;
-      }
     } catch (error) {
       // Failed requests can be the slowest ones; keep them in the dataset.
       const failedAt = performance.now();
@@ -105,5 +126,12 @@ export default {
     const version = bindings.CF_VERSION_METADATA?.id;
     if (version) observed.headers.set("x-ec-worker-version", version);
     return observed;
+  },
+
+  // Backstop for the request-time archive: retries partial or interrupted runs.
+  async scheduled(_controller: ScheduledController, env: unknown) {
+    const bindings = env as Bindings;
+    const versionId = bindings.CF_VERSION_METADATA?.id;
+    if (bindings.STATIC_ARCHIVE && versionId) await archiveAssets(bindings, versionId);
   },
 };

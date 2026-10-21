@@ -34,8 +34,3 @@ export function productionCompatibilityResponse(request: Request): Response | nu
   }
   return null;
 }
-
-export function isPreviousBuildAsset(request: Request) {
-  return (request.method === "GET" || request.method === "HEAD") &&
-    /^\/_next\/static\/(chunks|css|media)\/.+\.(js|css|woff2?|ttf|otf|svg|png|jpe?g|webp|avif)$/.test(new URL(request.url).pathname);
-}

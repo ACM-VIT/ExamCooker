@@ -22,10 +22,6 @@
     {
       "binding": "WORKER_SELF_REFERENCE",
       "service": "examcooker-prod"
-    },
-    {
-      "binding": "PREVIOUS_APP",
-      "service": "examcooker-canary"
     }
   ],
   "hyperdrive": [
@@ -43,6 +39,11 @@
     {
       "binding": "APP_CACHE_BUCKET",
       "bucket_name": "examcooker-prod-app-cache"
+    },
+    {
+      // Earlier builds' hashed files for tabs that outlive a deploy.
+      "binding": "STATIC_ARCHIVE",
+      "bucket_name": "examcooker-prod-static-archive"
     }
   ],
   "durable_objects": {
@@ -95,6 +96,10 @@
   },
   "vars": {
     "PRODUCTION_FULL_CUTOVER": "1"
+  },
+  // Archives each new version's hashed files once (cloudflare/static-archive.ts).
+  "triggers": {
+    "crons": ["*/10 * * * *"]
   },
   "routes": [
     {

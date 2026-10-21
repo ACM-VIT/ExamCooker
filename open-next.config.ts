@@ -39,6 +39,6 @@ const config = defineCloudflareConfig({
 });
 
 // This target-specific alias must also apply when invoking the adapter directly.
-config.buildCommand = "EC_CLOUDFLARE_BUILD=1 pnpm build --turbopack && node scripts/upload-sourcemaps.mjs";
+config.buildCommand = "EC_CLOUDFLARE_BUILD=1 pnpm build --turbopack && node scripts/upload-sourcemaps.mjs && node scripts/static-asset-manifest.mjs";
 
 export default config;
