@@ -48,6 +48,10 @@ const bundle = await build({
       equal(events.length,2,'one started/finished pair');equal(events[0].journey_id,events[1].journey_id,'paired id');
       await image(first);first.append(document.createElement('span'));await settle();equal(events.length,2,'later pages/zoom do not repeat');pass('decoded page, fresh clock, exactly once');
 
+      setup();navigate('/past_papers/test/paper/a');const lowercase=root(A);now+=210;await image(lowercase);await settle();
+      equal(finished().map(event=>[event.outcome,event.duration_ms]),[['visible',210]],'accepted lowercase course matches canonical viewer');
+      tracker.start(A,'replace');equal(events.length,2,'canonical spelling is the same paper');pass('lowercase course URL and canonical viewer');
+
       setup();navigate(A+'?private=secret#fragment');const recovered=root(A);now+=200;await image(recovered,inline);await settle();
       equal(finished()[0].image_source,'inline','recovery counted');equal(JSON.stringify(events).includes('secret'),false,'query not sent');equal(JSON.stringify(events).includes(A),false,'paper path not sent');pass('inline recovery and minimal event properties');
 
@@ -114,7 +118,7 @@ try {
   let result = JSON.parse(await browser(["eval", "--stdin"], "JSON.stringify(window.result)"));
   if (typeof result === "string") result = JSON.parse(result);
   assert.equal(result.error, undefined, JSON.stringify(result));
-  assert.equal(result.cases.length, 13);
+  assert.equal(result.cases.length, 14);
   for (const name of result.cases) console.log(`PASS: ${name}`);
 } finally {
   await browser(["close"]).catch(() => undefined);

@@ -27,6 +27,8 @@ on:
       - 'scripts/bench-pdf-intent.mjs'
       - 'scripts/test-pdf-open-journey.mjs'
       - 'scripts/sync-pdfium-wasm.js'
+      - 'scripts/build-revision*'
+      - 'scripts/upload-sourcemaps.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -58,6 +60,7 @@ jobs:
       - name: Validate timing population and saved edits
         run: |
           node --test cloudflare/cutover/rum.test.mjs
+          node --test scripts/build-revision.test.mjs
           pnpm exec tsx --test lib/pdf/reliability.test.ts lib/pdf/pdf-buffer-cache.test.ts lib/pdf/render-rotation.test.ts
       - name: Guard PDF input ordering, transfer counts, and rendered pixels
         run: node scripts/bench-pdf-intent.mjs --rounds 1

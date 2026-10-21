@@ -1,3 +1,5 @@
+import { normalizeCourseCode } from "@/lib/course-tags";
+
 export const PDF_JOURNEY_READY_EVENT = "ec:pdf-viewer-ready";
 export const PDF_JOURNEY_TIMEOUT_MS = 60_000;
 
@@ -14,7 +16,13 @@ type Attempt = {
 };
 
 const paperRoute = /^\/past_papers\/[^/]+\/paper\/[^/]+$/;
-const cleanPath = (path: string) => path.replace(/\/$/, "") || "/";
+const cleanPath = (path: string) => (path.replace(/\/$/, "") || "/").replace(
+  /^(\/past_papers\/)([^/]+)(\/paper\/)/,
+  (match, prefix, code, suffix) => {
+    try { return `${prefix}${encodeURIComponent(normalizeCourseCode(decodeURIComponent(code)))}${suffix}`; }
+    catch { return match; }
+  },
+);
 const sourceRoute = (path: string) => paperRoute.test(path)
   ? "paper" : /^\/past_papers\/[^/]+$/.test(path) ? "course" : "other";
 

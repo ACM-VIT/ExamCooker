@@ -1,7 +1,7 @@
 import { readdir, readFile, unlink } from "node:fs/promises";
 import { spawn } from "node:child_process";
-import { execFileSync } from "node:child_process";
 import path from "node:path";
+import { getBuildRevision } from "./build-revision.mjs";
 
 // Run after Next's final build and before OpenNext copies or Azure packages it.
 // Deployment builds opt in; ordinary local builds need no PostHog credentials.
@@ -23,7 +23,8 @@ for (const file of maps) {
 }
 if (!mapped) throw new Error("Browser source maps contain no mappings.");
 
-const revision = process.env.GITHUB_SHA || execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const revision = getBuildRevision();
+if (revision === "local") throw new Error("Source-map upload requires a commit revision.");
 const build = (await readFile(".next/BUILD_ID", "utf8")).trim();
 const args = ["--yes", "@posthog/cli@latest", "sourcemap", "process", "--directory", directory,
   "--release-name", "examcooker-web", "--release-version", revision, "--build", build,
