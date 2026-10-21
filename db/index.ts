@@ -2,6 +2,7 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { timeRequestWork } from "@/cloudflare/request-timing";
 
 function readPositiveInt(name: string, fallback: number) {
   const value = Number.parseInt(process.env[name] ?? "", 10);
@@ -230,11 +231,34 @@ function attachQueryRetry(pool: Pool) {
   }) as typeof pool.query;
 }
 
+function attachRequestTiming(pool: Pool, ctx: object) {
+  const connect = pool.connect.bind(pool);
+  const query = pool.query.bind(pool) as (...args: unknown[]) => unknown;
+
+  // pg-pool's query() acquires through this.connect(callback), so connection
+  // setup is timed separately from the query time that includes it.
+  pool.connect = ((callback?: (...results: unknown[]) => void) => {
+    if (!callback) return timeRequestWork(ctx, "dbConnect", () => connect());
+    void timeRequestWork(ctx, "dbConnect", () => new Promise<void>((resolve) => {
+      connect((...results: unknown[]) => {
+        resolve();
+        callback(...results);
+      });
+    }));
+  }) as typeof pool.connect;
+
+  pool.query = ((...args: unknown[]) => {
+    if (typeof args.at(-1) === "function") return query(...args);
+    return timeRequestWork(ctx, "dbQuery", () => Promise.resolve(query(...args)));
+  }) as typeof pool.query;
+}
+
 function createPool(workers = false) {
   // Hyperdrive owns the persistent origin pool. Worker sockets still stay
   // request-scoped; a fresh pg connection now connects to the local proxy.
-  const hyperdrive = workers
-    ? (getCloudflareContext().env as unknown as {
+  const cloudflare = workers ? getCloudflareContext() : undefined;
+  const hyperdrive = cloudflare
+    ? (cloudflare.env as unknown as {
         HYPERDRIVE?: { connectionString: string };
       }).HYPERDRIVE
     : undefined;
@@ -285,8 +309,12 @@ function createPool(workers = false) {
   );
 
   attachQueryRetry(pool);
+  if (cloudflare) attachRequestTiming(pool, cloudflare.ctx);
 
-  pool.on("error", (error) => {
+  pool.on("error", (error, client) => {
+    // Closing a Workers socket rejects its pending read. When the pool itself
+    // ended that client (maxUses or idle timeout), the error is not a failure.
+    if ((client as typeof client & { _ending?: boolean })._ending) return;
     console.error(`[db] pg pool error (${describePoolState(pool)})`, describeDbError(error));
   });
 

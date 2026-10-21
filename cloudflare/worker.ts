@@ -4,11 +4,20 @@ import handler from "../.open-next/worker.js";
 import { recordPublicRequestPath } from "./public-route-tags";
 import { protectPersonalizedResponse } from "./cache-policy";
 import { isPreviousBuildAsset, productionCompatibilityResponse } from "./production-routing";
+import { beginRequestTiming, summarizeRequestTiming } from "./request-timing";
 export { AppState } from "./app-state";
 // @ts-ignore .open-next is generated at build time.
 export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "../.open-next/worker.js";
 
 let receivedRequest = false;
+
+function requestKind(request: Request) {
+  if (request.headers.has("next-action")) return "action";
+  if (request.headers.has("next-router-prefetch")) return "prefetch";
+  if (request.headers.has("rsc") || new URL(request.url).searchParams.has("_rsc")) return "rsc";
+  if (request.method === "HEAD") return "head";
+  return (request.headers.get("accept") ?? "").includes("text/html") ? "document" : "other";
+}
 
 export default {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext) {
@@ -23,15 +32,35 @@ export default {
     }
     const firstRequest = !receivedRequest;
     receivedRequest = true;
+    const timing = beginRequestTiming(ctx);
     recordPublicRequestPath(ctx, request.url, request.method);
     let response = protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
     if (response.status === 404 && bindings.PREVIOUS_APP && isPreviousBuildAsset(request)) {
       const previous = await bindings.PREVIOUS_APP.fetch(new Request(request.url, { method: request.method }));
       if (previous.ok) response = previous;
     }
+    const headersAt = performance.now();
+    const log = (endedAt: number) => console.log({
+      message: "ec.request.timing",
+      path: new URL(request.url).pathname,
+      kind: requestKind(request),
+      status: response.status,
+      firstRequest,
+      ...summarizeRequestTiming(timing, headersAt, endedAt),
+    });
+    // Rendered pages stream after their headers; time those through the last
+    // body chunk. Other responses (assets, ranges, redirects) keep their body.
+    const contentType = response.headers.get("content-type") ?? "";
+    let body = response.body;
+    // Abandoned streams never flush and are not logged.
+    if (body && (contentType.includes("text/html") || contentType.includes("text/x-component"))) {
+      body = body.pipeThrough(new TransformStream({ flush: () => log(performance.now()) }));
+    } else {
+      log(headersAt);
+    }
     // This marks the first invocation of an isolate, not a cache miss or a
     // visitor's first page. The router records it with origin response time.
-    const observed = new Response(response.body, response);
+    const observed = new Response(body, response);
     observed.headers.set("x-ec-worker-first-request", firstRequest ? "1" : "0");
     observed.headers.set("x-ec-backend", "cloudflare");
     const version = bindings.CF_VERSION_METADATA?.id;
