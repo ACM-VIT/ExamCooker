@@ -36,7 +36,16 @@ function readSessionPayload(payload: unknown): Session | null {
     return payload as Session;
 }
 
-function loadSession() {
+/**
+ * One shared, cached `/api/auth/session` request for every client caller.
+ * `refresh` re-reads it (e.g. after another tab may have signed in) without
+ * putting already-rendered auth state back into loading.
+ */
+export function loadAuthSession({ refresh = false }: { refresh?: boolean } = {}) {
+    if (refresh && cachedSession !== undefined) {
+        sessionPromise = null;
+        cachedSession = undefined;
+    }
     if (cachedSession !== undefined) {
         return Promise.resolve(cachedSession);
     }
@@ -98,7 +107,7 @@ export function useGuestPrompt(): AuthGate {
 
             if (cachedSession !== undefined) return;
 
-            void loadSession().then((nextSession) => {
+            void loadAuthSession().then((nextSession) => {
                 if (cancelled) return;
                 setAuthSessionState(getAuthSessionState(nextSession));
             });
@@ -128,7 +137,7 @@ export function useGuestPrompt(): AuthGate {
         (action?: string) => {
             if (isAuthed) return true;
             if (status === "loading") {
-                void loadSession().then((nextSession) => {
+                void loadAuthSession().then((nextSession) => {
                     setAuthSessionState(getAuthSessionState(nextSession));
                     if (!nextSession?.user) {
                         router.push(getAuthHref(action));

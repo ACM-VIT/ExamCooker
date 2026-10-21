@@ -6,6 +6,7 @@ import {
     resetPostHogUser,
 } from "@/lib/posthog/client";
 import { scheduleIdleWork } from "@/lib/schedule-idle-work";
+import { loadAuthSession } from "@/app/components/auth-gate";
 
 export default function PostHogIdentify() {
     const lastIdentifiedUserId = useRef<string | null>(null);
@@ -17,10 +18,9 @@ export default function PostHogIdentify() {
         let cancelled = false;
         let cancelInitialSync: (() => void) | null = null;
 
-        async function syncIdentity() {
+        async function syncIdentity(refresh = false) {
             try {
-                const { getSession } = await import("next-auth/react");
-                const session = await getSession();
+                const session = await loadAuthSession({ refresh });
                 if (cancelled) return;
 
                 if (session?.user?.id) {
@@ -49,12 +49,14 @@ export default function PostHogIdentify() {
             },
             { fallbackDelayMs: 2500, timeoutMs: 3500 },
         );
-        window.addEventListener("focus", syncIdentity);
+        // Another tab may have signed in or out; re-read the session on focus.
+        const syncOnFocus = () => void syncIdentity(true);
+        window.addEventListener("focus", syncOnFocus);
 
         return () => {
             cancelled = true;
             cancelInitialSync?.();
-            window.removeEventListener("focus", syncIdentity);
+            window.removeEventListener("focus", syncOnFocus);
         };
     }, [posthogKey]);
 
