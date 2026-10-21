@@ -12,7 +12,9 @@
   ],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // Only the PDF engine: the Worker serves its build-time brotli copy.
+    "run_worker_first": ["/vendor/embedpdf/immutable/*"]
   },
   "services": [
     {
@@ -72,6 +74,15 @@
   "cache": {
     "enabled": false
   },
-  "workers_dev": false,
-  "preview_urls": false
+  // dev deploys here for checks at examcooker-canary.acmvit.workers.dev before
+  // main. Match production placement and limits so timings are comparable.
+  "workers_dev": true,
+  "preview_urls": false,
+  "placement": {
+    "region": "aws:ap-south-1"
+  },
+  "limits": {
+    "cpu_ms": 300000,
+    "subrequests": 10000
+  }
 }
