@@ -11,10 +11,22 @@ Cloudflare Workers Builds connects directly to this repository:
 | Branch | Worker | Build | Deploy |
 | --- | --- | --- | --- |
 | `main` | `examcooker-prod` | `pnpm cf:build:prod` | `pnpm cf:deploy:prod` |
+| `dev` | `examcooker-canary` | `pnpm cf:build:canary` | deploys (see below) |
 | Other branches | `examcooker-canary` | `pnpm cf:build:canary` | `pnpm cf:upload:canary` |
 
-Canary builds upload inactive versions. They cannot replace production.
-There are no GitHub Actions deployment workflows.
+Pull requests merge into `dev` first. `dev` deploys the canary site,
+`https://examcooker-canary.acmvit.workers.dev`, which uses production data,
+placement and limits; sign-in links still point at the production hostname.
+After checking a change there, merge `dev` into `main` to deploy production.
+One canary trigger serves every non-`main` branch. Its deploy command works
+with any checkout, including branches older than this flow:
+
+```sh
+if [ "$WORKERS_CI_BRANCH" = dev ]; then pnpm exec opennextjs-cloudflare deploy --config wrangler.canary.jsonc --cacheChunkSize 5; else pnpm cf:upload:canary; fi
+```
+
+Unknown branches upload an inactive version. No canary build can replace
+production. `pnpm cf:deploy:canary` runs the same deploy manually. There are no GitHub Actions deployment workflows.
 
 Build settings require `DATABASE_URL`, build-time `AUTH_*` values,
 `NEXT_PUBLIC_MICROSERVICE_URL`, and `NEXT_PUBLIC_POSTHOG_*`. Source maps require
@@ -28,7 +40,7 @@ stops the build. Browser telemetry and source maps use the same Git revision.
 ## Runtime and performance
 
 `wrangler.production.jsonc` defines production. `wrangler.canary.jsonc` defines
-preview uploads; `wrangler.jsonc` defines ec-test. These environments use the
+the canary site and preview uploads; `wrangler.jsonc` defines ec-test. These environments use the
 production database and are not disposable data sandboxes.
 
 Production runs near the database in AWS Mumbai using a dedicated Hyperdrive
