@@ -66,8 +66,10 @@ try {
  assert.equal((await mf.dispatchFetch(unrenderable,fresh_)).status,404);assert.equal(renders,3);
  // A cold PDF read and a cold preview mirror the same source concurrently.
  const coldPaper='past-papers/previewfixture000000002/paper.pdf';
+ const beforeColdMirror=calls;
  const [coldPdf,coldPreview]=await Promise.all([mf.dispatchFetch(host+'/'+coldPaper),mf.dispatchFetch(host+'/_preview/v1/past-papers/previewfixture000000002/p0-r0.webp')]);
  assert.equal(coldPdf.status,200);assert.deepEqual(Buffer.from(await coldPdf.arrayBuffer()),original);assert.equal(coldPreview.status,404);assert.equal(renders,4);
+ assert.equal(calls,beforeColdMirror+1,'concurrent cold reads share one Azure copy');
  const concurrent=host+'/_preview/v1/past-papers/previewfixture000000001/p1-r180.webp';renderStatus=200;
  const pair=await Promise.all([mf.dispatchFetch(concurrent),mf.dispatchFetch(concurrent)]);
  for(const response of pair){assert.equal(response.status,200);assert.match(await response.text(),/^webp:1:180:/);}
