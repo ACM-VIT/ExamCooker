@@ -47,6 +47,7 @@ export function installPdfOpenJourneyTracking(options: {
   const intersections = new Map<Element, boolean>();
   let frame: number | null = null;
   let decodedImage: { image: HTMLImageElement; source: string; ready: boolean } | null = null;
+  let decodedPreview: { image: HTMLImageElement; ready: boolean } | null = null;
 
   const send = (event: Parameters<Capture>[0], properties: Properties, immediate = false) => {
     try { options.capture(event, properties, immediate); } catch { /* Telemetry cannot block navigation. */ }
@@ -58,6 +59,7 @@ export function installPdfOpenJourneyTracking(options: {
     intersectionObserver = null;
     intersections.clear();
     decodedImage = null;
+    decodedPreview = null;
     root = null;
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
@@ -88,9 +90,24 @@ export function installPdfOpenJourneyTracking(options: {
   };
   const check = () => {
     if (!attempt || !root || cleanPath(location.pathname) !== attempt.path || document.visibilityState !== "visible") return;
-    if (attempt.previewVisibleAt === undefined && [...root.querySelectorAll<HTMLImageElement>('img[data-ec-pdf-preview="true"]')]
-      .some(preview => preview.complete && preview.naturalWidth > 0 && visible(preview))) {
-      attempt.previewVisibleAt = performance.now();
+    if (attempt.previewVisibleAt === undefined) {
+      // Like page images: decoded pixels, then a paint boundary.
+      const preview = [...root.querySelectorAll<HTMLImageElement>('img[data-ec-pdf-preview="true"]')]
+        .find(candidate => candidate.complete && candidate.naturalWidth > 0 && visible(candidate));
+      if (preview && decodedPreview?.image !== preview) {
+        const current = attempt;
+        const pending = { image: preview, ready: false };
+        decodedPreview = pending;
+        void preview.decode().then(() => {
+          if (attempt !== current || decodedPreview !== pending) return;
+          pending.ready = true;
+          scheduleCheck();
+        }, () => {
+          if (decodedPreview === pending) decodedPreview = null;
+        });
+      } else if (preview && decodedPreview?.ready) {
+        attempt.previewVisibleAt = performance.now();
+      }
     }
     const image = [...root.querySelectorAll<HTMLImageElement>('img[data-ec-pdf-page-image="true"]')].find(image =>
       image.complete && image.naturalWidth > 0 &&

@@ -64,7 +64,10 @@ test("a first-page preview is recorded but does not finish the PDF open", async 
   preview.dataset.ecPdfPreview = "true";
   preview.src = "https://ec-assets.test/_preview/v1/past-papers/one/p0-r0.webp";
   Object.defineProperties(preview, { complete: { value: true }, naturalWidth: { value: 20 } });
+  preview.decode = () => Promise.resolve();
   v.root.prepend(preview);
+  await Promise.resolve();
+  v.paint(); v.paint();
   await Promise.resolve();
   v.paint(); v.paint();
   assert.deepEqual(v.finished(), [], "a preview image is not the interactive PDF page");

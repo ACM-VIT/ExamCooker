@@ -14,7 +14,7 @@ const MAX_PREVIEW_HEIGHT = 2400;
 const RENDER_FLAGS = 0x10;
 const SOURCE_KEY = /^past-papers\/[a-zA-Z0-9-]{20,64}\/paper\.pdf$/;
 
-class Unrenderable extends Error {}
+export class Unrenderable extends Error {}
 
 // A fresh instance per render: a large document cannot leave the WASM heap
 // grown for later requests. The module itself is compiled once at upload.
@@ -113,6 +113,12 @@ async function encodePng({ rgb, width, height }: { rgb: Uint8Array; width: numbe
   ]);
 }
 
+/** Render one page (plus any extra clockwise quarter turns) to a lossless PNG. */
+export async function renderPreviewPng(bytes: Uint8Array, pageIndex: number, quarterTurns: number) {
+  const page = renderPage(await createPdfium(), bytes, pageIndex, quarterTurns);
+  return { png: await encodePng(page), width: page.width, height: page.height };
+}
+
 export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
@@ -131,9 +137,8 @@ export default {
     }
     const bytes = new Uint8Array(await source.arrayBuffer());
     try {
-      const page = renderPage(await createPdfium(), bytes, pageIndex, rotation / 90);
-      const png = await encodePng(page);
-      const output = await env.IMAGES.input(png.stream()).output({ format: "image/webp", quality: 72 });
+      const page = await renderPreviewPng(bytes, pageIndex, rotation / 90);
+      const output = await env.IMAGES.input(page.png.stream()).output({ format: "image/webp", quality: 72 });
       return output.response({
         headers: { "x-ec-source-etag": source.etag, "x-ec-preview-size": `${page.width}x${page.height}` },
       });

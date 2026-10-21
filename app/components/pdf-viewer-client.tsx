@@ -100,16 +100,20 @@ export default function PDFViewerClient({
     if (!root || !previewUrl) return;
     const replace = () => setReplacedPreview(previewUrl);
     // Image load events do not bubble; capture them from the viewer subtree.
+    // Only the first displayed page replaces the preview: a buffered later
+    // page can finish first.
     const painted = (event: Event) => {
-      if (event.target instanceof HTMLImageElement && event.target.dataset.ecPdfPageImage === "true") replace();
+      const image = event.target;
+      if (image instanceof HTMLImageElement && image.dataset.ecPdfPageImage === "true" && image.dataset.ecPdfPageIndex === "0") replace();
     };
-    // Error states carry their own recovery actions; do not cover them.
+    // Error states carry their own recovery actions, and the Markdown view has
+    // no page images; do not cover either.
     const failed = () => {
-      if (root.querySelector('[data-ec-pdf-load-error="true"], [data-ec-pdf-page-error="true"]')) replace();
+      if (root.querySelector('[data-ec-pdf-load-error="true"], [data-ec-pdf-page-error="true"], [data-ec-pdf-view-mode]:not([data-ec-pdf-view-mode="pdf"])')) replace();
     };
     root.addEventListener("load", painted, true);
     const observer = new MutationObserver(failed);
-    observer.observe(root, { childList: true, subtree: true });
+    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-ec-pdf-view-mode"] });
     failed();
     return () => {
       root.removeEventListener("load", painted, true);

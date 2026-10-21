@@ -257,10 +257,35 @@ async function serve(request: Request, env: Env, ctx: ExecutionContext) {
 // PDF and its rendering engine download. They live outside the Azure key space.
 const PREVIEW_PATH = /^\/_preview\/v1\/(past-papers\/[a-zA-Z0-9-]{20,64})\/p(\d{1,2})-r(0|90|180|270)\.webp$/;
 
+// Concurrent cold requests in one isolate share a render instead of repeating it.
+const pendingRenders = new Map<string, Promise<{ status: number; etag: string | null; body: ArrayBuffer | null }>>();
+
+function renderPreview(env: Env, sourceKey: string, page: string, rotation: string) {
+  const key = `${sourceKey}:${page}:${rotation}`;
+  let pending = pendingRenders.get(key);
+  if (!pending) {
+    pending = (async () => {
+      const rendered = await env.PDF_PREVIEW!.fetch(
+        `https://pdf-preview/render?${new URLSearchParams({ key: sourceKey, page, rotation })}`,
+      );
+      const etag = rendered.headers.get("x-ec-source-etag");
+      if (!rendered.ok) {
+        await rendered.body?.cancel();
+        return { status: rendered.status, etag, body: null };
+      }
+      return { status: rendered.status, etag, body: await rendered.arrayBuffer() };
+    })().finally(() => pendingRenders.delete(key));
+    pendingRenders.set(key, pending);
+  }
+  return pending;
+}
+
 async function preview(request: Request, env: Env, ctx: ExecutionContext, match: RegExpExecArray) {
   if (request.method !== "GET" && request.method !== "HEAD") return error(405);
   const [, paper, page, rotation] = match;
   const url = new URL(request.url);
+  // The path alone identifies a preview; queries would only split the cache.
+  if (url.search) return error(404);
   const cacheKey = new Request(url.href);
   const cache = (caches as CacheStorage & { default: Cache }).default;
   if (request.method === "GET" && !/no-cache|no-store|max-age=0/.test(request.headers.get("cache-control") || "")) {
@@ -290,29 +315,22 @@ async function preview(request: Request, env: Env, ctx: ExecutionContext, match:
   } else {
     await stored?.body.cancel();
     if (!env.PDF_PREVIEW) return error(404);
-    const rendered = await env.PDF_PREVIEW.fetch(
-      `https://pdf-preview/render?${new URLSearchParams({ key: sourceKey, page, rotation })}`,
-    );
-    const renderedEtag = rendered.headers.get("x-ec-source-etag");
-    if (rendered.status === 422 && renderedEtag) {
+    const rendered = await renderPreview(env, sourceKey, page, rotation);
+    if (rendered.status === 422 && rendered.etag) {
       // Encrypted, oversized or out-of-range pages: do not render again
       // until the PDF itself changes.
-      await rendered.body?.cancel();
       ctx.waitUntil(env.BUCKET.put(previewKey, new Uint8Array(), {
-        customMetadata: { sourceEtag: renderedEtag, failed: "true" },
+        customMetadata: { sourceEtag: rendered.etag, failed: "true" },
       }));
       return error(404);
     }
-    if (!rendered.ok || !renderedEtag) {
-      await rendered.body?.cancel();
-      return error(rendered.status === 404 ? 404 : 503);
-    }
-    body = await rendered.arrayBuffer();
+    if (!rendered.body || !rendered.etag) return error(rendered.status === 404 ? 404 : 503);
+    // Shared renders and the response must not hand over the same buffer.
+    body = rendered.body.slice(0);
     origin = "render";
-    // The response may take ownership of the buffer; store an independent copy.
-    ctx.waitUntil(env.BUCKET.put(previewKey, body.slice(0), {
+    ctx.waitUntil(env.BUCKET.put(previewKey, rendered.body.slice(0), {
       httpMetadata: { contentType: "image/webp" },
-      customMetadata: { sourceEtag: renderedEtag },
+      customMetadata: { sourceEtag: rendered.etag },
     }));
   }
   const headers = new Headers({
@@ -338,6 +356,8 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     try {
       const path = new URL(request.url).pathname;
+      // Stored previews are served only through /_preview/, which checks the source PDF.
+      if (path.startsWith("/_previews/")) return error(404);
       if (path.startsWith("/_preview/")) {
         const match = PREVIEW_PATH.exec(path);
         return match && Number(match[2]) <= 63 ? await preview(request, env, ctx, match) : error(404);
