@@ -33,30 +33,40 @@ export default {
     const firstRequest = !receivedRequest;
     receivedRequest = true;
     const timing = beginRequestTiming(ctx);
+    const log = (status: number, headersAt: number, endedAt: number, failed = false) => console.log({
+      message: "ec.request.timing",
+      path: new URL(request.url).pathname,
+      kind: requestKind(request),
+      status,
+      failed,
+      firstRequest,
+      ...summarizeRequestTiming(timing, headersAt, endedAt),
+    });
     recordPublicRequestPath(ctx, request.url, request.method);
-    let response = protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
+    let response: Response;
+    try {
+      response = protectPersonalizedResponse(request, await handler.fetch(request, env, ctx));
+    } catch (error) {
+      // Failed requests can be the slowest ones; keep them in the dataset.
+      const failedAt = performance.now();
+      log(500, failedAt, failedAt, true);
+      throw error;
+    }
     if (response.status === 404 && bindings.PREVIOUS_APP && isPreviousBuildAsset(request)) {
       const previous = await bindings.PREVIOUS_APP.fetch(new Request(request.url, { method: request.method }));
       if (previous.ok) response = previous;
     }
     const headersAt = performance.now();
-    const log = (endedAt: number) => console.log({
-      message: "ec.request.timing",
-      path: new URL(request.url).pathname,
-      kind: requestKind(request),
-      status: response.status,
-      firstRequest,
-      ...summarizeRequestTiming(timing, headersAt, endedAt),
-    });
+    const status = response.status;
     // Rendered pages stream after their headers; time those through the last
     // body chunk. Other responses (assets, ranges, redirects) keep their body.
     const contentType = response.headers.get("content-type") ?? "";
     let body = response.body;
     // Abandoned streams never flush and are not logged.
     if (body && (contentType.includes("text/html") || contentType.includes("text/x-component"))) {
-      body = body.pipeThrough(new TransformStream({ flush: () => log(performance.now()) }));
+      body = body.pipeThrough(new TransformStream({ flush: () => log(status, headersAt, performance.now()) }));
     } else {
-      log(headersAt);
+      log(status, headersAt, headersAt);
     }
     // This marks the first invocation of an isolate, not a cache miss or a
     // visitor's first page. The router records it with origin response time.

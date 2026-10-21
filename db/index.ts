@@ -231,12 +231,15 @@ function attachQueryRetry(pool: Pool) {
   }) as typeof pool.query;
 }
 
+type TimedClient = {
+  query: (...args: unknown[]) => unknown;
+};
+
 function attachRequestTiming(pool: Pool, ctx: object) {
   const connect = pool.connect.bind(pool);
-  const query = pool.query.bind(pool) as (...args: unknown[]) => unknown;
 
   // pg-pool's query() acquires through this.connect(callback), so connection
-  // setup is timed separately from the query time that includes it.
+  // setup is timed for both pool.query() and transactions.
   pool.connect = ((callback?: (...results: unknown[]) => void) => {
     if (!callback) return timeRequestWork(ctx, "dbConnect", () => connect());
     void timeRequestWork(ctx, "dbConnect", () => new Promise<void>((resolve) => {
@@ -247,10 +250,25 @@ function attachRequestTiming(pool: Pool, ctx: object) {
     }));
   }) as typeof pool.connect;
 
-  pool.query = ((...args: unknown[]) => {
-    if (typeof args.at(-1) === "function") return query(...args);
-    return timeRequestWork(ctx, "dbQuery", () => Promise.resolve(query(...args)));
-  }) as typeof pool.query;
+  // Every statement runs on a checked-out client, including pool.query()
+  // (which passes a callback) and Drizzle transactions (which await).
+  pool.on("connect", (client) => {
+    const timedClient = client as unknown as TimedClient;
+    const query = timedClient.query.bind(client);
+    timedClient.query = (...args: unknown[]) => {
+      const [config] = args;
+      if (config && typeof (config as { submit?: unknown }).submit === "function") return query(...args);
+      const callback = typeof args.at(-1) === "function" ? args.pop() as (...results: unknown[]) => void : undefined;
+      if (!callback) return timeRequestWork(ctx, "dbQuery", () => Promise.resolve(query(...args)));
+      void timeRequestWork(ctx, "dbQuery", () => new Promise<void>((resolve) => {
+        query(...args, (...results: unknown[]) => {
+          resolve();
+          callback(...results);
+        });
+      }));
+      return undefined;
+    };
+  });
 }
 
 function createPool(workers = false) {
@@ -311,10 +329,20 @@ function createPool(workers = false) {
   attachQueryRetry(pool);
   if (cloudflare) attachRequestTiming(pool, cloudflare.ctx);
 
+  // pg-pool closes a client after its last permitted use. On Workers, closing
+  // the socket rejects its pending read with an uncoded error that pg does not
+  // filter (it only ignores ECONNRESET/EPIPE while ending). Mark those clients
+  // on release, before the pool removes them; real idle failures still log.
+  const retiringClients = new WeakSet<object>();
+  if (maxUses !== undefined) {
+    pool.on("release", (error, client) => {
+      const useCount = (client as typeof client & { _poolUseCount?: number })._poolUseCount ?? 0;
+      if (!error && useCount >= maxUses) retiringClients.add(client);
+    });
+  }
+
   pool.on("error", (error, client) => {
-    // Closing a Workers socket rejects its pending read. When the pool itself
-    // ended that client (maxUses or idle timeout), the error is not a failure.
-    if ((client as typeof client & { _ending?: boolean })._ending) return;
+    if (retiringClients.has(client) && error.message === "This socket has been closed.") return;
     console.error(`[db] pg pool error (${describePoolState(pool)})`, describeDbError(error));
   });
 
