@@ -80,9 +80,14 @@ try {
   assert.equal((await mf.dispatchFetch(host+path)).status,404);
  }
  assert.equal(renders,5);
- // Five renders started so far; joined requests were free. One more is allowed, then throttled.
- assert.equal((await mf.dispatchFetch(host+'/_preview/v1/past-papers/previewfixture000000001/p1-r270.webp')).status,200);assert.equal(renders,6);
- const throttled=await mf.dispatchFetch(host+'/_preview/v1/past-papers/previewfixture000000001/p1-r0.webp');assert.equal(throttled.status,429);assert.equal(renders,6);
- assert.equal((await mf.dispatchFetch(previewUrl)).status,200,'stored previews are not throttled');
+ // Over its allowance, a client is throttled before any render starts.
+ let throttled=null;
+ for(const variant of ['p1-r270','p1-r0','p0-r90']){
+  const before=renders;const response=await mf.dispatchFetch(host+`/_preview/v1/past-papers/previewfixture000000001/${variant}.webp`);await response.arrayBuffer();
+  if(response.status===429){throttled=response;assert.equal(renders,before,'a throttled request starts no render');break;}
+  assert.equal(response.status,200);
+ }
+ assert.ok(throttled,'the client is throttled after its allowance');assert.equal(throttled.headers.get('retry-after'),'60');
+ assert.equal((await mf.dispatchFetch(previewUrl,fresh_)).status,200,'stored previews are not throttled');
  console.log('PASS: streamed copy checksums, R2 delivery, ranges, conditional requests, new uploads, overwrite/delete events, private admin operations, safe origins, and first-page previews');
 } finally {await mf.dispose();}

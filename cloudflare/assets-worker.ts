@@ -277,17 +277,20 @@ const PREVIEW_PATH = /^\/_preview\/v1\/(past-papers\/[a-zA-Z0-9-]{20,64})\/p(\d{
 // Concurrent cold requests in one isolate share a render instead of repeating it.
 const pendingRenders = new Map<string, Promise<{ status: number; etag: string | null; body: ArrayBuffer | null }>>();
 
-function renderPreview(env: Env, sourceKey: string, sourceEtag: string, page: string, rotation: string, client: string) {
+async function renderPreview(env: Env, sourceKey: string, sourceEtag: string, page: string, rotation: string, client: string) {
   // Different versions of a replaced PDF never share a render.
   const key = `${sourceKey}:${sourceEtag}:${page}:${rotation}`;
   let pending = pendingRenders.get(key);
   if (!pending) {
+    // Only a request that starts a render spends its client's allowance, and
+    // a denial stays with that client. Joining an in-flight render is free.
+    if (env.PREVIEW_RENDERS && !(await env.PREVIEW_RENDERS.limit({ key: client })).success) {
+      return { status: 429, etag: null, body: null };
+    }
+    pending = pendingRenders.get(key);
+  }
+  if (!pending) {
     pending = (async () => {
-      // Only a request that starts a render spends the client's allowance;
-      // requests joining it share the result for free.
-      if (env.PREVIEW_RENDERS && !(await env.PREVIEW_RENDERS.limit({ key: client })).success) {
-        return { status: 429, etag: null, body: null };
-      }
       const rendered = await env.PDF_PREVIEW!.fetch(
         `https://pdf-preview/render?${new URLSearchParams({ key: sourceKey, page, rotation })}`,
       );
