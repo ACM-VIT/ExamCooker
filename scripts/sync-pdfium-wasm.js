@@ -3,6 +3,7 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const zlib = require("zlib");
 
 const sourcePath = require.resolve("@embedpdf/pdfium/pdfium.wasm");
 const outputPath = path.join(
@@ -31,6 +32,30 @@ for (const destination of [outputPath, versionedPath]) {
   if (!fs.existsSync(destination) || sha256(destination) !== sourceHash) {
     fs.copyFileSync(sourcePath, destination);
   }
+}
+
+// The Worker serves this copy to browsers that accept brotli. Quality 11 is
+// ~380 KB smaller than Cloudflare's on-the-fly compression of the engine.
+const compressedPath = `${versionedPath}.br`;
+function compressedIsCurrent() {
+  try {
+    return crypto.createHash("sha256")
+      .update(zlib.brotliDecompressSync(fs.readFileSync(compressedPath)))
+      .digest("hex") === sourceHash;
+  } catch {
+    // Missing, truncated or corrupt copies are regenerated.
+    return false;
+  }
+}
+if (!compressedIsCurrent()) {
+  const source = fs.readFileSync(sourcePath);
+  fs.writeFileSync(compressedPath, zlib.brotliCompressSync(source, {
+    params: {
+      [zlib.constants.BROTLI_PARAM_QUALITY]: 11,
+      [zlib.constants.BROTLI_PARAM_LGWIN]: 24,
+      [zlib.constants.BROTLI_PARAM_SIZE_HINT]: source.length,
+    },
+  }));
 }
 
 const metadataPath = path.join(__dirname, "..", "lib", "generated", "pdfium-wasm.ts");

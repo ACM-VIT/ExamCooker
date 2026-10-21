@@ -3,6 +3,7 @@
 import handler from "../.open-next/worker.js";
 import { recordPublicRequestPath } from "./public-route-tags";
 import { protectPersonalizedResponse } from "./cache-policy";
+import { precompressedAssetResponse } from "./precompressed-assets";
 import { isPreviousBuildAsset, productionCompatibilityResponse } from "./production-routing";
 import { beginRequestTiming, summarizeRequestTiming } from "./request-timing";
 export { AppState } from "./app-state";
@@ -48,6 +49,7 @@ function observeStreamEnd(body: ReadableStream<Uint8Array>, ended: (failed: bool
 export default {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext) {
     const bindings = env as {
+      ASSETS: Fetcher;
       PRODUCTION_FULL_CUTOVER?: string;
       PREVIOUS_APP?: Fetcher;
       CF_VERSION_METADATA?: { id?: string };
@@ -58,6 +60,8 @@ export default {
     }
     const firstRequest = !receivedRequest;
     receivedRequest = true;
+    const assetResponse = await precompressedAssetResponse(request, bindings.ASSETS);
+    if (assetResponse) return assetResponse;
     const timing = beginRequestTiming(ctx);
     const log = (status: number, headersAt: number, endedAt: number, failed = false) => console.log({
       message: "ec.request.timing",
