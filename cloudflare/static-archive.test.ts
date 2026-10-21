@@ -3,12 +3,14 @@ import test from "node:test";
 import { archiveCurrentAssets, archivedAssetResponse, isArchivedAssetPath, STATIC_MANIFEST_PATH } from "./static-archive";
 
 function bucket() {
-  const objects = new Map<string, { body: string; contentType?: string }>();
+  const objects = new Map<string, { body: string; contentType?: string; customMetadata?: Record<string, string>; version: number }>();
   const object = (key: string) => {
     const stored = objects.get(key);
     if (!stored) return null;
     return {
       httpEtag: `"${key}"`,
+      etag: `"${key}:${stored.version}"`,
+      customMetadata: stored.customMetadata,
       writeHttpMetadata(headers: Headers) { if (stored.contentType) headers.set("content-type", stored.contentType); },
       body: new Response(stored.body).body,
     };
@@ -16,9 +18,19 @@ function bucket() {
   const r2 = {
     async head(key: string) { return object(key); },
     async get(key: string) { return object(key); },
-    async put(key: string, value: ArrayBuffer | string, options?: { httpMetadata?: { contentType?: string } }) {
-      objects.set(key, { body: typeof value === "string" ? value : new TextDecoder().decode(value), contentType: options?.httpMetadata?.contentType });
+    async put(key: string, value: ArrayBuffer | string, options?: {
+      httpMetadata?: { contentType?: string };
+      customMetadata?: Record<string, string>;
+      onlyIf?: { etagDoesNotMatch?: string; etagMatches?: string };
+    }) {
+      const existing = objects.get(key);
+      if (options?.onlyIf?.etagDoesNotMatch === "*" && existing) return null;
+      if (options?.onlyIf?.etagMatches && (!existing || `"${key}:${existing.version}"` !== options.onlyIf.etagMatches)) return null;
+      objects.set(key, { body: typeof value === "string" ? value : new TextDecoder().decode(value), contentType: options?.httpMetadata?.contentType,
+        customMetadata: options?.customMetadata, version: (existing?.version ?? 0) + 1 });
+      return object(key);
     },
+    async delete(key: string) { objects.delete(key); },
   } as unknown as R2Bucket;
   return { r2, objects };
 }
@@ -76,4 +88,19 @@ test("a partial archive leaves the version unmarked so the next run retries", as
   assert.equal(objects.has("versions/v2"), false);
   const { fetcher: noManifest } = assets({});
   assert.equal((await archiveCurrentAssets({ assets: noManifest, archive: r2, versionId: "v3", origin: "https://assets.local" })).status, "no-manifest");
+});
+
+test("concurrent isolates archive a version once; a stale lock is taken over", async () => {
+  const { r2, objects } = bucket();
+  const files = { [STATIC_MANIFEST_PATH]: JSON.stringify(["/_next/static/chunks/a.js"]), "/_next/static/chunks/a.js": "a" };
+  const { fetcher, fetched } = assets(files);
+  const runs = await Promise.all([1, 2, 3].map(() => archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v4", origin: "https://assets.local" })));
+  assert.equal(runs.filter((run) => run.status === "archived").length, 1);
+  assert.equal(fetched.filter((path) => path === "/_next/static/chunks/a.js").length, 1);
+  assert.equal(objects.has("locks/v4"), false, "the lock is released");
+
+  await r2.put("locks/v5", "", { customMetadata: { expiresAt: String(Date.now() + 60_000) } });
+  assert.equal((await archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v5", origin: "https://assets.local" })).status, "in-progress");
+  await r2.put("locks/v5", "", { customMetadata: { expiresAt: String(Date.now() - 1) } });
+  assert.equal((await archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v5", origin: "https://assets.local" })).status, "archived");
 });

@@ -5,6 +5,8 @@
 export const STATIC_MANIFEST_PATH = "/_next/static/ec-asset-manifest.json";
 const ARCHIVED_PATH = /^\/(?:_next\/static\/(?:chunks|css|media)\/|vendor\/embedpdf\/immutable\/)[A-Za-z0-9._~/@%+=-]+$/;
 const CONCURRENCY = 8;
+// An isolate that dies mid-archive leaves its lock; others may take over after this.
+const LOCK_TTL_MS = 2 * 60_000;
 
 export function isArchivedAssetPath(pathname: string) {
   return ARCHIVED_PATH.test(pathname) && !pathname.includes("..");
@@ -36,6 +38,24 @@ export async function archiveCurrentAssets(input: {
 }) {
   const marker = `versions/${input.versionId}`;
   if (await input.archive.head(marker)) return { status: "already-archived" as const, files: 0 };
+  // Every isolate starts this on its first request; one at a time does the work.
+  const lockKey = `locks/${input.versionId}`;
+  const lock = await input.archive.head(lockKey);
+  const lockOptions = { customMetadata: { expiresAt: String(Date.now() + LOCK_TTL_MS) } };
+  const acquired = !lock
+    ? await input.archive.put(lockKey, "", { ...lockOptions, onlyIf: { etagDoesNotMatch: "*" } })
+    : Number(lock.customMetadata?.expiresAt ?? 0) < Date.now()
+      ? await input.archive.put(lockKey, "", { ...lockOptions, onlyIf: { etagMatches: lock.etag } })
+      : null;
+  if (!acquired) return { status: "in-progress" as const, files: 0 };
+  try {
+    return await copyManifestFiles(input, marker);
+  } finally {
+    await input.archive.delete(lockKey);
+  }
+}
+
+async function copyManifestFiles(input: Parameters<typeof archiveCurrentAssets>[0], marker: string) {
   const manifest = await input.assets.fetch(new Request(`${input.origin}${STATIC_MANIFEST_PATH}`));
   if (!manifest.ok) return { status: "no-manifest" as const, files: 0 };
   const paths = (await manifest.json() as string[]).filter(isArchivedAssetPath);

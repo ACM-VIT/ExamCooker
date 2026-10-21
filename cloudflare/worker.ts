@@ -12,6 +12,7 @@ export { AppState } from "./app-state";
 export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from "../.open-next/worker.js";
 
 let receivedRequest = false;
+let archiveStarted = false;
 
 type Bindings = {
   ASSETS: Fetcher;
@@ -54,6 +55,15 @@ function observeStreamEnd(body: ReadableStream<Uint8Array>, ended: (failed: bool
   });
 }
 
+async function archiveAssets(bindings: Bindings, versionId: string) {
+  const result = await archiveCurrentAssets({
+    assets: bindings.ASSETS, archive: bindings.STATIC_ARCHIVE!, versionId, origin: "https://assets.local",
+  }).catch((error) => ({ status: "failed" as const, files: 0, error: error instanceof Error ? error.message : String(error) }));
+  if (result.status !== "already-archived" && result.status !== "in-progress") {
+    console.log({ message: "ec.static.archive", versionId, ...result });
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext) {
     const bindings = env as Bindings;
@@ -63,6 +73,13 @@ export default {
     }
     const firstRequest = !receivedRequest;
     receivedRequest = true;
+    // Archive a new version from its first requests, so a quick redeploy
+    // cannot replace it before the cron runs. Most isolates find it done.
+    const versionId = bindings.CF_VERSION_METADATA?.id;
+    if (!archiveStarted && bindings.STATIC_ARCHIVE && versionId) {
+      archiveStarted = true;
+      ctx.waitUntil(archiveAssets(bindings, versionId));
+    }
     const assetResponse = await precompressedAssetResponse(request, bindings.ASSETS);
     if (assetResponse && assetResponse.status !== 404) return assetResponse;
     // Hashed static files reach the Worker only when this build lacks them:
@@ -111,14 +128,10 @@ export default {
     return observed;
   },
 
-  // Archive this version's hashed files once, for tabs that outlive it.
+  // Backstop for the request-time archive: retries partial or interrupted runs.
   async scheduled(_controller: ScheduledController, env: unknown) {
     const bindings = env as Bindings;
     const versionId = bindings.CF_VERSION_METADATA?.id;
-    if (!bindings.STATIC_ARCHIVE || !versionId) return;
-    const result = await archiveCurrentAssets({
-      assets: bindings.ASSETS, archive: bindings.STATIC_ARCHIVE, versionId, origin: "https://assets.local",
-    });
-    if (result.status !== "already-archived") console.log({ message: "ec.static.archive", versionId, ...result });
+    if (bindings.STATIC_ARCHIVE && versionId) await archiveAssets(bindings, versionId);
   },
 };

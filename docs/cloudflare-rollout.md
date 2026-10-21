@@ -59,8 +59,9 @@ Personalized HTTP responses must remain private/no-store.
 Old Azure pages must reload before submitting Server Actions. Tabs opened on an
 earlier build keep loading that build's hashed files after a deploy: each
 production version copies its `/_next/static` chunks, CSS, media and PDF engine
-into the `examcooker-prod-static-archive` R2 bucket once (10-minute cron), and
-requests for files the current build lacks are served from there. Objects
+into the `examcooker-prod-static-archive` R2 bucket once, starting from its first
+requests (one isolate at a time, under an R2 lock), with a 10-minute cron as a
+retry backstop. Requests for files the current build lacks are served from there. Objects
 expire after 30 days. Application requests and mutations never use the archive.
 
 ## Validation and rollback
