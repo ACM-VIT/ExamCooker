@@ -2,6 +2,7 @@
 import React, { addTransitionType, startTransition, useCallback, useEffect, useEffectEvent, useReducer, useRef, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import IntentPrefetchLink from "@/app/components/common/intent-prefetch-link";
 import { createPortal } from "react-dom";
 import Image from "@/app/components/common/app-image";
 import { usePathname, useRouter } from "next/navigation";
@@ -392,7 +393,7 @@ const NavBar: React.FC<Props> = ({
         </p>
         <Link
           href="/delete"
-          prefetch
+          prefetch={false}
           className="mb-2 block text-xs font-semibold text-red-500 hover:underline dark:text-red-400"
           onClick={() => dispatch({ type: "close-profile" })}
         >
@@ -572,10 +573,9 @@ const NavBar: React.FC<Props> = ({
                 ? link.matches(pathname)
                 : pathname === link.href;
               return (
-                <Link
+                <IntentPrefetchLink
                   key={link.href}
                   href={link.href}
-                  prefetch
                   transitionTypes={isActive ? undefined : ["nav-lateral"]}
                   onClick={(event) => handleNavLinkClick(event, link.href, isActive)}
                   className={`group/action relative z-[1] m-2 flex min-h-8 items-center rounded-md px-2 py-1 ${isActive ? "ec-nav-anchor-active" : ""}`}
@@ -597,7 +597,7 @@ const NavBar: React.FC<Props> = ({
                       {link.alt}
                     </span>
                   </div>
-                </Link>
+                </IntentPrefetchLink>
               );
             })}
           </div>
