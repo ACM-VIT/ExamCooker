@@ -1,15 +1,19 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { archiveCurrentAssets, archivedAssetResponse, isArchivedAssetPath, STATIC_MANIFEST_PATH } from "./static-archive";
 
 function bucket() {
-  const objects = new Map<string, { body: string; contentType?: string; customMetadata?: Record<string, string>; version: number }>();
+  const objects = new Map<string, { body: string; contentType?: string; customMetadata?: Record<string, string> }>();
+  // Like R2, a single-part object's etag is the MD5 of its body.
+  const etag = (body: string) => createHash("md5").update(body).digest("hex");
+  const failPut = new Map<string, () => Promise<void>>();
   const object = (key: string) => {
     const stored = objects.get(key);
     if (!stored) return null;
     return {
-      httpEtag: `"${key}"`,
-      etag: `"${key}:${stored.version}"`,
+      httpEtag: `"${etag(stored.body)}"`,
+      etag: etag(stored.body),
       customMetadata: stored.customMetadata,
       writeHttpMetadata(headers: Headers) { if (stored.contentType) headers.set("content-type", stored.contentType); },
       body: new Response(stored.body).body,
@@ -23,16 +27,18 @@ function bucket() {
       customMetadata?: Record<string, string>;
       onlyIf?: { etagDoesNotMatch?: string; etagMatches?: string };
     }) {
+      await failPut.get(key)?.();
       const existing = objects.get(key);
       if (options?.onlyIf?.etagDoesNotMatch === "*" && existing) return null;
-      if (options?.onlyIf?.etagMatches && (!existing || `"${key}:${existing.version}"` !== options.onlyIf.etagMatches)) return null;
+      if (options?.onlyIf?.etagMatches && (!existing || etag(existing.body) !== options.onlyIf.etagMatches)) return null;
       objects.set(key, { body: typeof value === "string" ? value : new TextDecoder().decode(value), contentType: options?.httpMetadata?.contentType,
-        customMetadata: options?.customMetadata, version: (existing?.version ?? 0) + 1 });
+        customMetadata: options?.customMetadata });
       return object(key);
     },
     async delete(key: string) { objects.delete(key); },
   } as unknown as R2Bucket;
-  return { r2, objects };
+  const lockExpired = (versionId: string) => Number(objects.get(`locks/${versionId}`)?.customMetadata?.expiresAt ?? 0) < Date.now();
+  return { r2, objects, failPut, lockExpired };
 }
 
 function assets(files: Record<string, string>) {
@@ -91,16 +97,53 @@ test("a partial archive leaves the version unmarked so the next run retries", as
 });
 
 test("concurrent isolates archive a version once; a stale lock is taken over", async () => {
-  const { r2, objects } = bucket();
+  const { r2, lockExpired } = bucket();
   const files = { [STATIC_MANIFEST_PATH]: JSON.stringify(["/_next/static/chunks/a.js"]), "/_next/static/chunks/a.js": "a" };
   const { fetcher, fetched } = assets(files);
   const runs = await Promise.all([1, 2, 3].map(() => archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v4", origin: "https://assets.local" })));
   assert.equal(runs.filter((run) => run.status === "archived").length, 1);
   assert.equal(fetched.filter((path) => path === "/_next/static/chunks/a.js").length, 1);
-  assert.equal(objects.has("locks/v4"), false, "the lock is released");
+  assert.equal(lockExpired("v4"), true, "the lock is released");
 
   await r2.put("locks/v5", "", { customMetadata: { expiresAt: String(Date.now() + 60_000) } });
   assert.equal((await archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v5", origin: "https://assets.local" })).status, "in-progress");
+  // Isolates that read the same expired lock race to take it; one wins.
   await r2.put("locks/v5", "", { customMetadata: { expiresAt: String(Date.now() - 1) } });
-  assert.equal((await archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v5", origin: "https://assets.local" })).status, "archived");
+  const takeovers = await Promise.all([1, 2].map(() => archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v5", origin: "https://assets.local" })));
+  assert.deepEqual(takeovers.map((run) => run.status).sort(), ["archived", "in-progress"]);
+});
+
+test("a failed upload holds the lock until every other upload settles", async () => {
+  const { r2, objects, failPut, lockExpired } = bucket();
+  const { fetcher } = assets({
+    [STATIC_MANIFEST_PATH]: JSON.stringify(["/_next/static/chunks/a.js", "/_next/static/chunks/b.js"]),
+    "/_next/static/chunks/a.js": "a",
+    "/_next/static/chunks/b.js": "b",
+  });
+  let finishB!: () => void;
+  failPut.set("_next/static/chunks/a.js", async () => { throw new Error("R2 unavailable"); });
+  failPut.set("_next/static/chunks/b.js", () => new Promise<void>((resolve) => { finishB = resolve; }));
+  const run = archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v6", origin: "https://assets.local" });
+  while (!finishB) await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(lockExpired("v6"), false, "b.js is still uploading");
+  finishB();
+  assert.deepEqual(await run, { status: "partial", files: 1 });
+  assert.equal(objects.get("_next/static/chunks/b.js")?.body, "b");
+  assert.equal(objects.has("versions/v6"), false);
+  assert.equal(lockExpired("v6"), true);
+});
+
+test("a run that outlived its lock leaves its successor's lock alone", async () => {
+  const { r2, objects, failPut } = bucket();
+  const { fetcher } = assets({ [STATIC_MANIFEST_PATH]: JSON.stringify(["/_next/static/chunks/a.js"]), "/_next/static/chunks/a.js": "a" });
+  let finishSlow!: () => void;
+  failPut.set("_next/static/chunks/a.js", () => new Promise<void>((resolve) => { finishSlow = resolve; }));
+  const slow = archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v7", origin: "https://assets.local" });
+  while (!finishSlow) await new Promise((resolve) => setImmediate(resolve));
+  // Another isolate takes the lock over after it expired.
+  failPut.delete("_next/static/chunks/a.js");
+  await r2.put("locks/v7", "successor", { customMetadata: { expiresAt: String(Date.now() + 60_000) } });
+  finishSlow();
+  await slow;
+  assert.equal(objects.get("locks/v7")?.body, "successor");
 });
