@@ -8,7 +8,7 @@ Base: main `5bb83b3cdc5df1bb8a45bcd69e08037d18ce755e`. This candidate combines t
 - Preload saved-edit support on paper intent and retain the single PDF/WASM transfer contracts.
 - Measure client paper opens through visible decoded pixels, with paired failure and abandonment outcomes; count recovered inline images in document-load RUM.
 - Recognize UUID paper routes and share pending tag reads within each request. Release shell reads without waiting for unrelated data shards; retain normal Next invalidation.
-- Inline Next 16.4 preview props, preserve the native scheduler when Next installs its timer tracker, repair the frozen lockfile, and run the new contracts in CI with the pinned pnpm version.
+- Inline Next 16.4 preview props, preserve the native scheduler when Next installs its timer tracker, retain the complete workspace lockfile, and run the new contracts in CI with the pinned pnpm version and submodule checkout.
 - Use ordinary Worker packaging on ec-test, matching the production canary.
 
 ## Production state and release boundary
