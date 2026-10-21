@@ -188,9 +188,30 @@ test("a later build copies only the files the archive lacks", async () => {
   assert.deepEqual(await run("v11", chunks.slice(0, 2)), { result: { status: "archived", files: 1, kept: 1 }, copied: [chunks[0]] });
   assert.ok(Date.now() - objects.get("_next/static/chunks/a.js")!.uploaded.getTime() < 60_000);
 
-  // A version that stays live that long runs again instead of trusting its marker.
-  age("versions/v9", 21);
+  // A version that stays live runs again once its marker's refresh time passes.
+  objects.get("versions/v9")!.customMetadata = { refreshAt: String(Date.now() - 1) };
   age("_next/static/chunks/c.js", 21);
   assert.deepEqual(await run("v9", chunks.slice(0, 3)), { result: { status: "archived", files: 1, kept: 2 }, copied: [chunks[2]] });
   assert.equal((await run("v9", chunks.slice(0, 3))).result.status, "already-archived");
+});
+
+test("a version refreshes when its oldest kept file is due, not 20 days later", async () => {
+  const { r2, objects, age } = bucket();
+  const [x, y] = ["/_next/static/chunks/x.js", "/_next/static/chunks/y.js"];
+  const run = (versionId: string, listed: string[]) => {
+    const { fetcher, fetched } = assets({ [x]: "x", [y]: "y", [STATIC_MANIFEST_PATH]: JSON.stringify(listed) });
+    return archiveCurrentAssets({ assets: fetcher, archive: r2, versionId, origin: "https://assets.local" })
+      .then((result) => ({ result, copied: fetched.filter((path) => path !== STATIC_MANIFEST_PATH) }));
+  };
+  await run("v12", [x]);
+  age("_next/static/chunks/x.js", 19);
+  // v13 reuses the 19-day-old chunk, which R2 deletes 11 days from now.
+  assert.deepEqual(await run("v13", [x, y]), { result: { status: "archived", files: 1, kept: 1 }, copied: [y] });
+  const day = 24 * 60 * 60_000;
+  const refreshAt = Number(objects.get("versions/v13")!.customMetadata!.refreshAt);
+  assert.ok(Math.abs(refreshAt - (Date.now() + day)) < 60_000, "the marker lapses when the kept chunk turns 20 days old");
+  // A marker written before refresh times existed counts as due.
+  objects.get("versions/v13")!.customMetadata = {};
+  age("_next/static/chunks/x.js", 20.5);
+  assert.deepEqual(await run("v13", [x, y]), { result: { status: "archived", files: 1, kept: 1 }, copied: [x] });
 });
