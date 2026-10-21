@@ -53,13 +53,13 @@ test("a request started before sign-out cannot restore the old session", async (
   assert.equal(readCachedSession(), null, "the older request must not overwrite the newer answer");
 });
 
-test("a failed first request is not remembered as signed out", async (t) => {
+test("a failed first request is not mistaken for being signed out", async (t) => {
   const { loadAuthSession, clearSessionCache, readCachedSession } = await import("./session-cache");
   clearSessionCache();
   const http = controlledFetch(t);
   const failed = loadAuthSession();
   http.reply({ ok: false });
-  assert.equal(await failed, null);
+  await assert.rejects(failed);
   assert.equal(readCachedSession(), undefined);
   const retry = loadAuthSession();
   assert.equal(http.pending.length, 1, "the next caller asks again");

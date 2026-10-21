@@ -54,11 +54,12 @@ export async function archiveCurrentAssets(input: {
     return await copyManifestFiles(input, marker);
   } finally {
     // Expire the lock only if it is still ours; a run that outlived its TTL
-    // must not release a successor's lock.
+    // must not release a successor's lock. R2 takes one write per second per
+    // key, so a quick run's release can be refused; the lock then times out.
     await input.archive.put(lockKey, crypto.randomUUID(), {
       customMetadata: { expiresAt: "0" },
       onlyIf: { etagMatches: acquired.etag },
-    });
+    }).catch(() => undefined);
   }
 }
 

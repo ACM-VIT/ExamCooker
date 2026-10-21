@@ -31,8 +31,9 @@ export function clearSessionCache() {
 /**
  * One shared, cached `/api/auth/session` request for every client caller.
  * `refresh` re-reads it (e.g. after another tab may have signed in). Callers
- * share whichever request is in flight; a failed request changes nothing and
- * answers with the last known session.
+ * share whichever request is in flight. A failed request changes nothing: it
+ * answers with the last known session, or rejects when there is none, so a
+ * failure is never mistaken for being signed out.
  */
 export function loadAuthSession({ refresh = false }: { refresh?: boolean } = {}) {
     if (sessionPromise) return sessionPromise;
@@ -59,7 +60,10 @@ export function loadAuthSession({ refresh = false }: { refresh?: boolean } = {})
             return session;
         })
         // Only a successful response may change what we know.
-        .catch(() => previous ?? null)
+        .catch((error: unknown) => {
+            if (previous === undefined) throw error;
+            return previous;
+        })
         .finally(() => {
             if (sessionPromise === request) sessionPromise = null;
         });

@@ -147,3 +147,14 @@ test("a run that outlived its lock leaves its successor's lock alone", async () 
   await slow;
   assert.equal(objects.get("locks/v7")?.body, "successor");
 });
+
+test("a refused lock release keeps the run's result", async () => {
+  const { r2, objects, failPut, lockExpired } = bucket();
+  const { fetcher } = assets({ [STATIC_MANIFEST_PATH]: JSON.stringify(["/_next/static/chunks/a.js"]), "/_next/static/chunks/a.js": "a" });
+  let lockWrites = 0;
+  // R2 refuses a second write to the same key within a second.
+  failPut.set("locks/v8", async () => { if (++lockWrites > 1) throw new Error("429 Too Many Requests"); });
+  assert.deepEqual(await archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v8", origin: "https://assets.local" }), { status: "archived", files: 1 });
+  assert.equal(objects.has("versions/v8"), true);
+  assert.equal(lockExpired("v8"), false, "the lock stays until its TTL");
+});

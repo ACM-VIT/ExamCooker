@@ -60,29 +60,29 @@ export function useGuestPrompt(): AuthGate {
     useEffect(() => {
         let cancelled = false;
 
+        // The loader answers from its cache while that is fresh and re-reads
+        // it once it is old, so a session that ended elsewhere is noticed.
         function syncSession() {
             setAuthSessionState(getAuthSessionState(readCachedSession()));
 
-            if (readCachedSession() !== undefined) return;
-
-            void loadAuthSession().then((nextSession) => {
-                if (cancelled) return;
-                setAuthSessionState(getAuthSessionState(nextSession));
-            });
+            void loadAuthSession()
+                .then((nextSession) => {
+                    if (cancelled) return;
+                    setAuthSessionState(getAuthSessionState(nextSession));
+                })
+                .catch(() => undefined);
         }
 
-        const cancelInitialSync = readCachedSession() === undefined
-            ? scheduleIdleWork(
-                syncSession,
-                { fallbackDelayMs: 1200, timeoutMs: 2500 },
-            )
-            : null;
+        const cancelInitialSync = scheduleIdleWork(
+            syncSession,
+            { fallbackDelayMs: 1200, timeoutMs: 2500 },
+        );
 
         window.addEventListener(SESSION_CACHE_INVALIDATED_EVENT, syncSession);
 
         return () => {
             cancelled = true;
-            cancelInitialSync?.();
+            cancelInitialSync();
             window.removeEventListener(SESSION_CACHE_INVALIDATED_EVENT, syncSession);
         };
     }, []);
@@ -95,12 +95,15 @@ export function useGuestPrompt(): AuthGate {
         (action?: string) => {
             if (isAuthed) return true;
             if (status === "loading") {
-                void loadAuthSession().then((nextSession) => {
-                    setAuthSessionState(getAuthSessionState(nextSession));
-                    if (!nextSession?.user) {
-                        router.push(getAuthHref(action));
-                    }
-                });
+                void loadAuthSession()
+                    .then((nextSession) => {
+                        setAuthSessionState(getAuthSessionState(nextSession));
+                        if (!nextSession?.user) {
+                            router.push(getAuthHref(action));
+                        }
+                    })
+                    // Unknown session: the sign-in page sends signed-in users back.
+                    .catch(() => router.push(getAuthHref(action)));
                 return false;
             }
             router.push(getAuthHref(action));
