@@ -2,6 +2,7 @@ packages:
   - packages/*
 
 allowBuilds:
+  '@posthog/cli': true
   '@mongodb-js/zstd': true
   core-js: false
   core-js-pure: false
@@ -12,6 +13,7 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - postcss@8.5.30
+  - '@posthog/cli@0.18.11'
 
 peerDependencyRules:
   allowedVersions:

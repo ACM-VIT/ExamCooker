@@ -1,6 +1,7 @@
 import { readdir, readFile, unlink } from "node:fs/promises";
-import { spawn } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { getBuildRevision } from "./build-revision.mjs";
 
 // Run after Next's final build and before OpenNext copies or Azure packages it.
@@ -26,14 +27,11 @@ if (!mapped) throw new Error("Browser source maps contain no mappings.");
 const revision = getBuildRevision();
 if (revision === "local") throw new Error("Source-map upload requires a commit revision.");
 const build = (await readFile(".next/BUILD_ID", "utf8")).trim();
-const args = ["--yes", "@posthog/cli@latest", "sourcemap", "process", "--directory", directory,
-  "--release-name", "examcooker-web", "--release-version", revision, "--build", build,
-  "--delete-after", "--concurrency", "3"];
-await new Promise((resolve, reject) => {
-  const child = spawn("npx", args, { stdio: "inherit" });
-  child.on("error", reject);
-  child.on("exit", code => code === 0 ? resolve() : reject(new Error(`Source-map upload failed (${code}); deployment stopped.`)));
-});
+const cli = fileURLToPath(import.meta.resolve("@posthog/cli/run-posthog-cli.js"));
+// Next's generated build IDs can start with a dash; keep each option and value together.
+execFileSync(process.execPath, [cli, "sourcemap", "process", `--directory=${directory}`,
+  "--release-name=examcooker-web", `--release-version=${revision}`, `--build=${build}`,
+  "--delete-after", "--concurrency=3"], { stdio: "inherit" });
 const remaining = await files(directory);
 for (const file of remaining.filter(file => file.endsWith(".map"))) {
   // Turbopack also emits orphan maps for chunks removed during prerendering.

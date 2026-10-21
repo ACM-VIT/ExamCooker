@@ -428,6 +428,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^5.20261012.1
         version: 5.20261012.1
+      '@posthog/cli':
+        specifier: 0.18.11
+        version: 0.18.11
       '@tailwindcss/postcss':
         specifier: ^4.3.3
         version: 4.3.3
@@ -2160,6 +2163,11 @@ packages:
 
   '@posthog/browser-common@0.9.4':
     resolution: {integrity: sha512-QlG0WZFG9iTp9cmXTypB4cgnxBAD3GImrj9AwmA84uh8uy5vIVgVLjoTTdOAW29XL+kh/eLn/5ZtBQt2JQfR+w==}
+
+  '@posthog/cli@0.18.11':
+    resolution: {integrity: sha512-DwesPjw+QdBJk9JCrPFOeKVsOc3maYytmQEgL7oMgHtZznsvvYUQfHeLdz+wfnfhCx6qFSDYSN+6jlXL71zSgw==}
+    engines: {node: '>=14.14', npm: '>=6'}
+    hasBin: true
 
   '@posthog/core@1.58.0':
     resolution: {integrity: sha512-vluXIlVF6WGeHoQbsQK8Y1ywXZlJDU7YHEKiXAArQU38yFBpgxxfD0kInbYHtura4Fr7Z7H8WiDFvtMpCGehGg==}
@@ -8159,6 +8167,10 @@ snapshots:
     dependencies:
       '@posthog/core': 1.58.0
       '@posthog/types': 1.415.2
+
+  '@posthog/cli@0.18.11':
+    dependencies:
+      detect-libc: 2.1.2
 
   '@posthog/core@1.58.0':
     dependencies:

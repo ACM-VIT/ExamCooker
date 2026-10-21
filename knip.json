@@ -36,10 +36,6 @@
   "ignoreFiles": [
     "lib/shims/canvas.ts",
     "public/sw.js",
-    "scripts/analyze-tags.js",
-    "scripts/clean-tags.js",
-    "scripts/list-tags.js",
-    "scripts/restructure-nptel-json.js",
     "worker/src/**/*.ts"
   ],
   "workspaces": {
