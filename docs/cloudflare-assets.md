@@ -23,5 +23,18 @@ The authenticated `/_mirror` endpoint can reconcile a single Azure key or
 inspect R2 metadata. It accepts fixed-source keys, not arbitrary upstream URLs.
 Keep `MIRROR_TOKEN` in Worker secrets.
 
+## First-page previews
+
+Paper pages show an image of the first displayed page while the PDF and its
+4.6 MB rendering engine download. `/_preview/v1/past-papers/<id>/p<page>-r<rotation>.webp`
+is served from `_previews/v1/…` in the same bucket, outside the Azure key space.
+A stored preview is used only while its `sourceEtag` matches the current PDF
+object; otherwise `examcooker-pdf-preview` (`wrangler.pdf-preview.jsonc`, no
+public route) renders it with PDFium and the Images binding. PDFs that cannot be
+rendered (encrypted, over 24 MB, page out of range) get an empty failure marker
+for that source version, so they are not retried on every view.
+
+Deploy `wrangler.pdf-preview.jsonc` before `wrangler.assets.jsonc`, which binds it.
+
 Coverage: `scripts/cloudflare/test-asset-delivery.mjs` exercises the Worker
 against a local R2 fixture; `lib/storage/public-assets.test.ts` checks URL mapping.

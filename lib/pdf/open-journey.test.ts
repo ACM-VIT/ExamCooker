@@ -24,7 +24,7 @@ function viewer(t: TestContext) {
   Object.defineProperties(globalThis, Object.fromEntries(Object.entries(globals).map(([key, value]) => [key, { value, configurable: true }])));
   Object.defineProperty(window.Element.prototype, "checkVisibility", { value: () => true });
   Object.defineProperty(window.document, "visibilityState", { value: "visible", configurable: true });
-  const events: { event: string; outcome?: string | number | boolean }[] = [];
+  const events: { event: string; outcome?: string | number | boolean; preview_visible_ms?: string | number | boolean }[] = [];
   const tracker = installPdfOpenJourneyTracking({ build: "fixture", backend: "cloudflare", capture: (event, properties) => events.push({ event, ...properties }) });
   t.after(async () => {
     tracker.dispose();
@@ -54,9 +54,30 @@ function viewer(t: TestContext) {
     frames.clear();
     pending.forEach(callback => callback(0));
   };
-  return { window, image, tracker, paint, resolveDecode, rejectDecode,
+  return { window, root, image, tracker, paint, resolveDecode, rejectDecode, events,
     finished: () => events.filter(event => event.event === "pdf_open_finished").map(event => event.outcome) };
 }
+
+test("a first-page preview is recorded but does not finish the PDF open", async t => {
+  const v = viewer(t);
+  const preview = v.window.document.createElement("img");
+  preview.dataset.ecPdfPreview = "true";
+  preview.src = "https://ec-assets.test/_preview/v1/past-papers/one/p0-r0.webp";
+  Object.defineProperties(preview, { complete: { value: true }, naturalWidth: { value: 20 } });
+  preview.decode = () => Promise.resolve();
+  v.root.prepend(preview);
+  await Promise.resolve();
+  v.paint(); v.paint();
+  await Promise.resolve();
+  v.paint(); v.paint();
+  assert.deepEqual(v.finished(), [], "a preview image is not the interactive PDF page");
+  v.resolveDecode();
+  await Promise.resolve();
+  v.paint(); v.paint();
+  const [finished] = v.events.filter(event => event.event === "pdf_open_finished");
+  assert.equal(finished.outcome, "visible");
+  assert.equal(typeof finished.preview_visible_ms, "number");
+});
 
 test("PDF timing waits for decode and a subsequent paint boundary", async t => {
   const v = viewer(t);

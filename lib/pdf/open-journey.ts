@@ -13,6 +13,7 @@ type Attempt = {
   properties: Properties;
   timer: number;
   viewerReadyAt?: number;
+  previewVisibleAt?: number;
 };
 
 const paperRoute = /^\/past_papers\/[^/]+\/paper\/[^/]+$/;
@@ -46,6 +47,7 @@ export function installPdfOpenJourneyTracking(options: {
   const intersections = new Map<Element, boolean>();
   let frame: number | null = null;
   let decodedImage: { image: HTMLImageElement; source: string; ready: boolean } | null = null;
+  let decodedPreview: { image: HTMLImageElement; ready: boolean } | null = null;
 
   const send = (event: Parameters<Capture>[0], properties: Properties, immediate = false) => {
     try { options.capture(event, properties, immediate); } catch { /* Telemetry cannot block navigation. */ }
@@ -57,6 +59,7 @@ export function installPdfOpenJourneyTracking(options: {
     intersectionObserver = null;
     intersections.clear();
     decodedImage = null;
+    decodedPreview = null;
     root = null;
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
@@ -73,6 +76,11 @@ export function installPdfOpenJourneyTracking(options: {
       ...(current.viewerReadyAt === undefined ? {} : {
         viewer_ready_ms: current.viewerReadyAt - current.startedAt,
       }),
+      // The server-rendered first-page image, when it appeared before the
+      // interactive page. It does not count as the PDF becoming visible.
+      ...(current.previewVisibleAt === undefined ? {} : {
+        preview_visible_ms: current.previewVisibleAt - current.startedAt,
+      }),
       ...extra,
     }, outcome === "pagehide" || outcome === "backgrounded");
   };
@@ -82,6 +90,25 @@ export function installPdfOpenJourneyTracking(options: {
   };
   const check = () => {
     if (!attempt || !root || cleanPath(location.pathname) !== attempt.path || document.visibilityState !== "visible") return;
+    if (attempt.previewVisibleAt === undefined) {
+      // Like page images: decoded pixels, then a paint boundary.
+      const preview = [...root.querySelectorAll<HTMLImageElement>('img[data-ec-pdf-preview="true"]')]
+        .find(candidate => candidate.complete && candidate.naturalWidth > 0 && visible(candidate));
+      if (preview && decodedPreview?.image !== preview) {
+        const current = attempt;
+        const pending = { image: preview, ready: false };
+        decodedPreview = pending;
+        void preview.decode().then(() => {
+          if (attempt !== current || decodedPreview !== pending) return;
+          pending.ready = true;
+          scheduleCheck();
+        }, () => {
+          if (decodedPreview === pending) decodedPreview = null;
+        });
+      } else if (preview && decodedPreview?.ready) {
+        attempt.previewVisibleAt = performance.now();
+      }
+    }
     const image = [...root.querySelectorAll<HTMLImageElement>('img[data-ec-pdf-page-image="true"]')].find(image =>
       image.complete && image.naturalWidth > 0 &&
       (image.src.startsWith("blob:") || image.src.startsWith("data:image/")) && visible(image));
@@ -123,7 +150,7 @@ export function installPdfOpenJourneyTracking(options: {
       root = candidate;
       const collect = () => {
         if (!attempt || root !== candidate) return;
-        for (const element of candidate.querySelectorAll('img[data-ec-pdf-page-image="true"], [data-ec-pdf-page-error="true"], [data-ec-pdf-load-error="true"]')) {
+        for (const element of candidate.querySelectorAll('img[data-ec-pdf-page-image="true"], img[data-ec-pdf-preview="true"], [data-ec-pdf-page-error="true"], [data-ec-pdf-load-error="true"]')) {
           if (intersections.has(element)) continue;
           intersections.set(element, false);
           intersectionObserver?.observe(element);

@@ -21,6 +21,7 @@ import { absoluteUrl, buildKeywords, DEFAULT_KEYWORDS, getPastPaperDetailPath } 
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { examTypeLabel } from "@/lib/exam-slug";
 import { buildPastPaperPdfFileName } from "@/lib/downloads/resource-names";
+import { getPdfFirstPagePreviewUrl } from "@/lib/pdf/preview-url";
 import type { ExamType } from "@/db";
 import DocumentViewerShell from "@/app/components/common/document-viewer-shell";
 import { getExamFocusForDate } from "@/lib/exam-focus";
@@ -406,6 +407,7 @@ async function PaperViewerContent({
                                     enableQuestionMarkdown
                                     fileUrl={paper.fileUrl}
                                     fileName={downloadFileName}
+                                    previewUrl={getPdfFirstPagePreviewUrl(paper.fileUrl, paper.pageEdits)}
                                     pageEdits={paper.pageEdits}
                                     moderation={{
                                         paperId: paper.id,
