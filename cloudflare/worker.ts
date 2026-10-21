@@ -15,7 +15,7 @@ function requestKind(request: Request) {
   if (request.headers.has("next-action")) return "action";
   // Match the prefetch forms recognized by proxy.ts and production-routing.ts.
   if (request.headers.has("next-router-prefetch") || request.headers.has("x-middleware-prefetch") ||
-    /prefetch/i.test(`${request.headers.get("purpose") ?? ""} ${request.headers.get("sec-purpose") ?? ""}`)) return "prefetch";
+    /prefetch|prerender/i.test(`${request.headers.get("purpose") ?? ""} ${request.headers.get("sec-purpose") ?? ""}`)) return "prefetch";
   if (request.headers.has("rsc") || new URL(request.url).searchParams.has("_rsc")) return "rsc";
   if (request.method === "HEAD") return "head";
   return (request.headers.get("accept") ?? "").includes("text/html") ? "document" : "other";
