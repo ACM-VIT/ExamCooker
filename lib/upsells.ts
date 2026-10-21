@@ -12,18 +12,6 @@ export type Upsell = {
 
 export const UPSELLS: Upsell[] = [
     {
-        id: "acmvit-instagram-v1",
-        eyebrow: "ACM-VIT",
-        title: "Follow us on Instagram",
-        description:
-            "Stay in the loop with events, launches, and the people behind ExamCooker.",
-        cta: {
-            label: "Follow @acmvit",
-            href: "https://www.instagram.com/acmvit/",
-            external: true,
-        },
-    },
-    {
         id: "examcooker-github-v1",
         eyebrow: "Open source",
         title: "ExamCooker is built by students",
