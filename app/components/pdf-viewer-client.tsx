@@ -98,14 +98,16 @@ export default function PDFViewerClient({
   if (previewUrl) preload(previewUrl, { as: "image", fetchPriority: "high" });
   const journeyRoot = useRef<HTMLDivElement>(null);
   const viewerRoot = useRef<HTMLDivElement>(null);
-  const [replacedPreview, setReplacedPreview] = useState<string | null>(null);
-  const showPreview = Boolean(previewUrl) && replacedPreview !== previewUrl;
-  const replacePreview = useCallback(() => setReplacedPreview(previewUrl ?? null), [previewUrl]);
+  // Once a document's viewer has taken over, a later preview URL for it (for
+  // example after a moderator saves page edits) must not cover it again.
+  const [settledFile, setSettledFile] = useState<string | null>(null);
+  const showPreview = Boolean(previewUrl) && settledFile !== fileUrl;
+  const replacePreview = useCallback(() => setSettledFile(fileUrl), [fileUrl]);
 
   useEffect(() => {
     const root = viewerRoot.current;
     if (!root || !previewUrl) return;
-    const replace = () => setReplacedPreview(previewUrl);
+    const replace = () => setSettledFile(fileUrl);
     // Image load events do not bubble; capture them from the viewer subtree.
     // Only the first displayed page replaces the preview: a buffered later
     // page can finish first.
@@ -117,6 +119,9 @@ export default function PDFViewerClient({
     // no page images; do not cover either.
     const failed = () => {
       if (root.querySelector('[data-ec-pdf-load-error="true"], [data-ec-pdf-page-error="true"], [data-ec-pdf-view-mode]:not([data-ec-pdf-view-mode="pdf"])')) replace();
+      // A first page that painted before this listener attached also counts.
+      const firstPage = root.querySelector<HTMLImageElement>('img[data-ec-pdf-page-image="true"][data-ec-pdf-page-index="0"]');
+      if (firstPage?.complete && firstPage.naturalWidth > 0) replace();
     };
     root.addEventListener("load", painted, true);
     const observer = new MutationObserver(failed);
@@ -126,7 +131,7 @@ export default function PDFViewerClient({
       root.removeEventListener("load", painted, true);
       observer.disconnect();
     };
-  }, [previewUrl]);
+  }, [fileUrl, previewUrl]);
   useEffect(() => {
     if (journeyPath) journeyRoot.current?.dispatchEvent(new Event(PDF_JOURNEY_READY_EVENT, { bubbles: true }));
   }, [journeyPath]);

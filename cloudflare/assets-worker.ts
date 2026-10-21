@@ -4,7 +4,7 @@ const SOURCE = "https://examcookerprodsi.blob.core.windows.net/exam-assets/";
 const SOURCE_RESOURCE = "/subscriptions/b88416d5-3d98-4d1c-bd30-8df01b99dfac/resourceGroups/rg-examcooker-prod/providers/Microsoft.Storage/storageAccounts/examcookerprodsi";
 const MAX_BYTES = 256 * 1024 * 1024;
 const CACHE_SECONDS = 60;
-type Env = { BUCKET: R2Bucket; MIRROR_TOKEN: string; PDF_PREVIEW?: Fetcher };
+type Env = { BUCKET: R2Bucket; MIRROR_TOKEN: string; PDF_PREVIEW?: Fetcher; PREVIEW_RENDERS?: RateLimit };
 type ByteRange = { offset: number; length: number };
 
 function parseRange(header: string, size: number): ByteRange | null {
@@ -333,6 +333,15 @@ async function preview(request: Request, env: Env, ctx: ExecutionContext, match:
   } else {
     await stored?.body.cancel();
     if (!env.PDF_PREVIEW) return error(404);
+    // Stored and cached previews are free; only new renders cost CPU and an
+    // Images transformation. Throttle those per client so the public variant
+    // space cannot be enumerated. The page falls back to the normal viewer.
+    const client = request.headers.get("cf-connecting-ip") ?? "unknown";
+    if (env.PREVIEW_RENDERS && !(await env.PREVIEW_RENDERS.limit({ key: client })).success) {
+      return new Response("Preview rate limited", {
+        status: 429, headers: { "cache-control": "no-store", "access-control-allow-origin": "*", "retry-after": "60" },
+      });
+    }
     const rendered = await renderPreview(env, sourceKey, source.etag, page, rotation);
     if (rendered.status === 422 && rendered.etag) {
       // Encrypted, oversized or out-of-range pages: do not render again

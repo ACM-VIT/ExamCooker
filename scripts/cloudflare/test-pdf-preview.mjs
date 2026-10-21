@@ -13,8 +13,13 @@ const {Miniflare,convertV4MiniflareOptions}=require('miniflare');
 // exactly as for deployment. WebP conversion is the Images binding's job.
 const dir=await mkdtemp(path.join(tmpdir(),'ec-pdf-preview-'));
 await writeFile(path.join(dir,'entry.ts'),`
- import {renderPreviewPng,Unrenderable} from ${JSON.stringify(path.resolve('cloudflare/pdf-preview-worker.ts'))};
- export default {async fetch(request){const url=new URL(request.url);
+ import worker,{renderPreviewPng,Unrenderable} from ${JSON.stringify(path.resolve('cloudflare/pdf-preview-worker.ts'))};
+ // Stand-in for the Images binding: returns the PNG with the requested format recorded.
+ const images={input(stream){return {output(options){return Promise.resolve({response(init){
+  const headers=new Headers(init?.headers);headers.set('content-type',options.format);headers.set('x-test-quality',String(options.quality));
+  return new Response(stream,{headers});}});}};}};
+ export default {async fetch(request,env){const url=new URL(request.url);
+  if(url.pathname==='/render')return worker.fetch(request,{BUCKET:env.BUCKET,IMAGES:images});
   try{const page=await renderPreviewPng(new Uint8Array(await request.arrayBuffer()),Number(url.searchParams.get('page')),Number(url.searchParams.get('turns')));
    return new Response(page.png,{headers:{'x-size':page.width+'x'+page.height}});}
   catch(error){return new Response(String(error),{status:error instanceof Unrenderable?422:500});}}};`);
@@ -24,7 +29,7 @@ const out=path.join(dir,'out');
 const modules=await Promise.all((await readdir(out)).filter(file=>/\.(js|wasm)$/.test(file)).map(async file=>({
  type:file.endsWith('.wasm')?'CompiledWasm':'ESModule',path:path.join(out,file),contents:await readFile(path.join(out,file),file.endsWith('.wasm')?undefined:'utf8')})));
 modules.sort((a,b)=>(a.path.endsWith('entry.js')?-1:0)-(b.path.endsWith('entry.js')?-1:0));
-const mf=new Miniflare(convertV4MiniflareOptions({modules,modulesRoot:out,compatibilityDate:'2026-09-10',compatibilityFlags:['nodejs_compat']}));
+const mf=new Miniflare(convertV4MiniflareOptions({modules,modulesRoot:out,r2Buckets:['BUCKET'],compatibilityDate:'2026-09-10',compatibilityFlags:['nodejs_compat']}));
 
 function decodePng(buffer){
  const view=Buffer.from(buffer);assert.deepEqual([...view.subarray(0,8)],[137,80,78,71,13,10,26,10]);
@@ -58,5 +63,22 @@ try {
  assert.equal((await render(await fixture(0,2),1,0)).status,200);
  assert.equal((await render(await fixture(0,2),2,0)).status,422);
  assert.equal((await render(new TextEncoder().encode('not a pdf'),0,0)).status,422);
- console.log('PASS: PDFium preview rendering, PNG encoding, intrinsic and edit rotation, page bounds, invalid documents');
+ // The deployed handler: R2 source reads, Images output, source ETag and error statuses.
+ const bucket=await mf.getR2Bucket('BUCKET');const key='past-papers/handlerfixture00000000001/paper.pdf';
+ const stored=await bucket.put(key,await fixture(0,2));
+ const handler=(query)=>mf.dispatchFetch(`http://pdf-preview/render?${query}`);
+ const ok=await handler(`key=${key}&page=1&rotation=90`);assert.equal(ok.status,200);
+ assert.equal(ok.headers.get('content-type'),'image/webp');assert.equal(ok.headers.get('x-test-quality'),'72');
+ assert.equal(ok.headers.get('x-ec-source-etag'),stored.etag);assert.equal(ok.headers.get('x-ec-preview-size'),'1200x2400');
+ assert.equal(decodePng(await ok.arrayBuffer()).height,2400);
+ const outOfRange=await handler(`key=${key}&page=2&rotation=0`);assert.equal(outOfRange.status,422);assert.equal(outOfRange.headers.get('x-ec-source-etag'),stored.etag);
+ const brokenKey='past-papers/handlerfixture00000000002/paper.pdf';const broken=await bucket.put(brokenKey,'not a pdf');
+ const unrenderable=await handler(`key=${brokenKey}&page=0&rotation=0`);assert.equal(unrenderable.status,422);assert.equal(unrenderable.headers.get('x-ec-source-etag'),broken.etag);
+ const largeKey='past-papers/handlerfixture00000000003/paper.pdf';await bucket.put(largeKey,new Uint8Array(24*1024*1024+1));
+ assert.equal((await handler(`key=${largeKey}&page=0&rotation=0`)).status,422);
+ assert.equal((await handler('key=past-papers/handlerfixture00000000009/paper.pdf&page=0&rotation=0')).status,404);
+ for(const query of [`key=${key}&page=-1&rotation=0`,`key=${key}&page=0&rotation=45`,'key=notes/x/paper.pdf&page=0&rotation=0',`key=${key}&page=64&rotation=0`]){
+  assert.equal((await handler(query)).status,400,query);
+ }
+ console.log('PASS: PDFium preview rendering, PNG encoding, intrinsic and edit rotation, page bounds, invalid documents, and the deployed R2/Images handler');
 } finally {await mf.dispose();await rm(dir,{recursive:true,force:true});}
