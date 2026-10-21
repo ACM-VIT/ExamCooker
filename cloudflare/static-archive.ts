@@ -39,19 +39,27 @@ export async function archiveCurrentAssets(input: {
   const marker = `versions/${input.versionId}`;
   if (await input.archive.head(marker)) return { status: "already-archived" as const, files: 0 };
   // Every isolate starts this on its first request; one at a time does the work.
+  // R2 etags hash the body, so each write carries a fresh token: two isolates
+  // that read the same expired lock cannot both take it over.
   const lockKey = `locks/${input.versionId}`;
   const lock = await input.archive.head(lockKey);
   const lockOptions = { customMetadata: { expiresAt: String(Date.now() + LOCK_TTL_MS) } };
   const acquired = !lock
-    ? await input.archive.put(lockKey, "", { ...lockOptions, onlyIf: { etagDoesNotMatch: "*" } })
+    ? await input.archive.put(lockKey, crypto.randomUUID(), { ...lockOptions, onlyIf: { etagDoesNotMatch: "*" } })
     : Number(lock.customMetadata?.expiresAt ?? 0) < Date.now()
-      ? await input.archive.put(lockKey, "", { ...lockOptions, onlyIf: { etagMatches: lock.etag } })
+      ? await input.archive.put(lockKey, crypto.randomUUID(), { ...lockOptions, onlyIf: { etagMatches: lock.etag } })
       : null;
   if (!acquired) return { status: "in-progress" as const, files: 0 };
   try {
     return await copyManifestFiles(input, marker);
   } finally {
-    await input.archive.delete(lockKey);
+    // Expire the lock only if it is still ours; a run that outlived its TTL
+    // must not release a successor's lock. R2 takes one write per second per
+    // key, so a quick run's release can be refused; the lock then times out.
+    await input.archive.put(lockKey, crypto.randomUUID(), {
+      customMetadata: { expiresAt: "0" },
+      onlyIf: { etagMatches: acquired.etag },
+    }).catch(() => undefined);
   }
 }
 
@@ -61,24 +69,33 @@ async function copyManifestFiles(input: Parameters<typeof archiveCurrentAssets>[
   const paths = (await manifest.json() as string[]).filter(isArchivedAssetPath);
   let next = 0;
   let failed = 0;
+  let firstError: string | undefined;
   // Re-put every file so a still-current file's lifecycle age restarts.
+  const copy = async (path: string) => {
+    const response = await input.assets.fetch(new Request(`${input.origin}${path}`));
+    if (!response.ok) {
+      await response.body?.cancel();
+      throw new Error(`HTTP ${response.status}`);
+    }
+    // R2 needs a known length; these files are small and immutable.
+    await input.archive.put(path.slice(1), await response.arrayBuffer(), {
+      httpMetadata: { contentType: response.headers.get("content-type") ?? "application/octet-stream" },
+    });
+  };
+  // A failed file is counted, not thrown: the lock must outlive every upload.
+  // The first reason is kept; one line diagnoses an outage without a log per file.
   const worker = async () => {
     while (next < paths.length) {
       const path = paths[next++];
-      const response = await input.assets.fetch(new Request(`${input.origin}${path}`));
-      if (!response.ok) {
-        await response.body?.cancel();
+      await copy(path).catch((error: unknown) => {
         failed++;
-        continue;
-      }
-      // R2 needs a known length; these files are small and immutable.
-      await input.archive.put(path.slice(1), await response.arrayBuffer(), {
-        httpMetadata: { contentType: response.headers.get("content-type") ?? "application/octet-stream" },
+        firstError ??= `${path}: ${error instanceof Error ? error.message : String(error)}`;
       });
     }
   };
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
   // Leave the marker unset after failures so the next run retries.
-  if (failed === 0) await input.archive.put(marker, JSON.stringify({ files: paths.length }));
-  return { status: failed === 0 ? "archived" as const : "partial" as const, files: paths.length - failed };
+  if (failed > 0) return { status: "partial" as const, files: paths.length - failed, error: firstError };
+  await input.archive.put(marker, JSON.stringify({ files: paths.length }));
+  return { status: "archived" as const, files: paths.length };
 }

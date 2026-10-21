@@ -52,3 +52,35 @@ test("a request started before sign-out cannot restore the old session", async (
   assert.equal((await stale)?.user?.id, "u1");
   assert.equal(readCachedSession(), null, "the older request must not overwrite the newer answer");
 });
+
+test("a failed first request is not mistaken for being signed out", async (t) => {
+  const { loadAuthSession, clearSessionCache, readCachedSession } = await import("./session-cache");
+  clearSessionCache();
+  const http = controlledFetch(t);
+  const failed = loadAuthSession();
+  http.reply({ ok: false });
+  await assert.rejects(failed);
+  assert.equal(readCachedSession(), undefined);
+  const retry = loadAuthSession();
+  assert.equal(http.pending.length, 1, "the next caller asks again");
+  http.reply(signedIn);
+  assert.equal((await retry)?.user?.id, "u1");
+});
+
+test("an answer older than a minute is re-read", async (t) => {
+  const { loadAuthSession, clearSessionCache } = await import("./session-cache");
+  clearSessionCache();
+  t.mock.timers.enable({ apis: ["Date"], now: 0 });
+  const http = controlledFetch(t);
+  const first = loadAuthSession();
+  http.reply(signedIn);
+  await first;
+  t.mock.timers.setTime(59_000);
+  await loadAuthSession();
+  assert.equal(http.pending.length, 0, "a recent answer is reused");
+  t.mock.timers.setTime(61_000);
+  const expired = loadAuthSession();
+  assert.equal(http.pending.length, 1);
+  http.reply({ ok: true, body: {} });
+  assert.equal(await expired, null, "a session that ended elsewhere shows as signed out");
+});
