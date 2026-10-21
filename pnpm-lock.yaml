@@ -190,7 +190,7 @@ overrides:
 
 patchedDependencies:
   '@opennextjs/aws@4.1.9': 8cc86dd161e297b8782c0370b04ea43d9c039368b4548f085203fbe8c35a2563
-  '@opennextjs/cloudflare@1.20.10': 85d917e5c06622162bcf3347ff633978d77f319435e967e9ccf03327dd87f9b2
+  '@opennextjs/cloudflare@1.20.10': 79cbfcf645b87b41e9f68be02b41ea6992d40cdcf596fe587c2e51777b9853ae
 
 importers:
 
@@ -285,7 +285,7 @@ importers:
         version: 2.3.1
       '@opennextjs/cloudflare':
         specifier: 1.20.10
-        version: 1.20.10(patch_hash=85d917e5c06622162bcf3347ff633978d77f319435e967e9ccf03327dd87f9b2)(next@16.4.0(@babel/core@8.0.1)(@types/node@26.6.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(supports-color@10.2.2)(wrangler@4.149.0(@cloudflare/workers-types@5.20261012.1)(@types/node@26.6.5))
+        version: 1.20.10(patch_hash=79cbfcf645b87b41e9f68be02b41ea6992d40cdcf596fe587c2e51777b9853ae)(next@16.4.0(@babel/core@8.0.1)(@types/node@26.6.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(supports-color@10.2.2)(wrangler@4.149.0(@cloudflare/workers-types@5.20261012.1)(@types/node@26.6.5))
       '@posthog/react':
         specifier: ^1.11.3
         version: 1.11.3(@types/react@19.3.0)(posthog-js@1.438.8(@types/react@19.3.0)(preact-render-to-string@5.2.6)(react@19.3.0))(react@19.3.0)
@@ -409,9 +409,6 @@ importers:
       tailwind-merge:
         specifier: ^3.7.0
         version: 3.7.0
-      tailwindcss-animate:
-        specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@4.3.3)
       three:
         specifier: ^0.186.1
         version: 0.186.1
@@ -428,6 +425,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^5.20261012.1
         version: 5.20261012.1
+      '@posthog/cli':
+        specifier: 0.18.11
+        version: 0.18.11
       '@tailwindcss/postcss':
         specifier: ^4.3.3
         version: 4.3.3
@@ -2160,6 +2160,11 @@ packages:
 
   '@posthog/browser-common@0.9.4':
     resolution: {integrity: sha512-QlG0WZFG9iTp9cmXTypB4cgnxBAD3GImrj9AwmA84uh8uy5vIVgVLjoTTdOAW29XL+kh/eLn/5ZtBQt2JQfR+w==}
+
+  '@posthog/cli@0.18.11':
+    resolution: {integrity: sha512-DwesPjw+QdBJk9JCrPFOeKVsOc3maYytmQEgL7oMgHtZznsvvYUQfHeLdz+wfnfhCx6qFSDYSN+6jlXL71zSgw==}
+    engines: {node: '>=14.14', npm: '>=6'}
+    hasBin: true
 
   '@posthog/core@1.58.0':
     resolution: {integrity: sha512-vluXIlVF6WGeHoQbsQK8Y1ywXZlJDU7YHEKiXAArQU38yFBpgxxfD0kInbYHtura4Fr7Z7H8WiDFvtMpCGehGg==}
@@ -5910,11 +5915,6 @@ packages:
   tailwind-merge@3.7.0:
     resolution: {integrity: sha512-XPPUyAc+cvspz3lHTcR/QgPfW2A0lv/xQNIjX3HGhLR+Nq2lHaLq5MtTesHn8GUr3W3DguT2KT5x3NVgRtYwmA==}
 
-  tailwindcss-animate@1.0.7:
-    resolution: {integrity: sha512-bl6mpH3T7I3UFxuvDEXLxy/VuFxBk5bbzplh7tXI68mwMokNYd1t9qPBHlnyTwfa4JGC4zP516I1hYYtQ/vspA==}
-    peerDependencies:
-      tailwindcss: '>=3.0.0 || insiders'
-
   tailwindcss@4.3.3:
     resolution: {integrity: sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ==}
 
@@ -8113,7 +8113,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@opennextjs/cloudflare@1.20.10(patch_hash=85d917e5c06622162bcf3347ff633978d77f319435e967e9ccf03327dd87f9b2)(next@16.4.0(@babel/core@8.0.1)(@types/node@26.6.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(supports-color@10.2.2)(wrangler@4.149.0(@cloudflare/workers-types@5.20261012.1)(@types/node@26.6.5))':
+  '@opennextjs/cloudflare@1.20.10(patch_hash=79cbfcf645b87b41e9f68be02b41ea6992d40cdcf596fe587c2e51777b9853ae)(next@16.4.0(@babel/core@8.0.1)(@types/node@26.6.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(supports-color@10.2.2)(wrangler@4.149.0(@cloudflare/workers-types@5.20261012.1)(@types/node@26.6.5))':
     dependencies:
       '@ast-grep/napi': 0.45.3
       '@dotenvx/dotenvx': 2.34.2
@@ -8159,6 +8159,10 @@ snapshots:
     dependencies:
       '@posthog/core': 1.58.0
       '@posthog/types': 1.415.2
+
+  '@posthog/cli@0.18.11':
+    dependencies:
+      detect-libc: 2.1.2
 
   '@posthog/core@1.58.0':
     dependencies:
@@ -12083,10 +12087,6 @@ snapshots:
       - '@typescript-eslint/types'
 
   tailwind-merge@3.7.0: {}
-
-  tailwindcss-animate@1.0.7(tailwindcss@4.3.3):
-    dependencies:
-      tailwindcss: 4.3.3
 
   tailwindcss@4.3.3: {}
 

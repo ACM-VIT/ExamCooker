@@ -20,7 +20,6 @@ const config = defineCloudflareConfig({
   tagCache: doShardedTagCache({
     baseShardSize: 4,
     // Route reads to the visitor's region; writes invalidate every replica.
-    // In the live MAA trace, the original shard reads took 150–850 ms.
     shardReplication: {
       numberOfSoftReplicas: 1,
       numberOfHardReplicas: 1,

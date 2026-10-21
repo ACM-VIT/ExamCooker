@@ -65,7 +65,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.BUILD_DIR }}/.next/cache
-          key: ${{ runner.os }}-next-${{ hashFiles('package.json', 'next.config.ts', 'tsconfig.json', 'tailwind.config.ts', 'postcss.config.mjs', 'prisma/schema.prisma') }}
+          key: ${{ runner.os }}-next-${{ hashFiles('package.json', 'next.config.ts', 'tsconfig.json', 'postcss.config.mjs', 'db/schema.ts') }}
           restore-keys: |
             ${{ runner.os }}-next-
 
@@ -77,8 +77,6 @@ jobs:
         working-directory: ${{ env.BUILD_DIR }}
         run: npm run build
 
-      # Upload the exact deployed chunks. A missing/failed upload must be visible
-      # in CI; it previously silently skipped every production deployment.
       - name: Upload source maps to PostHog
         working-directory: ${{ env.BUILD_DIR }}
         env:
@@ -96,10 +94,6 @@ jobs:
           rsync -a "${BUILD_DIR}/.next/standalone/" deploy/
           mkdir -p deploy/.next
           rsync -a "${BUILD_DIR}/.next/static/" deploy/.next/static/
-
-          if [ -d "${BUILD_DIR}/prisma" ]; then
-            rsync -a "${BUILD_DIR}/prisma/" deploy/prisma/
-          fi
 
           if [ -d "${BUILD_DIR}/lib/generated" ]; then
             mkdir -p deploy/lib/generated

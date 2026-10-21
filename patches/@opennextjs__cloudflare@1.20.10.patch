@@ -1,5 +1,5 @@
 diff --git a/dist/api/durable-objects/queue.js b/dist/api/durable-objects/queue.js
-index 9042330..a1b7803 100644
+index 9042330e64bd617058d75514315c08e11ef35d79..a1b7803ccd8754828ac2c229ee631747a96b1b69 100644
 --- a/dist/api/durable-objects/queue.js
 +++ b/dist/api/durable-objects/queue.js
 @@ -94,7 +94,12 @@ export class DOQueueHandler extends DurableObject {
@@ -17,7 +17,7 @@ index 9042330..a1b7803 100644
                  throw new FatalError(`The revalidation for ${host}${url} cannot be done. This error should never happen.`);
              }
 diff --git a/dist/api/durable-objects/sharded-tag-cache.js b/dist/api/durable-objects/sharded-tag-cache.js
-index 80795f3..868f0c3 100644
+index 80795f36c418499aab55090d3e07940736e3362c..868f0c328b6ba98619516b0f731b7a6ff50d79d6 100644
 --- a/dist/api/durable-objects/sharded-tag-cache.js
 +++ b/dist/api/durable-objects/sharded-tag-cache.js
 @@ -11,15 +11,20 @@ export class DOShardedTagCache extends DurableObject {
@@ -51,7 +51,7 @@ index 80795f3..868f0c3 100644
      }
 diff --git a/dist/api/overrides/incremental-cache/r2-encoding.js b/dist/api/overrides/incremental-cache/r2-encoding.js
 new file mode 100644
-index 0000000..4c52a5a
+index 0000000000000000000000000000000000000000..4c52a5ad2d32e107e02cb982c115f4edc3822a9c
 --- /dev/null
 +++ b/dist/api/overrides/incremental-cache/r2-encoding.js
 @@ -0,0 +1,12 @@
@@ -68,7 +68,7 @@ index 0000000..4c52a5a
 +    return new Response(object.body.pipeThrough(new DecompressionStream("gzip"))).json();
 +}
 diff --git a/dist/api/overrides/incremental-cache/r2-incremental-cache.js b/dist/api/overrides/incremental-cache/r2-incremental-cache.js
-index f11097c..59b44c0 100644
+index f11097c1e540dd2b4b41f9ed9cd0d94dc1341257..59b44c07101271f85f4a6f9254daae179ef01c4e 100644
 --- a/dist/api/overrides/incremental-cache/r2-incremental-cache.js
 +++ b/dist/api/overrides/incremental-cache/r2-incremental-cache.js
 @@ -2,6 +2,7 @@ import { error } from "@opennextjs/aws/adapters/logger.js";
@@ -98,8 +98,97 @@ index f11097c..59b44c0 100644
          }
          catch (e) {
              error("Failed to set to cache", e);
+diff --git a/dist/api/overrides/tag-cache/do-sharded-tag-cache.js b/dist/api/overrides/tag-cache/do-sharded-tag-cache.js
+index e754584740b8a8a8390bddc0c9f0d4fbc6b95302..633201c2eadb200e623d441aa87be97a53f9be56 100644
+--- a/dist/api/overrides/tag-cache/do-sharded-tag-cache.js
++++ b/dist/api/overrides/tag-cache/do-sharded-tag-cache.js
+@@ -304,54 +304,50 @@ class ShardedDOTagCache {
+      * Fetches tag data for the given tags by consulting the regional cache first and falling back
+      * to Durable Object stubs for any misses. Returns a map of tag → TagData (null for tags not found).
+      */
+-    async #fetchTagDataFromShards(tags) {
++    async #fetchTagDataFromShard(doId, shardTags) {
+         const result = new Map();
+-        const shardedTagGroups = this.groupTagsByDO({ tags });
+-        await Promise.all(shardedTagGroups.map(async ({ doId, tags: shardTags }) => {
+-            const cachedValues = await this.getFromRegionalCache({ doId, tags: shardTags });
+-            for (const { tag, revalidatedAt, stale, expire } of cachedValues) {
+-                result.set(tag, { revalidatedAt, stale, expire });
+-            }
+-            const cachedTagNames = new Set(cachedValues.map(({ tag }) => tag));
+-            const remainingTags = shardTags.filter((tag) => !cachedTagNames.has(tag));
+-            if (remainingTags.length === 0)
+-                return;
++        const cachedValues = await this.getFromRegionalCache({ doId, tags: shardTags });
++        for (const { tag, revalidatedAt, stale, expire } of cachedValues) {
++            result.set(tag, { revalidatedAt, stale, expire });
++        }
++        const cachedTagNames = new Set(cachedValues.map(({ tag }) => tag));
++        const remainingTags = shardTags.filter((tag) => !cachedTagNames.has(tag));
++        if (remainingTags.length > 0) {
+             const stub = this.getDurableObjectStub(doId);
+             const tagData = await stub.getTagData(remainingTags);
+             for (const tag of remainingTags) {
+                 result.set(tag, tagData[tag] ?? null);
+             }
+             getCloudflareContext().ctx.waitUntil(this.putToRegionalCache({ doId, tags: remainingTags }, stub, tagData));
+-        }));
++        }
+         return result;
+     }
+-    /**
+-     * Resolves tag data from the per-request in-memory cache, falling back to
+-     * `#fetchTagDataFromShards` for any misses. Results are stored back so repeated
+-     * calls within the same request avoid duplicate shard fetches.
+-     */
++    async #fetchTagDataFromShards(tags) {
++        const shards = await Promise.all(this.groupTagsByDO({ tags }).map(({ doId, tags: shardTags }) =>
++            this.#fetchTagDataFromShard(doId, shardTags)));
++        return new Map(shards.flatMap((shard) => [...shard]));
++    }
++    /** Share pending reads per tag, within the current request only. */
+     async #resolveTagData(tags) {
+         const store = globalThis.__openNextAls?.getStore();
+         const itemsCache = store?.requestCache.getOrCreate("do-sharded:tagItems");
+-        const result = new Map();
+-        const uncachedTags = [];
+-        for (const tag of tags) {
+-            if (itemsCache?.has(tag)) {
+-                result.set(tag, itemsCache.get(tag) ?? null);
+-            }
+-            else {
+-                uncachedTags.push(tag);
+-            }
+-        }
+-        if (uncachedTags.length > 0) {
+-            const fetched = await this.#fetchTagDataFromShards(uncachedTags);
+-            for (const tag of uncachedTags) {
+-                const value = fetched.get(tag) ?? null;
+-                itemsCache?.set(tag, value);
+-                result.set(tag, value);
++        if (!itemsCache) return this.#fetchTagDataFromShards(tags);
++        const uncachedTags = [...new Set(tags)].filter((tag) => !itemsCache.has(tag));
++        for (const { doId, tags: shardTags } of this.groupTagsByDO({ tags: uncachedTags })) {
++            // Publish promises before yielding so normal validation joins prefetch.
++            // Each shard settles independently: slow paper metadata cannot delay
++            // shell validation, but every requested tag is still checked.
++            const batch = this.#fetchTagDataFromShard(doId, shardTags);
++            for (const tag of shardTags) {
++                const pending = batch.then((values) => values.get(tag) ?? null);
++                itemsCache.set(tag, pending);
++                pending.catch(() => {
++                    // Preserve retry behavior after a transient read failure.
++                    if (itemsCache.get(tag) === pending) itemsCache.delete(tag);
++                });
+             }
+         }
+-        return result;
++        return new Map(await Promise.all(tags.map(async (tag) => [tag, await itemsCache.get(tag)])));
+     }
+     getDurableObjectStub(doId) {
+         const durableObject = getCloudflareContext().env.NEXT_TAG_CACHE_DO_SHARDED;
 diff --git a/dist/cli/build/build.js b/dist/cli/build/build.js
-index ff65e67..8ff4e98 100644
+index ff65e677da64fc73cb245ac83aad102afd5fb9ea..8ff4e98a45a87e97fd488602ecdcafd9a41d8b4f 100644
 --- a/dist/cli/build/build.js
 +++ b/dist/cli/build/build.js
 @@ -16,6 +16,7 @@ import { compileInit } from "./open-next/compile-init.js";
@@ -119,7 +208,7 @@ index ff65e67..8ff4e98 100644
          await bundleNodeMiddleware(options);
      }
 diff --git a/dist/cli/build/bundle-server.js b/dist/cli/build/bundle-server.js
-index 61db775..3e053ed 100644
+index 61db775e0b155448f5ba0c4048ec851dc0be1ca5..3e053edd1b844aeda56520063ab34cfbe9c16d58 100644
 --- a/dist/cli/build/bundle-server.js
 +++ b/dist/cli/build/bundle-server.js
 @@ -10,6 +10,7 @@ import { getOpenNextConfig } from "../../api/config.js";
@@ -168,7 +257,7 @@ index 61db775..3e053ed 100644
              inlineLoadManifest(updater, buildOpts),
 diff --git a/dist/cli/build/patches/plugins/cache-components.js b/dist/cli/build/patches/plugins/cache-components.js
 new file mode 100644
-index 0000000..9e338e8
+index 0000000000000000000000000000000000000000..9e338e8602330977891da3f7013bbf963a4383f5
 --- /dev/null
 +++ b/dist/cli/build/patches/plugins/cache-components.js
 @@ -0,0 +1,350 @@
@@ -522,12 +611,25 @@ index 0000000..9e338e8
 +    }
 +    return patched;
 +}
+diff --git a/dist/cli/build/patches/plugins/load-manifest.js b/dist/cli/build/patches/plugins/load-manifest.js
+index bff72bd613f34fc7e2f785f0961c15678d524a71..c6758d696e908fbdbcd824783f8c3a085319d4fa 100644
+--- a/dist/cli/build/patches/plugins/load-manifest.js
++++ b/dist/cli/build/patches/plugins/load-manifest.js
+@@ -31,7 +31,7 @@ async function getLoadManifestRule(buildOpts) {
+     const { outputDir } = buildOpts;
+     const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
+     const dotNextDir = join(baseDir, ".next");
+-    const manifests = await glob(join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"), {
++    const manifests = await glob(join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints,preview-props}.json"), {
+         windowsPathsNoEscape: true,
+         nodir: true,
+     });
 diff --git a/dist/cli/templates/cache-components-scheduler.js b/dist/cli/templates/cache-components-scheduler.js
 new file mode 100644
-index 0000000..703c2fb
+index 0000000000000000000000000000000000000000..c5cdcf39352f6f069870152f6daa3e01384af780
 --- /dev/null
 +++ b/dist/cli/templates/cache-components-scheduler.js
-@@ -0,0 +1,214 @@
+@@ -0,0 +1,216 @@
 +/**
 + * Cache Components staged rendering for workerd.
 + *
@@ -656,8 +758,10 @@ index 0000000..703c2fb
 +    };
 +    globalThis.setImmediate = countedSetImmediate;
 +    globalThis.clearImmediate = countedClearImmediate;
-+    // Hops must not count themselves, so they go through the unwrapped function.
-+    scheduleMacrotask = previousSetImmediate;
++    // Keep the first native scheduler. Next may later wrap our counted function;
++    // recapturing that wrapper would count our drain hops and keep its native
++    // ImmediateTracker alive forever, preventing a staged render from settling.
++    scheduleMacrotask ??= previousSetImmediate;
 +    return scheduleMacrotask;
 +}
 +function ignore() { }
@@ -743,7 +847,7 @@ index 0000000..703c2fb
 +    });
 +}
 diff --git a/dist/cli/workers/r2-cache.js b/dist/cli/workers/r2-cache.js
-index a95f403..4c64dd5 100644
+index a95f4035738244d7b9208c057ca416d3cb2c4fe6..4c64dd55644d7878244a419d754e393608c649b7 100644
 --- a/dist/cli/workers/r2-cache.js
 +++ b/dist/cli/workers/r2-cache.js
 @@ -10,6 +10,7 @@

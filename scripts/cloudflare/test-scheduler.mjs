@@ -11,10 +11,17 @@ const result = await build({
   stdin: { resolveDir: process.cwd(), contents: `
     import { AsyncLocalStorage } from "node:async_hooks";
     import { runInSequentialTasks } from ${JSON.stringify(scheduler)};
+    globalThis.AsyncLocalStorage = AsyncLocalStorage;
+    // Next 16.4 installs its own wrappers after the adapter/React captures the
+    // first wrapper. Exercise its real native-immediate tracker too: a simulated
+    // render alone cannot expose a drain hop accidentally tracking itself.
+    const { ImmediateTracker, runWithNativeImmediateTracking } = await import(
+      "next/dist/server/node-environment-extensions/fast-set-immediate.external.js"
+    );
     const requests = new AsyncLocalStorage();
     Object.defineProperty(globalThis, Symbol.for("__cloudflare-context__"), {get: () => requests.getStore()});
     export default { fetch(request) {
-      return requests.run({}, async () => {
+      return requests.run({}, () => runWithNativeImmediateTracking(new ImmediateTracker(), async () => {
         const depth = Number(new URL(request.url).searchParams.get("depth"));
         const log = [];
         const gates = Array.from({length: 4}, () => {
@@ -38,10 +45,16 @@ const result = await build({
         // A failed render must release its queue for the next render in the request.
         await runInSequentialTasks(() => { throw new Error("expected"); }).catch(() => {});
         const recovered = await runInSequentialTasks(() => "recovered");
-        return Response.json({log, value, recovered});
-      });
+        let cancelledRan = false;
+        await runInSequentialTasks(() => {
+          const pending = setImmediate(() => { cancelledRan = true; });
+          clearImmediate(pending);
+        });
+        return Response.json({log, value, recovered, cancelledRan});
+      }));
     }};
   ` }, bundle: true, write: false, format: "esm", platform: "node", external: ["node:*"],
+  banner: { js: 'import { createRequire } from "node:module"; const require = createRequire("file:///scheduler-test.mjs");' },
 });
 const mf = new Miniflare(convertV4MiniflareOptions({
   modules: true, script: result.outputFiles[0].text,
@@ -51,7 +64,9 @@ try {
   const log = Array.from({ length: 4 }, (_, i) => [`stage${i}`, `work${i}`, `flush${i}`]).flat();
   await Promise.all(Array.from({ length: 12 }, async (_, i) => {
     const response = await mf.dispatchFetch(`http://test/?depth=${[0, 1, 3, 12][i % 4]}`);
-    assert.deepEqual(await response.json(), { log, value: "rendered", recovered: "recovered" });
+    const body = await response.text();
+    assert.equal(response.status, 200, body);
+    assert.deepEqual(JSON.parse(body), { log, value: "rendered", recovered: "recovered", cancelledRan: false });
   }));
-  console.log("PASS: overlapping Worker renders flush every stage and recover after a failed render");
+  console.log("PASS: overlapping Worker renders flush every stage with Next's real immediate tracker, recover after failure, and cancel work without leaking counts");
 } finally { await mf.dispose(); }

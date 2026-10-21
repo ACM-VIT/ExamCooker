@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+import { getBuildRevision } from "./scripts/build-revision.mjs";
 
 if (process.env.NODE_ENV === "development") {
     initOpenNextCloudflareForDev();
@@ -104,14 +105,13 @@ const configuredRemotePatterns = Array.from(
     ).values(),
 ).filter((pattern): pattern is RemotePattern => pattern !== null);
 
-// Emit browser source maps only when we intend to upload them to PostHog error
-// tracking (set by the deploy workflow when the PostHog CLI secrets are present).
-// The upload step strips the `.map` files back out before packaging, so they are
-// never served publicly. Off by default, so ordinary builds are unaffected.
+// Deployment builds upload browser maps to PostHog and remove them before packaging.
 const uploadSourceMaps = process.env.POSTHOG_SOURCEMAP_UPLOAD === "true";
 
 const nextConfig: NextConfig = {
     env: {
+        NEXT_PUBLIC_APP_REVISION: getBuildRevision(),
+        NEXT_PUBLIC_HOSTING_BACKEND: process.env.EC_CLOUDFLARE_BUILD === "1" ? "cloudflare" : "azure",
         NEXT_PUBLIC_ASSET_BASE_URL: process.env.EC_CLOUDFLARE_BUILD === "1"
             ? "https://ec-assets.acmvit.in"
             : "",

@@ -1,150 +1,59 @@
-# Production Cloudflare canary
+# Cloudflare deployment
 
-Production remains at `https://examcooker.acmvit.in`. Its proxied CNAME still
-targets `examcooker-2024.azurewebsites.net`; the `examcooker-rollout` Worker
-selects Azure or the `examcooker-canary` service binding.
+Azure App Service serves production alongside the `examcooker-canary` Worker.
+The `examcooker-rollout` router assigns **50% of new anonymous browsing
+sessions** to Cloudflare, using a signed cookie that lasts 24 hours. Signed-in
+traffic, auth, APIs, uploads, moderation, and MCP remain on Azure.
 
-The current target is **50% of new anonymous browsing sessions**, not 50% of all
-requests. Assignment occurs on a public document navigation and stays in a
-signed, Secure, HttpOnly, host-only cookie for 24 hours. Bots, speculative
-prefetches, and existing tabs without a cookie do not enroll. Signed-in users,
-auth, APIs, uploads, moderation, MCP and PostHog's existing proxy stay on Azure.
-The `exam-cooker.acmvit.in` alias is outside this initial rollout.
+## Direct GitHub builds
 
-Initially enabled at 5% on 2026-09-27 at approximately 01:15 UTC (06:45 IST). Initial router version:
-`7b945fdd-ded2-4b5e-9751-7e516db0371c`. Production-host probes verified both
-backends, visible PDFs, RSC affinity, Azure session APIs, immutable chunk
-fallback, blocked mismatched Server Actions, and PostHog ingestion. Seven
-policy/signature tests and the router typecheck passed. The first report had
-only four eligible Azure documents and no real Cloudflare sample; it cannot
-support a performance comparison yet.
+Cloudflare Workers Builds connects directly to this repository. The main and
+branch triggers both target `examcooker-canary`:
 
-Raised to 50% on 2026-09-27 at the user's request. Existing 24-hour assignments
-remain unchanged; the new percentage applies as new visitors enroll or their
-assignment cookies expire. Signed-in traffic and APIs continue to use Azure.
-The 50% router version is `05a6f636-43f7-4580-be71-045712c4d1b5`.
+| Setting | Command |
+| --- | --- |
+| Build | `pnpm cf:build:canary` |
+| Deploy | `pnpm cf:upload:canary` |
 
-Reload-loop fix: version `9b5e8e6d-bdf8-41f3-8a6a-aed84e083f91` retains 50%.
-Prefetching the Azure-only upload link from a Cloudflare page previously
-triggered a reload of the current page, which repeated the same prefetch.
-Mismatched GET/HEAD requests now return an uncached 409 without a reload header.
-Next treats these as unavailable prefetches and performs a full destination
-navigation when needed. Mismatched writes remain blocked and are never replayed.
-The fix deployed at 01:37:50 UTC. The comparison report excludes measurements
-before 01:40 UTC because the reload loop inflated document and error counts.
+The upload command populates the build-specific R2 cache and uploads a Worker
+version. It does **not** activate the version or change traffic allocation.
+Azure deployment remains in `.github/workflows/deploy-appservice.yml`.
 
-`ec-test.acmvit.in` remains independent. Canary uses its own R2 buckets and
-Durable Objects, the existing production Hyperdrive connection, production
-database and environment values, and the production base/auth URLs. No Azure
-app deployment or database migration is required by the router.
+Set build variables in Cloudflare's build settings: `DATABASE_URL`, the
+`AUTH_*` values needed to build, `NEXT_PUBLIC_MICROSERVICE_URL`, and the
+`NEXT_PUBLIC_POSTHOG_*` values used by the app. Source-map uploads require
+`POSTHOG_CLI_API_KEY`, `POSTHOG_CLI_PROJECT_ID`, and `POSTHOG_CLI_HOST`.
+Use the same PostHog settings in the Azure workflow. Runtime secrets are
+configured separately on each Worker.
 
-## Monitor from this repository
+Source maps are checked, uploaded, and removed before packaging. Upload failure
+stops the build. The source-map release and browser telemetry use the same Git
+revision.
 
-```sh
-node scripts/cloudflare-rollout-report.mjs 24
-```
+## Targets and validation
 
-The argument is a 1–168 hour window. Authenticate `@posthog/cli@latest` against
-the EU instance. **Project 169929, displayed as Code2Create, is ExamCooker**:
-its public project key was matched to the live Azure app configuration. The
-report refuses to query another active project.
+- `wrangler.jsonc`: `examcooker-test` at `ec-test.acmvit.in`.
+- `wrangler.canary.jsonc`: production canary, reached through the router.
+- `wrangler.rollout.jsonc`: routing policy and `CF_PERCENT`.
 
-The router records `ec_cutover_request` with backend, status and time to origin
-headers. The same injected browser code on both backends records:
+Build each target fresh with its own public/auth URLs. Test and canary use
+separate R2 buckets and Durable Objects. Both use production services, so
+ec-test is not a disposable data sandbox.
 
-- `ec_cutover_page`: navigation TTFB, HTML completion and DOM-ready times.
-- `ec_cutover_vital`: LCP and CLS, sent when the document becomes hidden.
-- `ec_cutover_pdf`: first visible decoded PDF blob image after a paint frame.
-- `ec_cutover_error`: uncaught browser errors/rejections, capped at five per page.
+Keep `enableCacheInterception: false` so Next resumes dynamic PPR boundaries.
+Application data may use the R2/regional caches; personalized HTTP responses
+must remain private/no-store.
 
-These measurements cover full document loads, not every client-side navigation.
-Origin duration is not full HTML streaming time. Browser events may be lost if
-a visitor closes early, disables JS, or blocks telemetry. Error-event counts
-are not error rates; use affected documents / browser document samples.
-Country, device class, sanitized route and page ID support matched comparisons.
-No auth tokens, user IDs, error messages, IP addresses or URL queries are sent
-by the new telemetry. Existing application analytics remain unchanged.
+Before activating a canary version, verify complete document/RSC streams,
+visible PDFs, session isolation, assets, and source-map upload. Use the
+production hostname with the router's `x-ec-probe` and
+`x-ec-force-backend` headers for synthetic checks; storage CORS and Server
+Action origin checks depend on that hostname. Keep the rollout at 50%.
 
-All authenticated traffic and synthetic deployment probes are excluded from
-the comparison report. Expect small Cloudflare samples at first; compare the
-same route/device/country and report counts before drawing latency conclusions.
-Investigate sustained 5xx, broken auth/assets/PDFs, or materially worse p75/p95
-before increasing the percentage. This is an operational canary, not a formally
-powered product experiment. Monitoring is queried on demand from this chat.
+## Rollback
 
-## Change percentage or roll back
-
-Edit `vars.CF_PERCENT` in `wrangler.rollout.jsonc`, then:
-
-```sh
-pnpm exec wrangler deploy --config wrangler.rollout.jsonc
-```
-
-**Rollback: set it to `"0"` and deploy.** This overrides existing canary
-cookies. Keep the routing Worker installed during rollback: stale Cloudflare
-tabs cannot send mismatched RSC or Server Action requests to the other build.
-Next falls back to a full destination navigation for RSC reads; blocked actions
-signal a reload without replaying the mutation. Background prefetches never
-reload the current page. Missing immutable chunks can be read from the other build.
-Mutations are never retried across backends. Do not delete the canary Worker or
-its assets while old browser tabs may still need them.
-
-Emergency DNS bypass (only if the routing Worker itself is broken):
-
-```sh
-npx --yes cf@latest dns records edit 0461e08fd7e41cd25f889ed50e145c9f \
-  -z acmvit.in --body '{"proxied":false,"ttl":600}'
-```
-
-This returns the original Azure CNAME to DNS-only operation, subject to DNS
-propagation. It cannot preserve old canary tabs' build affinity, so the 0%
-router rollback is preferred.
-
-## Build and deploy the canary app
-
-Keep production secrets outside git. Build-time `NEXT_PUBLIC_*` settings must
-match production; changing runtime secrets cannot repair a wrong public build.
-Use the production `AUTH_SECRET`, database, storage and provider values.
-Keep `.cloudflare-deploy/` and `.dev.vars*` ignored. The canary configs have no
-public route: traffic reaches the app through the router's service binding.
-
-```sh
-pnpm exec wrangler deploy --config wrangler.canary-app-state.jsonc
-pnpm exec wrangler deploy --config wrangler.canary-tag-cache.jsonc
-POSTHOG_SOURCEMAP_UPLOAD=true pnpm exec opennextjs-cloudflare build --config wrangler.canary.jsonc
-pnpm exec opennextjs-cloudflare deploy --config wrangler.canary.jsonc
-pnpm exec wrangler secret bulk /private/path/canary-secrets.json --config wrangler.canary.jsonc
-```
-
-The router needs `SIGNING_SECRET`, `PROBE_SECRET` and `POSTHOG_KEY` secrets.
-Deployment builds also require PostHog CLI authentication for EU project 169929,
-either a local CLI login or `POSTHOG_CLI_API_KEY`, `POSTHOG_CLI_PROJECT_ID`, and
-`POSTHOG_CLI_HOST`. Source maps are generated, checked, injected and uploaded
-before OpenNext copies the static assets; upload failure stops the build. Maps
-are then removed from public output. `pnpm cf:build` enables this automatically.
-Azure uses the same upload script and credentials configured in GitHub Actions.
-Do not rotate the signing key casually; rotation invalidates cohort cookies.
-Privileged smoke tests use `x-ec-probe` plus `x-ec-force-backend` to select a
-backend; the router removes these headers before forwarding and marks all such
-telemetry synthetic. Its workers.dev preview requires the probe secret.
-Full PDF/auth browser tests must use the production hostname: storage CORS and
-Server Action origin validation correctly reject the temporary preview host.
-
-HTML, RSC, API and other non-immutable responses are private/no-store. Only
-public data inside the application uses Next/OpenNext caches. Sessions are
-never placed in a shared response cache. Azure still owns authenticated writes
-and Redis state during this phase; cross-platform cache invalidation needs
-separate review before a broader authenticated cutover.
-
-## Validation
-
-```sh
-pnpm exec tsx --test cloudflare/cutover/policy.test.ts
-pnpm exec tsc -p cloudflare/cutover/tsconfig.json
-pnpm exec wrangler deploy --config wrangler.rollout.jsonc --dry-run
-```
-
-Also check live course and paper document responses, visible PDF rendering,
-session/API routing, sticky assignments, static assets, and PostHog ingestion
-on both backends. Use one muted headless browser at a time. Repository lint
-remains unavailable (`next lint` was removed; no ESLint setup is installed).
+Restore the previous canary deployment with the Cloudflare CLI. To send all
+traffic to Azure, set `CF_PERCENT` to `"0"` and deploy the router; this
+overrides existing canary cookies. Retain the router and old canary assets so
+open tabs keep their build affinity. Mutations are never replayed between
+backends.

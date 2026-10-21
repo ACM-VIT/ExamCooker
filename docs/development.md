@@ -1,29 +1,43 @@
-# Development Guide
+# Development
 
-## Prerequisites
+Use Node.js 24 and pnpm 12.8.1 (pinned in `package.json`).
 
-- Node.js `20+`
-- `pnpm` 12.8.1 (pinned in `package.json`); use Corepack or install that version.
-- A valid `.env` or `.env.local` with the database and provider settings needed for the flows you are testing
+```sh
+git submodule update --init --recursive
+pnpm install --frozen-lockfile
+```
 
-## Common Commands
+Before starting the app, create `.env` with `DATABASE_URL` for a development
+CockroachDB database, `AUTH_SECRET` / `NEXTAUTH_SECRET`, and the provider settings
+you need. Set `NEXTAUTH_URL` / `NEXT_PUBLIC_BASE_URL` to `http://localhost:3000`.
+Google sign-in requires valid `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` values.
+Never commit populated environment files.
 
-- `pnpm dev`: syncs generated course data, then starts the web app locally.
-- `pnpm build`: runs the production build for the Next.js app.
-- `pnpm start`: serves the built app.
-- `pnpm lint`: runs the app lint checks.
-- `pnpm cli:build`: builds the CLI package in `packages/cli/`.
-- `pnpm cli:dev -- <args>`: runs the CLI entrypoint from source.
-- `pnpm --filter examcooker typecheck`: type-checks the CLI package.
+Start the app with `pnpm dev` after configuring the environment.
 
-## Typical Workflow
+`pnpm dev` and `pnpm build` generate the MCP appearance module, copy PDFium
+assets, and refresh course data before running Next.js. The course sync falls
+back to the checked-in dataset when its upstream is unavailable.
 
-For product work, start in `app/`, `app/components/`, `lib/`, and `db/`. For schema or query changes, update the Drizzle-backed code path first and keep migrations in `drizzle/` consistent with the schema changes. For CLI work, keep changes scoped to `packages/cli/` unless you are deliberately reusing shared helpers from the root app.
+## Commands
 
-## Validation Expectations
+- `pnpm build` / `pnpm start`: build and serve the app.
+- `pnpm exec tsc --noEmit`: check web types.
+- `pnpm mcp:test`: run MCP tests.
+- `pnpm exec tsx --test path/to/module.test.ts`: run a focused test.
+- `pnpm cli:build`: build the CLI.
+- `pnpm exec tsx packages/cli/src/cli.ts --help`: run the CLI from source.
+- `pnpm --filter examcooker typecheck`: check CLI types.
 
-This repository does not currently ship with a broad automated test suite, so local verification matters. Run `pnpm lint` for web changes, exercise the affected pages or routes with `pnpm dev`, and use CLI-specific commands plus `pnpm --filter examcooker typecheck` for CLI work. If your change touches storage, uploads, or production repair scripts, document the manual verification steps in the PR.
+There is no ESLint setup. Next.js 16 removed `next lint`.
+Exercise changed pages and API routes with the dev server as well.
 
-## Environment And Safety
+## Layout
 
-Do not commit live secrets or populated environment files. Review `scripts/prod/` and storage/database scripts carefully before execution because several are intended for real data movement rather than local-only development.
+`app/` holds routes and components; `lib/` holds shared logic and tests.
+Database clients, queries, and schema live in `db/`, with migrations in
+`drizzle/`. The CLI is in `packages/cli/`; Cloudflare Workers and adapters are
+in `cloudflare/` and `worker/`.
+
+Seed and backfill commands remain in `scripts/`. Check their target database
+and dry-run options before running them.
