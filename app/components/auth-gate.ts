@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Session } from "next-auth";
 import { captureAuthPromptOpened } from "@/lib/posthog/client";
 import { scheduleIdleWork } from "@/lib/schedule-idle-work";
+import { clearSessionCache, loadAuthSession, readCachedSession } from "@/lib/auth/session-cache";
 
 type AuthGate = {
     isAuthed: boolean;
@@ -17,59 +18,13 @@ type AuthGate = {
 
 type AuthSessionState = Pick<AuthGate, "session" | "status">;
 
-let sessionPromise: Promise<Session | null> | null = null;
-let cachedSession: Session | null | undefined;
-
 const SESSION_CACHE_INVALIDATED_EVENT = "examcooker:session-cache-invalidated";
 
 export function invalidateAuthSessionCache() {
-    sessionPromise = null;
-    cachedSession = undefined;
+    clearSessionCache();
     if (typeof window !== "undefined") {
         window.dispatchEvent(new Event(SESSION_CACHE_INVALIDATED_EVENT));
     }
-}
-
-function readSessionPayload(payload: unknown): Session | null {
-    if (!payload || typeof payload !== "object") return null;
-    if (!("user" in payload) || !(payload as { user?: unknown }).user) return null;
-    return payload as Session;
-}
-
-/**
- * One shared, cached `/api/auth/session` request for every client caller.
- * `refresh` re-reads it (e.g. after another tab may have signed in) while the
- * previous answer stays readable; a failed refresh keeps that answer.
- */
-export function loadAuthSession({ refresh = false }: { refresh?: boolean } = {}) {
-    if (refresh && cachedSession !== undefined) {
-        sessionPromise = null;
-    } else if (cachedSession !== undefined) {
-        return Promise.resolve(cachedSession);
-    }
-
-    if (!sessionPromise) {
-        const previous = cachedSession;
-        sessionPromise = fetch("/api/auth/session", {
-            credentials: "same-origin",
-            cache: "no-store",
-        })
-            .then((response) => {
-                if (!response.ok) throw new Error(`Session request failed: ${response.status}`);
-                return response.json();
-            })
-            .then((payload) => {
-                cachedSession = readSessionPayload(payload);
-                return cachedSession;
-            })
-            .catch(() => {
-                // Only a successful response may change what we know.
-                cachedSession = previous ?? null;
-                return cachedSession;
-            });
-    }
-
-    return sessionPromise;
 }
 
 function getCurrentRedirect() {
@@ -98,7 +53,7 @@ function getAuthHref(action?: string) {
 export function useGuestPrompt(): AuthGate {
     const router = useRouter();
     const [{ session, status }, setAuthSessionState] = useState<AuthSessionState>(
-        () => getAuthSessionState(cachedSession),
+        () => getAuthSessionState(readCachedSession()),
     );
     const isAuthed = Boolean(session?.user);
 
@@ -106,9 +61,9 @@ export function useGuestPrompt(): AuthGate {
         let cancelled = false;
 
         function syncSession() {
-            setAuthSessionState(getAuthSessionState(cachedSession));
+            setAuthSessionState(getAuthSessionState(readCachedSession()));
 
-            if (cachedSession !== undefined) return;
+            if (readCachedSession() !== undefined) return;
 
             void loadAuthSession().then((nextSession) => {
                 if (cancelled) return;
@@ -116,7 +71,7 @@ export function useGuestPrompt(): AuthGate {
             });
         }
 
-        const cancelInitialSync = cachedSession === undefined
+        const cancelInitialSync = readCachedSession() === undefined
             ? scheduleIdleWork(
                 syncSession,
                 { fallbackDelayMs: 1200, timeoutMs: 2500 },

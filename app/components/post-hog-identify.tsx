@@ -6,7 +6,7 @@ import {
     resetPostHogUser,
 } from "@/lib/posthog/client";
 import { scheduleIdleWork } from "@/lib/schedule-idle-work";
-import { loadAuthSession } from "@/app/components/auth-gate";
+import { loadAuthSession } from "@/lib/auth/session-cache";
 
 export default function PostHogIdentify() {
     const lastIdentifiedUserId = useRef<string | null>(null);

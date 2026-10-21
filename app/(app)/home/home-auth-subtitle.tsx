@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { loadAuthSession } from "@/app/components/auth-gate";
+import { loadAuthSession } from "@/lib/auth/session-cache";
 import { getDisplayUserName } from "./display-name";
 import WelcomeBackSubtitle from "./welcome-back-subtitle";
 

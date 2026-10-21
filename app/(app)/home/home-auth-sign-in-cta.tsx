@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { loadAuthSession } from "@/app/components/auth-gate";
+import { loadAuthSession } from "@/lib/auth/session-cache";
 import { SignIn } from "@/app/components/sign-in";
 
 function GradientText({ children }: { children: ReactNode }) {
