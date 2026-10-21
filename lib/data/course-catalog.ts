@@ -225,11 +225,6 @@ async function getCourseCatalogRows(): Promise<CourseCatalogRow[]> {
         });
     };
 
-    // Next already owns persistence and tag invalidation on Workers. Avoid a
-    // second remote payload lookup and distributed lock when that cache misses.
-    if (typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers") {
-        return loadRows();
-    }
     return withPastPapersSurfaceRedisCache(
         { keyParts: ["course-catalog-rows-v2"] },
         loadRows,
