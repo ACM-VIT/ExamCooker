@@ -30,8 +30,23 @@ test("browsers that accept brotli get the build's precompressed engine", async (
   assert.equal(await response.text(), "compressed");
 });
 
+function withOriginalEncoding(request: Request, clientAcceptEncoding: string | null) {
+  Object.defineProperty(request, "cf", { value: { clientAcceptEncoding } });
+  return request;
+}
+
+test("the client's original encoding wins over Cloudflare's rewritten header", async () => {
+  for (const [original, expected] of [["gzip, br", `${ENGINE}.br`], ["gzip", ENGINE], ["", ENGINE], [null, ENGINE], ["br;q=0.", ENGINE]] as const) {
+    const { fetcher, requested } = assets();
+    await precompressedAssetResponse(withOriginalEncoding(new Request(`https://examcooker.acmvit.in${ENGINE}`, {
+      headers: { "accept-encoding": "gzip, br" },
+    }), original), fetcher);
+    assert.deepEqual(requested, [expected], `original Accept-Encoding: ${original}`);
+  }
+});
+
 test("clients without brotli get the original engine", async () => {
-  for (const encoding of ["gzip", "br;q=0, gzip", "identity"]) {
+  for (const encoding of ["gzip", "br;q=0, gzip", "br;q=0., gzip", "br; q=0.000", "identity"]) {
     const { fetcher, requested } = assets();
     const response = (await precompressedAssetResponse(new Request(`https://examcooker.acmvit.in${ENGINE}`, {
       headers: { "accept-encoding": encoding },

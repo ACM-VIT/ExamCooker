@@ -3,13 +3,14 @@
 const PDF_ENGINE = /^\/vendor\/embedpdf\/immutable\/[a-f0-9]{64}\.wasm$/;
 
 function acceptsBrotli(request: Request) {
-  // Cloudflare may normalize Accept-Encoding before the Worker; the original
-  // client value decides whether pre-encoded bytes are safe to send.
-  const cf = (request as Request & { cf?: { clientAcceptEncoding?: string } }).cf;
-  const accepted = cf?.clientAcceptEncoding ?? request.headers.get("accept-encoding") ?? "";
+  // Cloudflare rewrites Accept-Encoding before the Worker; only the original
+  // client value decides whether pre-encoded bytes are safe to send. Without
+  // the cf object (tests, local tools) the header is the original.
+  const cf = (request as Request & { cf?: { clientAcceptEncoding?: string | null } }).cf;
+  const accepted = cf ? cf.clientAcceptEncoding ?? "" : request.headers.get("accept-encoding") ?? "";
   return accepted.split(",").some((encoding) => {
     const [name, ...params] = encoding.trim().toLowerCase().split(";");
-    return name === "br" && !params.some((param) => /^\s*q\s*=\s*0(\.0+)?\s*$/.test(param));
+    return name.trim() === "br" && !params.some((param) => /^\s*q\s*=\s*0(\.0{0,3})?\s*$/.test(param));
   });
 }
 

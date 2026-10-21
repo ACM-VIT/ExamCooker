@@ -37,9 +37,17 @@ for (const destination of [outputPath, versionedPath]) {
 // The Worker serves this copy to browsers that accept brotli. Quality 11 is
 // ~380 KB smaller than Cloudflare's on-the-fly compression of the engine.
 const compressedPath = `${versionedPath}.br`;
-const compressedIsCurrent = fs.existsSync(compressedPath) &&
-  crypto.createHash("sha256").update(zlib.brotliDecompressSync(fs.readFileSync(compressedPath))).digest("hex") === sourceHash;
-if (!compressedIsCurrent) {
+function compressedIsCurrent() {
+  try {
+    return crypto.createHash("sha256")
+      .update(zlib.brotliDecompressSync(fs.readFileSync(compressedPath)))
+      .digest("hex") === sourceHash;
+  } catch {
+    // Missing, truncated or corrupt copies are regenerated.
+    return false;
+  }
+}
+if (!compressedIsCurrent()) {
   const source = fs.readFileSync(sourcePath);
   fs.writeFileSync(compressedPath, zlib.brotliCompressSync(source, {
     params: {

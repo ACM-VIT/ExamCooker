@@ -58,10 +58,10 @@ export default {
       const compatibilityResponse = productionCompatibilityResponse(request);
       if (compatibilityResponse) return compatibilityResponse;
     }
-    const assetResponse = await precompressedAssetResponse(request, bindings.ASSETS);
-    if (assetResponse) return assetResponse;
     const firstRequest = !receivedRequest;
     receivedRequest = true;
+    const assetResponse = await precompressedAssetResponse(request, bindings.ASSETS);
+    if (assetResponse) return assetResponse;
     const timing = beginRequestTiming(ctx);
     const log = (status: number, headersAt: number, endedAt: number, failed = false) => console.log({
       message: "ec.request.timing",
