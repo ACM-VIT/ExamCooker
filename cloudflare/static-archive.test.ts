@@ -90,7 +90,7 @@ test("a version archives its manifest once, then serves files a later build lack
 test("a partial archive leaves the version unmarked so the next run retries", async () => {
   const { r2, objects } = bucket();
   const { fetcher } = assets({ [STATIC_MANIFEST_PATH]: JSON.stringify(["/_next/static/chunks/a.js", "/_next/static/chunks/gone.js"]), "/_next/static/chunks/a.js": "a" });
-  assert.deepEqual(await archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v2", origin: "https://assets.local" }), { status: "partial", files: 1 });
+  assert.deepEqual(await archiveCurrentAssets({ assets: fetcher, archive: r2, versionId: "v2", origin: "https://assets.local" }), { status: "partial", files: 1, error: "/_next/static/chunks/gone.js: HTTP 404" });
   assert.equal(objects.has("versions/v2"), false);
   const { fetcher: noManifest } = assets({});
   assert.equal((await archiveCurrentAssets({ assets: noManifest, archive: r2, versionId: "v3", origin: "https://assets.local" })).status, "no-manifest");
@@ -127,7 +127,7 @@ test("a failed upload holds the lock until every other upload settles", async ()
   while (!finishB) await new Promise((resolve) => setImmediate(resolve));
   assert.equal(lockExpired("v6"), false, "b.js is still uploading");
   finishB();
-  assert.deepEqual(await run, { status: "partial", files: 1 });
+  assert.deepEqual(await run, { status: "partial", files: 1, error: "/_next/static/chunks/a.js: R2 unavailable" });
   assert.equal(objects.get("_next/static/chunks/b.js")?.body, "b");
   assert.equal(objects.has("versions/v6"), false);
   assert.equal(lockExpired("v6"), true);

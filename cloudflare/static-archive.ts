@@ -69,28 +69,33 @@ async function copyManifestFiles(input: Parameters<typeof archiveCurrentAssets>[
   const paths = (await manifest.json() as string[]).filter(isArchivedAssetPath);
   let next = 0;
   let failed = 0;
+  let firstError: string | undefined;
   // Re-put every file so a still-current file's lifecycle age restarts.
-  // A failed file is counted, not thrown: the lock must outlive every upload.
   const copy = async (path: string) => {
     const response = await input.assets.fetch(new Request(`${input.origin}${path}`));
     if (!response.ok) {
       await response.body?.cancel();
-      return false;
+      throw new Error(`HTTP ${response.status}`);
     }
     // R2 needs a known length; these files are small and immutable.
     await input.archive.put(path.slice(1), await response.arrayBuffer(), {
       httpMetadata: { contentType: response.headers.get("content-type") ?? "application/octet-stream" },
     });
-    return true;
   };
+  // A failed file is counted, not thrown: the lock must outlive every upload.
+  // The first reason is kept; one line diagnoses an outage without a log per file.
   const worker = async () => {
     while (next < paths.length) {
       const path = paths[next++];
-      if (!(await copy(path).catch(() => false))) failed++;
+      await copy(path).catch((error: unknown) => {
+        failed++;
+        firstError ??= `${path}: ${error instanceof Error ? error.message : String(error)}`;
+      });
     }
   };
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
   // Leave the marker unset after failures so the next run retries.
-  if (failed === 0) await input.archive.put(marker, JSON.stringify({ files: paths.length }));
-  return { status: failed === 0 ? "archived" as const : "partial" as const, files: paths.length - failed };
+  if (failed > 0) return { status: "partial" as const, files: paths.length - failed, error: firstError };
+  await input.archive.put(marker, JSON.stringify({ files: paths.length }));
+  return { status: "archived" as const, files: paths.length };
 }

@@ -70,7 +70,13 @@ export function useGuestPrompt(): AuthGate {
                     if (cancelled) return;
                     setAuthSessionState(getAuthSessionState(nextSession));
                 })
-                .catch(() => undefined);
+                // Unknown session: show signed-out controls here without
+                // remembering it, so the next read asks again. The sign-in
+                // page sends signed-in users back.
+                .catch(() => {
+                    if (cancelled) return;
+                    setAuthSessionState(getAuthSessionState(null));
+                });
         }
 
         const cancelInitialSync = scheduleIdleWork(
@@ -102,7 +108,6 @@ export function useGuestPrompt(): AuthGate {
                             router.push(getAuthHref(action));
                         }
                     })
-                    // Unknown session: the sign-in page sends signed-in users back.
                     .catch(() => router.push(getAuthHref(action)));
                 return false;
             }
