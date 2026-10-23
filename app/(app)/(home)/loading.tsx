@@ -1,4 +1,4 @@
-import { GradientText } from "@/app/components/landing/landing";
+import { GradientText } from "@/app/components/landing/landing-primitives";
 import Image from "@/app/components/common/app-image";
 import ExamCookerLogo from "@/app/components/common/exam-cooker-logo";
 import SearchIcon from "@/app/components/assets/seacrh.svg";

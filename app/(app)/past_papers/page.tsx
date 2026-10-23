@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import UploadButtonPaper from "@/app/components/upload-button-paper";
 import StructuredData from "@/app/components/seo/structured-data";
 import DirectionalTransition from "@/app/components/common/directional-transition";
-import { GradientText } from "@/app/components/landing/landing";
+import { GradientText } from "@/app/components/landing/landing-primitives";
 import SmartCourseGrid from "@/app/components/past_papers/smart-course-grid";
 import CoursePagination from "@/app/components/past_papers/course-pagination";
 import RecentPaperStrip from "@/app/components/past_papers/recent-paper-strip";
