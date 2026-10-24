@@ -16,6 +16,7 @@ import {
   readLimit,
 } from "./http";
 import { resolveCommandIntentWithAI } from "./intent-ai";
+import { buildCommandAiEnvironment } from "./ai-environment";
 import {
   ensureCommandSemanticCacheSchema,
   findCommandSemanticCacheHit,
@@ -284,22 +285,7 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
       input.surfaceContext,
       trustedUser,
     );
-    const requestedAi = input.aiEnvironment;
-    const aiEnvironment = {
-      ...this.env,
-      ...(requestedAi?.AI_PROVIDER === "openai" || requestedAi?.AI_PROVIDER === "anthropic"
-        ? { AI_PROVIDER: requestedAi.AI_PROVIDER }
-        : {}),
-      ...(typeof requestedAi?.AI_COMMAND_MODEL === "string" && requestedAi.AI_COMMAND_MODEL.length <= 100
-        ? { AI_COMMAND_MODEL: requestedAi.AI_COMMAND_MODEL }
-        : {}),
-      ...(typeof requestedAi?.OPENAI_API_KEY === "string" && requestedAi.OPENAI_API_KEY.length <= 512
-        ? { OPENAI_API_KEY: requestedAi.OPENAI_API_KEY }
-        : {}),
-      ...(typeof requestedAi?.ANTHROPIC_API_KEY === "string" && requestedAi.ANTHROPIC_API_KEY.length <= 512
-        ? { ANTHROPIC_API_KEY: requestedAi.ANTHROPIC_API_KEY }
-        : {}),
-    };
+    const aiEnvironment = buildCommandAiEnvironment(this.env, input.aiEnvironment, trustedUser.authenticated);
     const semanticCacheHit = await findCommandSemanticCacheHit(this, aiEnvironment, {
       query,
       surfaceContext,

@@ -14,11 +14,10 @@ import { Command } from "cmdk";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useAgent } from "agents/react";
 import { useAiSession } from "@/app/components/ai/ai-session-provider";
+import { signOutWithAiSession } from "@/app/components/ai/sign-out-session";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  invalidateAuthSessionCache,
-  useGuestPrompt,
-} from "@/app/components/auth-gate";
+import { useGuestPrompt } from "@/app/components/auth-gate";
+import { toast } from "@/app/components/ui/use-toast";
 import {
   getCommandCatalogAction,
   getCommandSessionAction,
@@ -46,7 +45,6 @@ import {
 } from "@/lib/command/intent";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { examTypeLabel, examTypeToSlug } from "@/lib/exam-slug";
-import { captureUserSignedOut } from "@/lib/posthog/client";
 import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
 import {
@@ -1198,8 +1196,8 @@ function CommandPaletteSession({
         surfaceContext,
       };
 
-      const intentRequest = ensureAiReady().then((ready) =>
-        ready ? resolveIntentWithServerFallback(input) : Promise.reject(new Error("AI was not configured.")),
+      const intentRequest = ensureAiReady("commandIntent").then((ready) =>
+        ready && !cancelled ? resolveIntentWithServerFallback(input) : Promise.reject(new Error("AI was not configured.")),
       );
 
       void intentRequest
@@ -1467,11 +1465,10 @@ function CommandPaletteSession({
     }
 
     if (capability.kind === "auth" && capability.authAction === "signOut") {
-      captureUserSignedOut();
-      invalidateAuthSessionCache();
-      void import("next-auth/react").then(({ signOut }) => {
-        void signOut({ callbackUrl: "/" }).finally(() => {
-          invalidateAuthSessionCache();
+      void signOutWithAiSession().catch(() => {
+        toast({
+          title: "Could not sign out",
+          description: "Try again to remove your AI key from this browser.",
         });
       });
       return true;

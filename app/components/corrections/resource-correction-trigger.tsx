@@ -127,7 +127,7 @@ export default function ResourceCorrectionTrigger({
     setError(null);
     startTransition(async () => {
       try {
-        if (!await ensureAiReady()) return;
+        if (!await ensureAiReady("contentCorrection")) return;
         await submitContentCorrectionReport({
           resourceId,
           resourceType,
