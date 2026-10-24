@@ -744,6 +744,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
         initialUploadFormState,
     );
     const [pending, startTransition] = useTransition();
+    const submissionInFlightRef = useRef(false);
     const cameraInputRef = useRef<HTMLInputElement | null>(null);
     const imageConversionInFlightRef = useRef(false);
     const fieldId = useId();
@@ -1042,6 +1043,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     const handleSubmit = useCallback(
         async (event: React.FormEvent) => {
             event.preventDefault();
+            if (submissionInFlightRef.current) return;
 
             if (!requireAuth(`upload ${variant.toLowerCase()}`)) {
                 return;
@@ -1065,15 +1067,10 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                 return;
             }
 
-            try {
-                if (!await ensureAiReady()) return;
-            } catch (error) {
-                dispatch({ type: "patch", payload: { error: error instanceof Error ? error.message : "AI setup failed." } });
-                return;
-            }
-
+            submissionInFlightRef.current = true;
             startTransition(async () => {
                 try {
+                    if (!await ensureAiReady("moderation")) return;
                     const formDatas = files.map((file, index) => {
                         const formData = new FormData();
                         formData.append("file", file);
@@ -1156,6 +1153,8 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                             }`,
                         },
                     });
+                } finally {
+                    submissionInFlightRef.current = false;
                 }
             });
         },

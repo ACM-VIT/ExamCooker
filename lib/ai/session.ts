@@ -2,20 +2,12 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { auth } from "@/app/auth";
-import { resolveAiTextModel, type AiTextProvider } from "@/lib/ai/models";
+import { resolveAiTextModel, type AiTextProvider, type AiTextTask } from "@/lib/ai/models";
 import { openAiSession, sealAiSession, type AiSessionSettings } from "@/lib/ai/session-crypto";
+import { createAiSessionEnvironment, createAiSessionStatus, type AiSessionStatus } from "@/lib/ai/session-status";
 
-const COOKIE_NAME = "ec-ai-session";
+export const AI_SESSION_COOKIE_NAME = "ec-ai-session";
 const SESSION_LIFETIME_MS = 24 * 60 * 60 * 1000;
-
-export type AiSessionStatus = {
-  provider: AiTextProvider;
-  model: string;
-  configuredProviders: AiTextProvider[];
-  sessionProviders: AiTextProvider[];
-  textReady: boolean;
-  voiceReady: boolean;
-};
 
 function encryptionSecret() {
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
@@ -24,7 +16,7 @@ function encryptionSecret() {
 }
 
 export async function readAiSession(userId: string) {
-  const value = (await cookies()).get(COOKIE_NAME)?.value;
+  const value = (await cookies()).get(AI_SESSION_COOKIE_NAME)?.value;
   const settings = value ? openAiSession(value, encryptionSecret()) : null;
   return settings?.userId === userId ? settings : null;
 }
@@ -53,7 +45,7 @@ export async function saveAiSession(input: {
     keys,
     expiresAt: Date.now() + SESSION_LIFETIME_MS,
   };
-  (await cookies()).set(COOKIE_NAME, sealAiSession(settings, encryptionSecret()), {
+  (await cookies()).set(AI_SESSION_COOKIE_NAME, sealAiSession(settings, encryptionSecret()), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -63,60 +55,15 @@ export async function saveAiSession(input: {
 }
 
 export async function clearAiSession() {
-  (await cookies()).delete(COOKIE_NAME);
-}
-
-function environmentForSettings(settings: AiSessionSettings | null) {
-  const base = {
-    AI_PROVIDER: process.env.AI_PROVIDER,
-    AI_COMMAND_MODEL: process.env.AI_COMMAND_MODEL,
-    AI_MODERATION_MODEL: process.env.AI_MODERATION_MODEL,
-    AI_CONTENT_CORRECTION_MODEL: process.env.AI_CONTENT_CORRECTION_MODEL,
-    AI_PAST_PAPER_TITLE_MODEL: process.env.AI_PAST_PAPER_TITLE_MODEL,
-    AI_PDF_MARKDOWN_MODEL: process.env.AI_PDF_MARKDOWN_MODEL,
-    AI_VOICE_DOCUMENT_MODEL: process.env.AI_VOICE_DOCUMENT_MODEL,
-    OPENAI_COMMAND_MODEL: process.env.OPENAI_COMMAND_MODEL,
-    OPENAI_PDF_QA_MODEL: process.env.OPENAI_PDF_QA_MODEL,
-    OPENAI_EMBEDDING_MODEL: process.env.OPENAI_EMBEDDING_MODEL,
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-    AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
-  };
-  if (!settings) return base;
-  return {
-    ...base,
-    AI_PROVIDER: settings.provider,
-    AI_COMMAND_MODEL: settings.model,
-    AI_MODERATION_MODEL: settings.model,
-    AI_CONTENT_CORRECTION_MODEL: settings.model,
-    AI_PAST_PAPER_TITLE_MODEL: settings.model,
-    AI_PDF_MARKDOWN_MODEL: settings.model,
-    AI_VOICE_DOCUMENT_MODEL: settings.model,
-    OPENAI_API_KEY: settings.keys.openai || process.env.OPENAI_API_KEY,
-    ANTHROPIC_API_KEY: settings.keys.anthropic || process.env.ANTHROPIC_API_KEY,
-    AI_GATEWAY_API_KEY: undefined,
-  };
+  (await cookies()).delete(AI_SESSION_COOKIE_NAME);
 }
 
 export async function getAiRequestEnvironment(userId?: string) {
   const id = userId ?? (await auth())?.user?.id;
-  return environmentForSettings(id ? await readAiSession(id) : null);
+  return createAiSessionEnvironment(process.env, id ? await readAiSession(id) : null, Boolean(id));
 }
 
-export async function getAiSessionStatus(userId: string, settingsOverride?: AiSessionSettings | null): Promise<AiSessionStatus> {
+export async function getAiSessionStatus(userId: string, settingsOverride?: AiSessionSettings | null, task: AiTextTask = "pdfMarkdown"): Promise<AiSessionStatus> {
   const settings = settingsOverride === undefined ? await readAiSession(userId) : settingsOverride;
-  const environment = environmentForSettings(settings);
-  const provider = environment.AI_PROVIDER === "anthropic" ? "anthropic" : "openai";
-  const model = resolveAiTextModel("pdfMarkdown", environment).modelId;
-  const configuredProviders = (["openai", "anthropic"] as const).filter((name) =>
-    Boolean(environment[name === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY"]),
-  );
-  return {
-    provider,
-    model,
-    configuredProviders,
-    sessionProviders: (["openai", "anthropic"] as const).filter((name) => Boolean(settings?.keys[name])),
-    textReady: configuredProviders.includes(provider),
-    voiceReady: configuredProviders.includes("openai"),
-  };
+  return createAiSessionStatus(createAiSessionEnvironment(process.env, settings, true), settings, task);
 }

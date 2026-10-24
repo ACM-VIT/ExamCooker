@@ -893,7 +893,10 @@ export default function VoiceAgentProvider({
       hide();
     }
 
-    void ensureAiReady("voice").then((ready) => {
+    void ensureAiReady("voiceDocument").then((textReady) => {
+      if (!textReady) return false;
+      return ensureAiReady("voice");
+    }).then((ready) => {
       if (!ready) return;
       voiceAnalyticsSessionIdRef.current = crypto.randomUUID();
       void controller.connect();

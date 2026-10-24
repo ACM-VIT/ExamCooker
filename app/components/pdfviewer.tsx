@@ -1992,24 +1992,29 @@ function LoadedDocumentSurface({
       if (!enableQuestionMarkdown) {
         return;
       }
-      if (!await ensureAiReady()) return;
 
-      if (showPaper) {
-        // Overlap the renderer download with the requested Markdown data.
+      const revealPaper = () => {
+        if (!showPaper) return;
         void import("./pdf-question-text").catch(() => undefined);
         dispatchPaper({ type: "showPaper" });
-      }
+      };
 
       if (!force && paperStatus === "loading") {
+        revealPaper();
         return;
       }
 
       if (!force && paperStatus === "ready" && paperMarkdown.trim()) {
+        revealPaper();
         if (copyAfter) {
           await copyMarkdownText(paperMarkdown);
         }
         return;
       }
+
+      if (!await ensureAiReady("pdfMarkdown")) return;
+      // Overlap the renderer download with a new Markdown request.
+      revealPaper();
 
       const controller = new AbortController();
       paperAbortRef.current?.abort();

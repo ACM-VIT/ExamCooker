@@ -895,7 +895,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
   const { ensureAiReady } = useAiSession();
   const withAi = async (work: () => Promise<unknown>) => {
     try {
-      if (await ensureAiReady()) await work();
+      if (await ensureAiReady("moderation")) await work();
     } catch (error) {
       toast({ title: error instanceof Error ? error.message : "AI setup failed.", variant: "destructive" });
     }
@@ -1086,7 +1086,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
 
   const reviewAll = async () => {
     if (reviewAllProgress) return;
-    if (!await ensureAiReady()) return;
+    if (!await ensureAiReady("moderation")) return;
 
     const candidates = items.filter(
       (item) =>
@@ -1143,7 +1143,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
     id: string,
     resolution: CorrectionReportResolution,
   ) => {
-    if (resolution === "convert_type" && !await ensureAiReady()) return;
+    if (resolution === "convert_type" && !await ensureAiReady("contentCorrection")) return;
     setBusyReportId(id);
     try {
       const result = await resolveContentCorrectionReport(id, resolution);
@@ -1171,7 +1171,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
   };
 
   const recheckReport = async (id: string) => {
-    if (!await ensureAiReady()) return;
+    if (!await ensureAiReady("contentCorrection")) return;
     setBusyReportId(id);
     try {
       await recheckContentCorrectionReport(id);

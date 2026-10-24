@@ -3,9 +3,11 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronDown } from "lucide-react";
 import React, { createContext, useCallback, useContext, useRef, useState } from "react";
+import { toast } from "@/app/components/ui/use-toast";
+import type { AiTextTask } from "@/lib/ai/models";
 
 type Provider = "openai" | "anthropic";
-type Feature = "text" | "voice";
+type Feature = AiTextTask | "voice";
 type Status = {
   provider: Provider;
   model: string;
@@ -37,23 +39,28 @@ export function useAiSession() {
   return context;
 }
 
-async function fetchStatus() {
-  const response = await fetch("/api/ai/session", { cache: "no-store" });
-  if (!response.ok) throw new Error("Sign in to configure AI features.");
-  return response.json() as Promise<Status>;
+async function fetchStatus(feature: Feature) {
+  const task = feature === "voice" ? "voiceDocument" : feature;
+  const response = await fetch(`/api/ai/session?task=${task}`, { cache: "no-store" });
+  const result = await response.json().catch(() => null) as (Status & { error?: string }) | null;
+  if (!response.ok || !result) {
+    throw new Error(result?.error || (response.status === 401
+      ? "Sign in to configure AI features."
+      : "Could not check AI settings."));
+  }
+  return result;
 }
 
 export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const [feature, setFeature] = useState<Feature>("text");
+  const [feature, setFeature] = useState<Feature>("pdfMarkdown");
   const [status, setStatus] = useState<Status | null>(null);
   const [provider, setProvider] = useState<Provider>("openai");
   const [model, setModel] = useState(DEFAULT_MODELS.openai);
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
-  const [configurationVersion, setConfigurationVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const pendingRef = useRef<((configured: boolean) => void) | null>(null);
+  const pendingRef = useRef<{ feature: Feature; promise: Promise<boolean>; resolve: (configured: boolean) => void } | null>(null);
   const modelOptions = MODEL_OPTIONS[provider];
 
   const show = useCallback((nextStatus: Status, nextFeature: Feature) => {
@@ -67,24 +74,43 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
     setOpen(true);
   }, []);
 
-  const ensureAiReady = useCallback(async (nextFeature: Feature = "text") => {
-    if (pendingRef.current) return false;
-    const nextStatus = await fetchStatus();
-    if (nextFeature === "voice" ? nextStatus.voiceReady : nextStatus.textReady) return true;
-    show(nextStatus, nextFeature);
-    return new Promise<boolean>((resolve) => {
-      pendingRef.current = resolve;
+  const ensureAiReady = useCallback((nextFeature: Feature = "pdfMarkdown"): Promise<boolean> => {
+    if (pendingRef.current) {
+      const pending = pendingRef.current;
+      return pending.feature === nextFeature
+        ? pending.promise
+        : pending.promise.then((ready) => ready ? ensureAiReady(nextFeature) : false);
+    }
+    let resolvePending!: (configured: boolean) => void;
+    const promise = new Promise<boolean>((resolve) => { resolvePending = resolve; });
+    pendingRef.current = { feature: nextFeature, promise, resolve: resolvePending };
+    void fetchStatus(nextFeature).then((nextStatus) => {
+      if (nextFeature === "voice" ? nextStatus.voiceReady : nextStatus.textReady) {
+        pendingRef.current = null;
+        resolvePending(true);
+      } else {
+        show(nextStatus, nextFeature);
+      }
+    }).catch((cause) => {
+      pendingRef.current = null;
+      toast({ title: cause instanceof Error ? cause.message : "Could not check AI settings.", variant: "destructive" });
+      resolvePending(false);
     });
-  }, [configurationVersion, show]);
+    return promise;
+  }, [show, toast]);
 
   const openAiSettings = useCallback(async () => {
-    show(await fetchStatus(), "text");
-  }, [show]);
+    try {
+      show(await fetchStatus("pdfMarkdown"), "pdfMarkdown");
+    } catch (cause) {
+      toast({ title: cause instanceof Error ? cause.message : "Could not load AI settings.", variant: "destructive" });
+    }
+  }, [show, toast]);
 
   const close = useCallback((configured: boolean) => {
     setOpen(false);
     setApiKey("");
-    pendingRef.current?.(configured);
+    pendingRef.current?.resolve(configured);
     pendingRef.current = null;
   }, []);
 
@@ -93,7 +119,8 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
     setSaving(true);
     setError(null);
     try {
-      const response = await fetch("/api/ai/session", {
+      const task = feature === "voice" ? "voiceDocument" : feature;
+      const response = await fetch(`/api/ai/session?task=${task}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider, model, apiKey: apiKey.trim() || undefined, preserveSelection: feature === "voice" }),
@@ -102,7 +129,6 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
       const result = await response.json() as Status & { error?: string };
       if (!response.ok) throw new Error(result.error || "Could not save AI settings.");
       setStatus(result);
-      setConfigurationVersion((version) => version + 1);
       close(feature === "voice" ? result.voiceReady : result.textReady);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not save AI settings.");
@@ -118,7 +144,6 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch("/api/ai/session", { method: "DELETE", cache: "no-store" });
       if (!response.ok) throw new Error("Could not remove this session's keys.");
       setStatus(await response.json() as Status);
-      setConfigurationVersion((version) => version + 1);
       close(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not remove this session's keys.");

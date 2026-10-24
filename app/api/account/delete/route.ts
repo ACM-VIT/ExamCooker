@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { eq, sql } from "drizzle-orm";
 import { auth } from "@/app/auth";
+import { AI_SESSION_COOKIE_NAME } from "@/lib/ai/session";
 import { type Database, db } from "@/db";
 import {
   accounts,
@@ -130,6 +131,14 @@ export async function POST() {
       secure: name.startsWith("__Secure-"),
     });
   }
+
+  response.cookies.set(AI_SESSION_COOKIE_NAME, "", {
+    httpOnly: true,
+    maxAge: 0,
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
 
   return response;
 }

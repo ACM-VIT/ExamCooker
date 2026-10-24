@@ -24,8 +24,10 @@ first AI feature they invoke. They can supply their own OpenAI or Anthropic
 key and choose a model for the current browser session. Settings are encrypted
 in an HTTP-only cookie, bound to their account, and cleared on sign-out or
 when the browser session ends. The key is never saved in the database. A configured
-`AI_GATEWAY_API_KEY` can route a provider-qualified model when its direct key
-is absent. A selected provider never silently switches to another provider.
+`AI_GATEWAY_API_KEY` can route a provider-qualified model for system requests
+without an account. Account-triggered features require a direct provider key
+and do not spend the shared gateway credential. A selected provider never
+silently switches to another provider.
 
 | Task | Override | OpenAI default | Anthropic default |
 | --- | --- | --- | --- |

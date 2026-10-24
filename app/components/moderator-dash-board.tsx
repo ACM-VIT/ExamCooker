@@ -312,7 +312,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     };
 
     const handleGenerateAiTitle = async (id: string) => {
-        if (!await ensureAiReady()) return;
+        if (!await ensureAiReady("pastPaperTitle")) return;
         if (!window.confirm("Generate AI title for this past paper?")) {
             return;
         }
