@@ -1,6 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
-import { GradientText } from "@/app/components/landing/landing";
+import { GradientText } from "@/app/components/landing/landing-primitives";
 import SyllabusGrid from "@/app/components/syllabus/syllabus-grid";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import { getAllSyllabi } from "@/lib/data/syllabus";

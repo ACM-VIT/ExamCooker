@@ -16,6 +16,7 @@ import {
   readLimit,
 } from "./http";
 import { resolveCommandIntentWithAI } from "./intent-ai";
+import { buildCommandAiEnvironment } from "./ai-environment";
 import {
   ensureCommandSemanticCacheSchema,
   findCommandSemanticCacheHit,
@@ -284,7 +285,8 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
       input.surfaceContext,
       trustedUser,
     );
-    const semanticCacheHit = await findCommandSemanticCacheHit(this, this.env, {
+    const aiEnvironment = buildCommandAiEnvironment(this.env, input.aiEnvironment, trustedUser.authenticated);
+    const semanticCacheHit = await findCommandSemanticCacheHit(this, aiEnvironment, {
       query,
       surfaceContext,
     }).catch(() => null);
@@ -293,19 +295,23 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
           ...semanticCacheHit.value,
           resolver: "semantic-cache" as const,
         }
-      : await resolveCommandIntentWithAI(this.env, query, {
+      : await resolveCommandIntentWithAI(aiEnvironment, query, {
           surfaceContext,
         });
 
-    if (!semanticCacheHit && resolution.resolver === "openai") {
-      await storeCommandSemanticCache(this, this.env, {
+    if (
+      !semanticCacheHit &&
+      (resolution.resolver === "openai" || resolution.resolver === "anthropic" ||
+        resolution.resolver === "gateway")
+    ) {
+      await storeCommandSemanticCache(this, aiEnvironment, {
         query,
         surfaceContext,
         value: {
           intent: resolution.intent,
           courseQuery: resolution.courseQuery,
           actions: resolution.actions,
-          resolver: "openai",
+          resolver: resolution.resolver,
         },
       }).catch(() => undefined);
     }

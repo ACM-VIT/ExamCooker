@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import {
-    invalidateAuthSessionCache,
-    useGuestPrompt,
-} from "@/app/components/auth-gate";
+import { useGuestPrompt } from "@/app/components/auth-gate";
+import { signOutWithAiSession } from "@/app/components/ai/sign-out-session";
 
 export default function DeleteAccountForm() {
     const { isAuthed, session, status } = useGuestPrompt();
@@ -17,6 +15,7 @@ export default function DeleteAccountForm() {
     const handleDelete = async () => {
         if (!confirmed || submitting) return;
 
+        let accountDeleted = false;
         setSubmitting(true);
         setMessage(null);
         setError(null);
@@ -31,12 +30,13 @@ export default function DeleteAccountForm() {
                 throw new Error("Deletion request failed");
             }
 
+            accountDeleted = true;
             setMessage("Your account has been deleted.");
-            invalidateAuthSessionCache();
-            const { signOut } = await import("next-auth/react");
-            await signOut({ callbackUrl: "/" });
+            await signOutWithAiSession();
         } catch {
-            setError("We could not delete your account right now. Please try again.");
+            setError(accountDeleted
+                ? "Your account was deleted, but sign-out could not finish. Reload to try again."
+                : "We could not delete your account right now. Please try again.");
         } finally {
             setSubmitting(false);
         }

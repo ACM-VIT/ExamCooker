@@ -1,11 +1,6 @@
-import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
-
-const DEFAULT_PDF_MARKDOWN_MODEL = "gpt-6-luna";
-
-function normalizeOpenAiModelId(modelId: string) {
-  return modelId.replace(/^openai\//, "");
-}
+import { resolveAiTextModel } from "@/lib/ai/models";
+import { getAiTextModel } from "@/lib/ai/provider";
 
 const NullableTextSchema = z.string().trim().nullable();
 
@@ -30,23 +25,12 @@ export const PdfPaperDocumentSchema = z.object({
 
 export type PdfPaperDocument = z.infer<typeof PdfPaperDocumentSchema>;
 
-export function getPdfMarkdownModel() {
-  return process.env.AI_PDF_MARKDOWN_MODEL?.trim() || DEFAULT_PDF_MARKDOWN_MODEL;
+export function getPdfMarkdownModel(env: object = process.env) {
+  return resolveAiTextModel("pdfMarkdown", env).qualifiedModelId;
 }
 
-export function getPdfMarkdownLanguageModel() {
-  const modelId = getPdfMarkdownModel();
-
-  const isOpenAiModel = !modelId.includes("/") || modelId.startsWith("openai/");
-  if (isOpenAiModel && process.env.OPENAI_API_KEY?.trim()) {
-    return openai.responses(normalizeOpenAiModelId(modelId));
-  }
-
-  if (process.env.AI_GATEWAY_API_KEY?.trim()) {
-    return modelId.includes("/") ? modelId : `openai/${modelId}`;
-  }
-
-  return openai.responses(normalizeOpenAiModelId(modelId));
+export function getPdfMarkdownLanguageModel(env: object = process.env) {
+  return getAiTextModel("pdfMarkdown", env).model;
 }
 
 export function buildPdfPaperMarkdown(paper: PdfPaperDocument) {

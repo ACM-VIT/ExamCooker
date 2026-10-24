@@ -8,6 +8,7 @@ import Pagination from "./pagination";
 import NotesCard from "./notes-card";
 import PastPaperCard from "./past-paper-card";
 import { approveItem, deleteItem, renameItem, generatePastPaperTitle } from "../actions/moderator-actions";
+import { useAiSession } from "@/app/components/ai/ai-session-provider";
 
 const PAGE_SIZE = 9;
 
@@ -234,6 +235,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     totalUsers,
 }) => {
     const { toast } = useToast();
+    const { ensureAiReady } = useAiSession();
     const [state, dispatch] = useReducer(
         moderatorDashboardReducer,
         { initialNotes, initialPastPapers },
@@ -310,6 +312,7 @@ const ModeratorDashboardClient: React.FC<ModeratorDashboardClientProps> = ({
     };
 
     const handleGenerateAiTitle = async (id: string) => {
+        if (!await ensureAiReady("pastPaperTitle")) return;
         if (!window.confirm("Generate AI title for this past paper?")) {
             return;
         }

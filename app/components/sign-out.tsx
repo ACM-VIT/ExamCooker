@@ -1,27 +1,22 @@
 "use client";
 
 import React from "react";
-import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
-import { captureUserSignedOut } from "@/lib/posthog/client";
+import { signOutWithAiSession } from "@/app/components/ai/sign-out-session";
+import { toast } from "@/app/components/ui/use-toast";
 
-export function SignOut({
-    children,
-}: Readonly<{
-    children: React.ReactNode;
-}>) {
-    const handleSignOut = () => {
-        captureUserSignedOut();
-        invalidateAuthSessionCache();
-        void import("next-auth/react").then(({ signOut }) => {
-            void signOut({ callbackUrl: "/" }).finally(() => {
-                invalidateAuthSessionCache();
-            });
-        });
-    };
+export function SignOut({ children }: Readonly<{ children: React.ReactNode }>) {
+  const handleSignOut = () => {
+    void signOutWithAiSession().catch(() => {
+      toast({
+        title: "Could not sign out",
+        description: "Try again to remove your AI key from this browser.",
+      });
+    });
+  };
 
-    return (
-        <button type="button" onClick={handleSignOut}>
-            {children}
-        </button>
-    );
+  return (
+    <button type="button" onClick={handleSignOut}>
+      {children}
+    </button>
+  );
 }

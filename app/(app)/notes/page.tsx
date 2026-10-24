@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import DirectionalTransition from "@/app/components/common/directional-transition";
-import { GradientText } from "@/app/components/landing/landing";
+import { GradientText } from "@/app/components/landing/landing-primitives";
 import NotesCourseGridCard from "@/app/components/notes/notes-course-grid-card";
 import NotesCourseSearch from "@/app/components/notes/notes-course-search";
 import UploadButtonNotes from "@/app/components/upload-button-notes";

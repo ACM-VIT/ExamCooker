@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import DirectionalTransition from "@/app/components/common/directional-transition";
 import ResourceBrowser from "@/app/components/resources/resource-browser";
-import { GradientText } from "@/app/components/landing/landing";
+import { GradientText } from "@/app/components/landing/landing-primitives";
 import { DEFAULT_KEYWORDS } from "@/lib/seo";
 import { getVinCatalogMeta, getVinCourses, getVinYears } from "@/lib/data/vin-together";
 

@@ -1,5 +1,5 @@
 import React, { Suspense } from "react";
-import { GradientText } from "@/app/components/landing/landing";
+import { GradientText } from "@/app/components/landing/landing-primitives";
 import Image from "@/app/components/common/app-image";
 import ExamCookerLogo from "@/app/components/common/exam-cooker-logo";
 import DirectionalTransition from "@/app/components/common/directional-transition";

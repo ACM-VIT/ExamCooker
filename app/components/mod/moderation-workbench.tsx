@@ -34,6 +34,7 @@ import {
   runAiModerationReview,
 } from "@/app/actions/moderator-actions";
 import { useToast } from "@/app/components/ui/use-toast";
+import { useAiSession } from "@/app/components/ai/ai-session-provider";
 import { Shimmer } from "@/app/components/ui/shimmer";
 import {
   recheckContentCorrectionReport,
@@ -891,6 +892,14 @@ export function ModerationWorkbenchSkeleton() {
 
 export default function ModerationWorkbench({ initialNotes, initialPastPapers, initialCorrectionReports, totalUsers }: Props) {
   const { toast } = useToast();
+  const { ensureAiReady } = useAiSession();
+  const withAi = async (work: () => Promise<unknown>) => {
+    try {
+      if (await ensureAiReady("moderation")) await work();
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : "AI setup failed.", variant: "destructive" });
+    }
+  };
   const [items, setItems] = useState<QueueItem[]>(() =>
     buildQueueItems(initialNotes, initialPastPapers),
   );
@@ -1077,6 +1086,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
 
   const reviewAll = async () => {
     if (reviewAllProgress) return;
+    if (!await ensureAiReady("moderation")) return;
 
     const candidates = items.filter(
       (item) =>
@@ -1133,6 +1143,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
     id: string,
     resolution: CorrectionReportResolution,
   ) => {
+    if (resolution === "convert_type" && !await ensureAiReady("moderation")) return;
     setBusyReportId(id);
     try {
       const result = await resolveContentCorrectionReport(id, resolution);
@@ -1160,6 +1171,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
   };
 
   const recheckReport = async (id: string) => {
+    if (!await ensureAiReady("contentCorrection")) return;
     setBusyReportId(id);
     try {
       await recheckContentCorrectionReport(id);
@@ -1349,18 +1361,18 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
                   key={selected.id}
                   item={selected}
                   busyLabel={busyItems[selected.id] ?? null}
-                  onReview={() =>
+                  onReview={() => void withAi(() =>
                     perform(selected.id, "AI is reading the PDF and checking the course corpus…", async () =>
                       replaceReview(selected.id, await runAiModerationReview(selected.id, selected.resourceType)),
-                    )
+                    ))
                   }
-                  onApply={() =>
+                  onApply={() => void withAi(() =>
                     perform(selected.id, "Applying the suggested changes and rechecking…", async () =>
                       replaceAppliedReview(
                         selected.id,
                         await applyAiModerationSuggestion(selected.id, selected.resourceType),
                       ),
-                    )
+                    ))
                   }
                   onApprove={() =>
                     perform(selected.id, "Approving this upload…", async () => {
@@ -1375,7 +1387,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
                       remove(selected.id);
                     })
                   }
-                  onConvert={() =>
+                  onConvert={() => void withAi(() =>
                     perform(selected.id, "Moving the upload and rechecking its new corpus…", async () => {
                       const result = await convertModerationResourceType(
                         selected.id,
@@ -1387,7 +1399,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
                           ? "Moved, rechecked, and approved."
                           : `Moved to ${result.targetType === "note" ? "notes" : "past papers"} for review.`,
                       });
-                    })
+                    }))
                   }
                   onDelete={() =>
                     perform(selected.id, "Deleting this upload…", async () => {

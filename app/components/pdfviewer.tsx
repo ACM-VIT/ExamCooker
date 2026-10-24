@@ -60,6 +60,7 @@ import {
 } from "react";
 
 import { LazyPastPaperPageEditor } from "@/app/components/moderation/lazy-editors";
+import { useAiSession } from "@/app/components/ai/ai-session-provider";
 import type { PdfPaperDocument } from "@/lib/ai/pdf-markdown";
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
@@ -1877,6 +1878,7 @@ function LoadedDocumentSurface({
   onPageEditsSaved: (nextPageEdits: PdfPageEdits | null) => void;
   pageEdits: PdfPageEdits | null;
 }) {
+  const { ensureAiReady } = useAiSession();
   const [paperState, dispatchPaper] = useReducer(
     paperSessionReducer,
     INITIAL_PAPER_SESSION_STATE,
@@ -1991,22 +1993,28 @@ function LoadedDocumentSurface({
         return;
       }
 
-      if (showPaper) {
-        // Overlap the renderer download with the requested Markdown data.
+      const revealPaper = () => {
+        if (!showPaper) return;
         void import("./pdf-question-text").catch(() => undefined);
         dispatchPaper({ type: "showPaper" });
-      }
+      };
 
       if (!force && paperStatus === "loading") {
+        revealPaper();
         return;
       }
 
       if (!force && paperStatus === "ready" && paperMarkdown.trim()) {
+        revealPaper();
         if (copyAfter) {
           await copyMarkdownText(paperMarkdown);
         }
         return;
       }
+
+      if (!await ensureAiReady("pdfMarkdown")) return;
+      // Overlap the renderer download with a new Markdown request.
+      revealPaper();
 
       const controller = new AbortController();
       paperAbortRef.current?.abort();
@@ -2062,6 +2070,7 @@ function LoadedDocumentSurface({
     [
       copyMarkdownText,
       enableQuestionMarkdown,
+      ensureAiReady,
       fileName,
       fileUrl,
       pageEdits,

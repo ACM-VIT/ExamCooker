@@ -1,8 +1,9 @@
 import type { Agent } from "agents";
-import { createOpenAI } from "@ai-sdk/openai";
 import { embed } from "ai";
 import { getCommandSurface, type CommandSurfaceContext } from "../../lib/command/actions";
 import { normalizeCommandSearch } from "../../lib/command/intent";
+import { resolveAiTextModel } from "../../lib/ai/models";
+import { getCommandEmbeddingProvider } from "../../lib/ai/provider";
 import type {
   CommandAgentState,
   CommandIntentCacheValue,
@@ -32,7 +33,6 @@ const SEMANTIC_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SEMANTIC_CACHE_INTENT_MATCH_THRESHOLD = 0.925;
 const SEMANTIC_CACHE_ACTION_MATCH_THRESHOLD = 0.54;
 const SEMANTIC_CACHE_EMBEDDING_CANDIDATES = 80;
-const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 const CAPABILITY_MATCH_STOP_TERMS = new Set([
   "a",
   "an",
@@ -51,12 +51,14 @@ const CAPABILITY_MATCH_STOP_TERMS = new Set([
   "to",
 ]);
 
-function getSurfaceCacheKey(surfaceContext: CommandSurfaceContext) {
+function getSurfaceCacheKey(surfaceContext: CommandSurfaceContext, env: Env) {
   const surface = getCommandSurface(surfaceContext);
-  return surface.capabilities
+  const capabilities = surface.capabilities
     .map((capability) => capability.id)
     .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
     .join("|");
+  const model = resolveAiTextModel("commandIntent", env).qualifiedModelId;
+  return `${model}|${capabilities}`;
 }
 
 function parseEmbedding(value: string | null) {
@@ -82,7 +84,9 @@ function parseCacheValue(value: string): CommandIntentCacheValue | null {
       intent: parsed.intent as CommandIntentCacheValue["intent"],
       courseQuery: typeof parsed.courseQuery === "string" ? parsed.courseQuery : "",
       actions: parsed.actions,
-      resolver: parsed.resolver === "local" ? "local" : "openai",
+      resolver:
+        parsed.resolver === "local" || parsed.resolver === "anthropic" ||
+        parsed.resolver === "gateway" ? parsed.resolver : "openai",
     };
   } catch {
     return null;
@@ -166,20 +170,18 @@ function isSemanticCacheHitAllowed(
 }
 
 async function embedCommandQuery(env: Env, query: string) {
-  const apiKey = env.OPENAI_API_KEY?.trim();
-  if (!apiKey || !query.trim()) return null;
+  const provider = getCommandEmbeddingProvider(env);
+  if (!provider || !query.trim()) return null;
 
-  const openai = createOpenAI({ apiKey });
-  const model = env.OPENAI_EMBEDDING_MODEL?.trim() || DEFAULT_EMBEDDING_MODEL;
   const { embedding } = await embed({
-    model: openai.embedding(model),
+    model: provider.model,
     value: query,
     maxRetries: 0,
   });
 
   return {
     embedding,
-    model,
+    model: provider.modelId,
   };
 }
 
@@ -222,7 +224,7 @@ export async function findCommandSemanticCacheHit(
   if (!queryKey) return null;
 
   const now = Date.now();
-  const contextKey = getSurfaceCacheKey(input.surfaceContext);
+  const contextKey = getSurfaceCacheKey(input.surfaceContext, env);
   const exactRows = agent.sql<CommandCacheRow>`
     SELECT
       id,
@@ -324,7 +326,7 @@ export async function storeCommandSemanticCache(
   if (!embedded) return;
 
   const now = Date.now();
-  const contextKey = getSurfaceCacheKey(input.surfaceContext);
+  const contextKey = getSurfaceCacheKey(input.surfaceContext, env);
   const valueJson = JSON.stringify(input.value);
   const embeddingJson = JSON.stringify(embedded.embedding);
 

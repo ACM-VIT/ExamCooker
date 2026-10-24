@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useGuestPrompt } from "@/app/components/auth-gate";
 import CoursePicker, { type CourseOption } from "@/app/components/mod/course-picker";
 import AppImage from "@/app/components/common/app-image";
+import { useAiSession } from "@/app/components/ai/ai-session-provider";
 
 type UploadVariant = "Notes" | "Past Papers";
 
@@ -743,6 +744,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
         initialUploadFormState,
     );
     const [pending, startTransition] = useTransition();
+    const submissionInFlightRef = useRef(false);
     const cameraInputRef = useRef<HTMLInputElement | null>(null);
     const imageConversionInFlightRef = useRef(false);
     const fieldId = useId();
@@ -761,6 +763,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     const { toast } = useToast();
     const { push } = useRouter();
     const { requireAuth } = useGuestPrompt();
+    const { ensureAiReady } = useAiSession();
 
     const {
         campusVal,
@@ -1040,6 +1043,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     const handleSubmit = useCallback(
         async (event: React.FormEvent) => {
             event.preventDefault();
+            if (submissionInFlightRef.current) return;
 
             if (!requireAuth(`upload ${variant.toLowerCase()}`)) {
                 return;
@@ -1063,8 +1067,10 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                 return;
             }
 
+            submissionInFlightRef.current = true;
             startTransition(async () => {
                 try {
+                    if (!await ensureAiReady("moderation")) return;
                     const formDatas = files.map((file, index) => {
                         const formData = new FormData();
                         formData.append("file", file);
@@ -1147,6 +1153,8 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                             }`,
                         },
                     });
+                } finally {
+                    submissionInFlightRef.current = false;
                 }
             });
         },
@@ -1159,6 +1167,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             files,
             hasAnswerKey,
             requireAuth,
+            ensureAiReady,
             push,
             semesterVal,
             slot,
