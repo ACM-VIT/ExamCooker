@@ -10,6 +10,8 @@ import {
   getPdfMarkdownModel,
 } from "@/lib/ai/pdf-markdown";
 import type { PdfPaperQuestion } from "@/lib/ai/pdf-markdown";
+import { getAiTextProviderOptions } from "@/lib/ai/provider";
+import { getAiRequestEnvironment } from "@/lib/ai/session";
 import {
   getPdfMarkdownCacheKey,
   getPdfMarkdownContentHash,
@@ -515,7 +517,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const modelId = getPdfMarkdownModel();
+  const aiEnvironment = await getAiRequestEnvironment(session?.user?.id);
+  const modelId = getPdfMarkdownModel(aiEnvironment);
   const provider = getAiProviderFromModel(modelId);
   const normalizedPageEdits = normalizePdfPageEdits(
     parsedBody.pageEdits ?? null,
@@ -605,7 +608,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const model = getPdfMarkdownLanguageModel();
   const traceId = crypto.randomUUID();
   const spanId = crypto.randomUUID();
   const userPrompt =
@@ -613,6 +615,7 @@ export async function POST(request: NextRequest) {
     "Return no metadata and no instructions.";
 
   try {
+    const model = getPdfMarkdownLanguageModel(aiEnvironment);
     let streamError: unknown = null;
     const llmStartedAt = Date.now();
     let firstQuestionAt: number | null = null;
@@ -670,11 +673,11 @@ export async function POST(request: NextRequest) {
         streamError = error;
         console.error("[pdf-markdown] stream error", error);
       },
-      providerOptions: {
-        openai: {
-          store: false,
-        },
-      },
+      providerOptions: getAiTextProviderOptions({
+        provider,
+        modelId,
+        qualifiedModelId: modelId,
+      }),
     });
 
     schedulePdfMarkdownAiCapture(captureEventPromise);

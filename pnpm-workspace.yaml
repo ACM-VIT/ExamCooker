@@ -14,6 +14,8 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - postcss@8.5.30
   - '@posthog/cli@0.18.11'
+  - '@ai-sdk/anthropic@4.0.85'
+  - '@ai-sdk/provider-utils@5.0.65'
 
 peerDependencyRules:
   allowedVersions:

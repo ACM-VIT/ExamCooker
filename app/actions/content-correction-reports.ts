@@ -18,6 +18,7 @@ import { reviewUploadedResource } from "@/lib/ai/moderation-review";
 import { canApplyCorrectionSuggestion } from "@/lib/ai/content-correction-safety";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
 import { checkSlidingWindowRateLimit } from "@/lib/redis-rate-limit";
+import { getAiRequestEnvironment } from "@/lib/ai/session";
 
 const REPORT_RATE_LIMIT = 5;
 const REPORT_RATE_WINDOW_MS = 60 * 60 * 1000;
@@ -69,9 +70,10 @@ export type CorrectionReportResolution =
   | "dismiss"
   | "unpublish_duplicate";
 
-function scheduleContentCorrectionReview(reportId: string) {
+async function scheduleContentCorrectionReview(reportId: string) {
+  const aiEnvironment = await getAiRequestEnvironment();
   after(async () => {
-    await reviewContentCorrectionReport(reportId);
+    await reviewContentCorrectionReport(reportId, aiEnvironment);
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
     revalidateTag("past_papers", "minutes");
@@ -79,12 +81,13 @@ function scheduleContentCorrectionReview(reportId: string) {
   });
 }
 
-function scheduleConvertedResourceReview(resource: {
+async function scheduleConvertedResourceReview(resource: {
   id: string;
   type: "note" | "pastPaper";
 }) {
+  const aiEnvironment = await getAiRequestEnvironment();
   after(async () => {
-    await reviewUploadedResource({ ...resource, autoApprove: true });
+    await reviewUploadedResource({ ...resource, autoApprove: true, aiEnvironment });
     revalidatePath("/mod");
     revalidateTag("notes", "minutes");
     revalidateTag("past_papers", "minutes");
@@ -171,7 +174,7 @@ export async function submitContentCorrectionReport(input: z.input<typeof Submit
     .returning({ id: contentCorrectionReport.id });
   if (!created) throw new Error("Could not create the report.");
 
-  scheduleContentCorrectionReview(created.id);
+  await scheduleContentCorrectionReview(created.id);
 
   return { status: "submitted" as const, id: created.id };
 }
@@ -329,7 +332,7 @@ export async function recheckContentCorrectionReport(reportId: string) {
     .returning({ id: contentCorrectionReport.id });
   if (!report) throw new Error("This report is no longer awaiting review.");
 
-  scheduleContentCorrectionReview(report.id);
+  await scheduleContentCorrectionReview(report.id);
   revalidatePath("/mod");
   return { status: "pending" as const };
 }
@@ -650,7 +653,7 @@ export async function resolveContentCorrectionReport(
     }
   });
   if (convertedResource) {
-    scheduleConvertedResourceReview(convertedResource);
+    await scheduleConvertedResourceReview(convertedResource);
   }
   revalidatePath("/mod");
   revalidateTag("notes", "minutes");

@@ -60,6 +60,7 @@ import {
   currentBrowserRoutePath,
 } from "./voice-navigation";
 import VoiceAgentDock from "./voice-agent-dock";
+import { useAiSession } from "@/app/components/ai/ai-session-provider";
 import {
   captureVoiceAgentLlmGeneration,
   captureVoiceAgentError,
@@ -98,6 +99,7 @@ export default function VoiceAgentProvider({
   children: React.ReactNode;
 }) {
   const { push, replace } = useRouter();
+  const { ensureAiReady } = useAiSession();
   const browserPath = useBrowserPath();
   const [controller] = useState(() =>
     createVoiceControlController({
@@ -891,9 +893,14 @@ export default function VoiceAgentProvider({
       hide();
     }
 
-    voiceAnalyticsSessionIdRef.current = crypto.randomUUID();
-    void controller.connect();
-  }, [controller, hide, runtime.activity, runtime.connected]);
+    void ensureAiReady("voice").then((ready) => {
+      if (!ready) return;
+      voiceAnalyticsSessionIdRef.current = crypto.randomUUID();
+      void controller.connect();
+    }).catch((error) => {
+      setLastError(error instanceof Error ? error.message : "Could not configure voice study.");
+    });
+  }, [controller, ensureAiReady, hide, runtime.activity, runtime.connected]);
 
   const dismissLastError = useCallback(() => {
     setLastError(null);

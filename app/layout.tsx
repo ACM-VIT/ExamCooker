@@ -9,6 +9,7 @@ import HydrationRecovery from "@/app/hydration-recovery";
 import { hydrationRecoveryInitScript } from "@/app/hydration-recovery-script";
 import CapacitorBridge from "@/app/components/capacitor-bridge";
 import NativeIosTabSync from "@/app/components/native-ios-tab-sync";
+import { AiSessionProvider } from "@/app/components/ai/ai-session-provider";
 import AndroidInstallBanner from "@/app/components/android-install-banner";
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_KEYWORDS, getBaseUrl } from "@/lib/seo";
@@ -147,7 +148,7 @@ export default function RootLayout({
                 }}
             >
                 <HydrationRecovery />
-                {children}
+                <AiSessionProvider>{children}</AiSessionProvider>
                 <Toaster />
                 <Suspense fallback={null}>
                     <UpsellToast />

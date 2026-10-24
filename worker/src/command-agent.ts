@@ -284,7 +284,23 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
       input.surfaceContext,
       trustedUser,
     );
-    const semanticCacheHit = await findCommandSemanticCacheHit(this, this.env, {
+    const requestedAi = input.aiEnvironment;
+    const aiEnvironment = {
+      ...this.env,
+      ...(requestedAi?.AI_PROVIDER === "openai" || requestedAi?.AI_PROVIDER === "anthropic"
+        ? { AI_PROVIDER: requestedAi.AI_PROVIDER }
+        : {}),
+      ...(typeof requestedAi?.AI_COMMAND_MODEL === "string" && requestedAi.AI_COMMAND_MODEL.length <= 100
+        ? { AI_COMMAND_MODEL: requestedAi.AI_COMMAND_MODEL }
+        : {}),
+      ...(typeof requestedAi?.OPENAI_API_KEY === "string" && requestedAi.OPENAI_API_KEY.length <= 512
+        ? { OPENAI_API_KEY: requestedAi.OPENAI_API_KEY }
+        : {}),
+      ...(typeof requestedAi?.ANTHROPIC_API_KEY === "string" && requestedAi.ANTHROPIC_API_KEY.length <= 512
+        ? { ANTHROPIC_API_KEY: requestedAi.ANTHROPIC_API_KEY }
+        : {}),
+    };
+    const semanticCacheHit = await findCommandSemanticCacheHit(this, aiEnvironment, {
       query,
       surfaceContext,
     }).catch(() => null);
@@ -293,19 +309,23 @@ export class ExamCookerCommandAgent extends Agent<Env, CommandAgentState> {
           ...semanticCacheHit.value,
           resolver: "semantic-cache" as const,
         }
-      : await resolveCommandIntentWithAI(this.env, query, {
+      : await resolveCommandIntentWithAI(aiEnvironment, query, {
           surfaceContext,
         });
 
-    if (!semanticCacheHit && resolution.resolver === "openai") {
-      await storeCommandSemanticCache(this, this.env, {
+    if (
+      !semanticCacheHit &&
+      (resolution.resolver === "openai" || resolution.resolver === "anthropic" ||
+        resolution.resolver === "gateway")
+    ) {
+      await storeCommandSemanticCache(this, aiEnvironment, {
         query,
         surfaceContext,
         value: {
           intent: resolution.intent,
           courseQuery: resolution.courseQuery,
           actions: resolution.actions,
-          resolver: "openai",
+          resolver: resolution.resolver,
         },
       }).catch(() => undefined);
     }

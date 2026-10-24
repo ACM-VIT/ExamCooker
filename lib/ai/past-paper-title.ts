@@ -1,10 +1,9 @@
 import { generateText, Output } from "ai";
-import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { normalizeCourseCode } from "@/lib/course-tags";
-import { AI_MODERATION_MODEL } from "@/lib/ai/moderation-review-types";
+import { getAiTextModel, getAiTextProviderOptions } from "@/lib/ai/provider";
+import { getAiRequestEnvironment } from "@/lib/ai/session";
 
-const AI_PAST_PAPER_MODEL = AI_MODERATION_MODEL;
 const COURSE_CODE_REGEX = /^[A-Z]{2,7}\s?\d{2,5}[A-Z]{0,3}$/i;
 const SLOT_OPTIONS = [
     "A1",
@@ -78,8 +77,9 @@ export async function generatePastPaperTitleFromPdf(input: {
         }
         const data = Buffer.from(await response.arrayBuffer());
 
+        const selection = getAiTextModel("pastPaperTitle", await getAiRequestEnvironment());
         const { output } = await generateText({
-            model: openai.responses(AI_PAST_PAPER_MODEL),
+            model: selection.model,
             output: Output.object({
                 name: "PastPaperMetadata",
                 description:
@@ -107,11 +107,7 @@ export async function generatePastPaperTitleFromPdf(input: {
                     ],
                 },
             ],
-            providerOptions: {
-                openai: {
-                    store: false,
-                },
-            },
+            providerOptions: getAiTextProviderOptions(selection),
         });
 
         return buildPastPaperTitle(output);
