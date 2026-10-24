@@ -60,7 +60,7 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pendingRef = useRef<{ feature: Feature; promise: Promise<boolean>; resolve: (configured: boolean) => void } | null>(null);
+  const pendingRef = useRef<{ feature: Feature | "settings"; promise: Promise<boolean>; resolve: (configured: boolean) => void } | null>(null);
   const modelOptions = MODEL_OPTIONS[provider];
 
   const show = useCallback((nextStatus: Status, nextFeature: Feature) => {
@@ -79,7 +79,7 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
       const pending = pendingRef.current;
       return pending.feature === nextFeature
         ? pending.promise
-        : pending.promise.then((ready) => ready ? ensureAiReady(nextFeature) : false);
+        : pending.promise.then(() => ensureAiReady(nextFeature));
     }
     let resolvePending!: (configured: boolean) => void;
     const promise = new Promise<boolean>((resolve) => { resolvePending = resolve; });
@@ -100,9 +100,15 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   }, [show, toast]);
 
   const openAiSettings = useCallback(async () => {
+    if (pendingRef.current) return;
+    let resolvePending!: (configured: boolean) => void;
+    const promise = new Promise<boolean>((resolve) => { resolvePending = resolve; });
+    pendingRef.current = { feature: "settings", promise, resolve: resolvePending };
     try {
       show(await fetchStatus("pdfMarkdown"), "pdfMarkdown");
     } catch (cause) {
+      pendingRef.current = null;
+      resolvePending(false);
       toast({ title: cause instanceof Error ? cause.message : "Could not load AI settings.", variant: "destructive" });
     }
   }, [show, toast]);

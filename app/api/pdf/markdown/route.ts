@@ -608,6 +608,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const providerKey = provider === "anthropic" ? aiEnvironment.ANTHROPIC_API_KEY : aiEnvironment.OPENAI_API_KEY;
+  if (!providerKey?.trim()) {
+    await releasePdfMarkdownGenerationLock(cacheKey, generationLockToken);
+    return NextResponse.json(
+      { error: "Add an AI provider key to convert this PDF.", code: "AI_KEY_REQUIRED" },
+      { status: 428, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   const traceId = crypto.randomUUID();
   const spanId = crypto.randomUUID();
   const userPrompt =
