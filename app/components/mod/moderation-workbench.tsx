@@ -1143,7 +1143,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
     id: string,
     resolution: CorrectionReportResolution,
   ) => {
-    if (resolution === "convert_type" && !await ensureAiReady("contentCorrection")) return;
+    if (resolution === "convert_type" && !await ensureAiReady("moderation")) return;
     setBusyReportId(id);
     try {
       const result = await resolveContentCorrectionReport(id, resolution);
