@@ -155,7 +155,7 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   return (
     <AiSessionContext.Provider value={{ ensureAiReady, openAiSettings }}>
       {children}
-      <Dialog.Root open={open} onOpenChange={(next) => { if (!next) close(false); }}>
+      <Dialog.Root open={open} onOpenChange={(next) => { if (!next && !saving) close(false); }}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-[120] bg-black/65 backdrop-blur-[3px]" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-[121] max-h-[90dvh] w-[min(92vw,30rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto border-2 border-[#5FC4E7] bg-white p-5 text-black shadow-[4px_4px_0_0_rgba(0,0,0,0.15)] outline-none dark:border-white/20 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[4px_4px_0_0_rgba(255,255,255,0.05)] sm:p-6">
@@ -220,7 +220,7 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
                 {status?.sessionProviders.length ? (
                   <button type="button" disabled={saving} className="mr-auto px-2 py-2 text-sm font-semibold text-red-700 hover:underline disabled:opacity-50 dark:text-red-300" onClick={() => void forget()}>Forget session keys</button>
                 ) : null}
-                <button type="button" className="ec-press border border-black/30 px-4 py-2 text-sm font-semibold transition hover:border-black dark:border-white/30 dark:hover:border-white" onClick={() => close(false)}>Cancel</button>
+                <button type="button" disabled={saving} className="ec-press border border-black/30 px-4 py-2 text-sm font-semibold transition hover:border-black disabled:opacity-50 dark:border-white/30 dark:hover:border-white" onClick={() => close(false)}>Cancel</button>
                 <span className="group relative inline-flex h-10 items-stretch">
                   <span aria-hidden="true" className="absolute inset-0 bg-[#0A0F1C] group-has-[:disabled]:hidden dark:bg-[#3BF4C7]" />
                   <button type="submit" disabled={saving} className="relative inline-flex h-full items-center border-2 border-black bg-[#3BF4C7] px-4 text-sm font-bold text-black transition duration-150 enabled:group-hover:-translate-x-1 enabled:group-hover:-translate-y-1 disabled:cursor-wait disabled:opacity-60 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:enabled:group-hover:border-[#3BF4C7] dark:enabled:group-hover:text-[#3BF4C7]">
