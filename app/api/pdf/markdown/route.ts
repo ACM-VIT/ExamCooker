@@ -566,6 +566,7 @@ export async function POST(request: NextRequest) {
   const cacheMode = parsedBody.cacheMode ?? "default";
   let cacheMetadata: PdfMarkdownCacheMetadata | null = null;
   let generationLockToken: string | null = null;
+  let cacheCanLock = false;
 
   if (cacheMode !== "refresh") {
     const cached = await readPdfMarkdownCache(cacheLookupInput);
@@ -586,35 +587,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (cached.type !== "disabled") {
-      generationLockToken = await tryAcquirePdfMarkdownGenerationLock(cacheKey);
-      if (!generationLockToken) {
-        const waited = await waitForPdfMarkdownCache(cacheLookupInput);
-        if (waited) {
-          return createDoneStreamResponse(
-            {
-              cache: waited.metadata,
-              markdown: waited.entry.markdown,
-              model: modelId,
-              paper: waited.entry.paper,
-              type: "done",
-            },
-            {
-              "X-ExamCooker-Markdown-Cache": "hit-waited",
-            },
-          );
-        }
-      }
-    }
+    cacheCanLock = cached.type !== "disabled";
   }
 
   const providerKey = provider === "anthropic" ? aiEnvironment.ANTHROPIC_API_KEY : aiEnvironment.OPENAI_API_KEY;
   if (!providerKey?.trim()) {
-    await releasePdfMarkdownGenerationLock(cacheKey, generationLockToken);
     return NextResponse.json(
       { error: "Add an AI provider key to convert this PDF.", code: "AI_KEY_REQUIRED" },
       { status: 428, headers: { "Cache-Control": "no-store" } },
     );
+  }
+
+  if (cacheCanLock) {
+    generationLockToken = await tryAcquirePdfMarkdownGenerationLock(cacheKey);
+    if (!generationLockToken) {
+      const waited = await waitForPdfMarkdownCache(cacheLookupInput);
+      if (waited) {
+        return createDoneStreamResponse(
+          {
+            cache: waited.metadata,
+            markdown: waited.entry.markdown,
+            model: modelId,
+            paper: waited.entry.paper,
+            type: "done",
+          },
+          { "X-ExamCooker-Markdown-Cache": "hit-waited" },
+        );
+      }
+    }
   }
 
   const traceId = crypto.randomUUID();

@@ -79,7 +79,9 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
       const pending = pendingRef.current;
       return pending.feature === nextFeature
         ? pending.promise
-        : pending.promise.then(() => ensureAiReady(nextFeature));
+        : pending.promise.then((ready) =>
+          pending.feature === "settings" || ready ? ensureAiReady(nextFeature) : false,
+        );
     }
     let resolvePending!: (configured: boolean) => void;
     const promise = new Promise<boolean>((resolve) => { resolvePending = resolve; });
@@ -100,7 +102,12 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   }, [show, toast]);
 
   const openAiSettings = useCallback(async () => {
-    if (pendingRef.current) return;
+    if (pendingRef.current) {
+      const pending = pendingRef.current;
+      if (pending.feature === "settings") return;
+      await pending.promise;
+      return openAiSettings();
+    }
     let resolvePending!: (configured: boolean) => void;
     const promise = new Promise<boolean>((resolve) => { resolvePending = resolve; });
     pendingRef.current = { feature: "settings", promise, resolve: resolvePending };
