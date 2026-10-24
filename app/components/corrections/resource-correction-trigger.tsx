@@ -15,6 +15,7 @@ import { submitContentCorrectionReport } from "@/app/actions/content-correction-
 import { useGuestPrompt } from "@/app/components/auth-gate";
 import { useToast } from "@/app/components/ui/use-toast";
 import type { CorrectionReportCategory } from "@/lib/ai/content-correction-types";
+import { useHideNativeTabBar } from "@/lib/native-tab-bar";
 
 type Props = {
   resourceId: string;
@@ -95,6 +96,7 @@ export default function ResourceCorrectionTrigger({
   const { requireAuth } = useGuestPrompt();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  useHideNativeTabBar(isMobile && open);
   const [category, setCategory] =
     useState<CorrectionReportCategory>("wrong_title");
   const [description, setDescription] = useState("");

@@ -11,6 +11,7 @@ import { SlidersHorizontal, X } from "lucide-react";
 import { examTypeLabel, examTypeToSlug, examSlugToType } from "@/lib/exam-slug";
 import type { Campus, ExamType, Semester } from "@/db";
 import { cn } from "@/lib/utils";
+import { useHideNativeTabBar } from "@/lib/native-tab-bar";
 
 type Props = {
     basePath: string;
@@ -90,6 +91,7 @@ export default function FilterSheet({
 }: Props) {
     const { replace } = useRouter();
     const [open, setOpen] = useState(false);
+    useHideNativeTabBar(open);
 
     const searchParams = useMemo(
         () => new URLSearchParams(searchString ?? ""),
