@@ -393,6 +393,7 @@ function paperSessionReducer(
         ...state,
         paperStatus: state.paperMarkdown ? "ready" : "idle",
         paperError: null,
+        viewMode: "pdf",
       };
     case "feedbackStarted":
       return {
