@@ -62,6 +62,7 @@ import {
 import { LazyPastPaperPageEditor } from "@/app/components/moderation/lazy-editors";
 import { useAiSession } from "@/app/components/ai/ai-session-provider";
 import type { PdfPaperDocument } from "@/lib/ai/pdf-markdown";
+import { AiSetupRequiredError, requestPdfMarkdownWithSetup } from "@/lib/ai/pdf-markdown-retry";
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
@@ -241,6 +242,7 @@ type PaperSessionAction =
       cache: PdfMarkdownCacheMetadata | null;
     }
   | { type: "loadFailed"; message: string; showPaper: boolean }
+  | { type: "loadCancelled" }
   | { type: "feedbackStarted"; vote: PdfMarkdownFeedbackVote }
   | { type: "feedbackSucceeded"; cache: PdfMarkdownCacheMetadata }
   | { type: "feedbackFailed"; message: string };
@@ -386,6 +388,12 @@ function paperSessionReducer(
         paperError: action.message,
         viewMode: action.showPaper ? "paper" : state.viewMode,
       };
+    case "loadCancelled":
+      return {
+        ...state,
+        paperStatus: state.paperMarkdown ? "ready" : "idle",
+        paperError: null,
+      };
     case "feedbackStarted":
       return {
         ...state,
@@ -422,12 +430,6 @@ async function getJsonResponseErrorMessage(response: Response) {
 
   const text = await response.text().catch(() => "");
   return text.trim() || "Failed to convert this PDF to Markdown.";
-}
-
-class AiSetupRequiredError extends Error {
-  constructor() {
-    super("Add an AI provider key to convert this PDF.");
-  }
 }
 
 async function loadPdfPaper(input: {
@@ -2043,15 +2045,16 @@ function LoadedDocumentSurface({
           pageEdits,
           signal: controller.signal,
         });
-        let response: PdfPaperResponse;
-        try {
-          response = await requestPaper();
-        } catch (error) {
-          if (!(error instanceof AiSetupRequiredError) || controller.signal.aborted) throw error;
-          if (!await ensureAiReady("pdfMarkdown")) throw error;
-          if (controller.signal.aborted) return;
-          response = await requestPaper();
+        const response = await requestPdfMarkdownWithSetup(
+          requestPaper,
+          () => ensureAiReady("pdfMarkdown"),
+          controller.signal,
+        );
+        if (!response) {
+          if (!controller.signal.aborted) dispatchPaper({ type: "loadCancelled" });
+          return;
         }
+        if (controller.signal.aborted) return;
 
         dispatchPaper({
           type: "loadSucceeded",
