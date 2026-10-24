@@ -1,6 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
+import { ChevronDown } from "lucide-react";
 import React, { createContext, useCallback, useContext, useRef, useState } from "react";
 
 type Provider = "openai" | "anthropic";
@@ -18,6 +19,12 @@ const DEFAULT_MODELS: Record<Provider, string> = {
   openai: "gpt-6-luna",
   anthropic: "claude-sonnet-5-5",
 };
+const MODEL_OPTIONS: Record<Provider, string[]> = {
+  openai: ["gpt-6-luna", "gpt-6-sol", "gpt-6-astra"],
+  anthropic: ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
+};
+const fieldClassName = "ec-focus-ring w-full border border-black/25 bg-white px-3 py-2.5 text-sm text-black outline-none placeholder:text-black/35 dark:border-white/25 dark:bg-white/5 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/35";
+const selectClassName = `${fieldClassName} appearance-none pr-11`;
 
 const AiSessionContext = createContext<{
   ensureAiReady: (feature?: Feature) => Promise<boolean>;
@@ -47,6 +54,7 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   const [configurationVersion, setConfigurationVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const pendingRef = useRef<((configured: boolean) => void) | null>(null);
+  const modelOptions = MODEL_OPTIONS[provider];
 
   const show = useCallback((nextStatus: Status, nextFeature: Feature) => {
     const nextProvider = nextFeature === "voice" ? "openai" : nextStatus.provider;
@@ -124,10 +132,10 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
       {children}
       <Dialog.Root open={open} onOpenChange={(next) => { if (!next) close(false); }}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-[120] bg-black/70" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-[121] w-[min(92vw,28rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/15 bg-[#111b2d] p-6 text-white shadow-2xl">
-            <Dialog.Title className="text-xl font-semibold">Configure AI for this session</Dialog.Title>
-            <Dialog.Description className="mt-2 text-sm text-slate-300">
+          <Dialog.Overlay className="fixed inset-0 z-[120] bg-black/65 backdrop-blur-[3px]" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-[121] max-h-[90dvh] w-[min(92vw,30rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto border-2 border-[#5FC4E7] bg-white p-5 text-black shadow-[4px_4px_0_0_rgba(0,0,0,0.15)] outline-none dark:border-white/20 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[4px_4px_0_0_rgba(255,255,255,0.05)] sm:p-6">
+            <Dialog.Title className="text-lg font-bold">Configure AI for this session</Dialog.Title>
+            <Dialog.Description className="mt-2 text-sm leading-relaxed text-black/65 dark:text-[#D5D5D5]/65">
               {feature === "voice"
                 ? "Voice study uses OpenAI Live. Add an OpenAI key with access to gpt-live-1 to start it."
                 : "Add your own provider key to use this AI feature."}
@@ -135,44 +143,44 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
             </Dialog.Description>
             <form onSubmit={save} className="mt-5 space-y-4">
               <label className="block text-sm">
-                <span className="mb-1 block">Provider</span>
-                <select
-                  className="w-full rounded-lg border border-white/20 bg-[#1a2941] px-3 py-2"
-                  value={provider}
-                  disabled={feature === "voice"}
-                  onChange={(event) => {
-                    const next = event.target.value as Provider;
-                    setProvider(next);
-                    setModel(DEFAULT_MODELS[next]);
-                    setApiKey("");
-                  }}
-                >
-                  <option value="openai">OpenAI</option>
-                  <option value="anthropic">Anthropic</option>
-                </select>
+                <span className="mb-1.5 block font-semibold">Provider</span>
+                <span className="relative block">
+                  <select
+                    className={selectClassName}
+                    value={provider}
+                    disabled={feature === "voice"}
+                    onChange={(event) => {
+                      const next = event.target.value as Provider;
+                      setProvider(next);
+                      setModel(DEFAULT_MODELS[next]);
+                      setApiKey("");
+                    }}
+                  >
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-black/55 dark:text-[#D5D5D5]/65" aria-hidden />
+                </span>
               </label>
               {feature !== "voice" && <label className="block text-sm">
-                <span className="mb-1 block">Text model</span>
-                <input
-                  className="w-full rounded-lg border border-white/20 bg-[#1a2941] px-3 py-2"
-                  value={model}
-                  onChange={(event) => setModel(event.target.value)}
-                  list="ai-model-options"
-                  maxLength={100}
-                  autoComplete="off"
-                  required
-                />
-                <datalist id="ai-model-options">
-                  {(provider === "openai"
-                    ? ["gpt-6-luna", "gpt-6-sol", "gpt-6-astra"]
-                    : ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"])
-                    .map((option) => <option key={option} value={option} />)}
-                </datalist>
+                <span className="mb-1.5 block font-semibold">Text model</span>
+                <span className="relative block">
+                  <select
+                    className={selectClassName}
+                    value={model}
+                    onChange={(event) => setModel(event.target.value)}
+                    required
+                  >
+                    {!modelOptions.includes(model) && <option value={model}>{model}</option>}
+                    {modelOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-black/55 dark:text-[#D5D5D5]/65" aria-hidden />
+                </span>
               </label>}
               <label className="block text-sm">
-                <span className="mb-1 block">API key</span>
+                <span className="mb-1.5 block font-semibold">API key</span>
                 <input
-                  className="w-full rounded-lg border border-white/20 bg-[#1a2941] px-3 py-2"
+                  className={fieldClassName}
                   type="password"
                   value={apiKey}
                   onChange={(event) => setApiKey(event.target.value)}
@@ -182,15 +190,18 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
                   required={!status?.configuredProviders.includes(provider)}
                 />
               </label>
-              {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
-              <div className="flex justify-end gap-3">
+              {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
+              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-black/10 pt-4 dark:border-white/10">
                 {status?.sessionProviders.length ? (
-                  <button type="button" disabled={saving} className="mr-auto rounded-lg px-2 py-2 text-sm text-red-300" onClick={() => void forget()}>Forget session keys</button>
+                  <button type="button" disabled={saving} className="mr-auto px-2 py-2 text-sm font-semibold text-red-700 hover:underline disabled:opacity-50 dark:text-red-300" onClick={() => void forget()}>Forget session keys</button>
                 ) : null}
-                <button type="button" className="rounded-lg px-4 py-2 text-slate-300" onClick={() => close(false)}>Cancel</button>
-                <button type="submit" disabled={saving} className="rounded-lg bg-teal-400 px-4 py-2 font-semibold text-slate-950 disabled:opacity-50">
-                  {saving ? "Saving…" : "Continue"}
-                </button>
+                <button type="button" className="ec-press border border-black/30 px-4 py-2 text-sm font-semibold transition hover:border-black dark:border-white/30 dark:hover:border-white" onClick={() => close(false)}>Cancel</button>
+                <span className="group relative inline-flex h-10 items-stretch">
+                  <span aria-hidden="true" className="absolute inset-0 bg-[#0A0F1C] group-has-[:disabled]:hidden dark:bg-[#3BF4C7]" />
+                  <button type="submit" disabled={saving} className="relative inline-flex h-full items-center border-2 border-black bg-[#3BF4C7] px-4 text-sm font-bold text-black transition duration-150 enabled:group-hover:-translate-x-1 enabled:group-hover:-translate-y-1 disabled:cursor-wait disabled:opacity-60 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:enabled:group-hover:border-[#3BF4C7] dark:enabled:group-hover:text-[#3BF4C7]">
+                    {saving ? "Saving…" : "Continue"}
+                  </button>
+                </span>
               </div>
             </form>
           </Dialog.Content>
