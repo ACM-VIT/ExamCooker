@@ -1,4 +1,3 @@
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, isStepCount, Output } from "ai";
 import { z } from "zod";
 import {
@@ -14,6 +13,7 @@ import {
   type CommandIntent,
   type CommandResourceIntent,
 } from "../../lib/command/intent";
+import { getAiTextModel, getAiTextProviderOptions } from "../../lib/ai/provider";
 import { createCommandSurfaceTool } from "./command-surface-tool";
 import type { CommandResolver, Env } from "./types";
 
@@ -130,7 +130,6 @@ export async function resolveCommandIntentWithAI(
   options: ResolveCommandIntentOptions = {},
 ): Promise<CommandIntentResolution> {
   const trimmedQuery = query.trim();
-  const apiKey = env.OPENAI_API_KEY?.trim();
   const surfaceContext: CommandSurfaceContext = {
     query: trimmedQuery,
     currentPath: options.surfaceContext?.currentPath ?? null,
@@ -141,15 +140,14 @@ export async function resolveCommandIntentWithAI(
   const commandSurface = getCommandSurface(surfaceContext);
   const actionCapabilities = commandSurface.capabilities;
 
-  if (!trimmedQuery || !apiKey) {
+  if (!trimmedQuery) {
     return getLocalResolution(query);
   }
 
   try {
-    const openai = createOpenAI({ apiKey });
-    const model = env.OPENAI_COMMAND_MODEL?.trim() || "gpt-6-luna";
+    const selection = getAiTextModel("commandIntent", env);
     const { output: object } = await generateText({
-      model: openai(model),
+      model: selection.model,
       output: Output.object({
         schema: commandIntentSchema,
         name: "command_palette_resolution",
@@ -171,15 +169,9 @@ export async function resolveCommandIntentWithAI(
           : {
               toolChoice: "none",
             },
-      maxOutputTokens: 260,
+      maxOutputTokens: selection.provider === "anthropic" ? 1024 : 260,
       maxRetries: 0,
-      providerOptions: {
-        openai: {
-          reasoningEffort: "low",
-          store: false,
-          textVerbosity: "low",
-        },
-      },
+      providerOptions: getAiTextProviderOptions(selection, "commandIntent"),
       instructions:
         "Classify an ExamCooker command palette query. Return only fields matching the schema. " +
         "resource is the user's target: notes, syllabus, papers, or course. " +
@@ -255,10 +247,12 @@ export async function resolveCommandIntentWithAI(
       intent,
       courseQuery,
       actions,
-      resolver: "openai",
+      resolver: selection.provider === "openai" || selection.provider === "anthropic"
+        ? selection.provider
+        : "gateway",
     };
   } catch (error) {
-    console.warn("[command-agent] OpenAI intent resolver failed", error);
+    console.warn("[command-agent] AI intent resolver failed", error);
     return getLocalResolution(query);
   }
 }

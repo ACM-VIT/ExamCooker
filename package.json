@@ -44,6 +44,7 @@
     "cf:deploy:prod": "opennextjs-cloudflare deploy --config wrangler.production.jsonc --cacheChunkSize 5"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.85",
     "@ai-sdk/openai": "^4.0.91",
     "@azure/identity": "^4.13.3",
     "@azure/storage-blob": "^12.34.0",

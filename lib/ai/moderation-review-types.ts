@@ -1,7 +1,5 @@
 import type { Campus, ExamType, Semester } from "@/db/enums";
 
-export const AI_MODERATION_MODEL = "gpt-6-luna";
-
 export type ModerationResourceType = "note" | "pastPaper";
 export type ModerationReviewStatus =
   | "approved"
@@ -36,7 +34,7 @@ export type ModerationDuplicate = {
 
 export type AiModerationReview = {
   version: 2;
-  model: typeof AI_MODERATION_MODEL;
+  model: string;
   status: ModerationReviewStatus;
   documentKind: "past_paper" | "notes" | "other";
   confidence: number;

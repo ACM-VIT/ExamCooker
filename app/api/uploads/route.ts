@@ -8,6 +8,7 @@ import {
 } from "@/lib/uploads/create-uploaded-resources";
 import { campusValues, db, examTypeValues, semesterValues, uploadResultReceipt } from "@/db";
 import { checkSlidingWindowRateLimit } from "@/lib/redis-rate-limit";
+import { getAiRequestEnvironment } from "@/lib/ai/session";
 
 const MAX_UPLOAD_BATCH = 8;
 const SAVE_RATE_LIMIT = 12;
@@ -162,6 +163,7 @@ export async function POST(request: NextRequest) {
             semester,
             campus,
             hasAnswerKey: body.hasAnswerKey === true,
+            aiEnvironment: await getAiRequestEnvironment(session.user.id),
         });
 
         if (!result.success) {

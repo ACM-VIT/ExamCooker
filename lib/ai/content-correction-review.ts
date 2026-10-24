@@ -1,14 +1,15 @@
 import "server-only";
 
 import { generateText, Output } from "ai";
-import { openai } from "@ai-sdk/openai";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { contentCorrectionReport, db, note, pastPaper } from "@/db";
 import { reviewUploadedResource } from "@/lib/ai/moderation-review";
+import { getAiTextModel, getAiTextProviderOptions } from "@/lib/ai/provider";
+import { getAiRequestEnvironment } from "@/lib/ai/session";
+import { resolveAiTextModel } from "@/lib/ai/models";
 import { fetchModerationPdf } from "@/lib/ai/moderation-pdf";
 import {
-  AI_MODERATION_MODEL,
   type AiModerationReview,
 } from "@/lib/ai/moderation-review-types";
 import type {
@@ -119,10 +120,12 @@ async function evaluateClaim(input: {
   resourceType: "note" | "pastPaper";
   review: AiModerationReview;
   suggestedValue: string | null;
+  aiEnvironment: object;
 }) {
   const pdf = await fetchModerationPdf(input.current.fileUrl);
+  const selection = getAiTextModel("contentCorrection", input.aiEnvironment);
   const { output } = await generateText({
-    model: openai.responses(AI_MODERATION_MODEL),
+    model: selection.model,
     output: Output.object({
       name: "ExamCookerCorrectionClaimEvaluation",
       description: "Whether a user-reported problem is supported by the PDF and moderation evidence.",
@@ -169,7 +172,7 @@ async function evaluateClaim(input: {
         ],
       },
     ],
-    providerOptions: { openai: { store: false } },
+    providerOptions: getAiTextProviderOptions(selection),
   });
   return output;
 }
@@ -367,7 +370,7 @@ function hasSameResourceMetadata(left: CurrentResource, right: CurrentResource) 
   );
 }
 
-async function processReport(reportId: string, expectedReportUpdatedAt: Date) {
+async function processReport(reportId: string, expectedReportUpdatedAt: Date, aiEnvironment: object) {
   const [report] = await db
     .select()
     .from(contentCorrectionReport)
@@ -392,6 +395,7 @@ async function processReport(reportId: string, expectedReportUpdatedAt: Date) {
     id: resourceId,
     type: resourceType,
     autoApprove: false,
+    aiEnvironment,
   });
   const category = report.category as CorrectionReportCategory;
   const claim = await evaluateClaim({
@@ -401,6 +405,7 @@ async function processReport(reportId: string, expectedReportUpdatedAt: Date) {
     resourceType,
     review,
     suggestedValue: report.suggestedValue,
+    aiEnvironment,
   });
   const reviewedResource = await getCurrentResource(resourceId, resourceType);
   if (!reviewedResource) throw new Error("Reported resource no longer exists.");
@@ -475,7 +480,7 @@ async function processReport(reportId: string, expectedReportUpdatedAt: Date) {
 
   const decidedAt = new Date();
   const aiDecision: CorrectionReportDecision = {
-    model: AI_MODERATION_MODEL,
+    model: resolveAiTextModel("contentCorrection", aiEnvironment).qualifiedModelId,
     decision,
     claimVerdict: claim.verdict,
     confidence: claim.confidence,
@@ -520,7 +525,7 @@ async function processReport(reportId: string, expectedReportUpdatedAt: Date) {
   });
 }
 
-export async function reviewContentCorrectionReport(reportId: string) {
+export async function reviewContentCorrectionReport(reportId: string, aiEnvironment?: object) {
   const [pendingReport] = await db
     .select({ updatedAt: contentCorrectionReport.updatedAt })
     .from(contentCorrectionReport)
@@ -534,7 +539,7 @@ export async function reviewContentCorrectionReport(reportId: string) {
   if (!pendingReport) return;
 
   try {
-    await processReport(reportId, pendingReport.updatedAt);
+    await processReport(reportId, pendingReport.updatedAt, aiEnvironment ?? await getAiRequestEnvironment());
   } catch (error) {
     if (error instanceof CorrectionReviewSupersededError) return;
     const summary =

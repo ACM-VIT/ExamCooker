@@ -13,6 +13,7 @@ import {
 import { Drawer } from "vaul";
 import { submitContentCorrectionReport } from "@/app/actions/content-correction-reports";
 import { useGuestPrompt } from "@/app/components/auth-gate";
+import { useAiSession } from "@/app/components/ai/ai-session-provider";
 import { useToast } from "@/app/components/ui/use-toast";
 import type { CorrectionReportCategory } from "@/lib/ai/content-correction-types";
 
@@ -93,6 +94,7 @@ export default function ResourceCorrectionTrigger({
 }: Props) {
   const isMobile = useMobileSheet();
   const { requireAuth } = useGuestPrompt();
+  const { ensureAiReady } = useAiSession();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [category, setCategory] =
@@ -125,6 +127,7 @@ export default function ResourceCorrectionTrigger({
     setError(null);
     startTransition(async () => {
       try {
+        if (!await ensureAiReady()) return;
         await submitContentCorrectionReport({
           resourceId,
           resourceType,

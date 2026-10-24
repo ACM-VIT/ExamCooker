@@ -4,12 +4,16 @@ import type {
   CommandSurfaceContext,
 } from "../../lib/command/actions";
 
-export type CommandResolver = "openai" | "local" | "semantic-cache";
+export type CommandResolver = "openai" | "anthropic" | "gateway" | "local" | "semantic-cache";
 
 export type Env = {
   ExamCookerCommandAgent: DurableObjectNamespace;
   CLOUDFLARE_COMMAND_AGENT_ADMIN_TOKEN?: string;
   OPENAI_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
+  AI_GATEWAY_API_KEY?: string;
+  AI_PROVIDER?: string;
+  AI_COMMAND_MODEL?: string;
   OPENAI_COMMAND_MODEL?: string;
   OPENAI_EMBEDDING_MODEL?: string;
 };
@@ -27,7 +31,7 @@ export type CommandIntentCacheValue = {
   intent: CommandIntent;
   courseQuery: string;
   actions: CommandGeneratedAction[];
-  resolver: "openai" | "local";
+  resolver: "openai" | "anthropic" | "gateway" | "local";
 };
 
 export type CommandHistoryEvent = {
@@ -83,6 +87,12 @@ export type CommandIntentRequestInput = {
   userKey?: string;
   userToken?: string | null;
   surfaceContext?: Partial<CommandSurfaceContext>;
+  aiEnvironment?: {
+    AI_PROVIDER?: string;
+    AI_COMMAND_MODEL?: string;
+    OPENAI_API_KEY?: string;
+    ANTHROPIC_API_KEY?: string;
+  };
 };
 
 export type TrustedCommandUserContext = {

@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useGuestPrompt } from "@/app/components/auth-gate";
 import CoursePicker, { type CourseOption } from "@/app/components/mod/course-picker";
 import AppImage from "@/app/components/common/app-image";
+import { useAiSession } from "@/app/components/ai/ai-session-provider";
 
 type UploadVariant = "Notes" | "Past Papers";
 
@@ -761,6 +762,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     const { toast } = useToast();
     const { push } = useRouter();
     const { requireAuth } = useGuestPrompt();
+    const { ensureAiReady } = useAiSession();
 
     const {
         campusVal,
@@ -1063,6 +1065,13 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                 return;
             }
 
+            try {
+                if (!await ensureAiReady()) return;
+            } catch (error) {
+                dispatch({ type: "patch", payload: { error: error instanceof Error ? error.message : "AI setup failed." } });
+                return;
+            }
+
             startTransition(async () => {
                 try {
                     const formDatas = files.map((file, index) => {
@@ -1159,6 +1168,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             files,
             hasAnswerKey,
             requireAuth,
+            ensureAiReady,
             push,
             semesterVal,
             slot,

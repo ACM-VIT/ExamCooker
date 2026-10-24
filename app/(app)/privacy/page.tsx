@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import LegalPage, { type LegalSection } from "@/app/(app)/legal/legal-page";
 
-const UPDATED_AT = "May 6, 2026";
+const UPDATED_AT = "October 24, 2026";
 
 export const metadata: Metadata = {
     title: "Privacy Policy",
@@ -42,6 +42,10 @@ const sections: LegalSection[] = [
             {
                 label: "AI and voice activity.",
                 text: "Voice guide and PDF question-answering features can send prompts, questions, current page context, document URLs, document titles, model names, response text, timing, token counts, and error details to the configured AI and analytics services. The schema also supports saved study chat conversations and messages.",
+            },
+            {
+                label: "Your AI provider key.",
+                text: "If you add your own OpenAI or Anthropic API key, ExamCooker stores it only in an encrypted, account-bound browser session cookie. The key is sent to the selected provider when you use an AI feature and is not saved in your account database. The cookie is cleared when you sign out or close your browser session.",
             },
             {
                 label: "Local preferences.",
@@ -109,7 +113,7 @@ const sections: LegalSection[] = [
             },
             {
                 label: "AI providers.",
-                text: "OpenAI may process prompts, questions, selected document context, document URLs, voice-session data, model settings, generated responses, timing, usage, and error information when AI or voice features are used.",
+                text: "OpenAI and Anthropic may process prompts, questions, selected document context, document URLs, model settings, generated responses, timing, usage, and error information when their AI features are used. OpenAI may also process voice-session data.",
             },
             {
                 label: "Analytics providers.",

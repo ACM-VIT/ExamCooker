@@ -13,6 +13,7 @@ import React, {
 import { Command } from "cmdk";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useAgent } from "agents/react";
+import { useAiSession } from "@/app/components/ai/ai-session-provider";
 import { usePathname, useRouter } from "next/navigation";
 import {
   invalidateAuthSessionCache,
@@ -115,7 +116,7 @@ type CommandIntentResponse = {
   actions: CommandGeneratedAction[];
   preferences: CommandCoursePreference[];
   source: "cloudflare-agent" | "local";
-  resolver?: "openai" | "local" | "semantic-cache";
+  resolver?: "openai" | "anthropic" | "gateway" | "local" | "semantic-cache";
   transport?: "websocket" | "http" | "local";
 };
 
@@ -124,7 +125,7 @@ type CommandAgentState = {
   lastQuery: string | null;
   lastIntent: CommandIntent | null;
   lastCourseQuery: string | null;
-  lastResolver: "openai" | "local" | "semantic-cache" | null;
+  lastResolver: "openai" | "anthropic" | "gateway" | "local" | "semantic-cache" | null;
   updatedAt: string | null;
 };
 
@@ -211,7 +212,6 @@ const COMMAND_AGENT_INSTANCE =
   process.env.NEXT_PUBLIC_CLOUDFLARE_COMMAND_AGENT_INSTANCE?.trim() ||
   "global";
 const COMMAND_AGENT_READY_TIMEOUT_MS = 3_500;
-const COMMAND_AGENT_INTENT_TIMEOUT_MS = 9_000;
 const COMMAND_AGENT_PREFERENCE_TIMEOUT_MS = 5_000;
 
 const GENERAL_RESOURCE_QUERIES = new Set([
@@ -1069,6 +1069,7 @@ function CommandPaletteSession({
   onOpenChange,
 }: CommandPaletteProps) {
   const { push } = useRouter();
+  const { ensureAiReady } = useAiSession();
   const pathname = usePathname();
   const { isAuthed, status: authStatus } = useGuestPrompt();
   const voiceAgentEnabled =
@@ -1197,25 +1198,9 @@ function CommandPaletteSession({
         surfaceContext,
       };
 
-      const intentRequest = isCommandAgentConfigured && commandUserKey && commandUserToken
-        ? withTimeout(
-            commandAgent.ready,
-            COMMAND_AGENT_READY_TIMEOUT_MS,
-            "Command agent WebSocket",
-          )
-            .then(() =>
-              commandAgent.call<CommandIntentResponse>(
-                "resolveIntent",
-                [input],
-                { timeout: COMMAND_AGENT_INTENT_TIMEOUT_MS },
-              ),
-            )
-            .then((payload) => ({
-              ...payload,
-              transport: "websocket" as const,
-            }))
-            .catch(() => resolveIntentWithServerFallback(input))
-        : resolveIntentWithServerFallback(input);
+      const intentRequest = ensureAiReady().then((ready) =>
+        ready ? resolveIntentWithServerFallback(input) : Promise.reject(new Error("AI was not configured.")),
+      );
 
       void intentRequest
         .then((payload) => {
@@ -1233,11 +1218,10 @@ function CommandPaletteSession({
       window.clearTimeout(timeout);
     };
   }, [
-    commandAgent,
     commandUserToken,
+    ensureAiReady,
     commandUserKey,
     hasSearch,
-    isCommandAgentConfigured,
     localCourseSearchText,
     surfaceContext,
     trimmedSearch,

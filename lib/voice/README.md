@@ -6,7 +6,7 @@ The model chooses how to teach based on the conversation. There is no applicatio
 
 ## Setup
 
-Use the existing server-side `OPENAI_API_KEY`, with access to `gpt-live-1` and `gpt-6-luna`. `OPENAI_PDF_QA_MODEL` remains the optional model override for document/image analysis (default `gpt-6-luna`). No database migration or new environment variable is required.
+Voice needs an OpenAI key with access to `gpt-live-1` and `gpt-6-luna`. A signed-in user can supply it in the AI configuration dialog when starting voice study; an optional server-side `OPENAI_API_KEY` also works. Voice model defaults are centralized in `lib/ai/models.ts`. `AI_PROVIDER` does not change the Live session; its delegated PDF and visible-page study tools use the shared text provider. Set `AI_VOICE_DOCUMENT_MODEL` to override their model, or use the legacy `OPENAI_PDF_QA_MODEL` when OpenAI is selected. No database migration is required.
 
 `POST /api/live/session` requires a signed-in user and accepts only an SDP offer. It builds the model, prompts, voice, and tool definitions on the server, then uses `client.live.create`. The browser never receives a project API key. The WebRTC client waits for `session.started`, streams microphone audio continuously, and receives audio through its remote media track. Ending sends `session.close` and waits for `session.closed`, with a timeout to release resources if finalization fails.
 

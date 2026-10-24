@@ -34,6 +34,7 @@ export type CreateUploadedResourcesInput = {
     semester?: string | null;
     campus?: string | null;
     hasAnswerKey?: boolean;
+    aiEnvironment?: object;
 };
 
 function normalizeOptionalUrl(url: string | null | undefined) {
@@ -55,6 +56,7 @@ export async function createUploadedResources({
     semester,
     campus,
     hasAnswerKey,
+    aiEnvironment,
 }: CreateUploadedResourcesInput) {
     const userRows = await db
         .select({
@@ -152,7 +154,7 @@ export async function createUploadedResources({
     after(async () => {
         await mapWithConcurrency(createdResources, 2, async (resource) => {
             try {
-                await reviewUploadedResource({ ...resource, autoApprove: true });
+                await reviewUploadedResource({ ...resource, autoApprove: true, aiEnvironment });
             } catch (error) {
                 console.error(
                     `Failed to review uploaded ${resource.type} ${resource.id}:`,

@@ -78,6 +78,9 @@ export async function readCommandIntentInput(request: Request) {
     userKey: typeof payload?.userKey === "string" ? payload.userKey : "",
     userToken: typeof payload?.userToken === "string" ? payload.userToken : "",
     surfaceContext,
+    aiEnvironment: payload?.aiEnvironment && typeof payload.aiEnvironment === "object" && !Array.isArray(payload.aiEnvironment)
+      ? payload.aiEnvironment
+      : undefined,
   };
 }
 

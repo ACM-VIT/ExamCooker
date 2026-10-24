@@ -18,6 +18,7 @@ import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
 import { APP_NAV_LINKS } from "@/lib/app-nav-links";
 import { Search, X } from "lucide-react";
+import { useAiSession } from "@/app/components/ai/ai-session-provider";
 
 type Props = {
   isNavOn: boolean;
@@ -127,6 +128,7 @@ const NavBar: React.FC<Props> = ({
   const pathname = usePathname();
   const { push } = useRouter();
   const { isAuthed, requireAuth, openPrompt, session } = useGuestPrompt();
+  const { openAiSettings } = useAiSession();
   const voiceAgentEnabled =
     usePostHogFeatureFlagEnabled(POSTHOG_FEATURE_FLAGS.voiceAgent) ?? false;
   const [
@@ -391,6 +393,16 @@ const NavBar: React.FC<Props> = ({
         <p className="mb-3 break-words text-xs text-black/60 dark:text-[#D5D5D5]/60">
           {session?.user?.email}
         </p>
+        <button
+          type="button"
+          className="mb-2 block text-xs font-semibold text-black hover:underline dark:text-[#D5D5D5]"
+          onClick={() => {
+            dispatch({ type: "close-profile" });
+            void openAiSettings();
+          }}
+        >
+          AI provider and model
+        </button>
         <Link
           href="/delete"
           prefetch={false}

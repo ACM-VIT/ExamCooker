@@ -5,6 +5,7 @@ import { buildLiveSessionConfig } from "@/lib/voice/config";
 import { createVoiceOpenAIClient } from "@/lib/voice/server";
 import { isVoiceRequestSameOrigin } from "@/lib/voice/request-origin";
 import { VoiceSessionOfferSchema } from "@/lib/voice/session-offer";
+import { getAiRequestEnvironment } from "@/lib/ai/session";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -23,7 +24,8 @@ export async function POST(request: NextRequest) {
         { status: 403, headers },
       );
     }
-    if (!process.env.OPENAI_API_KEY) {
+    const aiEnvironment = await getAiRequestEnvironment(userSession.user.id);
+    if (!aiEnvironment.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: "Voice study is not configured." },
         { status: 503, headers },
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
         { status: 400, headers },
       );
     }
-    const result = await createVoiceOpenAIClient().live.create(
+    const result = await createVoiceOpenAIClient(aiEnvironment.OPENAI_API_KEY).live.create(
       {
         session: buildLiveSessionConfig(),
         transport: { type: "webrtc", sdp: parsed.data.sdp },

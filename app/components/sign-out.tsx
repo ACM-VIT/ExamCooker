@@ -9,9 +9,10 @@ export function SignOut({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const handleSignOut = () => {
+    const handleSignOut = async () => {
         captureUserSignedOut();
         invalidateAuthSessionCache();
+        await fetch("/api/ai/session", { method: "DELETE" }).catch(() => undefined);
         void import("next-auth/react").then(({ signOut }) => {
             void signOut({ callbackUrl: "/" }).finally(() => {
                 invalidateAuthSessionCache();

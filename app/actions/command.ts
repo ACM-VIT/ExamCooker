@@ -19,6 +19,7 @@ import {
   getSearchableCourses,
 } from "@/lib/data/course-catalog";
 import { getPastPaperDetailPath } from "@/lib/seo";
+import { getAiRequestEnvironment } from "@/lib/ai/session";
 
 const COMMAND_CLIENT_COOKIE = "ec-command-client-id";
 const COMMAND_CLIENT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -39,7 +40,7 @@ type CommandIntentResponse = {
   courseQuery: string | null;
   actions: CommandGeneratedAction[];
   preferences: CommandCoursePreference[];
-  resolver?: "openai" | "local" | "semantic-cache";
+  resolver?: "openai" | "anthropic" | "gateway" | "local" | "semantic-cache";
   source: "cloudflare-agent" | "local";
   transport?: "websocket" | "http" | "local";
 };
@@ -378,6 +379,12 @@ async function resolveWithCloudflareAgent(input: {
   userKey: string;
   userToken: string | null;
   surfaceContext: Partial<CommandSurfaceContext>;
+  aiEnvironment?: {
+    AI_PROVIDER?: string;
+    AI_COMMAND_MODEL?: string;
+    OPENAI_API_KEY?: string;
+    ANTHROPIC_API_KEY?: string;
+  };
 }) {
   type AgentPayload = {
     intent?: unknown;
@@ -392,7 +399,7 @@ async function resolveWithCloudflareAgent(input: {
     courseQuery: string;
     actions: CommandGeneratedAction[];
     preferences: CommandCoursePreference[];
-    resolver?: "openai" | "local" | "semantic-cache";
+    resolver?: "openai" | "anthropic" | "gateway" | "local" | "semantic-cache";
     transport: "websocket" | "http";
   };
 
@@ -410,6 +417,8 @@ async function resolveWithCloudflareAgent(input: {
     };
     const resolver: AgentResult["resolver"] =
       payload.resolver === "openai" ||
+      payload.resolver === "anthropic" ||
+      payload.resolver === "gateway" ||
       payload.resolver === "local" ||
       payload.resolver === "semantic-cache"
         ? payload.resolver
@@ -516,6 +525,7 @@ export async function resolveCommandIntentAction(
     surfaceContext,
     requestContext.surfaceContext,
   );
+  const aiEnvironment = await getAiRequestEnvironment(session?.user?.id);
 
   try {
     const cloudflareResult = await resolveWithCloudflareAgent({
@@ -524,6 +534,12 @@ export async function resolveCommandIntentAction(
       userKey,
       userToken,
       surfaceContext: trustedSurfaceContext,
+      aiEnvironment: {
+        AI_PROVIDER: aiEnvironment.AI_PROVIDER,
+        AI_COMMAND_MODEL: aiEnvironment.AI_COMMAND_MODEL,
+        OPENAI_API_KEY: aiEnvironment.OPENAI_API_KEY,
+        ANTHROPIC_API_KEY: aiEnvironment.ANTHROPIC_API_KEY,
+      },
     });
 
     if (cloudflareResult) {
