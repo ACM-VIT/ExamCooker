@@ -20,6 +20,7 @@ import {
   type UseVoiceControlReturn,
   type VoiceControlController,
 } from "./voice-runtime";
+import { createVoiceStartCoordinator } from "./voice-start-coordinator";
 import { GhostCursorOverlay, useGhostCursor } from "./voice-ghost-cursor";
 import {
   searchVoiceStudyMaterialsAction,
@@ -112,7 +113,6 @@ export default function VoiceAgentProvider({
   const sessionStartedAtRef = useRef<number | null>(null);
   const sessionEntryPointRef = useRef<VoiceAgentEntryPoint>(entryPoint);
   const voiceAnalyticsSessionIdRef = useRef<string | null>(null);
-  const voiceStartPendingRef = useRef(false);
   const pendingDisconnectReasonRef = useRef<
     "manual" | "error" | "unexpected_disconnect" | null
   >(null);
@@ -124,10 +124,23 @@ export default function VoiceAgentProvider({
   });
   const runtime = useVoiceControl(controller);
   const { cursorState, run, hide } = useGhostCursor();
+  const voiceStartCoordinator = useMemo(() => createVoiceStartCoordinator({
+    ensureAiReady,
+    connect: async () => {
+      voiceAnalyticsSessionIdRef.current = crypto.randomUUID();
+      await controller.connect();
+    },
+    onError: (error) => {
+      setLastError(error instanceof Error ? error.message : "Could not configure voice study.");
+    },
+  }), [controller, ensureAiReady]);
 
   useEffect(() => {
-    return () => controller.disconnect();
-  }, [controller]);
+    return () => {
+      voiceStartCoordinator.cancel();
+      controller.disconnect();
+    };
+  }, [controller, voiceStartCoordinator]);
 
   const getFreshSnapshot = useCallback((maxControls = MAX_VISIBLE_CONTROLS) => {
     const { snapshot, registry } = collectVoicePageSnapshot(maxControls);
@@ -879,7 +892,7 @@ export default function VoiceAgentProvider({
   }, [entryPoint, lastError, runtime.connected]);
 
   const startVoiceAgent = useCallback(() => {
-    if (voiceStartPendingRef.current || runtime.activity === "connecting") {
+    if (voiceStartCoordinator.isPending() || runtime.activity === "connecting") {
       return;
     }
 
@@ -894,20 +907,8 @@ export default function VoiceAgentProvider({
       hide();
     }
 
-    voiceStartPendingRef.current = true;
-    void ensureAiReady("voiceDocument").then((textReady) => {
-      if (!textReady) return false;
-      return ensureAiReady("voice");
-    }).then(async (ready) => {
-      if (!ready) return;
-      voiceAnalyticsSessionIdRef.current = crypto.randomUUID();
-      await controller.connect();
-    }).catch((error) => {
-      setLastError(error instanceof Error ? error.message : "Could not configure voice study.");
-    }).finally(() => {
-      voiceStartPendingRef.current = false;
-    });
-  }, [controller, ensureAiReady, hide, runtime.activity, runtime.connected]);
+    void voiceStartCoordinator.start();
+  }, [controller, hide, runtime.activity, runtime.connected, voiceStartCoordinator]);
 
   const dismissLastError = useCallback(() => {
     setLastError(null);
@@ -916,13 +917,14 @@ export default function VoiceAgentProvider({
   const toggleVoiceAgent = useCallback(() => {
     if (runtime.connected || runtime.activity === "connecting") {
       pendingDisconnectReasonRef.current = "manual";
+      voiceStartCoordinator.cancel();
       controller.disconnect();
       hide();
       return;
     }
 
     startVoiceAgent();
-  }, [controller, hide, runtime.activity, runtime.connected, startVoiceAgent]);
+  }, [controller, hide, runtime.activity, runtime.connected, startVoiceAgent, voiceStartCoordinator]);
 
   const buttonLabel = runtime.connected
     ? "Disconnect the voice guide"
