@@ -51,6 +51,10 @@ async function fetchStatus(feature: Feature) {
   return result;
 }
 
+function featureReady(status: Status, feature: Feature) {
+  return feature === "voice" ? status.voiceReady : status.textReady;
+}
+
 export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [feature, setFeature] = useState<Feature>("pdfMarkdown");
@@ -60,7 +64,7 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pendingRef = useRef<{ feature: Feature; promise: Promise<boolean>; resolve: (configured: boolean) => void } | null>(null);
+  const pendingRef = useRef<{ feature: Feature | "settings"; promise: Promise<boolean>; resolve: (configured: boolean) => void } | null>(null);
   const modelOptions = MODEL_OPTIONS[provider];
 
   const show = useCallback((nextStatus: Status, nextFeature: Feature) => {
@@ -79,13 +83,21 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
       const pending = pendingRef.current;
       return pending.feature === nextFeature
         ? pending.promise
-        : pending.promise.then((ready) => ready ? ensureAiReady(nextFeature) : false);
+        : pending.promise.then(async (ready) => {
+          if (pending.feature === "settings" || ready) return ensureAiReady(nextFeature);
+          try {
+            return featureReady(await fetchStatus(nextFeature), nextFeature);
+          } catch (cause) {
+            toast({ title: cause instanceof Error ? cause.message : "Could not check AI settings.", variant: "destructive" });
+            return false;
+          }
+        });
     }
     let resolvePending!: (configured: boolean) => void;
     const promise = new Promise<boolean>((resolve) => { resolvePending = resolve; });
     pendingRef.current = { feature: nextFeature, promise, resolve: resolvePending };
     void fetchStatus(nextFeature).then((nextStatus) => {
-      if (nextFeature === "voice" ? nextStatus.voiceReady : nextStatus.textReady) {
+      if (featureReady(nextStatus, nextFeature)) {
         pendingRef.current = null;
         resolvePending(true);
       } else {
@@ -99,10 +111,21 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
     return promise;
   }, [show, toast]);
 
-  const openAiSettings = useCallback(async () => {
+  const openAiSettings = useCallback(async (): Promise<void> => {
+    if (pendingRef.current) {
+      const pending = pendingRef.current;
+      if (pending.feature === "settings") return;
+      await pending.promise;
+      return openAiSettings();
+    }
+    let resolvePending!: (configured: boolean) => void;
+    const promise = new Promise<boolean>((resolve) => { resolvePending = resolve; });
+    pendingRef.current = { feature: "settings", promise, resolve: resolvePending };
     try {
       show(await fetchStatus("pdfMarkdown"), "pdfMarkdown");
     } catch (cause) {
+      pendingRef.current = null;
+      resolvePending(false);
       toast({ title: cause instanceof Error ? cause.message : "Could not load AI settings.", variant: "destructive" });
     }
   }, [show, toast]);
@@ -129,7 +152,7 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
       const result = await response.json() as Status & { error?: string };
       if (!response.ok) throw new Error(result.error || "Could not save AI settings.");
       setStatus(result);
-      close(feature === "voice" ? result.voiceReady : result.textReady);
+      close(featureReady(result, feature));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not save AI settings.");
     } finally {

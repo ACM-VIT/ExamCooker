@@ -2,12 +2,13 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { auth } from "@/app/auth";
-import { resolveAiTextModel, type AiTextProvider, type AiTextTask } from "@/lib/ai/models";
+import type { AiTextTask } from "@/lib/ai/models";
+import { AI_SESSION_COOKIE_NAME } from "@/lib/ai/session-cookie";
 import { openAiSession, sealAiSession, type AiSessionSettings } from "@/lib/ai/session-crypto";
+import { buildAiSessionSettings, type SaveAiSessionInput } from "@/lib/ai/session-settings";
 import { createAiSessionEnvironment, createAiSessionStatus, type AiSessionStatus } from "@/lib/ai/session-status";
 
-export const AI_SESSION_COOKIE_NAME = "ec-ai-session";
-const SESSION_LIFETIME_MS = 24 * 60 * 60 * 1000;
+export { AI_SESSION_COOKIE_NAME } from "@/lib/ai/session-cookie";
 
 function encryptionSecret() {
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
@@ -21,30 +22,9 @@ export async function readAiSession(userId: string) {
   return settings?.userId === userId ? settings : null;
 }
 
-export async function saveAiSession(input: {
-  userId: string;
-  provider: AiTextProvider;
-  model: string;
-  apiKey?: string;
-  preserveSelection?: boolean;
-}) {
+export async function saveAiSession(input: SaveAiSessionInput) {
   const previous = await readAiSession(input.userId);
-  const keys = { ...previous?.keys };
-  if (input.apiKey) keys[input.provider] = input.apiKey;
-  const environmentKey = input.provider === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY";
-  if (!keys[input.provider] && !process.env[environmentKey]) throw new Error("Enter an API key for the selected provider.");
-  const defaultSelection = resolveAiTextModel("pdfMarkdown", process.env);
-  const settings: AiSessionSettings = {
-    userId: input.userId,
-    provider: input.preserveSelection
-      ? previous?.provider ?? (defaultSelection.provider === "anthropic" ? "anthropic" : "openai")
-      : input.provider,
-    model: input.preserveSelection
-      ? previous?.model ?? defaultSelection.modelId
-      : input.model,
-    keys,
-    expiresAt: Date.now() + SESSION_LIFETIME_MS,
-  };
+  const settings = buildAiSessionSettings(input, previous, process.env);
   (await cookies()).set(AI_SESSION_COOKIE_NAME, sealAiSession(settings, encryptionSecret()), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

@@ -62,6 +62,7 @@ import {
 import { LazyPastPaperPageEditor } from "@/app/components/moderation/lazy-editors";
 import { useAiSession } from "@/app/components/ai/ai-session-provider";
 import type { PdfPaperDocument } from "@/lib/ai/pdf-markdown";
+import { AiSetupRequiredError, requestPdfMarkdownWithSetup } from "@/lib/ai/pdf-markdown-retry";
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import { downloadPdfFile } from "@/lib/downloads/browser-downloads";
 import { getFallbackPdfFileName } from "@/lib/downloads/resource-names";
@@ -241,6 +242,7 @@ type PaperSessionAction =
       cache: PdfMarkdownCacheMetadata | null;
     }
   | { type: "loadFailed"; message: string; showPaper: boolean }
+  | { type: "loadCancelled" }
   | { type: "feedbackStarted"; vote: PdfMarkdownFeedbackVote }
   | { type: "feedbackSucceeded"; cache: PdfMarkdownCacheMetadata }
   | { type: "feedbackFailed"; message: string };
@@ -386,6 +388,13 @@ function paperSessionReducer(
         paperError: action.message,
         viewMode: action.showPaper ? "paper" : state.viewMode,
       };
+    case "loadCancelled":
+      return {
+        ...state,
+        paperStatus: state.paperMarkdown ? "ready" : "idle",
+        paperError: null,
+        viewMode: "pdf",
+      };
     case "feedbackStarted":
       return {
         ...state,
@@ -449,6 +458,9 @@ async function loadPdfPaper(input: {
   });
 
   if (!response.ok) {
+    if (response.status === 428) {
+      throw new AiSetupRequiredError();
+    }
     throw new Error(await getJsonResponseErrorMessage(response));
   }
 
@@ -2012,7 +2024,7 @@ function LoadedDocumentSurface({
         return;
       }
 
-      if (!await ensureAiReady("pdfMarkdown")) return;
+      if (force && !await ensureAiReady("pdfMarkdown")) return;
       // Overlap the renderer download with a new Markdown request.
       revealPaper();
 
@@ -2023,20 +2035,27 @@ function LoadedDocumentSurface({
       dispatchPaper({ type: "loadStarted", force });
 
       try {
-        const response = await loadPdfPaper({
+        const requestPaper = () => loadPdfPaper({
           cacheMode: force ? "refresh" : "default",
           fileName,
           fileUrl,
           onPartial: (partialPaper) => {
-            if (controller.signal.aborted) {
-              return;
-            }
-
+            if (controller.signal.aborted) return;
             dispatchPaper({ type: "loadPartial", paper: partialPaper });
           },
           pageEdits,
           signal: controller.signal,
         });
+        const response = await requestPdfMarkdownWithSetup(
+          requestPaper,
+          () => ensureAiReady("pdfMarkdown"),
+          controller.signal,
+        );
+        if (!response) {
+          if (!controller.signal.aborted) dispatchPaper({ type: "loadCancelled" });
+          return;
+        }
+        if (controller.signal.aborted) return;
 
         dispatchPaper({
           type: "loadSucceeded",
