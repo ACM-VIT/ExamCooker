@@ -424,6 +424,12 @@ async function getJsonResponseErrorMessage(response: Response) {
   return text.trim() || "Failed to convert this PDF to Markdown.";
 }
 
+class AiSetupRequiredError extends Error {
+  constructor() {
+    super("Add an AI provider key to convert this PDF.");
+  }
+}
+
 async function loadPdfPaper(input: {
   cacheMode?: "default" | "refresh";
   fileName: string;
@@ -449,6 +455,9 @@ async function loadPdfPaper(input: {
   });
 
   if (!response.ok) {
+    if (response.status === 428) {
+      throw new AiSetupRequiredError();
+    }
     throw new Error(await getJsonResponseErrorMessage(response));
   }
 
@@ -2012,7 +2021,7 @@ function LoadedDocumentSurface({
         return;
       }
 
-      if (!await ensureAiReady("pdfMarkdown")) return;
+      if (force && !await ensureAiReady("pdfMarkdown")) return;
       // Overlap the renderer download with a new Markdown request.
       revealPaper();
 
@@ -2023,20 +2032,26 @@ function LoadedDocumentSurface({
       dispatchPaper({ type: "loadStarted", force });
 
       try {
-        const response = await loadPdfPaper({
+        const requestPaper = () => loadPdfPaper({
           cacheMode: force ? "refresh" : "default",
           fileName,
           fileUrl,
           onPartial: (partialPaper) => {
-            if (controller.signal.aborted) {
-              return;
-            }
-
+            if (controller.signal.aborted) return;
             dispatchPaper({ type: "loadPartial", paper: partialPaper });
           },
           pageEdits,
           signal: controller.signal,
         });
+        let response: PdfPaperResponse;
+        try {
+          response = await requestPaper();
+        } catch (error) {
+          if (!(error instanceof AiSetupRequiredError) || controller.signal.aborted) throw error;
+          if (!await ensureAiReady("pdfMarkdown")) throw error;
+          if (controller.signal.aborted) return;
+          response = await requestPaper();
+        }
 
         dispatchPaper({
           type: "loadSucceeded",
