@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import {
   Fragment,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -42,23 +43,29 @@ export default function CliCodeInput({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const previousInitial = useRef(initial);
 
   const value = chars.join("");
   const filled = value.length === LENGTH;
   const formatted = useMemo(() => formatCode(value), [value]);
   const submitting = busy || isSubmitting;
 
+  useLayoutEffect(() => {
+    // Read each slot before controlled updates can replace early typing or autofill.
+    setChars((prev) => {
+      const next = prev.map((char, i) => clean(refs.current[i]?.value ?? char).slice(0, 1));
+      return prev.every((char, i) => char === next[i]) ? prev : next;
+    });
+  }, []);
+
   useEffect(() => {
     const seed = clean(initial);
-    setChars((prev) => {
-      const next = Array.from({ length: LENGTH }, (_, i) => seed[i] ?? "");
-      if (prev.join("") === next.join("")) {
-        return prev;
-      }
-      return next;
-    });
+    if (previousInitial.current !== initial) {
+      previousInitial.current = initial;
+      setChars(Array.from({ length: LENGTH }, (_, i) => seed[i] ?? ""));
+    }
 
-    if (!seed) {
+    if (!seed && !formRef.current?.contains(document.activeElement)) {
       refs.current[0]?.focus();
     }
   }, [initial]);

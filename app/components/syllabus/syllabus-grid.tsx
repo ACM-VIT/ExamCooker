@@ -10,6 +10,7 @@ import { formatSyllabusDisplayName, getCourseSyllabusPath, parseSyllabusName } f
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { createCourseFuse } from "@/lib/course-search-fuse";
+import { usePreserveSearchInput } from "@/lib/use-preserve-search-input";
 import {
     captureCourseSearchAbandoned,
     captureCourseSearchNoResults,
@@ -139,6 +140,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     const [isDownloading, setIsDownloading] = useState(false);
     const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
     const inputRef = useRef<HTMLInputElement>(null);
+    usePreserveSearchInput(inputRef, setQuery);
     const sentinelRef = useRef<HTMLDivElement>(null);
     const { prefetch } = useRouter();
     const { toast } = useToast();
