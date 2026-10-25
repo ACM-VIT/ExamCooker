@@ -140,7 +140,6 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     const [isDownloading, setIsDownloading] = useState(false);
     const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
     const inputRef = useRef<HTMLInputElement>(null);
-    usePreserveSearchInput(inputRef, setQuery);
     const sentinelRef = useRef<HTMLDivElement>(null);
     const { prefetch } = useRouter();
     const { toast } = useToast();
@@ -157,6 +156,16 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     const converted = useRef(false);
     const lastNoResultQuery = useRef<string | null>(null);
     const lastAbandonedQuery = useRef<string | null>(null);
+
+    const handleQueryChange = useCallback((value: string) => {
+        if (!hasInteracted.current) {
+            void initializePostHogClient();
+        }
+        hasInteracted.current = true;
+        converted.current = false;
+        setQuery(value);
+    }, []);
+    usePreserveSearchInput(inputRef, handleQueryChange);
 
     const prefetchHref = useCallback(
         (href: string) => {
@@ -417,14 +426,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                         type="text"
                         value={query}
                         onFocus={() => void initializePostHogClient()}
-                        onChange={(e) => {
-                            if (!hasInteracted.current) {
-                                void initializePostHogClient();
-                            }
-                            hasInteracted.current = true;
-                            converted.current = false;
-                            setQuery(e.target.value);
-                        }}
+                        onChange={(e) => handleQueryChange(e.target.value)}
                         aria-label="Search syllabus"
                         placeholder="Search by code or name..."
                         className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 outline-none focus:outline-none focus-visible:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"

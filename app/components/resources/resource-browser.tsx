@@ -98,7 +98,6 @@ function ResourceBrowser({
     const pathname = usePathname();
     const [query, setQuery] = useState(() => initialSearch);
     const inputRef = useRef<HTMLInputElement>(null);
-    usePreserveSearchInput(inputRef, setQuery);
     const [year, setYear] = useState(() => initialYear);
     const deferredQuery = useDeferredValue(query);
 
@@ -167,6 +166,7 @@ function ResourceBrowser({
         },
         [updateAddressBar, year],
     );
+    usePreserveSearchInput(inputRef, handleQueryChange);
 
     const handleYearSelect = useCallback(
         (value: string) => {

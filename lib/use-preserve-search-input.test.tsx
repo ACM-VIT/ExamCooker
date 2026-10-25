@@ -1,17 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { act, StrictMode, useRef, useState } from "react";
+import { act, StrictMode, useCallback, useRef, useState } from "react";
 import { hydrationFixture } from "./testing/react-hydration";
 import { usePreserveSearchInput } from "./use-preserve-search-input";
 
-function Search({ initial = "", dropdown = false }: { initial?: string; dropdown?: boolean }) {
+function Search({ initial = "", dropdown = false, onChange }: {
+  initial?: string;
+  dropdown?: boolean;
+  onChange?: (value: string) => void;
+}) {
   const [query, setQuery] = useState(initial);
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  usePreserveSearchInput(inputRef, setQuery, dropdown ? setOpen : undefined);
+  const handleChange = useCallback((value: string) => {
+    setQuery(value);
+    onChange?.(value);
+  }, [onChange]);
+  usePreserveSearchInput(inputRef, handleChange, dropdown ? setOpen : undefined);
   return (
     <section>
-      <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} />
+      <input ref={inputRef} value={query} onChange={(event) => handleChange(event.target.value)} />
       <output>{query ? `Results for ${query}` : "All results"}</output>
       {query && <button onClick={() => setQuery("")}>Clear</button>}
       {open && <p>Suggestions</p>}
@@ -59,8 +67,28 @@ test("multiple searches adopt only their own field and keep unfocused dropdowns 
 });
 
 test("untouched inputs keep the server default", async (t) => {
-  const fixture = hydrationFixture(t, <Search initial="physics" />);
+  const changes: string[] = [];
+  const fixture = hydrationFixture(t, <StrictMode><Search initial="physics" onChange={(value) => changes.push(value)} /></StrictMode>);
   await fixture.hydrate();
   assert.equal(fixture.container.querySelector("input")?.value, "physics");
+  assert.deepEqual(changes, [], "server defaults must not be reported as user edits");
+  assert.deepEqual(fixture.errors, []);
+});
+
+test("adopted edits run the normal change-handler side effects", async (t) => {
+  const changes: string[] = [];
+  const fixture = hydrationFixture(t, <Search onChange={(value) => changes.push(value)} />);
+  fixture.container.querySelector("input")!.value = "chemistry";
+  await fixture.hydrate();
+  assert.deepEqual(changes, ["chemistry"]);
+  assert.deepEqual(fixture.errors, []);
+});
+
+test("clearing before hydration runs side effects with the empty value", async (t) => {
+  const changes: string[] = [];
+  const fixture = hydrationFixture(t, <Search initial="physics" onChange={(value) => changes.push(value)} />);
+  fixture.container.querySelector("input")!.value = "";
+  await fixture.hydrate();
+  assert.deepEqual(changes, [""]);
   assert.deepEqual(fixture.errors, []);
 });
