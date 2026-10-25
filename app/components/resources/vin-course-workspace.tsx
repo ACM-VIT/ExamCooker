@@ -17,6 +17,7 @@ import AppImage from "@/app/components/common/app-image";
 import InlineYouTubePlayer from "@/app/components/resources/inline-youtube-player";
 import { captureResourceVisualFailed } from "@/lib/posthog/client";
 import { cn } from "@/lib/utils";
+import { usePreserveSearchInput } from "@/lib/use-preserve-search-input";
 import type {
     VinCourse,
     VinModule,
@@ -537,6 +538,8 @@ function SidebarBody({
     selectTopic,
 }: SidebarBodyProps) {
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+    const inputRef = useRef<HTMLInputElement>(null);
+    usePreserveSearchInput(inputRef, setQuery);
 
     const isCollapsed = useCallback(
         (moduleId: string, hasActive: boolean) => {
@@ -559,6 +562,7 @@ function SidebarBody({
                 <div className="relative flex h-9 items-center border border-black/20 bg-[#F5F9FB] px-2 dark:border-[#D5D5D5]/20 dark:bg-[#0A0F1C]">
                     <SearchIconLucide className="size-3.5 shrink-0 text-black/45 dark:text-[#D5D5D5]/45" />
                         <input
+                            ref={inputRef}
                             type="search"
                             value={query}
                             aria-label="Search topics"

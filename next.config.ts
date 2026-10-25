@@ -139,6 +139,7 @@ const nextConfig: NextConfig = {
                 : false,
     },
     experimental: {
+        agentUpgrade: "security",
         // Next inflates PPR state with a 5x output limit. Its 100 MB default
         // exceeds Workers' 128 MiB zlib limit even for tiny cached payloads.
         maxPostponedStateSize: "5mb",

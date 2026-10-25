@@ -10,6 +10,7 @@ import { formatSyllabusDisplayName, getCourseSyllabusPath, parseSyllabusName } f
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faDownload, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { createCourseFuse } from "@/lib/course-search-fuse";
+import { usePreserveSearchInput } from "@/lib/use-preserve-search-input";
 import {
     captureCourseSearchAbandoned,
     captureCourseSearchNoResults,
@@ -155,6 +156,16 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
     const converted = useRef(false);
     const lastNoResultQuery = useRef<string | null>(null);
     const lastAbandonedQuery = useRef<string | null>(null);
+
+    const handleQueryChange = useCallback((value: string) => {
+        if (!hasInteracted.current) {
+            void initializePostHogClient();
+        }
+        hasInteracted.current = true;
+        converted.current = false;
+        setQuery(value);
+    }, []);
+    usePreserveSearchInput(inputRef, handleQueryChange);
 
     const prefetchHref = useCallback(
         (href: string) => {
@@ -415,14 +426,7 @@ export default function SyllabusGrid({ syllabi }: { syllabi: SyllabusItem[] }) {
                         type="text"
                         value={query}
                         onFocus={() => void initializePostHogClient()}
-                        onChange={(e) => {
-                            if (!hasInteracted.current) {
-                                void initializePostHogClient();
-                            }
-                            hasInteracted.current = true;
-                            converted.current = false;
-                            setQuery(e.target.value);
-                        }}
+                        onChange={(e) => handleQueryChange(e.target.value)}
                         aria-label="Search syllabus"
                         placeholder="Search by code or name..."
                         className="h-full min-w-0 flex-1 bg-transparent px-4 py-0 text-sm text-black placeholder:text-black/50 outline-none focus:outline-none focus-visible:outline-none sm:text-base dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/60"

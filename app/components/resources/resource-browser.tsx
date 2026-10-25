@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import debounce from "lodash/debounce";
 import { ArrowUpRight, X } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -9,6 +9,7 @@ import SearchIcon from "@/app/components/assets/seacrh.svg";
 import ResourceCourseCard from "@/app/components/resources/resource-course-card";
 import { captureResourceSourceOpened } from "@/lib/posthog/client";
 import type { VinCourse } from "@/lib/data/vin-together";
+import { usePreserveSearchInput } from "@/lib/use-preserve-search-input";
 
 type ResourceBrowserCourse = Pick<
     VinCourse,
@@ -96,6 +97,7 @@ function ResourceBrowser({
 }: ResourceBrowserProps) {
     const pathname = usePathname();
     const [query, setQuery] = useState(() => initialSearch);
+    const inputRef = useRef<HTMLInputElement>(null);
     const [year, setYear] = useState(() => initialYear);
     const deferredQuery = useDeferredValue(query);
 
@@ -164,6 +166,7 @@ function ResourceBrowser({
         },
         [updateAddressBar, year],
     );
+    usePreserveSearchInput(inputRef, handleQueryChange);
 
     const handleYearSelect = useCallback(
         (value: string) => {
@@ -195,6 +198,7 @@ function ResourceBrowser({
                     <div className="relative flex h-12 min-w-0 flex-1 items-center border border-black/25 bg-white px-2 dark:border-[#D5D5D5]/30 dark:bg-[#3D414E]">
                         <Image src={SearchIcon} alt="search" className="dark:invert-[.835]" />
                         <input
+                            ref={inputRef}
                             type="text"
                             value={query}
                             aria-label="Search resources"
