@@ -1,6 +1,6 @@
 "use client";
 
-import React, { addTransitionType, useEffect, useId, useRef, useState, useTransition } from "react";
+import React, { addTransitionType, useEffect, useId, useLayoutEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown } from "lucide-react";
 
@@ -12,6 +12,19 @@ const OPTIONS = [
 ] as const;
 
 type SortValue = (typeof OPTIONS)[number]["value"];
+type PopupLayout = { side: "top" | "bottom"; maxHeight: number };
+
+function revealActiveOption(menu: HTMLUListElement) {
+  const active = menu.querySelector<HTMLElement>("[data-active='true']");
+  if (!active) return;
+  const menuTop = menu.getBoundingClientRect().top + menu.clientTop;
+  const option = active.getBoundingClientRect();
+  if (option.top < menuTop) {
+    menu.scrollTop -= menuTop - option.top;
+  } else if (option.bottom > menuTop + menu.clientHeight) {
+    menu.scrollTop += option.bottom - menuTop - menu.clientHeight;
+  }
+}
 
 export default function SortDropdown({
   basePath,
@@ -27,10 +40,55 @@ export default function SortDropdown({
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
   const typeaheadRef = useRef({ text: "", time: 0 });
   const [isOpen, setIsOpen] = useState(false);
   const selectedIndex = OPTIONS.findIndex((option) => option.value === value);
   const [activeIndex, setActiveIndex] = useState(selectedIndex);
+  const [popupLayout, setPopupLayout] = useState<PopupLayout | null>(null);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const trigger = triggerRef.current;
+    const menu = menuRef.current;
+    if (!trigger || !menu) return;
+    const viewport = window.visualViewport;
+
+    const updateLayout = () => {
+      const bounds = trigger.getBoundingClientRect();
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+      // Leave room for the popup gap (4px) and a viewport inset (8px).
+      const below = Math.max(0, viewportBottom - bounds.bottom - 12);
+      const above = Math.max(0, bounds.top - viewportTop - 12);
+      const fullHeight = menu.scrollHeight + menu.offsetHeight - menu.clientHeight;
+      const side = below < fullHeight && above > below ? "top" : "bottom";
+      const maxHeight = Math.floor(side === "top" ? above : below);
+      setPopupLayout((previous) => previous?.side === side && previous.maxHeight === maxHeight
+        ? previous
+        : { side, maxHeight });
+    };
+
+    function handleScroll(event: Event) {
+      if (event.target !== menu) updateLayout();
+    }
+
+    updateLayout();
+    window.addEventListener("resize", updateLayout);
+    window.addEventListener("scroll", handleScroll, true);
+    viewport?.addEventListener("resize", updateLayout);
+    viewport?.addEventListener("scroll", updateLayout);
+    return () => {
+      window.removeEventListener("resize", updateLayout);
+      window.removeEventListener("scroll", handleScroll, true);
+      viewport?.removeEventListener("resize", updateLayout);
+      viewport?.removeEventListener("scroll", updateLayout);
+    };
+  }, [isOpen]);
+
+  useLayoutEffect(() => {
+    if (isOpen && menuRef.current) revealActiveOption(menuRef.current);
+  }, [isOpen, activeIndex, popupLayout]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -165,10 +223,15 @@ export default function SortDropdown({
         {/* DOM options share the site's theme instead of a browser-native popup. */}
         {isOpen && (
           <ul
+            ref={menuRef}
             id={`${id}-options`}
             role="listbox"
             aria-labelledby={`${id}-label`}
-            className="absolute left-0 top-full mt-1 w-max min-w-full border border-black/15 bg-white p-1 text-black shadow-[0_18px_45px_rgba(15,23,42,0.18)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
+            data-side={popupLayout?.side ?? "bottom"}
+            style={{ maxHeight: popupLayout?.maxHeight }}
+            className={`absolute left-0 w-max min-w-full overflow-y-auto overscroll-contain border border-black/15 bg-white p-1 text-black shadow-[0_18px_45px_rgba(15,23,42,0.18)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[0_18px_50px_rgba(0,0,0,0.45)] ${
+              popupLayout?.side === "top" ? "bottom-full mb-1" : "top-full mt-1"
+            }`}
           >
             {OPTIONS.map((option, index) => (
               <li
@@ -176,6 +239,7 @@ export default function SortDropdown({
                 id={`${id}-option-${index}`}
                 role="option"
                 aria-selected={option.value === value}
+                data-active={index === activeIndex}
                 onPointerMove={() => setActiveIndex(index)}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => choose(option.value)}
