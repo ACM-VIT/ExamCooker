@@ -229,7 +229,7 @@ export default function SortDropdown({
             aria-labelledby={`${id}-label`}
             data-side={popupLayout?.side ?? "bottom"}
             style={{ maxHeight: popupLayout?.maxHeight }}
-            className={`absolute left-0 w-max min-w-full overflow-y-auto overscroll-contain border border-black/15 bg-white p-1 text-black shadow-[0_18px_45px_rgba(15,23,42,0.18)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[0_18px_50px_rgba(0,0,0,0.45)] ${
+            className={`no-scrollbar absolute left-0 w-max min-w-full overflow-y-auto overscroll-contain border border-black/15 bg-white p-1 text-black shadow-[0_18px_45px_rgba(15,23,42,0.18)] dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:shadow-[0_18px_50px_rgba(0,0,0,0.45)] ${
               popupLayout?.side === "top" ? "bottom-full mb-1" : "top-full mt-1"
             }`}
           >
