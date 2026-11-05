@@ -186,7 +186,7 @@ async function networkOnly(event, preloadResponsePromise = null) {
 
 async function networkOnlyWithOfflineFallback(event, preloadResponsePromise = null) {
   const response = await networkOnly(event, preloadResponsePromise);
-  if (response && response.type !== "error" && response.ok) return response;
+  if (response.type !== "error") return response;
   const offline = await caches.match("/offline.html");
   return offline || response;
 }
