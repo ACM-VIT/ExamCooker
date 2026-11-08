@@ -362,6 +362,9 @@ const NavBar: React.FC<Props> = ({
         const platform = Capacitor.getPlatform();
         if (platform !== "ios" && platform !== "android") return;
         const { NativeTabs } = await import("capacitor-native-tab");
+        // A newer isNavOn value owns the tab bar now; an older run must not
+        // apply its show/hide after it.
+        if (cancelled) return;
         if (isNavOn) {
           await NativeTabs.hideTabBar().catch(() => undefined);
         } else {
