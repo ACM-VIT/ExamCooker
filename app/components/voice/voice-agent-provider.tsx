@@ -144,6 +144,12 @@ export default function VoiceAgentProvider({
     };
   }, [controller, voiceStartCoordinator]);
 
+  // Scripted cursor moves belong to a live session; once it ends, queued and
+  // in-flight moves are cancelled so no click lands after voice stopped.
+  useEffect(() => {
+    if (!runtime.connected) hide();
+  }, [hide, runtime.connected]);
+
   const getFreshSnapshot = useCallback((maxControls = MAX_VISIBLE_CONTROLS) => {
     const { snapshot, registry } = collectVoicePageSnapshot(maxControls);
     controlRegistryRef.current = registry;
@@ -624,10 +630,6 @@ export default function VoiceAgentProvider({
 
                 entry.element.click();
               },
-              {
-                easing: "smooth",
-                from: "previous",
-              },
             );
 
             await settleUi({ targetPath: internalPath ?? undefined });
@@ -683,10 +685,6 @@ export default function VoiceAgentProvider({
                 if (submit) {
                   submitFormControl(formControl);
                 }
-              },
-              {
-                easing: "smooth",
-                from: "previous",
               },
             );
 
