@@ -1485,6 +1485,7 @@ function ViewerToolbar({
 }) {
   const [pageInput, setPageInput] = useState("1");
   const [isDownloading, setIsDownloading] = useState(false);
+  const downloadingRef = useRef(false);
   const [isMarkdownMenuOpen, setIsMarkdownMenuOpen] = useState(false);
   const [isMarkdownTooltipVisible, setIsMarkdownTooltipVisible] = useState(true);
   const markdownTooltipId = useId();
@@ -1555,8 +1556,10 @@ function ViewerToolbar({
   }, [currentPage, pageInput, scrollToPage]);
 
   const handleDownload = useCallback(async () => {
-    if (isDownloading) return;
+    // The ref closes the window before the disabled state renders.
+    if (downloadingRef.current) return;
 
+    downloadingRef.current = true;
     setIsDownloading(true);
     capturePdfDownloaded({
       fileName,
@@ -1568,13 +1571,13 @@ function ViewerToolbar({
     try {
       await downloadPdfFile({ fileUrl, fileName, pageEdits });
     } finally {
+      downloadingRef.current = false;
       setIsDownloading(false);
     }
   }, [
     fileName,
     fileUrl,
     hasRenderedPdfPage,
-    isDownloading,
     pageEdits,
     scrollState.totalPages,
     viewMode,
