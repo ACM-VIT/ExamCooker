@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "next-auth";
 import { captureAuthPromptOpened } from "@/lib/posthog/client";
 import { scheduleIdleWork } from "@/lib/schedule-idle-work";
@@ -11,7 +11,12 @@ type AuthGate = {
     isAuthed: boolean;
     session: Session | null;
     status: "authenticated" | "unauthenticated" | "loading";
-    requireAuth: (action?: string) => boolean;
+    /**
+     * True when signed in. While the session is still unknown it returns false
+     * and checks; `onAuthed` then runs if the user turns out to be signed in,
+     * so their click is not silently dropped.
+     */
+    requireAuth: (action?: string, onAuthed?: () => void) => boolean;
     openPrompt: (action?: string) => void;
     closePrompt: () => void;
 };
@@ -56,25 +61,36 @@ export function useGuestPrompt(): AuthGate {
         () => getAuthSessionState(readCachedSession()),
     );
     const isAuthed = Boolean(session?.user);
+    // Only the latest read may update this hook; an older one that answers
+    // later would otherwise overwrite a newer answer.
+    const latestReadRef = useRef(0);
+    const mountedRef = useRef(true);
 
     useEffect(() => {
-        let cancelled = false;
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            latestReadRef.current++;
+        };
+    }, []);
 
+    useEffect(() => {
         // The loader answers from its cache while that is fresh and re-reads
         // it once it is old, so a session that ended elsewhere is noticed.
         function syncSession() {
+            const read = ++latestReadRef.current;
             setAuthSessionState(getAuthSessionState(readCachedSession()));
 
             void loadAuthSession()
                 .then((nextSession) => {
-                    if (cancelled) return;
+                    if (read !== latestReadRef.current) return;
                     setAuthSessionState(getAuthSessionState(nextSession));
                 })
                 // Unknown session: show signed-out controls here without
                 // remembering it, so the next read asks again. The sign-in
                 // page sends signed-in users back.
                 .catch(() => {
-                    if (cancelled) return;
+                    if (read !== latestReadRef.current) return;
                     setAuthSessionState(getAuthSessionState(null));
                 });
         }
@@ -87,7 +103,6 @@ export function useGuestPrompt(): AuthGate {
         window.addEventListener(SESSION_CACHE_INVALIDATED_EVENT, syncSession);
 
         return () => {
-            cancelled = true;
             cancelInitialSync();
             window.removeEventListener(SESSION_CACHE_INVALIDATED_EVENT, syncSession);
         };
@@ -98,17 +113,22 @@ export function useGuestPrompt(): AuthGate {
     }, [router]);
 
     const requireAuth = useCallback(
-        (action?: string) => {
+        (action?: string, onAuthed?: () => void) => {
             if (isAuthed) return true;
             if (status === "loading") {
+                const read = ++latestReadRef.current;
                 void loadAuthSession()
                     .then((nextSession) => {
-                        setAuthSessionState(getAuthSessionState(nextSession));
-                        if (!nextSession?.user) {
-                            router.push(getAuthHref(action));
+                        if (!mountedRef.current) return;
+                        if (read === latestReadRef.current) {
+                            setAuthSessionState(getAuthSessionState(nextSession));
                         }
+                        if (nextSession?.user) onAuthed?.();
+                        else router.push(getAuthHref(action));
                     })
-                    .catch(() => router.push(getAuthHref(action)));
+                    .catch(() => {
+                        if (mountedRef.current) router.push(getAuthHref(action));
+                    });
                 return false;
             }
             router.push(getAuthHref(action));

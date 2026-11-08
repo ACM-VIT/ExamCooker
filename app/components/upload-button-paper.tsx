@@ -1,21 +1,28 @@
 "use client";
 import React, { useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { useGuestPrompt } from "@/app/components/auth-gate";
 import { captureUploadClick } from "@/lib/posthog/client";
 
 const UploadButtonPaper: React.FC = () => {
     const { requireAuth } = useGuestPrompt();
+    const router = useRouter();
     const handleClick = useCallback(
         (event: React.MouseEvent<HTMLAnchorElement>) => {
-            if (!requireAuth("upload past papers")) {
+            // If the session is still loading, continue once it is confirmed.
+            const continueToUpload = () => {
+                captureUploadClick("paper");
+                router.push("/past_papers/create");
+            };
+            if (!requireAuth("upload past papers", continueToUpload)) {
                 event.preventDefault();
                 return;
             }
             captureUploadClick("paper");
         },
-        [requireAuth]
+        [requireAuth, router]
     );
 
     return (
