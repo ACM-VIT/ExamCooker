@@ -4,6 +4,7 @@ import {
   CLI_DEVICE_AUTH_DELIVERY_WINDOW_SECONDS,
   getCliDeviceAuthDeliveryDeadline,
   getCliDeviceAuthState,
+  isUndeliveredCliToken,
   type CliDeviceAuthStateInput,
 } from "./device-auth-state";
 
@@ -75,4 +76,32 @@ test("an approval near expiry leaves the CLI a delivery window", () => {
   );
   const distant = new Date(now + window * 10);
   assert.equal(getCliDeviceAuthDeliveryDeadline(distant, now).getTime(), distant.getTime());
+});
+
+test("cleanup revokes only tokens no CLI collected, including legacy deliveries", () => {
+  const authorizedAt = new Date(now - 10 * 60_000);
+  const expiresAt = new Date(now - 60_000);
+  const expired = {
+    status: "AUTHORIZED" as const,
+    accessTokenId: "t",
+    authorizedAt,
+    completedAt: null,
+    lastPolledAt: null,
+    expiresAt,
+  };
+
+  assert.equal(isUndeliveredCliToken(expired), true, "approved but never polled");
+  assert.equal(isUndeliveredCliToken({ ...expired, completedAt: authorizedAt }), false);
+  // An earlier release delivered on any poll after approval without completedAt.
+  assert.equal(
+    isUndeliveredCliToken({ ...expired, lastPolledAt: new Date(authorizedAt.getTime() + 5_000) }),
+    false,
+  );
+  // Polls before approval or after expiry never returned the token.
+  assert.equal(
+    isUndeliveredCliToken({ ...expired, lastPolledAt: new Date(authorizedAt.getTime() - 5_000) }),
+    true,
+  );
+  assert.equal(isUndeliveredCliToken({ ...expired, lastPolledAt: expiresAt }), true);
+  assert.equal(isUndeliveredCliToken({ ...expired, status: "PENDING", accessTokenId: null }), false);
 });

@@ -13,6 +13,7 @@ import {
   CLI_DEVICE_AUTH_TTL_SECONDS,
   getCliDeviceAuthDeliveryDeadline,
   getCliDeviceAuthState,
+  isUndeliveredCliToken,
   type CliDeviceAuthState,
 } from "@/lib/cli/device-auth-state";
 
@@ -43,14 +44,15 @@ async function deleteExpiredCliDeviceAuthRequests(now: Date) {
       .returning({
         status: cliDeviceAuthRequest.status,
         accessTokenId: cliDeviceAuthRequest.accessTokenId,
+        authorizedAt: cliDeviceAuthRequest.authorizedAt,
         completedAt: cliDeviceAuthRequest.completedAt,
+        lastPolledAt: cliDeviceAuthRequest.lastPolledAt,
+        expiresAt: cliDeviceAuthRequest.expiresAt,
       });
 
     // A token minted for a login the CLI never collected has no holder.
     const undeliveredTokenIds = expired.flatMap((request) =>
-      request.status === "AUTHORIZED" &&
-      !request.completedAt &&
-      request.accessTokenId
+      isUndeliveredCliToken(request) && request.accessTokenId
         ? [request.accessTokenId]
         : [],
     );

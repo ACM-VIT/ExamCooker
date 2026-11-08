@@ -59,3 +59,32 @@ export function getCliDeviceAuthDeliveryDeadline(
     ),
   );
 }
+
+export type CliDeviceAuthDeliveryInput = {
+  status: "PENDING" | "AUTHORIZED" | "DENIED";
+  accessTokenId: string | null;
+  authorizedAt: Date | null;
+  completedAt: Date | null;
+  lastPolledAt: Date | null;
+  expiresAt: Date;
+};
+
+/**
+ * Whether an expired request minted a token that no CLI ever collected, so
+ * the token has no holder and can be revoked.
+ *
+ * Deliveries record completedAt. Earlier releases delivered the token on any
+ * poll after approval without recording completedAt, and an older deployment
+ * may still be serving polls; such a poll leaves lastPolledAt between the
+ * approval and the expiry, and that token is in use.
+ */
+export function isUndeliveredCliToken(request: CliDeviceAuthDeliveryInput) {
+  if (request.status !== "AUTHORIZED" || !request.accessTokenId) return false;
+  if (request.completedAt) return false;
+  const polledAfterApproval =
+    request.authorizedAt !== null &&
+    request.lastPolledAt !== null &&
+    request.lastPolledAt >= request.authorizedAt &&
+    request.lastPolledAt < request.expiresAt;
+  return !polledAfterApproval;
+}
