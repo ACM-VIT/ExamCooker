@@ -265,7 +265,10 @@ class VoiceControlControllerImpl implements VoiceControlController {
   };
   private report(error: unknown, fatal = false) {
     const detail = errorDetails(error);
-    if (detail.code === "aborted") return;
+    // Aborts this controller causes never reach here as fatal: callers check
+    // `current()` first. A fatal AbortError comes from elsewhere (a device
+    // failing after permission) and must still end the session.
+    if (detail.code === "aborted" && !fatal) return;
     if (fatal) this.end("error");
     this.options.onError?.(detail, { fatal });
   }
