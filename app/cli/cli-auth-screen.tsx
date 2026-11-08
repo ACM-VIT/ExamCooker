@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocationSearch } from "@/app/components/common/use-location-search";
-import { approveCliDeviceAuthAction } from "@/app/cli/actions";
+import {
+  decideCliDeviceAuthAction,
+  type CliDeviceDecision,
+} from "@/app/cli/actions";
 import ExamCookerLogo from "@/app/components/common/exam-cooker-logo";
 import ThemeToggle from "@/app/components/common/theme-toggle";
 import CliCodeInput from "./cli-code-input";
@@ -15,6 +19,7 @@ type CliState =
   | "invalid"
   | "pending"
   | "approved"
+  | "denied"
   | "expired";
 
 type CliLookupRequest = {
@@ -22,7 +27,6 @@ type CliLookupRequest = {
   deviceName: string | null;
   status: "PENDING" | "AUTHORIZED" | "DENIED";
   userEmail: string | null;
-  isExpired: boolean;
 };
 
 type CliLookupResponse = {
@@ -45,7 +49,7 @@ type CliScreenState = {
 type CliScreenAction =
   | { type: "empty" }
   | { type: "checking"; userCode: string }
-  | { type: "success"; approved: boolean; payload: CliLookupResponse }
+  | { type: "success"; payload: CliLookupResponse }
   | { type: "invalid"; userCode: string };
 
 function cliScreenReducer(
@@ -68,20 +72,14 @@ function cliScreenReducer(
         state: "checking",
         userCode: action.userCode,
       };
-    case "success": {
-      const nextState =
-        action.approved && action.payload.state === "pending"
-          ? "approved"
-          : action.payload.state;
-
+    case "success":
       return {
         isSignedIn: action.payload.isSignedIn,
         request: action.payload.request,
         sessionEmail: action.payload.sessionEmail,
-        state: nextState,
+        state: action.payload.state,
         userCode: action.payload.userCode,
       };
-    }
     case "invalid":
       return {
         ...state,
@@ -94,18 +92,26 @@ function cliScreenReducer(
 
 function PrimaryActionButton({
   children,
+  disabled = false,
   href,
+  name,
   type = "button",
+  value,
 }: {
   children: React.ReactNode;
+  disabled?: boolean;
   href?: string;
+  name?: string;
   type?: "submit" | "button";
+  value?: string;
 }) {
   const buttonClass =
     "relative inline-flex h-11 items-center justify-center border-2 border-black bg-[#3BF4C7] px-7 text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7]";
 
   return (
-    <div className="group relative inline-flex items-stretch">
+    <div
+      className={`group relative inline-flex items-stretch ${disabled ? "pointer-events-none opacity-50" : ""}`}
+    >
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-[#0A0F1C] dark:bg-[#3BF4C7]"
@@ -123,7 +129,13 @@ function PrimaryActionButton({
           {children}
         </Link>
       ) : (
-        <button type={type} className={buttonClass}>
+        <button
+          type={type}
+          name={name}
+          value={value}
+          disabled={disabled}
+          className={buttonClass}
+        >
           {children}
         </button>
       )}
@@ -140,17 +152,12 @@ function normalizeUserCode(input: string) {
   return `${normalized.slice(0, 4)}-${normalized.slice(4, 8)}`;
 }
 
-function buildCliUrl(userCode: string, approved = false) {
+function buildCliUrl(userCode: string) {
   if (!userCode) {
     return "/cli";
   }
 
-  const params = new URLSearchParams({ code: userCode });
-  if (approved) {
-    params.set("approved", "1");
-  }
-
-  return `/cli?${params.toString()}`;
+  return `/cli?${new URLSearchParams({ code: userCode }).toString()}`;
 }
 
 function StateIcon({ tone }: { tone: "ok" | "warn" }) {
@@ -221,18 +228,48 @@ function InlineAlert({
   );
 }
 
+function DecisionButtons() {
+  // Both buttons stay disabled until the server has recorded either decision.
+  const { pending, data } = useFormStatus();
+  const decision = data?.get("decision");
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <PrimaryActionButton
+        type="submit"
+        name="decision"
+        value={"approve" satisfies CliDeviceDecision}
+        disabled={pending}
+      >
+        {pending && decision === "approve" ? "Approving..." : "Approve device"}
+      </PrimaryActionButton>
+      <button
+        type="submit"
+        name="decision"
+        value={"deny" satisfies CliDeviceDecision}
+        disabled={pending}
+        className="text-sm font-medium text-black/60 underline-offset-4 hover:underline disabled:opacity-50 dark:text-[#D5D5D5]/60"
+      >
+        {pending && decision === "deny" ? "Denying..." : "Deny"}
+      </button>
+    </div>
+  );
+}
+
 function PendingBlock({
   userCode,
   request,
   isSignedIn,
   sessionEmail,
   signInHref,
+  onDecide,
 }: {
   userCode: string;
   request: CliLookupRequest;
   isSignedIn: boolean;
   sessionEmail: string | null;
   signInHref: string;
+  onDecide: (formData: FormData) => Promise<void>;
 }) {
   const left = userCode.slice(0, 4);
   const right = userCode.slice(5, 9);
@@ -257,11 +294,9 @@ function PendingBlock({
       </dl>
 
       {isSignedIn ? (
-        <form action={approveCliDeviceAuthAction}>
+        <form action={onDecide}>
           <input type="hidden" name="userCode" value={request.userCode} />
-          <PrimaryActionButton type="submit">
-            Approve device
-          </PrimaryActionButton>
+          <DecisionButtons />
         </form>
       ) : (
         <PrimaryActionButton href={signInHref}>
@@ -285,7 +320,6 @@ export default function CliAuthScreen() {
     () => normalizeUserCode(searchParams.get("code") ?? ""),
     [searchParams],
   );
-  const initialApproved = searchParams.get("approved") === "1";
 
   const [screenState, dispatchScreenState] = useReducer(cliScreenReducer, {
     isSignedIn: false,
@@ -296,31 +330,21 @@ export default function CliAuthScreen() {
   });
   const { isSignedIn, request, sessionEmail, state, userCode } = screenState;
 
+  // Every lookup, including clearing the code, supersedes the one in flight.
+  // A refresh after a decision keeps the current screen until the answer.
   const runLookup = useCallback(
-    async (
-      rawUserCode: string,
-      options?: {
-        approved?: boolean;
-        updateUrl?: boolean;
-      },
-    ) => {
-      const nextCode = normalizeUserCode(rawUserCode);
-      const approved = options?.approved ?? false;
-      const updateUrl = options?.updateUrl ?? true;
-
-      if (updateUrl) {
-        replace(buildCliUrl(nextCode, approved), { scroll: false });
-      }
+    async (nextCode: string, options?: { refresh?: boolean }) => {
+      const lookupId = lookupIdRef.current + 1;
+      lookupIdRef.current = lookupId;
 
       if (!nextCode) {
         dispatchScreenState({ type: "empty" });
         return;
       }
 
-      const lookupId = lookupIdRef.current + 1;
-      lookupIdRef.current = lookupId;
-
-      dispatchScreenState({ type: "checking", userCode: nextCode });
+      if (!options?.refresh) {
+        dispatchScreenState({ type: "checking", userCode: nextCode });
+      }
 
       try {
         const response = await fetch(
@@ -335,7 +359,7 @@ export default function CliAuthScreen() {
           return;
         }
 
-        dispatchScreenState({ type: "success", approved, payload });
+        dispatchScreenState({ type: "success", payload });
       } catch {
         if (lookupIdRef.current !== lookupId) {
           return;
@@ -344,15 +368,34 @@ export default function CliAuthScreen() {
         dispatchScreenState({ type: "invalid", userCode: nextCode });
       }
     },
-    [replace],
+    [],
   );
 
+  // The URL is the source of the code: looking it up here covers the first
+  // load, history navigation and new submissions alike.
   useEffect(() => {
-    void runLookup(initialCode, {
-      approved: initialApproved,
-      updateUrl: false,
-    });
-  }, [initialApproved, initialCode, runLookup]);
+    void runLookup(initialCode);
+  }, [initialCode, runLookup]);
+
+  const submitCode = useCallback(
+    (rawCode: string) => {
+      const nextCode = normalizeUserCode(rawCode);
+      if (nextCode === initialCode) {
+        void runLookup(nextCode);
+        return;
+      }
+      replace(buildCliUrl(nextCode), { scroll: false });
+    },
+    [initialCode, replace, runLookup],
+  );
+
+  const decide = useCallback(
+    async (formData: FormData) => {
+      await decideCliDeviceAuthAction(formData);
+      await runLookup(userCode, { refresh: true });
+    },
+    [runLookup, userCode],
+  );
 
   const signInHref = `/api/auth/init?redirect=${encodeURIComponent(
     buildCliUrl(userCode || initialCode),
@@ -362,6 +405,7 @@ export default function CliAuthScreen() {
     state === "idle" ||
     state === "checking" ||
     state === "invalid" ||
+    state === "denied" ||
     state === "expired";
 
   const headings = showInput
@@ -407,9 +451,7 @@ export default function CliAuthScreen() {
               <CliCodeInput
                 initial={userCode}
                 busy={state === "checking"}
-                onSubmitCode={(code) => {
-                  void runLookup(code);
-                }}
+                onSubmitCode={submitCode}
               />
 
               <div
@@ -429,6 +471,15 @@ export default function CliAuthScreen() {
                       examcooker auth login
                     </code>{" "}
                     again.
+                  </InlineAlert>
+                ) : null}
+                {state === "denied" ? (
+                  <InlineAlert tone="warn">
+                    This sign-in was denied. Run{" "}
+                    <code className="whitespace-nowrap rounded bg-black/5 px-1 py-0.5 font-mono text-[12px] dark:bg-white/10">
+                      examcooker auth login
+                    </code>{" "}
+                    to start again.
                   </InlineAlert>
                 ) : null}
                 {state === "expired" ? (
@@ -451,6 +502,7 @@ export default function CliAuthScreen() {
               isSignedIn={isSignedIn}
               sessionEmail={sessionEmail}
               signInHref={signInHref}
+              onDecide={decide}
             />
           ) : null}
         </div>
