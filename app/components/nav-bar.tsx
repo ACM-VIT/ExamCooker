@@ -42,7 +42,9 @@ type ProfileMenuPosition = {
 type NavBarState = {
   keepNavExpanded: boolean;
   profileMenuPosition: ProfileMenuPosition | null;
-  showProfile: boolean;
+  // The account the profile menu was opened for. A menu opened before
+  // signing out does not reappear for the next account.
+  profileMenuUserId: string | null;
   voiceEntryPoint: VoiceAgentEntryPoint;
   voiceRuntimeRequested: boolean;
   // A start the voice entry has not handled yet. It lives here, not in the
@@ -52,7 +54,7 @@ type NavBarState = {
 
 type NavBarAction =
   | { type: "close-profile" }
-  | { type: "toggle-profile" }
+  | { type: "toggle-profile"; userId: string }
   | { type: "profile-position"; position: ProfileMenuPosition | null }
   | { type: "keep-expanded"; value: boolean }
   | { type: "start-voice"; entryPoint: VoiceAgentEntryPoint }
@@ -61,7 +63,7 @@ type NavBarAction =
 const initialNavBarState: NavBarState = {
   keepNavExpanded: false,
   profileMenuPosition: null,
-  showProfile: false,
+  profileMenuUserId: null,
   voiceEntryPoint: "nav",
   voiceRuntimeRequested: false,
   voiceStartRequested: false,
@@ -70,9 +72,13 @@ const initialNavBarState: NavBarState = {
 function navBarReducer(state: NavBarState, action: NavBarAction): NavBarState {
   switch (action.type) {
     case "close-profile":
-      return { ...state, showProfile: false };
+      return { ...state, profileMenuUserId: null };
     case "toggle-profile":
-      return { ...state, showProfile: !state.showProfile };
+      return {
+        ...state,
+        profileMenuUserId:
+          state.profileMenuUserId === action.userId ? null : action.userId,
+      };
     case "profile-position":
       return { ...state, profileMenuPosition: action.position };
     case "keep-expanded":
@@ -140,13 +146,18 @@ const NavBar: React.FC<Props> = ({
     {
       keepNavExpanded,
       profileMenuPosition,
-      showProfile,
+      profileMenuUserId,
       voiceEntryPoint,
       voiceRuntimeRequested,
       voiceStartRequested,
     },
     dispatch,
   ] = useReducer(navBarReducer, initialNavBarState);
+  const sessionUserId = session?.user
+    ? (session.user.id ?? session.user.email ?? "")
+    : null;
+  const showProfile =
+    profileMenuUserId !== null && profileMenuUserId === sessionUserId;
   const handleVoiceStartHandled = useCallback(
     () => dispatch({ type: "voice-start-handled" }),
     [],
@@ -381,7 +392,7 @@ const NavBar: React.FC<Props> = ({
   }, [isNavOn]);
 
   const profileMenu =
-    showProfile && isAuthed ? (
+    showProfile ? (
       <div
         ref={profileMenuRef}
         className="fixed z-[90] w-56 rounded-md border border-black/10 bg-white p-3 shadow-lg dark:border-[#D5D5D5]/15 dark:bg-[#121B31]"
@@ -550,7 +561,11 @@ const NavBar: React.FC<Props> = ({
                       type="button"
                       title="Profile"
                       aria-label="Profile"
-                      onClick={() => dispatch({ type: "toggle-profile" })}
+                      onClick={() => {
+                        if (sessionUserId !== null) {
+                          dispatch({ type: "toggle-profile", userId: sessionUserId });
+                        }
+                      }}
                       className="pointer-events-auto flex size-8 cursor-pointer items-center justify-center rounded-full text-black transition-colors duration-200 hover:text-[#0D5875] dark:text-[#D5D5D5] dark:hover:text-[#3BF4C7] lg:h-auto lg:w-full lg:justify-start lg:rounded-none lg:p-0"
                     >
                       <span className="flex size-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-200 can-hover:group-hover/action:-translate-y-1 can-hover:group-hover/action:rotate-[-5deg] can-hover:group-hover/action:scale-110">
