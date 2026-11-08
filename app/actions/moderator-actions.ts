@@ -271,19 +271,23 @@ export async function renameItem(id: string, type: "note" | "pastPaper", title: 
     const session = await auth();
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    if (type === "note") {
-        await db
-            .update(note)
-            .set({ title, ...clearedModerationReview })
-            .where(and(eq(note.id, id), isNull(note.moderationArchivedAt)));
-    }
-    if (type === "pastPaper") {
-        await db
-            .update(pastPaper)
-            .set({ title, ...clearedModerationReview })
-            .where(
-                and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)),
-            );
+    // An archived copy matches no row; report it rather than a rename.
+    const renamed =
+        type === "note"
+            ? await db
+                  .update(note)
+                  .set({ title, ...clearedModerationReview })
+                  .where(and(eq(note.id, id), isNull(note.moderationArchivedAt)))
+                  .returning({ id: note.id })
+            : await db
+                  .update(pastPaper)
+                  .set({ title, ...clearedModerationReview })
+                  .where(
+                      and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)),
+                  )
+                  .returning({ id: pastPaper.id });
+    if (renamed.length === 0) {
+        throw new Error(type === "note" ? "Note not found." : "Past paper not found.");
     }
 
     revalidatePath("/mod");

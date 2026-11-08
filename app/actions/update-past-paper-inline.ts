@@ -189,7 +189,7 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
         nextQuestionPaperId = questionPaper.id;
       }
 
-      await tx
+      const updatedPapers = await tx
         .update(pastPaper)
         .set({
           title: parsed.title,
@@ -205,7 +205,10 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
         })
         .where(
           and(eq(pastPaper.id, parsed.id), isNull(pastPaper.moderationArchivedAt)),
-        );
+        )
+        .returning({ id: pastPaper.id });
+      // Archived after the lookup above: roll back instead of retagging it.
+      if (updatedPapers.length === 0) throw new Error("Past paper not found.");
 
       const tagRecords = await Promise.all(
         tagNames.map((tagName) =>

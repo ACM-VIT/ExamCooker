@@ -30,21 +30,29 @@ export async function updateFile(
 
     try {
         if (activeTab === "notes") {
-            await db
+            const updated = await db
                 .update(note)
                 .set({ title, ...clearedModerationReview })
-                .where(and(eq(note.id, itemID), isNull(note.moderationArchivedAt)));
+                .where(and(eq(note.id, itemID), isNull(note.moderationArchivedAt)))
+                .returning({ id: note.id });
+            if (updated.length === 0) {
+                return { success: false, error: "Item not found." };
+            }
             revalidatePath('/notes');
             revalidateTag('notes', 'minutes');
             revalidateTag(`note:${itemID}`, 'minutes');
             await invalidatePastPapersSurfaceCache();
         } else {
-            await db
+            const updated = await db
                 .update(pastPaper)
                 .set({ title, ...clearedModerationReview })
                 .where(
                     and(eq(pastPaper.id, itemID), isNull(pastPaper.moderationArchivedAt)),
-                );
+                )
+                .returning({ id: pastPaper.id });
+            if (updated.length === 0) {
+                return { success: false, error: "Item not found." };
+            }
             revalidatePath('/past_papers');
             revalidateTag('past_papers', 'minutes');
             revalidateTag(`past_paper:${itemID}`, 'minutes');
