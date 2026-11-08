@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
 
     const result = await createUploadedResources({
       userEmail: user.email,
-      results: [processedFile],
+      claimResults: async () => [processedFile],
       year: yearValidation.value ?? year,
       slot,
       variant,
