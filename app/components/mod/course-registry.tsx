@@ -12,7 +12,7 @@ import {
     Search,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useDeferredValue, useMemo, useState, useTransition } from "react";
+import { useDeferredValue, useMemo, useRef, useState, useTransition } from "react";
 import {
     createManagedCourse,
     updateManagedCourse,
@@ -138,6 +138,8 @@ export default function CourseRegistry({ initialCourses }: Props) {
     const [filter, setFilter] = useState<RegistryFilter>("all");
     const [error, setError] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
+    // Bumped whenever the editor switches to another course or to "create".
+    const editorTargetRef = useRef(0);
     const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase("en"));
 
     const titleGroups = useMemo(() => {
@@ -188,6 +190,7 @@ export default function CourseRegistry({ initialCourses }: Props) {
     );
 
     function selectCourse(course: ModeratorCourseRecord) {
+        editorTargetRef.current++;
         setSelectedId(course.id);
         setMode("edit");
         setDraft(toDraft(course));
@@ -195,6 +198,7 @@ export default function CourseRegistry({ initialCourses }: Props) {
     }
 
     function beginCreate() {
+        editorTargetRef.current++;
         setSelectedId(null);
         setMode("create");
         setDraft(emptyDraft);
@@ -203,6 +207,9 @@ export default function CourseRegistry({ initialCourses }: Props) {
 
     function submit() {
         setError(null);
+        // The save's result may only move the editor if the moderator is still
+        // editing what was saved; the course list is updated either way.
+        const editorTarget = editorTargetRef.current;
         startTransition(async () => {
             const input = {
                 code: draft.code,
@@ -216,8 +223,10 @@ export default function CourseRegistry({ initialCourses }: Props) {
                       ? await updateManagedCourse(selected.id, input)
                       : { success: false as const, error: "Choose a course to edit." };
 
+            const stillEditingSaved = editorTargetRef.current === editorTarget;
             if (!result.success) {
-                setError(result.error);
+                if (stillEditingSaved) setError(result.error);
+                else toast({ title: result.error, variant: "destructive" });
                 return;
             }
 
@@ -230,9 +239,12 @@ export default function CourseRegistry({ initialCourses }: Props) {
                     : [...current, result.course];
                 return next.sort((a, b) => a.code.localeCompare(b.code));
             });
-            setSelectedId(result.course.id);
-            setMode("edit");
-            setDraft(toDraft(result.course));
+            if (stillEditingSaved) {
+                editorTargetRef.current++;
+                setSelectedId(result.course.id);
+                setMode("edit");
+                setDraft(toDraft(result.course));
+            }
             toast({
                 title: mode === "create" ? "Course created." : "Course updated.",
                 description: `${result.course.code} · ${result.course.title}`,
