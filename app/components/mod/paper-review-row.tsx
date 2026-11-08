@@ -28,6 +28,8 @@ type Props = {
     paper: PaperRowData;
     courses: CourseOption[];
     onResolved: (id: string) => void;
+    /** Reports a saved but still incomplete paper, so the list keeps the saved values. */
+    onSaved: (paper: PaperRowData) => void;
     onCourseCreated: (course: CourseOption) => void;
 };
 
@@ -61,7 +63,7 @@ const CAMPUS_OPTIONS: { value: Campus; label: string }[] = [
     { value: "MAURITIUS", label: "Mauritius" },
 ];
 
-export default function PaperReviewRow({ paper, courses, onResolved, onCourseCreated }: Props) {
+export default function PaperReviewRow({ paper, courses, onResolved, onSaved, onCourseCreated }: Props) {
     const initialDraftRef = useRef(paper);
     const [draft, setDraft] = useState<PaperRowData>(initialDraftRef.current);
     const [saving, setSaving] = useState(false);
@@ -74,21 +76,25 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
         (!draft.hasAnswerKey || draft.questionPaper !== null);
 
     const save = async () => {
+        // Save exactly what was on screen when Save was pressed.
+        const saved = draft;
+        const savedIsComplete = isComplete;
         setError(null);
         setSaving(true);
         try {
             await updatePaperMetadata({
-                id: draft.id,
-                courseId: draft.courseId,
-                examType: draft.examType,
-                slot: draft.slot,
-                year: draft.year,
-                semester: draft.semester,
-                campus: draft.campus,
-                hasAnswerKey: draft.hasAnswerKey,
-                questionPaperId: draft.hasAnswerKey ? draft.questionPaper?.id ?? null : null,
+                id: saved.id,
+                courseId: saved.courseId,
+                examType: saved.examType,
+                slot: saved.slot,
+                year: saved.year,
+                semester: saved.semester,
+                campus: saved.campus,
+                hasAnswerKey: saved.hasAnswerKey,
+                questionPaperId: saved.hasAnswerKey ? saved.questionPaper?.id ?? null : null,
             });
-            if (isComplete) onResolved(draft.id);
+            if (savedIsComplete) onResolved(saved.id);
+            else onSaved(saved);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Save failed");
         } finally {
