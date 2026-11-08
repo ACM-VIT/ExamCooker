@@ -185,7 +185,8 @@ export async function settleWithConcurrency<T, R>(
             }
         }
     };
-    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+    const workers = Math.min(Math.max(1, Math.floor(limit)), items.length);
+    await Promise.all(Array.from({ length: workers }, worker));
     return results;
 }
 

@@ -629,6 +629,25 @@ export async function POST(request: NextRequest) {
       // expired; otherwise generate unlocked, and the guarded store keeps the
       // holder's generation if it finishes first.
       generationLockToken = await tryAcquirePdfMarkdownGenerationLock(cacheKey);
+      if (generationLockToken) {
+        // The holder may have stored its result just before releasing.
+        const refreshed = await readPdfMarkdownCache(cacheLookupInput);
+        if (refreshed.type === "hit") {
+          await releasePdfMarkdownGenerationLock(cacheKey, generationLockToken);
+          return createDoneStreamResponse(
+            {
+              cache: refreshed.metadata,
+              markdown: refreshed.entry.markdown,
+              model: modelId,
+              paper: refreshed.entry.paper,
+              type: "done",
+            },
+            { "X-ExamCooker-Markdown-Cache": "hit-waited" },
+          );
+        }
+        cacheMetadata = refreshed.metadata;
+        expectedGenerationId = refreshed.metadata.generationId ?? null;
+      }
     }
   }
 
