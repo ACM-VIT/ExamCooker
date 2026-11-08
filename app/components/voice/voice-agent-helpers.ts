@@ -48,6 +48,56 @@ export type NavigationEventDetail = {
   path: string;
 };
 
+// This tab's ExamCooker history as far as voice can tell: the entries it has
+// seen and which one is current.
+export type InAppHistory = { entries: string[]; index: number };
+
+export function startInAppHistory(path: string): InAppHistory {
+  return { entries: [path], index: 0 };
+}
+
+export function recordInAppNavigation(
+  history: InAppHistory,
+  action: NavigationEventAction,
+  path: string,
+): InAppHistory {
+  const { entries, index } = history;
+  if (action === "replace") {
+    return {
+      entries: entries.map((entry, i) => (i === index ? path : entry)),
+      index,
+    };
+  }
+
+  const push = (): InAppHistory => {
+    if (entries[index] === path) return history;
+    const next = [...entries.slice(0, index + 1), path];
+    return { entries: next, index: next.length - 1 };
+  };
+  // A fragment link adds an entry and reports only a hash change.
+  if (action === "push" || action === "hash") return push();
+
+  // A pop only reports where the browser landed. Prefer one step back or
+  // forward; a longer jump falls back to the latest matching entry.
+  if (index > 0 && entries[index - 1] === path) {
+    return { entries, index: index - 1 };
+  }
+  if (index + 1 < entries.length && entries[index + 1] === path) {
+    return { entries, index: index + 1 };
+  }
+  const knownIndex = entries.lastIndexOf(path);
+  if (knownIndex !== -1) return { entries, index: knownIndex };
+  // Browsers also fire popstate for a new fragment entry, so an unknown
+  // destination is recorded as a new entry rather than wiping the history.
+  return push();
+}
+
+export function previousInAppPath(history: InAppHistory | null) {
+  return history && history.index > 0
+    ? history.entries[history.index - 1]
+    : null;
+}
+
 export type VoiceOpenPdfView = {
   currentPage: number;
   fileName: string;
@@ -92,14 +142,9 @@ function waitForAnimationFrame() {
   });
 }
 
-function dispatchNavigationEvent(action: NavigationEventAction) {
+function dispatchNavigationEvent(detail: NavigationEventDetail) {
   window.dispatchEvent(
-    new CustomEvent<NavigationEventDetail>(NAVIGATION_EVENT, {
-      detail: {
-        action,
-        path: currentBrowserPath(),
-      },
-    }),
+    new CustomEvent<NavigationEventDetail>(NAVIGATION_EVENT, { detail }),
   );
 }
 
@@ -110,36 +155,52 @@ export function useBrowserPath() {
 
   useEffect(() => {
     let navigationFrameId: number | null = null;
+    let active = true;
+    // Every history change in order, each with the path it produced. Dropping
+    // all but one per frame would record a push followed by a replace as a
+    // single replace and lose an entry.
+    let pendingNavigation: NavigationEventDetail[] = [];
 
     const update = () => {
       setBrowserPath(currentBrowserPath());
     };
 
     const scheduleNavigationEvent = (action: NavigationEventAction) => {
+      if (!active) return;
+      pendingNavigation.push({ action, path: currentBrowserPath() });
       if (navigationFrameId !== null) {
         return;
       }
 
       navigationFrameId = window.requestAnimationFrame(() => {
         navigationFrameId = null;
-        dispatchNavigationEvent(action);
+        const batch = pendingNavigation;
+        pendingNavigation = [];
+        batch.forEach(dispatchNavigationEvent);
       });
     };
 
     const originalPushState = window.history.pushState;
     const originalReplaceState = window.history.replaceState;
 
-    window.history.pushState = function (...args) {
+    const patchedPushState: History["pushState"] = function (
+      this: History,
+      ...args
+    ) {
       const result = originalPushState.apply(this, args);
       scheduleNavigationEvent("push");
       return result;
     };
-
-    window.history.replaceState = function (...args) {
+    const patchedReplaceState: History["replaceState"] = function (
+      this: History,
+      ...args
+    ) {
       const result = originalReplaceState.apply(this, args);
       scheduleNavigationEvent("replace");
       return result;
     };
+    window.history.pushState = patchedPushState;
+    window.history.replaceState = patchedReplaceState;
 
     const handleHashChange = () => {
       scheduleNavigationEvent("hash");
@@ -155,12 +216,20 @@ export function useBrowserPath() {
     window.addEventListener(NAVIGATION_EVENT, update);
 
     return () => {
+      active = false;
       if (navigationFrameId !== null) {
         window.cancelAnimationFrame(navigationFrameId);
       }
 
-      window.history.pushState = originalPushState;
-      window.history.replaceState = originalReplaceState;
+      // Another module may have wrapped our patch since (see
+      // use-location-search). Restoring the original then would drop its
+      // wrapper, so ours stays in the chain as an inactive pass-through.
+      if (window.history.pushState === patchedPushState) {
+        window.history.pushState = originalPushState;
+      }
+      if (window.history.replaceState === patchedReplaceState) {
+        window.history.replaceState = originalReplaceState;
+      }
       window.removeEventListener("hashchange", handleHashChange);
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener(NAVIGATION_EVENT, update);

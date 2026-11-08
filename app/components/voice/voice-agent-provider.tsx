@@ -36,12 +36,16 @@ import {
   getCoursePastPapersContext,
   getInternalPathFromHref,
   getOpenPdfView,
+  previousInAppPath,
+  recordInAppNavigation,
   resolveCourseCodeForNavigation,
   resolveCourseExam,
   resolveInternalPath,
   settleUi,
+  startInAppHistory,
   useBrowserPath,
   waitForCondition,
+  type InAppHistory,
   type NavigationEventDetail,
   type VoiceGuideSnapshot,
 } from "./voice-agent-helpers";
@@ -118,10 +122,8 @@ export default function VoiceAgentProvider({
   >(null);
   const studyNotesRef = useRef("");
   const controlRegistryRef = useRef<VoiceControlRegistryEntry[]>([]);
-  const inAppHistoryRef = useRef<{ entries: string[]; index: number }>({
-    entries: [],
-    index: -1,
-  });
+  // null until the first path is known.
+  const inAppHistoryRef = useRef<InAppHistory | null>(null);
   const runtime = useVoiceControl(controller);
   const { cursorState, run, hide } = useGhostCursor();
   const voiceStartCoordinator = useMemo(() => createVoiceStartCoordinator({
@@ -261,13 +263,7 @@ export default function VoiceAgentProvider({
   }, []);
 
   useEffect(() => {
-    const historyState = inAppHistoryRef.current;
-    if (historyState.index !== -1) {
-      return;
-    }
-
-    historyState.entries = [browserPath];
-    historyState.index = 0;
+    inAppHistoryRef.current ??= startInAppHistory(browserPath);
   }, [browserPath]);
 
   useEffect(() => {
@@ -278,59 +274,10 @@ export default function VoiceAgentProvider({
           ? detail.path
           : currentBrowserPath();
       const action = detail?.action ?? "push";
-      const historyState = inAppHistoryRef.current;
-
-      if (historyState.index === -1) {
-        historyState.entries = [nextPath];
-        historyState.index = 0;
-        return;
-      }
-
-      if (action === "replace") {
-        historyState.entries[historyState.index] = nextPath;
-        return;
-      }
-
-      if (action === "push") {
-        if (historyState.entries[historyState.index] === nextPath) {
-          return;
-        }
-
-        historyState.entries = [
-          ...historyState.entries.slice(0, historyState.index + 1),
-          nextPath,
-        ];
-        historyState.index = historyState.entries.length - 1;
-        return;
-      }
-
-      const previousPath =
-        historyState.index > 0
-          ? historyState.entries[historyState.index - 1]
-          : null;
-      const nextForwardPath =
-        historyState.index + 1 < historyState.entries.length
-          ? historyState.entries[historyState.index + 1]
-          : null;
-
-      if (previousPath === nextPath) {
-        historyState.index -= 1;
-        return;
-      }
-
-      if (nextForwardPath === nextPath) {
-        historyState.index += 1;
-        return;
-      }
-
-      const knownIndex = historyState.entries.lastIndexOf(nextPath);
-      if (knownIndex !== -1) {
-        historyState.index = knownIndex;
-        return;
-      }
-
-      historyState.entries = [nextPath];
-      historyState.index = 0;
+      const history = inAppHistoryRef.current;
+      inAppHistoryRef.current = history
+        ? recordInAppNavigation(history, action, nextPath)
+        : startInAppHistory(nextPath);
     };
 
     window.addEventListener(NAVIGATION_EVENT, handleNavigationEvent);
@@ -569,11 +516,7 @@ export default function VoiceAgentProvider({
       defineVoiceTool({
         ...VOICE_TOOL_DEFINITIONS.go_back,
         execute: async () => {
-          const historyState = inAppHistoryRef.current;
-          const previousPath =
-            historyState.index > 0
-              ? historyState.entries[historyState.index - 1]
-              : null;
+          const previousPath = previousInAppPath(inAppHistoryRef.current);
           if (!previousPath) {
             return buildToolFailure(
               "There is no earlier ExamCooker page in this tab to go back to.",
