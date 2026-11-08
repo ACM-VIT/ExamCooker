@@ -5,6 +5,7 @@ import { Check, Flag, X } from "lucide-react";
 import {
   forwardRef,
   useEffect,
+  useRef,
   useState,
   useTransition,
   type ComponentPropsWithoutRef,
@@ -104,8 +105,20 @@ export default function ResourceCorrectionTrigger({
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // The form is cleared after the close animation; reopening first cancels it.
+  const resetTimerRef = useRef<number | null>(null);
+
+  const cancelPendingReset = () => {
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => cancelPendingReset, []);
 
   const reset = () => {
+    resetTimerRef.current = null;
     setCategory("wrong_title");
     setDescription("");
     setSuggestedValue("");
@@ -114,12 +127,23 @@ export default function ResourceCorrectionTrigger({
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
+    // A report being sent keeps the dialog open, so its result lands on the
+    // form that sent it instead of a cleared one.
+    if (!nextOpen && isPending) return;
+    cancelPendingReset();
     setOpen(nextOpen);
-    if (!nextOpen) window.setTimeout(reset, 200);
+    if (!nextOpen) resetTimerRef.current = window.setTimeout(reset, 200);
   };
 
   const submit = () => {
-    if (!requireAuth("report a correction")) return;
+    // If the session is still loading, send once it is confirmed. The
+    // continuation must not call requireAuth again: its closure still sees
+    // the loading state.
+    if (!requireAuth("report a correction", sendReport)) return;
+    sendReport();
+  };
+
+  const sendReport = () => {
     if (description.trim().length < 10) {
       setError("Please add a little more detail so the report can be verified.");
       return;
@@ -127,7 +151,10 @@ export default function ResourceCorrectionTrigger({
     setError(null);
     startTransition(async () => {
       try {
-        if (!await ensureAiReady("contentCorrection")) return;
+        if (!await ensureAiReady("contentCorrection")) {
+          setError("Reports are verified by AI. Add a provider key to send this one.");
+          return;
+        }
         await submitContentCorrectionReport({
           resourceId,
           resourceType,
