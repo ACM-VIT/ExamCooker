@@ -6,10 +6,12 @@ export const RELOAD_GUARD_TTL_MS = 60_000;
 // telemetry once the page is stable.
 export const HYDRATION_RECOVERY_INCIDENT_KEY = "examcooker:hydration-recovery";
 
-type ReloadGuard = {
-  key: string;
-  timestamp: number;
-};
+// At most this many recovery reloads per TTL window, whatever their keys, so
+// errors that alternate between reloads can't loop either.
+export const MAX_RECOVERY_RELOADS = 2;
+
+/** Recovery reloads claimed in the last TTL window: error key → claim time. */
+export type ReloadGuard = Record<string, number>;
 
 function getErrorMessage(error: unknown): string {
   if (!error) return "";
@@ -74,27 +76,61 @@ export function getRecoveryKey(
   return [prefix, pathname, name, getErrorMessage(error), digest].join(":");
 }
 
-function readReloadGuard(): ReloadGuard | null {
+/**
+ * Reads a stored guard, keeping only claims still inside the TTL window. The
+ * single `{ key, timestamp }` record written by earlier builds is accepted.
+ */
+export function parseReloadGuard(raw: string | null, now: number): ReloadGuard {
+  if (!raw) return {};
+  let parsed: unknown;
   try {
-    const rawGuard = window.sessionStorage.getItem(RELOAD_FLAG);
-    if (!rawGuard) return null;
-
-    const guard = JSON.parse(rawGuard) as Partial<ReloadGuard>;
-    if (typeof guard.key !== "string" || typeof guard.timestamp !== "number") {
-      return null;
-    }
-    return { key: guard.key, timestamp: guard.timestamp };
+    parsed = JSON.parse(raw);
   } catch {
-    return null;
+    return {};
+  }
+  if (!parsed || typeof parsed !== "object") return {};
+
+  const legacy = parsed as { key?: unknown; timestamp?: unknown };
+  const entries: Record<string, unknown> =
+    typeof legacy.key === "string" && typeof legacy.timestamp === "number"
+      ? { [legacy.key]: legacy.timestamp }
+      : (parsed as Record<string, unknown>);
+
+  const guard: ReloadGuard = {};
+  for (const [key, timestamp] of Object.entries(entries)) {
+    if (typeof timestamp === "number" && now - timestamp < RELOAD_GUARD_TTL_MS) {
+      guard[key] = timestamp;
+    }
+  }
+  return guard;
+}
+
+/**
+ * Decides whether an error may trigger a recovery reload: once per key, and
+ * no more than MAX_RECOVERY_RELOADS in total per TTL window.
+ */
+export function claimReloadInGuard(
+  guard: ReloadGuard,
+  key: string,
+  now: number,
+): { allowed: boolean; guard: ReloadGuard } {
+  if (key in guard || Object.keys(guard).length >= MAX_RECOVERY_RELOADS) {
+    return { allowed: false, guard };
+  }
+  return { allowed: true, guard: { ...guard, [key]: now } };
+}
+
+function readReloadGuard(now: number): ReloadGuard {
+  try {
+    return parseReloadGuard(window.sessionStorage.getItem(RELOAD_FLAG), now);
+  } catch {
+    return {};
   }
 }
 
-function writeReloadGuard(key: string): boolean {
+function writeReloadGuard(guard: ReloadGuard): boolean {
   try {
-    window.sessionStorage.setItem(
-      RELOAD_FLAG,
-      JSON.stringify({ key, timestamp: Date.now() }),
-    );
+    window.sessionStorage.setItem(RELOAD_FLAG, JSON.stringify(guard));
     return true;
   } catch {
     return false;
@@ -109,13 +145,9 @@ export function clearReloadGuard() {
   }
 }
 
-export function hasFreshReloadGuard(key: string): boolean {
-  const guard = readReloadGuard();
-  if (!guard) return false;
-  return guard.key === key && Date.now() - guard.timestamp < RELOAD_GUARD_TTL_MS;
-}
-
 export function claimChunkReload(key: string): boolean {
-  if (hasFreshReloadGuard(key)) return false;
-  return writeReloadGuard(key);
+  const now = Date.now();
+  const claim = claimReloadInGuard(readReloadGuard(now), key, now);
+  // Without storage there is no loop protection, so never reload then.
+  return claim.allowed && writeReloadGuard(claim.guard);
 }
