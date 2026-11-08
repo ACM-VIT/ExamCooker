@@ -24,7 +24,7 @@ function viewer(t: TestContext) {
   Object.defineProperties(globalThis, Object.fromEntries(Object.entries(globals).map(([key, value]) => [key, { value, configurable: true }])));
   Object.defineProperty(window.Element.prototype, "checkVisibility", { value: () => true });
   Object.defineProperty(window.document, "visibilityState", { value: "visible", configurable: true });
-  const events: { event: string; outcome?: string | number | boolean; preview_visible_ms?: string | number | boolean }[] = [];
+  const events: ({ event: string } & Record<string, string | number | boolean | undefined>)[] = [];
   const tracker = installPdfOpenJourneyTracking({ build: "fixture", backend: "cloudflare", capture: (event, properties) => events.push({ event, ...properties }) });
   t.after(async () => {
     tracker.dispose();
@@ -142,4 +142,21 @@ test("a navigation that lands on another page finishes as redirected", t => {
   v.window.history.pushState({}, "", "/past_papers/OTHER");
   t.mock.timers.tick(PDF_JOURNEY_TIMEOUT_MS);
   assert.deepEqual(v.finished(), ["superseded", "redirected"]);
+});
+
+test("back and forward to a paper are tracked after the URL has already changed", t => {
+  const v = viewer(t);
+  const started = () => v.events.filter(event => event.event === "pdf_open_started");
+  v.resolveDecode();
+  v.tracker.start("/past_papers/TEST", "push");
+  v.window.history.pushState({}, "", "/past_papers/TEST");
+  // Back: the browser has moved to the paper before the router reports it.
+  v.window.history.pushState({}, "", "/past_papers/TEST/paper/one");
+  v.tracker.start("/past_papers/TEST/paper/one", "traverse");
+  assert.equal(started().length, 2);
+  assert.equal(started()[1]?.from_route, "course");
+  // A query-only traversal on the same paper is not another open.
+  v.window.history.pushState({}, "", "/past_papers/TEST/paper/one?page=2");
+  v.tracker.start("/past_papers/TEST/paper/one?page=2", "traverse");
+  assert.equal(started().length, 2);
 });

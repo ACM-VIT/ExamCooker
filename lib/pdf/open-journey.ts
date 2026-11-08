@@ -42,6 +42,10 @@ export function installPdfOpenJourneyTracking(options: {
     return { start(_url: string, _navigationType: NavigationType) {}, dispose() {} };
   }
   let attempt: Attempt | null = null;
+  // The last destination the router dispatched. Back/forward updates the URL
+  // before the router reports the traversal, so this is the only record of
+  // the page a traversal started from.
+  let lastDispatchedPath = cleanPath(location.pathname);
   let root: HTMLElement | null = null;
   let observer: MutationObserver | null = null;
   let intersectionObserver: IntersectionObserver | null = null;
@@ -190,7 +194,12 @@ export function installPdfOpenJourneyTracking(options: {
       try { target = new URL(url, location.href); } catch { return; }
       if (target.origin !== location.origin) return;
       const path = cleanPath(target.pathname);
-      const fromPath = cleanPath(location.pathname);
+      // Push and replace are reported before the URL changes, so the URL is
+      // the page they leave; a dispatch that never arrived does not count.
+      const fromPath = navigationType === "traverse"
+        ? lastDispatchedPath
+        : cleanPath(location.pathname);
+      lastDispatchedPath = path;
       // Query/hash changes and repeated dispatches to the pending destination
       // do not constitute another paper open. Back/forward to a different
       // paper does, and so does retrying a navigation that never arrived.
