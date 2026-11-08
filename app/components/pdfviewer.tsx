@@ -72,6 +72,11 @@ import { readPdfPageImageDataUrl } from "@/lib/pdf/page-image";
 import { getEffectivePdfRotation } from "@/lib/pdf/render-rotation";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import {
+  reconcileSavedPageEdits,
+  savePageEditsLocally,
+  type SavedPageEditsState,
+} from "@/lib/pdf/saved-page-edits";
+import {
   PDFIUM_ENGINE_LOAD_TIMEOUT_MS,
   preloadPdfiumEngine,
   usePreloadedPdfiumEngine,
@@ -189,12 +194,6 @@ type PdfViewerProps = {
   fileUrl: string;
   moderation?: PdfViewerModeration | null;
   pageEdits?: PdfPageEdits | null;
-};
-
-type SavedPageEditsState = {
-  propKey: string;
-  value: PdfPageEdits | null;
-  pendingValueKey: string | null;
 };
 
 type PdfBufferLifecycleState = {
@@ -2523,10 +2522,10 @@ export default function PDFViewer({
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isPdfDarkMode, setIsPdfDarkMode] = useState(false);
   const [savedPageEditsState, setSavedPageEditsState] =
-    useState<SavedPageEditsState>({
+    useState<SavedPageEditsState<PdfPageEdits | null>>({
       propKey: normalizedInitialPageEditsKey,
       value: normalizedInitialPageEdits,
-      pendingValueKey: null,
+      pendingKeys: [],
     });
   const [bufferLifecycleState, dispatchBufferLifecycle] = useReducer(
     pdfBufferLifecycleReducer,
@@ -2545,11 +2544,9 @@ export default function PDFViewer({
       normalizedNextPageEdits,
     );
 
-    setSavedPageEditsState((prev) => ({
-      propKey: prev.propKey,
-      value: normalizedNextPageEdits,
-      pendingValueKey: normalizedNextPageEditsKey,
-    }));
+    setSavedPageEditsState((prev) =>
+      savePageEditsLocally(prev, normalizedNextPageEdits, normalizedNextPageEditsKey),
+    );
   };
   const deferredPageEdits = useDeferredValue(savedPageEdits);
   const deferredPageEditsKey = useMemo(
@@ -2559,24 +2556,9 @@ export default function PDFViewer({
   const engineState = usePreloadedPdfiumEngine(retryNonce);
 
   useEffect(() => {
-    setSavedPageEditsState((prev) => {
-      if (prev.propKey === normalizedInitialPageEditsKey) {
-        return prev;
-      }
-
-      if (
-        prev.pendingValueKey &&
-        prev.pendingValueKey !== normalizedInitialPageEditsKey
-      ) {
-        return prev;
-      }
-
-      return {
-        propKey: normalizedInitialPageEditsKey,
-        value: normalizedInitialPageEdits,
-        pendingValueKey: null,
-      };
-    });
+    setSavedPageEditsState((prev) =>
+      reconcileSavedPageEdits(prev, normalizedInitialPageEditsKey, normalizedInitialPageEdits),
+    );
   }, [normalizedInitialPageEdits, normalizedInitialPageEditsKey]);
 
   const retryViewerLoad = useCallback(() => {
@@ -2600,11 +2582,15 @@ export default function PDFViewer({
     };
   }, []);
 
+  const invalidatedRetryRef = useRef(0);
+
   useEffect(() => {
     let isActive = true;
     dispatchBufferLifecycle({ type: "loadingStarted" });
 
-    if (retryNonce > 0) {
+    // Each retry refetches once. Later page-edit changes reuse that download.
+    if (retryNonce > invalidatedRetryRef.current) {
+      invalidatedRetryRef.current = retryNonce;
       invalidatePdfBuffer(fileUrl);
     }
 
