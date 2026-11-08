@@ -199,12 +199,15 @@ type PdfViewerProps = {
 type PdfBufferLifecycleState = {
   bufferState: PdfBufferState;
   bufferVersion: number;
+  /** Bumped by every retry; refetches the PDF. */
   retryNonce: number;
+  /** Bumped only by retries that may need a fresh engine (engine or document errors). */
+  engineRetryNonce: number;
   showSlowLoadFallback: boolean;
 };
 
 type PdfBufferLifecycleAction =
-  | { type: "retry" }
+  | { type: "retry"; rebuildEngine: boolean }
   | { type: "loadingStarted" }
   | { type: "loadingProgress"; progress: number | null }
   | { type: "loaded"; buffer: ArrayBuffer }
@@ -267,6 +270,7 @@ const INITIAL_PDF_BUFFER_LIFECYCLE_STATE: PdfBufferLifecycleState = {
   },
   bufferVersion: 0,
   retryNonce: 0,
+  engineRetryNonce: 0,
   showSlowLoadFallback: false,
 };
 
@@ -279,6 +283,7 @@ function pdfBufferLifecycleReducer(
       return {
         ...state,
         retryNonce: state.retryNonce + 1,
+        engineRetryNonce: state.engineRetryNonce + (action.rebuildEngine ? 1 : 0),
         showSlowLoadFallback: false,
       };
     case "loadingStarted":
@@ -2578,6 +2583,7 @@ export default function PDFViewer({
     bufferState,
     bufferVersion,
     retryNonce,
+    engineRetryNonce,
     showSlowLoadFallback,
   } = bufferLifecycleState;
   const savedPageEdits = savedPageEditsState.value;
@@ -2596,7 +2602,7 @@ export default function PDFViewer({
     () => serializePdfPageEdits(deferredPageEdits),
     [deferredPageEdits],
   );
-  const engineState = usePreloadedPdfiumEngine(retryNonce);
+  const engineState = usePreloadedPdfiumEngine(engineRetryNonce);
 
   useEffect(() => {
     setSavedPageEditsState((prev) =>
@@ -2604,8 +2610,13 @@ export default function PDFViewer({
     );
   }, [normalizedInitialPageEdits, normalizedInitialPageEditsKey]);
 
+  // Engine and document failures may come from a broken engine, so their
+  // retry builds a fresh one. A failed download only needs the PDF again.
   const retryViewerLoad = useCallback(() => {
-    dispatchBufferLifecycle({ type: "retry" });
+    dispatchBufferLifecycle({ type: "retry", rebuildEngine: true });
+  }, []);
+  const retryDownload = useCallback(() => {
+    dispatchBufferLifecycle({ type: "retry", rebuildEngine: false });
   }, []);
 
   // Marks the document while any PDF viewer is mounted so fixed chrome that
@@ -2774,7 +2785,7 @@ export default function PDFViewer({
       <BufferErrorState
         fileUrl={fileUrl}
         message={bufferState.message}
-        onRetry={retryViewerLoad}
+        onRetry={retryDownload}
       />
     );
   }
@@ -2791,7 +2802,7 @@ export default function PDFViewer({
         fileUrl={fileUrl}
         progress={bufferState.progress}
         showFallback={showSlowLoadFallback}
-        onRetry={retryViewerLoad}
+        onRetry={retryDownload}
       />
     );
   }
@@ -2805,7 +2816,7 @@ export default function PDFViewer({
       <ErrorState
         fileUrl={fileUrl}
         message="This PDF could not be opened."
-        onRetry={retryViewerLoad}
+        onRetry={retryDownload}
       />
     );
   }
