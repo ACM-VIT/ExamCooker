@@ -391,7 +391,11 @@ export default function CliAuthScreen() {
 
   const decide = useCallback(
     async (formData: FormData) => {
+      const lookupId = lookupIdRef.current;
       await decideCliDeviceAuthAction(formData);
+      // A newer lookup (another code from history or the input) owns the
+      // screen now; refreshing this code would replace it with stale state.
+      if (lookupIdRef.current !== lookupId) return;
       await runLookup(userCode, { refresh: true });
     },
     [runLookup, userCode],
