@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
 import { Window } from "happy-dom";
-import { installPdfOpenJourneyTracking } from "./open-journey";
+import { installPdfOpenJourneyTracking, PDF_JOURNEY_TIMEOUT_MS } from "./open-journey";
 
 function viewer(t: TestContext) {
   const window = new Window({ url: "https://examcooker.test/past_papers/TEST" });
@@ -118,3 +118,28 @@ for (const change of ["detached", "backgrounded", "superseded", "replaced", "rej
     assert.deepEqual(v.finished(), change === "backgrounded" || change === "superseded" ? [change] : []);
   });
 }
+
+test("a paper whose navigation never arrived can be opened again", t => {
+  const v = viewer(t);
+  const setVisibility = (value: string) => {
+    Object.defineProperty(v.window.document, "visibilityState", { value, configurable: true });
+    v.window.document.dispatchEvent(new v.window.Event("visibilitychange"));
+  };
+  v.tracker.start("/past_papers/TEST/paper/two", "push");
+  // The tab is hidden before the router arrives, which ends the attempt.
+  setVisibility("hidden");
+  setVisibility("visible");
+  v.tracker.start("/past_papers/TEST/paper/two", "push");
+  const started = v.events.filter(event => event.event === "pdf_open_started");
+  assert.equal(started.length, 3, "the second open of paper two is a new attempt");
+});
+
+test("a navigation that lands on another page finishes as redirected", t => {
+  const v = viewer(t);
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  v.window.setTimeout = setTimeout as unknown as typeof v.window.setTimeout;
+  v.tracker.start("/past_papers/TEST/paper/three", "push");
+  v.window.history.pushState({}, "", "/past_papers/OTHER");
+  t.mock.timers.tick(PDF_JOURNEY_TIMEOUT_MS);
+  assert.deepEqual(v.finished(), ["superseded", "redirected"]);
+});
