@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/app/auth";
 import { updateTag } from "next/cache";
@@ -96,7 +96,7 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
       questionPaperId: pastPaper.questionPaperId,
     })
     .from(pastPaper)
-    .where(eq(pastPaper.id, parsed.id))
+    .where(and(eq(pastPaper.id, parsed.id), isNull(pastPaper.moderationArchivedAt)))
     .limit(1);
 
   if (!existingPaper) {
@@ -203,7 +203,9 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
           questionPaperId: nextQuestionPaperId,
           ...clearedModerationReview,
         })
-        .where(eq(pastPaper.id, parsed.id));
+        .where(
+          and(eq(pastPaper.id, parsed.id), isNull(pastPaper.moderationArchivedAt)),
+        );
 
       const tagRecords = await Promise.all(
         tagNames.map((tagName) =>

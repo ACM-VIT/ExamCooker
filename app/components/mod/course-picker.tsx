@@ -60,8 +60,7 @@ type CoursePickerAction =
     | { type: "cancel-create" }
     | { type: "create-start" }
     | { type: "create-error"; message: string }
-    | { type: "create-success" }
-    | { type: "create-complete" };
+    | { type: "create-success" };
 
 const initialCoursePickerState: CoursePickerState = {
     createError: null,
@@ -126,21 +125,23 @@ function coursePickerReducer(
         case "new-title":
             return { ...state, newTitle: action.value };
         case "cancel-create":
+            // A course being created cannot be cancelled; its result is applied.
+            if (state.creating) return state;
             return { ...state, showCreate: false };
         case "create-start":
+            if (state.creating) return state;
             return { ...state, createError: null, creating: true };
         case "create-error":
-            return { ...state, createError: action.message };
+            return { ...state, createError: action.message, creating: false };
         case "create-success":
             return {
                 ...state,
+                creating: false,
                 newCode: "",
                 newTitle: "",
                 query: "",
                 showCreate: false,
             };
-        case "create-complete":
-            return { ...state, creating: false };
     }
 }
 
@@ -166,6 +167,7 @@ export default function CoursePicker({
         dispatch,
     ] = useReducer(coursePickerReducer, initialCoursePickerState);
     const containerRef = useRef<HTMLDivElement>(null);
+    const creatingRef = useRef(false);
 
     const currentCourse = useMemo(
         () => (value ? courses.find((c) => c.id === value) ?? null : null),
@@ -211,6 +213,8 @@ export default function CoursePicker({
     };
 
     const submitCreate = async () => {
+        if (creatingRef.current) return;
+        creatingRef.current = true;
         dispatch({ type: "create-start" });
         try {
             const result = await createCourse({ code: newCode, title: newTitle });
@@ -228,8 +232,13 @@ export default function CoursePicker({
             onCourseCreated?.(course);
             onChange(course.id);
             dispatch({ type: "create-success" });
+        } catch (error) {
+            dispatch({
+                type: "create-error",
+                message: error instanceof Error ? error.message : "Could not add the course.",
+            });
         } finally {
-            dispatch({ type: "create-complete" });
+            creatingRef.current = false;
         }
     };
 
@@ -355,7 +364,8 @@ export default function CoursePicker({
                         <button
                             type="button"
                             onClick={() => dispatch({ type: "cancel-create" })}
-                            className="border border-black/30 px-3 py-1.5 text-xs font-semibold text-black hover:bg-black/5 dark:border-[#D5D5D5]/40 dark:text-[#D5D5D5] dark:hover:bg-white/5"
+                            disabled={creating}
+                            className="disabled:cursor-not-allowed disabled:opacity-50 border border-black/30 px-3 py-1.5 text-xs font-semibold text-black hover:bg-black/5 dark:border-[#D5D5D5]/40 dark:text-[#D5D5D5] dark:hover:bg-white/5"
                         >
                             Cancel
                         </button>

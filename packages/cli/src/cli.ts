@@ -1407,16 +1407,28 @@ async function runAuthLogin(args: string[]) {
       }
 
       await sleep(startResponse.interval * 1000);
-      const response = await requestRaw(
-        runtimeConfig.baseUrl,
-        "/api/cli/device/poll",
-        {
-          method: "POST",
-          json: { deviceCode: startResponse.deviceCode },
-        },
-      );
+      let response: Response;
+      try {
+        response = await requestRaw(
+          runtimeConfig.baseUrl,
+          "/api/cli/device/poll",
+          {
+            method: "POST",
+            json: { deviceCode: startResponse.deviceCode },
+          },
+        );
+      } catch {
+        // A dropped connection says nothing about the approval; keep waiting.
+        continue;
+      }
 
-      if (response.status === 202) {
+      // Pending, rate limited or temporarily unavailable: the browser
+      // approval may already be stored, so poll again until the deadline.
+      if (
+        response.status === 202 ||
+        response.status === 429 ||
+        response.status >= 500
+      ) {
         continue;
       }
 

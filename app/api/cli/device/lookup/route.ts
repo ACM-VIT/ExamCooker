@@ -1,19 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/auth";
-import { getCliDeviceAuthRequestByUserCode } from "@/lib/cli/device-auth";
+import {
+  getCliDeviceAuthRequestByUserCode,
+  type CliDeviceAuthState,
+} from "@/lib/cli/device-auth";
 import { normalizeCliUserCode } from "@/lib/cli/tokens";
 
-type CliLookupState = "idle" | "invalid" | "pending" | "approved" | "expired";
+type CliLookupState =
+  | "idle"
+  | "invalid"
+  | "pending"
+  | "approved"
+  | "denied"
+  | "expired";
 
-function deriveState(input: {
-  userCode: string;
-  request: Awaited<ReturnType<typeof getCliDeviceAuthRequestByUserCode>>;
-}): CliLookupState {
-  if (!input.userCode) return "idle";
-  if (!input.request) return "invalid";
-  if (input.request.isExpired) return "expired";
-  if (input.request.status === "AUTHORIZED") return "approved";
-  return "pending";
+function toLookupState(
+  userCode: string,
+  state: CliDeviceAuthState | undefined,
+): CliLookupState {
+  if (!userCode) return "idle";
+  switch (state) {
+    case "pending":
+    case "denied":
+    case "expired":
+      return state;
+    case "authorized":
+    case "completed":
+      return "approved";
+    default:
+      return "invalid";
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -27,10 +43,7 @@ export async function GET(request: NextRequest) {
       : Promise.resolve(null),
   ]);
 
-  const state = deriveState({
-    userCode,
-    request: deviceRequest,
-  });
+  const state = toLookupState(userCode, deviceRequest?.state);
 
   return NextResponse.json({
     success: true,
@@ -44,7 +57,6 @@ export async function GET(request: NextRequest) {
           deviceName: deviceRequest.deviceName,
           status: deviceRequest.status,
           userEmail: deviceRequest.userEmail,
-          isExpired: deviceRequest.isExpired,
         }
       : null,
   });

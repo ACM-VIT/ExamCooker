@@ -2,11 +2,10 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import ReactPlayer from "react-player";
 import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 
 const PixelBlast = dynamic(() => import("./pixel-bg"), { ssr: false });
-export type HeroBackdropKind = "local" | "youtube" | "pixel";
+export type HeroBackdropKind = "local" | "pixel";
 
 type LocalHeroVideo = {
     kind: "local";
@@ -27,33 +26,30 @@ const VIDEOS = [
     { kind: "local", mp4: "/claude-hero.mp4" },
     { kind: "local", webm: "/shark.webm", mp4: "/shark.mp4", poster: "/shark.jpg", loopStart: 14.5 },
     { kind: "pixel" },
-    // {
-    //     kind: "youtube",
-    //     id: "AUQKjgKQF7w",
-    //     url: "https://www.youtube.com/watch?v=AUQKjgKQF7w",
-    // },
 ] satisfies readonly HeroVideo[];
 const TABLET_MIN_WIDTH_MEDIA = "(min-width: 600px)";
 
+// "waiting" until the hero is near the viewport and the browser is idle;
+// "skipped" when the device should not play a backdrop; "failed" when the
+// chosen video could not load, so the plain hero stays.
+type BackdropState =
+    | { status: "waiting" }
+    | { status: "skipped" }
+    | { status: "showing"; video: HeroVideo }
+    | { status: "failed" };
+
 interface Props {
     onReady?: () => void;
-    onYouTubeEngaged?: () => void;
     onVariantChange?: (kind: HeroBackdropKind | null) => void;
 }
 
-export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariantChange }: Props) {
+export default function HeroBackdropVideo({ onReady, onVariantChange }: Props) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [isVisible, setIsVisible] = useState(false);
-    const [video, setVideo] = useState<HeroVideo | null>(null);
-    const [hasInteracted, setHasInteracted] = useState(false);
-    const [isYouTubeReady, setIsYouTubeReady] = useState(false);
-    // const isYouTubeEngaged = video?.kind === "youtube" && hasInteracted && isYouTubeReady;
-    const isYouTubeEngaged = false;
+    const [backdrop, setBackdrop] = useState<BackdropState>({ status: "waiting" });
+    const video = backdrop.status === "showing" ? backdrop.video : null;
     const notifyReady = useEffectEvent(() => {
         onReady?.();
-    });
-    const notifyYouTubeEngaged = useEffectEvent(() => {
-        onYouTubeEngaged?.();
     });
     const notifyVariantChange = useEffectEvent((kind: HeroBackdropKind | null) => {
         onVariantChange?.(kind);
@@ -80,19 +76,28 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
     useEffect(() => {
         if (!isVisible) return;
         if (typeof window === "undefined") return;
-        if (!window.matchMedia(TABLET_MIN_WIDTH_MEDIA).matches) return;
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
         const connection = (navigator as Navigator & {
             connection?: { saveData?: boolean; effectiveType?: string };
         }).connection;
-        if (connection?.saveData || connection?.effectiveType === "2g") return;
+        if (
+            !window.matchMedia(TABLET_MIN_WIDTH_MEDIA).matches ||
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+            connection?.saveData ||
+            connection?.effectiveType === "2g"
+        ) {
+            setBackdrop({ status: "skipped" });
+            return;
+        }
 
         let cancelled = false;
         const cleanup = scheduleIdleWork(
             () => {
                 if (cancelled) return;
-                setVideo(VIDEOS[Math.floor(Math.random() * VIDEOS.length)]);
+                setBackdrop({
+                    status: "showing",
+                    video: VIDEOS[Math.floor(Math.random() * VIDEOS.length)],
+                });
             },
             { fallbackDelayMs: 1800, timeoutMs: 2500 },
         );
@@ -104,28 +109,6 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
     }, [isVisible]);
 
     useEffect(() => {
-        if (hasInteracted) return;
-
-        const handleInteraction = () => setHasInteracted(true);
-        const options = { once: true, passive: true };
-
-        window.addEventListener("pointerdown", handleInteraction, options);
-        window.addEventListener("keydown", handleInteraction, { once: true });
-        window.addEventListener("touchstart", handleInteraction, options);
-
-        return () => {
-            window.removeEventListener("pointerdown", handleInteraction);
-            window.removeEventListener("keydown", handleInteraction);
-            window.removeEventListener("touchstart", handleInteraction);
-        };
-    }, [hasInteracted]);
-
-    useEffect(() => {
-        if (!isYouTubeEngaged) return;
-        notifyYouTubeEngaged();
-    }, [isYouTubeEngaged]);
-
-    useEffect(() => {
         notifyVariantChange(video?.kind ?? null);
     }, [video]);
 
@@ -134,58 +117,7 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
         notifyReady();
     }, [video]);
 
-    const handleYouTubeReady = () => {
-        setIsYouTubeReady(true);
-        onReady?.();
-    };
-
     if (!video) return <div ref={containerRef} className="absolute inset-0" aria-hidden="true" />;
-
-    // if (video.kind === "youtube") {
-    //     return (
-    //         <div ref={containerRef} className="absolute inset-0 overflow-hidden bg-black" aria-hidden="true">
-    //             <div
-    //                 className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-[filter,transform] duration-1000 ease-out will-change-transform ${
-    //                     isYouTubeEngaged
-    //                         ? "scale-[1.04] brightness-[1.1] contrast-[1.08] saturate-[1.15]"
-    //                         : "scale-100 brightness-[0.9] saturate-[0.9]"
-    //                 }`}
-    //                 style={{
-    //                     width: "max(100%, 177.777778vh)",
-    //                     height: "max(100%, 56.25vw)",
-    //                 }}
-    //             >
-    //                 <ReactPlayer
-    //                     url={video.url}
-    //                     playing
-    //                     loop
-    //                     muted={!hasInteracted || !isYouTubeReady}
-    //                     controls={false}
-    //                     playsinline
-    //                     width="100%"
-    //                     height="100%"
-    //                     onReady={handleYouTubeReady}
-    //                     config={{
-    //                         youtube: {
-    //                             playerVars: {
-    //                                 autoplay: 1,
-    //                                 controls: 0,
-    //                                 disablekb: 1,
-    //                                 fs: 0,
-    //                                 iv_load_policy: 3,
-    //                                 loop: 1,
-    //                                 modestbranding: 1,
-    //                                 playsinline: 1,
-    //                                 playlist: video.id,
-    //                                 rel: 0,
-    //                             },
-    //                         },
-    //                     }}
-    //                 />
-    //             </div>
-    //         </div>
-    //     );
-    // }
 
     if (video.kind === "pixel") {
         return (
@@ -249,8 +181,21 @@ export default function HeroBackdropVideo({ onReady, onYouTubeEngaged, onVariant
                 }
                 className="h-full w-full object-cover"
             >
-                {sources.map((source) =>
-                    source ? <source key={source.src} src={source.src} type={source.type} /> : null,
+                {/* With <source> children the video reports no error of its own;
+                    the last source failing means every source failed. */}
+                {sources.map((source, index) =>
+                    source ? (
+                        <source
+                            key={source.src}
+                            src={source.src}
+                            type={source.type}
+                            onError={
+                                index === sources.length - 1
+                                    ? () => setBackdrop({ status: "failed" })
+                                    : undefined
+                            }
+                        />
+                    ) : null,
                 )}
             </video>
         </div>

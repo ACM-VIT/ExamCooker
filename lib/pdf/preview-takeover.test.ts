@@ -42,6 +42,12 @@ test("only the first displayed page replaces the preview", async t => {
   v.root.append(first);
   first.dispatchEvent(new v.window.Event("load"));
   assert.equal(v.takeovers(), 1);
+  first.dispatchEvent(new v.window.Event("load"));
+  const error = v.window.document.createElement("div");
+  error.dataset.ecPdfLoadError = "true";
+  v.root.append(error);
+  await v.settle();
+  assert.equal(v.takeovers(), 1, "the watcher stops after the takeover");
 });
 
 test("a first page that painted before the watcher attached is a takeover", async t => {
@@ -82,7 +88,7 @@ for (const [name, change] of [
     assert.equal(v.takeovers(), 0);
     change(v.root as unknown as HTMLElement, column as unknown as HTMLElement);
     await v.settle();
-    assert.equal(v.takeovers() > 0, true);
+    assert.equal(v.takeovers(), 1);
   });
 }
 

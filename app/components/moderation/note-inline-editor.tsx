@@ -136,7 +136,12 @@ export default function NoteInlineEditor({
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
+    if (nextOpen) {
+      // Start from the note as it is now; it may have changed since the last edit.
+      setBaseline(baseDraft);
+      setDraft(baseDraft);
+      setSaveError(null);
+    } else {
       handleCancel();
     }
     setIsOpen(nextOpen);

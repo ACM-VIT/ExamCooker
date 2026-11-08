@@ -27,12 +27,16 @@ function isNativeRuntime() {
     }
 }
 
-export function usePostHogFeatureFlagEnabled(flag: string) {
-    const [enabled, setEnabled] = useState<boolean | undefined>(undefined);
+// undefined until the flag's value is known. The value is tied to the flag
+// it was read for, so switching flags never reports the previous flag's value.
+type FlagState = { flag: string; enabled: boolean | undefined };
 
-	useEffect(() => {
-		let cancelled = false;
-		let unsubscribe: (() => void) | undefined;
+export function usePostHogFeatureFlagEnabled(flag: string) {
+    const [state, setState] = useState<FlagState>({ flag, enabled: undefined });
+
+    useEffect(() => {
+        let cancelled = false;
+        let unsubscribe: (() => void) | undefined;
         let cancelScheduledLoad: (() => void) | undefined;
 
         const loadFeatureFlag = () => {
@@ -40,13 +44,25 @@ export function usePostHogFeatureFlagEnabled(flag: string) {
                 .then((posthog) => {
                     if (cancelled) return;
 
-                    const readFlag = () =>
-                        posthog?.isFeatureEnabled(flag, { send_event: false }) === true;
+                    const readFlag = () => {
+                        if (!posthog) {
+                            setState({ flag, enabled: false });
+                            return;
+                        }
+                        // undefined means flags are not loaded (or failed to
+                        // reload). Keep the last known value rather than
+                        // flipping to false, which would unmount gated UI.
+                        const value = posthog.isFeatureEnabled(flag, { send_event: false });
+                        if (value === undefined) return;
+                        setState((current) =>
+                            current.flag === flag && current.enabled === value
+                                ? current
+                                : { flag, enabled: value },
+                        );
+                    };
 
-                    setEnabled(readFlag());
-                    unsubscribe = posthog?.onFeatureFlags(() => {
-                        setEnabled(readFlag());
-                    });
+                    readFlag();
+                    unsubscribe = posthog?.onFeatureFlags(readFlag);
                 })
                 .catch(() => undefined);
         };
@@ -67,5 +83,5 @@ export function usePostHogFeatureFlagEnabled(flag: string) {
         };
     }, [flag]);
 
-    return enabled;
+    return state.flag === flag ? state.enabled : undefined;
 }

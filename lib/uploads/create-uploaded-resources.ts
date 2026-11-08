@@ -23,9 +23,16 @@ export type ProcessedUploadResult = {
     message: string;
 };
 
+type UploadTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export type CreateUploadedResourcesInput = {
     userEmail: string;
-    results: ProcessedUploadResult[];
+    /**
+     * Reads the processed files inside the transaction that creates their
+     * resources, so claiming a one-time receipt commits or rolls back with
+     * them. Throw UploadRejectedError to reject the batch.
+     */
+    claimResults: (transaction: UploadTransaction) => Promise<ProcessedUploadResult[]>;
     year: string;
     slot: string;
     variant: UploadVariant;
@@ -37,6 +44,9 @@ export type CreateUploadedResourcesInput = {
     aiEnvironment?: object;
 };
 
+/** A batch that cannot be saved as sent; nothing in it was stored. */
+export class UploadRejectedError extends Error {}
+
 function normalizeOptionalUrl(url: string | null | undefined) {
     if (!url) {
         return null;
@@ -45,9 +55,21 @@ function normalizeOptionalUrl(url: string | null | undefined) {
     return normalizeGcsUrl(url) ?? url;
 }
 
+function assertSavableResults(results: ProcessedUploadResult[]) {
+    const errors = results.filter((result) => result.message !== UPLOAD_SUCCESS_MESSAGE);
+    if (errors.length > 0) {
+        throw new UploadRejectedError(errors.map((error) => error.message).join(", "));
+    }
+    if (results.some((result) => !result.fileUrl || !result.filename)) {
+        throw new UploadRejectedError(
+            "Upload processor response was missing a file URL or filename.",
+        );
+    }
+}
+
 export async function createUploadedResources({
     userEmail,
-    results,
+    claimResults,
     year,
     slot,
     variant,
@@ -58,93 +80,80 @@ export async function createUploadedResources({
     hasAnswerKey,
     aiEnvironment,
 }: CreateUploadedResourcesInput) {
-    const userRows = await db
-        .select({
-            id: user.id,
-        })
-        .from(user)
-        .where(eq(user.email, userEmail))
-        .limit(1);
-
-    const currentUser = userRows[0];
-
-    if (!currentUser) {
-        throw new Error(`User with email ${userEmail} does not exist`);
-    }
-
-    const errors = results.filter((result) => result.message !== UPLOAD_SUCCESS_MESSAGE);
-    if (errors.length > 0) {
-        return {
-            success: false as const,
-            error: errors.map((error) => error.message).join(", "),
-        };
-    }
-
-    const missingRequiredFields = results.find(
-        (result) => !result.fileUrl || !result.filename,
-    );
-    if (missingRequiredFields) {
-        return {
-            success: false as const,
-            error: "Upload processor response was missing a file URL or filename.",
-        };
-    }
-
     const yearInt = year ? parseInt(year, 10) : null;
     const parsedExamType = examType as ExamType | null | undefined;
     const parsedSemester = semester as Semester | null | undefined;
     const parsedCampus = campus as Campus | null | undefined;
 
-    const data =
-        variant === "Notes"
-            ? await Promise.all(
-                  results.map(async (result) => {
-                      const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
-                      const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                      const rows = await db
-                          .insert(note)
-                          .values({
-                              title: result.filename,
-                              fileUrl,
-                              ...(thumbNailUrl ? { thumbNailUrl } : {}),
-                              authorId: currentUser.id,
-                              ...(courseId ? { courseId } : {}),
-                          })
-                          .returning();
+    let data: { id: string; title: string; fileUrl: string }[];
+    try {
+        // One transaction: either every resource is created and its receipt
+        // spent, or nothing is, and the client can retry the same receipts.
+        data = await db.transaction(async (transaction) => {
+            const [currentUser] = await transaction
+                .select({ id: user.id })
+                .from(user)
+                .where(eq(user.email, userEmail))
+                .limit(1);
+            if (!currentUser) {
+                throw new Error(`User with email ${userEmail} does not exist`);
+            }
 
-                      return rows[0];
-                  }),
-              )
-            : await Promise.all(
-                  results.map(async (result) => {
-                      const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
-                      const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
-                      const rows = await db
-                          .insert(pastPaper)
-                          .values({
-                              title: result.filename,
-                              fileUrl,
-                              ...(thumbNailUrl ? { thumbNailUrl } : {}),
-                              authorId: currentUser.id,
-                              ...(courseId ? { courseId } : {}),
-                              ...(parsedExamType ? { examType: parsedExamType } : {}),
-                              ...(slot ? { slot } : {}),
-                              ...(yearInt !== null && !Number.isNaN(yearInt)
-                                  ? { year: yearInt }
-                                  : {}),
-                              ...(parsedSemester ? { semester: parsedSemester } : {}),
-                              ...(parsedCampus ? { campus: parsedCampus } : {}),
-                              hasAnswerKey: hasAnswerKey ?? false,
-                          })
-                          .returning({
-                              id: pastPaper.id,
-                              title: pastPaper.title,
-                              fileUrl: pastPaper.fileUrl,
-                          });
+            const results = await claimResults(transaction);
+            assertSavableResults(results);
 
-                      return rows[0];
-                  }),
-              );
+            const created = [];
+            for (const result of results) {
+                const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
+                const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
+                const [row] =
+                    variant === "Notes"
+                        ? await transaction
+                              .insert(note)
+                              .values({
+                                  title: result.filename,
+                                  fileUrl,
+                                  ...(thumbNailUrl ? { thumbNailUrl } : {}),
+                                  authorId: currentUser.id,
+                                  ...(courseId ? { courseId } : {}),
+                              })
+                              .returning({
+                                  id: note.id,
+                                  title: note.title,
+                                  fileUrl: note.fileUrl,
+                              })
+                        : await transaction
+                              .insert(pastPaper)
+                              .values({
+                                  title: result.filename,
+                                  fileUrl,
+                                  ...(thumbNailUrl ? { thumbNailUrl } : {}),
+                                  authorId: currentUser.id,
+                                  ...(courseId ? { courseId } : {}),
+                                  ...(parsedExamType ? { examType: parsedExamType } : {}),
+                                  ...(slot ? { slot } : {}),
+                                  ...(yearInt !== null && !Number.isNaN(yearInt)
+                                      ? { year: yearInt }
+                                      : {}),
+                                  ...(parsedSemester ? { semester: parsedSemester } : {}),
+                                  ...(parsedCampus ? { campus: parsedCampus } : {}),
+                                  hasAnswerKey: hasAnswerKey ?? false,
+                              })
+                              .returning({
+                                  id: pastPaper.id,
+                                  title: pastPaper.title,
+                                  fileUrl: pastPaper.fileUrl,
+                              });
+                created.push(row);
+            }
+            return created;
+        });
+    } catch (error) {
+        if (error instanceof UploadRejectedError) {
+            return { success: false as const, error: error.message };
+        }
+        throw error;
+    }
 
     const uploadedType = variant === "Notes" ? ("note" as const) : ("pastPaper" as const);
     const createdResources = data.map((resource) => ({

@@ -35,6 +35,7 @@ type PaperPickerAction =
     | { type: "search-start" }
     | { type: "search-success"; results: PaperLinkOption[] }
     | { type: "search-error"; message: string }
+    | { type: "search-cancelled" }
     | { type: "reset"; close?: boolean };
 
 const initialPaperPickerState: PaperPickerState = {
@@ -84,11 +85,14 @@ function paperPickerReducer(
                 loading: false,
                 results: [],
             };
+        case "search-cancelled":
+            return state.loading ? { ...state, loading: false } : state;
         case "reset":
             return {
                 ...state,
                 error: null,
                 highlight: 0,
+                loading: false,
                 open: action.close ? false : state.open,
                 query: "",
                 results: [],
@@ -171,6 +175,8 @@ export default function PaperPicker({
         return () => {
             cancelled = true;
             window.clearTimeout(timer);
+            // A search dropped here will never report back, so it can't stay "loading".
+            dispatch({ type: "search-cancelled" });
         };
     }, [courseId, excludePaperId, shouldShowResults, trimmedQuery]);
 

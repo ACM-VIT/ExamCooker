@@ -195,13 +195,17 @@ export default function PastPaperInlineEditor(
         setDraft(nextBaseline);
         setTags((currentTags) => dedupeTagNames([...currentTags, ...nextTags]));
 
+        // Without loaded course options the code of a new course is unknown;
+        // stay on this page then rather than guessing a path.
         const nextCourseCode =
-          courses.find((course) => course.id === nextBaseline.courseId)?.code ??
-          "unassigned";
-        const nextPath = getPastPaperDetailPath(props.paperId, nextCourseCode);
+          nextBaseline.courseId === props.initialCourseId
+            ? props.canonicalCode
+            : nextBaseline.courseId === null
+              ? "unassigned"
+              : courses.find((course) => course.id === nextBaseline.courseId)?.code ?? null;
         toast({ title: "Past paper updated" });
-        if (nextCourseCode !== props.canonicalCode) {
-          replace(nextPath);
+        if (nextCourseCode !== null && nextCourseCode !== props.canonicalCode) {
+          replace(getPastPaperDetailPath(props.paperId, nextCourseCode));
         }
         refresh();
         setIsOpen(false);
@@ -225,7 +229,12 @@ export default function PastPaperInlineEditor(
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
+    if (nextOpen) {
+      // Start from the paper as it is now; it may have changed since the last edit.
+      setBaseline(baseDraft);
+      setDraft(baseDraft);
+      setSaveError(null);
+    } else {
       handleCancel();
     }
     setIsOpen(nextOpen);

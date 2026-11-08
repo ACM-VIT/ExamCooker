@@ -12,13 +12,17 @@ export const correctionReportCategories = [
 export type CorrectionReportCategory =
   (typeof correctionReportCategories)[number];
 
-export type CorrectionReportStatus =
-  | "pending"
-  | "auto_approved"
-  | "auto_denied"
-  | "needs_review"
-  | "approved"
-  | "denied";
+// The database enforces this list with ContentCorrectionReport_status_check.
+export const correctionReportStatuses = [
+  "pending",
+  "auto_approved",
+  "auto_denied",
+  "needs_review",
+  "approved",
+  "denied",
+] as const;
+
+export type CorrectionReportStatus = (typeof correctionReportStatuses)[number];
 
 export type CorrectionReportDecision = {
   model: string;
