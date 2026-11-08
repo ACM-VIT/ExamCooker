@@ -222,6 +222,7 @@ type PaperSessionState = {
   feedbackError: string | null;
   pendingFeedbackVote: PdfMarkdownFeedbackVote | null;
   copyStatus: CopyStatus;
+  copyError: string | null;
 };
 
 type PaperSessionAction =
@@ -256,6 +257,7 @@ const INITIAL_PAPER_SESSION_STATE: PaperSessionState = {
   feedbackError: null,
   pendingFeedbackVote: null,
   copyStatus: "idle",
+  copyError: null,
 };
 
 const INITIAL_PDF_BUFFER_LIFECYCLE_STATE: PdfBufferLifecycleState = {
@@ -327,7 +329,8 @@ function isPaperSessionReset(state: PaperSessionState) {
     state.paperError === null &&
     state.feedbackError === null &&
     state.pendingFeedbackVote === null &&
-    state.copyStatus === "idle"
+    state.copyStatus === "idle" &&
+    state.copyError === null
   );
 }
 
@@ -347,18 +350,19 @@ function paperSessionReducer(
     case "showPdf":
       return state.viewMode === "pdf" ? state : { ...state, viewMode: "pdf" };
     case "copying":
-      return { ...state, copyStatus: "copying" };
+      return { ...state, copyStatus: "copying", copyError: null };
     case "copied":
       return { ...state, copyStatus: "copied" };
     case "copyIdle":
       return state.copyStatus === "idle" ? state : { ...state, copyStatus: "idle" };
     case "copyFailed":
+      // The Markdown itself is fine. Show it so it can be copied by hand,
+      // rather than an error screen whose retry regenerates it.
       return {
         ...state,
         copyStatus: "idle",
-        paperError: action.message,
-        paperStatus: "error",
-        viewMode: "paper",
+        copyError: action.message,
+        viewMode: state.paperStatus === "ready" ? "paper" : state.viewMode,
       };
     case "loadStarted":
       return {
@@ -956,6 +960,7 @@ function AiPaperQualityPanel({
 
 function AiPaperView({
   cache,
+  copyError,
   errorMessage,
   feedbackError,
   isDarkMode,
@@ -966,6 +971,7 @@ function AiPaperView({
   onRetry,
 }: {
   cache: PdfMarkdownCacheMetadata | null;
+  copyError: string | null;
   errorMessage: string | null;
   feedbackError: string | null;
   isDarkMode: boolean;
@@ -1011,6 +1017,11 @@ function AiPaperView({
           <h1 className="font-serif text-3xl font-semibold leading-tight">
             Questions
           </h1>
+          {copyError ? (
+            <p role="alert" className="mt-3 text-sm font-medium text-red-500">
+              {copyError}
+            </p>
+          ) : null}
           <AiPaperQualityPanel
             cache={cache}
             feedbackError={feedbackError}
@@ -1904,8 +1915,15 @@ function LoadedDocumentSurface({
     feedbackError,
     pendingFeedbackVote,
     copyStatus,
+    copyError,
   } = paperState;
+  // A pending Markdown request, set before any await so a second click joins
+  // it instead of starting another.
   const paperAbortRef = useRef<AbortController | null>(null);
+  // Bumped when the document resets; late results from an older session are
+  // dropped instead of landing on the new document.
+  const paperSessionRef = useRef(0);
+  const feedbackPendingRef = useRef(false);
   const copyResetTimerRef = useRef<number | null>(null);
   const [renderedDocumentId, setRenderedDocumentId] = useState<string | null>(
     null,
@@ -1923,6 +1941,8 @@ function LoadedDocumentSurface({
   const didReportRenderedDocumentRef = useRef<string | null>(null);
 
   useEffect(() => {
+    paperSessionRef.current += 1;
+    feedbackPendingRef.current = false;
     dispatchPaper({ type: "resetDocument" });
     setRenderedDocumentId(null);
     paperAbortRef.current?.abort();
@@ -1970,16 +1990,17 @@ function LoadedDocumentSurface({
   }, []);
 
   const copyMarkdownText = useCallback(
-    async (markdown: string) => {
-      if (!markdown.trim()) {
+    async (markdown: string, isCurrent: () => boolean) => {
+      if (!markdown.trim() || !isCurrent()) {
         return;
       }
 
       dispatchPaper({ type: "copying" });
       try {
         await copyTextToClipboard(markdown);
-        markCopied();
+        if (isCurrent()) markCopied();
       } catch (error) {
+        if (!isCurrent()) return;
         dispatchPaper({
           type: "copyFailed",
           message:
@@ -2010,7 +2031,7 @@ function LoadedDocumentSurface({
         dispatchPaper({ type: "showPaper" });
       };
 
-      if (!force && paperStatus === "loading") {
+      if (!force && paperAbortRef.current) {
         revealPaper();
         return;
       }
@@ -2018,18 +2039,29 @@ function LoadedDocumentSurface({
       if (!force && paperStatus === "ready" && paperMarkdown.trim()) {
         revealPaper();
         if (copyAfter) {
-          await copyMarkdownText(paperMarkdown);
+          const session = paperSessionRef.current;
+          await copyMarkdownText(paperMarkdown, () => paperSessionRef.current === session);
         }
         return;
       }
 
-      if (force && !await ensureAiReady("pdfMarkdown")) return;
+      const controller = new AbortController();
+      const previous = paperAbortRef.current;
+      paperAbortRef.current = controller;
+      previous?.abort();
+
+      if (force && !await ensureAiReady("pdfMarkdown")) {
+        if (paperAbortRef.current === controller) {
+          paperAbortRef.current = null;
+          // The replaced request will not settle the session any more.
+          if (previous) dispatchPaper({ type: "loadCancelled" });
+        }
+        return;
+      }
+      // A document reset during AI setup aborts this request.
+      if (controller.signal.aborted) return;
       // Overlap the renderer download with a new Markdown request.
       revealPaper();
-
-      const controller = new AbortController();
-      paperAbortRef.current?.abort();
-      paperAbortRef.current = controller;
 
       dispatchPaper({ type: "loadStarted", force });
 
@@ -2064,7 +2096,7 @@ function LoadedDocumentSurface({
         });
 
         if (copyAfter) {
-          await copyMarkdownText(response.markdown);
+          await copyMarkdownText(response.markdown, () => !controller.signal.aborted);
         }
       } catch (error) {
         if (controller.signal.aborted) {
@@ -2111,10 +2143,13 @@ function LoadedDocumentSurface({
 
   const handleMarkdownFeedback = useCallback(
     (vote: PdfMarkdownFeedbackVote) => {
-      if (!paperCache || pendingFeedbackVote) {
+      if (!paperCache || feedbackPendingRef.current) {
         return;
       }
 
+      const session = paperSessionRef.current;
+      const isCurrent = () => paperSessionRef.current === session;
+      feedbackPendingRef.current = true;
       dispatchPaper({ type: "feedbackStarted", vote });
 
       void submitPdfMarkdownFeedback({
@@ -2122,9 +2157,10 @@ function LoadedDocumentSurface({
         vote,
       })
         .then((updatedCache) => {
-          dispatchPaper({ type: "feedbackSucceeded", cache: updatedCache });
+          if (isCurrent()) dispatchPaper({ type: "feedbackSucceeded", cache: updatedCache });
         })
         .catch((error) => {
+          if (!isCurrent()) return;
           dispatchPaper({
             type: "feedbackFailed",
             message:
@@ -2132,9 +2168,12 @@ function LoadedDocumentSurface({
                 ? error.message
                 : "Failed to save Markdown feedback.",
           });
+        })
+        .finally(() => {
+          if (isCurrent()) feedbackPendingRef.current = false;
         });
     },
-    [paperCache, pendingFeedbackVote],
+    [paperCache],
   );
 
   return (
@@ -2167,6 +2206,7 @@ function LoadedDocumentSurface({
           {viewMode === "paper" ? (
             <AiPaperView
               cache={paperCache}
+              copyError={copyError}
               errorMessage={paperError}
               feedbackError={feedbackError}
               isDarkMode={isPdfDarkMode}
