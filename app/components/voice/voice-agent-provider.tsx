@@ -10,6 +10,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -81,6 +82,8 @@ type VoiceAgentContextValue = {
   controller: VoiceControlController;
   lastError: string | null;
   runtime: UseVoiceControlReturn;
+  // A start is in progress (AI key checks or connecting) and can be cancelled.
+  startPending: boolean;
   startVoiceAgent: () => void;
   toggleVoiceAgent: () => void;
 };
@@ -126,8 +129,14 @@ export default function VoiceAgentProvider({
   const inAppHistoryRef = useRef<InAppHistory | null>(null);
   const runtime = useVoiceControl(controller);
   const { cursorState, run, hide } = useGhostCursor();
-  const voiceStartCoordinator = useMemo(() => createVoiceStartCoordinator({
-    ensureAiReady,
+  const ensureAiReadyRef = useRef(ensureAiReady);
+  useEffect(() => {
+    ensureAiReadyRef.current = ensureAiReady;
+  }, [ensureAiReady]);
+  // Created once so a pending start survives re-renders and unmount cleanup
+  // never runs because a dependency changed identity.
+  const [voiceStartCoordinator] = useState(() => createVoiceStartCoordinator({
+    ensureAiReady: (feature) => ensureAiReadyRef.current(feature),
     connect: async () => {
       voiceAnalyticsSessionIdRef.current = crypto.randomUUID();
       await controller.connect();
@@ -135,7 +144,12 @@ export default function VoiceAgentProvider({
     onError: (error) => {
       setLastError(error instanceof Error ? error.message : "Could not configure voice study.");
     },
-  }), [controller, ensureAiReady]);
+  }));
+  const startPending = useSyncExternalStore(
+    voiceStartCoordinator.subscribe,
+    voiceStartCoordinator.isPending,
+    voiceStartCoordinator.isPending,
+  );
 
   useEffect(() => {
     return () => {
@@ -758,13 +772,13 @@ export default function VoiceAgentProvider({
           voiceSessionId,
         });
       },
-      onError: (error) => {
-        if (error.code === "active_response") {
-          return;
+      onError: (error, { fatal }) => {
+        // Only a fatal error ends the session. A recoverable one (for example
+        // one unfinished answer) is reported while the session keeps running.
+        if (fatal) {
+          pendingDisconnectReasonRef.current = "error";
+          setLastError(error.message);
         }
-
-        pendingDisconnectReasonRef.current = "error";
-        setLastError(error.message);
         captureVoiceAgentError({
           entryPoint,
           message: error.message,
@@ -808,6 +822,9 @@ export default function VoiceAgentProvider({
     if (runtime.connected) {
       if (sessionStartedAtRef.current === null) {
         sessionStartedAtRef.current = Date.now();
+        // A reason recorded before this session started (a cancelled or
+        // failed start) does not describe how this session ends.
+        pendingDisconnectReasonRef.current = null;
         sessionEntryPointRef.current = entryPoint;
         voiceAnalyticsSessionIdRef.current ??= crypto.randomUUID();
         captureVoiceAgentSessionStarted(sessionEntryPointRef.current);
@@ -832,48 +849,49 @@ export default function VoiceAgentProvider({
     pendingDisconnectReasonRef.current = null;
   }, [entryPoint, lastError, runtime.connected]);
 
+  // A start is only possible from a settled session: not while a start is
+  // pending, connecting, live, or still finalizing the previous session.
+  const canStart =
+    !startPending &&
+    (runtime.activity === "idle" || runtime.activity === "error");
+
   const startVoiceAgent = useCallback(() => {
-    if (voiceStartCoordinator.isPending() || runtime.activity === "connecting") {
+    if (!canStart) {
       return;
     }
 
     setLastError(null);
-
-    if (runtime.connected) {
-      if (runtime.activity !== "error") {
-        return;
-      }
-
-      controller.disconnect();
-      hide();
-    }
-
     void voiceStartCoordinator.start();
-  }, [controller, hide, runtime.activity, runtime.connected, voiceStartCoordinator]);
+  }, [canStart, voiceStartCoordinator]);
 
   const dismissLastError = useCallback(() => {
     setLastError(null);
   }, []);
 
   const toggleVoiceAgent = useCallback(() => {
-    if (runtime.connected || runtime.activity === "connecting") {
+    if (runtime.activity === "closing") {
+      return;
+    }
+
+    if (startPending || runtime.connected || runtime.activity === "connecting") {
       pendingDisconnectReasonRef.current = "manual";
       voiceStartCoordinator.cancel();
       controller.disconnect();
-      hide();
       return;
     }
 
     startVoiceAgent();
-  }, [controller, hide, runtime.activity, runtime.connected, startVoiceAgent, voiceStartCoordinator]);
+  }, [controller, runtime.activity, runtime.connected, startPending, startVoiceAgent, voiceStartCoordinator]);
 
   const buttonLabel = runtime.connected
     ? "Disconnect the voice guide"
-    : runtime.activity === "connecting"
-      ? "Stop the voice guide while it connects"
-      : runtime.activity === "error"
-        ? "Retry the voice guide"
-        : "Start the voice guide";
+    : runtime.activity === "closing"
+      ? "Ending the voice guide"
+      : startPending || runtime.activity === "connecting"
+        ? "Stop the voice guide while it connects"
+        : runtime.activity === "error"
+          ? "Retry the voice guide"
+          : "Start the voice guide";
 
   const contextValue = useMemo<VoiceAgentContextValue>(
     () => ({
@@ -881,6 +899,7 @@ export default function VoiceAgentProvider({
       controller,
       lastError,
       runtime,
+      startPending,
       startVoiceAgent,
       toggleVoiceAgent,
     }),
@@ -889,6 +908,7 @@ export default function VoiceAgentProvider({
       controller,
       lastError,
       runtime,
+      startPending,
       startVoiceAgent,
       toggleVoiceAgent,
     ],

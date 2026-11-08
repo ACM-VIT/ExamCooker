@@ -45,7 +45,9 @@ type NavBarState = {
   showProfile: boolean;
   voiceEntryPoint: VoiceAgentEntryPoint;
   voiceRuntimeRequested: boolean;
-  voiceStartToken: number;
+  // A start the voice entry has not handled yet. It lives here, not in the
+  // entry, so a remounted entry cannot replay an old request.
+  voiceStartRequested: boolean;
 };
 
 type NavBarAction =
@@ -53,7 +55,8 @@ type NavBarAction =
   | { type: "toggle-profile" }
   | { type: "profile-position"; position: ProfileMenuPosition | null }
   | { type: "keep-expanded"; value: boolean }
-  | { type: "start-voice"; entryPoint: VoiceAgentEntryPoint };
+  | { type: "start-voice"; entryPoint: VoiceAgentEntryPoint }
+  | { type: "voice-start-handled" };
 
 const initialNavBarState: NavBarState = {
   keepNavExpanded: false,
@@ -61,7 +64,7 @@ const initialNavBarState: NavBarState = {
   showProfile: false,
   voiceEntryPoint: "nav",
   voiceRuntimeRequested: false,
-  voiceStartToken: 0,
+  voiceStartRequested: false,
 };
 
 function navBarReducer(state: NavBarState, action: NavBarAction): NavBarState {
@@ -79,8 +82,10 @@ function navBarReducer(state: NavBarState, action: NavBarAction): NavBarState {
         ...state,
         voiceEntryPoint: action.entryPoint,
         voiceRuntimeRequested: true,
-        voiceStartToken: state.voiceStartToken + 1,
+        voiceStartRequested: true,
       };
+    case "voice-start-handled":
+      return { ...state, voiceStartRequested: false };
   }
 }
 
@@ -138,10 +143,14 @@ const NavBar: React.FC<Props> = ({
       showProfile,
       voiceEntryPoint,
       voiceRuntimeRequested,
-      voiceStartToken,
+      voiceStartRequested,
     },
     dispatch,
   ] = useReducer(navBarReducer, initialNavBarState);
+  const handleVoiceStartHandled = useCallback(
+    () => dispatch({ type: "voice-start-handled" }),
+    [],
+  );
   const portalReady = useSyncExternalStore(
     subscribeClientReady,
     getClientReadySnapshot,
@@ -486,7 +495,8 @@ const NavBar: React.FC<Props> = ({
                         className={navActionButtonClassName}
                         entryPoint={voiceEntryPoint}
                         iconClassName={navActionIconClassName}
-                        startToken={voiceStartToken}
+                        onStartRequestHandled={handleVoiceStartHandled}
+                        startRequested={voiceStartRequested}
                       >
                         <span className={navLabelClassName}>Voice</span>
                       </VoiceAgentEntry>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import { useGuestPrompt } from "@/app/components/auth-gate";
 import type { VoiceAgentEntryPoint } from "@/lib/posthog/client";
 import VoiceAgentButton from "./voice-agent-button";
@@ -10,16 +10,18 @@ function ConnectedVoiceAgentButton({
   children,
   className,
   iconClassName,
-  startToken,
+  onStartRequestHandled,
+  startRequested,
 }: {
   children?: React.ReactNode;
   className?: string;
   iconClassName?: string;
-  startToken: number;
+  onStartRequestHandled: () => void;
+  startRequested: boolean;
 }) {
   const { isAuthed, requireAuth } = useGuestPrompt();
-  const { buttonLabel, runtime, startVoiceAgent, toggleVoiceAgent } = useVoiceAgent();
-  const lastStartedTokenRef = useRef(0);
+  const { buttonLabel, runtime, startPending, startVoiceAgent, toggleVoiceAgent } =
+    useVoiceAgent();
 
   const handleClick = useCallback(() => {
     if (!isAuthed) {
@@ -30,28 +32,32 @@ function ConnectedVoiceAgentButton({
     toggleVoiceAgent();
   }, [isAuthed, requireAuth, toggleVoiceAgent]);
 
+  // The request lives in the parent, so remounting this entry (for example
+  // when its feature flag reloads) never starts a session nobody asked for.
   useEffect(() => {
-    if (!isAuthed || startToken <= lastStartedTokenRef.current) {
+    if (!isAuthed || !startRequested) {
       return;
     }
 
     // Defer the auto-start so React Strict Mode's throwaway mount can cancel the timer
-    // without consuming the token before the real mounted effect runs.
+    // without consuming the request before the real mounted effect runs.
     const timeout = window.setTimeout(() => {
-      lastStartedTokenRef.current = startToken;
+      onStartRequestHandled();
       startVoiceAgent();
     }, 0);
 
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [isAuthed, startToken, startVoiceAgent]);
+  }, [isAuthed, onStartRequestHandled, startRequested, startVoiceAgent]);
 
   return (
     <VoiceAgentButton
       buttonLabel={buttonLabel}
       className={className}
+      disabled={runtime.activity === "closing"}
       iconClassName={iconClassName}
+      pending={startPending}
       runtime={runtime}
       onClick={handleClick}
       variant="nav"
@@ -66,20 +72,23 @@ export default function VoiceAgentEntry({
   className,
   entryPoint,
   iconClassName,
-  startToken,
+  onStartRequestHandled,
+  startRequested,
 }: {
   children?: React.ReactNode;
   className?: string;
   entryPoint: VoiceAgentEntryPoint;
   iconClassName?: string;
-  startToken: number;
+  onStartRequestHandled: () => void;
+  startRequested: boolean;
 }) {
   return (
     <VoiceAgentProvider entryPoint={entryPoint}>
       <ConnectedVoiceAgentButton
         className={className}
         iconClassName={iconClassName}
-        startToken={startToken}
+        onStartRequestHandled={onStartRequestHandled}
+        startRequested={startRequested}
       >
         {children}
       </ConnectedVoiceAgentButton>

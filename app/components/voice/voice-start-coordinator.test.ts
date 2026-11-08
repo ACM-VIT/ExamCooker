@@ -35,6 +35,31 @@ test("rapid starts share one key setup and cancelling does not open another", as
   assert.equal(connectionCount, 1);
 });
 
+test("subscribers see the pending phase begin, get cancelled, and settle", async () => {
+  const setup = deferred<boolean>();
+  const coordinator = createVoiceStartCoordinator({
+    ensureAiReady: () => setup.promise,
+    connect: async () => {},
+    onError: (error) => { throw error; },
+  });
+  const seen: boolean[] = [];
+  const unsubscribe = coordinator.subscribe(() => seen.push(coordinator.isPending()));
+
+  const cancelled = coordinator.start();
+  coordinator.cancel();
+  setup.resolve(true);
+  assert.equal(await cancelled, false);
+  assert.deepEqual(seen, [true, false]);
+
+  const completed = coordinator.start();
+  assert.equal(await completed, true);
+  assert.deepEqual(seen, [true, false, true, false]);
+
+  unsubscribe();
+  await coordinator.start();
+  assert.equal(seen.length, 4);
+});
+
 test("stop permits a new start while the previous connection is pending", async () => {
   const firstConnection = deferred<void>();
   const secondConnection = deferred<void>();

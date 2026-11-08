@@ -17,14 +17,11 @@ export type JsonSchema = {
 export type ToolCallStatus = "running" | "success" | "error" | "skipped";
 
 export type VoiceControlErrorCode =
-  | "active_response"
   | "aborted"
   | "device_unavailable"
-  | "invalid_tool_input"
   | "insecure_context"
   | "network_error"
   | "permission_denied"
-  | "unknown"
   | "unsupported_browser";
 
 export type VoiceControlError = {
@@ -33,19 +30,16 @@ export type VoiceControlError = {
   cause?: unknown;
 };
 
+// One lifecycle for the whole session. `connected` in the snapshot is derived
+// from it: listening, processing and executing are the live activities.
+// `closing` means session.close was sent and final usage is still draining.
 export type VoiceControlActivity =
   | "idle"
   | "connecting"
   | "listening"
   | "processing"
   | "executing"
-  | "error";
-
-export type VoiceControlStatus =
-  | "idle"
-  | "connecting"
-  | "listening"
-  | "processing"
+  | "closing"
   | "error";
 
 export type VoiceToolDefinition<TArgs = unknown> = {
@@ -95,7 +89,8 @@ export type UseVoiceControlOptions = {
   audio?: { input?: { capture?: MediaTrackConstraints } };
   debug?: boolean;
   onGenerationCompleted?: (generation: VoiceControlGeneration) => void;
-  onError?: (error: VoiceControlError) => void;
+  // A fatal error has already ended the session; others leave it running.
+  onError?: (error: VoiceControlError, context: { fatal: boolean }) => void;
 };
 
 export type VoiceControlGeneration = {
@@ -114,7 +109,6 @@ export type VoiceControlGeneration = {
 };
 
 export type VoiceControlSnapshot = {
-  status: VoiceControlStatus;
   activity: VoiceControlActivity;
   connected: boolean;
   muted: boolean;

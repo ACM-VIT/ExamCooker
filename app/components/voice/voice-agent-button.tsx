@@ -2,9 +2,10 @@
 
 import { AudioLines, Loader2, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { VoiceControlActivity } from "./voice-runtime-types";
 
 export type VoiceAgentButtonRuntime = {
-  activity: "connecting" | "error" | "idle" | "listening" | "processing" | "executing";
+  activity: VoiceControlActivity;
   connected: boolean;
   muted: boolean;
 };
@@ -16,6 +17,8 @@ type VoiceAgentButtonProps = {
   disabled?: boolean;
   iconClassName?: string;
   onClick: () => void;
+  // A start is in progress before the runtime itself reports connecting.
+  pending?: boolean;
   runtime: VoiceAgentButtonRuntime;
   variant?: "default" | "nav";
 };
@@ -27,15 +30,21 @@ export default function VoiceAgentButton({
   disabled = false,
   iconClassName,
   onClick,
+  pending = false,
   runtime,
   variant = "default",
 }: VoiceAgentButtonProps) {
+  const busy =
+    !runtime.connected &&
+    (pending ||
+      runtime.activity === "connecting" ||
+      runtime.activity === "closing");
   const Icon =
     runtime.connected
       ? runtime.muted
         ? MicOff
         : AudioLines
-      : runtime.activity === "connecting"
+      : busy
         ? Loader2
         : runtime.activity === "error"
           ? MicOff
@@ -58,6 +67,7 @@ export default function VoiceAgentButton({
             ? "text-[#0D5875] dark:text-[#3BF4C7]"
             : "text-[#0D5875] dark:border-[#3BF4C7]/25 dark:bg-[#0F2431] dark:text-[#3BF4C7]"),
         runtime.activity === "error" &&
+          !busy &&
           "text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300",
       )}
     >
@@ -65,11 +75,7 @@ export default function VoiceAgentButton({
         <span className="absolute inset-0 rounded-full border border-[#4DB3D6]/40 dark:border-[#3BF4C7]/35" />
       ) : null}
       <Icon
-        className={cn(
-          "h-4 w-4",
-          !runtime.connected && runtime.activity === "connecting" && "animate-spin",
-          iconClassName,
-        )}
+        className={cn("h-4 w-4", busy && "animate-spin", iconClassName)}
         aria-hidden="true"
       />
       {children}
