@@ -24,8 +24,10 @@ import {
   getPdfPageRenderEntry,
   hasPdfPageEdits,
   normalizePdfPageEdits,
+  rebasePdfPageEditDraft,
   serializePdfPageEdits,
   type PdfPageDisplayEntry,
+  type PdfPageEditDraft,
   type PdfPageEdits,
   type PdfPageRotation,
 } from "@/lib/pdf/page-edits";
@@ -37,12 +39,6 @@ type PastPaperPageEditorProps = {
   paperId: string;
   savedPageEdits: PdfPageEdits | null;
   totalPages: number;
-};
-
-type PageEditorDraftState = {
-  propKey: string;
-  baseline: PdfPageEdits | null;
-  draft: PdfPageEdits | null;
 };
 
 type PageEditsUpdate =
@@ -156,38 +152,37 @@ export default function PastPaperPageEditor({
     () => serializePdfPageEdits(normalizedSavedPageEdits, totalPages),
     [normalizedSavedPageEdits, totalPages],
   );
-  const [pageEditState, setPageEditState] = useState<PageEditorDraftState>({
-    propKey: normalizedSavedKey,
+  const [pageEditState, setPageEditState] = useState<PdfPageEditDraft>({
+    savedKey: normalizedSavedKey,
     baseline: normalizedSavedPageEdits,
     draft: normalizedSavedPageEdits,
   });
   const [isOpen, setIsOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const baselinePageEdits =
-    pageEditState.propKey === normalizedSavedKey
-      ? pageEditState.baseline
-      : normalizedSavedPageEdits;
-  const draftPageEdits =
-    pageEditState.propKey === normalizedSavedKey
-      ? pageEditState.draft
-      : normalizedSavedPageEdits;
+  // A refreshed saved value (for example another moderator's save) keeps the
+  // unsaved draft instead of silently discarding it.
+  const currentEditState = rebasePdfPageEditDraft(
+    pageEditState,
+    normalizedSavedKey,
+    normalizedSavedPageEdits,
+    totalPages,
+  );
+  const baselinePageEdits = currentEditState.baseline;
+  const draftPageEdits = currentEditState.draft;
   const setDraftPageEdits = (nextDraft: PageEditsUpdate) => {
     setPageEditState((currentState) => {
-      const currentBaseline =
-        currentState.propKey === normalizedSavedKey
-          ? currentState.baseline
-          : normalizedSavedPageEdits;
-      const currentDraft =
-        currentState.propKey === normalizedSavedKey
-          ? currentState.draft
-          : normalizedSavedPageEdits;
+      const rebased = rebasePdfPageEditDraft(
+        currentState,
+        normalizedSavedKey,
+        normalizedSavedPageEdits,
+        totalPages,
+      );
 
       return {
-        propKey: normalizedSavedKey,
-        baseline: currentBaseline,
+        ...rebased,
         draft:
-          typeof nextDraft === "function" ? nextDraft(currentDraft) : nextDraft,
+          typeof nextDraft === "function" ? nextDraft(rebased.draft) : nextDraft,
       };
     });
   };
@@ -198,7 +193,7 @@ export default function PastPaperPageEditor({
     );
 
     setPageEditState({
-      propKey: normalizedSavedKey,
+      savedKey: normalizedSavedKey,
       baseline: normalizedNextPageEdits,
       draft: normalizedNextPageEdits,
     });
