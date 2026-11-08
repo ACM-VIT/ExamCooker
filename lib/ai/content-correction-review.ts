@@ -15,6 +15,7 @@ import {
 import type {
   CorrectionReportCategory,
   CorrectionReportDecision,
+  CorrectionReportStatus,
 } from "@/lib/ai/content-correction-types";
 import {
   applicableCorrectionFields,
@@ -454,7 +455,7 @@ async function processReport(reportId: string, expectedReportUpdatedAt: Date, ai
     review.confidence >= AUTO_DECISION_CONFIDENCE;
 
   let decision: CorrectionReportDecision["decision"] = "stage";
-  let status = "needs_review";
+  let status: CorrectionReportStatus = "needs_review";
   let appliedFields: string[] = [];
   const proposedFields =
     claim.verdict === "unsupported" ? [] : verifiedChanges;
