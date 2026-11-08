@@ -275,13 +275,15 @@ export async function renameItem(id: string, type: "note" | "pastPaper", title: 
         await db
             .update(note)
             .set({ title, ...clearedModerationReview })
-            .where(eq(note.id, id));
+            .where(and(eq(note.id, id), isNull(note.moderationArchivedAt)));
     }
     if (type === "pastPaper") {
         await db
             .update(pastPaper)
             .set({ title, ...clearedModerationReview })
-            .where(eq(pastPaper.id, id));
+            .where(
+                and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)),
+            );
     }
 
     revalidatePath("/mod");
@@ -317,7 +319,7 @@ export async function generatePastPaperTitle(id: string) {
             fileUrl: pastPaper.fileUrl,
         })
         .from(pastPaper)
-        .where(eq(pastPaper.id, id))
+        .where(and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)))
         .limit(1);
 
     const paper = rows[0];
@@ -330,7 +332,9 @@ export async function generatePastPaperTitle(id: string) {
         await db
             .update(pastPaper)
             .set({ title: aiTitle, ...clearedModerationReview })
-            .where(eq(pastPaper.id, id));
+            .where(
+                and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)),
+            );
     }
 
     revalidatePath("/mod");

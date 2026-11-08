@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, updateTag } from "next/cache";
 import { db, pastPaper } from "@/db";
@@ -81,7 +81,12 @@ export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
                     questionPaperId: pastPaper.questionPaperId,
                 })
                 .from(pastPaper)
-                .where(eq(pastPaper.id, parsed.id))
+                .where(
+                    and(
+                        eq(pastPaper.id, parsed.id),
+                        isNull(pastPaper.moderationArchivedAt),
+                    ),
+                )
                 .limit(1);
 
             if (!existingPaper) {
@@ -182,7 +187,12 @@ export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
                     questionPaperId: nextQuestionPaperId,
                     ...clearedModerationReview,
                 })
-                .where(eq(pastPaper.id, parsed.id));
+                .where(
+                    and(
+                        eq(pastPaper.id, parsed.id),
+                        isNull(pastPaper.moderationArchivedAt),
+                    ),
+                );
 
             return {
                 questionPaperId: nextQuestionPaperId,

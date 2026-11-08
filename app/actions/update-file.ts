@@ -1,6 +1,6 @@
 'use server'
 
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { auth } from '@/app/auth'
 import { db, note, pastPaper } from '@/db'
@@ -33,7 +33,7 @@ export async function updateFile(
             await db
                 .update(note)
                 .set({ title, ...clearedModerationReview })
-                .where(eq(note.id, itemID));
+                .where(and(eq(note.id, itemID), isNull(note.moderationArchivedAt)));
             revalidatePath('/notes');
             revalidateTag('notes', 'minutes');
             revalidateTag(`note:${itemID}`, 'minutes');
@@ -42,7 +42,9 @@ export async function updateFile(
             await db
                 .update(pastPaper)
                 .set({ title, ...clearedModerationReview })
-                .where(eq(pastPaper.id, itemID));
+                .where(
+                    and(eq(pastPaper.id, itemID), isNull(pastPaper.moderationArchivedAt)),
+                );
             revalidatePath('/past_papers');
             revalidateTag('past_papers', 'minutes');
             revalidateTag(`past_paper:${itemID}`, 'minutes');

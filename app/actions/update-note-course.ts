@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { db, note } from "@/db";
@@ -26,7 +26,7 @@ export async function updateNoteCourse(input: UpdateNoteCourseInput) {
     await db
         .update(note)
         .set({ courseId: parsed.courseId, ...clearedModerationReview })
-        .where(eq(note.id, parsed.id));
+        .where(and(eq(note.id, parsed.id), isNull(note.moderationArchivedAt)));
 
     revalidatePath("/mod/notes/review");
     revalidateTag("notes", "minutes");
