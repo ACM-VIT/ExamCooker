@@ -22,6 +22,10 @@ import {
   tryAcquirePdfMarkdownGenerationLock,
   waitForPdfMarkdownCache,
 } from "@/lib/ai/pdf-markdown-cache";
+import {
+  resolvePdfMarkdownCacheMode,
+  type ExpectedPdfMarkdownGeneration,
+} from "@/lib/ai/pdf-markdown-cache-policy";
 import type { PdfMarkdownCacheMetadata } from "@/lib/ai/pdf-markdown-cache-types";
 import {
   capturePostHogAiGeneration,
@@ -563,14 +567,21 @@ export async function POST(request: NextRequest) {
     promptFingerprint,
     voterId: distinctId,
   };
-  const cacheMode = parsedBody.cacheMode ?? "default";
+  const cacheMode = resolvePdfMarkdownCacheMode(
+    parsedBody.cacheMode,
+    session?.user?.role,
+  );
   let cacheMetadata: PdfMarkdownCacheMetadata | null = null;
   let generationLockToken: string | null = null;
   let cacheCanLock = false;
+  // A moderator refresh replaces whatever is stored. Every other writer may
+  // replace only the generation it saw: none, or a flagged one.
+  let expectedGenerationId: ExpectedPdfMarkdownGeneration = undefined;
 
   if (cacheMode !== "refresh") {
     const cached = await readPdfMarkdownCache(cacheLookupInput);
     cacheMetadata = cached.metadata;
+    expectedGenerationId = cached.metadata.generationId ?? null;
 
     if (cached.type === "hit") {
       return createDoneStreamResponse(
@@ -613,6 +624,29 @@ export async function POST(request: NextRequest) {
           },
           { "X-ExamCooker-Markdown-Cache": "hit-waited" },
         );
+      }
+      // The holder is still generating or has died. Take over its lock if it
+      // expired; otherwise generate unlocked, and the guarded store keeps the
+      // holder's generation if it finishes first.
+      generationLockToken = await tryAcquirePdfMarkdownGenerationLock(cacheKey);
+      if (generationLockToken) {
+        // The holder may have stored its result just before releasing.
+        const refreshed = await readPdfMarkdownCache(cacheLookupInput);
+        if (refreshed.type === "hit") {
+          await releasePdfMarkdownGenerationLock(cacheKey, generationLockToken);
+          return createDoneStreamResponse(
+            {
+              cache: refreshed.metadata,
+              markdown: refreshed.entry.markdown,
+              model: modelId,
+              paper: refreshed.entry.paper,
+              type: "done",
+            },
+            { "X-ExamCooker-Markdown-Cache": "hit-waited" },
+          );
+        }
+        cacheMetadata = refreshed.metadata;
+        expectedGenerationId = refreshed.metadata.generationId ?? null;
       }
     }
   }
@@ -733,6 +767,7 @@ export async function POST(request: NextRequest) {
           const storedCacheMetadata = await storePdfMarkdownCache({
             cacheKey,
             contentHash,
+            expectedGenerationId,
             fileName: parsedBody.fileName,
             fileUrl: fileUrl.href,
             markdown,

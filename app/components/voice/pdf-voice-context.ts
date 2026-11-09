@@ -10,18 +10,21 @@ export type ActivePdfSnapshot = {
   viewerId: string;
 };
 
-let activePdfSnapshot: ActivePdfSnapshot | null = null;
+// Every mounted viewer, ordered by its latest update. The most recently
+// updated viewer is the active one; when it closes, the next one takes over.
+const openPdfSnapshots = new Map<string, ActivePdfSnapshot>();
 
 export function getActivePdfSnapshot() {
-  return activePdfSnapshot;
+  let active: ActivePdfSnapshot | null = null;
+  for (const snapshot of openPdfSnapshots.values()) active = snapshot;
+  return active;
 }
 
 export function setActivePdfSnapshot(nextSnapshot: ActivePdfSnapshot) {
-  activePdfSnapshot = nextSnapshot;
+  openPdfSnapshots.delete(nextSnapshot.viewerId);
+  openPdfSnapshots.set(nextSnapshot.viewerId, nextSnapshot);
 }
 
 export function clearActivePdfSnapshot(viewerId: string) {
-  if (activePdfSnapshot?.viewerId === viewerId) {
-    activePdfSnapshot = null;
-  }
+  openPdfSnapshots.delete(viewerId);
 }

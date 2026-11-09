@@ -1,6 +1,6 @@
 import { unstable_rethrow } from 'next/navigation'
 import { NextRequest, NextResponse } from 'next/server'
-import { and, count, desc, eq, exists, ilike, inArray, or } from 'drizzle-orm'
+import { and, count, desc, eq, exists, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm'
 import { normalizeGcsUrl } from '@/lib/normalize-gcs-url'
 import { getPastPaperDetailPath } from '@/lib/seo'
 import { examTypeLabel } from '@/lib/exam-slug'
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, clampNumber(params.get('page'), 1, Number.MAX_SAFE_INTEGER))
     const includeDrafts = params.get('includeDrafts') === '1'
 
-    const filters = []
+    const filters: (SQL | undefined)[] = [isNull(pastPaper.moderationArchivedAt)]
     if (!includeDrafts) {
       filters.push(eq(pastPaper.isClear, true))
     }

@@ -71,8 +71,9 @@ export class LiveResponseHandler {
         .then(() => this.complete(batch))
         .catch(this.options.onError);
     } else if (
-      event.type === "response.failed" ||
-      event.type === "response.incomplete"
+      (event.type === "response.failed" ||
+        event.type === "response.incomplete") &&
+      !batch.terminal
     ) {
       batch.terminal = true;
       this.batches.delete(batch.id);

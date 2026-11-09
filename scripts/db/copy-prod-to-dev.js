@@ -423,6 +423,9 @@ async function copyNotes(systemUserId) {
           'base."thumbNailUrl"',
           'base."isClear"',
           'base."contentHash"',
+          'base."aiReview"',
+          'base."aiReviewedAt"',
+          'base."moderationArchivedAt"',
           '(SELECT c.code FROM "Course" c WHERE c.id = base."courseId") AS "courseCode"',
         ],
         cursor,
@@ -433,9 +436,13 @@ async function copyNotes(systemUserId) {
           await client.query(
             `
               INSERT INTO "Note" (
-                id, title, "fileUrl", "thumbNailUrl", "authorId", "isClear", "contentHash", "courseId", "createdAt", "updatedAt"
+                id, title, "fileUrl", "thumbNailUrl", "authorId", "isClear", "contentHash", "courseId",
+                "aiReview", "aiReviewedAt", "moderationArchivedAt", "createdAt", "updatedAt"
               )
-              VALUES ($1, $2, $3, $4, $5, $6, $7, (SELECT id FROM "Course" WHERE code = $8), NOW(), NOW())
+              VALUES (
+                $1, $2, $3, $4, $5, $6, $7, (SELECT id FROM "Course" WHERE code = $8),
+                $9, $10, $11, NOW(), NOW()
+              )
               ON CONFLICT (id)
               DO UPDATE SET
                 title = EXCLUDED.title,
@@ -445,6 +452,9 @@ async function copyNotes(systemUserId) {
                 "isClear" = EXCLUDED."isClear",
                 "contentHash" = EXCLUDED."contentHash",
                 "courseId" = EXCLUDED."courseId",
+                "aiReview" = EXCLUDED."aiReview",
+                "aiReviewedAt" = EXCLUDED."aiReviewedAt",
+                "moderationArchivedAt" = EXCLUDED."moderationArchivedAt",
                 "updatedAt" = NOW()
             `,
             [
@@ -456,6 +466,9 @@ async function copyNotes(systemUserId) {
               note.isClear,
               note.contentHash,
               note.courseCode,
+              note.aiReview,
+              note.aiReviewedAt,
+              note.moderationArchivedAt,
             ],
           );
           await syncTagLinks(client, '_NoteToTag', note.id, note.tags);
@@ -479,6 +492,9 @@ async function copyPastPapers(systemUserId) {
           'base."thumbNailUrl"',
           'base."isClear"',
           'base."contentHash"',
+          'base."aiReview"',
+          'base."aiReviewedAt"',
+          'base."moderationArchivedAt"',
           '(SELECT c.code FROM "Course" c WHERE c.id = base."courseId") AS "courseCode"',
           'base."examType"',
           'base.slot',
@@ -498,12 +514,13 @@ async function copyPastPapers(systemUserId) {
               INSERT INTO "PastPaper" (
                 id, title, "fileUrl", "thumbNailUrl", "authorId", "isClear",
                 "contentHash", "courseId", "examType", slot, year, semester, campus,
-                "hasAnswerKey", "page_edits", "createdAt", "updatedAt"
+                "hasAnswerKey", "page_edits", "aiReview", "aiReviewedAt", "moderationArchivedAt",
+                "createdAt", "updatedAt"
               )
               VALUES (
                 $1, $2, $3, $4, $5, $6,
                 $7, (SELECT id FROM "Course" WHERE code = $8), $9, $10, $11, $12, $13,
-                $14, $15, NOW(), NOW()
+                $14, $15, $16, $17, $18, NOW(), NOW()
               )
               ON CONFLICT (id)
               DO UPDATE SET
@@ -522,6 +539,9 @@ async function copyPastPapers(systemUserId) {
                 "hasAnswerKey" = EXCLUDED."hasAnswerKey",
                 "questionPaperId" = NULL,
                 "page_edits" = EXCLUDED."page_edits",
+                "aiReview" = EXCLUDED."aiReview",
+                "aiReviewedAt" = EXCLUDED."aiReviewedAt",
+                "moderationArchivedAt" = EXCLUDED."moderationArchivedAt",
                 "updatedAt" = NOW()
             `,
             [
@@ -540,6 +560,9 @@ async function copyPastPapers(systemUserId) {
               paper.campus,
               paper.hasAnswerKey,
               paper.pageEdits,
+              paper.aiReview,
+              paper.aiReviewedAt,
+              paper.moderationArchivedAt,
             ],
           );
           await syncTagLinks(client, '_PastPaperToTag', paper.id, paper.tags);

@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/app/auth";
 import { revalidateTag } from "next/cache";
@@ -50,14 +50,17 @@ export async function updateNoteInline(input: z.input<typeof schema>) {
       ),
     );
 
-    await tx
+    const [updated] = await tx
       .update(note)
       .set({
         title: parsed.title,
         courseId: parsed.courseId,
         ...clearedModerationReview,
       })
-      .where(eq(note.id, parsed.id));
+      .where(and(eq(note.id, parsed.id), isNull(note.moderationArchivedAt)))
+      .returning({ id: note.id });
+    // Rolls back the tag changes below for an archived or deleted note.
+    if (!updated) throw new Error("Note not found.");
 
     await tx.delete(noteToTag).where(eq(noteToTag.a, parsed.id));
     if (tagRecords.length > 0) {

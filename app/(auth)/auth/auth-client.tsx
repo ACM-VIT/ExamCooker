@@ -1,6 +1,6 @@
 "use client";
 
-import { type SyntheticEvent, useEffect, useMemo, useReducer, useState } from "react";
+import { type SyntheticEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { getProviders, signIn } from "next-auth/react";
 import { captureSignInStarted } from "@/lib/posthog/client";
 import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
@@ -24,8 +24,10 @@ type ReviewFormAction =
     | { type: "password"; value: string }
     | { type: "submit" }
     | { type: "error"; message: string }
-    | { type: "complete" };
+    | { type: "page_restored" };
 
+// A successful sign-in navigates away and stays "submitting"; only a failure
+// ends the submission.
 function reviewFormReducer(
     state: ReviewFormState,
     action: ReviewFormAction,
@@ -38,13 +40,19 @@ function reviewFormReducer(
         case "password":
             return { ...state, password: action.value };
         case "submit":
+            if (state.submitting) return state;
             return { ...state, error: null, submitting: true };
         case "error":
-            return { ...state, error: action.message };
-        case "complete":
-            return { ...state, submitting: false };
+            return { ...state, error: action.message, submitting: false };
+        case "page_restored":
+            return state.submitting ? { ...state, submitting: false } : state;
     }
 }
+
+type ProviderState =
+    | { status: "loading" }
+    | { status: "ready"; providers: Provider[] }
+    | { status: "error" };
 
 const providerLabels: Record<string, string> = {
     apple: "Continue with Apple",
@@ -210,13 +218,13 @@ export default function AuthClient({
     callbackUrl: string;
     error?: string | null;
 }) {
-    const [providerState, setProviderState] = useState<{
-        loading: boolean;
-        providers: Provider[];
-    }>({
-        loading: true,
-        providers: [],
-    });
+    const [providerState, setProviderState] = useState<ProviderState>({ status: "loading" });
+    const [providerLoadAttempt, setProviderLoadAttempt] = useState(0);
+    // The provider whose sign-in is starting. A second tap would open another
+    // native browser or Apple sheet and replace the stored handoff verifier.
+    const [signingInProviderId, setSigningInProviderId] = useState<string | null>(null);
+    const signingInRef = useRef(false);
+    const reviewSubmittingRef = useRef(false);
     const [reviewForm, dispatchReviewForm] = useReducer(reviewFormReducer, {
         email: "",
         error: null,
@@ -230,21 +238,22 @@ export default function AuthClient({
         let cancelled = false;
 
         async function loadProviders() {
-            let nextProviders: Provider[] = [];
             try {
                 const payload = await getProviders();
-                nextProviders = Object.values(payload ?? {}).filter((provider) =>
-                    ["apple", "google", "app-review"].includes(provider.id),
-                );
-            } catch {
-                nextProviders = [];
-            }
-
-            if (!cancelled) {
+                if (cancelled) return;
+                // next-auth reports a failed fetch as null rather than throwing.
+                if (!payload) {
+                    setProviderState({ status: "error" });
+                    return;
+                }
                 setProviderState({
-                    loading: false,
-                    providers: nextProviders,
+                    status: "ready",
+                    providers: Object.values(payload).filter((provider) =>
+                        ["apple", "google", "app-review"].includes(provider.id),
+                    ),
                 });
+            } catch {
+                if (!cancelled) setProviderState({ status: "error" });
             }
         }
 
@@ -253,19 +262,47 @@ export default function AuthClient({
         return () => {
             cancelled = true;
         };
+    }, [providerLoadAttempt]);
+
+    useEffect(() => {
+        // Returning with Back restores this page from the back/forward cache with
+        // a sign-in still marked as starting; make the buttons usable again.
+        const handlePageShow = (event: PageTransitionEvent) => {
+            if (!event.persisted) return;
+            signingInRef.current = false;
+            reviewSubmittingRef.current = false;
+            setSigningInProviderId(null);
+            dispatchReviewForm({ type: "page_restored" });
+        };
+        window.addEventListener("pageshow", handlePageShow);
+        return () => window.removeEventListener("pageshow", handlePageShow);
     }, []);
 
+    const retryProviders = useCallback(() => {
+        setProviderState({ status: "loading" });
+        setProviderLoadAttempt((attempt) => attempt + 1);
+    }, []);
+
+    const providers = providerState.status === "ready" ? providerState.providers : [];
     const visibleProviders = useMemo(() => {
         const ordered = ["google", "apple"];
-        return providerState.providers
+        return providers
             .filter((provider) => ordered.includes(provider.id))
             .sort((a, b) => ordered.indexOf(a.id) - ordered.indexOf(b.id));
-    }, [providerState.providers]);
-    const reviewProvider = providerState.providers.find(
+    }, [providers]);
+    const reviewProvider = providers.find(
         (provider) => provider.id === "app-review",
     );
 
     const handleSignIn = async (provider: Provider) => {
+        if (signingInRef.current) return;
+        signingInRef.current = true;
+        setSigningInProviderId(provider.id);
+        const release = () => {
+            signingInRef.current = false;
+            setSigningInProviderId(null);
+        };
+
         captureSignInStarted({
             source: "auth_page",
             callbackPath: callbackUrl,
@@ -274,10 +311,14 @@ export default function AuthClient({
 
         try {
             if (await handleNativeSignIn(provider, callbackUrl)) {
+                // The native browser or Apple sheet now covers the app; once it
+                // closes the buttons are usable again.
+                release();
                 return;
             }
         } catch (error) {
             if (isNativeAppleCancel(error)) {
+                release();
                 return;
             }
 
@@ -286,15 +327,22 @@ export default function AuthClient({
             return;
         }
 
-        void signIn(provider.id, { callbackUrl }).finally(() => {
+        try {
+            // On success this navigates away, so the buttons stay disabled.
+            await signIn(provider.id, { callbackUrl });
+        } catch (error) {
+            console.error("[auth] sign-in failed", error);
+            release();
+        } finally {
             invalidateAuthSessionCache();
-        });
+        }
     };
 
     const handleReviewSignIn = async (event: SyntheticEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!reviewProvider || reviewForm.submitting) return;
+        if (!reviewProvider || reviewSubmittingRef.current) return;
 
+        reviewSubmittingRef.current = true;
         dispatchReviewForm({ type: "submit" });
         captureSignInStarted({
             source: "app_review_auth_page",
@@ -311,21 +359,23 @@ export default function AuthClient({
             });
 
             if (result?.ok && result.url) {
+                // Stay in the submitting state while the browser navigates.
                 window.location.assign(result.url);
                 return;
             }
 
+            reviewSubmittingRef.current = false;
             dispatchReviewForm({
                 type: "error",
                 message: "The reviewer email or password is incorrect.",
             });
         } catch {
+            reviewSubmittingRef.current = false;
             dispatchReviewForm({
                 type: "error",
                 message: "Authentication could not be completed. Try again.",
             });
         } finally {
-            dispatchReviewForm({ type: "complete" });
             invalidateAuthSessionCache();
         }
     };
@@ -338,8 +388,19 @@ export default function AuthClient({
                 </p>
             )}
 
-            {providerState.loading ? (
+            {providerState.status === "loading" ? (
                 <div className="h-11 rounded-lg border border-black/15 bg-white/60 dark:border-white/15 dark:bg-white/[0.05]" />
+            ) : providerState.status === "error" ? (
+                <div className="flex flex-col gap-3 rounded-lg border border-black/15 bg-white/60 px-4 py-3 text-sm leading-6 text-black/70 dark:border-white/15 dark:bg-white/[0.05] dark:text-[#D5D5D5]/70">
+                    <p>Sign-in options could not be loaded. Check your connection.</p>
+                    <button
+                        type="button"
+                        onClick={retryProviders}
+                        className="self-start font-semibold text-black underline underline-offset-4 dark:text-[#D5D5D5]"
+                    >
+                        Try again
+                    </button>
+                </div>
             ) : reviewProvider || visibleProviders.length > 0 ? (
                 <>
                     {reviewForm.show && reviewProvider ? (
@@ -417,8 +478,10 @@ export default function AuthClient({
                                 <button
                                     key={provider.id}
                                     type="button"
-                                    onClick={() => handleSignIn(provider)}
-                                    className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-[#0A0F1C] hover:text-white active:translate-y-px dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
+                                    onClick={() => void handleSignIn(provider)}
+                                    disabled={signingInProviderId !== null}
+                                    aria-busy={signingInProviderId === provider.id}
+                                    className="inline-flex h-12 items-center justify-center gap-3 rounded-lg border border-black/20 bg-white px-5 text-sm font-semibold text-black transition-colors hover:border-black hover:bg-[#0A0F1C] hover:text-white active:translate-y-px disabled:cursor-wait disabled:opacity-60 dark:border-white/20 dark:bg-white/5 dark:text-[#D5D5D5] dark:hover:border-white/45 dark:hover:bg-white/12"
                                 >
                                     <ProviderIcon providerId={provider.id} />
                                     {providerLabels[provider.id] ?? `Continue with ${provider.name}`}

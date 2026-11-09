@@ -10,6 +10,25 @@ export type AiSessionStatus = {
   voiceReady: boolean;
 };
 
+/**
+ * Moderation and correction review decide whether content is published or
+ * edited, so the person who triggered them must not choose the model. A
+ * session key may pay for the request; the model stays the server's choice
+ * for that key's provider.
+ */
+function serverModelForProvider(
+  configured: string | undefined,
+  serverProvider: string | undefined,
+  provider: AiTextProvider,
+) {
+  const model = configured?.trim();
+  if (!model) return undefined;
+  const separator = model.indexOf("/");
+  const modelProvider =
+    separator === -1 ? serverProvider?.trim() || "openai" : model.slice(0, separator);
+  return modelProvider === provider ? model : undefined;
+}
+
 export function createAiSessionEnvironment(
   source: Record<string, string | undefined>,
   settings: AiSessionSettings | null,
@@ -37,8 +56,16 @@ export function createAiSessionEnvironment(
     ...base,
     AI_PROVIDER: settings.provider,
     AI_COMMAND_MODEL: settings.model,
-    AI_MODERATION_MODEL: settings.model,
-    AI_CONTENT_CORRECTION_MODEL: settings.model,
+    AI_MODERATION_MODEL: serverModelForProvider(
+      source.AI_MODERATION_MODEL,
+      source.AI_PROVIDER,
+      settings.provider,
+    ),
+    AI_CONTENT_CORRECTION_MODEL: serverModelForProvider(
+      source.AI_CONTENT_CORRECTION_MODEL,
+      source.AI_PROVIDER,
+      settings.provider,
+    ),
     AI_PAST_PAPER_TITLE_MODEL: settings.model,
     AI_PDF_MARKDOWN_MODEL: settings.model,
     AI_VOICE_DOCUMENT_MODEL: settings.model,

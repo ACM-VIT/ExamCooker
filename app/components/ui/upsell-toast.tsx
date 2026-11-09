@@ -16,17 +16,16 @@ const UPSELL_AUTO_HIDE_MS = 10_000;
 const ctaClassName =
     "relative inline-flex h-11 w-full cursor-pointer items-center justify-center border-2 border-black bg-[#3BF4C7] text-sm font-bold text-black transition duration-150 dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] dark:group-hover:-translate-x-0.5 dark:group-hover:-translate-y-0.5";
 
-type UpsellToastState = {
-    mounted: boolean;
-    upsell: Upsell | null;
-    visible: boolean;
-};
+// hidden → entering (mounted off-screen) → visible → exiting → hidden.
+type UpsellToastState =
+    | { phase: "hidden" }
+    | { phase: "entering" | "visible" | "exiting"; upsell: Upsell };
 
 type UpsellToastAction =
     | { type: "mount"; upsell: Upsell }
     | { type: "show" }
     | { type: "hide" }
-    | { type: "unmount" }
+    | { type: "unmount"; upsellId: string }
     | { type: "reset" };
 
 function upsellToastReducer(
@@ -35,25 +34,31 @@ function upsellToastReducer(
 ): UpsellToastState {
     switch (action.type) {
         case "mount":
-            return { mounted: true, upsell: action.upsell, visible: false };
+            return { phase: "entering", upsell: action.upsell };
         case "show":
-            return state.mounted ? { ...state, visible: true } : state;
+            return state.phase === "entering" ? { ...state, phase: "visible" } : state;
         case "hide":
-            return { ...state, visible: false };
+            return state.phase === "entering" || state.phase === "visible"
+                ? { ...state, phase: "exiting" }
+                : state;
         case "unmount":
-            return { mounted: false, upsell: null, visible: false };
+            // Only the exit that scheduled this unmount may end the toast; a
+            // newer upsell mounted meanwhile stays.
+            return state.phase === "exiting" && state.upsell.id === action.upsellId
+                ? { phase: "hidden" }
+                : state;
         case "reset":
-            return { mounted: false, upsell: null, visible: false };
+            return state.phase === "hidden" ? state : { phase: "hidden" };
     }
 }
 
 const UpsellToast = () => {
     const pathname = usePathname();
     const isMobile = useIsMobile();
-    const [{ mounted, upsell, visible }, dispatch] = useReducer(
-        upsellToastReducer,
-        { mounted: false, upsell: null, visible: false },
-    );
+    const [toast, dispatch] = useReducer(upsellToastReducer, { phase: "hidden" });
+    const upsell = toast.phase === "hidden" ? null : toast.upsell;
+    const mounted = toast.phase !== "hidden";
+    const visible = toast.phase === "visible";
     const upsellRef = useRef<Upsell | null>(null);
     const unmountAfterEnterRef = useRef<number | null>(null);
 
@@ -62,28 +67,26 @@ const UpsellToast = () => {
     const isUtilityPage = pathname === "/cli" || pathname.startsWith("/mod");
     const isAuthPage = pathname === "/auth";
 
-    const hideToast = useCallback(() => {
-        const current = upsellRef.current;
-        if (current) {
-            markUpsellDismissed(current.id);
-        }
-        dispatch({ type: "hide" });
+    const clearUnmountTimer = useCallback(() => {
         if (unmountAfterEnterRef.current !== null) {
             clearTimeout(unmountAfterEnterRef.current);
-        }
-        unmountAfterEnterRef.current = window.setTimeout(() => {
-            dispatch({ type: "unmount" });
             unmountAfterEnterRef.current = null;
-        }, ENTER_MS);
+        }
     }, []);
 
-    useEffect(() => {
-        return () => {
-            if (unmountAfterEnterRef.current !== null) {
-                clearTimeout(unmountAfterEnterRef.current);
-            }
-        };
-    }, []);
+    const hideToast = useCallback(() => {
+        const current = upsellRef.current;
+        if (!current) return;
+        markUpsellDismissed(current.id);
+        dispatch({ type: "hide" });
+        clearUnmountTimer();
+        unmountAfterEnterRef.current = window.setTimeout(() => {
+            unmountAfterEnterRef.current = null;
+            dispatch({ type: "unmount", upsellId: current.id });
+        }, ENTER_MS);
+    }, [clearUnmountTimer]);
+
+    useEffect(() => clearUnmountTimer, [clearUnmountTimer]);
 
     useEffect(() => {
         if (isUtilityPage || isAuthPage || isMobile) return;
@@ -95,18 +98,25 @@ const UpsellToast = () => {
         return () => window.clearTimeout(timer);
     }, [isAuthPage, isUtilityPage, isMobile]);
 
+    const entering = toast.phase === "entering";
     useEffect(() => {
-        if (!mounted) return;
-        const raf = requestAnimationFrame(() => {
-            requestAnimationFrame(() => dispatch({ type: "show" }));
+        if (!entering) return;
+        // Two frames so the off-screen position is painted before the transition.
+        let innerRaf = 0;
+        const outerRaf = requestAnimationFrame(() => {
+            innerRaf = requestAnimationFrame(() => dispatch({ type: "show" }));
         });
-        return () => cancelAnimationFrame(raf);
-    }, [mounted]);
+        return () => {
+            cancelAnimationFrame(outerRaf);
+            cancelAnimationFrame(innerRaf);
+        };
+    }, [entering]);
 
     useEffect(() => {
         if (!isUtilityPage && !isAuthPage && !isMobile) return;
+        clearUnmountTimer();
         dispatch({ type: "reset" });
-    }, [isAuthPage, isUtilityPage, isMobile]);
+    }, [clearUnmountTimer, isAuthPage, isUtilityPage, isMobile]);
 
     useEffect(() => {
         if (!visible || !upsell) return;

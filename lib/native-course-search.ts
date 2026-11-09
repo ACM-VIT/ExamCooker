@@ -108,7 +108,19 @@ export function useNativeCourseSearchAvailable() {
   );
 }
 
-export function presentNativeCourseSearch(options: NativeCourseSearchOptions) {
+// The native sheet that is open, if any. Only one can be presented at a time.
+let presentingSearch: Promise<NativeCourseSearchResult> | null = null;
+
+/**
+ * Presents the native course search. A second call while one is open (for
+ * example a double tap) is answered as a cancel, so its caller does nothing
+ * instead of opening another sheet or acting on the same result twice.
+ */
+export function presentNativeCourseSearch(
+  options: NativeCourseSearchOptions,
+): Promise<NativeCourseSearchResult> {
+  if (presentingSearch) return Promise.resolve({ action: "cancel" });
+
   const root = document.documentElement;
   const explicitTheme = root.dataset.theme;
   const inferredDarkMode =
@@ -118,8 +130,12 @@ export function presentNativeCourseSearch(options: NativeCourseSearchOptions) {
         root.style.colorScheme.includes("dark") ||
         window.matchMedia("(prefers-color-scheme: dark)").matches));
 
-  return NativeCourseSearch.present({
+  const presentation = NativeCourseSearch.present({
     ...options,
     darkMode: options.darkMode ?? inferredDarkMode,
+  }).finally(() => {
+    if (presentingSearch === presentation) presentingSearch = null;
   });
+  presentingSearch = presentation;
+  return presentation;
 }

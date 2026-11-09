@@ -9,8 +9,10 @@ import {
   cliAccessToken,
   cliDeviceAuthRequest,
   nativeAuthHandoff,
+  nativePushToken,
   sessions,
   studyChat,
+  uploadResultReceipt,
   user,
   userBookmarkedForumPosts,
   userBookmarkedNotes,
@@ -55,13 +57,17 @@ export async function POST() {
     hasCliAccessToken,
     hasCliDeviceAuthRequest,
     hasNativeAuthHandoff,
+    hasNativePushToken,
     hasStudyChat,
+    hasUploadResultReceipt,
   ] =
     await Promise.all([
       tableExists("CliAccessToken"),
       tableExists("CliDeviceAuthRequest"),
       tableExists("NativeAuthHandoff"),
+      tableExists("NativePushToken"),
       tableExists("StudyChat"),
+      tableExists("UploadResultReceipt"),
     ]);
 
   await db.transaction(async (tx) => {
@@ -74,8 +80,17 @@ export async function POST() {
     if (hasNativeAuthHandoff) {
       await tx.delete(nativeAuthHandoff).where(eq(nativeAuthHandoff.userId, userId));
     }
+    if (hasNativePushToken) {
+      // The devices stop receiving notifications meant for this account.
+      await tx.delete(nativePushToken).where(eq(nativePushToken.userId, userId));
+    }
     if (hasStudyChat) {
       await tx.delete(studyChat).where(eq(studyChat.userId, userId));
+    }
+    if (hasUploadResultReceipt) {
+      await tx
+        .delete(uploadResultReceipt)
+        .where(eq(uploadResultReceipt.userId, userId));
     }
     await tx.delete(viewHistory).where(eq(viewHistory.userId, userId));
     await tx.delete(vote).where(eq(vote.userId, userId));

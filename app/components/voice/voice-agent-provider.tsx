@@ -10,6 +10,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -36,12 +37,16 @@ import {
   getCoursePastPapersContext,
   getInternalPathFromHref,
   getOpenPdfView,
+  previousInAppPath,
+  recordInAppNavigation,
   resolveCourseCodeForNavigation,
   resolveCourseExam,
   resolveInternalPath,
   settleUi,
+  startInAppHistory,
   useBrowserPath,
   waitForCondition,
+  type InAppHistory,
   type NavigationEventDetail,
   type VoiceGuideSnapshot,
 } from "./voice-agent-helpers";
@@ -77,6 +82,8 @@ type VoiceAgentContextValue = {
   controller: VoiceControlController;
   lastError: string | null;
   runtime: UseVoiceControlReturn;
+  // A start is in progress (AI key checks or connecting) and can be cancelled.
+  startPending: boolean;
   startVoiceAgent: () => void;
   toggleVoiceAgent: () => void;
 };
@@ -118,14 +125,18 @@ export default function VoiceAgentProvider({
   >(null);
   const studyNotesRef = useRef("");
   const controlRegistryRef = useRef<VoiceControlRegistryEntry[]>([]);
-  const inAppHistoryRef = useRef<{ entries: string[]; index: number }>({
-    entries: [],
-    index: -1,
-  });
+  // null until the first path is known.
+  const inAppHistoryRef = useRef<InAppHistory | null>(null);
   const runtime = useVoiceControl(controller);
   const { cursorState, run, hide } = useGhostCursor();
-  const voiceStartCoordinator = useMemo(() => createVoiceStartCoordinator({
-    ensureAiReady,
+  const ensureAiReadyRef = useRef(ensureAiReady);
+  useEffect(() => {
+    ensureAiReadyRef.current = ensureAiReady;
+  }, [ensureAiReady]);
+  // Created once so a pending start survives re-renders and unmount cleanup
+  // never runs because a dependency changed identity.
+  const [voiceStartCoordinator] = useState(() => createVoiceStartCoordinator({
+    ensureAiReady: (feature) => ensureAiReadyRef.current(feature),
     connect: async () => {
       voiceAnalyticsSessionIdRef.current = crypto.randomUUID();
       await controller.connect();
@@ -133,7 +144,12 @@ export default function VoiceAgentProvider({
     onError: (error) => {
       setLastError(error instanceof Error ? error.message : "Could not configure voice study.");
     },
-  }), [controller, ensureAiReady]);
+  }));
+  const startPending = useSyncExternalStore(
+    voiceStartCoordinator.subscribe,
+    voiceStartCoordinator.isPending,
+    voiceStartCoordinator.isPending,
+  );
 
   useEffect(() => {
     return () => {
@@ -141,6 +157,12 @@ export default function VoiceAgentProvider({
       controller.disconnect();
     };
   }, [controller, voiceStartCoordinator]);
+
+  // Scripted cursor moves belong to a live session; once it ends, queued and
+  // in-flight moves are cancelled so no click lands after voice stopped.
+  useEffect(() => {
+    if (!runtime.connected) hide();
+  }, [hide, runtime.connected]);
 
   const getFreshSnapshot = useCallback((maxControls = MAX_VISIBLE_CONTROLS) => {
     const { snapshot, registry } = collectVoicePageSnapshot(maxControls);
@@ -261,13 +283,7 @@ export default function VoiceAgentProvider({
   }, []);
 
   useEffect(() => {
-    const historyState = inAppHistoryRef.current;
-    if (historyState.index !== -1) {
-      return;
-    }
-
-    historyState.entries = [browserPath];
-    historyState.index = 0;
+    inAppHistoryRef.current ??= startInAppHistory(browserPath);
   }, [browserPath]);
 
   useEffect(() => {
@@ -278,59 +294,10 @@ export default function VoiceAgentProvider({
           ? detail.path
           : currentBrowserPath();
       const action = detail?.action ?? "push";
-      const historyState = inAppHistoryRef.current;
-
-      if (historyState.index === -1) {
-        historyState.entries = [nextPath];
-        historyState.index = 0;
-        return;
-      }
-
-      if (action === "replace") {
-        historyState.entries[historyState.index] = nextPath;
-        return;
-      }
-
-      if (action === "push") {
-        if (historyState.entries[historyState.index] === nextPath) {
-          return;
-        }
-
-        historyState.entries = [
-          ...historyState.entries.slice(0, historyState.index + 1),
-          nextPath,
-        ];
-        historyState.index = historyState.entries.length - 1;
-        return;
-      }
-
-      const previousPath =
-        historyState.index > 0
-          ? historyState.entries[historyState.index - 1]
-          : null;
-      const nextForwardPath =
-        historyState.index + 1 < historyState.entries.length
-          ? historyState.entries[historyState.index + 1]
-          : null;
-
-      if (previousPath === nextPath) {
-        historyState.index -= 1;
-        return;
-      }
-
-      if (nextForwardPath === nextPath) {
-        historyState.index += 1;
-        return;
-      }
-
-      const knownIndex = historyState.entries.lastIndexOf(nextPath);
-      if (knownIndex !== -1) {
-        historyState.index = knownIndex;
-        return;
-      }
-
-      historyState.entries = [nextPath];
-      historyState.index = 0;
+      const history = inAppHistoryRef.current;
+      inAppHistoryRef.current = history
+        ? recordInAppNavigation(history, action, nextPath)
+        : startInAppHistory(nextPath);
     };
 
     window.addEventListener(NAVIGATION_EVENT, handleNavigationEvent);
@@ -569,11 +536,7 @@ export default function VoiceAgentProvider({
       defineVoiceTool({
         ...VOICE_TOOL_DEFINITIONS.go_back,
         execute: async () => {
-          const historyState = inAppHistoryRef.current;
-          const previousPath =
-            historyState.index > 0
-              ? historyState.entries[historyState.index - 1]
-              : null;
+          const previousPath = previousInAppPath(inAppHistoryRef.current);
           if (!previousPath) {
             return buildToolFailure(
               "There is no earlier ExamCooker page in this tab to go back to.",
@@ -681,10 +644,6 @@ export default function VoiceAgentProvider({
 
                 entry.element.click();
               },
-              {
-                easing: "smooth",
-                from: "previous",
-              },
             );
 
             await settleUi({ targetPath: internalPath ?? undefined });
@@ -740,10 +699,6 @@ export default function VoiceAgentProvider({
                 if (submit) {
                   submitFormControl(formControl);
                 }
-              },
-              {
-                easing: "smooth",
-                from: "previous",
               },
             );
 
@@ -817,13 +772,13 @@ export default function VoiceAgentProvider({
           voiceSessionId,
         });
       },
-      onError: (error) => {
-        if (error.code === "active_response") {
-          return;
+      onError: (error, { fatal }) => {
+        // Only a fatal error ends the session. A recoverable one (for example
+        // one unfinished answer) is reported while the session keeps running.
+        if (fatal) {
+          pendingDisconnectReasonRef.current = "error";
+          setLastError(error.message);
         }
-
-        pendingDisconnectReasonRef.current = "error";
-        setLastError(error.message);
         captureVoiceAgentError({
           entryPoint,
           message: error.message,
@@ -867,6 +822,9 @@ export default function VoiceAgentProvider({
     if (runtime.connected) {
       if (sessionStartedAtRef.current === null) {
         sessionStartedAtRef.current = Date.now();
+        // A reason recorded before this session started (a cancelled or
+        // failed start) does not describe how this session ends.
+        pendingDisconnectReasonRef.current = null;
         sessionEntryPointRef.current = entryPoint;
         voiceAnalyticsSessionIdRef.current ??= crypto.randomUUID();
         captureVoiceAgentSessionStarted(sessionEntryPointRef.current);
@@ -891,48 +849,49 @@ export default function VoiceAgentProvider({
     pendingDisconnectReasonRef.current = null;
   }, [entryPoint, lastError, runtime.connected]);
 
+  // A start is only possible from a settled session: not while a start is
+  // pending, connecting, live, or still finalizing the previous session.
+  const canStart =
+    !startPending &&
+    (runtime.activity === "idle" || runtime.activity === "error");
+
   const startVoiceAgent = useCallback(() => {
-    if (voiceStartCoordinator.isPending() || runtime.activity === "connecting") {
+    if (!canStart) {
       return;
     }
 
     setLastError(null);
-
-    if (runtime.connected) {
-      if (runtime.activity !== "error") {
-        return;
-      }
-
-      controller.disconnect();
-      hide();
-    }
-
     void voiceStartCoordinator.start();
-  }, [controller, hide, runtime.activity, runtime.connected, voiceStartCoordinator]);
+  }, [canStart, voiceStartCoordinator]);
 
   const dismissLastError = useCallback(() => {
     setLastError(null);
   }, []);
 
   const toggleVoiceAgent = useCallback(() => {
-    if (runtime.connected || runtime.activity === "connecting") {
+    if (runtime.activity === "closing") {
+      return;
+    }
+
+    if (startPending || runtime.connected || runtime.activity === "connecting") {
       pendingDisconnectReasonRef.current = "manual";
       voiceStartCoordinator.cancel();
       controller.disconnect();
-      hide();
       return;
     }
 
     startVoiceAgent();
-  }, [controller, hide, runtime.activity, runtime.connected, startVoiceAgent, voiceStartCoordinator]);
+  }, [controller, runtime.activity, runtime.connected, startPending, startVoiceAgent, voiceStartCoordinator]);
 
   const buttonLabel = runtime.connected
     ? "Disconnect the voice guide"
-    : runtime.activity === "connecting"
-      ? "Stop the voice guide while it connects"
-      : runtime.activity === "error"
-        ? "Retry the voice guide"
-        : "Start the voice guide";
+    : runtime.activity === "closing"
+      ? "Ending the voice guide"
+      : startPending || runtime.activity === "connecting"
+        ? "Stop the voice guide while it connects"
+        : runtime.activity === "error"
+          ? "Retry the voice guide"
+          : "Start the voice guide";
 
   const contextValue = useMemo<VoiceAgentContextValue>(
     () => ({
@@ -940,6 +899,7 @@ export default function VoiceAgentProvider({
       controller,
       lastError,
       runtime,
+      startPending,
       startVoiceAgent,
       toggleVoiceAgent,
     }),
@@ -948,6 +908,7 @@ export default function VoiceAgentProvider({
       controller,
       lastError,
       runtime,
+      startPending,
       startVoiceAgent,
       toggleVoiceAgent,
     ],

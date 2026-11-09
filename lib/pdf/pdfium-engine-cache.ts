@@ -28,27 +28,26 @@ type PdfiumEngineState =
     };
 
 let cachedEngine: PdfiumEngine | null = null;
+let pendingEngine: Promise<PdfiumEngine> | null = null;
+
 /**
  * Start the engine download at idle, without compiling it, so a later paper
  * open reuses it. Skipped when the visitor asked to save data or is on 2G.
  */
 export function prefetchPdfiumWasm() {
-  if (cachedEngine || typeof navigator === "undefined") return;
+  // A pending build has the bytes or has just released them to the engine.
+  if (cachedEngine || pendingEngine || typeof navigator === "undefined") return;
   const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
   if (connection?.saveData || /2g/.test(connection?.effectiveType ?? "")) return;
   void loadPdfiumWasm().catch(() => undefined);
 }
 
-let pendingEngine: Promise<PdfiumEngine> | null = null;
-
 export function preloadPdfiumEngine(): Promise<PdfiumEngine> {
   if (cachedEngine) return Promise.resolve(cachedEngine);
   if (pendingEngine) return pendingEngine;
 
-  const controller = new AbortController();
-  const promise = loadPdfiumEngine(controller.signal)
+  const promise = loadPdfiumEngine()
     .then((engine) => { cachedEngine = engine; return engine; })
-    .catch((error) => { controller.abort(); throw error; })
     .finally(() => { if (pendingEngine === promise) pendingEngine = null; });
   pendingEngine = promise;
   return promise;
@@ -98,6 +97,10 @@ export function usePreloadedPdfiumEngine(retryKey = 0): PdfiumEngineState {
 
   useEffect(() => {
     let isActive = true;
+    // An explicit retry builds a fresh engine: a crashed or out-of-memory
+    // PDFium instance cannot be detected reliably, and reusing it fails again.
+    // Viewers that still hold the old engine keep using it.
+    if (retryKey > 0 && !pendingEngine) cachedEngine = null;
     if (cachedEngine) {
       dispatch({ type: "loaded", engine: cachedEngine });
       return;

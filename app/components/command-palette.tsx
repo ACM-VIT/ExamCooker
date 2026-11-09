@@ -173,12 +173,15 @@ type CommandCatalogAction =
       courses: CommandCourse[];
       recentPapers: CommandPaper[];
     }
-  | { type: "failed" };
+  | { type: "failed" }
+  | { type: "retryAfterFailure" };
 
 type CommandIntentStatus = "idle" | "loading" | "settled";
 
 type CommandPaletteSessionState = {
   search: string;
+  // The query the agent fields answer; they are stale for any other query.
+  agentQuery: string;
   agentIntent: CommandIntent | null;
   agentCourseSearchText: string;
   agentActions: CommandGeneratedAction[];
@@ -190,8 +193,8 @@ type CommandPaletteSessionAction =
   | { type: "setSearch"; search: string }
   | { type: "reset" }
   | { type: "intentLoading" }
-  | { type: "intentResolved"; payload: CommandIntentResponse }
-  | { type: "intentFailed" }
+  | { type: "intentResolved"; query: string; payload: CommandIntentResponse }
+  | { type: "intentFailed"; query: string }
   | {
       type: "recordPreference";
       courseCode: string;
@@ -366,8 +369,11 @@ const INITIAL_COMMAND_CATALOG_STATE: CommandCatalogState = {
   recentPapers: [],
 };
 
+const NO_AGENT_ACTIONS: CommandGeneratedAction[] = [];
+
 const INITIAL_COMMAND_PALETTE_SESSION_STATE: CommandPaletteSessionState = {
   search: "",
+  agentQuery: "",
   agentIntent: null,
   agentCourseSearchText: "",
   agentActions: [],
@@ -378,6 +384,7 @@ const INITIAL_COMMAND_PALETTE_SESSION_STATE: CommandPaletteSessionState = {
 function isCommandPaletteSessionReset(state: CommandPaletteSessionState) {
   return (
     state.search === "" &&
+    state.agentQuery === "" &&
     state.agentIntent === null &&
     state.agentCourseSearchText === "" &&
     state.agentActions.length === 0 &&
@@ -399,6 +406,7 @@ function clearCommandAgentSession(
   return {
     ...state,
     search,
+    agentQuery: "",
     agentIntent: null,
     agentCourseSearchText: "",
     agentActions: [],
@@ -455,6 +463,8 @@ function commandCatalogReducer(
       };
     case "failed":
       return { ...state, status: "error" };
+    case "retryAfterFailure":
+      return state.status === "error" ? { ...state, status: "idle" } : state;
     default:
       return state;
   }
@@ -478,6 +488,7 @@ function commandPaletteSessionReducer(
     case "intentResolved":
       return {
         ...state,
+        agentQuery: action.query,
         agentIntent: action.payload.intent,
         agentCourseSearchText: action.payload.courseQuery?.trim() ?? "",
         agentActions: action.payload.actions ?? [],
@@ -487,6 +498,7 @@ function commandPaletteSessionReducer(
     case "intentFailed":
       return {
         ...state,
+        agentQuery: action.query,
         agentIntent: null,
         agentCourseSearchText: "",
         agentActions: [],
@@ -1092,12 +1104,16 @@ function CommandPaletteSession({
     useState<CommandUserContextResponse | null>(null);
   const {
     search,
-    agentIntent,
-    agentCourseSearchText,
-    agentActions,
+    agentQuery,
     commandPreferences,
     intentStatus,
   } = sessionState;
+  // Agent answers belong to the query they were asked for. While the next
+  // query is resolving, fall back to local matching instead of showing them.
+  const agentAnswersSearch = agentQuery !== "" && agentQuery === search.trim();
+  const agentIntent = agentAnswersSearch ? sessionState.agentIntent : null;
+  const agentCourseSearchText = agentAnswersSearch ? sessionState.agentCourseSearchText : "";
+  const agentActions = agentAnswersSearch ? sessionState.agentActions : NO_AGENT_ACTIONS;
   const {
     courses,
     recentPapers,
@@ -1108,6 +1124,8 @@ function CommandPaletteSession({
     if (open) return;
 
     dispatchSession({ type: "reset" });
+    // A failed catalog load is retried the next time the palette opens.
+    dispatchCatalog({ type: "retryAfterFailure" });
   }, [open]);
 
   useEffect(() => {
@@ -1203,11 +1221,11 @@ function CommandPaletteSession({
       void intentRequest
         .then((payload) => {
           if (cancelled) return;
-          dispatchSession({ type: "intentResolved", payload });
+          dispatchSession({ type: "intentResolved", query: trimmedSearch, payload });
         })
         .catch(() => {
           if (cancelled) return;
-          dispatchSession({ type: "intentFailed" });
+          dispatchSession({ type: "intentFailed", query: trimmedSearch });
         });
     }, 140);
 

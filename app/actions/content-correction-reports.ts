@@ -9,6 +9,7 @@ import { contentCorrectionReport, course, db, note, pastPaper } from "@/db";
 import {
   correctionReportCategories,
   type CorrectionReportDecision,
+  type CorrectionReportStatus,
 } from "@/lib/ai/content-correction-types";
 import {
   applyCorrectionSuggestion,
@@ -54,7 +55,7 @@ export type ModerationCorrectionReport = {
   category: string;
   description: string;
   suggestedValue: string | null;
-  status: string;
+  status: CorrectionReportStatus;
   aiDecision: CorrectionReportDecision | null;
   canApply: boolean;
   canConvertType: boolean;
@@ -143,35 +144,40 @@ export async function submitContentCorrectionReport(input: z.input<typeof Submit
     throw new Error("This published resource is no longer available.");
   }
 
-  const [existing] = await db
-    .select({ id: contentCorrectionReport.id })
-    .from(contentCorrectionReport)
-    .where(
-      and(
-        eq(contentCorrectionReport.reporterId, session.user.id),
-        data.resourceType === "note"
-          ? eq(contentCorrectionReport.noteId, data.resourceId)
-          : eq(contentCorrectionReport.pastPaperId, data.resourceId),
-        inArray(contentCorrectionReport.status, ["pending", "needs_review"]),
-      ),
-    )
-    .limit(1);
-  if (existing) {
-    throw new Error("You already have an open report for this resource.");
-  }
+  // The database runs transactions serializably, so two submissions racing
+  // past this check cannot both open a report for the same resource.
+  const created = await db.transaction(async (transaction) => {
+    const [existing] = await transaction
+      .select({ id: contentCorrectionReport.id })
+      .from(contentCorrectionReport)
+      .where(
+        and(
+          eq(contentCorrectionReport.reporterId, session.user.id),
+          data.resourceType === "note"
+            ? eq(contentCorrectionReport.noteId, data.resourceId)
+            : eq(contentCorrectionReport.pastPaperId, data.resourceId),
+          inArray(contentCorrectionReport.status, ["pending", "needs_review"]),
+        ),
+      )
+      .limit(1);
+    if (existing) {
+      throw new Error("You already have an open report for this resource.");
+    }
 
-  const [created] = await db
-    .insert(contentCorrectionReport)
-    .values({
-      resourceType: data.resourceType,
-      noteId: data.resourceType === "note" ? data.resourceId : null,
-      pastPaperId: data.resourceType === "pastPaper" ? data.resourceId : null,
-      reporterId: session.user.id,
-      category: data.category,
-      description: data.description,
-      suggestedValue: data.suggestedValue || null,
-    })
-    .returning({ id: contentCorrectionReport.id });
+    const [report] = await transaction
+      .insert(contentCorrectionReport)
+      .values({
+        resourceType: data.resourceType,
+        noteId: data.resourceType === "note" ? data.resourceId : null,
+        pastPaperId: data.resourceType === "pastPaper" ? data.resourceId : null,
+        reporterId: session.user.id,
+        category: data.category,
+        description: data.description,
+        suggestedValue: data.suggestedValue || null,
+      })
+      .returning({ id: contentCorrectionReport.id });
+    return report;
+  });
   if (!created) throw new Error("Could not create the report.");
 
   await scheduleContentCorrectionReview(created.id);
@@ -646,10 +652,19 @@ export async function resolveContentCorrectionReport(
         resolvedAt: new Date(),
         resolvedById: session.user.id,
       })
-      .where(reclaimableReportCondition(reportId, staleBefore))
+      .where(
+        and(
+          reclaimableReportCondition(reportId, staleBefore),
+          // The resolution applies the decision read above; a recheck or a
+          // newer AI decision in the meantime must not be overwritten by it.
+          eq(contentCorrectionReport.updatedAt, report.updatedAt),
+        ),
+      )
       .returning({ id: contentCorrectionReport.id });
     if (!resolvedReport) {
-      throw new Error("This report was resolved by another moderator.");
+      throw new Error(
+        "This report changed or was resolved by another moderator. Reload and try again.",
+      );
     }
   });
   if (convertedResource) {

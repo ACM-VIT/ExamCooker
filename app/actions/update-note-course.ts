@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { auth } from "../auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { db, note } from "@/db";
@@ -23,10 +23,12 @@ export async function updateNoteCourse(input: UpdateNoteCourseInput) {
 
     const parsed = schema.parse(input);
 
-    await db
+    const updated = await db
         .update(note)
         .set({ courseId: parsed.courseId, ...clearedModerationReview })
-        .where(eq(note.id, parsed.id));
+        .where(and(eq(note.id, parsed.id), isNull(note.moderationArchivedAt)))
+        .returning({ id: note.id });
+    if (updated.length === 0) throw new Error("Note not found.");
 
     revalidatePath("/mod/notes/review");
     revalidateTag("notes", "minutes");

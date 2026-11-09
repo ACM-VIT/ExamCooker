@@ -676,12 +676,29 @@ function currentSuggestion(resource: ResourceRecord): ModerationSuggestion {
   };
 }
 
+/**
+ * Stores a review for the version of the resource it read. The write is a
+ * compare-and-set on that version, its publication state and archive state.
+ *
+ * A review that is not applied keeps the resource's version, so the review
+ * stays current for it. Auto-approval only publishes an unpublished resource;
+ * it writes a new version and records the review against that version, which
+ * now matches the review's suggestion.
+ */
 async function persistReview(
   resource: ResourceRecord,
-  review: AiModerationReview,
+  draft: AiModerationReview,
   applyAndApprove: boolean,
   contentHash?: string,
-) {
+): Promise<AiModerationReview> {
+  if (applyAndApprove && resource.isClear) {
+    throw new Error("Only an unpublished resource can be auto-approved.");
+  }
+  const updatedAt = applyAndApprove ? new Date() : resource.updatedAt;
+  const review: AiModerationReview = {
+    ...draft,
+    resourceUpdatedAt: updatedAt.toISOString(),
+  };
   const reviewedAt = new Date(review.reviewedAt);
   if (resource.type === "note") {
     const [updated] = await db
@@ -689,8 +706,8 @@ async function persistReview(
       .set({
         aiReview: review,
         aiReviewedAt: reviewedAt,
+        updatedAt,
         ...(contentHash ? { contentHash } : {}),
-        ...(!applyAndApprove ? { updatedAt: resource.updatedAt } : {}),
         ...(applyAndApprove
           ? {
               title: review.suggestion.title,
@@ -709,7 +726,7 @@ async function persistReview(
       )
       .returning({ id: note.id });
     if (!updated) throw new StaleModerationReviewError();
-    return;
+    return review;
   }
 
   const [updated] = await db
@@ -717,8 +734,8 @@ async function persistReview(
     .set({
       aiReview: review,
       aiReviewedAt: reviewedAt,
+      updatedAt,
       ...(contentHash ? { contentHash } : {}),
-      ...(!applyAndApprove ? { updatedAt: resource.updatedAt } : {}),
       ...(applyAndApprove
         ? {
             title: review.suggestion.title,
@@ -743,6 +760,7 @@ async function persistReview(
     )
     .returning({ id: pastPaper.id });
   if (!updated) throw new StaleModerationReviewError();
+  return review;
 }
 
 export async function reviewUploadedResource(input: {
@@ -776,8 +794,13 @@ export async function reviewUploadedResource(input: {
       exactDuplicate(resource, contentHash, corpus) ??
       (await semanticDuplicate(resource, analysis, data, contentHash, corpus, aiEnvironment));
 
+    // Re-reviewing published content records the findings but never rewrites
+    // its metadata; only an upload awaiting review can be auto-approved.
     const canAutoApprove =
-      input.autoApprove !== false && issues.length === 0 && duplicate === null;
+      input.autoApprove !== false &&
+      !resource.isClear &&
+      issues.length === 0 &&
+      duplicate === null;
     const status = duplicate
       ? "duplicate"
       : issues.length > 0
@@ -798,8 +821,7 @@ export async function reviewUploadedResource(input: {
       reviewedAt,
       autoApproved: canAutoApprove,
     };
-    await persistReview(resource, review, canAutoApprove, contentHash);
-    return review;
+    return await persistReview(resource, review, canAutoApprove, contentHash);
   } catch (error) {
     if (error instanceof StaleModerationReviewError) throw error;
     const message = error instanceof Error ? error.message : "Automatic review failed.";
@@ -818,7 +840,6 @@ export async function reviewUploadedResource(input: {
       reviewedAt,
       autoApproved: false,
     };
-    await persistReview(resource, review, false, contentHash);
-    return review;
+    return persistReview(resource, review, false, contentHash);
   }
 }

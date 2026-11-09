@@ -271,17 +271,23 @@ export async function renameItem(id: string, type: "note" | "pastPaper", title: 
     const session = await auth();
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    if (type === "note") {
-        await db
-            .update(note)
-            .set({ title, ...clearedModerationReview })
-            .where(eq(note.id, id));
-    }
-    if (type === "pastPaper") {
-        await db
-            .update(pastPaper)
-            .set({ title, ...clearedModerationReview })
-            .where(eq(pastPaper.id, id));
+    // An archived copy matches no row; report it rather than a rename.
+    const renamed =
+        type === "note"
+            ? await db
+                  .update(note)
+                  .set({ title, ...clearedModerationReview })
+                  .where(and(eq(note.id, id), isNull(note.moderationArchivedAt)))
+                  .returning({ id: note.id })
+            : await db
+                  .update(pastPaper)
+                  .set({ title, ...clearedModerationReview })
+                  .where(
+                      and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)),
+                  )
+                  .returning({ id: pastPaper.id });
+    if (renamed.length === 0) {
+        throw new Error(type === "note" ? "Note not found." : "Past paper not found.");
     }
 
     revalidatePath("/mod");
@@ -317,7 +323,7 @@ export async function generatePastPaperTitle(id: string) {
             fileUrl: pastPaper.fileUrl,
         })
         .from(pastPaper)
-        .where(eq(pastPaper.id, id))
+        .where(and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)))
         .limit(1);
 
     const paper = rows[0];
@@ -330,7 +336,9 @@ export async function generatePastPaperTitle(id: string) {
         await db
             .update(pastPaper)
             .set({ title: aiTitle, ...clearedModerationReview })
-            .where(eq(pastPaper.id, id));
+            .where(
+                and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)),
+            );
     }
 
     revalidatePath("/mod");

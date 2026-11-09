@@ -39,6 +39,12 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
         setPapers((prev) => prev.filter((p) => p.id !== id));
     };
 
+    // Rows remount from this list when the filter changes, so it must hold the
+    // saved values; otherwise a remounted row would show and re-save stale data.
+    const onSaved = (saved: PaperRowData) => {
+        setPapers((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+    };
+
     const onCourseCreated = (course: CourseOption) => {
         setCourseOptions((prev) => {
             if (prev.some((c) => c.id === course.id || c.code === course.code)) return prev;
@@ -94,6 +100,7 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
                         paper={paper}
                         courses={courseOptions}
                         onResolved={onResolved}
+                        onSaved={onSaved}
                         onCourseCreated={onCourseCreated}
                     />
                 ))}

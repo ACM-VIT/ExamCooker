@@ -72,6 +72,11 @@ import { readPdfPageImageDataUrl } from "@/lib/pdf/page-image";
 import { getEffectivePdfRotation } from "@/lib/pdf/render-rotation";
 import { invalidatePdfBuffer, loadPdfBuffer } from "@/lib/pdf/pdf-buffer-cache";
 import {
+  reconcileSavedPageEdits,
+  savePageEditsLocally,
+  type SavedPageEditsState,
+} from "@/lib/pdf/saved-page-edits";
+import {
   PDFIUM_ENGINE_LOAD_TIMEOUT_MS,
   preloadPdfiumEngine,
   usePreloadedPdfiumEngine,
@@ -191,21 +196,18 @@ type PdfViewerProps = {
   pageEdits?: PdfPageEdits | null;
 };
 
-type SavedPageEditsState = {
-  propKey: string;
-  value: PdfPageEdits | null;
-  pendingValueKey: string | null;
-};
-
 type PdfBufferLifecycleState = {
   bufferState: PdfBufferState;
   bufferVersion: number;
+  /** Bumped by every retry; refetches the PDF. */
   retryNonce: number;
+  /** Bumped only by retries that may need a fresh engine (engine or document errors). */
+  engineRetryNonce: number;
   showSlowLoadFallback: boolean;
 };
 
 type PdfBufferLifecycleAction =
-  | { type: "retry" }
+  | { type: "retry"; rebuildEngine: boolean }
   | { type: "loadingStarted" }
   | { type: "loadingProgress"; progress: number | null }
   | { type: "loaded"; buffer: ArrayBuffer }
@@ -223,6 +225,7 @@ type PaperSessionState = {
   feedbackError: string | null;
   pendingFeedbackVote: PdfMarkdownFeedbackVote | null;
   copyStatus: CopyStatus;
+  copyError: string | null;
 };
 
 type PaperSessionAction =
@@ -257,6 +260,7 @@ const INITIAL_PAPER_SESSION_STATE: PaperSessionState = {
   feedbackError: null,
   pendingFeedbackVote: null,
   copyStatus: "idle",
+  copyError: null,
 };
 
 const INITIAL_PDF_BUFFER_LIFECYCLE_STATE: PdfBufferLifecycleState = {
@@ -266,6 +270,7 @@ const INITIAL_PDF_BUFFER_LIFECYCLE_STATE: PdfBufferLifecycleState = {
   },
   bufferVersion: 0,
   retryNonce: 0,
+  engineRetryNonce: 0,
   showSlowLoadFallback: false,
 };
 
@@ -278,6 +283,7 @@ function pdfBufferLifecycleReducer(
       return {
         ...state,
         retryNonce: state.retryNonce + 1,
+        engineRetryNonce: state.engineRetryNonce + (action.rebuildEngine ? 1 : 0),
         showSlowLoadFallback: false,
       };
     case "loadingStarted":
@@ -328,7 +334,8 @@ function isPaperSessionReset(state: PaperSessionState) {
     state.paperError === null &&
     state.feedbackError === null &&
     state.pendingFeedbackVote === null &&
-    state.copyStatus === "idle"
+    state.copyStatus === "idle" &&
+    state.copyError === null
   );
 }
 
@@ -348,18 +355,19 @@ function paperSessionReducer(
     case "showPdf":
       return state.viewMode === "pdf" ? state : { ...state, viewMode: "pdf" };
     case "copying":
-      return { ...state, copyStatus: "copying" };
+      return { ...state, copyStatus: "copying", copyError: null };
     case "copied":
       return { ...state, copyStatus: "copied" };
     case "copyIdle":
       return state.copyStatus === "idle" ? state : { ...state, copyStatus: "idle" };
     case "copyFailed":
+      // The Markdown itself is fine. Show it so it can be copied by hand,
+      // rather than an error screen whose retry regenerates it.
       return {
         ...state,
         copyStatus: "idle",
-        paperError: action.message,
-        paperStatus: "error",
-        viewMode: "paper",
+        copyError: action.message,
+        viewMode: state.paperStatus === "ready" ? "paper" : state.viewMode,
       };
     case "loadStarted":
       return {
@@ -957,6 +965,7 @@ function AiPaperQualityPanel({
 
 function AiPaperView({
   cache,
+  copyError,
   errorMessage,
   feedbackError,
   isDarkMode,
@@ -967,6 +976,7 @@ function AiPaperView({
   onRetry,
 }: {
   cache: PdfMarkdownCacheMetadata | null;
+  copyError: string | null;
   errorMessage: string | null;
   feedbackError: string | null;
   isDarkMode: boolean;
@@ -1012,6 +1022,11 @@ function AiPaperView({
           <h1 className="font-serif text-3xl font-semibold leading-tight">
             Questions
           </h1>
+          {copyError ? (
+            <p role="alert" className="mt-3 text-sm font-medium text-red-500">
+              {copyError}
+            </p>
+          ) : null}
           <AiPaperQualityPanel
             cache={cache}
             feedbackError={feedbackError}
@@ -1475,6 +1490,7 @@ function ViewerToolbar({
 }) {
   const [pageInput, setPageInput] = useState("1");
   const [isDownloading, setIsDownloading] = useState(false);
+  const downloadingRef = useRef(false);
   const [isMarkdownMenuOpen, setIsMarkdownMenuOpen] = useState(false);
   const [isMarkdownTooltipVisible, setIsMarkdownTooltipVisible] = useState(true);
   const markdownTooltipId = useId();
@@ -1545,8 +1561,10 @@ function ViewerToolbar({
   }, [currentPage, pageInput, scrollToPage]);
 
   const handleDownload = useCallback(async () => {
-    if (isDownloading) return;
+    // The ref closes the window before the disabled state renders.
+    if (downloadingRef.current) return;
 
+    downloadingRef.current = true;
     setIsDownloading(true);
     capturePdfDownloaded({
       fileName,
@@ -1558,13 +1576,13 @@ function ViewerToolbar({
     try {
       await downloadPdfFile({ fileUrl, fileName, pageEdits });
     } finally {
+      downloadingRef.current = false;
       setIsDownloading(false);
     }
   }, [
     fileName,
     fileUrl,
     hasRenderedPdfPage,
-    isDownloading,
     pageEdits,
     scrollState.totalPages,
     viewMode,
@@ -1905,8 +1923,15 @@ function LoadedDocumentSurface({
     feedbackError,
     pendingFeedbackVote,
     copyStatus,
+    copyError,
   } = paperState;
+  // A pending Markdown request, set before any await so a second click joins
+  // it instead of starting another.
   const paperAbortRef = useRef<AbortController | null>(null);
+  // Bumped when the document resets; late results from an older session are
+  // dropped instead of landing on the new document.
+  const paperSessionRef = useRef(0);
+  const feedbackPendingRef = useRef(false);
   const copyResetTimerRef = useRef<number | null>(null);
   const [renderedDocumentId, setRenderedDocumentId] = useState<string | null>(
     null,
@@ -1924,6 +1949,8 @@ function LoadedDocumentSurface({
   const didReportRenderedDocumentRef = useRef<string | null>(null);
 
   useEffect(() => {
+    paperSessionRef.current += 1;
+    feedbackPendingRef.current = false;
     dispatchPaper({ type: "resetDocument" });
     setRenderedDocumentId(null);
     paperAbortRef.current?.abort();
@@ -1971,16 +1998,17 @@ function LoadedDocumentSurface({
   }, []);
 
   const copyMarkdownText = useCallback(
-    async (markdown: string) => {
-      if (!markdown.trim()) {
+    async (markdown: string, isCurrent: () => boolean) => {
+      if (!markdown.trim() || !isCurrent()) {
         return;
       }
 
       dispatchPaper({ type: "copying" });
       try {
         await copyTextToClipboard(markdown);
-        markCopied();
+        if (isCurrent()) markCopied();
       } catch (error) {
+        if (!isCurrent()) return;
         dispatchPaper({
           type: "copyFailed",
           message:
@@ -2011,7 +2039,7 @@ function LoadedDocumentSurface({
         dispatchPaper({ type: "showPaper" });
       };
 
-      if (!force && paperStatus === "loading") {
+      if (!force && paperAbortRef.current) {
         revealPaper();
         return;
       }
@@ -2019,18 +2047,29 @@ function LoadedDocumentSurface({
       if (!force && paperStatus === "ready" && paperMarkdown.trim()) {
         revealPaper();
         if (copyAfter) {
-          await copyMarkdownText(paperMarkdown);
+          const session = paperSessionRef.current;
+          await copyMarkdownText(paperMarkdown, () => paperSessionRef.current === session);
         }
         return;
       }
 
-      if (force && !await ensureAiReady("pdfMarkdown")) return;
+      const controller = new AbortController();
+      const previous = paperAbortRef.current;
+      paperAbortRef.current = controller;
+      previous?.abort();
+
+      if (force && !await ensureAiReady("pdfMarkdown")) {
+        if (paperAbortRef.current === controller) {
+          paperAbortRef.current = null;
+          // The replaced request will not settle the session any more.
+          if (previous) dispatchPaper({ type: "loadCancelled" });
+        }
+        return;
+      }
+      // A document reset during AI setup aborts this request.
+      if (controller.signal.aborted) return;
       // Overlap the renderer download with a new Markdown request.
       revealPaper();
-
-      const controller = new AbortController();
-      paperAbortRef.current?.abort();
-      paperAbortRef.current = controller;
 
       dispatchPaper({ type: "loadStarted", force });
 
@@ -2065,7 +2104,7 @@ function LoadedDocumentSurface({
         });
 
         if (copyAfter) {
-          await copyMarkdownText(response.markdown);
+          await copyMarkdownText(response.markdown, () => !controller.signal.aborted);
         }
       } catch (error) {
         if (controller.signal.aborted) {
@@ -2112,10 +2151,13 @@ function LoadedDocumentSurface({
 
   const handleMarkdownFeedback = useCallback(
     (vote: PdfMarkdownFeedbackVote) => {
-      if (!paperCache || pendingFeedbackVote) {
+      if (!paperCache || feedbackPendingRef.current) {
         return;
       }
 
+      const session = paperSessionRef.current;
+      const isCurrent = () => paperSessionRef.current === session;
+      feedbackPendingRef.current = true;
       dispatchPaper({ type: "feedbackStarted", vote });
 
       void submitPdfMarkdownFeedback({
@@ -2123,9 +2165,10 @@ function LoadedDocumentSurface({
         vote,
       })
         .then((updatedCache) => {
-          dispatchPaper({ type: "feedbackSucceeded", cache: updatedCache });
+          if (isCurrent()) dispatchPaper({ type: "feedbackSucceeded", cache: updatedCache });
         })
         .catch((error) => {
+          if (!isCurrent()) return;
           dispatchPaper({
             type: "feedbackFailed",
             message:
@@ -2133,9 +2176,12 @@ function LoadedDocumentSurface({
                 ? error.message
                 : "Failed to save Markdown feedback.",
           });
+        })
+        .finally(() => {
+          if (isCurrent()) feedbackPendingRef.current = false;
         });
     },
-    [paperCache, pendingFeedbackVote],
+    [paperCache],
   );
 
   return (
@@ -2168,6 +2214,7 @@ function LoadedDocumentSurface({
           {viewMode === "paper" ? (
             <AiPaperView
               cache={paperCache}
+              copyError={copyError}
               errorMessage={paperError}
               feedbackError={feedbackError}
               isDarkMode={isPdfDarkMode}
@@ -2523,10 +2570,10 @@ export default function PDFViewer({
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isPdfDarkMode, setIsPdfDarkMode] = useState(false);
   const [savedPageEditsState, setSavedPageEditsState] =
-    useState<SavedPageEditsState>({
+    useState<SavedPageEditsState<PdfPageEdits | null>>({
       propKey: normalizedInitialPageEditsKey,
       value: normalizedInitialPageEdits,
-      pendingValueKey: null,
+      pendingKeys: [],
     });
   const [bufferLifecycleState, dispatchBufferLifecycle] = useReducer(
     pdfBufferLifecycleReducer,
@@ -2536,6 +2583,7 @@ export default function PDFViewer({
     bufferState,
     bufferVersion,
     retryNonce,
+    engineRetryNonce,
     showSlowLoadFallback,
   } = bufferLifecycleState;
   const savedPageEdits = savedPageEditsState.value;
@@ -2545,42 +2593,30 @@ export default function PDFViewer({
       normalizedNextPageEdits,
     );
 
-    setSavedPageEditsState((prev) => ({
-      propKey: prev.propKey,
-      value: normalizedNextPageEdits,
-      pendingValueKey: normalizedNextPageEditsKey,
-    }));
+    setSavedPageEditsState((prev) =>
+      savePageEditsLocally(prev, normalizedNextPageEdits, normalizedNextPageEditsKey),
+    );
   };
   const deferredPageEdits = useDeferredValue(savedPageEdits);
   const deferredPageEditsKey = useMemo(
     () => serializePdfPageEdits(deferredPageEdits),
     [deferredPageEdits],
   );
-  const engineState = usePreloadedPdfiumEngine(retryNonce);
+  const engineState = usePreloadedPdfiumEngine(engineRetryNonce);
 
   useEffect(() => {
-    setSavedPageEditsState((prev) => {
-      if (prev.propKey === normalizedInitialPageEditsKey) {
-        return prev;
-      }
-
-      if (
-        prev.pendingValueKey &&
-        prev.pendingValueKey !== normalizedInitialPageEditsKey
-      ) {
-        return prev;
-      }
-
-      return {
-        propKey: normalizedInitialPageEditsKey,
-        value: normalizedInitialPageEdits,
-        pendingValueKey: null,
-      };
-    });
+    setSavedPageEditsState((prev) =>
+      reconcileSavedPageEdits(prev, normalizedInitialPageEditsKey, normalizedInitialPageEdits),
+    );
   }, [normalizedInitialPageEdits, normalizedInitialPageEditsKey]);
 
+  // Engine and document failures may come from a broken engine, so their
+  // retry builds a fresh one. A failed download only needs the PDF again.
   const retryViewerLoad = useCallback(() => {
-    dispatchBufferLifecycle({ type: "retry" });
+    dispatchBufferLifecycle({ type: "retry", rebuildEngine: true });
+  }, []);
+  const retryDownload = useCallback(() => {
+    dispatchBufferLifecycle({ type: "retry", rebuildEngine: false });
   }, []);
 
   // Marks the document while any PDF viewer is mounted so fixed chrome that
@@ -2600,11 +2636,15 @@ export default function PDFViewer({
     };
   }, []);
 
+  const invalidatedRetryRef = useRef(0);
+
   useEffect(() => {
     let isActive = true;
     dispatchBufferLifecycle({ type: "loadingStarted" });
 
-    if (retryNonce > 0) {
+    // Each retry refetches once. Later page-edit changes reuse that download.
+    if (retryNonce > invalidatedRetryRef.current) {
+      invalidatedRetryRef.current = retryNonce;
       invalidatePdfBuffer(fileUrl);
     }
 
@@ -2745,7 +2785,7 @@ export default function PDFViewer({
       <BufferErrorState
         fileUrl={fileUrl}
         message={bufferState.message}
-        onRetry={retryViewerLoad}
+        onRetry={retryDownload}
       />
     );
   }
@@ -2762,7 +2802,7 @@ export default function PDFViewer({
         fileUrl={fileUrl}
         progress={bufferState.progress}
         showFallback={showSlowLoadFallback}
-        onRetry={retryViewerLoad}
+        onRetry={retryDownload}
       />
     );
   }
@@ -2776,7 +2816,7 @@ export default function PDFViewer({
       <ErrorState
         fileUrl={fileUrl}
         message="This PDF could not be opened."
-        onRetry={retryViewerLoad}
+        onRetry={retryDownload}
       />
     );
   }

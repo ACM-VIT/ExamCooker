@@ -9,7 +9,8 @@ import type {
 } from "@/app/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+// Long enough for the close animation; after that a dismissed toast is removed.
+const TOAST_REMOVE_DELAY = 5000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -74,6 +75,14 @@ const addToRemoveQueue = (toastId: string) => {
   toastTimeouts.set(toastId, timeout)
 }
 
+const clearRemoveTimeout = (toastId: string) => {
+  const timeout = toastTimeouts.get(toastId)
+  if (timeout === undefined) return
+  clearTimeout(timeout)
+  toastTimeouts.delete(toastId)
+}
+
+// Pure: timers are scheduled in `dispatch` from the state transition.
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
@@ -92,17 +101,6 @@ export const reducer = (state: State, action: Action): State => {
 
     case "DISMISS_TOAST": {
       const { toastId } = action
-
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
-      if (toastId) {
-        addToRemoveQueue(toastId)
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id)
-        })
-      }
-
       return {
         ...state,
         toasts: state.toasts.map((t) =>
@@ -134,7 +132,23 @@ const listeners: Array<(state: State) => void> = []
 let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
-  memoryState = reducer(memoryState, action)
+  const previous = memoryState
+  memoryState = reducer(previous, action)
+
+  if (action.type === "DISMISS_TOAST") {
+    // Schedule removal of every toast this dismissal closed.
+    for (const toast of previous.toasts) {
+      if (action.toastId === undefined || toast.id === action.toastId) {
+        addToRemoveQueue(toast.id)
+      }
+    }
+  }
+  // A toast that left the list (removed, or evicted by the limit) needs no timer.
+  const remaining = new Set(memoryState.toasts.map((toast) => toast.id))
+  for (const toast of previous.toasts) {
+    if (!remaining.has(toast.id)) clearRemoveTimeout(toast.id)
+  }
+
   listeners.forEach((listener) => {
     listener(memoryState)
   })
@@ -176,13 +190,15 @@ function useToast() {
 
   React.useEffect(() => {
     listeners.push(setState)
+    // Catch up on anything dispatched between the first render and subscribing.
+    setState(memoryState)
     return () => {
       const index = listeners.indexOf(setState)
       if (index > -1) {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [])
 
   return {
     ...state,

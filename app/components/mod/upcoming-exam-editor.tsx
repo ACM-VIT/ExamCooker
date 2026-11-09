@@ -218,6 +218,20 @@ function Row({
         });
     }, [item.scheduledAt]);
 
+    // Editing always starts from the exam as it is now, so a cancelled edit
+    // never resurfaces and other fields don't lag behind a refresh.
+    const startEditing = () => {
+        updateDraft({
+            courseId: item.courseId,
+            editing: true,
+            examType: item.examType ?? "",
+            scheduledAt: item.scheduledAt
+                ? formatDateTimeLocalValue(item.scheduledAt)
+                : "",
+            slotsText: item.slots.join(", "),
+        });
+    };
+
     const save = () => {
         const courseId = draft.courseId;
         if (!courseId) return;
@@ -313,7 +327,8 @@ function Row({
                         <button
                             type="button"
                             onClick={() => updateDraft({ editing: false })}
-                            className="rounded-md border border-black/20 px-3 py-1 text-xs text-black/70 dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/70"
+                            disabled={pending}
+                            className="disabled:opacity-60 rounded-md border border-black/20 px-3 py-1 text-xs text-black/70 dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/70"
                         >
                             Cancel
                         </button>
@@ -355,7 +370,7 @@ function Row({
                 <div className="flex gap-2">
                     <button
                         type="button"
-                        onClick={() => updateDraft({ editing: true })}
+                        onClick={startEditing}
                         className="text-xs text-black/70 underline hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
                     >
                         edit

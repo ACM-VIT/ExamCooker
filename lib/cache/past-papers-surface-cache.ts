@@ -44,6 +44,9 @@ function formatRecoverableCacheError(error: unknown) {
   return String(error);
 }
 
+// Error messages can embed hosts, ids or timings, so a long-lived server would
+// otherwise keep every distinct one. Forgetting old ones only repeats a log.
+const MAX_LOGGED_WARNINGS = 100;
 const loggedRecoverableCacheWarnings = new Set<string>();
 
 function warnRecoverableCacheError(label: string, error: unknown) {
@@ -54,6 +57,9 @@ function warnRecoverableCacheError(label: string, error: unknown) {
     return;
   }
 
+  if (loggedRecoverableCacheWarnings.size >= MAX_LOGGED_WARNINGS) {
+    loggedRecoverableCacheWarnings.clear();
+  }
   loggedRecoverableCacheWarnings.add(warningKey);
   console.warn(`[past-papers-surface-cache] ${warningKey}`);
 }
@@ -281,13 +287,16 @@ export async function withPastPapersSurfaceRedisCache<T>(
     return loader();
   }
 
-  let lockToken: string | null = null;
+  const acquireLock = async () => {
+    try {
+      return await tryAcquireCacheLock(redis, cacheKey);
+    } catch (error) {
+      warnRecoverableCacheError("lock acquire failed", error);
+      return null;
+    }
+  };
 
-  try {
-    lockToken = await tryAcquireCacheLock(redis, cacheKey);
-  } catch (error) {
-    warnRecoverableCacheError("lock acquire failed", error);
-  }
+  let lockToken = await acquireLock();
 
   if (!lockToken) {
     const waitedValue = await waitForCacheEntry({
@@ -300,20 +309,11 @@ export async function withPastPapersSurfaceRedisCache<T>(
       return waitedValue.value;
     }
 
-    const value = await loader();
-
-    const write = storeCacheEntry({
-      cacheKey,
-      redis,
-      ttlSeconds: input.ttlSeconds,
-      cacheNull: input.cacheNull,
-      value,
-    }).catch((error) => {
-      warnRecoverableCacheError("fallback write failed", error);
-    });
-    await finishCacheWrite(redis, write);
-
-    return value;
+    // Only the lock holder fills the entry. If the holder released or lost
+    // its lock, one waiter takes over; the rest load for themselves without
+    // writing, so a slow fill does not turn every waiter into a writer.
+    lockToken = await acquireLock();
+    if (!lockToken) return loader();
   }
 
   let cleanupTransferred = false;

@@ -273,12 +273,12 @@ const correctionCategoryCopy: Record<string, string> = {
 
 function CorrectionReportsPanel({
   reports,
-  busyId,
+  busyIds,
   onRecheck,
   onResolve,
 }: {
   reports: ModerationCorrectionReport[];
-  busyId: string | null;
+  busyIds: ReadonlySet<string>;
   onRecheck: (id: string) => void;
   onResolve: (id: string, resolution: CorrectionReportResolution) => void;
 }) {
@@ -339,7 +339,7 @@ function CorrectionReportsPanel({
                       {report.canApply ? (
                         <button
                           type="button"
-                          disabled={busyId === report.id}
+                          disabled={busyIds.has(report.id)}
                           onClick={() => onResolve(report.id, "apply")}
                           className={quietButton}
                         >
@@ -350,7 +350,7 @@ function CorrectionReportsPanel({
                       {report.canConvertType ? (
                         <button
                           type="button"
-                          disabled={busyId === report.id}
+                          disabled={busyIds.has(report.id)}
                           onClick={() => onResolve(report.id, "convert_type")}
                           className={quietButton}
                         >
@@ -360,7 +360,7 @@ function CorrectionReportsPanel({
                       {report.canUnpublishDuplicate ? (
                         <button
                           type="button"
-                          disabled={busyId === report.id}
+                          disabled={busyIds.has(report.id)}
                           onClick={() => onResolve(report.id, "unpublish_duplicate")}
                           className={quietButton}
                         >
@@ -370,7 +370,7 @@ function CorrectionReportsPanel({
                       {report.canRecheck ? (
                         <button
                           type="button"
-                          disabled={busyId === report.id}
+                          disabled={busyIds.has(report.id)}
                           onClick={() => onRecheck(report.id)}
                           className={quietButton}
                         >
@@ -380,7 +380,7 @@ function CorrectionReportsPanel({
                       ) : null}
                       <button
                         type="button"
-                        disabled={busyId === report.id}
+                        disabled={busyIds.has(report.id)}
                         onClick={() => onResolve(report.id, "dismiss")}
                         className={quietButton}
                       >
@@ -563,7 +563,7 @@ function DetailPanel({
   onApproveAnyway: () => void;
   onConvert: () => void;
   onDelete: () => void;
-  onRename: (title: string) => void;
+  onRename: (title: string) => Promise<boolean>;
 }) {
   const busy = busyLabel !== null;
   const [editing, setEditing] = useState(false);
@@ -630,14 +630,17 @@ function DetailPanel({
               <PrimaryButton
                 disabled={busy || !title.trim()}
                 onClick={() => {
-                  onRename(title.trim());
-                  setEditing(false);
+                  // Close the editor only once the rename lands; a failure keeps the draft.
+                  void onRename(title.trim()).then((renamed) => {
+                    if (renamed) setEditing(false);
+                  });
                 }}
               >
                 Save
               </PrimaryButton>
               <button
                 type="button"
+                disabled={busy}
                 onClick={() => {
                   setTitle(displayTitle(item));
                   setEditing(false);
@@ -893,13 +896,6 @@ export function ModerationWorkbenchSkeleton() {
 export default function ModerationWorkbench({ initialNotes, initialPastPapers, initialCorrectionReports, totalUsers }: Props) {
   const { toast } = useToast();
   const { ensureAiReady } = useAiSession();
-  const withAi = async (work: () => Promise<unknown>) => {
-    try {
-      if (await ensureAiReady("moderation")) await work();
-    } catch (error) {
-      toast({ title: error instanceof Error ? error.message : "AI setup failed.", variant: "destructive" });
-    }
-  };
   const [items, setItems] = useState<QueueItem[]>(() =>
     buildQueueItems(initialNotes, initialPastPapers),
   );
@@ -913,13 +909,18 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
     failed: number;
     total: number;
   } | null>(null);
+  // Claimed synchronously, so a second click can't start a run while the first awaits AI setup.
+  const reviewAllRunning = useRef(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [correctionReports, setCorrectionReports] = useState(initialCorrectionReports);
-  const [busyReportId, setBusyReportId] = useState<string | null>(null);
+  // Several reports can be in flight at once; each one is claimed until its own action ends.
+  const [busyReportIds, setBusyReportIds] = useState<ReadonlySet<string>>(() => new Set());
+  const busyReportIdsRef = useRef(new Set<string>());
   const detailRef = useRef<HTMLDivElement | null>(null);
+  const hasBusyReports = busyReportIds.size > 0;
 
   useEffect(() => {
-    if (Object.keys(busyItems).length > 0 || busyReportId) return;
+    if (Object.keys(busyItems).length > 0 || hasBusyReports) return;
 
     let cancelled = false;
     let polling = false;
@@ -943,7 +944,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [busyItems, busyReportId]);
+  }, [busyItems, hasBusyReports]);
 
   const counts = useMemo(() => ({
     all: items.length,
@@ -1056,7 +1057,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
     id: string,
     label: string,
     task: () => Promise<void>,
-    options?: { alreadyClaimed?: boolean; showErrorToast?: boolean },
+    options?: { alreadyClaimed?: boolean; showErrorToast?: boolean; requiresAi?: boolean },
   ) => {
     if (!options?.alreadyClaimed) {
       if (busyItemIds.current.has(id)) return false;
@@ -1064,6 +1065,8 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
     }
     setBusyItems((current) => ({ ...current, [id]: label }));
     try {
+      // The item is claimed before AI setup, so a second click can't start the same action.
+      if (options?.requiresAi && !await ensureAiReady("moderation")) return false;
       await task();
       return true;
     } catch (error) {
@@ -1085,7 +1088,16 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
   };
 
   const reviewAll = async () => {
-    if (reviewAllProgress) return;
+    if (reviewAllRunning.current) return;
+    reviewAllRunning.current = true;
+    try {
+      await runReviewAll();
+    } finally {
+      reviewAllRunning.current = false;
+    }
+  };
+
+  const runReviewAll = async () => {
     if (!await ensureAiReady("moderation")) return;
 
     const candidates = items.filter(
@@ -1139,13 +1151,42 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
     });
   };
 
-  const resolveReport = async (
+  const setReportBusy = (id: string, busy: boolean) => {
+    if (busy) busyReportIdsRef.current.add(id);
+    else busyReportIdsRef.current.delete(id);
+    setBusyReportIds(new Set(busyReportIdsRef.current));
+  };
+
+  /** Claims the report before AI setup, so repeated clicks run its action once. */
+  const runReportAction = async (
+    id: string,
+    aiFeature: "moderation" | "contentCorrection" | null,
+    fallbackError: string,
+    action: () => Promise<void>,
+  ) => {
+    if (busyReportIdsRef.current.has(id)) return;
+    setReportBusy(id, true);
+    try {
+      if (aiFeature && !await ensureAiReady(aiFeature)) return;
+      await action();
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : fallbackError,
+        variant: "destructive",
+      });
+    } finally {
+      setReportBusy(id, false);
+    }
+  };
+
+  const resolveReport = (
     id: string,
     resolution: CorrectionReportResolution,
-  ) => {
-    if (resolution === "convert_type" && !await ensureAiReady("moderation")) return;
-    setBusyReportId(id);
-    try {
+  ) => runReportAction(
+    id,
+    resolution === "convert_type" ? "moderation" : null,
+    "The report could not be updated.",
+    async () => {
       const result = await resolveContentCorrectionReport(id, resolution);
       setCorrectionReports((current) => current.filter((report) => report.id !== id));
       toast({
@@ -1160,20 +1201,14 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
               ? "Correction applied and report resolved."
               : "Correction resolved.",
       });
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : "The report could not be updated.",
-        variant: "destructive",
-      });
-    } finally {
-      setBusyReportId(null);
-    }
-  };
+    },
+  );
 
-  const recheckReport = async (id: string) => {
-    if (!await ensureAiReady("contentCorrection")) return;
-    setBusyReportId(id);
-    try {
+  const recheckReport = (id: string) => runReportAction(
+    id,
+    "contentCorrection",
+    "The recheck could not be started.",
+    async () => {
       await recheckContentCorrectionReport(id);
       setCorrectionReports((current) =>
         current.map((report) =>
@@ -1192,15 +1227,8 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
         ),
       );
       toast({ title: "Agent recheck started." });
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : "The recheck could not be started.",
-        variant: "destructive",
-      });
-    } finally {
-      setBusyReportId(null);
-    }
-  };
+    },
+  );
 
   return (
     <div className="min-h-dvh bg-[#C2E6EC] text-black transition-colors dark:bg-[hsl(224,48%,9%)] dark:text-[#D5D5D5]">
@@ -1283,7 +1311,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
 
         <CorrectionReportsPanel
           reports={correctionReports}
-          busyId={busyReportId}
+          busyIds={busyReportIds}
           onRecheck={recheckReport}
           onResolve={resolveReport}
         />
@@ -1361,19 +1389,23 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
                   key={selected.id}
                   item={selected}
                   busyLabel={busyItems[selected.id] ?? null}
-                  onReview={() => void withAi(() =>
-                    perform(selected.id, "AI is reading the PDF and checking the course corpus…", async () =>
+                  onReview={() => void perform(
+                    selected.id,
+                    "AI is reading the PDF and checking the course corpus…",
+                    async () =>
                       replaceReview(selected.id, await runAiModerationReview(selected.id, selected.resourceType)),
-                    ))
-                  }
-                  onApply={() => void withAi(() =>
-                    perform(selected.id, "Applying the suggested changes and rechecking…", async () =>
+                    { requiresAi: true },
+                  )}
+                  onApply={() => void perform(
+                    selected.id,
+                    "Applying the suggested changes and rechecking…",
+                    async () =>
                       replaceAppliedReview(
                         selected.id,
                         await applyAiModerationSuggestion(selected.id, selected.resourceType),
                       ),
-                    ))
-                  }
+                    { requiresAi: true },
+                  )}
                   onApprove={() =>
                     perform(selected.id, "Approving this upload…", async () => {
                       const result = await approveItem(selected.id, selected.resourceType);
@@ -1387,8 +1419,10 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
                       remove(selected.id);
                     })
                   }
-                  onConvert={() => void withAi(() =>
-                    perform(selected.id, "Moving the upload and rechecking its new corpus…", async () => {
+                  onConvert={() => void perform(
+                    selected.id,
+                    "Moving the upload and rechecking its new corpus…",
+                    async () => {
                       const result = await convertModerationResourceType(
                         selected.id,
                         selected.resourceType,
@@ -1399,8 +1433,9 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
                           ? "Moved, rechecked, and approved."
                           : `Moved to ${result.targetType === "note" ? "notes" : "past papers"} for review.`,
                       });
-                    }))
-                  }
+                    },
+                    { requiresAi: true },
+                  )}
                   onDelete={() =>
                     perform(selected.id, "Deleting this upload…", async () => {
                       await deleteItem(selected.id, selected.resourceType);

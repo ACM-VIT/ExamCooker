@@ -4,11 +4,13 @@ export const PDF_JOURNEY_READY_EVENT = "ec:pdf-viewer-ready";
 export const PDF_JOURNEY_TIMEOUT_MS = 60_000;
 
 type NavigationType = "push" | "replace" | "traverse";
-type Outcome = "visible" | "render_error" | "timeout" | "backgrounded" | "superseded" | "pagehide";
+type Outcome = "visible" | "render_error" | "timeout" | "redirected" | "backgrounded" | "superseded" | "pagehide";
 type Properties = Record<string, string | number | boolean>;
 type Capture = (event: "pdf_open_started" | "pdf_open_finished", properties: Properties, immediate: boolean) => void;
 type Attempt = {
   path: string;
+  /** The page the navigation started from. */
+  fromPath: string;
   startedAt: number;
   properties: Properties;
   timer: number;
@@ -40,7 +42,10 @@ export function installPdfOpenJourneyTracking(options: {
     return { start(_url: string, _navigationType: NavigationType) {}, dispose() {} };
   }
   let attempt: Attempt | null = null;
-  let lastPath = cleanPath(location.pathname);
+  // The last destination the router dispatched. Back/forward updates the URL
+  // before the router reports the traversal, so this is the only record of
+  // the page a traversal started from.
+  let lastDispatchedPath = cleanPath(location.pathname);
   let root: HTMLElement | null = null;
   let observer: MutationObserver | null = null;
   let intersectionObserver: IntersectionObserver | null = null;
@@ -189,21 +194,31 @@ export function installPdfOpenJourneyTracking(options: {
       try { target = new URL(url, location.href); } catch { return; }
       if (target.origin !== location.origin) return;
       const path = cleanPath(target.pathname);
+      // Push and replace are reported before the URL changes, so the URL is
+      // the page they leave; a dispatch that never arrived does not count.
+      const fromPath = navigationType === "traverse"
+        ? lastDispatchedPath
+        : cleanPath(location.pathname);
+      lastDispatchedPath = path;
       // Query/hash changes and repeated dispatches to the pending destination
-      // do not constitute another paper open. Back/forward to a different paper does.
-      if (path === lastPath) return;
-      const from = sourceRoute(lastPath);
-      lastPath = path;
+      // do not constitute another paper open. Back/forward to a different
+      // paper does, and so does retrying a navigation that never arrived.
+      if (path === (attempt?.path ?? fromPath)) return;
       finish("superseded");
       if (!paperRoute.test(path)) return;
       const properties: Properties = {
         journey_id: crypto.randomUUID(), journey_version: 1, sampling_rate: 1,
-        navigation_kind: "client", navigation_type: navigationType, from_route: from,
+        navigation_kind: "client", navigation_type: navigationType, from_route: sourceRoute(fromPath),
         app_revision: options.build, document_backend: options.backend,
       };
       attempt = {
-        path, properties, startedAt: performance.now(),
-        timer: window.setTimeout(() => finish("timeout"), PDF_JOURNEY_TIMEOUT_MS),
+        path, fromPath, properties, startedAt: performance.now(),
+        timer: window.setTimeout(() => {
+          // The router can land elsewhere (a server redirect, a not-found
+          // page). That is not a slow PDF.
+          const landed = cleanPath(location.pathname);
+          finish(landed !== path && landed !== fromPath ? "redirected" : "timeout");
+        }, PDF_JOURNEY_TIMEOUT_MS),
       };
       send("pdf_open_started", properties);
       if (document.visibilityState !== "visible") { finish("backgrounded"); return; }

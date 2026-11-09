@@ -2,12 +2,17 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronDown } from "lucide-react";
-import React, { createContext, useCallback, useContext, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "@/app/components/ui/use-toast";
-import type { AiTextTask } from "@/lib/ai/models";
+import {
+  createAiGateRequest,
+  type AiGateFeature,
+  type AiGateRequest,
+  queuedRequestNeedsOwnCheck,
+} from "@/app/components/ai/ai-gate-request";
 
 type Provider = "openai" | "anthropic";
-type Feature = AiTextTask | "voice";
+type Feature = AiGateFeature;
 type Status = {
   provider: Provider;
   model: string;
@@ -25,6 +30,7 @@ const MODEL_OPTIONS: Record<Provider, string[]> = {
   openai: ["gpt-6-luna", "gpt-6-sol", "gpt-6-astra"],
   anthropic: ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
 };
+const STATUS_TIMEOUT_MS = 15_000;
 const fieldClassName = "ec-focus-ring w-full border border-black/25 bg-white px-3 py-2.5 text-sm text-black outline-none placeholder:text-black/35 dark:border-white/25 dark:bg-white/5 dark:text-[#D5D5D5] dark:placeholder:text-[#D5D5D5]/35";
 const selectClassName = `${fieldClassName} appearance-none pr-11`;
 
@@ -41,7 +47,15 @@ export function useAiSession() {
 
 async function fetchStatus(feature: Feature) {
   const task = feature === "voice" ? "voiceDocument" : feature;
-  const response = await fetch(`/api/ai/session?task=${task}`, { cache: "no-store" });
+  let response: Response;
+  try {
+    response = await fetch(`/api/ai/session?task=${task}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(STATUS_TIMEOUT_MS),
+    });
+  } catch {
+    throw new Error("Could not check AI settings. Check your connection and try again.");
+  }
   const result = await response.json().catch(() => null) as (Status & { error?: string }) | null;
   if (!response.ok || !result) {
     throw new Error(result?.error || (response.status === 401
@@ -55,6 +69,16 @@ function featureReady(status: Status, feature: Feature) {
   return feature === "voice" ? status.voiceReady : status.textReady;
 }
 
+function notReadyAfterSaveMessage(feature: Feature) {
+  return feature === "voice"
+    ? "This OpenAI key can't start voice study. Check that it has access to gpt-live-1."
+    : "These settings can't run this feature yet. Check the provider and key.";
+}
+
+function toastFailure(cause: unknown, fallback: string) {
+  toast({ title: cause instanceof Error ? cause.message : fallback, variant: "destructive" });
+}
+
 export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [feature, setFeature] = useState<Feature>("pdfMarkdown");
@@ -64,10 +88,26 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pendingRef = useRef<{ feature: Feature | "settings"; promise: Promise<boolean>; resolve: (configured: boolean) => void } | null>(null);
+  // The one request in flight: "checking" until its status arrives, then
+  // "prompting" while the dialog is open. It settles exactly once.
+  const pendingRef = useRef<AiGateRequest | null>(null);
+  const savingRef = useRef(false);
   const modelOptions = MODEL_OPTIONS[provider];
 
-  const show = useCallback((nextStatus: Status, nextFeature: Feature) => {
+  useEffect(() => () => {
+    // Callers awaiting the gate must not wait forever once the provider is gone.
+    pendingRef.current?.settle(false);
+    pendingRef.current = null;
+  }, []);
+
+  const finish = useCallback((request: AiGateRequest, configured: boolean) => {
+    if (pendingRef.current === request) pendingRef.current = null;
+    request.settle(configured);
+  }, []);
+
+  const show = useCallback((request: AiGateRequest, nextStatus: Status, nextFeature: Feature) => {
+    // A request that already settled (for example on unmount) must not open the dialog.
+    if (pendingRef.current !== request) return;
     const nextProvider = nextFeature === "voice" ? "openai" : nextStatus.provider;
     setStatus(nextStatus);
     setFeature(nextFeature);
@@ -79,66 +119,55 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const ensureAiReady = useCallback((nextFeature: Feature = "pdfMarkdown"): Promise<boolean> => {
-    if (pendingRef.current) {
-      const pending = pendingRef.current;
-      return pending.feature === nextFeature
-        ? pending.promise
-        : pending.promise.then(async (ready) => {
-          if (pending.feature === "settings" || ready) return ensureAiReady(nextFeature);
-          try {
-            return featureReady(await fetchStatus(nextFeature), nextFeature);
-          } catch (cause) {
-            toast({ title: cause instanceof Error ? cause.message : "Could not check AI settings.", variant: "destructive" });
-            return false;
-          }
-        });
+    const pending = pendingRef.current;
+    if (pending) {
+      if (pending.feature === nextFeature) return pending.promise;
+      return pending.promise.then((ready) =>
+        queuedRequestNeedsOwnCheck(pending.feature, ready, nextFeature)
+          ? ensureAiReady(nextFeature)
+          : false,
+      );
     }
-    let resolvePending!: (configured: boolean) => void;
-    const promise = new Promise<boolean>((resolve) => { resolvePending = resolve; });
-    pendingRef.current = { feature: nextFeature, promise, resolve: resolvePending };
+    const request = createAiGateRequest(nextFeature);
+    pendingRef.current = request;
     void fetchStatus(nextFeature).then((nextStatus) => {
-      if (featureReady(nextStatus, nextFeature)) {
-        pendingRef.current = null;
-        resolvePending(true);
-      } else {
-        show(nextStatus, nextFeature);
-      }
+      if (featureReady(nextStatus, nextFeature)) finish(request, true);
+      else show(request, nextStatus, nextFeature);
     }).catch((cause) => {
-      pendingRef.current = null;
-      toast({ title: cause instanceof Error ? cause.message : "Could not check AI settings.", variant: "destructive" });
-      resolvePending(false);
+      if (pendingRef.current === request) toastFailure(cause, "Could not check AI settings.");
+      finish(request, false);
     });
-    return promise;
-  }, [show, toast]);
+    return request.promise;
+  }, [finish, show]);
 
   const openAiSettings = useCallback(async (): Promise<void> => {
-    if (pendingRef.current) {
-      const pending = pendingRef.current;
+    const pending = pendingRef.current;
+    if (pending) {
       if (pending.feature === "settings") return;
       await pending.promise;
       return openAiSettings();
     }
-    let resolvePending!: (configured: boolean) => void;
-    const promise = new Promise<boolean>((resolve) => { resolvePending = resolve; });
-    pendingRef.current = { feature: "settings", promise, resolve: resolvePending };
+    const request = createAiGateRequest("settings");
+    pendingRef.current = request;
     try {
-      show(await fetchStatus("pdfMarkdown"), "pdfMarkdown");
+      show(request, await fetchStatus("pdfMarkdown"), "pdfMarkdown");
     } catch (cause) {
-      pendingRef.current = null;
-      resolvePending(false);
-      toast({ title: cause instanceof Error ? cause.message : "Could not load AI settings.", variant: "destructive" });
+      if (pendingRef.current === request) toastFailure(cause, "Could not load AI settings.");
+      finish(request, false);
     }
-  }, [show, toast]);
+  }, [finish, show]);
 
   const close = useCallback((configured: boolean) => {
     setOpen(false);
     setApiKey("");
-    pendingRef.current?.resolve(configured);
-    pendingRef.current = null;
-  }, []);
+    const request = pendingRef.current;
+    if (request) finish(request, configured);
+  }, [finish]);
 
   const save = useCallback(async (event: React.FormEvent) => {
     event.preventDefault();
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -149,18 +178,28 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ provider, model, apiKey: apiKey.trim() || undefined, preserveSelection: feature === "voice" }),
         cache: "no-store",
       });
-      const result = await response.json() as Status & { error?: string };
-      if (!response.ok) throw new Error(result.error || "Could not save AI settings.");
+      const result = await response.json().catch(() => null) as (Status & { error?: string }) | null;
+      if (!response.ok || !result) throw new Error(result?.error || "Could not save AI settings.");
       setStatus(result);
-      close(featureReady(result, feature));
+      if (pendingRef.current?.feature !== "settings" && !featureReady(result, feature)) {
+        // Saved, but this feature still can't run: keep the dialog open and say why
+        // instead of closing it as if the user had cancelled.
+        setApiKey("");
+        setError(notReadyAfterSaveMessage(feature));
+        return;
+      }
+      close(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not save AI settings.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }, [apiKey, close, feature, model, provider]);
 
   const forget = useCallback(async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -171,6 +210,7 @@ export function AiSessionProvider({ children }: { children: React.ReactNode }) {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not remove this session's keys.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }, [close]);

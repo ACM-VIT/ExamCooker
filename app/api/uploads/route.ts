@@ -3,10 +3,11 @@ import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import {
     createUploadedResources,
+    UploadRejectedError,
     type CreateUploadedResourcesInput,
     type UploadVariant,
 } from "@/lib/uploads/create-uploaded-resources";
-import { campusValues, db, examTypeValues, semesterValues, uploadResultReceipt } from "@/db";
+import { campusValues, examTypeValues, semesterValues, uploadResultReceipt } from "@/db";
 import { checkSlidingWindowRateLimit } from "@/lib/redis-rate-limit";
 import { getAiRequestEnvironment } from "@/lib/ai/session";
 
@@ -19,7 +20,7 @@ const semesters = new Set<string>(semesterValues);
 const campuses = new Set<string>(campusValues);
 
 type UploadRequestBody = Partial<
-    Omit<CreateUploadedResourcesInput, "userEmail" | "results">
+    Omit<CreateUploadedResourcesInput, "userEmail" | "claimResults">
 > & { results?: unknown };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -128,33 +129,35 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const results = await db.transaction(async (transaction) => {
-            const now = new Date();
-            const consumed = await transaction
-                .update(uploadResultReceipt)
-                .set({ consumedAt: now })
-                .where(
-                    and(
-                        inArray(uploadResultReceipt.id, receiptIds),
-                        eq(uploadResultReceipt.userId, session.user.id),
-                        gt(uploadResultReceipt.expiresAt, now),
-                        isNull(uploadResultReceipt.consumedAt),
-                    ),
-                )
-                .returning({
-                    id: uploadResultReceipt.id,
-                    result: uploadResultReceipt.result,
-                });
-            if (consumed.length !== receiptIds.length) {
-                throw new Error("One or more upload receipts are invalid, expired, or already used.");
-            }
-            const resultById = new Map(consumed.map((receipt) => [receipt.id, receipt.result]));
-            return receiptIds.map((receiptId) => resultById.get(receiptId)!);
-        });
-
         const result = await createUploadedResources({
             userEmail: session.user.email,
-            results,
+            claimResults: async (transaction) => {
+                const now = new Date();
+                const consumed = await transaction
+                    .update(uploadResultReceipt)
+                    .set({ consumedAt: now })
+                    .where(
+                        and(
+                            inArray(uploadResultReceipt.id, receiptIds),
+                            eq(uploadResultReceipt.userId, session.user.id),
+                            gt(uploadResultReceipt.expiresAt, now),
+                            isNull(uploadResultReceipt.consumedAt),
+                        ),
+                    )
+                    .returning({
+                        id: uploadResultReceipt.id,
+                        result: uploadResultReceipt.result,
+                    });
+                if (consumed.length !== receiptIds.length) {
+                    throw new UploadRejectedError(
+                        "One or more upload receipts are invalid, expired, or already used.",
+                    );
+                }
+                const resultById = new Map(
+                    consumed.map((receipt) => [receipt.id, receipt.result]),
+                );
+                return receiptIds.map((receiptId) => resultById.get(receiptId)!);
+            },
             year: stringValue(body.year),
             slot: stringValue(body.slot),
             variant,

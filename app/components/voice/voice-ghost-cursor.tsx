@@ -10,8 +10,8 @@ import {
 
 type GhostCursorPhase = "hidden" | "traveling" | "arrived";
 
+// The cursor is visible exactly when its phase is not "hidden".
 export type GhostCursorState = {
-  visible: boolean;
   phase: GhostCursorPhase;
   x: number;
   y: number;
@@ -26,20 +26,24 @@ type GhostCursorTarget = {
   pulseElement?: HTMLElement | null;
 };
 
-type GhostCursorMotionOptions = {
-  easing?: "smooth" | "expressive";
-  from?: "pointer" | "previous" | { x: number; y: number };
-};
-
 type UseGhostCursorReturn = {
   cursorState: GhostCursorState;
+  // Hides the cursor and cancels every scripted move queued before this call.
   hide: () => void;
+  // Moves the cursor to the target, then runs the operation. Rejects without
+  // running it if hide() is called first.
   run: <TResult>(
     target: GhostCursorTarget,
     operation: () => Promise<TResult> | TResult,
-    options?: GhostCursorMotionOptions,
   ) => Promise<TResult>;
 };
+
+class GhostCursorCancelledError extends Error {
+  constructor() {
+    super("Voice study ended before this action ran.");
+    this.name = "AbortError";
+  }
+}
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
@@ -92,12 +96,13 @@ function resolveTargetPoint(target: GhostCursorTarget) {
 
 export function useGhostCursor(): UseGhostCursorReturn {
   const [cursorState, setCursorState] = useState<GhostCursorState>(() => ({
-    visible: false,
     phase: "hidden",
     ...getViewportFallbackPoint(),
   }));
   const scriptedPointerRef = useRef<{ x: number; y: number } | null>(null);
   const queueRef = useRef(Promise.resolve());
+  // Bumped by hide(); a run started under an older generation is cancelled.
+  const generationRef = useRef(0);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -106,7 +111,7 @@ export function useGhostCursor(): UseGhostCursorReturn {
       }
 
       setCursorState((current) =>
-        current.visible
+        current.phase !== "hidden"
           ? current
           : {
               ...current,
@@ -123,17 +128,23 @@ export function useGhostCursor(): UseGhostCursorReturn {
   }, []);
 
   const hide = useCallback(() => {
+    generationRef.current += 1;
     scriptedPointerRef.current = null;
-    setCursorState((current) => ({
-      ...current,
-      visible: false,
-      phase: "hidden",
-    }));
+    setCursorState((current) =>
+      current.phase === "hidden" ? current : { ...current, phase: "hidden" },
+    );
   }, []);
 
   const run = useCallback<UseGhostCursorReturn["run"]>(
     async (target, operation) => {
+      const generation = generationRef.current;
+      const ensureCurrent = () => {
+        if (generation !== generationRef.current) {
+          throw new GhostCursorCancelledError();
+        }
+      };
       const nextTask = queueRef.current.then(async () => {
+        ensureCurrent();
         const targetElement = target.element ?? null;
         if (targetElement) {
           targetElement.scrollIntoView({
@@ -142,33 +153,36 @@ export function useGhostCursor(): UseGhostCursorReturn {
             behavior: "smooth",
           });
           await wait(180);
+          ensureCurrent();
         }
 
         const point = resolveTargetPoint(target);
         scriptedPointerRef.current = point;
         setCursorState({
           phase: "traveling",
-          visible: true,
           x: point.x,
           y: point.y,
         });
 
-        await wait(220);
-        setCursorState((current) => ({
-          ...current,
-          phase: "arrived",
-        }));
         try {
+          await wait(220);
+          ensureCurrent();
+          setCursorState((current) => ({
+            ...current,
+            phase: "arrived",
+          }));
           const result = await operation();
           await wait(180);
           return result;
         } finally {
-          scriptedPointerRef.current = null;
-          setCursorState((current) => ({
-            ...current,
-            visible: false,
-            phase: "hidden",
-          }));
+          // After hide(), the cursor already belongs to a newer generation.
+          if (generation === generationRef.current) {
+            scriptedPointerRef.current = null;
+            setCursorState((current) => ({
+              ...current,
+              phase: "hidden",
+            }));
+          }
         }
       });
 
@@ -189,7 +203,7 @@ export function useGhostCursor(): UseGhostCursorReturn {
 }
 
 export function GhostCursorOverlay({ state }: { state: GhostCursorState }) {
-  if (!state.visible || state.phase === "hidden") {
+  if (state.phase === "hidden") {
     return null;
   }
 
