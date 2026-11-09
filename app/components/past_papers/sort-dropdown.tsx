@@ -247,10 +247,10 @@ export default function SortDropdown({
                   index === activeIndex ? "bg-black/5 dark:bg-white/[0.06]" : ""
                 } ${option.value === value ? "text-black dark:text-[#3BF4C7]" : ""}`}
               >
-                <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
+                {option.label}
+                <span className="ml-auto inline-flex size-3.5 shrink-0 items-center justify-center">
                   {option.value === value && <Check className="size-3.5" aria-hidden="true" />}
                 </span>
-                {option.label}
               </li>
             ))}
           </ul>
