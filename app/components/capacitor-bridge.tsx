@@ -425,13 +425,6 @@ export default function CapacitorBridge() {
           await NativeTabs.showTabBar().catch(() => undefined);
         } catch {
           if (cancelled) return;
-          if (initializationTimedOut && initialization) {
-            // The web bar takes over; keep a late native bar from appearing too.
-            const { NativeTabs } = await import("capacitor-native-tab");
-            void initialization
-              .then(() => NativeTabs.hideTabBar())
-              .catch(() => undefined);
-          }
           document.documentElement.removeAttribute("data-native-tabs");
           document.documentElement.removeAttribute("data-native-ios-tabs");
           document.documentElement.removeAttribute("data-native-android-tabs");
@@ -439,6 +432,15 @@ export default function CapacitorBridge() {
           document.documentElement.removeAttribute("data-native-ios-tabs-pending");
           document.documentElement.removeAttribute("data-native-android-tabs-pending");
           window.dispatchEvent(new Event("examcooker:use-web-tab-bar"));
+          if (initializationTimedOut && initialization) {
+            // The web bar has taken over; keep a late native bar from
+            // appearing on top of it.
+            void Promise.all([initialization, import("capacitor-native-tab")])
+              .then(([, { NativeTabs }]) => {
+                if (!cancelled) return NativeTabs.hideTabBar();
+              })
+              .catch(() => undefined);
+          }
         }
       }
 

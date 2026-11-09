@@ -192,6 +192,25 @@ test("a channel that closes during a live session is a fatal error", async (t) =
   assert.equal(errors[0].fatal, true);
 });
 
+test("a microphone that aborts while connecting ends the attempt with an error", async (t) => {
+  installBrowser(t);
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: {
+      mediaDevices: {
+        getUserMedia: async () => {
+          throw new DOMException("Starting audio input failed.", "AbortError");
+        },
+      },
+    },
+  });
+  const { controller, errors } = createController(t);
+  await controller.connect();
+  assert.equal(controller.activity, "error");
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].fatal, true);
+});
+
 test("starting again while the previous session finalizes waits for it", async (t) => {
   installBrowser(t);
   const { controller, errors } = createController(t);

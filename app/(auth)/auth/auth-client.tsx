@@ -241,9 +241,14 @@ export default function AuthClient({
             try {
                 const payload = await getProviders();
                 if (cancelled) return;
+                // next-auth reports a failed fetch as null rather than throwing.
+                if (!payload) {
+                    setProviderState({ status: "error" });
+                    return;
+                }
                 setProviderState({
                     status: "ready",
-                    providers: Object.values(payload ?? {}).filter((provider) =>
+                    providers: Object.values(payload).filter((provider) =>
                         ["apple", "google", "app-review"].includes(provider.id),
                     ),
                 });

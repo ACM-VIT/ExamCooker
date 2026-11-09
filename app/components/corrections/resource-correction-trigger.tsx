@@ -136,14 +136,23 @@ export default function ResourceCorrectionTrigger({
   };
 
   const submit = () => {
-    // If the session is still loading, send once it is confirmed. The
-    // continuation must not call requireAuth again: its closure still sees
-    // the loading state.
-    if (!requireAuth("report a correction", sendReport)) return;
-    sendReport();
+    // The report is what the form held when it was submitted, even if the
+    // send waits for the session to load. The continuation must not call
+    // requireAuth again: its closure still sees the loading state.
+    const report = { category, description, suggestedValue };
+    if (!requireAuth("report a correction", () => sendReport(report))) return;
+    sendReport(report);
   };
 
-  const sendReport = () => {
+  const sendReport = ({
+    category,
+    description,
+    suggestedValue,
+  }: {
+    category: CorrectionReportCategory;
+    description: string;
+    suggestedValue: string;
+  }) => {
     if (description.trim().length < 10) {
       setError("Please add a little more detail so the report can be verified.");
       return;

@@ -483,8 +483,9 @@ export async function storePdfMarkdownCache(
 
   try {
     // The generation lock makes this check-then-write safe against other
-    // locked writers. A writer that outwaited the lock still cannot replace a
-    // generation it never saw.
+    // locked writers. For a writer that outwaited the lock it is best-effort:
+    // the read and the write are separate calls, so a holder storing in
+    // between can still be overwritten.
     const current = parseCacheEntryValue(
       await redis.get<unknown>(entryRedisKey(input.cacheKey)),
     );

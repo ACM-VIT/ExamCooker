@@ -23,10 +23,12 @@ export async function updateNoteCourse(input: UpdateNoteCourseInput) {
 
     const parsed = schema.parse(input);
 
-    await db
+    const updated = await db
         .update(note)
         .set({ courseId: parsed.courseId, ...clearedModerationReview })
-        .where(and(eq(note.id, parsed.id), isNull(note.moderationArchivedAt)));
+        .where(and(eq(note.id, parsed.id), isNull(note.moderationArchivedAt)))
+        .returning({ id: note.id });
+    if (updated.length === 0) throw new Error("Note not found.");
 
     revalidatePath("/mod/notes/review");
     revalidateTag("notes", "minutes");

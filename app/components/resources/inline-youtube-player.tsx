@@ -89,11 +89,10 @@ function createInitialPlayerState(): PlayerState {
 function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
     switch (action.type) {
         case "playing":
-            // The iframe stays mounted after an error, so playback that starts
-            // late means the embed recovered; never show "playing" over an error.
-            if (action.playing && state.status === "error") {
-                return { ...state, status: "ready", isBuffering: false, isPlaying: true };
-            }
+            // A play request after an error does not mean the embed recovered;
+            // keep the error (and its Retry action) until onPlaying confirms
+            // playback, which dispatches "ready" first.
+            if (state.status === "error") return state;
             return { ...state, isPlaying: action.playing };
         case "volume":
             return {

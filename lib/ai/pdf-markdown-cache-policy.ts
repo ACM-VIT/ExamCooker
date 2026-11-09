@@ -22,6 +22,8 @@ export type ExpectedPdfMarkdownGeneration = string | null | undefined;
  * A finished generation replaces the stored one only if the stored one is
  * still the one this writer observed. Otherwise another writer finished first,
  * and overwriting it would discard that generation and the votes cast on it.
+ * A `null` current generation means no usable entry (absent, expired, deleted
+ * or unreadable), which any writer may fill.
  */
 export function canReplacePdfMarkdownGeneration(
   currentGenerationId: string | null,
