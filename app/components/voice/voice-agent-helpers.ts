@@ -87,9 +87,20 @@ export function recordInAppNavigation(
   }
   const knownIndex = entries.lastIndexOf(path);
   if (knownIndex !== -1) return { entries, index: knownIndex };
-  // Browsers also fire popstate for a new fragment entry, so an unknown
-  // destination is recorded as a new entry rather than wiping the history.
-  return push();
+  // Browsers also fire popstate for a new fragment entry on the current page;
+  // that one is a step forward.
+  if (withoutFragment(path) === withoutFragment(entries[index] ?? "")) {
+    return push();
+  }
+  // Any other unknown destination is a page from before voice started
+  // watching. Where it sits relative to the known entries is unknown, so
+  // nothing can be claimed about what "back" leads to from it.
+  return startInAppHistory(path);
+}
+
+function withoutFragment(path: string) {
+  const hashIndex = path.indexOf("#");
+  return hashIndex === -1 ? path : path.slice(0, hashIndex);
 }
 
 export function previousInAppPath(history: InAppHistory | null) {
