@@ -1121,11 +1121,11 @@ function CommandPaletteSession({
   } = catalogState;
 
   useEffect(() => {
-    if (open) return;
-
-    dispatchSession({ type: "reset" });
-    // A failed catalog load is retried the next time the palette opens.
+    // A failed catalog load is retried the next time the palette opens. It is
+    // reset on opening as well as closing, because a load can fail after the
+    // palette was closed.
     dispatchCatalog({ type: "retryAfterFailure" });
+    if (!open) dispatchSession({ type: "reset" });
   }, [open]);
 
   useEffect(() => {
