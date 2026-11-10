@@ -5,6 +5,22 @@ export const CLI_DEVICE_AUTH_TTL_SECONDS = 15 * 60;
 export const CLI_DEVICE_AUTH_DELIVERY_WINDOW_SECONDS =
   CLI_DEVICE_AUTH_POLL_INTERVAL_SECONDS * 12;
 
+// A delivery response can be lost on the way to the CLI, which then polls
+// again. For this long after delivery the same device code gets the same
+// token back, so the login still completes; after it the code is spent.
+export const CLI_DEVICE_AUTH_REDELIVERY_GRACE_SECONDS =
+  CLI_DEVICE_AUTH_POLL_INTERVAL_SECONDS * 3;
+
+export function canRedeliverCliToken(
+  completedAt: Date | null,
+  now = Date.now(),
+) {
+  return (
+    completedAt !== null &&
+    now - completedAt.getTime() < CLI_DEVICE_AUTH_REDELIVERY_GRACE_SECONDS * 1000
+  );
+}
+
 /**
  * Lifecycle of a device login request:
  *
@@ -14,7 +30,9 @@ export const CLI_DEVICE_AUTH_DELIVERY_WINDOW_SECONDS =
  *      └──timeout──▶ expired
  *
  * "authorized" means a token was minted and is waiting for the CLI to collect
- * it exactly once. Rows whose token or user was deleted cannot be delivered.
+ * it. Collecting it completes the request; only a repeat poll within the short
+ * re-delivery grace period gets the token again. Rows whose token or user was
+ * deleted cannot be delivered.
  */
 export type CliDeviceAuthState =
   | "invalid"

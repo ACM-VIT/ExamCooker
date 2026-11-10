@@ -1,6 +1,9 @@
 -- Archiving always unpublishes a resource; keep the two states exclusive.
--- NOT VALID: new writes are checked at once, and existing rows are checked by
--- the follow-up migration, so a stray row cannot fail this one.
+-- NOT VALID: new writes are checked at once; existing rows are checked by the
+-- follow-up migration. Note that `drizzle-kit migrate` applies every pending
+-- migration in one transaction, so if both are pending and a stray row fails
+-- the validation, this one rolls back with it. Fix the row (the follow-up
+-- lists the queries) and run again.
 ALTER TABLE "Note" ADD CONSTRAINT "Note_archived_unpublished_check"
   CHECK (NOT ("isClear" AND "moderationArchivedAt" IS NOT NULL)) NOT VALID;
 ALTER TABLE "PastPaper" ADD CONSTRAINT "PastPaper_archived_unpublished_check"

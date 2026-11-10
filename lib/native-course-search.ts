@@ -108,18 +108,27 @@ export function useNativeCourseSearchAvailable() {
   );
 }
 
-// The native sheet that is open, if any. Only one can be presented at a time.
-let presentingSearch: Promise<NativeCourseSearchResult> | null = null;
+// A second tap this soon after the first is the same gesture, not a new request.
+const DOUBLE_TAP_WINDOW_MS = 1000;
+let lastPresentedAt = Number.NEGATIVE_INFINITY;
 
 /**
- * Presents the native course search. A second call while one is open (for
- * example a double tap) is answered as a cancel, so its caller does nothing
- * instead of opening another sheet or acting on the same result twice.
+ * Presents the native course search. A second call right after the first (a
+ * double tap) is answered as a cancel, so its caller does nothing instead of
+ * being rejected as "already open" and switching to the web input.
+ *
+ * Later calls always reach the native side. If it still believes a sheet is
+ * open (one that was swiped away never reports back), it rejects, and the
+ * caller falls back to the web input rather than doing nothing.
  */
 export function presentNativeCourseSearch(
   options: NativeCourseSearchOptions,
 ): Promise<NativeCourseSearchResult> {
-  if (presentingSearch) return Promise.resolve({ action: "cancel" });
+  const now = Date.now();
+  if (now - lastPresentedAt < DOUBLE_TAP_WINDOW_MS) {
+    return Promise.resolve({ action: "cancel" });
+  }
+  lastPresentedAt = now;
 
   const root = document.documentElement;
   const explicitTheme = root.dataset.theme;
@@ -130,12 +139,8 @@ export function presentNativeCourseSearch(
         root.style.colorScheme.includes("dark") ||
         window.matchMedia("(prefers-color-scheme: dark)").matches));
 
-  const presentation = NativeCourseSearch.present({
+  return NativeCourseSearch.present({
     ...options,
     darkMode: options.darkMode ?? inferredDarkMode,
-  }).finally(() => {
-    if (presentingSearch === presentation) presentingSearch = null;
   });
-  presentingSearch = presentation;
-  return presentation;
 }

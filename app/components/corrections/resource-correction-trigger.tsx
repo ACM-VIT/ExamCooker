@@ -105,6 +105,10 @@ export default function ResourceCorrectionTrigger({
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // Submitted while the session was still loading: the report is sent once it
+  // is confirmed, or the page leaves for sign-in.
+  const [awaitingSession, setAwaitingSession] = useState(false);
+  const isBusy = isPending || awaitingSession;
   // The form is cleared after the close animation; reopening first cancels it.
   const resetTimerRef = useRef<number | null>(null);
 
@@ -129,7 +133,7 @@ export default function ResourceCorrectionTrigger({
   const handleOpenChange = (nextOpen: boolean) => {
     // A report being sent keeps the dialog open, so its result lands on the
     // form that sent it instead of a cleared one.
-    if (!nextOpen && isPending) return;
+    if (!nextOpen && isBusy) return;
     cancelPendingReset();
     setOpen(nextOpen);
     if (!nextOpen) resetTimerRef.current = window.setTimeout(reset, 200);
@@ -139,9 +143,14 @@ export default function ResourceCorrectionTrigger({
     // The report is what the form held when it was submitted, even if the
     // send waits for the session to load. The continuation must not call
     // requireAuth again: its closure still sees the loading state.
+    if (isBusy) return;
     const report = { category, description, suggestedValue };
-    if (!requireAuth("report a correction", () => sendReport(report))) return;
-    sendReport(report);
+    const signedIn = requireAuth("report a correction", () => {
+      setAwaitingSession(false);
+      sendReport(report);
+    });
+    if (signedIn) sendReport(report);
+    else setAwaitingSession(true);
   };
 
   const sendReport = ({
@@ -267,13 +276,13 @@ export default function ResourceCorrectionTrigger({
         <button
           type="button"
           onClick={() => handleOpenChange(false)}
-          disabled={isPending}
+          disabled={isBusy}
           className="ec-press inline-flex h-10 items-center border border-black/30 px-4 text-sm font-normal transition hover:border-black disabled:opacity-50 dark:border-white/30 dark:hover:border-white"
         >
           Cancel
         </button>
-        <SubmitButton disabled={isPending}>
-          {isPending ? "Sending…" : "Send report"}
+        <SubmitButton disabled={isBusy}>
+          {isBusy ? "Sending…" : "Send report"}
         </SubmitButton>
       </div>
     </form>
@@ -281,7 +290,14 @@ export default function ResourceCorrectionTrigger({
 
   if (isMobile) {
     return (
-      <Drawer.Root open={open} onOpenChange={handleOpenChange} modal>
+      <Drawer.Root
+        open={open}
+        onOpenChange={handleOpenChange}
+        // A swipe that the pending guard above refuses would leave the sheet
+        // dragged part-way off screen.
+        dismissible={!isBusy}
+        modal
+      >
         <Drawer.Trigger asChild><TriggerButton /></Drawer.Trigger>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-50 bg-black/65 backdrop-blur-[3px]" />

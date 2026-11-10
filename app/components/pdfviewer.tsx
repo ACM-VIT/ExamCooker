@@ -2104,7 +2104,10 @@ function LoadedDocumentSurface({
         });
 
         if (copyAfter) {
-          await copyMarkdownText(response.markdown, () => !controller.signal.aborted);
+          // The copy belongs to the document, not to this request: a newer
+          // request for the same document must not leave it stuck at "copying".
+          const session = paperSessionRef.current;
+          await copyMarkdownText(response.markdown, () => paperSessionRef.current === session);
         }
       } catch (error) {
         if (controller.signal.aborted) {
