@@ -701,7 +701,9 @@ class VoiceControlControllerImpl implements VoiceControlController {
     this.responseMetrics.clear();
   }
   destroy = () => {
-    this.disconnect();
+    // A destroyed controller cannot wait for finalization: release the
+    // microphone, the peer and the close timer now.
+    if (this.activity !== "idle") this.end("idle");
     this.destroyed = true;
     this.listeners.clear();
   };

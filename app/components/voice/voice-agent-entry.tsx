@@ -34,8 +34,14 @@ function ConnectedVoiceAgentButton({
 
   // The request lives in the parent, so remounting this entry (for example
   // when its feature flag reloads) never starts a session nobody asked for.
+  const previousSessionClosing = runtime.activity === "closing";
   useEffect(() => {
     if (!isAuthed || !startRequested) {
+      return;
+    }
+    // A start is impossible while the previous session finalizes. Keep the
+    // request and start once that has ended, instead of dropping it silently.
+    if (previousSessionClosing) {
       return;
     }
 
@@ -49,7 +55,13 @@ function ConnectedVoiceAgentButton({
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [isAuthed, onStartRequestHandled, startRequested, startVoiceAgent]);
+  }, [
+    isAuthed,
+    onStartRequestHandled,
+    previousSessionClosing,
+    startRequested,
+    startVoiceAgent,
+  ]);
 
   return (
     <VoiceAgentButton
