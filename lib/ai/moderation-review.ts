@@ -44,7 +44,7 @@ const DocumentAnalysisSchema = z.object({
   year: z.number().int().min(2000).max(2100).nullable(),
   semester: z.enum(semesterValues).nullable(),
   campus: z.enum(campusValues).nullable(),
-  hasAnswerKey: z.boolean().nullable(),
+  hasAnswerKey: z.boolean().nullable().describe("True for any PDF with an answer key, including a question paper with answers."),
   summary: z.string().min(1).max(500),
 });
 
@@ -596,12 +596,9 @@ function metadataIssues(
       issues.push({
         field: "hasAnswerKey",
         message: analysis.hasAnswerKey
-          ? "The PDF appears to be an answer key but was uploaded as a question paper."
-          : "The PDF appears to be a question paper but was uploaded as an answer key.",
+          ? "The PDF appears to include an answer key."
+          : "The marked answer key could not be verified in the PDF.",
       });
-    }
-    if (resource.hasAnswerKey && !resource.questionPaperId) {
-      issues.push({ field: "questionPaperId", message: "Answer keys need a moderator to confirm their question-paper link." });
     }
   }
   return issues;

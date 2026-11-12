@@ -187,16 +187,9 @@ function suggestionRows(item: QueueItem, suggestion: ModerationSuggestion) {
         applicable: suggestion.campus !== null,
       },
       {
-        label: "Paper kind",
-        current: item.hasAnswerKey ? "Answer key" : "Question paper",
-        next:
-          suggestion.hasAnswerKey === null
-            ? item.hasAnswerKey
-              ? "Answer key"
-              : "Question paper"
-            : suggestion.hasAnswerKey
-              ? "Answer key"
-              : "Question paper",
+        label: "Includes an answer key",
+        current: item.hasAnswerKey ? "Yes" : "No",
+        next: (suggestion.hasAnswerKey ?? item.hasAnswerKey) ? "Yes" : "No",
         applicable: suggestion.hasAnswerKey !== null,
       },
     );
@@ -212,7 +205,7 @@ function hasSafelyApplicableSuggestion(
   if (item.resourceType === "note") return changes.length > 0;
 
   return changes.some((change) => {
-    if (change.label === "Paper kind" && suggestion.hasAnswerKey === true) {
+    if (change.label === "Includes an answer key" && suggestion.hasAnswerKey === true) {
       return false;
     }
     if (

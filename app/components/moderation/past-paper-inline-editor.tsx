@@ -367,7 +367,7 @@ export default function PastPaperInlineEditor(
       </FieldRow>
 
       <EditorCheckbox
-        label="This upload is an answer key"
+        label="Includes an answer key"
         checked={draft.hasAnswerKey}
         onChange={(checked) =>
           setDraft((currentDraft) => ({
@@ -379,7 +379,7 @@ export default function PastPaperInlineEditor(
       />
 
       {draft.hasAnswerKey ? (
-        <FieldShell label="Linked question paper">
+        <FieldShell label="Link a separate question paper (optional)">
           <PaperPicker
             value={draft.questionPaper}
             excludePaperId={props.paperId}
