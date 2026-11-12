@@ -1000,7 +1000,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             submissionInFlightRef.current = true;
             startTransition(async () => {
                 try {
-                    if (!await ensureAiReady("moderation")) {
+                    if (variant === "Notes" && !await ensureAiReady("moderation")) {
                         setError("Uploads are reviewed by AI. Add a provider key to upload.");
                         return;
                     }
@@ -1072,7 +1072,11 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                         );
                     }
 
-                    toast({ title: "Selected files uploaded successfully." });
+                    toast({
+                        title: variant === "Past Papers"
+                            ? "Paper submitted for moderator review."
+                            : "Selected files uploaded successfully.",
+                    });
                     push(variant === "Past Papers" ? "/past_papers" : "/notes");
                 } catch (uploadError) {
                     console.error("Error uploading files:", uploadError);

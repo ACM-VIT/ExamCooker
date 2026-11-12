@@ -41,6 +41,7 @@ export type CreateUploadedResourcesInput = {
     semester?: string | null;
     campus?: string | null;
     hasAnswerKey?: boolean;
+    autoReview?: boolean;
     aiEnvironment?: object;
 };
 
@@ -78,6 +79,7 @@ export async function createUploadedResources({
     semester,
     campus,
     hasAnswerKey,
+    autoReview = true,
     aiEnvironment,
 }: CreateUploadedResourcesInput) {
     const yearInt = year ? parseInt(year, 10) : null;
@@ -155,37 +157,34 @@ export async function createUploadedResources({
         throw error;
     }
 
-    const uploadedType = variant === "Notes" ? ("note" as const) : ("pastPaper" as const);
-    const createdResources = data.map((resource) => ({
-        id: resource.id,
-        type: uploadedType,
-    }));
-    after(async () => {
-        await mapWithConcurrency(createdResources, 2, async (resource) => {
+    revalidatePath("/mod");
+    if (autoReview) {
+        const type = variant === "Notes" ? "note" : "pastPaper";
+        after(async () => {
+            await mapWithConcurrency(data, 2, async ({ id }) => {
+                try {
+                    await reviewUploadedResource({ id, type, autoApprove: true, aiEnvironment });
+                } catch (error) {
+                    console.error(`Failed to review uploaded ${type} ${id}:`, error);
+                }
+            });
             try {
-                await reviewUploadedResource({ ...resource, autoApprove: true, aiEnvironment });
+                revalidatePath("/mod");
+                revalidateTag("notes", "minutes");
+                revalidateTag("past_papers", "minutes");
+                await invalidatePastPapersSurfaceCache();
             } catch (error) {
-                console.error(
-                    `Failed to review uploaded ${resource.type} ${resource.id}:`,
-                    error,
-                );
+                console.error("Failed to run automatic upload moderation:", error);
             }
         });
-        try {
-            revalidatePath("/mod");
-            revalidateTag("notes", "minutes");
-            revalidateTag("past_papers", "minutes");
-            await invalidatePastPapersSurfaceCache();
-        } catch (error) {
-            console.error("Failed to run automatic upload moderation:", error);
-        }
-    });
+    }
 
     if (variant === "Notes") {
         revalidatePath("/notes");
         revalidateTag("notes", "minutes");
         await invalidatePastPapersSurfaceCache();
     } else {
+        revalidatePath("/mod/papers/review");
         revalidatePath("/past_papers");
         revalidateTag("past_papers", "minutes");
         await invalidatePastPapersSurfaceCache();
