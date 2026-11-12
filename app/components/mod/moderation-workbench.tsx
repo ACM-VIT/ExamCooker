@@ -187,16 +187,9 @@ function suggestionRows(item: QueueItem, suggestion: ModerationSuggestion) {
         applicable: suggestion.campus !== null,
       },
       {
-        label: "Paper kind",
-        current: item.hasAnswerKey ? "Answer key" : "Question paper",
-        next:
-          suggestion.hasAnswerKey === null
-            ? item.hasAnswerKey
-              ? "Answer key"
-              : "Question paper"
-            : suggestion.hasAnswerKey
-              ? "Answer key"
-              : "Question paper",
+        label: "Includes an answer key",
+        current: item.hasAnswerKey ? "Yes" : "No",
+        next: (suggestion.hasAnswerKey ?? item.hasAnswerKey) ? "Yes" : "No",
         applicable: suggestion.hasAnswerKey !== null,
       },
     );
@@ -212,12 +205,10 @@ function hasSafelyApplicableSuggestion(
   if (item.resourceType === "note") return changes.length > 0;
 
   return changes.some((change) => {
-    if (change.label === "Paper kind" && suggestion.hasAnswerKey === true) {
-      return false;
-    }
     if (
       change.label === "Course" &&
       item.hasAnswerKey &&
+      item.questionPaperId &&
       suggestion.hasAnswerKey !== false
     ) {
       return false;
@@ -1046,6 +1037,7 @@ export default function ModerationWorkbench({ initialNotes, initialPastPapers, i
           semester: result.applied.semester ?? item.semester,
           campus: result.applied.campus ?? item.campus,
           hasAnswerKey: result.applied.hasAnswerKey ?? item.hasAnswerKey,
+          questionPaperId: result.applied.questionPaperId,
           aiReview: result.review,
         };
       }),

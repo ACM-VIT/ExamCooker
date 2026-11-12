@@ -21,7 +21,7 @@ export function formatPaperLinkOption(option: PaperLinkOption) {
         formatExamType(option.examType),
         option.slot ? `Slot ${option.slot}` : null,
         option.year?.toString() ?? null,
-        option.hasAnswerKey ? "Marked answer key" : null,
+        option.hasAnswerKey ? "Includes an answer key" : null,
     ]
         .filter(Boolean)
         .join(" · ");
