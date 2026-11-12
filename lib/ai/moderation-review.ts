@@ -824,7 +824,11 @@ export async function reviewUploadedResource(input: {
     return await persistReview(resource, review, canAutoApprove, contentHash);
   } catch (error) {
     if (error instanceof StaleModerationReviewError) throw error;
-    const message = error instanceof Error ? error.message : "Automatic review failed.";
+    let message = error instanceof Error ? error.message : "Automatic review failed.";
+    const credentials = aiEnvironment as { OPENAI_API_KEY?: string; ANTHROPIC_API_KEY?: string };
+    for (const key of [credentials.OPENAI_API_KEY?.trim(), credentials.ANTHROPIC_API_KEY?.trim()]) {
+      if (key) message = message.replaceAll(key, "[redacted]");
+    }
     const review: AiModerationReview = {
       version: 2,
       model: resolveAiTextModel("moderation", aiEnvironment).qualifiedModelId,

@@ -9,7 +9,8 @@ import {
 } from "@/lib/uploads/create-uploaded-resources";
 import { campusValues, examTypeValues, semesterValues, uploadResultReceipt } from "@/db";
 import { checkSlidingWindowRateLimit } from "@/lib/redis-rate-limit";
-import { getAiRequestEnvironment } from "@/lib/ai/session";
+import { getAiRequestEnvironment, readAiSession } from "@/lib/ai/session";
+import { getPaperUploadReviewEnvironment, paperReviewCredentialsSchema } from "@/lib/uploads/paper-review-credentials";
 
 const MAX_UPLOAD_BATCH = 8;
 const SAVE_RATE_LIMIT = 12;
@@ -20,8 +21,8 @@ const semesters = new Set<string>(semesterValues);
 const campuses = new Set<string>(campusValues);
 
 type UploadRequestBody = Partial<
-    Omit<CreateUploadedResourcesInput, "userEmail" | "claimResults">
-> & { results?: unknown };
+    Omit<CreateUploadedResourcesInput, "userEmail" | "claimResults" | "aiEnvironment">
+> & { results?: unknown; aiReview?: unknown };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -128,7 +129,22 @@ export async function POST(request: NextRequest) {
         );
     }
 
+    const credentials = paperReviewCredentialsSchema.optional().safeParse(body.aiReview);
+    if (!credentials.success) {
+        return NextResponse.json(
+            { success: false, error: "Enter a valid AI provider and API key." },
+            { status: 400 },
+        );
+    }
+
     try {
+        const aiEnvironment = variant === "Notes"
+            ? await getAiRequestEnvironment(session.user.id)
+            : getPaperUploadReviewEnvironment(
+                process.env,
+                credentials.data,
+                credentials.data ? null : await readAiSession(session.user.id),
+            );
         const result = await createUploadedResources({
             userEmail: session.user.email,
             claimResults: async (transaction) => {
@@ -166,14 +182,18 @@ export async function POST(request: NextRequest) {
             semester,
             campus,
             hasAnswerKey: body.hasAnswerKey === true,
-            aiEnvironment: await getAiRequestEnvironment(session.user.id),
+            aiEnvironment,
         });
 
         if (!result.success) {
             return NextResponse.json(result, { status: 400 });
         }
 
-        return NextResponse.json({ success: true, count: result.data?.length ?? 0 });
+        return NextResponse.json({
+            success: true,
+            count: result.data.length,
+            autoReview: result.autoReview,
+        });
     } catch (error) {
         console.error("upload save api error", error);
         const message =

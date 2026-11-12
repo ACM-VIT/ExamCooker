@@ -4,6 +4,7 @@ type RequestOptions = {
   json?: unknown;
   body?: BodyInit;
   headers?: Record<string, string>;
+  redirect?: RequestRedirect;
 };
 
 export class ApiError extends Error {
@@ -76,6 +77,7 @@ export async function requestRaw(
     method: options.method ?? "GET",
     headers,
     body,
+    redirect: options.redirect,
   });
 
   return response;
