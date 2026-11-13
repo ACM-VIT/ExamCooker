@@ -43,6 +43,7 @@ import {
   type ModerationCorrectionReport,
 } from "@/app/actions/content-correction-reports";
 import { getPastPaperDetailPath } from "@/lib/seo";
+import { examTypeLabel } from "@/lib/exam-slug";
 
 type CourseSummary = { code: string; title: string } | null;
 type QueueNote = Note & { course: CourseSummary };
@@ -131,7 +132,7 @@ function currentMetadata(item: QueueItem) {
   }
   return [
     item.course?.code,
-    item.examType?.replaceAll("_", "-"),
+    item.examType ? examTypeLabel(item.examType) : null,
     item.slot ? `Slot ${item.slot}` : null,
     item.year,
   ]
@@ -158,8 +159,8 @@ function suggestionRows(item: QueueItem, suggestion: ModerationSuggestion) {
     rows.push(
       {
         label: "Exam",
-        current: item.examType?.replaceAll("_", "-") ?? "Not set",
-        next: suggestion.examType?.replaceAll("_", "-") ?? "Not found",
+        current: item.examType ? examTypeLabel(item.examType) : "Not set",
+        next: suggestion.examType ? examTypeLabel(suggestion.examType) : "Not found",
         applicable: suggestion.examType !== null,
       },
       {
@@ -187,16 +188,9 @@ function suggestionRows(item: QueueItem, suggestion: ModerationSuggestion) {
         applicable: suggestion.campus !== null,
       },
       {
-        label: "Paper kind",
-        current: item.hasAnswerKey ? "Answer key" : "Question paper",
-        next:
-          suggestion.hasAnswerKey === null
-            ? item.hasAnswerKey
-              ? "Answer key"
-              : "Question paper"
-            : suggestion.hasAnswerKey
-              ? "Answer key"
-              : "Question paper",
+        label: "Includes an answer key",
+        current: item.hasAnswerKey ? "Yes" : "No",
+        next: (suggestion.hasAnswerKey ?? item.hasAnswerKey) ? "Yes" : "No",
         applicable: suggestion.hasAnswerKey !== null,
       },
     );
@@ -212,7 +206,7 @@ function hasSafelyApplicableSuggestion(
   if (item.resourceType === "note") return changes.length > 0;
 
   return changes.some((change) => {
-    if (change.label === "Paper kind" && suggestion.hasAnswerKey === true) {
+    if (change.label === "Includes an answer key" && suggestion.hasAnswerKey === true) {
       return false;
     }
     if (

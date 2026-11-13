@@ -20,7 +20,7 @@ const semesters = new Set<string>(semesterValues);
 const campuses = new Set<string>(campusValues);
 
 type UploadRequestBody = Partial<
-    Omit<CreateUploadedResourcesInput, "userEmail" | "claimResults">
+    Omit<CreateUploadedResourcesInput, "userEmail" | "claimResults" | "autoReview" | "aiEnvironment">
 > & { results?: unknown };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -166,7 +166,10 @@ export async function POST(request: NextRequest) {
             semester,
             campus,
             hasAnswerKey: body.hasAnswerKey === true,
-            aiEnvironment: await getAiRequestEnvironment(session.user.id),
+            autoReview: variant === "Notes",
+            aiEnvironment: variant === "Notes"
+                ? await getAiRequestEnvironment(session.user.id)
+                : undefined,
         });
 
         if (!result.success) {

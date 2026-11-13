@@ -110,11 +110,7 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
     questionPaperId = await db.transaction(async (tx) => {
       let nextQuestionPaperId: string | null = null;
 
-      if (parsed.hasAnswerKey) {
-        if (!parsed.questionPaperId) {
-          throw new Error("Answer keys must be linked to a question paper.");
-        }
-
+      if (parsed.hasAnswerKey && parsed.questionPaperId) {
         if (parsed.questionPaperId === parsed.id) {
           throw new Error("A paper cannot be linked to itself.");
         }
@@ -124,7 +120,7 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
             id: pastPaper.id,
             title: pastPaper.title,
             courseId: pastPaper.courseId,
-            hasAnswerKey: pastPaper.hasAnswerKey,
+            questionPaperId: pastPaper.questionPaperId,
           })
           .from(pastPaper)
           .where(eq(pastPaper.id, parsed.questionPaperId))
@@ -134,8 +130,8 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
           throw new Error("Question paper not found.");
         }
 
-        if (questionPaper.hasAnswerKey) {
-          throw new Error("Question paper cannot itself be marked as an answer key.");
+        if (questionPaper.questionPaperId) {
+          throw new Error("The selected paper already links to a separate question paper.");
         }
 
         if (

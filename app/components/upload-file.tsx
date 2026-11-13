@@ -19,6 +19,7 @@ import { useGuestPrompt } from "@/app/components/auth-gate";
 import CoursePicker, { type CourseOption } from "@/app/components/mod/course-picker";
 import AppImage from "@/app/components/common/app-image";
 import { useAiSession } from "@/app/components/ai/ai-session-provider";
+import { EXAM_TYPE_OPTIONS } from "@/lib/exam-slug";
 import {
     initialUploadFormState,
     isConvertingImages,
@@ -90,19 +91,6 @@ const SLOT_OPTIONS = [
     "F2",
     "G1",
     "G2",
-];
-
-const EXAM_TYPES = [
-    { value: "CAT_1", label: "CAT-1" },
-    { value: "CAT_2", label: "CAT-2" },
-    { value: "FAT", label: "FAT" },
-    { value: "MODEL_CAT_1", label: "Model CAT-1" },
-    { value: "MODEL_CAT_2", label: "Model CAT-2" },
-    { value: "MODEL_FAT", label: "Model FAT" },
-    { value: "MID", label: "Mid" },
-    { value: "QUIZ", label: "Quiz" },
-    { value: "CIA", label: "CIA" },
-    { value: "OTHER", label: "Other" },
 ];
 
 const SEMESTERS = [
@@ -273,7 +261,7 @@ function PastPaperMetadataFields({
                         onChange={(event) => updateField("examType", event.target.value)}
                     >
                         <option value="">Select</option>
-                        {EXAM_TYPES.map((item) => (
+                        {EXAM_TYPE_OPTIONS.map((item) => (
                             <option key={item.value} value={item.value}>
                                 {item.label}
                             </option>
@@ -1000,7 +988,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             submissionInFlightRef.current = true;
             startTransition(async () => {
                 try {
-                    if (!await ensureAiReady("moderation")) {
+                    if (variant === "Notes" && !await ensureAiReady("moderation")) {
                         setError("Uploads are reviewed by AI. Add a provider key to upload.");
                         return;
                     }
@@ -1072,7 +1060,11 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                         );
                     }
 
-                    toast({ title: "Selected files uploaded successfully." });
+                    toast({
+                        title: variant === "Past Papers"
+                            ? "Paper submitted for moderator review."
+                            : "Selected files uploaded successfully.",
+                    });
                     push(variant === "Past Papers" ? "/past_papers" : "/notes");
                 } catch (uploadError) {
                     console.error("Error uploading files:", uploadError);

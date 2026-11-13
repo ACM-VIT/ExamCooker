@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { and, eq, isNull, ne } from "drizzle-orm";
-import { auth } from "../auth";
+import { auth } from "@/app/auth";
 import { revalidatePath, updateTag } from "next/cache";
 import { db, pastPaper } from "@/db";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
@@ -15,7 +15,8 @@ const schema = z.object({
     examType: z.enum(examTypeValues).nullable(),
     slot: z
         .string()
-        .regex(/^[A-G][12]$/i, "Slot must match A1..G2")
+        .trim()
+        .regex(/^[A-Z][A-Z0-9]*(\+[A-Z][A-Z0-9]*)*$/i, "Enter a slot such as A1 or A1+TA1.")
         .transform((v) => v.toUpperCase())
         .nullable()
         .or(z.literal("").transform(() => null)),
@@ -35,6 +36,9 @@ const schema = z.object({
 export type UpdatePaperMetadataInput = z.input<typeof schema>;
 
 function isQuestionPaperLinkUniqueConstraintError(error: unknown) {
+    if (error instanceof Error && error.cause) {
+        error = error.cause;
+    }
     if (!error || typeof error !== "object") {
         return false;
     }
@@ -65,10 +69,15 @@ function isQuestionPaperLinkUniqueConstraintError(error: unknown) {
 export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
     const session = await auth();
     if (session?.user?.role !== "MODERATOR") {
-        throw new Error("Access denied");
+        return { success: false as const, error: "Access denied." };
     }
 
-    const parsed = schema.parse(input);
+    const validation = schema.safeParse(input);
+    if (!validation.success) {
+        const { path, message } = validation.error.issues[0];
+        return { success: false as const, error: `${path.join(".") || "Metadata"}: ${message}` };
+    }
+    const parsed = validation.data;
 
     let questionPaperId: string | null = null;
     let previousQuestionPaperId: string | null = null;
@@ -90,72 +99,18 @@ export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
                 .limit(1);
 
             if (!existingPaper) {
-                throw new Error("Past paper not found.");
+                return { success: false as const, error: "Past paper not found." };
             }
 
             let nextQuestionPaperId: string | null = null;
 
-            if (parsed.hasAnswerKey) {
-                if (!parsed.questionPaperId) {
-                    throw new Error("Answer keys must be linked to a question paper.");
-                }
-
+            if (parsed.hasAnswerKey && parsed.questionPaperId) {
                 if (parsed.questionPaperId === parsed.id) {
-                    throw new Error("A paper cannot be linked to itself.");
-                }
-
-                const [questionPaper] = await tx
-                    .select({
-                        id: pastPaper.id,
-                        title: pastPaper.title,
-                        courseId: pastPaper.courseId,
-                        hasAnswerKey: pastPaper.hasAnswerKey,
-                    })
-                    .from(pastPaper)
-                    .where(eq(pastPaper.id, parsed.questionPaperId))
-                    .limit(1);
-
-                if (!questionPaper) {
-                    throw new Error("Question paper not found.");
-                }
-
-                if (questionPaper.hasAnswerKey) {
-                    throw new Error("Question paper cannot itself be marked as an answer key.");
-                }
-
-                if (
-                    parsed.courseId !== null &&
-                    questionPaper.courseId !== null &&
-                    parsed.courseId !== questionPaper.courseId
-                ) {
-                    throw new Error("Answer key and question paper must belong to the same course.");
-                }
-
-                const [conflictingLink] = await tx
-                    .select({
-                        id: pastPaper.id,
-                        title: pastPaper.title,
-                    })
-                    .from(pastPaper)
-                    .where(
-                        and(
-                            eq(pastPaper.questionPaperId, parsed.questionPaperId),
-                            ne(pastPaper.id, parsed.id),
-                        ),
-                    )
-                    .limit(1);
-
-                if (conflictingLink) {
-                    throw new Error(
-                        `Question paper already has an answer key linked: ${conflictingLink.title}`,
-                    );
+                    return { success: false as const, error: "A paper cannot be linked to itself." };
                 }
 
                 const [linkedAnswerKey] = await tx
-                    .select({
-                        id: pastPaper.id,
-                        title: pastPaper.title,
-                    })
+                    .select({ title: pastPaper.title })
                     .from(pastPaper)
                     .where(
                         and(
@@ -166,9 +121,53 @@ export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
                     .limit(1);
 
                 if (linkedAnswerKey) {
-                    throw new Error(
-                        `This paper already has an answer key linked: ${linkedAnswerKey.title}`,
-                    );
+                    return {
+                        success: false as const,
+                        error: `This paper already has an answer key linked: ${linkedAnswerKey.title}`,
+                    };
+                }
+                const [questionPaper] = await tx
+                    .select({
+                        id: pastPaper.id,
+                        courseId: pastPaper.courseId,
+                        questionPaperId: pastPaper.questionPaperId,
+                    })
+                    .from(pastPaper)
+                    .where(eq(pastPaper.id, parsed.questionPaperId))
+                    .limit(1);
+
+                if (!questionPaper) {
+                    return { success: false as const, error: "Question paper not found." };
+                }
+
+                if (questionPaper.questionPaperId) {
+                    return { success: false as const, error: "The selected paper already links to a separate question paper." };
+                }
+
+                if (
+                    parsed.courseId !== null &&
+                    questionPaper.courseId !== null &&
+                    parsed.courseId !== questionPaper.courseId
+                ) {
+                    return { success: false as const, error: "Answer key and question paper must belong to the same course." };
+                }
+
+                const [conflictingLink] = await tx
+                    .select({ title: pastPaper.title })
+                    .from(pastPaper)
+                    .where(
+                        and(
+                            eq(pastPaper.questionPaperId, parsed.questionPaperId),
+                            ne(pastPaper.id, parsed.id),
+                        ),
+                    )
+                    .limit(1);
+
+                if (conflictingLink) {
+                    return {
+                        success: false as const,
+                        error: `Question paper already has an answer key linked: ${conflictingLink.title}`,
+                    };
                 }
 
                 nextQuestionPaperId = questionPaper.id;
@@ -195,16 +194,18 @@ export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
                 );
 
             return {
+                success: true as const,
                 questionPaperId: nextQuestionPaperId,
                 previousQuestionPaperId: existingPaper.questionPaperId,
             };
         });
 
+        if (!result.success) return result;
         questionPaperId = result.questionPaperId;
         previousQuestionPaperId = result.previousQuestionPaperId;
     } catch (error) {
         if (isQuestionPaperLinkUniqueConstraintError(error)) {
-            throw new Error("Question paper already has an answer key linked.");
+            return { success: false as const, error: "Question paper already has an answer key linked." };
         }
 
         throw error;
@@ -221,5 +222,5 @@ export async function updatePaperMetadata(input: UpdatePaperMetadataInput) {
         updateTag(`past_paper:${questionPaperId}`);
     }
     updateTag("courses");
-    return { success: true };
+    return { success: true as const };
 }

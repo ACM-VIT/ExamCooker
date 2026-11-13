@@ -47,7 +47,6 @@ async function PaperReviewContent() {
                         isNull(pastPaper.courseId),
                         isNull(pastPaper.examType),
                         isNull(pastPaper.year),
-                        and(eq(pastPaper.hasAnswerKey, true), isNull(pastPaper.questionPaperId)),
                     ),
                 ),
             )
@@ -128,9 +127,7 @@ async function PaperReviewContent() {
                         </p>
                         <h1 className="text-2xl font-bold">Paper metadata review</h1>
                         <p className="mt-1 text-sm text-black/70 dark:text-[#D5D5D5]/70">
-                            Papers missing course, exam, year, or an answer-key link. Fill in
-                            the gaps and save; once the row is complete it drops off the queue
-                            automatically.
+                            Papers awaiting approval or missing a course, exam type, or year.
                         </p>
                     </div>
                     <Link

@@ -51,6 +51,8 @@ function extractExamType(title) {
   if (/\bmodel\s+cat[-\s]?1\b/i.test(t)) return "MODEL_CAT_1";
   if (/\bmodel\s+cat[-\s]?2\b/i.test(t)) return "MODEL_CAT_2";
   if (/\bmodel\s+fat\b/i.test(t)) return "MODEL_FAT";
+  if (/\bre[-\s]*cat[-\s]*1\b/i.test(t)) return "RECAT_1";
+  if (/\bre[-\s]*cat[-\s]*2\b/i.test(t)) return "RECAT_2";
   if (/\bcat[-\s]?1\b/i.test(t)) return "CAT_1";
   if (/\bcat[-\s]?2\b/i.test(t)) return "CAT_2";
   if (/\bfat(?:\s*2)?\b/i.test(t)) return "FAT";
@@ -266,7 +268,7 @@ async function main() {
     courseAmbiguous: 0,
     courseUnresolved: 0,
     examTypeHistogram: {
-      CAT_1: 0, CAT_2: 0, FAT: 0, MODEL_CAT_1: 0, MODEL_CAT_2: 0,
+      CAT_1: 0, CAT_2: 0, RECAT_1: 0, RECAT_2: 0, FAT: 0, MODEL_CAT_1: 0, MODEL_CAT_2: 0,
       MODEL_FAT: 0, MID: 0, QUIZ: 0, CIA: 0, OTHER: 0,
     },
     examTypeNull: 0,
