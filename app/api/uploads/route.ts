@@ -57,19 +57,6 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const rateLimit = await checkSlidingWindowRateLimit({
-        identifier: session.user.id,
-        limit: SAVE_RATE_LIMIT,
-        prefix: "upload-save",
-        windowMs: SAVE_RATE_WINDOW_MS,
-    });
-    if (!rateLimit.success) {
-        return NextResponse.json(
-            { success: false, error: "You have saved several uploads recently. Try again later." },
-            { status: 429 },
-        );
-    }
-
     let body: UploadRequestBody;
     try {
         body = await request.json();
@@ -125,6 +112,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
             { success: false, error: validationError },
             { status: 400 },
+        );
+    }
+
+    // Count only requests that could save something, so a malformed retry
+    // does not use up the hour's allowance.
+    const rateLimit = await checkSlidingWindowRateLimit({
+        identifier: session.user.id,
+        limit: SAVE_RATE_LIMIT,
+        prefix: "upload-save",
+        windowMs: SAVE_RATE_WINDOW_MS,
+    });
+    if (!rateLimit.success) {
+        return NextResponse.json(
+            { success: false, error: "You have saved several uploads recently. Try again later." },
+            { status: 429 },
         );
     }
 
