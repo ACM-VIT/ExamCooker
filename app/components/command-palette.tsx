@@ -45,6 +45,7 @@ import {
 } from "@/lib/command/intent";
 import { normalizeCourseCode } from "@/lib/course-tags";
 import { examTypeLabel, examTypeToSlug } from "@/lib/exam-slug";
+import type { ExamType } from "@/db";
 import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
 import {
@@ -75,7 +76,7 @@ type CommandPaper = {
   title: string;
   courseCode: string | null;
   courseTitle: string | null;
-  examType: string | null;
+  examType: ExamType | null;
   slot: string | null;
   year: number | null;
   href: string;
@@ -932,7 +933,7 @@ function PaperRow({
 }) {
   const meta = [
     paper.courseCode,
-    paper.examType?.replaceAll("_", " "),
+    paper.examType ? examTypeLabel(paper.examType) : null,
     paper.slot,
     paper.year,
   ]

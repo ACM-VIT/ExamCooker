@@ -24,6 +24,7 @@ import {
 import { useModeratorInlineEditorOptions } from "@/app/components/moderation/use-moderator-inline-editor-options";
 import { useToast } from "@/app/components/ui/use-toast";
 import type { Campus, ExamType, Semester } from "@/db";
+import { EXAM_TYPE_OPTIONS } from "@/lib/exam-slug";
 import { getPastPaperDetailPath } from "@/lib/seo";
 import ResourceCorrectionTrigger from "@/app/components/corrections/resource-correction-trigger";
 
@@ -54,19 +55,6 @@ type PaperDraft = {
   title: string;
   year: number | null;
 };
-
-const EXAM_OPTIONS: ReadonlyArray<{ label: string; value: ExamType }> = [
-  { value: "CAT_1", label: "CAT-1" },
-  { value: "CAT_2", label: "CAT-2" },
-  { value: "FAT", label: "FAT" },
-  { value: "MODEL_CAT_1", label: "Model CAT-1" },
-  { value: "MODEL_CAT_2", label: "Model CAT-2" },
-  { value: "MODEL_FAT", label: "Model FAT" },
-  { value: "MID", label: "Mid" },
-  { value: "QUIZ", label: "Quiz" },
-  { value: "CIA", label: "CIA" },
-  { value: "OTHER", label: "Other" },
-];
 
 const SEMESTER_OPTIONS: ReadonlyArray<{ label: string; value: Semester }> = [
   { value: "FALL", label: "Fall" },
@@ -307,7 +295,7 @@ export default function PastPaperInlineEditor(
             examType: (value || null) as ExamType | null,
           }))
         }
-        options={EXAM_OPTIONS}
+        options={EXAM_TYPE_OPTIONS}
         placeholder="Unspecified"
       />
 

@@ -7,6 +7,7 @@ import CoursePicker, { type CourseOption } from "./course-picker";
 import PaperPicker from "./paper-picker";
 import { updatePaperMetadata } from "@/app/actions/update-paper-metadata";
 import type { Campus, ExamType, Semester } from "@/db";
+import { EXAM_TYPE_OPTIONS } from "@/lib/exam-slug";
 import { formatPaperLinkOption, type PaperLinkOption } from "./paper-link-types";
 
 export type PaperRowData = {
@@ -32,19 +33,6 @@ type Props = {
     onSaved: (paper: PaperRowData) => void;
     onCourseCreated: (course: CourseOption) => void;
 };
-
-const EXAM_OPTIONS: { value: ExamType; label: string }[] = [
-    { value: "CAT_1", label: "CAT-1" },
-    { value: "CAT_2", label: "CAT-2" },
-    { value: "FAT", label: "FAT" },
-    { value: "MODEL_CAT_1", label: "Model CAT-1" },
-    { value: "MODEL_CAT_2", label: "Model CAT-2" },
-    { value: "MODEL_FAT", label: "Model FAT" },
-    { value: "MID", label: "Mid" },
-    { value: "QUIZ", label: "Quiz" },
-    { value: "CIA", label: "CIA" },
-    { value: "OTHER", label: "Other" },
-];
 
 const SEMESTER_OPTIONS: { value: Semester; label: string }[] = [
     { value: "FALL", label: "Fall" },
@@ -200,7 +188,7 @@ export default function PaperReviewRow({ paper, courses, onResolved, onSaved, on
                         className="w-full border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3 py-2 text-sm text-black dark:text-[#D5D5D5] focus:outline-none focus:ring-2 focus:ring-[#5FC4E7]"
                     >
                         <option value="">—</option>
-                        {EXAM_OPTIONS.map((o) => (
+                        {EXAM_TYPE_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
                                 {o.label}
                             </option>

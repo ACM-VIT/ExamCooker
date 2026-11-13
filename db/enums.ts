@@ -10,6 +10,8 @@ export type StudyScope = (typeof studyScopeValues)[number];
 export const examTypeValues = [
   "CAT_1",
   "CAT_2",
+  "RECAT_1",
+  "RECAT_2",
   "FAT",
   "MODEL_CAT_1",
   "MODEL_CAT_2",

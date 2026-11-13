@@ -1,4 +1,5 @@
 import type { ExamType } from "@/db";
+import { examTypeLabel } from "@/lib/exam-slug";
 
 export type PaperLinkOption = {
     id: string;
@@ -11,14 +12,10 @@ export type PaperLinkOption = {
     hasAnswerKey: boolean;
 };
 
-function formatExamType(examType: ExamType | null) {
-    return examType ? examType.replace(/_/g, "-") : null;
-}
-
 export function formatPaperLinkOption(option: PaperLinkOption) {
     return [
         option.courseCode,
-        formatExamType(option.examType),
+        option.examType ? examTypeLabel(option.examType) : null,
         option.slot ? `Slot ${option.slot}` : null,
         option.year?.toString() ?? null,
         option.hasAnswerKey ? "Includes an answer key" : null,

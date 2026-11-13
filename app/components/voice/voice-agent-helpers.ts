@@ -27,6 +27,10 @@ const COURSE_EXAM_REQUEST_ALIASES: Record<
   cat2: "CAT_2",
   "cat 2": "CAT_2",
   "cat-2": "CAT_2",
+  recat1: "RECAT_1",
+  "re cat 1": "RECAT_1",
+  recat2: "RECAT_2",
+  "re cat 2": "RECAT_2",
   fat: "FAT",
   quiz: "QUIZ",
   mid: "MID",
@@ -422,7 +426,7 @@ export function resolveCourseExam(rawExam: string) {
   }
 
   throw new Error(
-    "I could not match that exam type. Try CAT-1, CAT-2, FAT, Model CAT-1, Model CAT-2, Model FAT, Mid, Quiz, CIA, or Other.",
+    "I could not match that exam type. Try CAT-1, CAT-2, ReCAT-1, ReCAT-2, FAT, Model CAT-1, Model CAT-2, Model FAT, Mid, Quiz, CIA, or Other.",
   );
 }
 

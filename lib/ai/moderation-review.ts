@@ -16,6 +16,7 @@ import {
   type Semester,
 } from "@/db";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { examTypeLabel } from "@/lib/exam-slug";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { getAiTextModel, getAiTextProviderOptions } from "@/lib/ai/provider";
 import { getAiRequestEnvironment } from "@/lib/ai/session";
@@ -527,7 +528,7 @@ function buildSuggestion(
   const paperTitleParts = resolvedCourse
     ? [
         `${resolvedCourse.title} [${normalizeCourseCode(resolvedCourse.code)}]`,
-        analysis.examType?.replaceAll("_", "-"),
+        analysis.examType ? examTypeLabel(analysis.examType) : null,
         analysis.slot,
         analysis.year,
       ].filter(Boolean)

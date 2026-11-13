@@ -21,7 +21,7 @@ const SLOT_OPTIONS = [
     "G1",
     "G2",
 ] as const;
-const EXAM_TYPE_OPTIONS = ["CAT-1", "CAT-2", "FAT", "MID", "QUIZ", "CIA"] as const;
+const EXAM_TYPE_OPTIONS = ["CAT-1", "CAT-2", "ReCAT-1", "ReCAT-2", "FAT", "MID", "QUIZ", "CIA"] as const;
 
 const PastPaperMetadataSchema = z.object({
     courseTitle: z
@@ -35,7 +35,7 @@ const PastPaperMetadataSchema = z.object({
     examType: z
         .enum(EXAM_TYPE_OPTIONS)
         .nullable()
-        .describe("One of CAT-1, CAT-2, FAT, MID, QUIZ, CIA if present."),
+        .describe("Exam type as printed on the paper, including ReCAT-1 or ReCAT-2 for retests."),
     slot: z
         .enum(SLOT_OPTIONS)
         .nullable()

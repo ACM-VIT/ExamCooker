@@ -60,6 +60,14 @@ const EXAM_PATTERNS: Array<{ examType: ExamType; patterns: RegExp[] }> = [
     patterns: [/model\s*fat/, /sample\s*fat/, /model\s*final/],
   },
   {
+    examType: "RECAT_1",
+    patterns: [/\bre\s*cat\s*1\b/],
+  },
+  {
+    examType: "RECAT_2",
+    patterns: [/\bre\s*cat\s*2\b/],
+  },
+  {
     examType: "CAT_1",
     patterns: [/cat\s*-?\s*1/, /cat1/],
   },
