@@ -30,7 +30,7 @@ ExamCooker uses scalable tech stacks to ensure optimal performance and ease of m
 
 ## Features
 
--   **Authentication**: Uses Google authentication to authorize only VIT emails. The entire website uses auth-protected routes that validate user sessions.
+-   **Authentication**: Sign in with Google or Apple. Past papers, notes, and syllabi can be browsed without an account; uploading, reporting corrections, and the AI study tools need one.
 
 -   **Backend**: Uses server actions instead of APIs in most places as we must update user information constantly.
 
