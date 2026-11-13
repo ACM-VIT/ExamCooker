@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/upcoming-exams";
 import type { UpcomingExamItem } from "@/lib/data/upcoming-exams";
 import type { ExamType } from "@/db";
+import { examTypeLabel } from "@/lib/exam-slug";
 
 type Props = {
     courses: CourseOption[];
@@ -20,6 +21,8 @@ type Props = {
 const EXAM_TYPES: { value: ExamType; label: string }[] = [
     { value: "CAT_1", label: "CAT-1" },
     { value: "CAT_2", label: "CAT-2" },
+    { value: "RECAT_1", label: examTypeLabel("RECAT_1") },
+    { value: "RECAT_2", label: examTypeLabel("RECAT_2") },
     { value: "FAT", label: "FAT" },
     { value: "MID", label: "Mid" },
     { value: "QUIZ", label: "Quiz" },
@@ -361,7 +364,7 @@ function Row({
                 </div>
             </td>
             <td className="p-2 text-xs text-black/70 dark:text-[#D5D5D5]/70">
-                {item.examType ? item.examType.replace("_", "-") : "—"}
+                {item.examType ? examTypeLabel(item.examType) : "—"}
             </td>
             <td className="p-2 text-xs text-black/70 dark:text-[#D5D5D5]/70">
                 {item.scheduledAt ? formatScheduledAt(item.scheduledAt) : "—"}

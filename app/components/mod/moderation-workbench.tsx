@@ -43,6 +43,7 @@ import {
   type ModerationCorrectionReport,
 } from "@/app/actions/content-correction-reports";
 import { getPastPaperDetailPath } from "@/lib/seo";
+import { examTypeLabel } from "@/lib/exam-slug";
 
 type CourseSummary = { code: string; title: string } | null;
 type QueueNote = Note & { course: CourseSummary };
@@ -131,7 +132,7 @@ function currentMetadata(item: QueueItem) {
   }
   return [
     item.course?.code,
-    item.examType?.replaceAll("_", "-"),
+    item.examType ? examTypeLabel(item.examType) : null,
     item.slot ? `Slot ${item.slot}` : null,
     item.year,
   ]
@@ -158,8 +159,8 @@ function suggestionRows(item: QueueItem, suggestion: ModerationSuggestion) {
     rows.push(
       {
         label: "Exam",
-        current: item.examType?.replaceAll("_", "-") ?? "Not set",
-        next: suggestion.examType?.replaceAll("_", "-") ?? "Not found",
+        current: item.examType ? examTypeLabel(item.examType) : "Not set",
+        next: suggestion.examType ? examTypeLabel(suggestion.examType) : "Not found",
         applicable: suggestion.examType !== null,
       },
       {
