@@ -9,8 +9,8 @@ import {
 } from "@/lib/uploads/create-uploaded-resources";
 import { campusValues, examTypeValues, semesterValues, uploadResultReceipt } from "@/db";
 import { checkSlidingWindowRateLimit } from "@/lib/redis-rate-limit";
-import { getAiRequestEnvironment, readAiSession } from "@/lib/ai/session";
-import { getPaperUploadReviewEnvironment, paperReviewCredentialsSchema } from "@/lib/uploads/paper-review-credentials";
+import { readAiSession } from "@/lib/ai/session";
+import { getUploadReviewEnvironment } from "@/lib/uploads/upload-review-environment";
 
 const MAX_UPLOAD_BATCH = 8;
 const SAVE_RATE_LIMIT = 12;
@@ -22,7 +22,7 @@ const campuses = new Set<string>(campusValues);
 
 type UploadRequestBody = Partial<
     Omit<CreateUploadedResourcesInput, "userEmail" | "claimResults" | "aiEnvironment">
-> & { results?: unknown; aiReview?: unknown };
+> & { results?: unknown };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -116,14 +116,6 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const credentials = paperReviewCredentialsSchema.optional().safeParse(body.aiReview);
-    if (!credentials.success) {
-        return NextResponse.json(
-            { success: false, error: "Enter a valid AI provider and API key." },
-            { status: 400 },
-        );
-    }
-
     // Count only requests that could save something, so a malformed retry
     // does not use up the hour's allowance.
     const rateLimit = await checkSlidingWindowRateLimit({
@@ -140,13 +132,10 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const aiEnvironment = variant === "Notes"
-            ? await getAiRequestEnvironment(session.user.id)
-            : getPaperUploadReviewEnvironment(
-                process.env,
-                credentials.data,
-                credentials.data ? null : await readAiSession(session.user.id),
-            );
+        const aiEnvironment = getUploadReviewEnvironment(
+            process.env,
+            await readAiSession(session.user.id),
+        );
         const result = await createUploadedResources({
             userEmail: session.user.email,
             claimResults: async (transaction) => {

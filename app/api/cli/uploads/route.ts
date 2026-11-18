@@ -17,7 +17,7 @@ import {
 } from "@/lib/uploads/create-uploaded-resources";
 import { processUploadFile } from "@/lib/uploads/processor-client";
 import { parseExamTypeInput } from "@/lib/exam-slug";
-import { getPaperUploadReviewEnvironment, paperReviewCredentialsSchema } from "@/lib/uploads/paper-review-credentials";
+import { getUploadReviewEnvironment } from "@/lib/uploads/upload-review-environment";
 
 const uploadVariants = new Set<UploadVariant>(["Notes", "Past Papers"]);
 const semesters = new Set<string>(semesterValues);
@@ -166,16 +166,6 @@ export async function POST(request: NextRequest) {
   const year = stringValue(formData.get("year"));
   const slot = stringValue(formData.get("slot"));
   const hasAnswerKey = parseBoolean(formData.get("answerKey"));
-  const apiKey = stringValue(formData.get("aiReviewApiKey"));
-  const credentials = paperReviewCredentialsSchema.optional().safeParse(
-    apiKey ? { provider: stringValue(formData.get("aiReviewProvider")), apiKey } : undefined,
-  );
-  if (!credentials.success) {
-    return NextResponse.json(
-      { success: false, error: "Enter a valid AI provider and API key." },
-      { status: 400 },
-    );
-  }
 
   const yearValidation =
     variant === "Past Papers"
@@ -251,9 +241,8 @@ export async function POST(request: NextRequest) {
       semester: semester as Semester | null,
       campus: campus as Campus | null,
       hasAnswerKey,
-      aiEnvironment: variant === "Past Papers"
-        ? getPaperUploadReviewEnvironment(process.env, credentials.data)
-        : undefined,
+      // CLI uploads have no browser AI session: only the server's key reviews.
+      aiEnvironment: getUploadReviewEnvironment(process.env),
     });
 
     if (!result.success) {

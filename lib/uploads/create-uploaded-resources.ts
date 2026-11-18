@@ -41,6 +41,10 @@ export type CreateUploadedResourcesInput = {
     semester?: string | null;
     campus?: string | null;
     hasAnswerKey?: boolean;
+    /**
+     * Runs automatic review for the batch when present. Without it the
+     * resources stay unpublished in the moderator queue.
+     */
     aiEnvironment?: object;
 };
 
@@ -156,8 +160,10 @@ export async function createUploadedResources({
     }
 
     revalidatePath("/mod");
-    const autoReview = variant === "Notes" || aiEnvironment !== undefined;
-    if (autoReview) {
+    // New resources are unpublished (isClear defaults to false) until review
+    // or a moderator approves them, so a skipped review leaves them queued.
+    const autoReview = aiEnvironment !== undefined;
+    if (aiEnvironment) {
         const type = variant === "Notes" ? "note" : "pastPaper";
         after(async () => {
             await mapWithConcurrency(data, 2, async ({ id }) => {

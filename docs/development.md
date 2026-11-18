@@ -23,7 +23,13 @@ When the selected credential is absent, signed-in users are prompted at the
 first AI feature they invoke. They can supply their own OpenAI or Anthropic
 key and choose a model for the current browser session. Upload moderation and
 correction review decide what is published, so they ignore that choice and use
-the server's model for the selected provider. Settings are encrypted
+the server's model for the selected provider. Uploaded notes and past papers
+are reviewed with the server's direct key for the moderation model's provider
+when one is configured, otherwise with the uploader's session key for their
+selected provider. CLI uploads have no browser session and use only the
+server's key. Without either key the upload is saved unpublished and waits in
+the moderator queue without an AI review
+(`lib/uploads/upload-review-environment.ts`). Session settings are encrypted
 in an HTTP-only cookie, bound to their account, and cleared on sign-out or
 when the browser session ends. The key is never saved in the database. A configured
 `AI_GATEWAY_API_KEY` can route a provider-qualified model for system requests
