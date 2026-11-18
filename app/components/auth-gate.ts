@@ -6,6 +6,7 @@ import type { Session } from "next-auth";
 import { captureAuthPromptOpened } from "@/lib/posthog/client";
 import { scheduleIdleWork } from "@/lib/schedule-idle-work";
 import { clearSessionCache, loadAuthSession, readCachedSession } from "@/lib/auth/session-cache";
+import { useVisitCheck } from "./use-visit-check";
 
 type AuthGate = {
     isAuthed: boolean;
@@ -65,6 +66,7 @@ export function useGuestPrompt(): AuthGate {
     // later would otherwise overwrite a newer answer.
     const latestReadRef = useRef(0);
     const mountedRef = useRef(true);
+    const startVisitCheck = useVisitCheck();
 
     useEffect(() => {
         mountedRef.current = true;
@@ -117,9 +119,12 @@ export function useGuestPrompt(): AuthGate {
             if (isAuthed) return true;
             if (status === "loading") {
                 const read = ++latestReadRef.current;
+                // A page hidden for sign-in or another route can be shown
+                // again; its old check must not send or redirect then.
+                const isSameVisit = startVisitCheck();
                 void loadAuthSession()
                     .then((nextSession) => {
-                        if (!mountedRef.current) return;
+                        if (!mountedRef.current || !isSameVisit()) return;
                         if (read === latestReadRef.current) {
                             setAuthSessionState(getAuthSessionState(nextSession));
                         }
@@ -127,14 +132,14 @@ export function useGuestPrompt(): AuthGate {
                         else router.push(getAuthHref(action));
                     })
                     .catch(() => {
-                        if (mountedRef.current) router.push(getAuthHref(action));
+                        if (mountedRef.current && isSameVisit()) router.push(getAuthHref(action));
                     });
                 return false;
             }
             router.push(getAuthHref(action));
             return false;
         },
-        [isAuthed, router, status],
+        [isAuthed, router, startVisitCheck, status],
     );
 
     return {
