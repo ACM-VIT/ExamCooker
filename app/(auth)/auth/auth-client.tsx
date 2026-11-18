@@ -395,7 +395,7 @@ export default function AuthClient({
                     <button
                         type="button"
                         onClick={retryProviders}
-                        className="self-start font-semibold text-black underline underline-offset-4 dark:text-[#D5D5D5]"
+                        className="self-center font-semibold text-black underline underline-offset-4 dark:text-[#D5D5D5]"
                     >
                         Try again
                     </button>
@@ -499,7 +499,7 @@ export default function AuthClient({
                                         // loading and drops a stalled request, so the next
                                         // attempt cannot race the first one.
                                         onClick={() => window.location.reload()}
-                                        className="self-start font-semibold text-black underline underline-offset-4 dark:text-[#D5D5D5]"
+                                        className="self-center font-semibold text-black underline underline-offset-4 dark:text-[#D5D5D5]"
                                     >
                                         Try again
                                     </button>
