@@ -10,6 +10,7 @@ import {
 } from "@/lib/cli/tokens";
 import {
   CLI_DEVICE_AUTH_POLL_INTERVAL_SECONDS,
+  CLI_DEVICE_AUTH_REDELIVERY_GRACE_SECONDS,
   CLI_DEVICE_AUTH_TTL_SECONDS,
   canRedeliverCliToken,
   getCliDeviceAuthDeliveryDeadline,
@@ -102,6 +103,7 @@ export async function createCliDeviceAuthRequest(input?: {
     deviceCode,
     expiresIn: CLI_DEVICE_AUTH_TTL_SECONDS,
     interval: CLI_DEVICE_AUTH_POLL_INTERVAL_SECONDS,
+    redeliveryGrace: CLI_DEVICE_AUTH_REDELIVERY_GRACE_SECONDS,
   };
 }
 

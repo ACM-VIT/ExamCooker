@@ -1363,6 +1363,9 @@ async function runAuthLogin(args: string[]) {
     verificationUriComplete: string;
     interval: number;
     expiresIn: number;
+    // Seconds a delivered token stays collectable by repeat polls. Servers
+    // that predate this field use three poll intervals.
+    redeliveryGrace?: number;
   }>(runtimeConfig.baseUrl, "/api/cli/device/start", {
     method: "POST",
     json: { deviceName },
@@ -1398,8 +1401,17 @@ async function runAuthLogin(args: string[]) {
   let pollFailureMessage = "Approval failed";
   try {
     const deadline = Date.now() + startResponse.expiresIn * 1000;
+    const redeliveryGraceMs =
+      (startResponse.redeliveryGrace ?? startResponse.interval * 3) * 1000;
+    // A poll whose answer went missing may have collected the token, which
+    // the server hands out again for a grace period. Such a poll keeps the
+    // login polling until that grace ends, even past the deadline; polls made
+    // during that recovery do not extend it again.
+    let recoveryDeadline = 0;
     for (;;) {
-      if (Date.now() >= deadline) {
+      const checkedAt = Date.now();
+      const recovering = checkedAt >= deadline;
+      if (recovering && checkedAt >= recoveryDeadline) {
         pollFailureMessage = "Login timed out";
         throw new Error(
           "This device login expired. Run `examcooker auth login` again.",
@@ -1407,6 +1419,15 @@ async function runAuthLogin(args: string[]) {
       }
 
       await sleep(startResponse.interval * 1000);
+      const sentAt = Date.now();
+      const awaitRedelivery = () => {
+        if (!recovering) {
+          recoveryDeadline = Math.max(
+            recoveryDeadline,
+            sentAt + redeliveryGraceMs,
+          );
+        }
+      };
       let response: Response;
       try {
         response = await requestRaw(
@@ -1419,6 +1440,7 @@ async function runAuthLogin(args: string[]) {
         );
       } catch {
         // A dropped connection says nothing about the approval; keep waiting.
+        awaitRedelivery();
         continue;
       }
 
@@ -1484,6 +1506,7 @@ async function runAuthLogin(args: string[]) {
       // A success whose body was cut off: the server repeats the delivery
       // for a short while, so ask again rather than abandon the login.
       if (response.ok) {
+        awaitRedelivery();
         continue;
       }
 
