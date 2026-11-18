@@ -6,12 +6,19 @@ import type { UseVoiceControlOptions, VoiceControlError } from "./voice-runtime"
 
 class Channel extends EventTarget {
   readyState = "open";
-  sent: Array<{ type: string }> = [];
+  sent: Array<{ type: string; event_id?: string }> = [];
+  // A real channel closes asynchronously, once what was sent is delivered.
+  deferClose = false;
   send(value: string) {
+    assert.equal(this.readyState, "open", "send on an open channel only");
     this.sent.push(JSON.parse(value));
   }
   close() {
     if (this.readyState === "closed") return;
+    this.readyState = "closing";
+    if (!this.deferClose) this.finishClose();
+  }
+  finishClose() {
     this.readyState = "closed";
     this.dispatchEvent(new Event("close"));
   }
@@ -310,6 +317,37 @@ test("a tool still running when the session ends is marked skipped", async (t) =
   finishTool();
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(controller.latestToolCall?.status, "skipped");
+});
+
+test("destroying a live session sends session.close and keeps the peer until it is delivered", async (t) => {
+  const track = installBrowser(t);
+  const { controller, errors } = createController(t);
+  await controller.connect();
+  const peer = Peer.latest;
+  peer.channel.deferClose = true;
+  controller.destroy();
+  assert.equal(peer.channel.sent.at(-1)?.type, "session.close");
+  assert.equal(typeof peer.channel.sent.at(-1)?.event_id, "string");
+  assert.equal(controller.activity, "idle");
+  assert.equal(track.stopped, true, "the microphone is released at once");
+  assert.equal(peer.channel.readyState, "closing");
+  assert.equal(peer.connectionState, "connected");
+  peer.channel.finishClose();
+  assert.equal(peer.connectionState, "closed");
+  assert.deepEqual(errors, []);
+});
+
+test("destroy closes a peer whose channel never finishes closing after a bound", async (t) => {
+  installBrowser(t);
+  const { controller } = createController(t);
+  await controller.connect();
+  const peer = Peer.latest;
+  peer.channel.deferClose = true;
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  controller.destroy();
+  assert.equal(peer.connectionState, "connected");
+  t.mock.timers.tick(2_000);
+  assert.equal(peer.connectionState, "closed");
 });
 
 test("a subscriber that reconnects on idle cannot start a session after destroy", async (t) => {
