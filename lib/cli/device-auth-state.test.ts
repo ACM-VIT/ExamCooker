@@ -114,3 +114,15 @@ test("a delivered token can be fetched again only within the grace period", () =
   assert.equal(canRedeliverCliToken(new Date(now - 1_000), now), true);
   assert.equal(canRedeliverCliToken(new Date(now - grace), now), false);
 });
+
+test("a poll that lost the delivery race is judged when it answers, not when it started", () => {
+  const grace = CLI_DEVICE_AUTH_REDELIVERY_GRACE_SECONDS * 1000;
+  // The winning poll records delivery just after the losing poll started.
+  const loserStartedAt = now;
+  const completedAt = new Date(loserStartedAt + 500);
+  // Measured from the losing poll's start, the delivery looks fresh...
+  assert.equal(canRedeliverCliToken(completedAt, loserStartedAt), true);
+  // ...but once its fallback read returns after the grace period, it is spent.
+  const answeredAt = completedAt.getTime() + grace + 1_000;
+  assert.equal(canRedeliverCliToken(completedAt, answeredAt), false);
+});

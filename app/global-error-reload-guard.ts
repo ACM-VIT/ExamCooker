@@ -117,7 +117,9 @@ export function parseReloadGuard(raw: string | null, now: number): ReloadGuard {
 
 /**
  * Decides whether an error may trigger a recovery reload: once per key on a
- * page, and no more than MAX_RECOVERY_RELOADS per page in a TTL window.
+ * page, and no more than MAX_RECOVERY_RELOADS per page in a TTL window. A
+ * fresh claim from the old single-record format is stored under the bare key,
+ * with no page scope, and still counts as claimed for that key.
  */
 export function claimReloadInGuard(
   guard: ReloadGuard,
@@ -130,7 +132,7 @@ export function claimReloadInGuard(
   const claimsOnPage = Object.keys(guard).filter((existing) =>
     existing.startsWith(scope),
   ).length;
-  if (claim in guard || claimsOnPage >= MAX_RECOVERY_RELOADS) {
+  if (claim in guard || key in guard || claimsOnPage >= MAX_RECOVERY_RELOADS) {
     return { allowed: false, guard };
   }
   return { allowed: true, guard: { ...guard, [claim]: now } };

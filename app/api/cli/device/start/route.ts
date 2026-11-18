@@ -53,5 +53,6 @@ export async function POST(request: NextRequest) {
     verificationUriComplete,
     interval: authRequest.interval,
     expiresIn: authRequest.expiresIn,
+    redeliveryGrace: authRequest.redeliveryGrace,
   });
 }

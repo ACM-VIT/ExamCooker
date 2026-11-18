@@ -342,6 +342,14 @@ export async function generatePastPaperTitle(id: string) {
             .returning({ id: pastPaper.id });
         // Archived or deleted while the title was being generated.
         if (renamed.length === 0) throw new Error("Past paper not found");
+    } else {
+        // Nothing to write, but the paper may still have gone meanwhile.
+        const [current] = await db
+            .select({ id: pastPaper.id })
+            .from(pastPaper)
+            .where(and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)))
+            .limit(1);
+        if (!current) throw new Error("Past paper not found");
     }
 
     revalidatePath("/mod");

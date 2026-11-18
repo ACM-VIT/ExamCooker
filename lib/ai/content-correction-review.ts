@@ -234,13 +234,16 @@ export async function applyCorrectionSuggestion(input: {
 
   const changesToQuestionPaper =
     fields.has("hasAnswerKey") && input.review.suggestion.hasAnswerKey === false;
+  // Only an answer key linked to a question paper must keep its course; a
+  // paper that includes its own answers can move freely.
   if (
     fields.has("courseId") &&
     currentPaper.hasAnswerKey &&
+    currentPaper.questionPaperId &&
     !changesToQuestionPaper
   ) {
     throw new Error(
-      "An answer key must be relinked by a moderator before changing its course.",
+      "A linked answer key must be relinked by a moderator before changing its course.",
     );
   }
   if (
@@ -427,6 +430,7 @@ async function processReport(reportId: string, expectedReportUpdatedAt: Date, ai
     verifiedChanges.length !== candidateChanges.length;
   const changesLinkedAnswerKeyCourse =
     current.hasAnswerKey === true &&
+    Boolean(current.questionPaperId) &&
     candidateChanges.includes("courseId") &&
     review.suggestion.hasAnswerKey !== false;
   const changesQuestionPaperCourseWithoutAnswerKey =

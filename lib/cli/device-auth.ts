@@ -10,6 +10,7 @@ import {
 } from "@/lib/cli/tokens";
 import {
   CLI_DEVICE_AUTH_POLL_INTERVAL_SECONDS,
+  CLI_DEVICE_AUTH_REDELIVERY_GRACE_SECONDS,
   CLI_DEVICE_AUTH_TTL_SECONDS,
   canRedeliverCliToken,
   getCliDeviceAuthDeliveryDeadline,
@@ -102,6 +103,7 @@ export async function createCliDeviceAuthRequest(input?: {
     deviceCode,
     expiresIn: CLI_DEVICE_AUTH_TTL_SECONDS,
     interval: CLI_DEVICE_AUTH_POLL_INTERVAL_SECONDS,
+    redeliveryGrace: CLI_DEVICE_AUTH_REDELIVERY_GRACE_SECONDS,
   };
 }
 
@@ -293,11 +295,13 @@ export async function pollCliDeviceAuthRequest(deviceCode: string) {
     }
   }
 
+  // A repeat delivery is judged when it is about to be returned, not when this
+  // poll started: the reads above can stall past the end of the grace period.
   const accessTokenId = delivery.accessTokenId;
   if (
     !accessTokenId ||
     !request.userId ||
-    !(deliveredNow || canRedeliverCliToken(delivery.completedAt, now.getTime()))
+    !(deliveredNow || canRedeliverCliToken(delivery.completedAt, Date.now()))
   ) {
     return { state: "invalid" as const };
   }

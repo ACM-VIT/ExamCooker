@@ -4,6 +4,7 @@ import { type SyntheticEvent, useCallback, useEffect, useMemo, useReducer, useRe
 import { getProviders, signIn } from "next-auth/react";
 import { captureSignInStarted } from "@/lib/posthog/client";
 import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
+import { useSignInGuard } from "@/app/(auth)/auth/use-sign-in-guard";
 
 type Provider = {
     id: string;
@@ -211,9 +212,6 @@ async function handleNativeSignIn(provider: Provider, callbackUrl: string) {
     return false;
 }
 
-// How long a started OAuth redirect may take before the buttons unlock again.
-const SIGN_IN_NAVIGATION_GRACE_MS = 10_000;
-
 export default function AuthClient({
     callbackUrl,
     error,
@@ -223,11 +221,14 @@ export default function AuthClient({
 }) {
     const [providerState, setProviderState] = useState<ProviderState>({ status: "loading" });
     const [providerLoadAttempt, setProviderLoadAttempt] = useState(0);
-    // The provider whose sign-in is starting. A second tap would open another
-    // native browser or Apple sheet and replace the stored handoff verifier.
-    const [signingInProviderId, setSigningInProviderId] = useState<string | null>(null);
-    const signingInRef = useRef(false);
-    const signInReleaseTimerRef = useRef<number | undefined>(undefined);
+    // One provider sign-in at a time. A second tap would open another native
+    // browser or Apple sheet and replace the stored handoff verifier, or
+    // replace an OAuth redirect that is still loading.
+    const {
+        begin: beginSignIn,
+        signingInProviderId,
+        stalled: signInStalled,
+    } = useSignInGuard();
     const reviewSubmittingRef = useRef(false);
     const [reviewForm, dispatchReviewForm] = useReducer(reviewFormReducer, {
         email: "",
@@ -270,20 +271,14 @@ export default function AuthClient({
 
     useEffect(() => {
         // Returning with Back restores this page from the back/forward cache with
-        // a sign-in still marked as starting; make the buttons usable again.
+        // a sign-in still marked as submitting; make the form usable again.
         const handlePageShow = (event: PageTransitionEvent) => {
             if (!event.persisted) return;
-            window.clearTimeout(signInReleaseTimerRef.current);
-            signingInRef.current = false;
             reviewSubmittingRef.current = false;
-            setSigningInProviderId(null);
             dispatchReviewForm({ type: "page_restored" });
         };
         window.addEventListener("pageshow", handlePageShow);
-        return () => {
-            window.removeEventListener("pageshow", handlePageShow);
-            window.clearTimeout(signInReleaseTimerRef.current);
-        };
+        return () => window.removeEventListener("pageshow", handlePageShow);
     }, []);
 
     const retryProviders = useCallback(() => {
@@ -303,13 +298,8 @@ export default function AuthClient({
     );
 
     const handleSignIn = async (provider: Provider) => {
-        if (signingInRef.current) return;
-        signingInRef.current = true;
-        setSigningInProviderId(provider.id);
-        const release = () => {
-            signingInRef.current = false;
-            setSigningInProviderId(null);
-        };
+        const release = beginSignIn(provider.id);
+        if (!release) return;
 
         captureSignInStarted({
             source: "auth_page",
@@ -337,13 +327,8 @@ export default function AuthClient({
 
         try {
             // On success this navigates away, so the buttons stay disabled. If
-            // the navigation is stopped before it commits, nothing else would
-            // re-enable them, so release after a grace period.
+            // the request or the navigation stalls, the guard offers a restart.
             await signIn(provider.id, { callbackUrl });
-            signInReleaseTimerRef.current = window.setTimeout(
-                release,
-                SIGN_IN_NAVIGATION_GRACE_MS,
-            );
         } catch (error) {
             console.error("[auth] sign-in failed", error);
             release();
@@ -501,6 +486,25 @@ export default function AuthClient({
                                     {providerLabels[provider.id] ?? `Continue with ${provider.name}`}
                                 </button>
                             ))}
+
+                            {signInStalled && (
+                                <div
+                                    role="status"
+                                    className="flex flex-col gap-3 rounded-lg border border-black/15 bg-white/60 px-4 py-3 text-sm leading-6 text-black/70 dark:border-white/15 dark:bg-white/[0.05] dark:text-[#D5D5D5]/70"
+                                >
+                                    <p>Sign-in is taking longer than expected. Check your connection.</p>
+                                    <button
+                                        type="button"
+                                        // Reloading replaces the redirect if it is still
+                                        // loading and drops a stalled request, so the next
+                                        // attempt cannot race the first one.
+                                        onClick={() => window.location.reload()}
+                                        className="self-start font-semibold text-black underline underline-offset-4 dark:text-[#D5D5D5]"
+                                    >
+                                        Try again
+                                    </button>
+                                </div>
+                            )}
                         </>
                     )}
                 </>

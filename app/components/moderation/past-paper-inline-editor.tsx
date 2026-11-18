@@ -132,6 +132,7 @@ export default function PastPaperInlineEditor(
   const [draft, setDraft] = useState<PaperDraft>(baseDraft);
   const [baseline, setBaseline] = useState<PaperDraft>(baseDraft);
   const adoptedPageDraftRef = useRef(baseDraft);
+  const pendingSavesRef = useRef<readonly PaperDraft[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -181,6 +182,7 @@ export default function PastPaperInlineEditor(
           tags: nextTags,
           title: draft.title.trim(),
         };
+        pendingSavesRef.current = [...pendingSavesRef.current, nextBaseline];
         setBaseline(nextBaseline);
         setDraft(nextBaseline);
         setTags((currentTags) => dedupeTagNames([...currentTags, ...nextTags]));
@@ -220,15 +222,17 @@ export default function PastPaperInlineEditor(
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
-      // Start from the paper as it is now, unless the page still shows the
+      // Start from the paper as it is now, unless the page still shows a
       // copy from before this editor's last save.
       const next = resolveEditorBaseline({
         adopted: adoptedPageDraftRef.current,
         page: baseDraft,
         local: baseline,
+        pending: pendingSavesRef.current,
         isEqual: arePaperDraftsEqual,
       });
       adoptedPageDraftRef.current = next.adopted;
+      pendingSavesRef.current = next.pending;
       setBaseline(next.baseline);
       setDraft(next.baseline);
       setSaveError(null);

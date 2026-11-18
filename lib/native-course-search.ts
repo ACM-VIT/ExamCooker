@@ -110,12 +110,54 @@ export function useNativeCourseSearchAvailable() {
 
 // A second tap this soon after the first is the same gesture, not a new request.
 const DOUBLE_TAP_WINDOW_MS = 1000;
-let lastPresentedAt = Number.NEGATIVE_INFINITY;
 
 /**
- * Presents the native course search. A second call right after the first (a
- * double tap) is answered as a cancel, so its caller does nothing instead of
- * being rejected as "already open" and switching to the web input.
+ * Wraps presentations so a call made while the previous one is still pending
+ * and inside the double-tap window resolves with `duplicate` instead of
+ * starting another. Once a presentation settles, or the window passes, the
+ * next call starts a new one. Times come from a monotonic clock, so a wall
+ * clock change cannot stretch the window.
+ */
+export function createDoubleTapGuard<T>(
+  duplicate: T,
+  now: () => number = () => performance.now(),
+) {
+  let pending: { startedAt: number } | null = null;
+
+  return (start: () => Promise<T>): Promise<T> => {
+    const startedAt = now();
+    if (pending && startedAt - pending.startedAt < DOUBLE_TAP_WINDOW_MS) {
+      return Promise.resolve(duplicate);
+    }
+
+    const marker = { startedAt };
+    pending = marker;
+    // An older presentation settling must not clear a newer one's marker.
+    const settle = () => {
+      if (pending === marker) pending = null;
+    };
+
+    let presentation: Promise<T>;
+    try {
+      presentation = start();
+    } catch (error) {
+      settle();
+      throw error;
+    }
+    presentation.then(settle, settle);
+    return presentation;
+  };
+}
+
+const guardNativeCourseSearch = createDoubleTapGuard<NativeCourseSearchResult>(
+  { action: "cancel" },
+);
+
+/**
+ * Presents the native course search. A second call while the first is still
+ * pending and just made (a double tap) is answered as a cancel, so its caller
+ * does nothing instead of being rejected as "already open" and switching to
+ * the web input.
  *
  * Later calls always reach the native side. If it still believes a sheet is
  * open (one that was swiped away never reports back), it rejects, and the
@@ -124,23 +166,19 @@ let lastPresentedAt = Number.NEGATIVE_INFINITY;
 export function presentNativeCourseSearch(
   options: NativeCourseSearchOptions,
 ): Promise<NativeCourseSearchResult> {
-  const now = Date.now();
-  if (now - lastPresentedAt < DOUBLE_TAP_WINDOW_MS) {
-    return Promise.resolve({ action: "cancel" });
-  }
-  lastPresentedAt = now;
+  return guardNativeCourseSearch(() => {
+    const root = document.documentElement;
+    const explicitTheme = root.dataset.theme;
+    const inferredDarkMode =
+      explicitTheme === "dark" ||
+      (explicitTheme !== "light" &&
+        (root.classList.contains("dark") ||
+          root.style.colorScheme.includes("dark") ||
+          window.matchMedia("(prefers-color-scheme: dark)").matches));
 
-  const root = document.documentElement;
-  const explicitTheme = root.dataset.theme;
-  const inferredDarkMode =
-    explicitTheme === "dark" ||
-    (explicitTheme !== "light" &&
-      (root.classList.contains("dark") ||
-        root.style.colorScheme.includes("dark") ||
-        window.matchMedia("(prefers-color-scheme: dark)").matches));
-
-  return NativeCourseSearch.present({
-    ...options,
-    darkMode: options.darkMode ?? inferredDarkMode,
+    return NativeCourseSearch.present({
+      ...options,
+      darkMode: options.darkMode ?? inferredDarkMode,
+    });
   });
 }

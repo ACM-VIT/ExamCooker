@@ -160,6 +160,9 @@ export default function PaperReviewRow({ paper, courses, onResolved, onSaved, on
                 </div>
             </div>
 
+            {/* Locked while saving: a save that resolves the row removes it, so
+                an edit made meanwhile would be lost without being saved. */}
+            <fieldset disabled={saving} className="min-w-0">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <FieldLabel label="Course" required missing={draft.courseId === null}>
                     <CoursePicker
@@ -325,6 +328,7 @@ export default function PaperReviewRow({ paper, courses, onResolved, onSaved, on
                     </button>
                 </div>
             </div>
+            </fieldset>
             {error && (
                 <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>
             )}

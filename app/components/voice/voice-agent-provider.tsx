@@ -283,7 +283,10 @@ export default function VoiceAgentProvider({
   }, []);
 
   useEffect(() => {
-    inAppHistoryRef.current ??= startInAppHistory(browserPath);
+    inAppHistoryRef.current ??= startInAppHistory(
+      browserPath,
+      window.history.length,
+    );
   }, [browserPath]);
 
   useEffect(() => {
@@ -294,10 +297,11 @@ export default function VoiceAgentProvider({
           ? detail.path
           : currentBrowserPath();
       const action = detail?.action ?? "push";
+      const historyLength = detail?.historyLength ?? window.history.length;
       const history = inAppHistoryRef.current;
       inAppHistoryRef.current = history
-        ? recordInAppNavigation(history, action, nextPath)
-        : startInAppHistory(nextPath);
+        ? recordInAppNavigation(history, action, nextPath, historyLength)
+        : startInAppHistory(nextPath, historyLength);
     };
 
     window.addEventListener(NAVIGATION_EVENT, handleNavigationEvent);

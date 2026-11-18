@@ -147,6 +147,27 @@ function waitFor(
   });
 }
 
+// Closing the channel delivers what was already sent on it before its close
+// event fires (the stream reset waits for earlier data), but closing the peer
+// drops the transport at once. Keep the peer until the channel has closed,
+// bounded so a peer that never answers cannot hold the connection open.
+const TRANSPORT_CLOSE_TIMEOUT_MS = 2_000;
+
+function closeTransport(channel: RTCDataChannel, peer: RTCPeerConnection) {
+  if (channel.readyState === "closed") {
+    peer.close();
+    return;
+  }
+  const closePeer = () => {
+    clearTimeout(timer);
+    channel.removeEventListener("close", closePeer);
+    peer.close();
+  };
+  const timer = setTimeout(closePeer, TRANSPORT_CLOSE_TIMEOUT_MS);
+  channel.addEventListener("close", closePeer);
+  channel.close();
+}
+
 class VoiceControlControllerImpl implements VoiceControlController {
   private options: UseVoiceControlOptions;
   private snapshot: VoiceControlSnapshot;
@@ -680,9 +701,12 @@ class VoiceControlControllerImpl implements VoiceControlController {
     this.responses?.dispose();
     this.responses = null;
     clearTimeout(this.closeTimer);
-    this.channel?.close();
+    if (this.channel && this.peer) closeTransport(this.channel, this.peer);
+    else {
+      this.channel?.close();
+      this.peer?.close();
+    }
     this.channel = null;
-    this.peer?.close();
     this.peer = null;
     this.microphone?.getTracks().forEach((track) => track.stop());
     this.microphone = null;
@@ -701,10 +725,25 @@ class VoiceControlControllerImpl implements VoiceControlController {
     this.responseMetrics.clear();
   }
   destroy = () => {
-    // A destroyed controller cannot wait for finalization: release the
-    // microphone, the peer and the close timer now.
-    if (this.activity !== "idle") this.end("idle");
+    // Set first: end() notifies subscribers, and one that calls connect() on
+    // "idle" must not start a session on a destroyed controller.
     this.destroyed = true;
+    if (this.activity !== "idle") {
+      // A destroyed controller cannot wait for finalization, so the final
+      // usage that session.closed carries is not observed here. It is only
+      // logged in the browser; the Live service accounts the session itself.
+      // Still ask it to finalize now rather than when it notices the dropped
+      // connection: cleanup() keeps the peer until this has been delivered.
+      if (this.live) {
+        if (this.options.debug)
+          console.debug("[voice-agent] Live session closed on destroy", {
+            lastSeconds: this.voiceSeconds,
+          });
+        this.sendClientEvent({ type: "session.close" });
+      }
+      // Release the microphone, the audio and the close timer now.
+      this.end("idle");
+    }
     this.listeners.clear();
   };
 }
