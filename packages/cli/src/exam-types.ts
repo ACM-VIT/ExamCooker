@@ -1,6 +1,8 @@
 export const EXAM_TYPE_LABELS = {
   CAT_1: "CAT-1",
   CAT_2: "CAT-2",
+  RECAT_1: "ReCAT-1",
+  RECAT_2: "ReCAT-2",
   FAT: "FAT",
   MODEL_CAT_1: "Model CAT-1",
   MODEL_CAT_2: "Model CAT-2",
@@ -24,6 +26,8 @@ const EXAM_TYPE_ALIASES: Record<string, CliExamType> = {
   "cat 2": "CAT_2",
   "cat ii": "CAT_2",
   "cat two": "CAT_2",
+  recat1: "RECAT_1",
+  recat2: "RECAT_2",
   fat: "FAT",
   "final": "FAT",
   "final assessment": "FAT",

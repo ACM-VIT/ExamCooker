@@ -3,13 +3,15 @@ import React from "react";
 import Image from "@/app/components/common/app-image";
 import IntentPrefetchLink from "@/app/components/common/intent-prefetch-link";
 import { getPastPaperDetailPath } from "@/lib/seo";
+import { examTypeLabel } from "@/lib/exam-slug";
+import type { ExamType } from "@/db";
 
 interface PastPaperCardProps {
   pastPaper: {
     id: string;
     title: string;
     thumbNailUrl?: string | null;
-    examType?: string | null;
+    examType?: ExamType | null;
     slot?: string | null;
     year?: number | null;
     course?: { code: string; title?: string } | null;
@@ -21,7 +23,7 @@ interface PastPaperCardProps {
 
 function buildMetadata(p: PastPaperCardProps["pastPaper"]) {
   return [
-    p.examType?.replace(/_/g, "-"),
+    p.examType ? examTypeLabel(p.examType) : null,
     p.slot ? `Slot ${p.slot}` : undefined,
     p.year?.toString(),
     p.course?.code,

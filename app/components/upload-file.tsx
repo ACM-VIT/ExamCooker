@@ -19,6 +19,7 @@ import { useGuestPrompt } from "@/app/components/auth-gate";
 import CoursePicker, { type CourseOption } from "@/app/components/mod/course-picker";
 import AppImage from "@/app/components/common/app-image";
 import { useAiSession } from "@/app/components/ai/ai-session-provider";
+import { EXAM_TYPE_OPTIONS } from "@/lib/exam-slug";
 import {
     initialUploadFormState,
     isConvertingImages,
@@ -51,6 +52,7 @@ type UploadProcessResponse = {
 type UploadSaveResponse = {
     success: boolean;
     error?: string;
+    autoReview?: boolean;
 };
 
 type UploadFieldChange = <Field extends UploadMetadataField>(
@@ -90,19 +92,6 @@ const SLOT_OPTIONS = [
     "F2",
     "G1",
     "G2",
-];
-
-const EXAM_TYPES = [
-    { value: "CAT_1", label: "CAT-1" },
-    { value: "CAT_2", label: "CAT-2" },
-    { value: "FAT", label: "FAT" },
-    { value: "MODEL_CAT_1", label: "Model CAT-1" },
-    { value: "MODEL_CAT_2", label: "Model CAT-2" },
-    { value: "MODEL_FAT", label: "Model FAT" },
-    { value: "MID", label: "Mid" },
-    { value: "QUIZ", label: "Quiz" },
-    { value: "CIA", label: "CIA" },
-    { value: "OTHER", label: "Other" },
 ];
 
 const SEMESTERS = [
@@ -273,7 +262,7 @@ function PastPaperMetadataFields({
                         onChange={(event) => updateField("examType", event.target.value)}
                     >
                         <option value="">Select</option>
-                        {EXAM_TYPES.map((item) => (
+                        {EXAM_TYPE_OPTIONS.map((item) => (
                             <option key={item.value} value={item.value}>
                                 {item.label}
                             </option>
@@ -691,6 +680,39 @@ function SelectedFilesList({
     );
 }
 
+function PaperAiReviewFields() {
+    const inputClassName =
+        "ec-focus-ring w-full border border-black/25 bg-white px-3 py-2 text-sm dark:border-white/25 dark:bg-white/5";
+
+    return (
+        <details className="border border-black/15 p-3 dark:border-white/15">
+            <summary className="cursor-pointer text-sm font-semibold">AI review (optional)</summary>
+            <p className="mt-2 text-xs text-black/65 dark:text-white/65">
+                Use a key for AI review. Leave it blank to use your session key or send the paper to moderators.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr]">
+                <label className="block text-xs font-semibold">
+                    <span className="mb-1 block">Provider</span>
+                    <select name="aiReviewProvider" className={inputClassName}>
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                    </select>
+                </label>
+                <label className="block text-xs font-semibold">
+                    <span className="mb-1 block">API key (optional)</span>
+                    <input
+                        type="password"
+                        name="aiReviewApiKey"
+                        className={inputClassName}
+                        maxLength={512}
+                        autoComplete="off"
+                    />
+                </label>
+            </div>
+        </details>
+    );
+}
+
 function useUploadFileController({ variant, courses }: UploadFileProps) {
     const [state, dispatch] = useReducer(
         uploadFormReducer,
@@ -972,7 +994,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     );
 
     const handleSubmit = useCallback(
-        async (event: React.FormEvent) => {
+        async (event: React.FormEvent<HTMLFormElement>) => {
             event.preventDefault();
             if (submissionInFlightRef.current) return;
 
@@ -997,10 +1019,15 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                 return;
             }
 
+            const uploadFields = new FormData(event.currentTarget);
+            const apiKey = uploadFields.get("aiReviewApiKey")?.toString().trim();
+            const aiReview = apiKey
+                ? { provider: uploadFields.get("aiReviewProvider"), apiKey }
+                : undefined;
             submissionInFlightRef.current = true;
             startTransition(async () => {
                 try {
-                    if (!await ensureAiReady("moderation")) {
+                    if (variant === "Notes" && !await ensureAiReady("moderation")) {
                         setError("Uploads are reviewed by AI. Add a provider key to upload.");
                         return;
                     }
@@ -1047,6 +1074,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
 
                     const saveResponse = await fetch("/api/uploads", {
                         method: "POST",
+                        redirect: aiReview ? "error" : undefined,
                         headers: {
                             "Content-Type": "application/json",
                         },
@@ -1060,6 +1088,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                             semester: semesterVal || null,
                             campus: campusVal || null,
                             hasAnswerKey,
+                            aiReview,
                         }),
                     });
                     const savePayload = (await saveResponse
@@ -1072,7 +1101,13 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                         );
                     }
 
-                    toast({ title: "Selected files uploaded successfully." });
+                    toast({
+                        title: variant === "Past Papers"
+                            ? savePayload.autoReview
+                                ? "Paper submitted for AI review."
+                                : "Paper submitted for moderator review."
+                            : "Selected files uploaded successfully.",
+                    });
                     push(variant === "Past Papers" ? "/past_papers" : "/notes");
                 } catch (uploadError) {
                     console.error("Error uploading files:", uploadError);
@@ -1240,6 +1275,8 @@ function UploadFile({ variant, courses }: UploadFileProps) {
                                 />
                             </>
                         )}
+
+                        {variant === "Past Papers" ? <PaperAiReviewFields /> : null}
 
                         {error ? (
                             <div className="mb-4 text-center">

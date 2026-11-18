@@ -29,6 +29,23 @@ function serverModelForProvider(
   return modelProvider === provider ? model : undefined;
 }
 
+export function createModerationKeyEnvironment(
+  source: Record<string, string | undefined>,
+  provider: AiTextProvider,
+  apiKey: string,
+) {
+  return {
+    AI_PROVIDER: provider,
+    AI_MODERATION_MODEL: serverModelForProvider(
+      source.AI_MODERATION_MODEL,
+      source.AI_PROVIDER,
+      provider,
+    ),
+    OPENAI_EMBEDDING_MODEL: source.OPENAI_EMBEDDING_MODEL,
+    [provider === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY"]: apiKey,
+  };
+}
+
 export function createAiSessionEnvironment(
   source: Record<string, string | undefined>,
   settings: AiSessionSettings | null,

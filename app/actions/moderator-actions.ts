@@ -367,7 +367,7 @@ function assertStoredReview(
 async function readModerationSuggestion(
     id: string,
     type: "note" | "pastPaper",
-): Promise<AiModerationReview["suggestion"]> {
+): Promise<AiModerationReview["suggestion"] & { questionPaperId: string | null }> {
     if (type === "note") {
         const [row] = await db
             .select({
@@ -390,6 +390,7 @@ async function readModerationSuggestion(
             semester: null,
             campus: null,
             hasAnswerKey: null,
+            questionPaperId: null,
         };
     }
 
@@ -405,6 +406,7 @@ async function readModerationSuggestion(
             semester: pastPaper.semester,
             campus: pastPaper.campus,
             hasAnswerKey: pastPaper.hasAnswerKey,
+            questionPaperId: pastPaper.questionPaperId,
         })
         .from(pastPaper)
         .leftJoin(course, eq(pastPaper.courseId, course.id))
@@ -600,8 +602,10 @@ export async function applyAiModerationSuggestion(
         const review = assertStoredReview(row.aiReview ?? null, row.updatedAt);
         const suggestion = review.suggestion;
         const title = suggestion.title.trim();
-        const changesToQuestionPaper =
-            row.hasAnswerKey && suggestion.hasAnswerKey === false;
+        const nextHasAnswerKey = suggestion.hasAnswerKey ?? row.hasAnswerKey;
+        const nextQuestionPaperId = row.hasAnswerKey && nextHasAnswerKey
+            ? row.questionPaperId
+            : null;
         const [linkedAnswerKey] =
             suggestion.courseId !== null && row.courseId !== suggestion.courseId
                 ? await db
@@ -616,7 +620,7 @@ export async function applyAiModerationSuggestion(
                       .limit(1)
                 : [];
         const canChangeCourse =
-            (!row.hasAnswerKey || changesToQuestionPaper) &&
+            nextQuestionPaperId === null &&
             (!linkedAnswerKey || linkedAnswerKey.courseId === suggestion.courseId);
         const patch = {
             ...(row.title.replace(/\.pdf$/i, "").trim() !== title ? { title } : {}),
@@ -640,11 +644,10 @@ export async function applyAiModerationSuggestion(
             ...(suggestion.campus !== null && row.campus !== suggestion.campus
                 ? { campus: suggestion.campus }
                 : {}),
-            ...(changesToQuestionPaper
-                ? { hasAnswerKey: false, questionPaperId: null }
-                : !row.hasAnswerKey && row.questionPaperId !== null
-                  ? { questionPaperId: null }
-                  : {}),
+            ...(row.hasAnswerKey !== nextHasAnswerKey ? { hasAnswerKey: nextHasAnswerKey } : {}),
+            ...(row.questionPaperId !== nextQuestionPaperId
+                ? { questionPaperId: nextQuestionPaperId }
+                : {}),
         };
         if (Object.keys(patch).length === 0) {
             throw new Error("The AI review contains no verified changes to apply.");

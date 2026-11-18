@@ -155,7 +155,22 @@ async function PaperMetadataEditor({ paper, canonicalCode, siblingPaperPromise }
     canonicalCode: string;
     siblingPaperPromise: SiblingPaperPromise;
 }) {
-    const siblingPaper = paper.hasAnswerKey ? await siblingPaperPromise : null;
+    const questionPaperId = paper.hasAnswerKey ? paper.questionPaperId : null;
+    const siblingPaper = questionPaperId ? await siblingPaperPromise : null;
+    const questionPaper = questionPaperId && siblingPaper?.id === questionPaperId
+        ? siblingPaper
+        : questionPaperId
+          ? {
+                id: questionPaperId,
+                title: "Linked question paper",
+                courseCode: null,
+                courseTitle: null,
+                examType: null,
+                slot: null,
+                year: null,
+                hasAnswerKey: false,
+            }
+          : null;
     return (
         <LazyPastPaperInlineEditor
             paperId={paper.id}
@@ -168,16 +183,17 @@ async function PaperMetadataEditor({ paper, canonicalCode, siblingPaperPromise }
             initialSemester={paper.semester}
             initialCampus={paper.campus}
             initialHasAnswerKey={paper.hasAnswerKey}
-            initialQuestionPaper={paper.hasAnswerKey ? siblingPaper : null}
+            initialQuestionPaper={questionPaper}
             initialTags={paper.tags.map((tag) => tag.name)}
         />
     );
 }
 
-async function SiblingPaperLink({ siblingPaperPromise, canonicalCode, siblingSearchString }: {
+async function SiblingPaperLink({ siblingPaperPromise, canonicalCode, siblingSearchString, questionPaperId }: {
     siblingPaperPromise: SiblingPaperPromise;
     canonicalCode: string;
     siblingSearchString: string;
+    questionPaperId: string | null;
 }) {
     const siblingPaper = await siblingPaperPromise;
     return (
@@ -195,7 +211,7 @@ async function SiblingPaperLink({ siblingPaperPromise, canonicalCode, siblingSea
                     transitionTypes={["nav-forward"]}
                     className="inline-flex items-center justify-center border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-black transition hover:border-black/30 hover:bg-black/5 dark:border-[#D5D5D5]/15 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#D5D5D5]/30 dark:hover:bg-white/5"
                 >
-                    {siblingPaper.hasAnswerKey ? "Answer key" : "Question paper"}
+                    {siblingPaper.id === questionPaperId || !siblingPaper.hasAnswerKey ? "Question paper" : "Answer key"}
                 </Link>
             ) : null}
         </>
@@ -386,7 +402,7 @@ async function PaperViewerContent({
                         </div>
                         <div className="flex shrink-0 flex-wrap items-center gap-3 sm:pt-1">
                             <Suspense fallback={null}>
-                                <SiblingPaperLink siblingPaperPromise={siblingPaperPromise} canonicalCode={canonicalCode} siblingSearchString={siblingSearchString} />
+                                <SiblingPaperLink siblingPaperPromise={siblingPaperPromise} canonicalCode={canonicalCode} siblingSearchString={siblingSearchString} questionPaperId={paper.questionPaperId} />
                             </Suspense>
                             <ShareLink
                                 fileType="this Past Paper"

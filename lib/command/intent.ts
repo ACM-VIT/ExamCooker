@@ -46,6 +46,9 @@ const PAPER_TERMS = [
 
 const PAPER_PREFIXES = ["pap", "pyq", "ques", "prev", "exam", "sol"];
 
+const RECAT_1_PATTERN = /\bre\s*cat\s*1\b/;
+const RECAT_2_PATTERN = /\bre\s*cat\s*2\b/;
+
 const EXAM_PATTERNS: Array<{ examType: ExamType; patterns: RegExp[] }> = [
   {
     examType: "MODEL_CAT_1",
@@ -58,6 +61,14 @@ const EXAM_PATTERNS: Array<{ examType: ExamType; patterns: RegExp[] }> = [
   {
     examType: "MODEL_FAT",
     patterns: [/model\s*fat/, /sample\s*fat/, /model\s*final/],
+  },
+  {
+    examType: "RECAT_1",
+    patterns: [RECAT_1_PATTERN],
+  },
+  {
+    examType: "RECAT_2",
+    patterns: [RECAT_2_PATTERN],
   },
   {
     examType: "CAT_1",
@@ -91,6 +102,15 @@ export function normalizeCommandSearch(value: string) {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+const RECAT_EXAM_TERMS = new RegExp(
+  `${RECAT_1_PATTERN.source}|${RECAT_2_PATTERN.source}`,
+  "g",
+);
+
+export function stripRecatExamTerms(normalizedQuery: string) {
+  return normalizedQuery.replace(RECAT_EXAM_TERMS, " ");
 }
 
 function includesAnyTerm(normalized: string, terms: string[]) {
