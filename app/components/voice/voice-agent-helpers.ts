@@ -147,8 +147,8 @@ export function recordInAppNavigation(
   }
 
   // Without the Navigation API: only an added entry changes history.length.
-  // A link followed after going Back replaces the forward entries and can
-  // leave the length unchanged; that case is then treated as a traversal.
+  // Pushes made through history.pushState are seen directly, so the only
+  // ambiguous case is a fragment change, handled below.
   if (action === "push") {
     return entries[index] === path ? at(index) : push();
   }
@@ -160,6 +160,12 @@ export function recordInAppNavigation(
     return entries[index] === path ? at(index) : push();
   }
   if (entries[index] === path) return at(index);
+  // A fragment change with an unchanged length is either Back or Forward or a
+  // link followed after going Back, which replaces the forward entries. The
+  // two cannot be told apart here, so nothing is offered as "back" from it.
+  if (withoutFragment(path) === withoutFragment(entries[index] ?? "")) {
+    return startInAppHistory(path, historyLength);
+  }
 
   // A traversal only reports where the browser landed. Prefer one step back
   // or forward; a longer jump falls back to the latest matching entry.
@@ -172,6 +178,11 @@ export function recordInAppNavigation(
   // known entries is unknown, so nothing can be claimed about what "back"
   // leads to from it.
   return startInAppHistory(path, historyLength);
+}
+
+function withoutFragment(path: string) {
+  const hashIndex = path.indexOf("#");
+  return hashIndex === -1 ? path : path.slice(0, hashIndex);
 }
 
 export function previousInAppPath(history: InAppHistory | null) {

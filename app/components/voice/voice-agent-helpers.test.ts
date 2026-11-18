@@ -187,3 +187,25 @@ test("an entry key voice never saw, away from the next slot, leaves nothing to g
   assert.deepEqual(history, startInAppHistory("/paper#one", 2, { key: "one", index: 0 }));
   assert.equal(previousInAppPath(history), null);
 });
+
+test("without entry keys, a same-length fragment change offers nothing to go back to", () => {
+  // #one → #four, Back to #three, then a link to #two: the length stays the
+  // same, exactly as it would for Back to #two, so the direction is unknown.
+  const visited = navigate(
+    startInAppHistory("/paper#one", 1),
+    ["pop", "/paper#two", 2],
+    ["hash", "/paper#two", 2],
+    ["pop", "/paper#three", 3],
+    ["hash", "/paper#three", 3],
+    ["pop", "/paper#four", 4],
+    ["hash", "/paper#four", 4],
+  );
+  const history = navigate(
+    visited,
+    ["pop", "/paper#three", 4],
+    ["hash", "/paper#three", 4],
+    ["pop", "/paper#two", 4],
+    ["hash", "/paper#two", 4],
+  );
+  assert.equal(previousInAppPath(history), null);
+});
