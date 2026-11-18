@@ -169,6 +169,15 @@ test("typeahead opens the menu, cycles matching labels and Space commits", async
   assert.deepEqual(fixture.navigations, ["/past_papers/BMAT201L?sort=recent"]);
 });
 
+test("Space keyup is cancelled so Firefox does not click the trigger again", async (t) => {
+  const fixture = await setup(t);
+  await fixture.key(" ");
+  const keyUp = new document.defaultView!.KeyboardEvent("keyup", { key: " ", bubbles: true, cancelable: true });
+  await act(async () => { fixture.trigger.dispatchEvent(keyUp); });
+  assert.equal(keyUp.defaultPrevented, true);
+  assert.equal(fixture.trigger.getAttribute("aria-expanded"), "true");
+});
+
 test("Escape, Tab, focus leaving and outside pointer presses dismiss without navigating", async (t) => {
   const fixture = await setup(t);
   await fixture.key(" ");

@@ -217,6 +217,7 @@ export async function fetchModerationCorrectionReports(): Promise<ModerationCorr
             title: pastPaper.title,
             courseCode: course.code,
             hasAnswerKey: pastPaper.hasAnswerKey,
+            questionPaperId: pastPaper.questionPaperId,
             updatedAt: pastPaper.updatedAt,
           })
           .from(pastPaper)
@@ -278,7 +279,9 @@ export async function fetchModerationCorrectionReports(): Promise<ModerationCorr
     const changesLinkedAnswerKeyCourse =
       resourceType === "pastPaper" &&
       report.aiDecision?.proposedFields.includes("courseId") === true &&
-      ((paperResourcesById.get(resourceId)?.hasAnswerKey === true &&
+      // Only an answer key linked to a question paper must keep its course;
+      // a paper that includes its own answers can move freely.
+      ((Boolean(paperResourcesById.get(resourceId)?.questionPaperId) &&
         report.aiDecision.review.suggestion.hasAnswerKey !== false) ||
         (linkedAnswerKeyCourseByQuestionPaperId.has(resourceId) &&
           linkedAnswerKeyCourseByQuestionPaperId.get(resourceId) !==

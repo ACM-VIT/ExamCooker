@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueViolation } from "@/lib/db-errors";
 import { and, asc, count, eq, ilike, isNotNull, isNull, or } from "drizzle-orm";
 import { updateTag, revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -150,15 +151,6 @@ async function invalidateCourseRegistry() {
     updateTag("courses");
     revalidatePath("/mod/courses");
     await invalidatePastPapersSurfaceCache();
-}
-
-function isUniqueViolation(error: unknown) {
-    return Boolean(
-        error &&
-            typeof error === "object" &&
-            "code" in error &&
-            (error as { code?: string }).code === "23505",
-    );
 }
 
 function replaceSyllabusCodePrefix(name: string, currentCode: string, nextCode: string) {
