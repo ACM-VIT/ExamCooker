@@ -50,61 +50,77 @@ type NavigationEventAction = "push" | "replace" | "pop" | "hash";
 export type NavigationEventDetail = {
   action: NavigationEventAction;
   path: string;
+  // history.length right after the change. Back and Forward never change it,
+  // so a change is the one reliable sign that an entry was added.
+  historyLength?: number;
 };
 
 // This tab's ExamCooker history as far as voice can tell: the entries it has
-// seen and which one is current.
-export type InAppHistory = { entries: string[]; index: number };
+// seen, which one is current, and history.length when it last looked.
+export type InAppHistory = {
+  entries: string[];
+  index: number;
+  historyLength: number | null;
+};
 
-export function startInAppHistory(path: string): InAppHistory {
-  return { entries: [path], index: 0 };
+export function startInAppHistory(
+  path: string,
+  historyLength: number | null = null,
+): InAppHistory {
+  return { entries: [path], index: 0, historyLength };
 }
 
 export function recordInAppNavigation(
   history: InAppHistory,
   action: NavigationEventAction,
   path: string,
+  observedLength: number | null = null,
 ): InAppHistory {
   const { entries, index } = history;
+  const historyLength = observedLength ?? history.historyLength;
   if (action === "replace") {
     return {
       entries: entries.map((entry, i) => (i === index ? path : entry)),
       index,
+      historyLength,
     };
   }
 
   const push = (): InAppHistory => {
-    if (entries[index] === path) return history;
+    if (entries[index] === path) return { entries, index, historyLength };
     const next = [...entries.slice(0, index + 1), path];
-    return { entries: next, index: next.length - 1 };
+    return { entries: next, index: next.length - 1, historyLength };
   };
-  // A fragment link adds an entry and reports only a hash change.
-  if (action === "push" || action === "hash") return push();
+  if (action === "push") return push();
 
-  // A pop only reports where the browser landed. Prefer one step back or
-  // forward; a longer jump falls back to the latest matching entry.
-  if (index > 0 && entries[index - 1] === path) {
-    return { entries, index: index - 1 };
-  }
-  if (index + 1 < entries.length && entries[index + 1] === path) {
-    return { entries, index: index + 1 };
-  }
-  const knownIndex = entries.lastIndexOf(path);
-  if (knownIndex !== -1) return { entries, index: knownIndex };
-  // Browsers also fire popstate for a new fragment entry on the current page;
-  // that one is a step forward.
-  if (withoutFragment(path) === withoutFragment(entries[index] ?? "")) {
+  // popstate and hashchange fire both for a fragment link, which adds an
+  // entry, and for Back or Forward between existing entries. Only an added
+  // entry changes history.length. (Next.js owns history.state, and fragment
+  // entries carry none, so entries cannot be tagged with an identity.)
+  if (
+    observedLength !== null &&
+    history.historyLength !== null &&
+    observedLength !== history.historyLength
+  ) {
     return push();
   }
-  // Any other unknown destination is a page from before voice started
-  // watching. Where it sits relative to the known entries is unknown, so
-  // nothing can be claimed about what "back" leads to from it.
-  return startInAppHistory(path);
-}
+  if (entries[index] === path) return { entries, index, historyLength };
 
-function withoutFragment(path: string) {
-  const hashIndex = path.indexOf("#");
-  return hashIndex === -1 ? path : path.slice(0, hashIndex);
+  // A traversal only reports where the browser landed. Prefer one step back
+  // or forward; a longer jump falls back to the latest matching entry.
+  if (index > 0 && entries[index - 1] === path) {
+    return { entries, index: index - 1, historyLength };
+  }
+  if (index + 1 < entries.length && entries[index + 1] === path) {
+    return { entries, index: index + 1, historyLength };
+  }
+  const knownIndex = entries.lastIndexOf(path);
+  if (knownIndex !== -1) return { entries, index: knownIndex, historyLength };
+  // Any other destination is an entry voice never saw, such as a page or
+  // fragment from before it started watching. Where it sits relative to the
+  // known entries is unknown, so nothing can be claimed about what "back"
+  // leads to from it.
+  return startInAppHistory(path, historyLength);
 }
 
 export function previousInAppPath(history: InAppHistory | null) {
@@ -182,7 +198,11 @@ export function useBrowserPath() {
 
     const scheduleNavigationEvent = (action: NavigationEventAction) => {
       if (!active) return;
-      pendingNavigation.push({ action, path: currentBrowserPath() });
+      pendingNavigation.push({
+        action,
+        path: currentBrowserPath(),
+        historyLength: window.history.length,
+      });
       if (navigationFrameId !== null) {
         return;
       }
