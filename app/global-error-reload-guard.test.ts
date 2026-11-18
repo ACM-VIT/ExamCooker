@@ -115,6 +115,13 @@ test("the pre-hydration script follows the same guard", () => {
   run("Minified React error #418");
   assert.equal(page.reloads, 1, "the same mismatch reloads once");
 
+  // The script's claims are the ones claimReloadInGuard reads. Check the
+  // stored signature while /paper is still under its cap: that mismatch is
+  // claimed, and a different error on the page may still reload.
+  const afterFirst = JSON.parse(storage.get(RELOAD_FLAG) ?? "{}") as ReloadGuard;
+  assert.equal(claimReloadInGuard(afterFirst, PAPER_418_KEY, Date.now(), "/paper").allowed, false);
+  assert.equal(claimReloadInGuard(afterFirst, "chunk:new", Date.now(), "/paper").allowed, true);
+
   run("Minified React error #419");
   run("Minified React error #423");
   assert.equal(page.reloads, MAX_RECOVERY_RELOADS, "different mismatches stop at the cap");
@@ -124,8 +131,7 @@ test("the pre-hydration script follows the same guard", () => {
   run("Minified React error #418", "/other-paper");
   assert.equal(page.reloads, MAX_RECOVERY_RELOADS + 1, "another page still recovers");
 
-  // The script's claims are the ones claimReloadInGuard reads: the first
-  // mismatch on /paper is already claimed, and /paper is at its cap.
+  // /paper is now at its cap for every key; other pages are not.
   const guard = JSON.parse(storage.get(RELOAD_FLAG) ?? "{}") as ReloadGuard;
   assert.equal(claimReloadInGuard(guard, PAPER_418_KEY, Date.now(), "/paper").allowed, false);
   assert.equal(claimReloadInGuard(guard, "chunk:new", Date.now(), "/paper").allowed, false);
