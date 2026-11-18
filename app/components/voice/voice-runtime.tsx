@@ -147,10 +147,12 @@ function waitFor(
   });
 }
 
-// Closing the channel delivers what was already sent on it before its close
-// event fires (the stream reset waits for earlier data), but closing the peer
-// drops the transport at once. Keep the peer until the channel has closed,
-// bounded so a peer that never answers cannot hold the connection open.
+// Closing the channel lets data already sent on it go out before its close
+// event fires (the stream reset follows earlier data), while closing the peer
+// drops the transport at once. So keep the peer until the channel has closed,
+// bounded so a peer that never answers cannot hold the connection open. This
+// is best effort, not a delivery guarantee: the bound can close the peer
+// first, and a failing transport can close the channel without delivering.
 const TRANSPORT_CLOSE_TIMEOUT_MS = 2_000;
 
 function closeTransport(channel: RTCDataChannel, peer: RTCPeerConnection) {
@@ -732,8 +734,9 @@ class VoiceControlControllerImpl implements VoiceControlController {
       // A destroyed controller cannot wait for finalization, so the final
       // usage that session.closed carries is not observed here. It is only
       // logged in the browser; the Live service accounts the session itself.
-      // Still ask it to finalize now rather than when it notices the dropped
-      // connection: cleanup() keeps the peer until this has been delivered.
+      // Still ask it to finalize now rather than only when it notices the
+      // connection closing. Delivery is best effort (see closeTransport); if
+      // the message is lost, the service only sees the WebRTC connection end.
       if (this.live) {
         if (this.options.debug)
           console.debug("[voice-agent] Live session closed on destroy", {
