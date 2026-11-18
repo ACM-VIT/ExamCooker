@@ -28,6 +28,7 @@ const EXAM_TYPES: { value: ExamType; label: string }[] = [
 ];
 
 const SCHEDULED_AT_FORMATTER = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
     dateStyle: "medium",
     timeStyle: "short",
 });

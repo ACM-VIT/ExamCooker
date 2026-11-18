@@ -116,12 +116,15 @@ function totalContent(course: ModeratorCourseRecord) {
     return course.livePaperCount + course.liveNoteCount;
 }
 
+const DATE_FORMATTER = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+});
+
 function formatDate(value: string) {
-    return new Intl.DateTimeFormat("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-    }).format(new Date(value));
+    return DATE_FORMATTER.format(new Date(value));
 }
 
 export default function CourseRegistry({ initialCourses }: Props) {

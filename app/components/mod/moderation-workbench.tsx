@@ -107,12 +107,15 @@ function PrimaryButton({
   );
 }
 
+const DATE_FORMATTER = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "Asia/Kolkata",
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
 function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
+  return DATE_FORMATTER.format(new Date(value));
 }
 
 function metadataHref(item: QueueItem) {
