@@ -191,6 +191,7 @@ overrides:
 patchedDependencies:
   '@opennextjs/aws@4.1.9': 8cc86dd161e297b8782c0370b04ea43d9c039368b4548f085203fbe8c35a2563
   '@opennextjs/cloudflare@1.20.10': 79cbfcf645b87b41e9f68be02b41ea6992d40cdcf596fe587c2e51777b9853ae
+  youtube-video-element@1.9.0: 26c263d2479561a377bf6a5ed4392e0f4277dd90702922cf0012f01c83aa641d
 
 importers:
 
@@ -11623,7 +11624,7 @@ snapshots:
       twitch-video-element: 0.1.6
       vimeo-video-element: 1.7.2
       wistia-video-element: 1.4.0
-      youtube-video-element: 1.9.0
+      youtube-video-element: 1.9.0(patch_hash=26c263d2479561a377bf6a5ed4392e0f4277dd90702922cf0012f01c83aa641d)
     transitivePeerDependencies:
       - '@svta/cml-cta'
       - '@svta/cml-structured-field-values'
@@ -12489,7 +12490,7 @@ snapshots:
       cookie: 1.1.1
       youch-core: 0.3.3
 
-  youtube-video-element@1.9.0:
+  youtube-video-element@1.9.0(patch_hash=26c263d2479561a377bf6a5ed4392e0f4277dd90702922cf0012f01c83aa641d):
     dependencies:
       media-played-ranges-mixin: 0.1.0
 
