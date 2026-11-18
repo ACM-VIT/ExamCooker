@@ -97,6 +97,9 @@ test("a slow reader still receives the whole PDF", async (t) => {
     const { done, value } = await reader.read();
     if (done) break;
     received += new TextDecoder().decode(value);
+    // Let a read the stream already started from the upstream finish and
+    // clear its timer, so only the client's own pause is measured.
+    await new Promise((resolve) => setImmediate(resolve));
     // The client takes longer than the timeout to ask for the next chunk.
     t.mock.timers.tick(31_000);
   }
