@@ -286,9 +286,6 @@ export async function fetchModerationCorrectionReports(): Promise<ModerationCorr
         (linkedAnswerKeyCourseByQuestionPaperId.has(resourceId) &&
           linkedAnswerKeyCourseByQuestionPaperId.get(resourceId) !==
             report.aiDecision.review.suggestion.courseId));
-    const wouldCreateUnlinkedAnswerKey =
-      resourceType === "note" &&
-      report.aiDecision?.review.suggestion.hasAnswerKey === true;
     const wouldBreakAnswerKeyLink =
       resourceType === "pastPaper" &&
       questionPaperIdsWithAnswerKeys.has(resourceId);
@@ -313,7 +310,6 @@ export async function fetchModerationCorrectionReports(): Promise<ModerationCorr
         : false,
       canConvertType:
         !isStale &&
-        !wouldCreateUnlinkedAnswerKey &&
         !wouldBreakAnswerKeyLink &&
         report.category === "wrong_resource_type" &&
         isOppositeDocumentKind,
@@ -525,11 +521,6 @@ export async function resolveContentCorrectionReport(
         if (report.aiDecision.review.documentKind !== "past_paper") {
           throw new Error("The agent did not verify this note as a past paper.");
         }
-        if (suggestion.hasAnswerKey === true) {
-          throw new Error(
-            "Move this manually so the answer key can be linked to its question paper.",
-          );
-        }
         const [source] = await transaction
           .update(note)
           .set({
@@ -565,6 +556,9 @@ export async function resolveContentCorrectionReport(
             thumbNailUrl: source.thumbNailUrl,
             title: suggestion.title.trim() || source.title,
             contentHash: source.contentHash,
+            // Unpublished until reviewed. An answer key without a linked
+            // question paper is never auto-approved, so a moderator confirms
+            // the PDF includes its questions or links it before it goes live.
             isClear: false,
             ...(suggestion.examType ? { examType: suggestion.examType } : {}),
             ...(suggestion.slot ? { slot: suggestion.slot } : {}),
