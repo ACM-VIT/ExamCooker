@@ -1,6 +1,8 @@
 import { publicPdfUpstream } from "./delivery-url";
 
 const MAX_PDF_BYTES = 32 * 1024 * 1024;
+// How long the upstream may take to respond, and then to send each chunk.
+// Waiting for a slow client to ask for the next chunk does not count.
 const TIMEOUT_MS = 30_000;
 const errorResponse = (status: number) => new Response("PDF unavailable", {
   status,
@@ -14,13 +16,21 @@ export async function servePublicPdf(source: string, file: string, signal?: Abor
   const controller = new AbortController();
   const abort = () => controller.abort(signal?.reason);
   signal?.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   const cleanup = () => {
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
   };
   const cancel = () => { void reader?.cancel().catch(() => undefined); cleanup(); };
+  const readUpstream = async () => {
+    timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      return await reader!.read();
+    } finally {
+      clearTimeout(timer);
+    }
+  };
 
   try {
     signal?.throwIfAborted();
@@ -32,6 +42,7 @@ export async function servePublicPdf(source: string, file: string, signal?: Abor
       signal: controller.signal,
       headers: { Accept: "application/pdf" },
     });
+    clearTimeout(timer);
     if (!response.ok || !response.body) {
       void response.body?.cancel().catch(() => undefined);
       cleanup();
@@ -55,7 +66,7 @@ export async function servePublicPdf(source: string, file: string, signal?: Abor
     const prefix: Uint8Array[] = [];
     let received = 0;
     while (received < 1024) {
-      const { done, value } = await reader.read();
+      const { done, value } = await readUpstream();
       if (done) break;
       prefix.push(value);
       received += value.byteLength;
@@ -78,7 +89,7 @@ export async function servePublicPdf(source: string, file: string, signal?: Abor
       async pull(output) {
         try {
           if (prefix.length) { output.enqueue(prefix.shift()!); return; }
-          const { done, value } = await reader!.read();
+          const { done, value } = await readUpstream();
           if (done) {
             if (length > 0 && received !== length) throw new Error("Incomplete PDF");
             cleanup();

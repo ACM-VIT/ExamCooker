@@ -70,6 +70,53 @@ test("decoded response bodies do not reuse the compressed content length", async
   assert.equal(await response.text(), "%PDF-1.7\ndecoded");
 });
 
+// Like fetch, the body fails once the request's signal aborts.
+function streamingUpstream(chunks: string[], signal: AbortSignal | null | undefined, options = { stall: false }) {
+  const queue = [...chunks];
+  return new Response(new ReadableStream({
+    start(output) {
+      signal?.addEventListener("abort", () => output.error(new DOMException("The operation was aborted.", "AbortError")));
+    },
+    pull(output) {
+      const chunk = queue.shift();
+      if (chunk !== undefined) return output.enqueue(new TextEncoder().encode(chunk));
+      if (options.stall) return new Promise<void>(() => {});
+      output.close();
+    },
+  }));
+}
+
+test("a slow reader still receives the whole PDF", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const chunks = [`%PDF-1.7\n${"a".repeat(2048)}`, "b".repeat(2048), "c".repeat(2048)];
+  globalThis.fetch = async (_url, init) => streamingUpstream(chunks, init?.signal);
+  const response = await servePublicPdf("paper", id);
+  const reader = response.body!.getReader();
+  let received = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += new TextDecoder().decode(value);
+    // The client takes longer than the timeout to ask for the next chunk.
+    t.mock.timers.tick(31_000);
+  }
+  assert.equal(received, chunks.join(""));
+});
+
+test("an upstream that stops sending mid-file fails the download", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  globalThis.fetch = async (_url, init) =>
+    streamingUpstream([`%PDF-1.7\n${"a".repeat(2048)}`], init?.signal, { stall: true });
+  const response = await servePublicPdf("paper", id);
+  const reader = response.body!.getReader();
+  await reader.read();
+  const next = reader.read();
+  // Let the stream ask the upstream for the next chunk before time passes.
+  await new Promise((resolve) => setImmediate(resolve));
+  t.mock.timers.tick(30_000);
+  await assert.rejects(next, /abort/i);
+});
+
 test("aborted requests do not contact the upstream", async () => {
   let calls = 0;
   globalThis.fetch = async () => { calls++; return new Response("%PDF-1.7"); };
