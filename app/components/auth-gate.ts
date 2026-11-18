@@ -15,9 +15,14 @@ type AuthGate = {
     /**
      * True when signed in. While the session is still unknown it returns false
      * and checks; `onAuthed` then runs if the user turns out to be signed in,
-     * so their click is not silently dropped.
+     * so their click is not silently dropped. Once `isCurrent` returns false
+     * the check neither runs `onAuthed` nor redirects to sign-in.
      */
-    requireAuth: (action?: string, onAuthed?: () => void) => boolean;
+    requireAuth: (
+        action?: string,
+        onAuthed?: () => void,
+        isCurrent?: () => boolean,
+    ) => boolean;
     openPrompt: (action?: string) => void;
     closePrompt: () => void;
 };
@@ -115,7 +120,7 @@ export function useGuestPrompt(): AuthGate {
     }, [router]);
 
     const requireAuth = useCallback(
-        (action?: string, onAuthed?: () => void) => {
+        (action?: string, onAuthed?: () => void, isCurrent?: () => boolean) => {
             if (isAuthed) return true;
             if (status === "loading") {
                 const read = ++latestReadRef.current;
@@ -128,11 +133,14 @@ export function useGuestPrompt(): AuthGate {
                         if (read === latestReadRef.current) {
                             setAuthSessionState(getAuthSessionState(nextSession));
                         }
+                        if (isCurrent?.() === false) return;
                         if (nextSession?.user) onAuthed?.();
                         else router.push(getAuthHref(action));
                     })
                     .catch(() => {
-                        if (mountedRef.current && isSameVisit()) router.push(getAuthHref(action));
+                        if (mountedRef.current && isSameVisit() && isCurrent?.() !== false) {
+                            router.push(getAuthHref(action));
+                        }
                     });
                 return false;
             }

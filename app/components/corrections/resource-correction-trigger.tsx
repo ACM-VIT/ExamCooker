@@ -17,7 +17,7 @@ import { useGuestPrompt } from "@/app/components/auth-gate";
 import { useAiSession } from "@/app/components/ai/ai-session-provider";
 import { useToast } from "@/app/components/ui/use-toast";
 import type { CorrectionReportCategory } from "@/lib/ai/content-correction-types";
-import { useCorrectionActivityReset } from "./use-correction-activity-reset";
+import { useCorrectionSessionWait } from "./use-correction-session-wait";
 
 type Props = {
   resourceId: string;
@@ -107,10 +107,10 @@ export default function ResourceCorrectionTrigger({
   const [submitted, setSubmitted] = useState(false);
   const [isPending, startTransition] = useTransition();
   // Submitted while the session was still loading: the report is sent once it
-  // is confirmed, or the page leaves for sign-in.
-  const [awaitingSession, setAwaitingSession] = useState(false);
+  // is confirmed, or the page leaves for sign-in. Closing the form abandons
+  // the wait, so a stalled session request cannot trap the user.
+  const { awaitingSession, startWait, endWait } = useCorrectionSessionWait();
   const isBusy = isPending || awaitingSession;
-  useCorrectionActivityReset(setAwaitingSession);
   // The form is cleared after the close animation; reopening first cancels it.
   const resetTimerRef = useRef<number | null>(null);
 
@@ -135,7 +135,8 @@ export default function ResourceCorrectionTrigger({
   const handleOpenChange = (nextOpen: boolean) => {
     // A report being sent keeps the dialog open, so its result lands on the
     // form that sent it instead of a cleared one.
-    if (!nextOpen && isBusy) return;
+    if (!nextOpen && isPending) return;
+    if (!nextOpen) endWait();
     cancelPendingReset();
     setOpen(nextOpen);
     if (!nextOpen) resetTimerRef.current = window.setTimeout(reset, 200);
@@ -147,12 +148,20 @@ export default function ResourceCorrectionTrigger({
     // requireAuth again: its closure still sees the loading state.
     if (isBusy) return;
     const report = { category, description, suggestedValue };
-    const signedIn = requireAuth("report a correction", () => {
-      setAwaitingSession(false);
+    const isCurrentWait = startWait();
+    const signedIn = requireAuth(
+      "report a correction",
+      () => {
+        if (!isCurrentWait()) return;
+        endWait();
+        sendReport(report);
+      },
+      isCurrentWait,
+    );
+    if (signedIn) {
+      endWait();
       sendReport(report);
-    });
-    if (signedIn) sendReport(report);
-    else setAwaitingSession(true);
+    }
   };
 
   const sendReport = ({
@@ -278,7 +287,7 @@ export default function ResourceCorrectionTrigger({
         <button
           type="button"
           onClick={() => handleOpenChange(false)}
-          disabled={isBusy}
+          disabled={isPending}
           className="ec-press inline-flex h-10 items-center border border-black/30 px-4 text-sm font-normal transition hover:border-black disabled:opacity-50 dark:border-white/30 dark:hover:border-white"
         >
           Cancel
@@ -297,7 +306,7 @@ export default function ResourceCorrectionTrigger({
         onOpenChange={handleOpenChange}
         // A swipe that the pending guard above refuses would leave the sheet
         // dragged part-way off screen.
-        dismissible={!isBusy}
+        dismissible={!isPending}
         modal
       >
         <Drawer.Trigger asChild><TriggerButton /></Drawer.Trigger>
