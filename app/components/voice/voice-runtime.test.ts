@@ -311,3 +311,19 @@ test("a tool still running when the session ends is marked skipped", async (t) =
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(controller.latestToolCall?.status, "skipped");
 });
+
+test("a subscriber that reconnects on idle cannot start a session after destroy", async (t) => {
+  installBrowser(t);
+  const { controller } = createController(t);
+  await controller.connect();
+  const first = Peer.latest;
+  const attempts: Array<Promise<void>> = [];
+  controller.subscribe(() => {
+    if (controller.activity === "idle") attempts.push(controller.connect());
+  });
+  controller.destroy();
+  await Promise.all(attempts);
+  assert.equal(attempts.length, 1);
+  assert.equal(Peer.latest, first, "no second connection is opened");
+  assert.equal(controller.activity, "idle");
+});
