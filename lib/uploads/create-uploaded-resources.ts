@@ -5,16 +5,12 @@ import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { reviewUploadedResource } from "@/lib/ai/moderation-review";
 import { mapWithConcurrency } from "@/lib/async/map-with-concurrency";
 import { invalidatePastPapersSurfaceCache } from "@/lib/cache/past-papers-surface-cache";
-import type {
-    Campus,
-    ExamType,
-    Semester,
-} from "@/db";
+import type { UploadResourceMetadata, UploadVariant } from "@/lib/uploads/upload-details";
 import { db, note, pastPaper, user } from "@/db";
 
 export const UPLOAD_SUCCESS_MESSAGE = "processed successfully";
 
-export type UploadVariant = "Notes" | "Past Papers";
+export type { UploadResourceMetadata, UploadVariant } from "@/lib/uploads/upload-details";
 
 export type ProcessedUploadResult = {
     fileUrl: string;
@@ -25,6 +21,12 @@ export type ProcessedUploadResult = {
 
 type UploadTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+/** A processed file and the details its resource is saved with. */
+export type ClaimedUpload = {
+    result: ProcessedUploadResult;
+    metadata: UploadResourceMetadata;
+};
+
 export type CreateUploadedResourcesInput = {
     userEmail: string;
     /**
@@ -32,15 +34,8 @@ export type CreateUploadedResourcesInput = {
      * resources, so claiming a one-time receipt commits or rolls back with
      * them. Throw UploadRejectedError to reject the batch.
      */
-    claimResults: (transaction: UploadTransaction) => Promise<ProcessedUploadResult[]>;
-    year: string;
-    slot: string;
+    claimResults: (transaction: UploadTransaction) => Promise<ClaimedUpload[]>;
     variant: UploadVariant;
-    courseId?: string | null;
-    examType?: string | null;
-    semester?: string | null;
-    campus?: string | null;
-    hasAnswerKey?: boolean;
     /**
      * Runs automatic review for the batch when present. Without it the
      * resources stay unpublished in the moderator queue.
@@ -74,21 +69,9 @@ function assertSavableResults(results: ProcessedUploadResult[]) {
 export async function createUploadedResources({
     userEmail,
     claimResults,
-    year,
-    slot,
     variant,
-    courseId,
-    examType,
-    semester,
-    campus,
-    hasAnswerKey,
     aiEnvironment,
 }: CreateUploadedResourcesInput) {
-    const yearInt = year ? parseInt(year, 10) : null;
-    const parsedExamType = examType as ExamType | null | undefined;
-    const parsedSemester = semester as Semester | null | undefined;
-    const parsedCampus = campus as Campus | null | undefined;
-
     let data: { id: string; title: string; fileUrl: string }[];
     try {
         // One transaction: either every resource is created and its receipt
@@ -103,11 +86,13 @@ export async function createUploadedResources({
                 throw new Error(`User with email ${userEmail} does not exist`);
             }
 
-            const results = await claimResults(transaction);
-            assertSavableResults(results);
+            const claimed = await claimResults(transaction);
+            assertSavableResults(claimed.map(({ result }) => result));
 
             const created = [];
-            for (const result of results) {
+            for (const { result, metadata } of claimed) {
+                const { courseId, examType, slot, semester, campus, hasAnswerKey } = metadata;
+                const year = metadata.year ? parseInt(metadata.year, 10) : null;
                 const fileUrl = normalizeGcsUrl(result.fileUrl) ?? result.fileUrl;
                 const thumbNailUrl = normalizeOptionalUrl(result.thumbnailUrl);
                 const [row] =
@@ -134,14 +119,12 @@ export async function createUploadedResources({
                                   ...(thumbNailUrl ? { thumbNailUrl } : {}),
                                   authorId: currentUser.id,
                                   ...(courseId ? { courseId } : {}),
-                                  ...(parsedExamType ? { examType: parsedExamType } : {}),
+                                  ...(examType ? { examType } : {}),
                                   ...(slot ? { slot } : {}),
-                                  ...(yearInt !== null && !Number.isNaN(yearInt)
-                                      ? { year: yearInt }
-                                      : {}),
-                                  ...(parsedSemester ? { semester: parsedSemester } : {}),
-                                  ...(parsedCampus ? { campus: parsedCampus } : {}),
-                                  hasAnswerKey: hasAnswerKey ?? false,
+                                  ...(year !== null && !Number.isNaN(year) ? { year } : {}),
+                                  ...(semester ? { semester } : {}),
+                                  ...(campus ? { campus } : {}),
+                                  hasAnswerKey,
                               })
                               .returning({
                                   id: pastPaper.id,

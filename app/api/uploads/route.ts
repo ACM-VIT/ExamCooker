@@ -4,25 +4,18 @@ import { auth } from "@/app/auth";
 import {
     createUploadedResources,
     UploadRejectedError,
-    type CreateUploadedResourcesInput,
     type UploadVariant,
 } from "@/lib/uploads/create-uploaded-resources";
-import { campusValues, examTypeValues, semesterValues, uploadResultReceipt } from "@/db";
+import { uploadResultReceipt } from "@/db";
 import { checkSlidingWindowRateLimit } from "@/lib/redis-rate-limit";
 import { readAiSession } from "@/lib/ai/session";
+import { parseUploadBatch } from "@/lib/uploads/upload-details";
 import { getUploadReviewEnvironment } from "@/lib/uploads/upload-review-environment";
 
 const MAX_UPLOAD_BATCH = 8;
 const SAVE_RATE_LIMIT = 12;
 const SAVE_RATE_WINDOW_MS = 60 * 60 * 1000;
 const uploadVariants = new Set<UploadVariant>(["Notes", "Past Papers"]);
-const examTypes = new Set<string>(examTypeValues);
-const semesters = new Set<string>(semesterValues);
-const campuses = new Set<string>(campusValues);
-
-type UploadRequestBody = Partial<
-    Omit<CreateUploadedResourcesInput, "userEmail" | "claimResults" | "aiEnvironment">
-> & { results?: unknown };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -30,23 +23,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function stringValue(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
-}
-
-function nullableStringValue(value: unknown) {
-    const string = stringValue(value);
-    return string.length > 0 ? string : null;
-}
-
-function validateOptionalEnum(
-    value: string | null,
-    allowedValues: Set<string>,
-    fieldName: string,
-) {
-    if (!value || allowedValues.has(value)) {
-        return { value };
-    }
-
-    return { error: `${fieldName} is invalid.` };
 }
 
 export async function POST(request: NextRequest) {
@@ -58,7 +34,7 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    let body: UploadRequestBody;
+    let body: unknown;
     try {
         body = await request.json();
     } catch {
@@ -83,38 +59,14 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const receiptIds = Array.isArray(body.results)
-        ? body.results.map((result) =>
-              isRecord(result) ? stringValue(result.receiptId) : "",
-          )
-        : [];
-    if (
-        receiptIds.length === 0 ||
-        receiptIds.length > MAX_UPLOAD_BATCH ||
-        receiptIds.some((receiptId) => !receiptId) ||
-        new Set(receiptIds).size !== receiptIds.length
-    ) {
+    const batch = parseUploadBatch(body, variant, MAX_UPLOAD_BATCH);
+    if (batch.error !== undefined) {
         return NextResponse.json(
-            { success: false, error: `Upload batches must contain 1-${MAX_UPLOAD_BATCH} valid receipts.` },
+            { success: false, error: batch.error },
             { status: 400 },
         );
     }
-
-    const examType = nullableStringValue(body.examType);
-    const semester = nullableStringValue(body.semester);
-    const campus = nullableStringValue(body.campus);
-    const examTypeValidation = validateOptionalEnum(examType, examTypes, "Exam type");
-    const semesterValidation = validateOptionalEnum(semester, semesters, "Semester");
-    const campusValidation = validateOptionalEnum(campus, campuses, "Campus");
-    const validationError =
-        examTypeValidation.error || semesterValidation.error || campusValidation.error;
-
-    if (validationError) {
-        return NextResponse.json(
-            { success: false, error: validationError },
-            { status: 400 },
-        );
-    }
+    const receiptIds = batch.items.map((item) => item.receiptId);
 
     // Count only requests that could save something, so a malformed retry
     // does not use up the hour's allowance.
@@ -163,16 +115,12 @@ export async function POST(request: NextRequest) {
                 const resultById = new Map(
                     consumed.map((receipt) => [receipt.id, receipt.result]),
                 );
-                return receiptIds.map((receiptId) => resultById.get(receiptId)!);
+                return batch.items.map(({ receiptId, metadata }) => ({
+                    result: resultById.get(receiptId)!,
+                    metadata,
+                }));
             },
-            year: stringValue(body.year),
-            slot: stringValue(body.slot),
             variant,
-            courseId: nullableStringValue(body.courseId),
-            examType,
-            semester,
-            campus,
-            hasAnswerKey: body.hasAnswerKey === true,
             aiEnvironment,
         });
 
@@ -182,6 +130,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
+            data: result.data,
             count: result.data.length,
             autoReview: result.autoReview,
         });

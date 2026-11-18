@@ -232,15 +232,21 @@ export async function POST(request: NextRequest) {
 
     const result = await createUploadedResources({
       userEmail: user.email,
-      claimResults: async () => [processedFile],
-      year: yearValidation.value ?? year,
-      slot,
+      claimResults: async () => [
+        {
+          result: processedFile,
+          metadata: {
+            courseId: resolvedCourse?.id ?? null,
+            examType: examType ?? null,
+            slot,
+            year: yearValidation.value ?? year,
+            semester: semester as Semester | null,
+            campus: campus as Campus | null,
+            hasAnswerKey,
+          },
+        },
+      ],
       variant,
-      courseId: resolvedCourse?.id ?? null,
-      examType,
-      semester: semester as Semester | null,
-      campus: campus as Campus | null,
-      hasAnswerKey,
       // CLI uploads have no browser AI session: only the server's key reviews.
       aiEnvironment: getUploadReviewEnvironment(process.env),
     });
