@@ -601,6 +601,14 @@ function metadataIssues(
           : "The marked answer key could not be verified in the PDF.",
       });
     }
+    // The review cannot tell an answers-only PDF from questions with answers,
+    // so an answer key without a linked question paper is never auto-published.
+    if (resource.hasAnswerKey && !resource.questionPaperId) {
+      issues.push({
+        field: "questionPaperId",
+        message: "Answer keys without a linked question paper need a moderator to confirm the PDF includes its questions.",
+      });
+    }
   }
   return issues;
 }
