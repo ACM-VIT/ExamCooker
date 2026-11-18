@@ -209,12 +209,15 @@ async function fetchTaggedBatch({ table, joinTable, columns, cursor }) {
 }
 
 // Courses are matched by code, so a dev course can keep its own id. A copied
-// AI review must name that id, or applying its suggestion fails.
-async function remapReviewCourse(client, review) {
+// AI review must name that id, or applying its suggestion fails. The code is
+// the production course's current one (`currentCode`), since a course can be
+// renamed after the review ran; the code stored in the review is a fallback.
+async function remapReviewCourse(client, review, currentCode) {
   const suggestion = review?.suggestion;
   if (!suggestion?.courseId) return review;
-  const { rows } = suggestion.courseCode
-    ? await client.query('SELECT id FROM "Course" WHERE code = $1', [suggestion.courseCode])
+  const code = currentCode ?? suggestion.courseCode;
+  const { rows } = code
+    ? await client.query('SELECT id FROM "Course" WHERE code = $1', [code])
     : { rows: [] };
   const courseId = rows[0]?.id ?? null;
   return courseId === suggestion.courseId
@@ -443,13 +446,16 @@ async function copyNotes(systemUserId) {
           // Kept as is: a copied AI review is current only while it matches.
           'base."updatedAt"',
           '(SELECT c.code FROM "Course" c WHERE c.id = base."courseId") AS "courseCode"',
+          // The suggested course's current code, which can differ from the one
+          // stored in the review if the course was renamed since.
+          `(SELECT c.code FROM "Course" c WHERE c.id = base."aiReview" #>> '{suggestion,courseId}') AS "reviewCourseCode"`,
         ],
         cursor,
       }),
     async (notes) => {
       await withDevTransaction(async (client) => {
         for (const note of notes) {
-          const aiReview = await remapReviewCourse(client, note.aiReview);
+          const aiReview = await remapReviewCourse(client, note.aiReview, note.reviewCourseCode);
           await client.query(
             `
               INSERT INTO "Note" (
@@ -516,6 +522,9 @@ async function copyPastPapers(systemUserId) {
           // Kept as is: a copied AI review is current only while it matches.
           'base."updatedAt"',
           '(SELECT c.code FROM "Course" c WHERE c.id = base."courseId") AS "courseCode"',
+          // The suggested course's current code, which can differ from the one
+          // stored in the review if the course was renamed since.
+          `(SELECT c.code FROM "Course" c WHERE c.id = base."aiReview" #>> '{suggestion,courseId}') AS "reviewCourseCode"`,
           'base."examType"',
           'base.slot',
           'base.year',
@@ -529,7 +538,7 @@ async function copyPastPapers(systemUserId) {
     async (papers) => {
       await withDevTransaction(async (client) => {
         for (const paper of papers) {
-          const aiReview = await remapReviewCourse(client, paper.aiReview);
+          const aiReview = await remapReviewCourse(client, paper.aiReview, paper.reviewCourseCode);
           await client.query(
             `
               INSERT INTO "PastPaper" (
