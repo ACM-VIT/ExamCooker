@@ -319,7 +319,7 @@ test("a tool still running when the session ends is marked skipped", async (t) =
   assert.equal(controller.latestToolCall?.status, "skipped");
 });
 
-test("destroying a live session sends session.close and keeps the peer until it is delivered", async (t) => {
+test("destroying a live session sends session.close and keeps the peer open until its channel closes", async (t) => {
   const track = installBrowser(t);
   const { controller, errors } = createController(t);
   await controller.connect();
