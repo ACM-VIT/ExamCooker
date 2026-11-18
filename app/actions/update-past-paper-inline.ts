@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueViolation } from "@/lib/db-errors";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/app/auth";
@@ -57,30 +58,7 @@ function normalizeTags(tags: string[]) {
 }
 
 function isQuestionPaperLinkUniqueConstraintError(error: unknown) {
-  if (!error || typeof error !== "object") {
-    return false;
-  }
-
-  const code = typeof (error as { code?: unknown }).code === "string"
-    ? (error as { code: string }).code
-    : "";
-  if (code !== "23505") {
-    return false;
-  }
-
-  const constraint =
-    typeof (error as { constraint?: unknown }).constraint === "string"
-      ? (error as { constraint: string }).constraint
-      : "";
-  const message =
-    typeof (error as { message?: unknown }).message === "string"
-      ? (error as { message: string }).message.toLowerCase()
-      : "";
-
-  return (
-    constraint === "PastPaper_questionPaperId_key" ||
-    message.includes("pastpaper_questionpaperid_key")
-  );
+  return isUniqueViolation(error, "PastPaper_questionPaperId_key");
 }
 
 export async function updatePastPaperInline(input: z.input<typeof schema>) {
