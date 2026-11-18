@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import { PDFIUM_WASM_URL } from "@/lib/generated/pdfium-wasm";
 
 export { PDFIUM_WASM_URL };
@@ -94,13 +94,19 @@ export function usePreloadedPdfiumEngine(retryKey = 0): PdfiumEngineState {
     undefined,
     getInitialPdfiumEngineState,
   );
+  const handledRetryKeyRef = useRef(0);
 
   useEffect(() => {
     let isActive = true;
     // An explicit retry builds a fresh engine: a crashed or out-of-memory
     // PDFium instance cannot be detected reliably, and reusing it fails again.
-    // Viewers that still hold the old engine keep using it.
-    if (retryKey > 0 && !pendingEngine) cachedEngine = null;
+    // Viewers that still hold the old engine keep using it. Each retry does
+    // this once; the effect also re-runs when a hidden route is shown again,
+    // and that must not discard a healthy engine.
+    if (retryKey > handledRetryKeyRef.current) {
+      handledRetryKeyRef.current = retryKey;
+      if (!pendingEngine) cachedEngine = null;
+    }
     if (cachedEngine) {
       dispatch({ type: "loaded", engine: cachedEngine });
       return;

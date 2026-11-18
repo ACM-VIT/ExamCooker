@@ -6,12 +6,22 @@ export const RELOAD_GUARD_TTL_MS = 60_000;
 // telemetry once the page is stable.
 export const HYDRATION_RECOVERY_INCIDENT_KEY = "examcooker:hydration-recovery";
 
-// At most this many recovery reloads per TTL window, whatever their keys, so
-// errors that alternate between reloads can't loop either.
+// At most this many recovery reloads of one page per TTL window, whatever
+// their keys, so errors that alternate between reloads can't loop either. A
+// reload stays on its page, so the cap is per pathname: a mismatch on another
+// page still gets its own recovery.
 export const MAX_RECOVERY_RELOADS = 2;
 
-/** Recovery reloads claimed in the last TTL window: error key → claim time. */
+/**
+ * Recovery reloads claimed in the last TTL window: claim → claim time. A claim
+ * is the pathname it was made on and the error key, joined by a newline.
+ */
 export type ReloadGuard = Record<string, number>;
+
+/** The prefix shared by every claim made on `pathname`. */
+export function reloadClaimScope(pathname: string) {
+  return `${pathname}\n`;
+}
 
 function getErrorMessage(error: unknown): string {
   if (!error) return "";
@@ -106,18 +116,24 @@ export function parseReloadGuard(raw: string | null, now: number): ReloadGuard {
 }
 
 /**
- * Decides whether an error may trigger a recovery reload: once per key, and
- * no more than MAX_RECOVERY_RELOADS in total per TTL window.
+ * Decides whether an error may trigger a recovery reload: once per key on a
+ * page, and no more than MAX_RECOVERY_RELOADS per page in a TTL window.
  */
 export function claimReloadInGuard(
   guard: ReloadGuard,
   key: string,
   now: number,
+  pathname: string,
 ): { allowed: boolean; guard: ReloadGuard } {
-  if (key in guard || Object.keys(guard).length >= MAX_RECOVERY_RELOADS) {
+  const scope = reloadClaimScope(pathname);
+  const claim = scope + key;
+  const claimsOnPage = Object.keys(guard).filter((existing) =>
+    existing.startsWith(scope),
+  ).length;
+  if (claim in guard || claimsOnPage >= MAX_RECOVERY_RELOADS) {
     return { allowed: false, guard };
   }
-  return { allowed: true, guard: { ...guard, [key]: now } };
+  return { allowed: true, guard: { ...guard, [claim]: now } };
 }
 
 function readReloadGuard(now: number): ReloadGuard {
@@ -147,7 +163,12 @@ export function clearReloadGuard() {
 
 export function claimChunkReload(key: string): boolean {
   const now = Date.now();
-  const claim = claimReloadInGuard(readReloadGuard(now), key, now);
+  const claim = claimReloadInGuard(
+    readReloadGuard(now),
+    key,
+    now,
+    window.location.pathname,
+  );
   // Without storage there is no loop protection, so never reload then.
   return claim.allowed && writeReloadGuard(claim.guard);
 }

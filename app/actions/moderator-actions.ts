@@ -333,12 +333,15 @@ export async function generatePastPaperTitle(id: string) {
     const aiTitle = await generatePastPaperTitleFromPdf({ fileUrl, fallbackTitle: paper.title });
 
     if (aiTitle && aiTitle !== paper.title) {
-        await db
+        const renamed = await db
             .update(pastPaper)
             .set({ title: aiTitle, ...clearedModerationReview })
             .where(
                 and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)),
-            );
+            )
+            .returning({ id: pastPaper.id });
+        // Archived or deleted while the title was being generated.
+        if (renamed.length === 0) throw new Error("Past paper not found");
     }
 
     revalidatePath("/mod");

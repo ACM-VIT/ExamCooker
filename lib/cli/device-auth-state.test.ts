@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   CLI_DEVICE_AUTH_DELIVERY_WINDOW_SECONDS,
+  CLI_DEVICE_AUTH_REDELIVERY_GRACE_SECONDS,
+  canRedeliverCliToken,
   getCliDeviceAuthDeliveryDeadline,
   getCliDeviceAuthState,
   isUndeliveredCliToken,
@@ -104,4 +106,11 @@ test("cleanup revokes only tokens no CLI collected, including legacy deliveries"
   );
   assert.equal(isUndeliveredCliToken({ ...expired, lastPolledAt: expiresAt }), true);
   assert.equal(isUndeliveredCliToken({ ...expired, status: "PENDING", accessTokenId: null }), false);
+});
+
+test("a delivered token can be fetched again only within the grace period", () => {
+  const grace = CLI_DEVICE_AUTH_REDELIVERY_GRACE_SECONDS * 1000;
+  assert.equal(canRedeliverCliToken(null, now), false, "never delivered");
+  assert.equal(canRedeliverCliToken(new Date(now - 1_000), now), true);
+  assert.equal(canRedeliverCliToken(new Date(now - grace), now), false);
 });

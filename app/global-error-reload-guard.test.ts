@@ -11,10 +11,15 @@ import {
 } from "./global-error-reload-guard";
 import { hydrationRecoveryInitScript } from "./hydration-recovery-script";
 
-function claimAll(keys: string[], start: ReloadGuard = {}, now = 1_000) {
+function claimAll(
+  claims: Array<string | [pathname: string, key: string]>,
+  start: ReloadGuard = {},
+  now = 1_000,
+) {
   let guard = start;
-  return keys.map((key) => {
-    const claim = claimReloadInGuard(guard, key, now);
+  return claims.map((entry) => {
+    const [pathname, key] = typeof entry === "string" ? ["/paper", entry] : entry;
+    const claim = claimReloadInGuard(guard, key, now, pathname);
     guard = claim.guard;
     return claim.allowed;
   });
@@ -24,10 +29,22 @@ test("each error key reloads once per window", () => {
   assert.deepEqual(claimAll(["chunk:A", "chunk:A"]), [true, false]);
 });
 
-test("errors that alternate between reloads stop after the overall cap", () => {
+test("errors that alternate between reloads of a page stop at its cap", () => {
   const outcomes = claimAll(["chunk:A", "hydration:B", "chunk:A", "hydration:C"]);
   assert.equal(outcomes.filter(Boolean).length, MAX_RECOVERY_RELOADS);
   assert.deepEqual(outcomes, [true, true, false, false]);
+});
+
+test("a page that used its reloads does not block recovery on another page", () => {
+  const outcomes = claimAll([
+    ["/paper/one", "hydration:A"],
+    ["/paper/one", "hydration:B"],
+    ["/paper/one", "hydration:C"],
+    ["/paper/two", "hydration:A"],
+    // "/paper" is a prefix of the other paths but a different page.
+    ["/paper", "hydration:A"],
+  ]);
+  assert.deepEqual(outcomes, [true, true, false, true, true]);
 });
 
 test("claims expire after the window and the old single-record format is read", () => {
@@ -44,14 +61,14 @@ test("the pre-hydration script follows the same guard", () => {
   const storage = new Map<string, string>();
   let reloads = 0;
   // Each run is a fresh page load: the script installs one error listener.
-  const run = (message: string) => {
+  const run = (message: string, pathname = "/paper") => {
     const listeners: Array<(event: unknown) => void> = [];
     runInNewContext(hydrationRecoveryInitScript, {
       sessionStorage: {
         getItem: (key: string) => storage.get(key) ?? null,
         setItem: (key: string, value: string) => storage.set(key, value),
       },
-      location: { pathname: "/paper", reload: () => { reloads++; } },
+      location: { pathname, reload: () => { reloads++; } },
       window: { addEventListener: (_type: string, handler: (event: unknown) => void) => listeners.push(handler) },
       Date,
       JSON,
@@ -68,5 +85,17 @@ test("the pre-hydration script follows the same guard", () => {
   run("Minified React error #419");
   run("Minified React error #423");
   assert.equal(reloads, MAX_RECOVERY_RELOADS, "different mismatches stop at the cap");
-  assert.equal(Object.keys(JSON.parse(storage.get(RELOAD_FLAG) ?? "{}")).length, MAX_RECOVERY_RELOADS);
+  const stored = JSON.parse(storage.get(RELOAD_FLAG) ?? "{}") as ReloadGuard;
+  assert.equal(Object.keys(stored).length, MAX_RECOVERY_RELOADS);
+
+  run("Minified React error #418", "/other-paper");
+  assert.equal(reloads, MAX_RECOVERY_RELOADS + 1, "another page still recovers");
+
+  // The script's claims are the ones claimReloadInGuard reads: the first
+  // mismatch on /paper is already claimed, and /paper is at its cap.
+  const guard = JSON.parse(storage.get(RELOAD_FLAG) ?? "{}") as ReloadGuard;
+  const key = "hydration:/paper:Error:Minified React error #418:";
+  assert.equal(claimReloadInGuard(guard, key, Date.now(), "/paper").allowed, false);
+  assert.equal(claimReloadInGuard(guard, "chunk:new", Date.now(), "/paper").allowed, false);
+  assert.equal(claimReloadInGuard(guard, "chunk:new", Date.now(), "/third").allowed, true);
 });

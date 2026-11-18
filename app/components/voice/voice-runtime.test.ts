@@ -248,6 +248,21 @@ test("playback interrupted by teardown is not reported as blocked audio", async 
   assert.equal(controller.activity, "idle");
 });
 
+test("an interrupted play() during a live session is not a blocked-audio error", async (t) => {
+  installBrowser(t);
+  AudioElement.play = async () => {
+    throw new DOMException("The play() request was interrupted.", "AbortError");
+  };
+  const { controller, errors } = createController(t);
+  await controller.connect();
+  Peer.latest.dispatchEvent(
+    Object.assign(new Event("track"), { track: { kind: "audio" } }),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(errors, []);
+  assert.equal(controller.connected, true);
+});
+
 test("a tool still running when the session ends is marked skipped", async (t) => {
   installBrowser(t);
   let finishTool!: () => void;

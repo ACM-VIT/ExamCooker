@@ -47,22 +47,29 @@ export function useAiSession() {
 
 async function fetchStatus(feature: Feature) {
   const task = feature === "voice" ? "voiceDocument" : feature;
-  let response: Response;
+  // AbortSignal.timeout is missing on iOS 15, which the native app supports.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), STATUS_TIMEOUT_MS);
   try {
-    response = await fetch(`/api/ai/session?task=${task}`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(STATUS_TIMEOUT_MS),
-    });
-  } catch {
-    throw new Error("Could not check AI settings. Check your connection and try again.");
+    let response: Response;
+    try {
+      response = await fetch(`/api/ai/session?task=${task}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+    } catch {
+      throw new Error("Could not check AI settings. Check your connection and try again.");
+    }
+    const result = await response.json().catch(() => null) as (Status & { error?: string }) | null;
+    if (!response.ok || !result) {
+      throw new Error(result?.error || (response.status === 401
+        ? "Sign in to configure AI features."
+        : "Could not check AI settings."));
+    }
+    return result;
+  } finally {
+    clearTimeout(timer);
   }
-  const result = await response.json().catch(() => null) as (Status & { error?: string }) | null;
-  if (!response.ok || !result) {
-    throw new Error(result?.error || (response.status === 401
-      ? "Sign in to configure AI features."
-      : "Could not check AI settings."));
-  }
-  return result;
 }
 
 function featureReady(status: Status, feature: Feature) {

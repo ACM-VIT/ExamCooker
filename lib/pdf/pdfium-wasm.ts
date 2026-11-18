@@ -11,11 +11,17 @@ let requested = false;
 
 export function loadPdfiumWasm() {
   requested = true;
-  download ??= fetchPdfResource(PDFIUM_WASM_URL, { kind: "wasm" }).catch((error) => {
-    download = null;
-    requested = false;
-    throw error;
-  });
+  if (!download) {
+    const attempt = fetchPdfResource(PDFIUM_WASM_URL, { kind: "wasm" }).catch((error) => {
+      // A released download can fail after a newer one has started.
+      if (download === attempt) {
+        download = null;
+        requested = false;
+      }
+      throw error;
+    });
+    download = attempt;
+  }
   return download;
 }
 

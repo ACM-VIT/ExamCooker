@@ -54,6 +54,18 @@ test("a fragment link adds an entry instead of wiping the history", () => {
   assert.equal(previousInAppPath(history), "/syllabus");
 });
 
+test("going back to a page from before voice started leaves nothing to go back to", () => {
+  // Voice started on the paper page; the browser's Back lands on a course page
+  // the tracker never saw. The paper must not be offered as "previous".
+  const history = recordInAppNavigation(
+    startInAppHistory("/past_papers/CSE1001/paper/one"),
+    "pop",
+    "/past_papers/CSE1001",
+  );
+  assert.deepEqual(history, startInAppHistory("/past_papers/CSE1001"));
+  assert.equal(previousInAppPath(history), null);
+});
+
 test("pushing from an earlier entry drops the forward entries", () => {
   const history = navigate(
     startInAppHistory("/"),

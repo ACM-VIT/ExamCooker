@@ -127,7 +127,13 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
             hasAnswerKey: pastPaper.hasAnswerKey,
           })
           .from(pastPaper)
-          .where(eq(pastPaper.id, parsed.questionPaperId))
+          // An archived copy is not a paper an answer key can belong to.
+          .where(
+            and(
+              eq(pastPaper.id, parsed.questionPaperId),
+              isNull(pastPaper.moderationArchivedAt),
+            ),
+          )
           .limit(1);
 
         if (!questionPaper) {

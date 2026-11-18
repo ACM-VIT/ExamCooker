@@ -1481,6 +1481,12 @@ async function runAuthLogin(args: string[]) {
         return;
       }
 
+      // A success whose body was cut off: the server repeats the delivery
+      // for a short while, so ask again rather than abandon the login.
+      if (response.ok) {
+        continue;
+      }
+
       const error =
         payload?.error ||
         (response.status === 410

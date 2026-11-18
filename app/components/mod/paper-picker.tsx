@@ -139,6 +139,8 @@ export default function PaperPicker({
 
     useEffect(() => {
         if (!shouldShowResults) {
+            // No search will answer for a closed picker, so it can't stay "loading".
+            dispatch({ type: "search-cancelled" });
             return;
         }
 
@@ -147,9 +149,11 @@ export default function PaperPicker({
             return;
         }
 
+        // Loading covers the debounce as well as the request, so "no matches"
+        // is only shown once a search for this query has answered.
+        dispatch({ type: "search-start" });
         let cancelled = false;
         const timer = window.setTimeout(async () => {
-            dispatch({ type: "search-start" });
             try {
                 const matches = await searchPastPaperLinkTargets({
                     query: trimmedQuery,
@@ -173,10 +177,10 @@ export default function PaperPicker({
         }, 200);
 
         return () => {
+            // The next run of this effect starts the replacement search or
+            // clears the loading state.
             cancelled = true;
             window.clearTimeout(timer);
-            // A search dropped here will never report back, so it can't stay "loading".
-            dispatch({ type: "search-cancelled" });
         };
     }, [courseId, excludePaperId, shouldShowResults, trimmedQuery]);
 

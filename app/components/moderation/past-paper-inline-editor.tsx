@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updatePastPaperInline } from "@/app/actions/update-past-paper-inline";
 import { useGuestPrompt } from "@/app/components/auth-gate";
@@ -15,6 +15,7 @@ import {
   FieldRow,
   FieldShell,
 } from "@/app/components/moderation/editor-fields";
+import { resolveEditorBaseline } from "@/app/components/moderation/inline-editor-baseline";
 import ModeratorEditSheet from "@/app/components/moderation/moderator-edit-sheet";
 import TagField from "@/app/components/moderation/tag-field";
 import {
@@ -142,6 +143,7 @@ export default function PastPaperInlineEditor(
   const baseDraft = useMemo(() => buildBaseline(props), [props]);
   const [draft, setDraft] = useState<PaperDraft>(baseDraft);
   const [baseline, setBaseline] = useState<PaperDraft>(baseDraft);
+  const adoptedPageDraftRef = useRef(baseDraft);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -230,9 +232,17 @@ export default function PastPaperInlineEditor(
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
-      // Start from the paper as it is now; it may have changed since the last edit.
-      setBaseline(baseDraft);
-      setDraft(baseDraft);
+      // Start from the paper as it is now, unless the page still shows the
+      // copy from before this editor's last save.
+      const next = resolveEditorBaseline({
+        adopted: adoptedPageDraftRef.current,
+        page: baseDraft,
+        local: baseline,
+        isEqual: arePaperDraftsEqual,
+      });
+      adoptedPageDraftRef.current = next.adopted;
+      setBaseline(next.baseline);
+      setDraft(next.baseline);
       setSaveError(null);
     } else {
       handleCancel();

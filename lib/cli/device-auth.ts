@@ -11,6 +11,7 @@ import {
 import {
   CLI_DEVICE_AUTH_POLL_INTERVAL_SECONDS,
   CLI_DEVICE_AUTH_TTL_SECONDS,
+  canRedeliverCliToken,
   getCliDeviceAuthDeliveryDeadline,
   getCliDeviceAuthState,
   isUndeliveredCliToken,
@@ -223,8 +224,10 @@ export async function denyCliDeviceAuthRequest(input: {
 }
 
 /**
- * Delivers an approved token exactly once. Later polls with the same device
- * code are rejected, so a leaked device code cannot fetch the token again.
+ * Delivers an approved token once. A repeat poll within a short grace period
+ * gets the same token again, because the first response may never have reached
+ * the CLI; after that the device code is spent, so a leaked code cannot fetch
+ * the token.
  */
 export async function pollCliDeviceAuthRequest(deviceCode: string) {
   const deviceCodeHash = hashCliDeviceCode(deviceCode);
@@ -247,24 +250,57 @@ export async function pollCliDeviceAuthRequest(deviceCode: string) {
 
   const request = rows[0];
   const state = getCliDeviceAuthState(request);
-  if (!request || state === "completed") return { state: "invalid" as const };
-  if (state !== "authorized") return { state };
+  if (!request) return { state: "invalid" as const };
+  if (state !== "authorized" && state !== "completed") return { state };
 
   const now = new Date();
-  const delivered = await db
-    .update(cliDeviceAuthRequest)
-    .set({ completedAt: now })
-    .where(
-      and(
-        eq(cliDeviceAuthRequest.id, request.id),
-        eq(cliDeviceAuthRequest.status, "AUTHORIZED"),
-        isNull(cliDeviceAuthRequest.completedAt),
-        gt(cliDeviceAuthRequest.expiresAt, now),
-      ),
-    )
-    .returning({ accessTokenId: cliDeviceAuthRequest.accessTokenId });
-  const accessTokenId = delivered[0]?.accessTokenId;
-  if (!accessTokenId || !request.userId) return { state: "invalid" as const };
+  let delivery = {
+    accessTokenId: request.accessTokenId,
+    completedAt: request.completedAt,
+  };
+  let deliveredNow = false;
+  if (state === "authorized") {
+    const delivered = await db
+      .update(cliDeviceAuthRequest)
+      .set({ completedAt: now })
+      .where(
+        and(
+          eq(cliDeviceAuthRequest.id, request.id),
+          eq(cliDeviceAuthRequest.status, "AUTHORIZED"),
+          isNull(cliDeviceAuthRequest.completedAt),
+          gt(cliDeviceAuthRequest.expiresAt, now),
+        ),
+      )
+      .returning({
+        accessTokenId: cliDeviceAuthRequest.accessTokenId,
+        completedAt: cliDeviceAuthRequest.completedAt,
+      });
+    if (delivered[0]) {
+      delivery = delivered[0];
+      deliveredNow = true;
+    } else {
+      // A concurrent poll delivered it first; see whether this one may repeat it.
+      const [current] = await db
+        .select({
+          accessTokenId: cliDeviceAuthRequest.accessTokenId,
+          completedAt: cliDeviceAuthRequest.completedAt,
+        })
+        .from(cliDeviceAuthRequest)
+        .where(eq(cliDeviceAuthRequest.id, request.id))
+        .limit(1);
+      if (!current) return { state: "invalid" as const };
+      delivery = current;
+    }
+  }
+
+  const accessTokenId = delivery.accessTokenId;
+  if (
+    !accessTokenId ||
+    !request.userId ||
+    !(deliveredNow || canRedeliverCliToken(delivery.completedAt, now.getTime()))
+  ) {
+    return { state: "invalid" as const };
+  }
 
   return {
     state: "authorized" as const,

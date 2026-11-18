@@ -211,6 +211,9 @@ async function handleNativeSignIn(provider: Provider, callbackUrl: string) {
     return false;
 }
 
+// How long a started OAuth redirect may take before the buttons unlock again.
+const SIGN_IN_NAVIGATION_GRACE_MS = 10_000;
+
 export default function AuthClient({
     callbackUrl,
     error,
@@ -224,6 +227,7 @@ export default function AuthClient({
     // native browser or Apple sheet and replace the stored handoff verifier.
     const [signingInProviderId, setSigningInProviderId] = useState<string | null>(null);
     const signingInRef = useRef(false);
+    const signInReleaseTimerRef = useRef<number | undefined>(undefined);
     const reviewSubmittingRef = useRef(false);
     const [reviewForm, dispatchReviewForm] = useReducer(reviewFormReducer, {
         email: "",
@@ -269,13 +273,17 @@ export default function AuthClient({
         // a sign-in still marked as starting; make the buttons usable again.
         const handlePageShow = (event: PageTransitionEvent) => {
             if (!event.persisted) return;
+            window.clearTimeout(signInReleaseTimerRef.current);
             signingInRef.current = false;
             reviewSubmittingRef.current = false;
             setSigningInProviderId(null);
             dispatchReviewForm({ type: "page_restored" });
         };
         window.addEventListener("pageshow", handlePageShow);
-        return () => window.removeEventListener("pageshow", handlePageShow);
+        return () => {
+            window.removeEventListener("pageshow", handlePageShow);
+            window.clearTimeout(signInReleaseTimerRef.current);
+        };
     }, []);
 
     const retryProviders = useCallback(() => {
@@ -328,8 +336,14 @@ export default function AuthClient({
         }
 
         try {
-            // On success this navigates away, so the buttons stay disabled.
+            // On success this navigates away, so the buttons stay disabled. If
+            // the navigation is stopped before it commits, nothing else would
+            // re-enable them, so release after a grace period.
             await signIn(provider.id, { callbackUrl });
+            signInReleaseTimerRef.current = window.setTimeout(
+                release,
+                SIGN_IN_NAVIGATION_GRACE_MS,
+            );
         } catch (error) {
             console.error("[auth] sign-in failed", error);
             release();
