@@ -1,0 +1,214 @@
+diff --git a/dist/cjs/youtube-video-element.js b/dist/cjs/youtube-video-element.js
+index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca2882942b 100644
+--- a/dist/cjs/youtube-video-element.js
++++ b/dist/cjs/youtube-video-element.js
+@@ -181,7 +181,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+     this.textTracks.addEventListener("change", () => {
+       var _a;
+       const active = Array.from(this.textTracks).find((t) => t.mode === "showing");
+-      (_a = this.api) == null ? void 0 : _a.setOption("captions", "track", active ? { languageCode: active.language } : {});
++      (_a = this.api) == null ? void 0 : _a.setOption?.("captions", "track", active ? { languageCode: active.language } : {});
+     });
+     this.dispatchEvent(new Event("loadstart"));
+     let iframe = this.shadowRoot.querySelector("iframe");
+@@ -202,7 +202,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+           this.dispatchEvent(new Event("loadedmetadata"));
+           this.dispatchEvent(new Event("durationchange"));
+           if (this.#initialVolume !== 1) {
+-            (_a = this.api) == null ? void 0 : _a.setVolume(this.#initialVolume * 100);
++            (_a = this.api) == null ? void 0 : _a.setVolume?.(this.#initialVolume * 100);
+           }
+           this.dispatchEvent(new Event("volumechange"));
+           this.dispatchEvent(new Event("loadcomplete"));
+@@ -268,7 +268,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+     });
+     this.api.addEventListener("onVolumeChange", () => {
+       var _a;
+-      const apiVolume = ((_a = this.api) == null ? void 0 : _a.getVolume()) / 100;
++      const apiVolume = ((_a = this.api) == null ? void 0 : _a.getVolume?.()) / 100;
+       this.#initialVolume = apiVolume;
+       this.dispatchEvent(new Event("volumechange"));
+     });
+@@ -320,13 +320,13 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+     var _a;
+     this.#seekComplete = null;
+     await this.loadComplete;
+-    (_a = this.api) == null ? void 0 : _a.playVideo();
++    (_a = this.api) == null ? void 0 : _a.playVideo?.();
+     return createPlayPromise(this);
+   }
+   async pause() {
+     var _a;
+     await this.loadComplete;
+-    return (_a = this.api) == null ? void 0 : _a.pauseVideo();
++    return (_a = this.api) == null ? void 0 : _a.pauseVideo?.();
+   }
+   get seeking() {
+     return this.#seeking;
+@@ -371,7 +371,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+   get buffered() {
+     var _a, _b;
+     if (!this.isLoaded) return createTimeRanges();
+-    const progress = ((_a = this.api) == null ? void 0 : _a.getVideoLoadedFraction()) * ((_b = this.api) == null ? void 0 : _b.getDuration());
++    const progress = ((_a = this.api) == null ? void 0 : _a.getVideoLoadedFraction?.()) * ((_b = this.api) == null ? void 0 : _b.getDuration?.());
+     if (progress > 0) {
+       return createTimeRanges(0, progress);
+     }
+@@ -393,12 +393,12 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+     this.#seekComplete = new PublicPromise();
+     this.loadComplete.then(() => {
+       var _a, _b;
+-      (_a = this.api) == null ? void 0 : _a.seekTo(val, true);
++      (_a = this.api) == null ? void 0 : _a.seekTo?.(val, true);
+       if (this.paused) {
+         (_b = this.#seekComplete) == null ? void 0 : _b.then(() => {
+           var _a2;
+           if (!this.#seekComplete) return;
+-          (_a2 = this.api) == null ? void 0 : _a2.pauseVideo();
++          (_a2 = this.api) == null ? void 0 : _a2.pauseVideo?.();
+         });
+       }
+     });
+@@ -421,7 +421,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+     if (this.muted == val) return;
+     this.loadComplete.then(() => {
+       var _a, _b;
+-      val ? (_a = this.api) == null ? void 0 : _a.mute() : (_b = this.api) == null ? void 0 : _b.unMute();
++      val ? (_a = this.api) == null ? void 0 : _a.mute?.() : (_b = this.api) == null ? void 0 : _b.unMute?.();
+     });
+   }
+   get muted() {
+@@ -437,7 +437,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+     if (this.playbackRate == val) return;
+     this.loadComplete.then(() => {
+       var _a;
+-      (_a = this.api) == null ? void 0 : _a.setPlaybackRate(val);
++      (_a = this.api) == null ? void 0 : _a.setPlaybackRate?.(val);
+     });
+   }
+   get playsInline() {
+@@ -459,7 +459,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+     this.#initialVolume = val;
+     this.loadComplete.then(() => {
+       var _a;
+-      (_a = this.api) == null ? void 0 : _a.setVolume(val * 100);
++      (_a = this.api) == null ? void 0 : _a.setVolume?.(val * 100);
+     });
+   }
+   get volume() {
+@@ -467,7 +467,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+     if (!this.isLoaded) {
+       return this.#initialVolume;
+     }
+-    return ((_a = this.api) == null ? void 0 : _a.getVolume()) / 100;
++    return ((_a = this.api) == null ? void 0 : _a.getVolume?.()) / 100;
+   }
+   // This is a pattern to update property values that are set before
+   // the custom element is upgraded.
+diff --git a/dist/youtube-video-element.js b/dist/youtube-video-element.js
+index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201e9c2a59a 100644
+--- a/dist/youtube-video-element.js
++++ b/dist/youtube-video-element.js
+@@ -159,7 +159,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+     this.textTracks.addEventListener("change", () => {
+       var _a;
+       const active = Array.from(this.textTracks).find((t) => t.mode === "showing");
+-      (_a = this.api) == null ? void 0 : _a.setOption("captions", "track", active ? { languageCode: active.language } : {});
++      (_a = this.api) == null ? void 0 : _a.setOption?.("captions", "track", active ? { languageCode: active.language } : {});
+     });
+     this.dispatchEvent(new Event("loadstart"));
+     let iframe = this.shadowRoot.querySelector("iframe");
+@@ -180,7 +180,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+           this.dispatchEvent(new Event("loadedmetadata"));
+           this.dispatchEvent(new Event("durationchange"));
+           if (this.#initialVolume !== 1) {
+-            (_a = this.api) == null ? void 0 : _a.setVolume(this.#initialVolume * 100);
++            (_a = this.api) == null ? void 0 : _a.setVolume?.(this.#initialVolume * 100);
+           }
+           this.dispatchEvent(new Event("volumechange"));
+           this.dispatchEvent(new Event("loadcomplete"));
+@@ -246,7 +246,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+     });
+     this.api.addEventListener("onVolumeChange", () => {
+       var _a;
+-      const apiVolume = ((_a = this.api) == null ? void 0 : _a.getVolume()) / 100;
++      const apiVolume = ((_a = this.api) == null ? void 0 : _a.getVolume?.()) / 100;
+       this.#initialVolume = apiVolume;
+       this.dispatchEvent(new Event("volumechange"));
+     });
+@@ -298,13 +298,13 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+     var _a;
+     this.#seekComplete = null;
+     await this.loadComplete;
+-    (_a = this.api) == null ? void 0 : _a.playVideo();
++    (_a = this.api) == null ? void 0 : _a.playVideo?.();
+     return createPlayPromise(this);
+   }
+   async pause() {
+     var _a;
+     await this.loadComplete;
+-    return (_a = this.api) == null ? void 0 : _a.pauseVideo();
++    return (_a = this.api) == null ? void 0 : _a.pauseVideo?.();
+   }
+   get seeking() {
+     return this.#seeking;
+@@ -349,7 +349,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+   get buffered() {
+     var _a, _b;
+     if (!this.isLoaded) return createTimeRanges();
+-    const progress = ((_a = this.api) == null ? void 0 : _a.getVideoLoadedFraction()) * ((_b = this.api) == null ? void 0 : _b.getDuration());
++    const progress = ((_a = this.api) == null ? void 0 : _a.getVideoLoadedFraction?.()) * ((_b = this.api) == null ? void 0 : _b.getDuration?.());
+     if (progress > 0) {
+       return createTimeRanges(0, progress);
+     }
+@@ -371,12 +371,12 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+     this.#seekComplete = new PublicPromise();
+     this.loadComplete.then(() => {
+       var _a, _b;
+-      (_a = this.api) == null ? void 0 : _a.seekTo(val, true);
++      (_a = this.api) == null ? void 0 : _a.seekTo?.(val, true);
+       if (this.paused) {
+         (_b = this.#seekComplete) == null ? void 0 : _b.then(() => {
+           var _a2;
+           if (!this.#seekComplete) return;
+-          (_a2 = this.api) == null ? void 0 : _a2.pauseVideo();
++          (_a2 = this.api) == null ? void 0 : _a2.pauseVideo?.();
+         });
+       }
+     });
+@@ -399,7 +399,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+     if (this.muted == val) return;
+     this.loadComplete.then(() => {
+       var _a, _b;
+-      val ? (_a = this.api) == null ? void 0 : _a.mute() : (_b = this.api) == null ? void 0 : _b.unMute();
++      val ? (_a = this.api) == null ? void 0 : _a.mute?.() : (_b = this.api) == null ? void 0 : _b.unMute?.();
+     });
+   }
+   get muted() {
+@@ -415,7 +415,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+     if (this.playbackRate == val) return;
+     this.loadComplete.then(() => {
+       var _a;
+-      (_a = this.api) == null ? void 0 : _a.setPlaybackRate(val);
++      (_a = this.api) == null ? void 0 : _a.setPlaybackRate?.(val);
+     });
+   }
+   get playsInline() {
+@@ -437,7 +437,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+     this.#initialVolume = val;
+     this.loadComplete.then(() => {
+       var _a;
+-      (_a = this.api) == null ? void 0 : _a.setVolume(val * 100);
++      (_a = this.api) == null ? void 0 : _a.setVolume?.(val * 100);
+     });
+   }
+   get volume() {
+@@ -445,7 +445,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+     if (!this.isLoaded) {
+       return this.#initialVolume;
+     }
+-    return ((_a = this.api) == null ? void 0 : _a.getVolume()) / 100;
++    return ((_a = this.api) == null ? void 0 : _a.getVolume?.()) / 100;
+   }
+   // This is a pattern to update property values that are set before
+   // the custom element is upgraded.
