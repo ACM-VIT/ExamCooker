@@ -293,11 +293,13 @@ export async function pollCliDeviceAuthRequest(deviceCode: string) {
     }
   }
 
+  // A repeat delivery is judged when it is about to be returned, not when this
+  // poll started: the reads above can stall past the end of the grace period.
   const accessTokenId = delivery.accessTokenId;
   if (
     !accessTokenId ||
     !request.userId ||
-    !(deliveredNow || canRedeliverCliToken(delivery.completedAt, now.getTime()))
+    !(deliveredNow || canRedeliverCliToken(delivery.completedAt, Date.now()))
   ) {
     return { state: "invalid" as const };
   }
