@@ -1,4 +1,4 @@
-import { loadPdfiumWasm, releasePdfiumWasm } from "./pdfium-wasm";
+import { holdPdfiumWasm } from "./pdfium-wasm";
 import { foregroundTimeout } from "./foreground-timeout";
 
 export const PDFIUM_ENGINE_LOAD_TIMEOUT_MS = 15000;
@@ -29,24 +29,21 @@ export async function loadPdfiumEngine() {
   // Preload hooks are imported by SSR components too. Keep the browser-only
   // PDFium imports out of that bundle, including when the viewer uses ssr:false.
   if (typeof window === "undefined") throw new Error("PDF rendering requires a browser");
-  const wasm = loadPdfiumWasm();
-  let wasmSettled = false;
-  const markSettled = () => { wasmSettled = true; };
-  wasm.then(markSettled, markSettled);
+  // Once downloaded, the bytes are copied into the engine or the attempt
+  // failed; a rebuild reads the HTTP cache, so the download need not hold
+  // 1.65 MB after this build. One still in flight (the import timed out) is
+  // kept so a retry joins it, and dropped when it lands if none did.
+  const hold = holdPdfiumWasm();
   try {
     // Download progress has its own idle timeout. A slow but advancing WASM
     // transfer must not consume the engine's separate initialization deadline.
     const [{ createBrowserPdfiumEngine }, wasmBinary] = await Promise.all([
       engineDeadline(import("./browser-engine")),
-      wasm,
+      hold.wasm,
     ]);
     return await engineDeadline(createBrowserPdfiumEngine(wasmBinary),
       (lateEngine) => { void lateEngine.destroy().toPromise().catch(() => undefined); });
   } finally {
-    // Once downloaded, the bytes are copied into the engine or the attempt
-    // failed; a rebuild reads the HTTP cache, so this module need not hold
-    // 1.65 MB. A download still in flight is kept so a retry joins it instead
-    // of starting a second one.
-    if (wasmSettled) releasePdfiumWasm();
+    hold.release();
   }
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isPdfiumWasmRequested, loadPdfiumWasm, releasePdfiumWasm } from "./pdfium-wasm";
+import { holdPdfiumWasm, isPdfiumWasmRequested, loadPdfiumWasm, releasePdfiumWasm } from "./pdfium-wasm";
 
 const WASM = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
 
@@ -32,4 +32,68 @@ test("a failed download can be retried", async (t) => {
   await assert.rejects(loadPdfiumWasm());
   assert.equal(isPdfiumWasmRequested(), false);
   assert.equal((await loadPdfiumWasm()).byteLength, WASM.byteLength);
+});
+
+function deferredFetch(t: test.TestContext) {
+  const responses: Array<(response: Response) => void> = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (() => new Promise<Response>((resolve) => responses.push(resolve))) as typeof fetch;
+  t.after(() => { globalThis.fetch = original; releasePdfiumWasm(); });
+  return responses;
+}
+
+// Lets the release that waits on a download run once the download lands.
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+test("a download abandoned by a build is dropped when it lands", async (t) => {
+  const responses = deferredFetch(t);
+  // The build's import timed out while the engine was still downloading.
+  const abandoned = holdPdfiumWasm();
+  abandoned.release();
+  assert.equal(loadPdfiumWasm(), abandoned.wasm, "a retry can still join the download");
+
+  responses[0](new Response(WASM));
+  await abandoned.wasm;
+  await settle();
+  const next = loadPdfiumWasm();
+  assert.notEqual(next, abandoned.wasm, "nothing holds the bytes once it lands");
+  await settle();
+  responses[1](new Response(WASM));
+  await next;
+});
+
+test("a build that joined the download keeps it until that build is done", async (t) => {
+  const responses = deferredFetch(t);
+  const abandoned = holdPdfiumWasm();
+  abandoned.release();
+  const retry = holdPdfiumWasm();
+  assert.equal(retry.wasm, abandoned.wasm);
+
+  responses[0](new Response(WASM));
+  await retry.wasm;
+  await settle();
+  assert.equal(loadPdfiumWasm(), retry.wasm, "the joining build still holds it");
+  retry.release();
+  const next = loadPdfiumWasm();
+  assert.notEqual(next, retry.wasm);
+  await settle();
+  responses[1](new Response(WASM));
+  await next;
+});
+
+test("an abandoned download landing does not drop a newer one", async (t) => {
+  const responses = deferredFetch(t);
+  const abandoned = holdPdfiumWasm();
+  abandoned.release();
+  releasePdfiumWasm();
+  const replacement = loadPdfiumWasm();
+  assert.notEqual(replacement, abandoned.wasm);
+
+  responses[0](new Response(WASM));
+  await abandoned.wasm;
+  await settle();
+  assert.equal(loadPdfiumWasm(), replacement);
+  await settle();
+  responses[1](new Response(WASM));
+  await replacement;
 });
