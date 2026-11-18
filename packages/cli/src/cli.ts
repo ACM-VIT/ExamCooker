@@ -1901,31 +1901,12 @@ async function runPaperUpload(args: string[]) {
     campus: { type: "string" },
     title: { alias: "t", type: "string" },
     answerKey: { type: "boolean" },
-    aiReview: { type: "string" },
     json: { type: "boolean" },
     interactive: { type: "boolean" },
   });
   const jsonOutput = getBooleanFlag(values, "json");
   const interactive = shouldUseInteractive(values, jsonOutput);
   const runtimeConfig = await requireAuthContext(getStringFlag(values, "baseUrl"));
-  const aiReviewProvider = getStringFlag(values, "aiReview");
-  let aiReviewApiKey: string | undefined;
-  if (aiReviewProvider !== undefined) {
-    if (aiReviewProvider !== "openai" && aiReviewProvider !== "anthropic") {
-      throw new Error("--ai-review must be openai or anthropic.");
-    }
-    aiReviewApiKey = process.env.EXAMCOOKER_AI_API_KEY?.trim();
-    if (!aiReviewApiKey) {
-      throw new Error("Set EXAMCOOKER_AI_API_KEY to use --ai-review.");
-    }
-    const uploadUrl = new URL(runtimeConfig.baseUrl);
-    if (
-      uploadUrl.protocol !== "https:" &&
-      !["localhost", "127.0.0.1", "[::1]"].includes(uploadUrl.hostname)
-    ) {
-      throw new Error("AI review requires an HTTPS upload URL.");
-    }
-  }
 
   let filePath = positionals[0]?.trim() ?? "";
   if (!filePath && interactive) {
@@ -2111,10 +2092,6 @@ async function runPaperUpload(args: string[]) {
   if (answerKey) {
     formData.append("answerKey", "true");
   }
-  if (aiReviewProvider && aiReviewApiKey) {
-    formData.append("aiReviewProvider", aiReviewProvider);
-    formData.append("aiReviewApiKey", aiReviewApiKey);
-  }
 
   const spinner = createSpinner();
   spinner.start("Uploading paper...");
@@ -2122,7 +2099,6 @@ async function runPaperUpload(args: string[]) {
     method: "POST",
     token: runtimeConfig.token,
     body: formData,
-    redirect: aiReviewApiKey ? "error" : undefined,
   });
   const payload = (await response.json().catch(() => null)) as
     | {

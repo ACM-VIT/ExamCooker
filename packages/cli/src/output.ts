@@ -209,7 +209,6 @@ ${pc.bold("Papers:")}
   papers view [paper]        Inspect a paper or pick one interactively
   papers download [paper]    Save a paper PDF to disk
   papers upload <file>       Upload a past paper PDF
-    --ai-review <provider>   Use EXAMCOOKER_AI_API_KEY for optional OpenAI or Anthropic review
 
 ${pc.bold("Common options:")}
   --base-url <url>          Point the CLI at a different ExamCooker deployment
