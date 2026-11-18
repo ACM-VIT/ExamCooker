@@ -17,6 +17,7 @@ import { useGuestPrompt } from "@/app/components/auth-gate";
 import { useAiSession } from "@/app/components/ai/ai-session-provider";
 import { useToast } from "@/app/components/ui/use-toast";
 import type { CorrectionReportCategory } from "@/lib/ai/content-correction-types";
+import { useCorrectionActivityReset } from "./use-correction-activity-reset";
 
 type Props = {
   resourceId: string;
@@ -109,6 +110,7 @@ export default function ResourceCorrectionTrigger({
   // is confirmed, or the page leaves for sign-in.
   const [awaitingSession, setAwaitingSession] = useState(false);
   const isBusy = isPending || awaitingSession;
+  useCorrectionActivityReset(setAwaitingSession);
   // The form is cleared after the close animation; reopening first cancels it.
   const resetTimerRef = useRef<number | null>(null);
 
