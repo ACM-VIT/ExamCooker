@@ -208,6 +208,20 @@ async function fetchTaggedBatch({ table, joinTable, columns, cursor }) {
   return [...grouped.values()].slice(0, BATCH_SIZE);
 }
 
+// Courses are matched by code, so a dev course can keep its own id. A copied
+// AI review must name that id, or applying its suggestion fails.
+async function remapReviewCourse(client, review) {
+  const suggestion = review?.suggestion;
+  if (!suggestion?.courseId) return review;
+  const { rows } = suggestion.courseCode
+    ? await client.query('SELECT id FROM "Course" WHERE code = $1', [suggestion.courseCode])
+    : { rows: [] };
+  const courseId = rows[0]?.id ?? null;
+  return courseId === suggestion.courseId
+    ? review
+    : { ...review, suggestion: { ...suggestion, courseId } };
+}
+
 async function copyInBatches(label, fetchBatch, handleBatch) {
   let cursor = null;
   let total = 0;
@@ -435,6 +449,7 @@ async function copyNotes(systemUserId) {
     async (notes) => {
       await withDevTransaction(async (client) => {
         for (const note of notes) {
+          const aiReview = await remapReviewCourse(client, note.aiReview);
           await client.query(
             `
               INSERT INTO "Note" (
@@ -468,7 +483,7 @@ async function copyNotes(systemUserId) {
               note.isClear,
               note.contentHash,
               note.courseCode,
-              note.aiReview,
+              aiReview,
               note.aiReviewedAt,
               note.moderationArchivedAt,
               note.updatedAt,
@@ -514,6 +529,7 @@ async function copyPastPapers(systemUserId) {
     async (papers) => {
       await withDevTransaction(async (client) => {
         for (const paper of papers) {
+          const aiReview = await remapReviewCourse(client, paper.aiReview);
           await client.query(
             `
               INSERT INTO "PastPaper" (
@@ -565,7 +581,7 @@ async function copyPastPapers(systemUserId) {
               paper.campus,
               paper.hasAnswerKey,
               paper.pageEdits,
-              paper.aiReview,
+              aiReview,
               paper.aiReviewedAt,
               paper.moderationArchivedAt,
               paper.updatedAt,
