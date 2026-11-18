@@ -215,6 +215,12 @@ export default function SortDropdown({
             }
           }}
           onKeyDown={handleKeyDown}
+          // Space is handled on keydown. Firefox still clicks a button on the
+          // Space keyup unless that is cancelled too, which would toggle the
+          // menu a second time.
+          onKeyUp={(event) => {
+            if (event.key === " ") event.preventDefault();
+          }}
           className="inline-flex items-center justify-between gap-3 border border-black/25 bg-white px-2 py-1 text-xs font-semibold text-black transition-colors hover:border-black/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/70 dark:border-[#D5D5D5]/25 dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:hover:border-[#3BF4C7]/50 dark:focus-visible:ring-[#3BF4C7]"
         >
           <span>{OPTIONS[selectedIndex].label}</span>
