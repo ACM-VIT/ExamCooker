@@ -34,6 +34,7 @@ import {
   buildCoursePastPapersPath,
   buildPageContextMessage,
   captureCurrentVisualContext,
+  currentHistoryEntry,
   getCoursePastPapersContext,
   getInternalPathFromHref,
   getOpenPdfView,
@@ -286,6 +287,7 @@ export default function VoiceAgentProvider({
     inAppHistoryRef.current ??= startInAppHistory(
       browserPath,
       window.history.length,
+      currentHistoryEntry(),
     );
   }, [browserPath]);
 
@@ -298,10 +300,11 @@ export default function VoiceAgentProvider({
           : currentBrowserPath();
       const action = detail?.action ?? "push";
       const historyLength = detail?.historyLength ?? window.history.length;
+      const entry = detail ? detail.entry ?? null : currentHistoryEntry();
       const history = inAppHistoryRef.current;
       inAppHistoryRef.current = history
-        ? recordInAppNavigation(history, action, nextPath, historyLength)
-        : startInAppHistory(nextPath, historyLength);
+        ? recordInAppNavigation(history, action, nextPath, historyLength, entry)
+        : startInAppHistory(nextPath, historyLength, entry);
     };
 
     window.addEventListener(NAVIGATION_EVENT, handleNavigationEvent);
