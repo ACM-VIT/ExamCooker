@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/upcoming-exams";
 import type { UpcomingExamItem } from "@/lib/data/upcoming-exams";
 import type { ExamType } from "@/db";
+import { examTypeLabel } from "@/lib/exam-slug";
 
 type Props = {
     courses: CourseOption[];
@@ -20,6 +21,8 @@ type Props = {
 const EXAM_TYPES: { value: ExamType; label: string }[] = [
     { value: "CAT_1", label: "CAT-1" },
     { value: "CAT_2", label: "CAT-2" },
+    { value: "RECAT_1", label: examTypeLabel("RECAT_1") },
+    { value: "RECAT_2", label: examTypeLabel("RECAT_2") },
     { value: "FAT", label: "FAT" },
     { value: "MID", label: "Mid" },
     { value: "QUIZ", label: "Quiz" },
@@ -28,6 +31,7 @@ const EXAM_TYPES: { value: ExamType; label: string }[] = [
 ];
 
 const SCHEDULED_AT_FORMATTER = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
     dateStyle: "medium",
     timeStyle: "short",
 });
@@ -218,6 +222,20 @@ function Row({
         });
     }, [item.scheduledAt]);
 
+    // Editing always starts from the exam as it is now, so a cancelled edit
+    // never resurfaces and other fields don't lag behind a refresh.
+    const startEditing = () => {
+        updateDraft({
+            courseId: item.courseId,
+            editing: true,
+            examType: item.examType ?? "",
+            scheduledAt: item.scheduledAt
+                ? formatDateTimeLocalValue(item.scheduledAt)
+                : "",
+            slotsText: item.slots.join(", "),
+        });
+    };
+
     const save = () => {
         const courseId = draft.courseId;
         if (!courseId) return;
@@ -313,7 +331,8 @@ function Row({
                         <button
                             type="button"
                             onClick={() => updateDraft({ editing: false })}
-                            className="rounded-md border border-black/20 px-3 py-1 text-xs text-black/70 dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/70"
+                            disabled={pending}
+                            className="disabled:opacity-60 rounded-md border border-black/20 px-3 py-1 text-xs text-black/70 dark:border-[#D5D5D5]/20 dark:text-[#D5D5D5]/70"
                         >
                             Cancel
                         </button>
@@ -346,7 +365,7 @@ function Row({
                 </div>
             </td>
             <td className="p-2 text-xs text-black/70 dark:text-[#D5D5D5]/70">
-                {item.examType ? item.examType.replace("_", "-") : "—"}
+                {item.examType ? examTypeLabel(item.examType) : "—"}
             </td>
             <td className="p-2 text-xs text-black/70 dark:text-[#D5D5D5]/70">
                 {item.scheduledAt ? formatScheduledAt(item.scheduledAt) : "—"}
@@ -355,7 +374,7 @@ function Row({
                 <div className="flex gap-2">
                     <button
                         type="button"
-                        onClick={() => updateDraft({ editing: true })}
+                        onClick={startEditing}
                         className="text-xs text-black/70 underline hover:text-black dark:text-[#D5D5D5]/70 dark:hover:text-[#3BF4C7]"
                     >
                         edit

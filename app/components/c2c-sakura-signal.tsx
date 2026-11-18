@@ -159,6 +159,9 @@ export default function C2CSakuraSignal() {
 
     const handleDockPointerDown = (e: React.PointerEvent<HTMLAnchorElement>) => {
         if (e.pointerType === "mouse" && e.button !== 0) return;
+        // A new gesture starts as a tap. A drag whose release produced no click
+        // (it ended off the link) must not swallow this gesture's click.
+        didDragRef.current = false;
         const rect = e.currentTarget.getBoundingClientRect();
         dragStartRef.current = {
             pointerX: e.clientX,

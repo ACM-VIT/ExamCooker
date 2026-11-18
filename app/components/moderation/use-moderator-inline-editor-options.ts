@@ -37,7 +37,8 @@ function moderatorInlineEditorOptionsReducer(
 ): ModeratorInlineEditorOptionsState {
   switch (action.type) {
     case "loading":
-      return { ...state, isLoading: true };
+      // A new attempt replaces the previous failure; the editor reopening retries.
+      return { ...state, error: null, isLoading: true };
     case "loaded":
       return {
         options: action.options,

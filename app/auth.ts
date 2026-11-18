@@ -507,6 +507,10 @@ export const authConfig = {
             throw error;
           }
           console.error("[auth] role refresh failed", error);
+          // A role that is due for a refresh cannot be confirmed, so it must
+          // not outlive a demotion. Fall back to the least privilege; the
+          // sync time stays old, so the next successful read restores it.
+          if (shouldRefreshRole) token.role = "USER";
         }
       }
 

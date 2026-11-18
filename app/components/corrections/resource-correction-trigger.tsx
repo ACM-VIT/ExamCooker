@@ -5,6 +5,7 @@ import { Check, Flag, X } from "lucide-react";
 import {
   forwardRef,
   useEffect,
+  useRef,
   useState,
   useTransition,
   type ComponentPropsWithoutRef,
@@ -16,6 +17,7 @@ import { useGuestPrompt } from "@/app/components/auth-gate";
 import { useAiSession } from "@/app/components/ai/ai-session-provider";
 import { useToast } from "@/app/components/ui/use-toast";
 import type { CorrectionReportCategory } from "@/lib/ai/content-correction-types";
+import { useCorrectionSessionWait } from "./use-correction-session-wait";
 
 type Props = {
   resourceId: string;
@@ -104,8 +106,25 @@ export default function ResourceCorrectionTrigger({
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // Submitted while the session was still loading: the report is sent once it
+  // is confirmed, or the page leaves for sign-in. Closing the form abandons
+  // the wait, so a stalled session request cannot trap the user.
+  const { awaitingSession, startWait, endWait } = useCorrectionSessionWait();
+  const isBusy = isPending || awaitingSession;
+  // The form is cleared after the close animation; reopening first cancels it.
+  const resetTimerRef = useRef<number | null>(null);
+
+  const cancelPendingReset = () => {
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => cancelPendingReset, []);
 
   const reset = () => {
+    resetTimerRef.current = null;
     setCategory("wrong_title");
     setDescription("");
     setSuggestedValue("");
@@ -114,12 +133,46 @@ export default function ResourceCorrectionTrigger({
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
+    // A report being sent keeps the dialog open, so its result lands on the
+    // form that sent it instead of a cleared one.
+    if (!nextOpen && isPending) return;
+    if (!nextOpen) endWait();
+    cancelPendingReset();
     setOpen(nextOpen);
-    if (!nextOpen) window.setTimeout(reset, 200);
+    if (!nextOpen) resetTimerRef.current = window.setTimeout(reset, 200);
   };
 
   const submit = () => {
-    if (!requireAuth("report a correction")) return;
+    // The report is what the form held when it was submitted, even if the
+    // send waits for the session to load. The continuation must not call
+    // requireAuth again: its closure still sees the loading state.
+    if (isBusy) return;
+    const report = { category, description, suggestedValue };
+    const isCurrentWait = startWait();
+    const signedIn = requireAuth(
+      "report a correction",
+      () => {
+        if (!isCurrentWait()) return;
+        endWait();
+        sendReport(report);
+      },
+      isCurrentWait,
+    );
+    if (signedIn) {
+      endWait();
+      sendReport(report);
+    }
+  };
+
+  const sendReport = ({
+    category,
+    description,
+    suggestedValue,
+  }: {
+    category: CorrectionReportCategory;
+    description: string;
+    suggestedValue: string;
+  }) => {
     if (description.trim().length < 10) {
       setError("Please add a little more detail so the report can be verified.");
       return;
@@ -127,7 +180,10 @@ export default function ResourceCorrectionTrigger({
     setError(null);
     startTransition(async () => {
       try {
-        if (!await ensureAiReady("contentCorrection")) return;
+        if (!await ensureAiReady("contentCorrection")) {
+          setError("Reports are verified by AI. Add a provider key to send this one.");
+          return;
+        }
         await submitContentCorrectionReport({
           resourceId,
           resourceType,
@@ -236,8 +292,8 @@ export default function ResourceCorrectionTrigger({
         >
           Cancel
         </button>
-        <SubmitButton disabled={isPending}>
-          {isPending ? "Sending…" : "Send report"}
+        <SubmitButton disabled={isBusy}>
+          {isBusy ? "Sending…" : "Send report"}
         </SubmitButton>
       </div>
     </form>
@@ -245,7 +301,14 @@ export default function ResourceCorrectionTrigger({
 
   if (isMobile) {
     return (
-      <Drawer.Root open={open} onOpenChange={handleOpenChange} modal>
+      <Drawer.Root
+        open={open}
+        onOpenChange={handleOpenChange}
+        // A swipe that the pending guard above refuses would leave the sheet
+        // dragged part-way off screen.
+        dismissible={!isPending}
+        modal
+      >
         <Drawer.Trigger asChild><TriggerButton /></Drawer.Trigger>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-50 bg-black/65 backdrop-blur-[3px]" />

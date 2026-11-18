@@ -19,8 +19,15 @@ import { useGuestPrompt } from "@/app/components/auth-gate";
 import CoursePicker, { type CourseOption } from "@/app/components/mod/course-picker";
 import AppImage from "@/app/components/common/app-image";
 import { useAiSession } from "@/app/components/ai/ai-session-provider";
-
-type UploadVariant = "Notes" | "Past Papers";
+import { EXAM_TYPE_OPTIONS } from "@/lib/exam-slug";
+import {
+    initialUploadFormState,
+    isConvertingImages,
+    uploadFormReducer,
+    type UploadMetadata,
+    type UploadMetadataField,
+    type UploadVariant,
+} from "@/app/components/upload-form-state";
 
 type UploadFileProps = {
     variant: UploadVariant;
@@ -45,32 +52,12 @@ type UploadProcessResponse = {
 type UploadSaveResponse = {
     success: boolean;
     error?: string;
+    autoReview?: boolean;
 };
 
-type UploadFormState = {
-    fileTitles: string[];
-    year: string;
-    slot: string;
-    courseId: string | null;
-    examType: string;
-    semesterVal: string;
-    campusVal: string;
-    hasAnswerKey: boolean;
-    files: File[];
-    isDragging: boolean;
-    error: string;
-    isConverting: boolean;
-    imageBundleFiles: File[];
-    isImageBundleMode: boolean;
-};
-
-type UploadFormAction =
-    | { type: "patch"; payload: Partial<UploadFormState> }
-    | { type: "update_title"; index: number; value: string };
-
-type UploadFieldChange = (
-    field: keyof UploadFormState,
-    value: UploadFormState[keyof UploadFormState],
+type UploadFieldChange = <Field extends UploadMetadataField>(
+    field: Field,
+    value: UploadMetadata[Field],
 ) => void;
 
 type UploadFieldIds = {
@@ -107,19 +94,6 @@ const SLOT_OPTIONS = [
     "G2",
 ];
 
-const EXAM_TYPES = [
-    { value: "CAT_1", label: "CAT-1" },
-    { value: "CAT_2", label: "CAT-2" },
-    { value: "FAT", label: "FAT" },
-    { value: "MODEL_CAT_1", label: "Model CAT-1" },
-    { value: "MODEL_CAT_2", label: "Model CAT-2" },
-    { value: "MODEL_FAT", label: "Model FAT" },
-    { value: "MID", label: "Mid" },
-    { value: "QUIZ", label: "Quiz" },
-    { value: "CIA", label: "CIA" },
-    { value: "OTHER", label: "Other" },
-];
-
 const SEMESTERS = [
     { value: "FALL", label: "Fall" },
     { value: "WINTER", label: "Winter" },
@@ -137,23 +111,6 @@ const CAMPUSES = [
 
 const SELECT_CLASS =
     "p-2 w-full bg-[#5FC4E7] dark:bg-[#008A90] cursor-pointer transition-colors duration-300 hover:bg-opacity-85 text-sm";
-
-const initialUploadFormState: UploadFormState = {
-    fileTitles: [],
-    year: "",
-    slot: "",
-    courseId: null,
-    examType: "",
-    semesterVal: "",
-    campusVal: "",
-    hasAnswerKey: false,
-    files: [],
-    isDragging: false,
-    error: "",
-    isConverting: false,
-    imageBundleFiles: [],
-    isImageBundleMode: false,
-};
 
 const isPdfFile = (file: File) =>
     file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
@@ -175,30 +132,15 @@ function getClipboardImageFiles(clipboardData: DataTransfer | null): File[] {
     return files.filter(isImageFile);
 }
 
-function uploadFormReducer(
-    state: UploadFormState,
-    action: UploadFormAction,
-): UploadFormState {
-    switch (action.type) {
-        case "patch":
-            return { ...state, ...action.payload };
-        case "update_title": {
-            const nextTitles = [...state.fileTitles];
-            nextTitles[action.index] = action.value;
-            return { ...state, fileTitles: nextTitles };
-        }
-        default:
-            return state;
-    }
-}
-
 function UploadHeader({
     formId,
     pending,
+    disabled,
     variant,
 }: {
     formId: string;
     pending: boolean;
+    disabled: boolean;
     variant: UploadVariant;
 }) {
     const href = variant === "Past Papers" ? "/past_papers" : "/notes";
@@ -221,7 +163,7 @@ function UploadHeader({
                 <button
                     type="submit"
                     form={formId}
-                    disabled={pending}
+                    disabled={disabled}
                     className="relative whitespace-nowrap border-2 border-black bg-[#3BF4C7] px-3 py-2 text-sm font-bold text-black transition duration-150 group-hover:-translate-x-1 group-hover:-translate-y-1 disabled:cursor-not-allowed dark:border-[#D5D5D5] dark:bg-[#0C1222] dark:text-[#D5D5D5] dark:group-hover:border-[#3BF4C7] dark:group-hover:text-[#3BF4C7] sm:px-4 sm:text-lg"
                 >
                     {pending ? "Uploading..." : "Upload"}
@@ -320,7 +262,7 @@ function PastPaperMetadataFields({
                         onChange={(event) => updateField("examType", event.target.value)}
                     >
                         <option value="">Select</option>
-                        {EXAM_TYPES.map((item) => (
+                        {EXAM_TYPE_OPTIONS.map((item) => (
                             <option key={item.value} value={item.value}>
                                 {item.label}
                             </option>
@@ -738,6 +680,39 @@ function SelectedFilesList({
     );
 }
 
+function PaperAiReviewFields() {
+    const inputClassName =
+        "ec-focus-ring w-full border border-black/25 bg-white px-3 py-2 text-sm dark:border-white/25 dark:bg-white/5";
+
+    return (
+        <details className="border border-black/15 p-3 dark:border-white/15">
+            <summary className="cursor-pointer text-sm font-semibold">AI review (optional)</summary>
+            <p className="mt-2 text-xs text-black/65 dark:text-white/65">
+                Use a key for AI review. Leave it blank to use your session key or send the paper to moderators.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr]">
+                <label className="block text-xs font-semibold">
+                    <span className="mb-1 block">Provider</span>
+                    <select name="aiReviewProvider" className={inputClassName}>
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                    </select>
+                </label>
+                <label className="block text-xs font-semibold">
+                    <span className="mb-1 block">API key (optional)</span>
+                    <input
+                        type="password"
+                        name="aiReviewApiKey"
+                        className={inputClassName}
+                        maxLength={512}
+                        autoComplete="off"
+                    />
+                </label>
+            </div>
+        </details>
+    );
+}
+
 function useUploadFileController({ variant, courses }: UploadFileProps) {
     const [state, dispatch] = useReducer(
         uploadFormReducer,
@@ -746,7 +721,9 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     const [pending, startTransition] = useTransition();
     const submissionInFlightRef = useRef(false);
     const cameraInputRef = useRef<HTMLInputElement | null>(null);
+    // Same-tick guards; the reducer holds the state the UI renders.
     const imageConversionInFlightRef = useRef(false);
+    const nextConversionIdRef = useRef(0);
     const fieldId = useId();
 
     const ids: UploadFieldIds = {
@@ -774,19 +751,19 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
         files,
         hasAnswerKey,
         imageBundleFiles,
-        isConverting,
-        isDragging,
         isImageBundleMode,
         semesterVal,
         slot,
         year,
     } = state;
+    const isConverting = isConvertingImages(state);
 
     const updateField = useCallback<UploadFieldChange>((field, value) => {
-        dispatch({
-            type: "patch",
-            payload: { [field]: value } as Partial<UploadFormState>,
-        });
+        dispatch({ type: "set_field", field, value } as Parameters<typeof dispatch>[0]);
+    }, []);
+
+    const setError = useCallback((nextError: string) => {
+        dispatch({ type: "set_error", error: nextError });
     }, []);
 
     const imagePreviewUrls = useMemo(
@@ -858,6 +835,14 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     const addFiles = useCallback(
         async (incomingFiles: File[]) => {
             if (!incomingFiles.length) return;
+            if (submissionInFlightRef.current) {
+                toast({ title: "Wait for the current upload to finish." });
+                return;
+            }
+            if (imageConversionInFlightRef.current) {
+                toast({ title: "Wait for the current pages to finish processing." });
+                return;
+            }
 
             const pdfFiles: File[] = [];
             const imageFiles: File[] = [];
@@ -886,10 +871,6 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             }
 
             if (variant === "Past Papers" && imageFiles.length) {
-                if (imageConversionInFlightRef.current) {
-                    toast({ title: "Wait for the current pages to finish processing." });
-                    return;
-                }
                 if (files.length > 0 && !isImageBundleMode) {
                     toast({
                         title: "Remove the existing PDF before adding images",
@@ -898,34 +879,29 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                     return;
                 }
 
+                const conversionId = ++nextConversionIdRef.current;
                 imageConversionInFlightRef.current = true;
-                dispatch({ type: "patch", payload: { isConverting: true } });
+                dispatch({ type: "conversion_started", conversionId });
 
                 try {
                     const mergedImageFiles = [...imageBundleFiles, ...imageFiles];
                     const mergedPdf = await convertImagesToPdfFile(mergedImageFiles);
-                    const existingTitle = fileTitles[0]?.trim();
-
                     dispatch({
-                        type: "patch",
-                        payload: {
-                            imageBundleFiles: mergedImageFiles,
-                            isImageBundleMode: true,
-                            files: [mergedPdf],
-                            fileTitles: [
-                                existingTitle || stripExtension(mergedPdf.name),
-                            ],
-                        },
+                        type: "conversion_succeeded",
+                        conversionId,
+                        images: mergedImageFiles,
+                        pdf: mergedPdf,
+                        fallbackTitle: stripExtension(mergedPdf.name),
                     });
                 } catch (conversionError) {
                     console.error("Failed to convert images:", conversionError);
+                    dispatch({ type: "conversion_failed", conversionId });
                     toast({
                         title: "Could not process images",
                         variant: "destructive",
                     });
                 } finally {
                     imageConversionInFlightRef.current = false;
-                    dispatch({ type: "patch", payload: { isConverting: false } });
                 }
                 return;
             }
@@ -948,20 +924,14 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                 }
 
                 dispatch({
-                    type: "patch",
-                    payload: {
-                        files: [...files, ...pdfFiles],
-                        fileTitles: [
-                            ...fileTitles,
-                            ...pdfFiles.map((file) => stripExtension(file.name)),
-                        ],
-                    },
+                    type: "add_pdfs",
+                    files: pdfFiles,
+                    titles: pdfFiles.map((file) => stripExtension(file.name)),
                 });
             }
         },
         [
             convertImagesToPdfFile,
-            fileTitles,
             files,
             imageBundleFiles,
             isImageBundleMode,
@@ -973,10 +943,10 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
     const dropzone = useDropzone({
         onDrop: (acceptedFiles: File[]) => {
             void addFiles(acceptedFiles);
-            updateField("isDragging", false);
+            dispatch({ type: "set_dragging", value: false });
         },
-        onDragEnter: () => updateField("isDragging", true),
-        onDragLeave: () => updateField("isDragging", false),
+        onDragEnter: () => dispatch({ type: "set_dragging", value: true }),
+        onDragLeave: () => dispatch({ type: "set_dragging", value: false }),
         // Clipboard images are handled at the document level below so paste
         // keeps working after the initial dropzone is replaced by the bundle UI.
         noPaste: true,
@@ -1001,16 +971,12 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             if (pastedImages.length === 0) return;
 
             event.preventDefault();
-            if (isConverting) {
-                toast({ title: "Wait for the current pages to finish processing." });
-                return;
-            }
             void addFiles(pastedImages);
         };
 
         document.addEventListener("paste", handleClipboardPaste);
         return () => document.removeEventListener("paste", handleClipboardPaste);
-    }, [addFiles, isConverting, toast, variant]);
+    }, [addFiles, variant]);
 
     const handleTitleChange = useCallback((index: number, value: string) => {
         dispatch({ type: "update_title", index, value });
@@ -1018,30 +984,17 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
 
     const handleRemoveFile = useCallback(
         (index: number) => {
-            const nextFiles = files.filter((_, fileIndex) => fileIndex !== index);
-            const nextTitles = fileTitles.filter(
-                (_, titleIndex) => titleIndex !== index,
-            );
-
-            dispatch({
-                type: "patch",
-                payload: {
-                    files: nextFiles,
-                    fileTitles: nextTitles,
-                    ...(variant === "Past Papers" && nextFiles.length === 0
-                        ? {
-                            imageBundleFiles: [],
-                            isImageBundleMode: false,
-                        }
-                        : {}),
-                },
-            });
+            if (imageConversionInFlightRef.current) {
+                toast({ title: "Wait for the current pages to finish processing." });
+                return;
+            }
+            dispatch({ type: "remove_file", index, variant });
         },
-        [fileTitles, files, variant],
+        [toast, variant],
     );
 
     const handleSubmit = useCallback(
-        async (event: React.FormEvent) => {
+        async (event: React.FormEvent<HTMLFormElement>) => {
             event.preventDefault();
             if (submissionInFlightRef.current) return;
 
@@ -1049,28 +1002,35 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                 return;
             }
 
-            dispatch({ type: "patch", payload: { error: "" } });
+            setError("");
+
+            if (imageConversionInFlightRef.current) {
+                setError("Wait for the pages to finish processing before uploading.");
+                return;
+            }
 
             if (files.length === 0) {
-                dispatch({
-                    type: "patch",
-                    payload: { error: "Please select at least one file to upload." },
-                });
+                setError("Please select at least one file to upload.");
                 return;
             }
 
             if (variant === "Notes" && courses?.length && !courseId) {
-                dispatch({
-                    type: "patch",
-                    payload: { error: "Please select a course." },
-                });
+                setError("Please select a course.");
                 return;
             }
 
+            const uploadFields = new FormData(event.currentTarget);
+            const apiKey = uploadFields.get("aiReviewApiKey")?.toString().trim();
+            const aiReview = apiKey
+                ? { provider: uploadFields.get("aiReviewProvider"), apiKey }
+                : undefined;
             submissionInFlightRef.current = true;
             startTransition(async () => {
                 try {
-                    if (!await ensureAiReady("moderation")) return;
+                    if (variant === "Notes" && !await ensureAiReady("moderation")) {
+                        setError("Uploads are reviewed by AI. Add a provider key to upload.");
+                        return;
+                    }
                     const formDatas = files.map((file, index) => {
                         const formData = new FormData();
                         formData.append("file", file);
@@ -1114,6 +1074,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
 
                     const saveResponse = await fetch("/api/uploads", {
                         method: "POST",
+                        redirect: aiReview ? "error" : undefined,
                         headers: {
                             "Content-Type": "application/json",
                         },
@@ -1127,6 +1088,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                             semester: semesterVal || null,
                             campus: campusVal || null,
                             hasAnswerKey,
+                            aiReview,
                         }),
                     });
                     const savePayload = (await saveResponse
@@ -1139,20 +1101,21 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
                         );
                     }
 
-                    toast({ title: "Selected files uploaded successfully." });
+                    toast({
+                        title: variant === "Past Papers"
+                            ? savePayload.autoReview
+                                ? "Paper submitted for AI review."
+                                : "Paper submitted for moderator review."
+                            : "Selected files uploaded successfully.",
+                    });
                     push(variant === "Past Papers" ? "/past_papers" : "/notes");
                 } catch (uploadError) {
                     console.error("Error uploading files:", uploadError);
-                    dispatch({
-                        type: "patch",
-                        payload: {
-                            error: `Error uploading files: ${
-                                uploadError instanceof Error
-                                    ? uploadError.message
-                                    : "Unknown error"
-                            }`,
-                        },
-                    });
+                    setError(`Error uploading files: ${
+                        uploadError instanceof Error
+                            ? uploadError.message
+                            : "Unknown error"
+                    }`);
                 } finally {
                     submissionInFlightRef.current = false;
                 }
@@ -1170,6 +1133,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
             ensureAiReady,
             push,
             semesterVal,
+            setError,
             slot,
             toast,
             variant,
@@ -1191,6 +1155,7 @@ function useUploadFileController({ variant, courses }: UploadFileProps) {
         hasCourseSelection,
         ids,
         imagePreviewUrls,
+        isConverting,
         pending,
         state,
         updateField,
@@ -1209,6 +1174,7 @@ function UploadFile({ variant, courses }: UploadFileProps) {
         hasCourseSelection,
         ids,
         imagePreviewUrls,
+        isConverting,
         pending,
         state,
         updateField,
@@ -1223,7 +1189,6 @@ function UploadFile({ variant, courses }: UploadFileProps) {
         files,
         hasAnswerKey,
         imageBundleFiles,
-        isConverting,
         isDragging,
         isImageBundleMode,
         semesterVal,
@@ -1237,82 +1202,88 @@ function UploadFile({ variant, courses }: UploadFileProps) {
                 <UploadHeader
                     formId={ids.formId}
                     pending={pending}
+                    disabled={pending || isConverting}
                     variant={variant}
                 />
 
                 <form
                     id={ids.formId}
                     onSubmit={handleSubmit}
-                    className="w-full space-y-4"
+                    className="w-full"
                 >
-                    {hasCourseSelection && courses ? (
-                        <CourseField
-                            courseId={courseId}
-                            courses={courses}
-                            required={variant === "Notes"}
-                            updateField={updateField}
-                        />
-                    ) : null}
+                    {/* The submitted values are read when the upload starts, so lock the fields until it ends. */}
+                    <fieldset disabled={pending} className="m-0 min-w-0 space-y-4 border-0 p-0">
+                        {hasCourseSelection && courses ? (
+                            <CourseField
+                                courseId={courseId}
+                                courses={courses}
+                                required={variant === "Notes"}
+                                updateField={updateField}
+                            />
+                        ) : null}
 
-                    {variant === "Past Papers" && hasCourseSelection ? (
-                        <PastPaperMetadataFields
-                            campusVal={campusVal}
-                            examType={examType}
-                            hasAnswerKey={hasAnswerKey}
-                            ids={ids}
-                            semesterVal={semesterVal}
-                            slot={slot}
-                            updateField={updateField}
-                            year={year}
-                        />
-                    ) : null}
+                        {variant === "Past Papers" && hasCourseSelection ? (
+                            <PastPaperMetadataFields
+                                campusVal={campusVal}
+                                examType={examType}
+                                hasAnswerKey={hasAnswerKey}
+                                ids={ids}
+                                semesterVal={semesterVal}
+                                slot={slot}
+                                updateField={updateField}
+                                year={year}
+                            />
+                        ) : null}
 
-                    {!hasCourseSelection ? (
-                        <BasicMetadataFields
-                            slot={slot}
-                            updateField={updateField}
-                            year={year}
-                        />
-                    ) : null}
+                        {!hasCourseSelection ? (
+                            <BasicMetadataFields
+                                slot={slot}
+                                updateField={updateField}
+                                year={year}
+                            />
+                        ) : null}
 
-                    {variant === "Past Papers" && isImageBundleMode ? (
-                        <ImageBundleSection
-                            addMoreImagesId={ids.addMoreImagesId}
-                            bundleTitleId={ids.bundleTitleId}
-                            cameraInputRef={cameraInputRef}
-                            imageBundleFiles={imageBundleFiles}
-                            imagePreviewUrls={imagePreviewUrls}
-                            isConverting={isConverting}
-                            onAddFiles={addFiles}
-                            onRemoveAll={() => handleRemoveFile(0)}
-                            onTitleChange={handleTitleChange}
-                            title={fileTitles[0] ?? ""}
-                        />
-                    ) : (
-                        <>
-                            <PdfDropzoneSection
+                        {variant === "Past Papers" && isImageBundleMode ? (
+                            <ImageBundleSection
+                                addMoreImagesId={ids.addMoreImagesId}
+                                bundleTitleId={ids.bundleTitleId}
                                 cameraInputRef={cameraInputRef}
-                                canSelectMoreFiles={canSelectMoreFiles}
-                                dropzone={dropzone}
-                                files={files}
-                                isDragging={isDragging}
+                                imageBundleFiles={imageBundleFiles}
+                                imagePreviewUrls={imagePreviewUrls}
+                                isConverting={isConverting}
                                 onAddFiles={addFiles}
-                                variant={variant}
-                            />
-                            <SelectedFilesList
-                                fileTitles={fileTitles}
-                                files={files}
-                                onRemoveFile={handleRemoveFile}
+                                onRemoveAll={() => handleRemoveFile(0)}
                                 onTitleChange={handleTitleChange}
+                                title={fileTitles[0] ?? ""}
                             />
-                        </>
-                    )}
+                        ) : (
+                            <>
+                                <PdfDropzoneSection
+                                    cameraInputRef={cameraInputRef}
+                                    canSelectMoreFiles={canSelectMoreFiles}
+                                    dropzone={dropzone}
+                                    files={files}
+                                    isDragging={isDragging}
+                                    onAddFiles={addFiles}
+                                    variant={variant}
+                                />
+                                <SelectedFilesList
+                                    fileTitles={fileTitles}
+                                    files={files}
+                                    onRemoveFile={handleRemoveFile}
+                                    onTitleChange={handleTitleChange}
+                                />
+                            </>
+                        )}
 
-                    {error ? (
-                        <div className="mb-4 text-center">
-                            <span className="text-red-500">{error}</span>
-                        </div>
-                    ) : null}
+                        {variant === "Past Papers" ? <PaperAiReviewFields /> : null}
+
+                        {error ? (
+                            <div className="mb-4 text-center">
+                                <span className="text-red-500">{error}</span>
+                            </div>
+                        ) : null}
+                    </fieldset>
                 </form>
             </div>
         </div>

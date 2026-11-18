@@ -44,47 +44,83 @@ interface CourseData {
     weeks: Week[];
 }
 
+// loading → empty (no questions matched) | in_progress → submitted.
+// Answers, navigation and the timer only act while the quiz is in progress,
+// and a quiz is submitted exactly once, by the last answer or the timer.
+type QuizPhase = "loading" | "empty" | "in_progress" | "submitted";
+
 type QuizState = {
+    phase: QuizPhase;
     currentQuestionIndex: number;
     expandedQuestionIndex: number | null;
     questions: QuizQuestion[];
-    quizSubmitted: boolean;
     score: number;
     showError: boolean;
     showOnlyIncorrect: boolean;
-    timeRemaining: number;
+    /** Seconds left, or null for a quiz without a time limit. */
+    timeRemaining: number | null;
 };
 
 type QuizAction =
-    | { type: "initialize"; questions: QuizQuestion[]; timeRemaining: number }
+    | { type: "initialize"; questions: QuizQuestion[]; timeLimitSeconds: number | null }
     | { type: "answer"; answer: string; index: number }
     | { type: "next-question" }
     | { type: "missing-answer" }
-    | { type: "submit"; score: number }
+    | { type: "submit" }
     | { type: "tick" }
     | { type: "show-only-incorrect"; value: boolean }
     | { type: "toggle-expanded"; index: number };
 
 const initialQuizState: QuizState = {
+    phase: "loading",
     currentQuestionIndex: 0,
     expandedQuestionIndex: null,
     questions: [],
-    quizSubmitted: false,
     score: 0,
     showError: false,
     showOnlyIncorrect: false,
-    timeRemaining: 0,
+    timeRemaining: null,
 };
+
+function isAnswerCorrect(selected: string, correctAnswers: string | string[]) {
+    const normalizedSelected = selected.trim().toLowerCase();
+    if (typeof correctAnswers === "string") {
+        return normalizedSelected === correctAnswers.trim().toLowerCase();
+    }
+    if (Array.isArray(correctAnswers)) {
+        return correctAnswers.some(
+            (answer) => normalizedSelected === answer.trim().toLowerCase(),
+        );
+    }
+    return false;
+}
+
+function scoreQuestions(questions: QuizQuestion[]) {
+    return questions.filter((q) =>
+        isAnswerCorrect((q.selectedAnswer || "").trim(), q.answer),
+    ).length;
+}
+
+function submitQuizState(state: QuizState): QuizState {
+    return {
+        ...state,
+        phase: "submitted",
+        score: scoreQuestions(state.questions),
+        showError: false,
+    };
+}
 
 function quizReducer(state: QuizState, action: QuizAction): QuizState {
     switch (action.type) {
         case "initialize":
             return {
                 ...initialQuizState,
+                phase: action.questions.length > 0 ? "in_progress" : "empty",
                 questions: action.questions,
-                timeRemaining: action.timeRemaining,
+                timeRemaining: action.timeLimitSeconds,
             };
         case "answer":
+            if (state.phase !== "in_progress") return state;
             return {
                 ...state,
                 questions: state.questions.map((question, index) =>
@@ -94,30 +130,35 @@ function quizReducer(state: QuizState, action: QuizAction): QuizState {
                 ),
                 showError: false,
             };
-        case "next-question":
+        case "next-question": {
+            if (state.phase !== "in_progress") return state;
+            if (!state.questions[state.currentQuestionIndex]?.selectedAnswer) {
+                return { ...state, showError: true };
+            }
+            if (state.currentQuestionIndex >= state.questions.length - 1) {
+                return submitQuizState(state);
+            }
             return {
                 ...state,
                 currentQuestionIndex: state.currentQuestionIndex + 1,
                 showError: false,
             };
+        }
         case "missing-answer":
-            return { ...state, showError: true };
+            return state.phase === "in_progress" ? { ...state, showError: true } : state;
         case "submit":
-            return {
-                ...state,
-                quizSubmitted: true,
-                score: action.score,
-                timeRemaining: 0,
-            };
-        case "tick":
-            return {
-                ...state,
-                timeRemaining: Math.max(0, state.timeRemaining - 1),
-            };
+            return state.phase === "in_progress" ? submitQuizState(state) : state;
+        case "tick": {
+            if (state.phase !== "in_progress" || state.timeRemaining === null) return state;
+            const timeRemaining = Math.max(0, state.timeRemaining - 1);
+            return timeRemaining === 0
+                ? submitQuizState({ ...state, timeRemaining })
+                : { ...state, timeRemaining };
+        }
         case "show-only-incorrect":
             return { ...state, showOnlyIncorrect: action.value };
         case "toggle-expanded":
-            return state.quizSubmitted
+            return state.phase === "submitted"
                 ? {
                       ...state,
                       expandedQuestionIndex:
@@ -127,6 +168,16 @@ function quizReducer(state: QuizState, action: QuizAction): QuizState {
                   }
                 : state;
     }
+}
+
+/** Parses the HHMMSS `time` parameter; anything not positive means no limit. */
+function parseTimeLimitSeconds(time: string) {
+    if (!/^\d{6}$/.test(time)) return null;
+    const hours = Number.parseInt(time.slice(0, 2), 10);
+    const minutes = Number.parseInt(time.slice(2, 4), 10);
+    const seconds = Number.parseInt(time.slice(4, 6), 10);
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+    return totalSeconds > 0 ? totalSeconds : null;
 }
 
 const getCourseData = (courseCode: string): CourseData => {
@@ -148,10 +199,10 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
     const { push } = useRouter();
     const [
         {
+            phase,
             currentQuestionIndex,
             expandedQuestionIndex,
             questions,
-            quizSubmitted,
             score,
             showError,
             showOnlyIncorrect,
@@ -159,20 +210,16 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
         },
         dispatch,
     ] = useReducer(quizReducer, initialQuizState);
+    const quizSubmitted = phase === "submitted";
     const quizMetaRef = useRef<{ courseCode: string; totalQuestions: number }>({ courseCode: "", totalQuestions: 0 });
 
     useEffect(() => {
         const params = new URLSearchParams(decodeURIComponent(quizConfig));
         const weeks = params.get("weeks")?.split("-") || [];
         const numQuestions = Number.parseInt(params.get("numQ") || "0", 10);
-        const time = params.get("time") || "000000";
+        const timeLimitSeconds = parseTimeLimitSeconds(params.get("time") || "");
         const courseCode = params.get("course") || "102104073";
         quizMetaRef.current.courseCode = courseCode;
-
-        const hours = Number.parseInt(time.slice(0, 2), 10);
-        const minutes = Number.parseInt(time.slice(2, 4), 10);
-        const seconds = Number.parseInt(time.slice(4, 6), 10);
-        const totalSeconds = hours * 3600 + minutes * 60 + seconds;
 
         const courseData = getCourseData(courseCode);
 
@@ -203,25 +250,27 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
         dispatch({
             type: "initialize",
             questions: selectedQuestions,
-            timeRemaining: totalSeconds,
+            timeLimitSeconds,
         });
     }, [quizConfig]);
 
+    const timed = timeRemaining !== null;
     useEffect(() => {
-        if (timeRemaining > 0 && !quizSubmitted) {
-            const timer = setInterval(() => {
-                if (timeRemaining <= 1) {
-                    submitQuiz();
-                    clearInterval(timer);
-                    return;
-                }
+        if (phase !== "in_progress" || !timed) return;
+        // The reducer submits when the countdown reaches zero.
+        const timer = setInterval(() => dispatch({ type: "tick" }), 1000);
+        return () => clearInterval(timer);
+    }, [phase, timed]);
 
-                dispatch({ type: "tick" });
-            }, 1000);
-
-            return () => clearInterval(timer);
-        }
-    }, [timeRemaining, quizSubmitted]);
+    // Report each submission once, whichever path (last answer or timer) made it.
+    useEffect(() => {
+        if (phase !== "submitted") return;
+        captureQuizSubmitted({
+            courseCode: quizMetaRef.current.courseCode,
+            score,
+            totalQuestions: quizMetaRef.current.totalQuestions,
+        });
+    }, [phase, score]);
 
     const formatTime = (totalSeconds: number) => {
         const hours = Math.floor(totalSeconds / 3600);
@@ -234,45 +283,9 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
         dispatch({ type: "answer", answer, index: currentQuestionIndex });
     };
 
-    const isAnswerCorrect = (selected: string, correctAnswers: string | string[]) => {
-        const normalizedSelected = selected.trim().toLowerCase();
-        if (typeof correctAnswers === "string") {
-            return normalizedSelected === correctAnswers.trim().toLowerCase();
-        }
-        if (Array.isArray(correctAnswers)) {
-            return correctAnswers.some(
-                (answer) => normalizedSelected === answer.trim().toLowerCase(),
-            );
-        }
-        return false;
-    };
-
-    const submitQuiz = () => {
-        const correctAnswersCount = questions.filter((q) => {
-            const selectedAnswer = (q.selectedAnswer || "").trim();
-            return isAnswerCorrect(selectedAnswer, q.answer);
-        }).length;
-        dispatch({ type: "submit", score: correctAnswersCount });
-        captureQuizSubmitted({
-            courseCode: quizMetaRef.current.courseCode,
-            score: correctAnswersCount,
-            totalQuestions: quizMetaRef.current.totalQuestions,
-        });
-    };
-
     const goToNextQuestion = () => {
-        const currentQuestion = questions[currentQuestionIndex];
-
-        if (!currentQuestion.selectedAnswer) {
-            dispatch({ type: "missing-answer" });
-            return;
-        }
-
-        if (currentQuestionIndex === questions.length - 1) {
-            submitQuiz();
-        } else {
-            dispatch({ type: "next-question" });
-        }
+        // The reducer asks for an answer, advances, or submits on the last question.
+        dispatch({ type: "next-question" });
     };
 
     const toggleQuestionExpansion = (index: number) => {
@@ -285,10 +298,25 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
         return "dark:bg-red-800/20 text-red-400";
     };
 
-    if (questions.length === 0) {
+    if (phase === "loading") {
         return (
             <div className="flex min-h-screen items-center justify-center">
                 <div className="size-16 animate-spin border-b-2 border-t-2 border-gray-900" />
+            </div>
+        );
+    }
+
+    if (phase === "empty") {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center text-black dark:text-[#D5D5D5]">
+                <p className="text-lg font-semibold">No questions match this quiz.</p>
+                <button
+                    type="button"
+                    onClick={() => push("/quiz")}
+                    className="border-2 border-black px-4 py-2 font-semibold dark:border-[#D5D5D5]"
+                >
+                    Choose other weeks
+                </button>
             </div>
         );
     }
@@ -439,32 +467,37 @@ export default function QuizClient({ quizConfig }: { quizConfig: string }) {
     }
 
     const currentQuestion = questions[currentQuestionIndex];
+    const timeRunningOut = timeRemaining !== null && timeRemaining <= 30;
 
     return (
         <div className="mx-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
             <div className="mb-4 flex items-center justify-between sm:mb-6">
-                <div className="flex items-center space-x-2">
-                    <Clock
-                        className={
-                            timeRemaining <= 30
-                                ? "animate-pulse text-red-500"
-                                : "text-black dark:text-white"
-                        }
-                    />
-                    <span
-                        className={`font-mono text-lg sm:text-xl ${
-                            timeRemaining <= 30 ? "text-red-500" : "text-black dark:text-white"
-                        }`}
-                    >
-                        {formatTime(timeRemaining)}
-                    </span>
-                </div>
+                {timeRemaining !== null ? (
+                    <div className="flex items-center space-x-2">
+                        <Clock
+                            className={
+                                timeRunningOut
+                                    ? "animate-pulse text-red-500"
+                                    : "text-black dark:text-white"
+                            }
+                        />
+                        <span
+                            className={`font-mono text-lg sm:text-xl ${
+                                timeRunningOut ? "text-red-500" : "text-black dark:text-white"
+                            }`}
+                        >
+                            {formatTime(timeRemaining)}
+                        </span>
+                    </div>
+                ) : (
+                    <span aria-hidden />
+                )}
                 <div className="text-lg text-black dark:text-white sm:text-md">
                     Question {currentQuestionIndex + 1} of {questions.length}
                 </div>
             </div>
 
-            {timeRemaining <= 30 && timeRemaining > 0 && (
+            {timeRunningOut && (
                 <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 sm:px-4 sm:py-3 sm:text-base">
                     30 seconds remaining! Please finish your quiz.
                 </div>

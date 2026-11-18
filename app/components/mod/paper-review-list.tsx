@@ -15,7 +15,7 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
     const [papers, setPapers] = useState(initialPapersRef.current);
     const [courseOptions, setCourseOptions] = useState(initialCoursesRef.current);
     const [filter, setFilter] = useState<
-        "all" | "uncleared" | "no_course" | "no_exam" | "no_year" | "needs_link"
+        "all" | "uncleared" | "no_course" | "no_exam" | "no_year"
     >("all");
 
     const filtered = useMemo(() => {
@@ -28,8 +28,6 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
                 return papers.filter((p) => p.examType === null);
             case "no_year":
                 return papers.filter((p) => p.year === null);
-            case "needs_link":
-                return papers.filter((p) => p.hasAnswerKey && p.questionPaper === null);
             default:
                 return papers;
         }
@@ -37,6 +35,12 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
 
     const onResolved = (id: string) => {
         setPapers((prev) => prev.filter((p) => p.id !== id));
+    };
+
+    // Rows remount from this list when the filter changes, so it must hold the
+    // saved values; otherwise a remounted row would show and re-save stale data.
+    const onSaved = (saved: PaperRowData) => {
+        setPapers((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
     };
 
     const onCourseCreated = (course: CourseOption) => {
@@ -68,7 +72,6 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
                             ["no_course", "No course"],
                             ["no_exam", "No exam"],
                             ["no_year", "No year"],
-                            ["needs_link", "Needs link"],
                         ] as const
                     ).map(([key, label]) => (
                         <button
@@ -94,6 +97,7 @@ export default function PaperReviewList({ initialPapers, courses }: Props) {
                         paper={paper}
                         courses={courseOptions}
                         onResolved={onResolved}
+                        onSaved={onSaved}
                         onCourseCreated={onCourseCreated}
                     />
                 ))}

@@ -2,67 +2,74 @@ import { fetchPdfResource } from "./fetch-resource";
 
 type ProgressListener = (progress: number | null) => void;
 
+// An entry is either downloading or loaded. A download that fails or is
+// aborted leaves the cache. A downloading entry with consumers is pinned:
+// eviction and invalidation only detach it, so its awaited request finishes.
 type PdfBufferCacheEntry = {
   promise: Promise<ArrayBuffer>;
   listeners: Set<ProgressListener>;
-  abort?: () => void;
-  buffer?: ArrayBuffer;
+  consumers: number;
+  state: { status: "downloading"; abort: () => void } | { status: "loaded"; buffer: ArrayBuffer };
 };
 
 const MAX_CACHE_ENTRIES = 8;
 const MAX_CACHED_BYTES = 32 * 1024 * 1024;
 const pdfBufferCache = new Map<string, PdfBufferCacheEntry>();
 
-function evictPdfBufferEntry(fileUrl: string, entry: PdfBufferCacheEntry) {
-  pdfBufferCache.delete(fileUrl);
-
-  if (entry.listeners.size === 0) {
-    entry.abort?.();
+function cachedBytes() {
+  let total = 0;
+  for (const entry of pdfBufferCache.values()) {
+    if (entry.state.status === "loaded") total += entry.state.buffer.byteLength;
   }
+  return total;
+}
+
+function detach(fileUrl: string, entry: PdfBufferCacheEntry) {
+  if (pdfBufferCache.get(fileUrl) === entry) pdfBufferCache.delete(fileUrl);
+  // Only an unconsumed download (a preload) is cancelled. Anyone awaiting the
+  // promise keeps their request; the next load starts a fresh entry.
+  if (entry.state.status === "downloading" && entry.consumers === 0) entry.state.abort();
 }
 
 function trimCache() {
-  const cachedBytes = () => [...pdfBufferCache.values()].reduce((sum, entry) => sum + (entry.buffer?.byteLength ?? 0), 0);
-  while (pdfBufferCache.size > MAX_CACHE_ENTRIES || cachedBytes() > MAX_CACHED_BYTES) {
-    const oldestKey = pdfBufferCache.keys().next().value as string | undefined;
-    if (!oldestKey) return;
-    const oldestEntry = pdfBufferCache.get(oldestKey);
-    if (!oldestEntry) {
-      pdfBufferCache.delete(oldestKey);
-      continue;
-    }
-
-    evictPdfBufferEntry(oldestKey, oldestEntry);
-  }
-}
-
-function notify(entry: PdfBufferCacheEntry, progress: number | null) {
-  for (const listener of entry.listeners) {
-    listener(progress);
+  // The most recently used entry is never evicted, so a single PDF larger than
+  // the byte budget stays cached while it is the one being viewed.
+  const keys = [...pdfBufferCache.keys()].slice(0, -1);
+  for (const key of keys) {
+    if (pdfBufferCache.size <= MAX_CACHE_ENTRIES && cachedBytes() <= MAX_CACHED_BYTES) return;
+    const entry = pdfBufferCache.get(key);
+    if (!entry || (entry.state.status === "downloading" && entry.consumers > 0)) continue;
+    detach(key, entry);
   }
 }
 
 function createPdfBufferEntry(fileUrl: string): PdfBufferCacheEntry {
+  const controller = new AbortController();
   const entry: PdfBufferCacheEntry = {
     listeners: new Set(),
+    consumers: 0,
+    state: { status: "downloading", abort: () => controller.abort() },
     promise: Promise.resolve(new ArrayBuffer(0)),
   };
 
-  const controller = new AbortController();
-  entry.abort = () => controller.abort();
   entry.promise = fetchPdfResource(fileUrl, {
     kind: "pdf",
     signal: controller.signal,
-    onProgress: (progress) => notify(entry, progress),
-  }).then((buffer) => {
-    entry.buffer = buffer;
-    trimCache();
-    return buffer;
-  }).catch((error) => {
-    // A cancelled/preloaded request can settle after a replacement has started.
-    if (pdfBufferCache.get(fileUrl) === entry) pdfBufferCache.delete(fileUrl);
-    throw error;
-  }).finally(() => { entry.abort = undefined; });
+    onProgress: (progress) => {
+      for (const listener of entry.listeners) listener(progress);
+    },
+  }).then(
+    (buffer) => {
+      entry.state = { status: "loaded", buffer };
+      if (pdfBufferCache.get(fileUrl) === entry) trimCache();
+      return buffer;
+    },
+    (error: unknown) => {
+      // A cancelled request can settle after a replacement has started.
+      if (pdfBufferCache.get(fileUrl) === entry) pdfBufferCache.delete(fileUrl);
+      throw error;
+    },
+  );
 
   pdfBufferCache.set(fileUrl, entry);
   trimCache();
@@ -84,12 +91,10 @@ export function preloadPdfBuffer(fileUrl: string) {
   void getPdfBufferEntry(fileUrl).promise.catch(() => undefined);
 }
 
+/** Drops the cached copy so the next load fetches again. */
 export function invalidatePdfBuffer(fileUrl: string) {
   const entry = pdfBufferCache.get(fileUrl);
-  if (!entry) return;
-
-  entry.abort?.();
-  pdfBufferCache.delete(fileUrl);
+  if (entry) detach(fileUrl, entry);
 }
 
 export function loadPdfBuffer(
@@ -97,19 +102,24 @@ export function loadPdfBuffer(
   onProgress?: ProgressListener,
 ) {
   const entry = getPdfBufferEntry(fileUrl);
-
+  entry.consumers++;
   if (onProgress) {
     entry.listeners.add(onProgress);
-    if (entry.buffer) {
-      onProgress(100);
-    }
+    if (entry.state.status === "loaded") onProgress(100);
   }
 
+  let released = false;
   return {
     promise: entry.promise,
+    /** Stops progress updates and releases this consumer's hold on the download. */
     unsubscribe: () => {
-      if (onProgress) {
-        entry.listeners.delete(onProgress);
+      if (released) return;
+      released = true;
+      entry.consumers--;
+      if (onProgress) entry.listeners.delete(onProgress);
+      // A download nobody waits for and nobody can reach again is cancelled.
+      if (entry.consumers === 0 && entry.state.status === "downloading" && pdfBufferCache.get(fileUrl) !== entry) {
+        entry.state.abort();
       }
     },
   };

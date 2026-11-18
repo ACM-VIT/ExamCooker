@@ -10,12 +10,16 @@ import type {
   PdfMarkdownFeedbackSummary,
   PdfMarkdownFeedbackVote,
 } from "@/lib/ai/pdf-markdown-cache-types";
+import {
+  canReplacePdfMarkdownGeneration,
+  getPdfMarkdownFeedbackTtlSeconds,
+  type ExpectedPdfMarkdownGeneration,
+} from "@/lib/ai/pdf-markdown-cache-policy";
 import { getOptionalAppState } from "@/lib/app-state";
 
 const CACHE_ENTRY_VERSION = 1;
 const CACHE_KEY_PREFIX = "ec:pdf-markdown";
 const DEFAULT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 30;
-const DEFAULT_FEEDBACK_TTL_SECONDS = 60 * 60 * 24 * 180;
 const GENERATION_LOCK_TTL_SECONDS = 120;
 const WAIT_FOR_CACHE_TIMEOUT_MS = 7000;
 const WAIT_FOR_CACHE_INTERVAL_MS = 500;
@@ -44,6 +48,8 @@ type CacheLookupInput = {
 };
 
 type CacheStoreInput = CacheLookupInput & {
+  /** The generation this writer observed before generating. */
+  expectedGenerationId: ExpectedPdfMarkdownGeneration;
   fileName: string;
   fileUrl: string;
   markdown: string;
@@ -63,6 +69,13 @@ type CacheMissResult = {
 };
 
 export type PdfMarkdownCacheLookupResult = CacheHitResult | CacheMissResult;
+
+function getCacheTtlSeconds() {
+  return parseSecondsEnv(
+    "PDF_MARKDOWN_CACHE_TTL_SECONDS",
+    DEFAULT_CACHE_TTL_SECONDS,
+  );
+}
 
 function parseSecondsEnv(name: string, fallback: number) {
   const parsed = Number.parseInt(process.env[name] ?? "", 10);
@@ -469,8 +482,36 @@ export async function storePdfMarkdownCache(
   };
 
   try {
+    // The generation lock makes this check-then-write safe against other
+    // locked writers. For a writer that outwaited the lock it is best-effort:
+    // the read and the write are separate calls, so a holder storing in
+    // between can still be overwritten.
+    const current = parseCacheEntryValue(
+      await redis.get<unknown>(entryRedisKey(input.cacheKey)),
+    );
+    const currentGenerationId = current?.success
+      ? current.data.generationId
+      : null;
+    if (
+      !canReplacePdfMarkdownGeneration(
+        currentGenerationId,
+        input.expectedGenerationId,
+      )
+    ) {
+      return buildCacheMetadata({
+        cacheKey: input.cacheKey,
+        contentHash: input.contentHash,
+        generatedAt: entry.generatedAt,
+        generationId,
+        model: input.modelId,
+        reason: "superseded_generation",
+        source: "live",
+        status: "skipped",
+      });
+    }
+
     await redis.set(entryRedisKey(input.cacheKey), JSON.stringify(entry), {
-      ex: parseSecondsEnv("PDF_MARKDOWN_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS),
+      ex: getCacheTtlSeconds(),
     });
   } catch (error) {
     console.error("[pdf-markdown-cache] cache write failed", error);
@@ -583,10 +624,11 @@ export async function recordPdfMarkdownFeedback(input: {
       input.generationId,
       input.voterId,
     );
-    const ttlSeconds = parseSecondsEnv(
-      "PDF_MARKDOWN_FEEDBACK_TTL_SECONDS",
-      DEFAULT_FEEDBACK_TTL_SECONDS,
-    );
+    const ttlSeconds = getPdfMarkdownFeedbackTtlSeconds({
+      entryTtlSeconds: getCacheTtlSeconds(),
+      generatedAt: parsedEntry.data.generatedAt,
+      now: Date.now(),
+    });
     const result = await redis.recordVote(voteKey, feedbackKey, input.vote, new Date().toISOString(), ttlSeconds);
 
     if (!Array.isArray(result)) {

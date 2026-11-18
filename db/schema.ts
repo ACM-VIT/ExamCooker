@@ -25,7 +25,11 @@ import {
 } from "@/db/enums";
 import type { PdfPageEdits } from "@/lib/pdf/page-edits";
 import type { AiModerationReview } from "@/lib/ai/moderation-review-types";
-import type { CorrectionReportDecision } from "@/lib/ai/content-correction-types";
+import {
+  correctionReportStatuses,
+  type CorrectionReportDecision,
+  type CorrectionReportStatus,
+} from "@/lib/ai/content-correction-types";
 
 const cockroachEnum = pgEnum;
 const cockroachTable = pgTable;
@@ -446,6 +450,11 @@ export const note = cockroachTable(
       "btree",
       table.moderationArchivedAt.asc(),
     ),
+    // An archived copy is never published.
+    check(
+      "Note_archived_unpublished_check",
+      sql`NOT (${table.isClear} AND ${table.moderationArchivedAt} IS NOT NULL)`,
+    ),
     index("Note_title_trgm_idx").using("gin", table.title.asc()),
   ],
 );
@@ -551,6 +560,10 @@ export const pastPaper = cockroachTable(
       "btree",
       table.moderationArchivedAt.asc(),
     ),
+    check(
+      "PastPaper_archived_unpublished_check",
+      sql`NOT (${table.isClear} AND ${table.moderationArchivedAt} IS NOT NULL)`,
+    ),
     index("PastPaper_metadata_sibling_idx").using(
       "btree",
       table.courseId.asc(),
@@ -590,7 +603,10 @@ export const contentCorrectionReport = cockroachTable(
     category: string().notNull(),
     description: string().notNull(),
     suggestedValue: string(),
-    status: string().default("pending").notNull(),
+    status: string()
+      .$type<CorrectionReportStatus>()
+      .default("pending")
+      .notNull(),
     aiDecision: jsonb("aiDecision").$type<CorrectionReportDecision>(),
     resolvedById: string().references(() => user.id, {
       onDelete: "set null",
@@ -601,6 +617,12 @@ export const contentCorrectionReport = cockroachTable(
     resolvedAt: timestamp({ mode: "date", precision: 3 }),
   },
   (table) => [
+    check(
+      "ContentCorrectionReport_status_check",
+      sql`${table.status} IN (${sql.raw(
+        correctionReportStatuses.map((status) => `'${status}'`).join(", "),
+      )})`,
+    ),
     check(
       "ContentCorrectionReport_one_resource_check",
       sql`(${table.noteId} IS NOT NULL AND ${table.pastPaperId} IS NULL AND ${table.resourceType} = 'note') OR (${table.noteId} IS NULL AND ${table.pastPaperId} IS NOT NULL AND ${table.resourceType} = 'pastPaper')`,

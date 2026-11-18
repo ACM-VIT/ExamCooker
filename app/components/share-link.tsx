@@ -27,6 +27,8 @@ const ShareLink = ({
 
     const [isVisible, setisVisible] = useState(false);
     const [toastLabel, setToastLabel] = useState("Copied!");
+    // Bumped on every share so a repeat share restarts the hide timer.
+    const [shareCount, setShareCount] = useState(0);
 
     const handleClick = async () => {
         const url = window.location.href;
@@ -43,6 +45,7 @@ const ShareLink = ({
 
         setToastLabel("Shared");
         setisVisible(true);
+        setShareCount((count) => count + 1);
         captureSharedContent({
             contentType: fileType,
             url,
@@ -60,7 +63,7 @@ const ShareLink = ({
             () => clearTimeout(timer)
         );
 
-    }, [isVisible])
+    }, [isVisible, shareCount])
 
     return (
         <button

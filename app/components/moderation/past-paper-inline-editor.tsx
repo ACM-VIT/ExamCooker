@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updatePastPaperInline } from "@/app/actions/update-past-paper-inline";
 import { useGuestPrompt } from "@/app/components/auth-gate";
@@ -15,6 +15,7 @@ import {
   FieldRow,
   FieldShell,
 } from "@/app/components/moderation/editor-fields";
+import { resolveEditorBaseline } from "@/app/components/moderation/inline-editor-baseline";
 import ModeratorEditSheet from "@/app/components/moderation/moderator-edit-sheet";
 import TagField from "@/app/components/moderation/tag-field";
 import {
@@ -24,6 +25,7 @@ import {
 import { useModeratorInlineEditorOptions } from "@/app/components/moderation/use-moderator-inline-editor-options";
 import { useToast } from "@/app/components/ui/use-toast";
 import type { Campus, ExamType, Semester } from "@/db";
+import { EXAM_TYPE_OPTIONS } from "@/lib/exam-slug";
 import { getPastPaperDetailPath } from "@/lib/seo";
 import ResourceCorrectionTrigger from "@/app/components/corrections/resource-correction-trigger";
 
@@ -54,19 +56,6 @@ type PaperDraft = {
   title: string;
   year: number | null;
 };
-
-const EXAM_OPTIONS: ReadonlyArray<{ label: string; value: ExamType }> = [
-  { value: "CAT_1", label: "CAT-1" },
-  { value: "CAT_2", label: "CAT-2" },
-  { value: "FAT", label: "FAT" },
-  { value: "MODEL_CAT_1", label: "Model CAT-1" },
-  { value: "MODEL_CAT_2", label: "Model CAT-2" },
-  { value: "MODEL_FAT", label: "Model FAT" },
-  { value: "MID", label: "Mid" },
-  { value: "QUIZ", label: "Quiz" },
-  { value: "CIA", label: "CIA" },
-  { value: "OTHER", label: "Other" },
-];
 
 const SEMESTER_OPTIONS: ReadonlyArray<{ label: string; value: Semester }> = [
   { value: "FALL", label: "Fall" },
@@ -142,6 +131,8 @@ export default function PastPaperInlineEditor(
   const baseDraft = useMemo(() => buildBaseline(props), [props]);
   const [draft, setDraft] = useState<PaperDraft>(baseDraft);
   const [baseline, setBaseline] = useState<PaperDraft>(baseDraft);
+  const adoptedPageDraftRef = useRef(baseDraft);
+  const pendingSavesRef = useRef<readonly PaperDraft[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -191,17 +182,22 @@ export default function PastPaperInlineEditor(
           tags: nextTags,
           title: draft.title.trim(),
         };
+        pendingSavesRef.current = [...pendingSavesRef.current, nextBaseline];
         setBaseline(nextBaseline);
         setDraft(nextBaseline);
         setTags((currentTags) => dedupeTagNames([...currentTags, ...nextTags]));
 
+        // Without loaded course options the code of a new course is unknown;
+        // stay on this page then rather than guessing a path.
         const nextCourseCode =
-          courses.find((course) => course.id === nextBaseline.courseId)?.code ??
-          "unassigned";
-        const nextPath = getPastPaperDetailPath(props.paperId, nextCourseCode);
+          nextBaseline.courseId === props.initialCourseId
+            ? props.canonicalCode
+            : nextBaseline.courseId === null
+              ? "unassigned"
+              : courses.find((course) => course.id === nextBaseline.courseId)?.code ?? null;
         toast({ title: "Past paper updated" });
-        if (nextCourseCode !== props.canonicalCode) {
-          replace(nextPath);
+        if (nextCourseCode !== null && nextCourseCode !== props.canonicalCode) {
+          replace(getPastPaperDetailPath(props.paperId, nextCourseCode));
         }
         refresh();
         setIsOpen(false);
@@ -225,7 +221,22 @@ export default function PastPaperInlineEditor(
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
+    if (nextOpen) {
+      // Start from the paper as it is now, unless the page still shows a
+      // copy from before this editor's last save.
+      const next = resolveEditorBaseline({
+        adopted: adoptedPageDraftRef.current,
+        page: baseDraft,
+        local: baseline,
+        pending: pendingSavesRef.current,
+        isEqual: arePaperDraftsEqual,
+      });
+      adoptedPageDraftRef.current = next.adopted;
+      pendingSavesRef.current = next.pending;
+      setBaseline(next.baseline);
+      setDraft(next.baseline);
+      setSaveError(null);
+    } else {
       handleCancel();
     }
     setIsOpen(nextOpen);
@@ -298,7 +309,7 @@ export default function PastPaperInlineEditor(
             examType: (value || null) as ExamType | null,
           }))
         }
-        options={EXAM_OPTIONS}
+        options={EXAM_TYPE_OPTIONS}
         placeholder="Unspecified"
       />
 
@@ -358,7 +369,7 @@ export default function PastPaperInlineEditor(
       </FieldRow>
 
       <EditorCheckbox
-        label="This upload is an answer key"
+        label="Includes an answer key"
         checked={draft.hasAnswerKey}
         onChange={(checked) =>
           setDraft((currentDraft) => ({
@@ -370,7 +381,7 @@ export default function PastPaperInlineEditor(
       />
 
       {draft.hasAnswerKey ? (
-        <FieldShell label="Linked question paper">
+        <FieldShell label="Link a separate question paper (optional)">
           <PaperPicker
             value={draft.questionPaper}
             excludePaperId={props.paperId}

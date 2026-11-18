@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import {
   Fragment,
   useEffect,
@@ -28,19 +27,17 @@ function formatCode(value: string) {
 
 export default function CliCodeInput({
   initial = "",
-  busy = false,
+  busy: submitting = false,
   onSubmitCode,
 }: {
   initial?: string;
   busy?: boolean;
-  onSubmitCode?: (code: string) => void;
+  onSubmitCode: (code: string) => void;
 }) {
-  const router = useRouter();
   const [chars, setChars] = useState<string[]>(() => {
     const seed = clean(initial);
     return Array.from({ length: LENGTH }, (_, i) => seed[i] ?? "");
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const formRef = useRef<HTMLFormElement | null>(null);
   const previousInitial = useRef(initial);
@@ -48,7 +45,6 @@ export default function CliCodeInput({
   const value = chars.join("");
   const filled = value.length === LENGTH;
   const formatted = useMemo(() => formatCode(value), [value]);
-  const submitting = busy || isSubmitting;
 
   useLayoutEffect(() => {
     // Read each slot before controlled updates can replace early typing or autofill.
@@ -166,16 +162,7 @@ export default function CliCodeInput({
     }
 
     e.preventDefault();
-
-    if (onSubmitCode) {
-      onSubmitCode(formatted);
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    const params = new URLSearchParams({ code: formatted });
-    router.push(`/cli?${params.toString()}`);
+    onSubmitCode(formatted);
   }
 
   return (

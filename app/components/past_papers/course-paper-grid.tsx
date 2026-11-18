@@ -485,8 +485,11 @@ export default function CoursePaperGrid({
         };
     }, [contextMenu]);
 
+    // Subscribe once per drag, not on every pointer move: the handlers are
+    // effect events, so they always see the latest drag state.
+    const isSplitDragging = splitDrag !== null;
     useEffect(() => {
-        if (!splitDrag) return;
+        if (!isSplitDragging) return;
 
         const handlePointerMove = (event: PointerEvent) => {
             moveSplitDragFromEvent({ x: event.clientX, y: event.clientY });
@@ -518,7 +521,7 @@ export default function CoursePaperGrid({
             window.removeEventListener("keydown", handleKeyDown);
             document.removeEventListener("visibilitychange", handlePointerCancel);
         };
-    }, [splitDrag]);
+    }, [isSplitDragging]);
 
     const count = selected.size;
     const allVisibleSelected =

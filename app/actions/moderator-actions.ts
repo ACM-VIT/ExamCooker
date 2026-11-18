@@ -271,17 +271,23 @@ export async function renameItem(id: string, type: "note" | "pastPaper", title: 
     const session = await auth();
     if (session?.user?.role !== "MODERATOR") throw new Error("Access denied");
 
-    if (type === "note") {
-        await db
-            .update(note)
-            .set({ title, ...clearedModerationReview })
-            .where(eq(note.id, id));
-    }
-    if (type === "pastPaper") {
-        await db
-            .update(pastPaper)
-            .set({ title, ...clearedModerationReview })
-            .where(eq(pastPaper.id, id));
+    // An archived copy matches no row; report it rather than a rename.
+    const renamed =
+        type === "note"
+            ? await db
+                  .update(note)
+                  .set({ title, ...clearedModerationReview })
+                  .where(and(eq(note.id, id), isNull(note.moderationArchivedAt)))
+                  .returning({ id: note.id })
+            : await db
+                  .update(pastPaper)
+                  .set({ title, ...clearedModerationReview })
+                  .where(
+                      and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)),
+                  )
+                  .returning({ id: pastPaper.id });
+    if (renamed.length === 0) {
+        throw new Error(type === "note" ? "Note not found." : "Past paper not found.");
     }
 
     revalidatePath("/mod");
@@ -317,7 +323,7 @@ export async function generatePastPaperTitle(id: string) {
             fileUrl: pastPaper.fileUrl,
         })
         .from(pastPaper)
-        .where(eq(pastPaper.id, id))
+        .where(and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)))
         .limit(1);
 
     const paper = rows[0];
@@ -327,10 +333,23 @@ export async function generatePastPaperTitle(id: string) {
     const aiTitle = await generatePastPaperTitleFromPdf({ fileUrl, fallbackTitle: paper.title });
 
     if (aiTitle && aiTitle !== paper.title) {
-        await db
+        const renamed = await db
             .update(pastPaper)
             .set({ title: aiTitle, ...clearedModerationReview })
-            .where(eq(pastPaper.id, id));
+            .where(
+                and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)),
+            )
+            .returning({ id: pastPaper.id });
+        // Archived or deleted while the title was being generated.
+        if (renamed.length === 0) throw new Error("Past paper not found");
+    } else {
+        // Nothing to write, but the paper may still have gone meanwhile.
+        const [current] = await db
+            .select({ id: pastPaper.id })
+            .from(pastPaper)
+            .where(and(eq(pastPaper.id, id), isNull(pastPaper.moderationArchivedAt)))
+            .limit(1);
+        if (!current) throw new Error("Past paper not found");
     }
 
     revalidatePath("/mod");
@@ -356,7 +375,7 @@ function assertStoredReview(
 async function readModerationSuggestion(
     id: string,
     type: "note" | "pastPaper",
-): Promise<AiModerationReview["suggestion"]> {
+): Promise<AiModerationReview["suggestion"] & { questionPaperId: string | null }> {
     if (type === "note") {
         const [row] = await db
             .select({
@@ -379,6 +398,7 @@ async function readModerationSuggestion(
             semester: null,
             campus: null,
             hasAnswerKey: null,
+            questionPaperId: null,
         };
     }
 
@@ -394,6 +414,7 @@ async function readModerationSuggestion(
             semester: pastPaper.semester,
             campus: pastPaper.campus,
             hasAnswerKey: pastPaper.hasAnswerKey,
+            questionPaperId: pastPaper.questionPaperId,
         })
         .from(pastPaper)
         .leftJoin(course, eq(pastPaper.courseId, course.id))
@@ -589,8 +610,10 @@ export async function applyAiModerationSuggestion(
         const review = assertStoredReview(row.aiReview ?? null, row.updatedAt);
         const suggestion = review.suggestion;
         const title = suggestion.title.trim();
-        const changesToQuestionPaper =
-            row.hasAnswerKey && suggestion.hasAnswerKey === false;
+        const nextHasAnswerKey = suggestion.hasAnswerKey ?? row.hasAnswerKey;
+        const nextQuestionPaperId = row.hasAnswerKey && nextHasAnswerKey
+            ? row.questionPaperId
+            : null;
         const [linkedAnswerKey] =
             suggestion.courseId !== null && row.courseId !== suggestion.courseId
                 ? await db
@@ -605,7 +628,7 @@ export async function applyAiModerationSuggestion(
                       .limit(1)
                 : [];
         const canChangeCourse =
-            (!row.hasAnswerKey || changesToQuestionPaper) &&
+            nextQuestionPaperId === null &&
             (!linkedAnswerKey || linkedAnswerKey.courseId === suggestion.courseId);
         const patch = {
             ...(row.title.replace(/\.pdf$/i, "").trim() !== title ? { title } : {}),
@@ -629,11 +652,10 @@ export async function applyAiModerationSuggestion(
             ...(suggestion.campus !== null && row.campus !== suggestion.campus
                 ? { campus: suggestion.campus }
                 : {}),
-            ...(changesToQuestionPaper
-                ? { hasAnswerKey: false, questionPaperId: null }
-                : !row.hasAnswerKey && row.questionPaperId !== null
-                  ? { questionPaperId: null }
-                  : {}),
+            ...(row.hasAnswerKey !== nextHasAnswerKey ? { hasAnswerKey: nextHasAnswerKey } : {}),
+            ...(row.questionPaperId !== nextQuestionPaperId
+                ? { questionPaperId: nextQuestionPaperId }
+                : {}),
         };
         if (Object.keys(patch).length === 0) {
             throw new Error("The AI review contains no verified changes to apply.");

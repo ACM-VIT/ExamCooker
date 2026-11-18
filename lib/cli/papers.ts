@@ -1,4 +1,4 @@
-import { and, count, eq, ilike, or, desc } from "drizzle-orm";
+import { and, count, desc, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
 import type { Campus, ExamType, Semester } from "@/db";
 import { course, db, pastPaper } from "@/db";
 import { normalizeCourseCode } from "@/lib/course-tags";
@@ -31,7 +31,8 @@ export async function searchCliPapers(
   baseUrl: string,
   input: CliPaperSearchFilters,
 ) {
-  const clauses = [];
+  // Drafts are uploads awaiting review; archived copies are never listed.
+  const clauses: (SQL | undefined)[] = [isNull(pastPaper.moderationArchivedAt)];
   const trimmedQuery = input.query?.trim();
   const normalizedCourse = input.course?.trim();
 

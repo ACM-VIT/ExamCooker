@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { nativeAuthHandoff, user as userTable } from "@/db/schema";
 
@@ -48,10 +48,20 @@ export async function createNativeAuthHandoffCode(input: {
     throw new Error("Invalid native auth handoff challenge.");
   }
 
+  const now = Date.now();
+  // Expired codes can never be consumed. Pruning them here keeps the table to
+  // the codes issued in the last minute; a failed prune must not block sign-in.
+  await db
+    .delete(nativeAuthHandoff)
+    .where(lt(nativeAuthHandoff.expiresAt, new Date(now)))
+    .catch((error) => {
+      console.error("[native-auth] expired handoff cleanup failed", error);
+    });
+
   const code = randomBytes(32).toString("base64url");
   await db.insert(nativeAuthHandoff).values({
     codeHash: hashHandoffCode(code),
-    expiresAt: new Date(Date.now() + HANDOFF_CODE_TTL_SECONDS * 1000),
+    expiresAt: new Date(now + HANDOFF_CODE_TTL_SECONDS * 1000),
     userId: input.userId,
     verifierChallenge: handoffChallenge,
   });

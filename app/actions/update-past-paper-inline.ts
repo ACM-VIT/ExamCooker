@@ -1,6 +1,7 @@
 "use server";
 
-import { and, eq, ne } from "drizzle-orm";
+import { isUniqueViolation } from "@/lib/db-errors";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/app/auth";
 import { updateTag } from "next/cache";
@@ -57,30 +58,7 @@ function normalizeTags(tags: string[]) {
 }
 
 function isQuestionPaperLinkUniqueConstraintError(error: unknown) {
-  if (!error || typeof error !== "object") {
-    return false;
-  }
-
-  const code = typeof (error as { code?: unknown }).code === "string"
-    ? (error as { code: string }).code
-    : "";
-  if (code !== "23505") {
-    return false;
-  }
-
-  const constraint =
-    typeof (error as { constraint?: unknown }).constraint === "string"
-      ? (error as { constraint: string }).constraint
-      : "";
-  const message =
-    typeof (error as { message?: unknown }).message === "string"
-      ? (error as { message: string }).message.toLowerCase()
-      : "";
-
-  return (
-    constraint === "PastPaper_questionPaperId_key" ||
-    message.includes("pastpaper_questionpaperid_key")
-  );
+  return isUniqueViolation(error, "PastPaper_questionPaperId_key");
 }
 
 export async function updatePastPaperInline(input: z.input<typeof schema>) {
@@ -96,7 +74,7 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
       questionPaperId: pastPaper.questionPaperId,
     })
     .from(pastPaper)
-    .where(eq(pastPaper.id, parsed.id))
+    .where(and(eq(pastPaper.id, parsed.id), isNull(pastPaper.moderationArchivedAt)))
     .limit(1);
 
   if (!existingPaper) {
@@ -110,11 +88,7 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
     questionPaperId = await db.transaction(async (tx) => {
       let nextQuestionPaperId: string | null = null;
 
-      if (parsed.hasAnswerKey) {
-        if (!parsed.questionPaperId) {
-          throw new Error("Answer keys must be linked to a question paper.");
-        }
-
+      if (parsed.hasAnswerKey && parsed.questionPaperId) {
         if (parsed.questionPaperId === parsed.id) {
           throw new Error("A paper cannot be linked to itself.");
         }
@@ -124,18 +98,24 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
             id: pastPaper.id,
             title: pastPaper.title,
             courseId: pastPaper.courseId,
-            hasAnswerKey: pastPaper.hasAnswerKey,
+            questionPaperId: pastPaper.questionPaperId,
           })
           .from(pastPaper)
-          .where(eq(pastPaper.id, parsed.questionPaperId))
+          // An archived copy is not a paper an answer key can belong to.
+          .where(
+            and(
+              eq(pastPaper.id, parsed.questionPaperId),
+              isNull(pastPaper.moderationArchivedAt),
+            ),
+          )
           .limit(1);
 
         if (!questionPaper) {
           throw new Error("Question paper not found.");
         }
 
-        if (questionPaper.hasAnswerKey) {
-          throw new Error("Question paper cannot itself be marked as an answer key.");
+        if (questionPaper.questionPaperId) {
+          throw new Error("The selected paper already links to a separate question paper.");
         }
 
         if (
@@ -189,7 +169,7 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
         nextQuestionPaperId = questionPaper.id;
       }
 
-      await tx
+      const updatedPapers = await tx
         .update(pastPaper)
         .set({
           title: parsed.title,
@@ -203,7 +183,12 @@ export async function updatePastPaperInline(input: z.input<typeof schema>) {
           questionPaperId: nextQuestionPaperId,
           ...clearedModerationReview,
         })
-        .where(eq(pastPaper.id, parsed.id));
+        .where(
+          and(eq(pastPaper.id, parsed.id), isNull(pastPaper.moderationArchivedAt)),
+        )
+        .returning({ id: pastPaper.id });
+      // Archived after the lookup above: roll back instead of retagging it.
+      if (updatedPapers.length === 0) throw new Error("Past paper not found.");
 
       const tagRecords = await Promise.all(
         tagNames.map((tagName) =>

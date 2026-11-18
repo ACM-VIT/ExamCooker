@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateNoteInline } from "@/app/actions/update-note-inline";
 import { useGuestPrompt } from "@/app/components/auth-gate";
@@ -10,6 +10,7 @@ import {
   EditorTextInput,
   FieldShell,
 } from "@/app/components/moderation/editor-fields";
+import { resolveEditorBaseline } from "@/app/components/moderation/inline-editor-baseline";
 import ModeratorEditSheet from "@/app/components/moderation/moderator-edit-sheet";
 import TagField from "@/app/components/moderation/tag-field";
 import {
@@ -47,6 +48,14 @@ function appendCourseOption(
   );
 }
 
+function areNoteDraftsEqual(left: NoteDraft, right: NoteDraft) {
+  return (
+    left.title.trim() === right.title.trim() &&
+    left.courseId === right.courseId &&
+    areTagNameListsEqual(left.tags, right.tags)
+  );
+}
+
 export default function NoteInlineEditor({
   initialCourseId,
   initialTags,
@@ -70,16 +79,15 @@ export default function NoteInlineEditor({
   );
   const [draft, setDraft] = useState<NoteDraft>(baseDraft);
   const [baseline, setBaseline] = useState<NoteDraft>(baseDraft);
+  const adoptedPageDraftRef = useRef(baseDraft);
+  const pendingSavesRef = useRef<readonly NoteDraft[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const hasChanges = useMemo(() => {
-    return (
-      draft.title.trim() !== baseline.title.trim() ||
-      draft.courseId !== baseline.courseId ||
-      !areTagNameListsEqual(draft.tags, baseline.tags)
-    );
-  }, [baseline, draft]);
+  const hasChanges = useMemo(
+    () => !areNoteDraftsEqual(draft, baseline),
+    [baseline, draft],
+  );
 
   if (status === "loading") {
     return null;
@@ -110,6 +118,7 @@ export default function NoteInlineEditor({
           tags: nextTags,
           title: draft.title.trim(),
         };
+        pendingSavesRef.current = [...pendingSavesRef.current, nextBaseline];
         setBaseline(nextBaseline);
         setDraft(nextBaseline);
         setTags((currentTags) => dedupeTagNames([...currentTags, ...nextTags]));
@@ -136,7 +145,22 @@ export default function NoteInlineEditor({
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
+    if (nextOpen) {
+      // Start from the note as it is now, unless the page still shows a
+      // copy from before this editor's last save.
+      const next = resolveEditorBaseline({
+        adopted: adoptedPageDraftRef.current,
+        page: baseDraft,
+        local: baseline,
+        pending: pendingSavesRef.current,
+        isEqual: areNoteDraftsEqual,
+      });
+      adoptedPageDraftRef.current = next.adopted;
+      pendingSavesRef.current = next.pending;
+      setBaseline(next.baseline);
+      setDraft(next.baseline);
+      setSaveError(null);
+    } else {
       handleCancel();
     }
     setIsOpen(nextOpen);

@@ -30,6 +30,8 @@ const COMMAND_EXAM_TYPES = [
   "MODEL_FAT",
   "CAT_1",
   "CAT_2",
+  "RECAT_1",
+  "RECAT_2",
   "FAT",
   "MID",
   "QUIZ",

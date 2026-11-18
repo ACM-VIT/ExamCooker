@@ -206,13 +206,14 @@ function StatusCaption({
 
 function VoiceSoundWave({ runtime }: { runtime: UseVoiceControlReturn }) {
   const bars = useRef<Array<HTMLSpanElement | null>>([]);
+  const { connected, getOutputAudioLevel } = runtime;
   useEffect(() => {
-    if (!runtime.connected) return;
+    if (!connected) return;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let frame = 0;
     let level = 0;
     const draw = (time: number) => {
-      level += (runtime.getOutputAudioLevel() - level) * 0.25;
+      level += (getOutputAudioLevel() - level) * 0.25;
       bars.current.forEach((bar, index) => {
         if (!bar) return;
         const shape = Math.sin(((index + 1) / 10) * Math.PI);
@@ -225,7 +226,7 @@ function VoiceSoundWave({ runtime }: { runtime: UseVoiceControlReturn }) {
     };
     frame = window.requestAnimationFrame(draw);
     return () => window.cancelAnimationFrame(frame);
-  }, [runtime, runtime.connected]);
+  }, [connected, getOutputAudioLevel]);
 
   return (
     <div

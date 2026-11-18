@@ -166,6 +166,28 @@ test("failed tools return an explicit result so the backend can recover", async 
   assert.equal(sent[1].type, "response.create");
 });
 
+test("a failure event after completion does not report the completed response", async () => {
+  const failures: unknown[] = [];
+  const executed: string[] = [];
+  const handler = new LiveResponseHandler({
+    execute: async (c) => {
+      executed.push(c.call_id);
+      return "ok";
+    },
+    send() {},
+    onError: (e) => failures.push(e),
+  });
+  handler.handle(created());
+  handler.handle(call("a"));
+  handler.handle(completed());
+  handler.handle(
+    event("response.failed", { response: { id: "r1", output: [] } }),
+  );
+  await handler.settled();
+  assert.deepEqual(executed, ["a"]);
+  assert.deepEqual(failures, []);
+});
+
 test("incomplete reasoning never executes collected actions", async () => {
   const failures: unknown[] = [];
   const handler = new LiveResponseHandler({

@@ -16,6 +16,7 @@ import {
   type Semester,
 } from "@/db";
 import { normalizeCourseCode } from "@/lib/course-tags";
+import { examTypeLabel } from "@/lib/exam-slug";
 import { normalizeGcsUrl } from "@/lib/normalize-gcs-url";
 import { getAiTextModel, getAiTextProviderOptions } from "@/lib/ai/provider";
 import { getAiRequestEnvironment } from "@/lib/ai/session";
@@ -44,7 +45,7 @@ const DocumentAnalysisSchema = z.object({
   year: z.number().int().min(2000).max(2100).nullable(),
   semester: z.enum(semesterValues).nullable(),
   campus: z.enum(campusValues).nullable(),
-  hasAnswerKey: z.boolean().nullable(),
+  hasAnswerKey: z.boolean().nullable().describe("True for any PDF with an answer key, including a question paper with answers."),
   summary: z.string().min(1).max(500),
 });
 
@@ -527,7 +528,7 @@ function buildSuggestion(
   const paperTitleParts = resolvedCourse
     ? [
         `${resolvedCourse.title} [${normalizeCourseCode(resolvedCourse.code)}]`,
-        analysis.examType?.replaceAll("_", "-"),
+        analysis.examType ? examTypeLabel(analysis.examType) : null,
         analysis.slot,
         analysis.year,
       ].filter(Boolean)
@@ -596,12 +597,17 @@ function metadataIssues(
       issues.push({
         field: "hasAnswerKey",
         message: analysis.hasAnswerKey
-          ? "The PDF appears to be an answer key but was uploaded as a question paper."
-          : "The PDF appears to be a question paper but was uploaded as an answer key.",
+          ? "The PDF appears to include an answer key."
+          : "The marked answer key could not be verified in the PDF.",
       });
     }
+    // The review cannot tell an answers-only PDF from questions with answers,
+    // so an answer key without a linked question paper is never auto-published.
     if (resource.hasAnswerKey && !resource.questionPaperId) {
-      issues.push({ field: "questionPaperId", message: "Answer keys need a moderator to confirm their question-paper link." });
+      issues.push({
+        field: "questionPaperId",
+        message: "Answer keys without a linked question paper need a moderator to confirm the PDF includes its questions.",
+      });
     }
   }
   return issues;
@@ -676,12 +682,29 @@ function currentSuggestion(resource: ResourceRecord): ModerationSuggestion {
   };
 }
 
+/**
+ * Stores a review for the version of the resource it read. The write is a
+ * compare-and-set on that version, its publication state and archive state.
+ *
+ * A review that is not applied keeps the resource's version, so the review
+ * stays current for it. Auto-approval only publishes an unpublished resource;
+ * it writes a new version and records the review against that version, which
+ * now matches the review's suggestion.
+ */
 async function persistReview(
   resource: ResourceRecord,
-  review: AiModerationReview,
+  draft: AiModerationReview,
   applyAndApprove: boolean,
   contentHash?: string,
-) {
+): Promise<AiModerationReview> {
+  if (applyAndApprove && resource.isClear) {
+    throw new Error("Only an unpublished resource can be auto-approved.");
+  }
+  const updatedAt = applyAndApprove ? new Date() : resource.updatedAt;
+  const review: AiModerationReview = {
+    ...draft,
+    resourceUpdatedAt: updatedAt.toISOString(),
+  };
   const reviewedAt = new Date(review.reviewedAt);
   if (resource.type === "note") {
     const [updated] = await db
@@ -689,8 +712,8 @@ async function persistReview(
       .set({
         aiReview: review,
         aiReviewedAt: reviewedAt,
+        updatedAt,
         ...(contentHash ? { contentHash } : {}),
-        ...(!applyAndApprove ? { updatedAt: resource.updatedAt } : {}),
         ...(applyAndApprove
           ? {
               title: review.suggestion.title,
@@ -709,7 +732,7 @@ async function persistReview(
       )
       .returning({ id: note.id });
     if (!updated) throw new StaleModerationReviewError();
-    return;
+    return review;
   }
 
   const [updated] = await db
@@ -717,8 +740,8 @@ async function persistReview(
     .set({
       aiReview: review,
       aiReviewedAt: reviewedAt,
+      updatedAt,
       ...(contentHash ? { contentHash } : {}),
-      ...(!applyAndApprove ? { updatedAt: resource.updatedAt } : {}),
       ...(applyAndApprove
         ? {
             title: review.suggestion.title,
@@ -743,6 +766,7 @@ async function persistReview(
     )
     .returning({ id: pastPaper.id });
   if (!updated) throw new StaleModerationReviewError();
+  return review;
 }
 
 export async function reviewUploadedResource(input: {
@@ -776,8 +800,13 @@ export async function reviewUploadedResource(input: {
       exactDuplicate(resource, contentHash, corpus) ??
       (await semanticDuplicate(resource, analysis, data, contentHash, corpus, aiEnvironment));
 
+    // Re-reviewing published content records the findings but never rewrites
+    // its metadata; only an upload awaiting review can be auto-approved.
     const canAutoApprove =
-      input.autoApprove !== false && issues.length === 0 && duplicate === null;
+      input.autoApprove !== false &&
+      !resource.isClear &&
+      issues.length === 0 &&
+      duplicate === null;
     const status = duplicate
       ? "duplicate"
       : issues.length > 0
@@ -798,11 +827,14 @@ export async function reviewUploadedResource(input: {
       reviewedAt,
       autoApproved: canAutoApprove,
     };
-    await persistReview(resource, review, canAutoApprove, contentHash);
-    return review;
+    return await persistReview(resource, review, canAutoApprove, contentHash);
   } catch (error) {
     if (error instanceof StaleModerationReviewError) throw error;
-    const message = error instanceof Error ? error.message : "Automatic review failed.";
+    let message = error instanceof Error ? error.message : "Automatic review failed.";
+    const credentials = aiEnvironment as { OPENAI_API_KEY?: string; ANTHROPIC_API_KEY?: string };
+    for (const key of [credentials.OPENAI_API_KEY?.trim(), credentials.ANTHROPIC_API_KEY?.trim()]) {
+      if (key) message = message.replaceAll(key, "[redacted]");
+    }
     const review: AiModerationReview = {
       version: 2,
       model: resolveAiTextModel("moderation", aiEnvironment).qualifiedModelId,
@@ -818,7 +850,6 @@ export async function reviewUploadedResource(input: {
       reviewedAt,
       autoApproved: false,
     };
-    await persistReview(resource, review, false, contentHash);
-    return review;
+    return persistReview(resource, review, false, contentHash);
   }
 }

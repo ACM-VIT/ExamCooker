@@ -86,15 +86,33 @@ function getDefaultPanelWidth(viewportWidth = getViewportWidth()) {
     return clampPanelWidth(viewportWidth * 0.46, viewportWidth);
 }
 
+// Storage can be blocked or full (private browsing); the split view must keep
+// working with in-memory state then.
+function readPreference(key: string): string | null {
+    try {
+        return window.localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function writePreference(key: string, value: string) {
+    try {
+        window.localStorage.setItem(key, value);
+    } catch {
+        // Keep the in-memory preference only.
+    }
+}
+
 function readStoredSide(): PaperSplitSide {
     if (typeof window === "undefined") return "right";
-    return window.localStorage.getItem(STORAGE_SIDE_KEY) === "left" ? "left" : "right";
+    return readPreference(STORAGE_SIDE_KEY) === "left" ? "left" : "right";
 }
 
 function readStoredWidth(): number {
     if (typeof window === "undefined") return getDefaultPanelWidth();
 
-    const stored = Number(window.localStorage.getItem(STORAGE_WIDTH_KEY));
+    const stored = Number(readPreference(STORAGE_WIDTH_KEY));
     return Number.isFinite(stored) && stored > 0
         ? clampPanelWidth(stored)
         : getDefaultPanelWidth();
@@ -169,6 +187,17 @@ function PaperSplitPanel({
         side: PaperSplitSide;
     } | null>(null);
     const isLeft = side === "left";
+
+    useEffect(
+        () => () => {
+            // Closing the panel mid-drag never delivers pointerup here.
+            if (!resizeState.current) return;
+            resizeState.current = null;
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+        },
+        [],
+    );
 
     const beginResize = useCallback(
         (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -359,20 +388,20 @@ export function PaperSplitViewProvider({ children }: { children: ReactNode }) {
         (paper: PaperSplitItem, nextSide: PaperSplitSide) => {
             if (!window.matchMedia("(min-width: 768px)").matches) return;
             dispatch({ type: "open", paper, side: nextSide });
-            window.localStorage.setItem(STORAGE_SIDE_KEY, nextSide);
+            writePreference(STORAGE_SIDE_KEY, nextSide);
         },
         [],
     );
 
     const movePaperSplit = useCallback((nextSide: PaperSplitSide) => {
         dispatch({ type: "move", side: nextSide });
-        window.localStorage.setItem(STORAGE_SIDE_KEY, nextSide);
+        writePreference(STORAGE_SIDE_KEY, nextSide);
     }, []);
 
     const resizePaperSplit = useCallback((nextWidth: number) => {
         const clampedWidth = clampPanelWidth(nextWidth);
         dispatch({ type: "resize", width: clampedWidth });
-        window.localStorage.setItem(STORAGE_WIDTH_KEY, String(clampedWidth));
+        writePreference(STORAGE_WIDTH_KEY, String(clampedWidth));
     }, []);
 
     const closePaperSplit = useCallback(() => {

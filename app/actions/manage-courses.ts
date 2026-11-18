@@ -1,6 +1,7 @@
 "use server";
 
-import { asc, count, eq, ilike, isNotNull, or } from "drizzle-orm";
+import { isUniqueViolation } from "@/lib/db-errors";
+import { and, asc, count, eq, ilike, isNotNull, isNull, or } from "drizzle-orm";
 import { updateTag, revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/app/auth";
@@ -102,7 +103,8 @@ async function loadModeratorCourseRecords(): Promise<ModeratorCourseRecord[]> {
                 total: count(),
             })
             .from(note)
-            .where(isNotNull(note.courseId))
+            // Archived copies are neither live nor waiting for review.
+            .where(and(isNotNull(note.courseId), isNull(note.moderationArchivedAt)))
             .groupBy(note.courseId, note.isClear),
         db
             .select({
@@ -111,7 +113,12 @@ async function loadModeratorCourseRecords(): Promise<ModeratorCourseRecord[]> {
                 total: count(),
             })
             .from(pastPaper)
-            .where(isNotNull(pastPaper.courseId))
+            .where(
+                and(
+                    isNotNull(pastPaper.courseId),
+                    isNull(pastPaper.moderationArchivedAt),
+                ),
+            )
             .groupBy(pastPaper.courseId, pastPaper.isClear),
     ]);
 
@@ -144,15 +151,6 @@ async function invalidateCourseRegistry() {
     updateTag("courses");
     revalidatePath("/mod/courses");
     await invalidatePastPapersSurfaceCache();
-}
-
-function isUniqueViolation(error: unknown) {
-    return Boolean(
-        error &&
-            typeof error === "object" &&
-            "code" in error &&
-            (error as { code?: string }).code === "23505",
-    );
 }
 
 function replaceSyllabusCodePrefix(name: string, currentCode: string, nextCode: string) {

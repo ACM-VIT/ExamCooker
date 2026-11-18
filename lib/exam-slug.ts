@@ -3,6 +3,8 @@ import type { ExamType } from "@/db";
 const TYPE_TO_SLUG: Record<ExamType, string> = {
     CAT_1: "cat-1",
     CAT_2: "cat-2",
+    RECAT_1: "recat-1",
+    RECAT_2: "recat-2",
     FAT: "fat",
     MODEL_CAT_1: "model-cat-1",
     MODEL_CAT_2: "model-cat-2",
@@ -16,6 +18,8 @@ const TYPE_TO_SLUG: Record<ExamType, string> = {
 const TYPE_TO_LABEL: Record<ExamType, string> = {
     CAT_1: "CAT-1",
     CAT_2: "CAT-2",
+    RECAT_1: "ReCAT-1",
+    RECAT_2: "ReCAT-2",
     FAT: "FAT",
     MODEL_CAT_1: "Model CAT-1",
     MODEL_CAT_2: "Model CAT-2",
@@ -39,6 +43,8 @@ const INPUT_TO_TYPE: Record<string, ExamType> = {
     "cat 2": "CAT_2",
     "cat ii": "CAT_2",
     "cat two": "CAT_2",
+    recat1: "RECAT_1",
+    recat2: "RECAT_2",
     fat: "FAT",
     final: "FAT",
     "final assessment": "FAT",
@@ -107,3 +113,8 @@ export function examTypeLabel(type: ExamType): string {
 }
 
 export const ALL_EXAM_TYPES: ExamType[] = Object.keys(TYPE_TO_SLUG) as ExamType[];
+
+export const EXAM_TYPE_OPTIONS = ALL_EXAM_TYPES.map((value) => ({
+    value,
+    label: examTypeLabel(value),
+}));

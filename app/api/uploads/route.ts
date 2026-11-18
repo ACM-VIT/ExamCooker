@@ -3,12 +3,14 @@ import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { auth } from "@/app/auth";
 import {
     createUploadedResources,
+    UploadRejectedError,
     type CreateUploadedResourcesInput,
     type UploadVariant,
 } from "@/lib/uploads/create-uploaded-resources";
-import { campusValues, db, examTypeValues, semesterValues, uploadResultReceipt } from "@/db";
+import { campusValues, examTypeValues, semesterValues, uploadResultReceipt } from "@/db";
 import { checkSlidingWindowRateLimit } from "@/lib/redis-rate-limit";
-import { getAiRequestEnvironment } from "@/lib/ai/session";
+import { getAiRequestEnvironment, readAiSession } from "@/lib/ai/session";
+import { getPaperUploadReviewEnvironment, paperReviewCredentialsSchema } from "@/lib/uploads/paper-review-credentials";
 
 const MAX_UPLOAD_BATCH = 8;
 const SAVE_RATE_LIMIT = 12;
@@ -19,8 +21,8 @@ const semesters = new Set<string>(semesterValues);
 const campuses = new Set<string>(campusValues);
 
 type UploadRequestBody = Partial<
-    Omit<CreateUploadedResourcesInput, "userEmail" | "results">
-> & { results?: unknown };
+    Omit<CreateUploadedResourcesInput, "userEmail" | "claimResults" | "aiEnvironment">
+> & { results?: unknown; aiReview?: unknown };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -53,19 +55,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
             { success: false, error: "You must be signed in to upload files." },
             { status: 401 },
-        );
-    }
-
-    const rateLimit = await checkSlidingWindowRateLimit({
-        identifier: session.user.id,
-        limit: SAVE_RATE_LIMIT,
-        prefix: "upload-save",
-        windowMs: SAVE_RATE_WINDOW_MS,
-    });
-    if (!rateLimit.success) {
-        return NextResponse.json(
-            { success: false, error: "You have saved several uploads recently. Try again later." },
-            { status: 429 },
         );
     }
 
@@ -127,34 +116,66 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    try {
-        const results = await db.transaction(async (transaction) => {
-            const now = new Date();
-            const consumed = await transaction
-                .update(uploadResultReceipt)
-                .set({ consumedAt: now })
-                .where(
-                    and(
-                        inArray(uploadResultReceipt.id, receiptIds),
-                        eq(uploadResultReceipt.userId, session.user.id),
-                        gt(uploadResultReceipt.expiresAt, now),
-                        isNull(uploadResultReceipt.consumedAt),
-                    ),
-                )
-                .returning({
-                    id: uploadResultReceipt.id,
-                    result: uploadResultReceipt.result,
-                });
-            if (consumed.length !== receiptIds.length) {
-                throw new Error("One or more upload receipts are invalid, expired, or already used.");
-            }
-            const resultById = new Map(consumed.map((receipt) => [receipt.id, receipt.result]));
-            return receiptIds.map((receiptId) => resultById.get(receiptId)!);
-        });
+    const credentials = paperReviewCredentialsSchema.optional().safeParse(body.aiReview);
+    if (!credentials.success) {
+        return NextResponse.json(
+            { success: false, error: "Enter a valid AI provider and API key." },
+            { status: 400 },
+        );
+    }
 
+    // Count only requests that could save something, so a malformed retry
+    // does not use up the hour's allowance.
+    const rateLimit = await checkSlidingWindowRateLimit({
+        identifier: session.user.id,
+        limit: SAVE_RATE_LIMIT,
+        prefix: "upload-save",
+        windowMs: SAVE_RATE_WINDOW_MS,
+    });
+    if (!rateLimit.success) {
+        return NextResponse.json(
+            { success: false, error: "You have saved several uploads recently. Try again later." },
+            { status: 429 },
+        );
+    }
+
+    try {
+        const aiEnvironment = variant === "Notes"
+            ? await getAiRequestEnvironment(session.user.id)
+            : getPaperUploadReviewEnvironment(
+                process.env,
+                credentials.data,
+                credentials.data ? null : await readAiSession(session.user.id),
+            );
         const result = await createUploadedResources({
             userEmail: session.user.email,
-            results,
+            claimResults: async (transaction) => {
+                const now = new Date();
+                const consumed = await transaction
+                    .update(uploadResultReceipt)
+                    .set({ consumedAt: now })
+                    .where(
+                        and(
+                            inArray(uploadResultReceipt.id, receiptIds),
+                            eq(uploadResultReceipt.userId, session.user.id),
+                            gt(uploadResultReceipt.expiresAt, now),
+                            isNull(uploadResultReceipt.consumedAt),
+                        ),
+                    )
+                    .returning({
+                        id: uploadResultReceipt.id,
+                        result: uploadResultReceipt.result,
+                    });
+                if (consumed.length !== receiptIds.length) {
+                    throw new UploadRejectedError(
+                        "One or more upload receipts are invalid, expired, or already used.",
+                    );
+                }
+                const resultById = new Map(
+                    consumed.map((receipt) => [receipt.id, receipt.result]),
+                );
+                return receiptIds.map((receiptId) => resultById.get(receiptId)!);
+            },
             year: stringValue(body.year),
             slot: stringValue(body.slot),
             variant,
@@ -163,14 +184,18 @@ export async function POST(request: NextRequest) {
             semester,
             campus,
             hasAnswerKey: body.hasAnswerKey === true,
-            aiEnvironment: await getAiRequestEnvironment(session.user.id),
+            aiEnvironment,
         });
 
         if (!result.success) {
             return NextResponse.json(result, { status: 400 });
         }
 
-        return NextResponse.json({ success: true, count: result.data?.length ?? 0 });
+        return NextResponse.json({
+            success: true,
+            count: result.data.length,
+            autoReview: result.autoReview,
+        });
     } catch (error) {
         console.error("upload save api error", error);
         const message =

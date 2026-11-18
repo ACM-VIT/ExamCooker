@@ -35,6 +35,7 @@ type PaperPickerAction =
     | { type: "search-start" }
     | { type: "search-success"; results: PaperLinkOption[] }
     | { type: "search-error"; message: string }
+    | { type: "search-cancelled" }
     | { type: "reset"; close?: boolean };
 
 const initialPaperPickerState: PaperPickerState = {
@@ -84,11 +85,14 @@ function paperPickerReducer(
                 loading: false,
                 results: [],
             };
+        case "search-cancelled":
+            return state.loading ? { ...state, loading: false } : state;
         case "reset":
             return {
                 ...state,
                 error: null,
                 highlight: 0,
+                loading: false,
                 open: action.close ? false : state.open,
                 query: "",
                 results: [],
@@ -135,6 +139,8 @@ export default function PaperPicker({
 
     useEffect(() => {
         if (!shouldShowResults) {
+            // No search will answer for a closed picker, so it can't stay "loading".
+            dispatch({ type: "search-cancelled" });
             return;
         }
 
@@ -143,9 +149,11 @@ export default function PaperPicker({
             return;
         }
 
+        // Loading covers the debounce as well as the request, so "no matches"
+        // is only shown once a search for this query has answered.
+        dispatch({ type: "search-start" });
         let cancelled = false;
         const timer = window.setTimeout(async () => {
-            dispatch({ type: "search-start" });
             try {
                 const matches = await searchPastPaperLinkTargets({
                     query: trimmedQuery,
@@ -169,6 +177,8 @@ export default function PaperPicker({
         }, 200);
 
         return () => {
+            // The next run of this effect starts the replacement search or
+            // clears the loading state.
             cancelled = true;
             window.clearTimeout(timer);
         };

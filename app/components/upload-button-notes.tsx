@@ -1,21 +1,28 @@
 "use client";
 import React, { useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { useGuestPrompt } from "@/app/components/auth-gate";
 import { captureUploadClick } from "@/lib/posthog/client";
 
 const UploadButtonNotes: React.FC = () => {
     const { requireAuth } = useGuestPrompt();
+    const router = useRouter();
     const handleClick = useCallback(
         (event: React.MouseEvent<HTMLAnchorElement>) => {
-            if (!requireAuth("upload notes")) {
+            // If the session is still loading, continue once it is confirmed.
+            const continueToUpload = () => {
+                captureUploadClick("note");
+                router.push("/notes/create");
+            };
+            if (!requireAuth("upload notes", continueToUpload)) {
                 event.preventDefault();
                 return;
             }
             captureUploadClick("note");
         },
-        [requireAuth]
+        [requireAuth, router]
     );
 
     return (

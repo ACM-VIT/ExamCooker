@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import CoursePicker, { type CourseOption } from "./course-picker";
 import PaperPicker from "./paper-picker";
 import { updatePaperMetadata } from "@/app/actions/update-paper-metadata";
 import type { Campus, ExamType, Semester } from "@/db";
+import { EXAM_TYPE_OPTIONS } from "@/lib/exam-slug";
 import { formatPaperLinkOption, type PaperLinkOption } from "./paper-link-types";
 
 export type PaperRowData = {
@@ -28,21 +29,10 @@ type Props = {
     paper: PaperRowData;
     courses: CourseOption[];
     onResolved: (id: string) => void;
+    /** Reports a saved but still incomplete paper, so the list keeps the saved values. */
+    onSaved: (paper: PaperRowData) => void;
     onCourseCreated: (course: CourseOption) => void;
 };
-
-const EXAM_OPTIONS: { value: ExamType; label: string }[] = [
-    { value: "CAT_1", label: "CAT-1" },
-    { value: "CAT_2", label: "CAT-2" },
-    { value: "FAT", label: "FAT" },
-    { value: "MODEL_CAT_1", label: "Model CAT-1" },
-    { value: "MODEL_CAT_2", label: "Model CAT-2" },
-    { value: "MODEL_FAT", label: "Model FAT" },
-    { value: "MID", label: "Mid" },
-    { value: "QUIZ", label: "Quiz" },
-    { value: "CIA", label: "CIA" },
-    { value: "OTHER", label: "Other" },
-];
 
 const SEMESTER_OPTIONS: { value: Semester; label: string }[] = [
     { value: "FALL", label: "Fall" },
@@ -61,36 +51,47 @@ const CAMPUS_OPTIONS: { value: Campus; label: string }[] = [
     { value: "MAURITIUS", label: "Mauritius" },
 ];
 
-export default function PaperReviewRow({ paper, courses, onResolved, onCourseCreated }: Props) {
-    const initialDraftRef = useRef(paper);
-    const [draft, setDraft] = useState<PaperRowData>(initialDraftRef.current);
+export default function PaperReviewRow({ paper, courses, onResolved, onSaved, onCourseCreated }: Props) {
+    const [draft, setDraft] = useState(paper);
+    const [savedDraft, setSavedDraft] = useState<PaperRowData | null>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const isComplete =
+    const canResolve =
+        draft.isClear &&
         draft.courseId !== null &&
         draft.examType !== null &&
-        draft.year !== null &&
-        (!draft.hasAnswerKey || draft.questionPaper !== null);
+        draft.year !== null;
 
     const save = async () => {
+        // Save exactly what was on screen when Save was pressed.
+        const saved = draft;
+        const savedCanResolve = canResolve;
         setError(null);
+        setSavedDraft(null);
         setSaving(true);
         try {
-            await updatePaperMetadata({
-                id: draft.id,
-                courseId: draft.courseId,
-                examType: draft.examType,
-                slot: draft.slot,
-                year: draft.year,
-                semester: draft.semester,
-                campus: draft.campus,
-                hasAnswerKey: draft.hasAnswerKey,
-                questionPaperId: draft.hasAnswerKey ? draft.questionPaper?.id ?? null : null,
+            const result = await updatePaperMetadata({
+                id: saved.id,
+                courseId: saved.courseId,
+                examType: saved.examType,
+                slot: saved.slot,
+                year: saved.year,
+                semester: saved.semester,
+                campus: saved.campus,
+                hasAnswerKey: saved.hasAnswerKey,
+                questionPaperId: saved.hasAnswerKey ? saved.questionPaper?.id ?? null : null,
             });
-            if (isComplete) onResolved(draft.id);
+            if (!result.success) {
+                setError(result.error);
+                return;
+            }
+            setSavedDraft(saved);
+            if (savedCanResolve) onResolved(saved.id);
+            else onSaved(saved);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Save failed");
+            console.error("Failed to save paper metadata:", err);
+            setError("Could not save paper metadata. Please try again.");
         } finally {
             setSaving(false);
         }
@@ -155,15 +156,13 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                                 no year
                             </span>
                         )}
-                        {draft.hasAnswerKey && draft.questionPaper === null && (
-                            <span className="border border-red-600/60 px-1.5 py-0.5 text-red-700 dark:border-red-400/60 dark:text-red-300">
-                                no question paper
-                            </span>
-                        )}
                     </div>
                 </div>
             </div>
 
+            {/* Locked while saving: a save that resolves the row removes it, so
+                an edit made meanwhile would be lost without being saved. */}
+            <fieldset disabled={saving} className="min-w-0">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <FieldLabel label="Course" required missing={draft.courseId === null}>
                     <CoursePicker
@@ -192,7 +191,7 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                         className="w-full border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3 py-2 text-sm text-black dark:text-[#D5D5D5] focus:outline-none focus:ring-2 focus:ring-[#5FC4E7]"
                     >
                         <option value="">—</option>
-                        {EXAM_OPTIONS.map((o) => (
+                        {EXAM_TYPE_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
                                 {o.label}
                             </option>
@@ -225,16 +224,14 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                         aria-label="Slot"
                         value={draft.slot ?? ""}
                         onChange={(e) => {
-                            const raw = e.target.value.toUpperCase();
-                            const v = /^[A-G][12]$/.test(raw) ? raw : raw === "" ? "" : raw.slice(0, 2);
+                            const slot = e.target.value.toUpperCase();
                             setDraft((currentDraft) => ({
                                 ...currentDraft,
-                                slot: v === "" ? null : v,
+                                slot: slot || null,
                             }));
                         }}
-                        maxLength={2}
                         className="w-full border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3 py-2 font-mono text-sm text-black dark:text-[#D5D5D5] focus:outline-none focus:ring-2 focus:ring-[#5FC4E7]"
-                        placeholder="A1..G2"
+                        placeholder="e.g. A1 or A1+TA1"
                     />
                 </FieldLabel>
 
@@ -277,7 +274,7 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                 </FieldLabel>
 
                 <FieldLabel label="Answer key">
-                    <label className="flex h-[38px] items-center gap-2 border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3">
+                    <span className="flex h-[38px] items-center gap-2 border border-black/30 dark:border-[#D5D5D5]/40 bg-white dark:bg-[#0C1222] px-3">
                         <input
                             type="checkbox"
                             checked={draft.hasAnswerKey}
@@ -294,18 +291,17 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                             className="size-4 accent-[#5FC4E7]"
                         />
                         <span className="text-sm text-black dark:text-[#D5D5D5]">
-                            this upload is an answer key
+                            Includes an answer key
                         </span>
-                    </label>
+                    </span>
                 </FieldLabel>
 
                 {draft.hasAnswerKey && (
                     <div className="sm:col-span-2 lg:col-span-2">
-                        <FieldLabel
-                            label="Question paper"
-                            required
-                            missing={draft.questionPaper === null}
-                        >
+                        <div className="flex flex-col gap-1">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-black/60 dark:text-[#D5D5D5]/60">
+                                Link a separate question paper (optional)
+                            </span>
                             <PaperPicker
                                 value={draft.questionPaper}
                                 excludePaperId={draft.id}
@@ -317,7 +313,7 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                                     }))
                                 }
                             />
-                        </FieldLabel>
+                        </div>
                     </div>
                 )}
 
@@ -328,12 +324,16 @@ export default function PaperReviewRow({ paper, courses, onResolved, onCourseCre
                         disabled={saving}
                         className="w-full border-2 border-black bg-[#5FC4E7] px-4 py-2 text-sm font-semibold text-black transition hover:translate-x-[-2px] hover:translate-y-[-2px] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {saving ? "Saving…" : isComplete ? "Save & resolve" : "Save"}
+                        {saving ? "Saving…" : canResolve ? "Save & resolve" : "Save"}
                     </button>
                 </div>
             </div>
+            </fieldset>
             {error && (
-                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>
+            )}
+            {savedDraft === draft && (
+                <p role="status" className="text-sm text-black/70 dark:text-[#D5D5D5]/70">Saved.</p>
             )}
         </div>
     );

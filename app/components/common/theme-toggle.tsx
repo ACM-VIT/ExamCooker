@@ -35,6 +35,10 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
         () => false,
     );
     const buttonRef = useRef<HTMLButtonElement>(null);
+    // Starting a second view transition skips the first, whose rejection would
+    // then re-apply its own theme and remove the transition class mid-animation.
+    // One animated toggle runs at a time; clicks during it are ignored.
+    const transitionRunningRef = useRef(false);
 
     const applyTheme = (next: boolean) => {
         const root = document.documentElement;
@@ -44,10 +48,15 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
         root.style.colorScheme = next ? "dark" : "light";
         root.style.setProperty("--ec-app-bg", background);
         root.style.backgroundColor = background;
-        localStorage.setItem("theme", next ? "dark" : "light");
+        try {
+            localStorage.setItem("theme", next ? "dark" : "light");
+        } catch {
+            // Storage blocked: the theme still applies for this page.
+        }
     };
 
     const toggleTheme = async () => {
+        if (transitionRunningRef.current) return;
         const next = !darkMode;
         const button = buttonRef.current;
         const supportsViewTransitions = "startViewTransition" in document;
@@ -72,6 +81,7 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
         );
 
         document.documentElement.classList.add("theme-transition");
+        transitionRunningRef.current = true;
 
         try {
             // Kept inside the try so a synchronous throw or a rejected transition
@@ -104,6 +114,7 @@ function ThemeToggleSwitch({ children, className, iconClassName }: ThemeToggleSw
         } catch {
             applyTheme(next);
         } finally {
+            transitionRunningRef.current = false;
             document.documentElement.classList.remove("theme-transition");
         }
     };

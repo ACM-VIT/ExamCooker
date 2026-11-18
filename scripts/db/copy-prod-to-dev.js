@@ -208,6 +208,23 @@ async function fetchTaggedBatch({ table, joinTable, columns, cursor }) {
   return [...grouped.values()].slice(0, BATCH_SIZE);
 }
 
+// Courses are matched by code, so a dev course can keep its own id. A copied
+// AI review must name that id, or applying its suggestion fails. The code is
+// the production course's current one (`currentCode`), since a course can be
+// renamed after the review ran; the code stored in the review is a fallback.
+async function remapReviewCourse(client, review, currentCode) {
+  const suggestion = review?.suggestion;
+  if (!suggestion?.courseId) return review;
+  const code = currentCode ?? suggestion.courseCode;
+  const { rows } = code
+    ? await client.query('SELECT id FROM "Course" WHERE code = $1', [code])
+    : { rows: [] };
+  const courseId = rows[0]?.id ?? null;
+  return courseId === suggestion.courseId
+    ? review
+    : { ...review, suggestion: { ...suggestion, courseId } };
+}
+
 async function copyInBatches(label, fetchBatch, handleBatch) {
   let cursor = null;
   let total = 0;
@@ -423,19 +440,32 @@ async function copyNotes(systemUserId) {
           'base."thumbNailUrl"',
           'base."isClear"',
           'base."contentHash"',
+          'base."aiReview"',
+          'base."aiReviewedAt"',
+          'base."moderationArchivedAt"',
+          // Kept as is: a copied AI review is current only while it matches.
+          'base."updatedAt"',
           '(SELECT c.code FROM "Course" c WHERE c.id = base."courseId") AS "courseCode"',
+          // The suggested course's current code, which can differ from the one
+          // stored in the review if the course was renamed since.
+          `(SELECT c.code FROM "Course" c WHERE c.id = base."aiReview" #>> '{suggestion,courseId}') AS "reviewCourseCode"`,
         ],
         cursor,
       }),
     async (notes) => {
       await withDevTransaction(async (client) => {
         for (const note of notes) {
+          const aiReview = await remapReviewCourse(client, note.aiReview, note.reviewCourseCode);
           await client.query(
             `
               INSERT INTO "Note" (
-                id, title, "fileUrl", "thumbNailUrl", "authorId", "isClear", "contentHash", "courseId", "createdAt", "updatedAt"
+                id, title, "fileUrl", "thumbNailUrl", "authorId", "isClear", "contentHash", "courseId",
+                "aiReview", "aiReviewedAt", "moderationArchivedAt", "createdAt", "updatedAt"
               )
-              VALUES ($1, $2, $3, $4, $5, $6, $7, (SELECT id FROM "Course" WHERE code = $8), NOW(), NOW())
+              VALUES (
+                $1, $2, $3, $4, $5, $6, $7, (SELECT id FROM "Course" WHERE code = $8),
+                $9, $10, $11, NOW(), $12
+              )
               ON CONFLICT (id)
               DO UPDATE SET
                 title = EXCLUDED.title,
@@ -445,7 +475,10 @@ async function copyNotes(systemUserId) {
                 "isClear" = EXCLUDED."isClear",
                 "contentHash" = EXCLUDED."contentHash",
                 "courseId" = EXCLUDED."courseId",
-                "updatedAt" = NOW()
+                "aiReview" = EXCLUDED."aiReview",
+                "aiReviewedAt" = EXCLUDED."aiReviewedAt",
+                "moderationArchivedAt" = EXCLUDED."moderationArchivedAt",
+                "updatedAt" = EXCLUDED."updatedAt"
             `,
             [
               note.id,
@@ -456,6 +489,10 @@ async function copyNotes(systemUserId) {
               note.isClear,
               note.contentHash,
               note.courseCode,
+              aiReview,
+              note.aiReviewedAt,
+              note.moderationArchivedAt,
+              note.updatedAt,
             ],
           );
           await syncTagLinks(client, '_NoteToTag', note.id, note.tags);
@@ -479,7 +516,15 @@ async function copyPastPapers(systemUserId) {
           'base."thumbNailUrl"',
           'base."isClear"',
           'base."contentHash"',
+          'base."aiReview"',
+          'base."aiReviewedAt"',
+          'base."moderationArchivedAt"',
+          // Kept as is: a copied AI review is current only while it matches.
+          'base."updatedAt"',
           '(SELECT c.code FROM "Course" c WHERE c.id = base."courseId") AS "courseCode"',
+          // The suggested course's current code, which can differ from the one
+          // stored in the review if the course was renamed since.
+          `(SELECT c.code FROM "Course" c WHERE c.id = base."aiReview" #>> '{suggestion,courseId}') AS "reviewCourseCode"`,
           'base."examType"',
           'base.slot',
           'base.year',
@@ -493,17 +538,19 @@ async function copyPastPapers(systemUserId) {
     async (papers) => {
       await withDevTransaction(async (client) => {
         for (const paper of papers) {
+          const aiReview = await remapReviewCourse(client, paper.aiReview, paper.reviewCourseCode);
           await client.query(
             `
               INSERT INTO "PastPaper" (
                 id, title, "fileUrl", "thumbNailUrl", "authorId", "isClear",
                 "contentHash", "courseId", "examType", slot, year, semester, campus,
-                "hasAnswerKey", "page_edits", "createdAt", "updatedAt"
+                "hasAnswerKey", "page_edits", "aiReview", "aiReviewedAt", "moderationArchivedAt",
+                "createdAt", "updatedAt"
               )
               VALUES (
                 $1, $2, $3, $4, $5, $6,
                 $7, (SELECT id FROM "Course" WHERE code = $8), $9, $10, $11, $12, $13,
-                $14, $15, NOW(), NOW()
+                $14, $15, $16, $17, $18, NOW(), $19
               )
               ON CONFLICT (id)
               DO UPDATE SET
@@ -522,7 +569,10 @@ async function copyPastPapers(systemUserId) {
                 "hasAnswerKey" = EXCLUDED."hasAnswerKey",
                 "questionPaperId" = NULL,
                 "page_edits" = EXCLUDED."page_edits",
-                "updatedAt" = NOW()
+                "aiReview" = EXCLUDED."aiReview",
+                "aiReviewedAt" = EXCLUDED."aiReviewedAt",
+                "moderationArchivedAt" = EXCLUDED."moderationArchivedAt",
+                "updatedAt" = EXCLUDED."updatedAt"
             `,
             [
               paper.id,
@@ -540,6 +590,10 @@ async function copyPastPapers(systemUserId) {
               paper.campus,
               paper.hasAnswerKey,
               paper.pageEdits,
+              aiReview,
+              paper.aiReviewedAt,
+              paper.moderationArchivedAt,
+              paper.updatedAt,
             ],
           );
           await syncTagLinks(client, '_PastPaperToTag', paper.id, paper.tags);
@@ -569,7 +623,7 @@ async function copyPastPaperLinks() {
       const result = await client.query(
         `
           UPDATE "PastPaper"
-          SET "questionPaperId" = $2, "updatedAt" = NOW()
+          SET "questionPaperId" = $2
           WHERE id = $1
             AND EXISTS (SELECT 1 FROM "PastPaper" question WHERE question.id = $2)
         `,

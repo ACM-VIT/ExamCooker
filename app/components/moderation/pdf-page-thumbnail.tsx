@@ -1,14 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { useDocumentState } from "@embedpdf/core/react";
 import { PdfErrorCode, Rotation } from "@embedpdf/models";
 import { useRenderCapability } from "@embedpdf/plugin-render/react";
 import type { PdfPageRotation } from "@/lib/pdf/page-edits";
+import { foregroundTimeout } from "@/lib/pdf/foreground-timeout";
 import { getEffectivePdfRotation } from "@/lib/pdf/render-rotation";
 
 const THUMB_SCALE = 0.22;
+const THUMB_RENDER_TIMEOUT_MS = 20_000;
 
 function toRotationEnum(rotation: PdfPageRotation): Rotation {
   switch (rotation) {
@@ -73,6 +75,9 @@ export default function PdfPageThumbnail({
     imageUrl: null,
   });
   const imageUrlRef = useRef<string | null>(null);
+  // A failed thumbnail is rendered once more. It sits inside the page's jump
+  // button, so it cannot offer its own retry control.
+  const [retryVersion, setRetryVersion] = useState(0);
 
   useEffect(() => {
     if (!renderProvides || documentState?.status !== "loaded") {
@@ -82,6 +87,13 @@ export default function PdfPageThumbnail({
     let cancelled = false;
     let didSettle = false;
     dispatchPreview({ type: "loading" });
+    const abortTask = (message: string) => {
+      try {
+        task.abort({ code: PdfErrorCode.Cancelled, message });
+      } catch {
+        // Aborting is best-effort; cleanup should not throw during unmount.
+      }
+    };
 
     const task = renderProvides.forDocument(documentId).renderPage({
       pageIndex,
@@ -92,10 +104,26 @@ export default function PdfPageThumbnail({
       },
     });
 
+    const fail = () => {
+      didSettle = true;
+      if (retryVersion === 0) setRetryVersion(1);
+      else dispatchPreview({ type: "error" });
+    };
+    // A hung render would otherwise leave the placeholder pulsing forever.
+    const cancelTimeout = foregroundTimeout(() => {
+      if (cancelled || didSettle) return;
+      abortTask("Thumbnail render timed out");
+      fail();
+    }, THUMB_RENDER_TIMEOUT_MS);
+
     task
       .toPromise()
       .then((blob) => {
-        if (cancelled) return;
+        if (cancelled || didSettle) return;
+        if (!blob || blob.size === 0) {
+          fail();
+          return;
+        }
         didSettle = true;
         const nextImageUrl = URL.createObjectURL(blob);
         if (imageUrlRef.current) {
@@ -105,25 +133,17 @@ export default function PdfPageThumbnail({
         dispatchPreview({ type: "ready", imageUrl: nextImageUrl });
       })
       .catch(() => {
-        if (cancelled) return;
-        didSettle = true;
-        dispatchPreview({ type: "error" });
-      });
+        if (cancelled || didSettle) return;
+        fail();
+      })
+      .finally(cancelTimeout);
 
     return () => {
       cancelled = true;
-      if (!didSettle) {
-        try {
-          task.abort({
-            code: PdfErrorCode.Cancelled,
-            message: "Thumbnail render cancelled",
-          });
-        } catch {
-          // Aborting is best-effort; cleanup should not throw during unmount.
-        }
-      }
+      cancelTimeout();
+      if (!didSettle) abortTask("Thumbnail render cancelled");
     };
-  }, [documentId, documentState?.status, pageIndex, renderProvides, renderRotation]);
+  }, [documentId, documentState?.status, pageIndex, renderProvides, renderRotation, retryVersion]);
 
   useEffect(
     () => () => {

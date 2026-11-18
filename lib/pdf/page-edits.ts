@@ -171,6 +171,28 @@ export function arePdfPageEditsEqual(
   return serializePdfPageEdits(left, totalPages) === serializePdfPageEdits(right, totalPages);
 }
 
+/** The page fixer's unsaved draft on top of the saved edits it started from. */
+export type PdfPageEditDraft = {
+  savedKey: string;
+  baseline: PdfPageEdits | null;
+  draft: PdfPageEdits | null;
+};
+
+/**
+ * Moves a draft onto newly saved edits. Unsaved changes are kept and compared
+ * against the new saved value; an unchanged draft follows it.
+ */
+export function rebasePdfPageEditDraft(
+  state: PdfPageEditDraft,
+  savedKey: string,
+  saved: PdfPageEdits | null,
+  totalPages?: number,
+): PdfPageEditDraft {
+  if (state.savedKey === savedKey) return state;
+  const hasUnsavedChanges = !arePdfPageEditsEqual(state.draft, state.baseline, totalPages);
+  return { savedKey, baseline: saved, draft: hasUnsavedChanges ? state.draft : saved };
+}
+
 export function getPdfPageDisplayEntries(
   totalPages: number,
   edits: PdfPageEdits | null | undefined,

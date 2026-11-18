@@ -17,6 +17,7 @@ import {
 } from "@/lib/uploads/create-uploaded-resources";
 import { processUploadFile } from "@/lib/uploads/processor-client";
 import { parseExamTypeInput } from "@/lib/exam-slug";
+import { getPaperUploadReviewEnvironment, paperReviewCredentialsSchema } from "@/lib/uploads/paper-review-credentials";
 
 const uploadVariants = new Set<UploadVariant>(["Notes", "Past Papers"]);
 const semesters = new Set<string>(semesterValues);
@@ -165,6 +166,17 @@ export async function POST(request: NextRequest) {
   const year = stringValue(formData.get("year"));
   const slot = stringValue(formData.get("slot"));
   const hasAnswerKey = parseBoolean(formData.get("answerKey"));
+  const apiKey = stringValue(formData.get("aiReviewApiKey"));
+  const credentials = paperReviewCredentialsSchema.optional().safeParse(
+    apiKey ? { provider: stringValue(formData.get("aiReviewProvider")), apiKey } : undefined,
+  );
+  if (!credentials.success) {
+    return NextResponse.json(
+      { success: false, error: "Enter a valid AI provider and API key." },
+      { status: 400 },
+    );
+  }
+
   const yearValidation =
     variant === "Past Papers"
       ? validateRequiredYear(year, "Year")
@@ -230,7 +242,7 @@ export async function POST(request: NextRequest) {
 
     const result = await createUploadedResources({
       userEmail: user.email,
-      results: [processedFile],
+      claimResults: async () => [processedFile],
       year: yearValidation.value ?? year,
       slot,
       variant,
@@ -239,6 +251,9 @@ export async function POST(request: NextRequest) {
       semester: semester as Semester | null,
       campus: campus as Campus | null,
       hasAnswerKey,
+      aiEnvironment: variant === "Past Papers"
+        ? getPaperUploadReviewEnvironment(process.env, credentials.data)
+        : undefined,
     });
 
     if (!result.success) {

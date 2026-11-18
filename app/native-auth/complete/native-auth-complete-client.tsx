@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { invalidateAuthSessionCache } from "@/app/components/auth-gate";
 
@@ -16,9 +16,21 @@ export default function NativeAuthCompleteClient({
   returnTo: string;
 }) {
   const [failed, setFailed] = useState(false);
+  // The handoff code is single-use, so it is exchanged once per page even when
+  // React re-runs the effect (Strict Mode in development).
+  const startedRef = useRef(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    let cancelled = false;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
 
     async function completeNativeAuth() {
       if (!code || !handoffChallenge) {
@@ -27,50 +39,53 @@ export default function NativeAuthCompleteClient({
 
       const storageKey = `${HANDOFF_STORAGE_PREFIX}${handoffChallenge}`;
       const verifier = window.sessionStorage.getItem(storageKey) ?? "";
-      window.sessionStorage.removeItem(storageKey);
-
       if (!verifier) {
         return false;
       }
 
       invalidateAuthSessionCache();
-      const result = await signIn("native-handoff", {
-        code,
-        verifier,
-        callbackUrl: returnTo,
-        redirect: false,
-      });
+      try {
+        const result = await signIn("native-handoff", {
+          code,
+          verifier,
+          callbackUrl: returnTo,
+          redirect: false,
+        });
 
-      if (result?.ok) {
-        window.location.assign(result.url ?? returnTo);
-        return true;
+        if (result?.ok) {
+          window.location.assign(result.url ?? returnTo);
+          return true;
+        }
+        return false;
+      } finally {
+        // The server consumes the code whatever the outcome, so the verifier
+        // is useless after this attempt.
+        window.sessionStorage.removeItem(storageKey);
       }
-
-      return false;
     }
 
     void completeNativeAuth()
       .then((completed) => {
-        if (!completed && !cancelled) {
-          setFailed(true);
-        }
+        if (!completed && mountedRef.current) setFailed(true);
       })
       .catch(() => {
-        if (!cancelled) {
-          setFailed(true);
-        }
+        if (mountedRef.current) setFailed(true);
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [code, handoffChallenge, returnTo]);
 
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[#C2E6EC] px-6 text-center text-black dark:bg-[#0C1222] dark:text-[#D5D5D5]">
+    <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-[#C2E6EC] px-6 text-center text-black dark:bg-[#0C1222] dark:text-[#D5D5D5]">
       <p className="text-sm font-semibold">
         {failed ? "Authentication could not be completed." : "Finishing sign in..."}
       </p>
+      {failed ? (
+        <a
+          href={`/auth?${new URLSearchParams({ callbackUrl: returnTo || "/" }).toString()}`}
+          className="text-sm font-semibold underline underline-offset-4"
+        >
+          Try signing in again
+        </a>
+      ) : null}
     </main>
   );
 }

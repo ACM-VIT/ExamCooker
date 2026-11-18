@@ -37,14 +37,14 @@ import {
   type CommandSurfaceContext,
 } from "@/lib/command/actions";
 import {
-  isCommandResourceQueryTerm,
   normalizeCommandSearch,
   resolveCommandIntent,
   type CommandIntent,
   type CommandResourceIntent,
 } from "@/lib/command/intent";
-import { normalizeCourseCode } from "@/lib/course-tags";
+import { getCourseSearchText, scoreCourse } from "@/lib/command/course-search";
 import { examTypeLabel, examTypeToSlug } from "@/lib/exam-slug";
+import type { ExamType } from "@/db";
 import { POSTHOG_FEATURE_FLAGS } from "@/lib/posthog/shared";
 import { usePostHogFeatureFlagEnabled } from "@/lib/posthog/use-feature-flag-enabled";
 import {
@@ -75,7 +75,7 @@ type CommandPaper = {
   title: string;
   courseCode: string | null;
   courseTitle: string | null;
-  examType: string | null;
+  examType: ExamType | null;
   slot: string | null;
   year: number | null;
   href: string;
@@ -173,12 +173,15 @@ type CommandCatalogAction =
       courses: CommandCourse[];
       recentPapers: CommandPaper[];
     }
-  | { type: "failed" };
+  | { type: "failed" }
+  | { type: "retryAfterFailure" };
 
 type CommandIntentStatus = "idle" | "loading" | "settled";
 
 type CommandPaletteSessionState = {
   search: string;
+  // The query the agent fields answer; they are stale for any other query.
+  agentQuery: string;
   agentIntent: CommandIntent | null;
   agentCourseSearchText: string;
   agentActions: CommandGeneratedAction[];
@@ -190,8 +193,8 @@ type CommandPaletteSessionAction =
   | { type: "setSearch"; search: string }
   | { type: "reset" }
   | { type: "intentLoading" }
-  | { type: "intentResolved"; payload: CommandIntentResponse }
-  | { type: "intentFailed" }
+  | { type: "intentResolved"; query: string; payload: CommandIntentResponse }
+  | { type: "intentFailed"; query: string }
   | {
       type: "recordPreference";
       courseCode: string;
@@ -268,106 +271,17 @@ const FALLBACK_ACTIONS: CommandAction[] = [
   },
 ];
 
-const COURSE_QUERY_STOP_TERMS = new Set([
-  "a",
-  "an",
-  "and",
-  "course",
-  "courses",
-  "find",
-  "for",
-  "get",
-  "in",
-  "me",
-  "of",
-  "open",
-  "please",
-  "show",
-  "the",
-  "to",
-  "with",
-]);
-
-const COMMAND_QUERY_TERMS = new Set([
-  "answer",
-  "cat",
-  "cia",
-  "curr",
-  "curriculum",
-  "exam",
-  "exams",
-  "fat",
-  "final",
-  "key",
-  "lec",
-  "lecture",
-  "lectures",
-  "mat",
-  "material",
-  "materials",
-  "mid",
-  "model",
-  "not",
-  "note",
-  "notes",
-  "outl",
-  "outline",
-  "pap",
-  "paper",
-  "papers",
-  "past",
-  "prev",
-  "pyq",
-  "ques",
-  "question",
-  "questions",
-  "quiz",
-  "quizzes",
-  "rev",
-  "revision",
-  "sample",
-  "sem",
-  "sol",
-  "solutions",
-  "study",
-  "syl",
-  "sylla",
-  "syllab",
-  "syllabi",
-  "syllabus",
-  "unit",
-  "units",
-  "year",
-]);
-
-const COMMAND_PHRASES = [
-  "answer key",
-  "course notes",
-  "course outline",
-  "end sem",
-  "final assessment",
-  "mid sem",
-  "model cat 1",
-  "model cat 2",
-  "model fat",
-  "past papers",
-  "question paper",
-  "question papers",
-  "study material",
-];
-
-const COMMAND_PHRASE_PATTERNS = COMMAND_PHRASES.map(
-  (phrase) => new RegExp(`\\b${escapeRegExp(phrase)}\\b`, "g"),
-);
-
 const INITIAL_COMMAND_CATALOG_STATE: CommandCatalogState = {
   status: "idle",
   courses: [],
   recentPapers: [],
 };
 
+const NO_AGENT_ACTIONS: CommandGeneratedAction[] = [];
+
 const INITIAL_COMMAND_PALETTE_SESSION_STATE: CommandPaletteSessionState = {
   search: "",
+  agentQuery: "",
   agentIntent: null,
   agentCourseSearchText: "",
   agentActions: [],
@@ -378,6 +292,7 @@ const INITIAL_COMMAND_PALETTE_SESSION_STATE: CommandPaletteSessionState = {
 function isCommandPaletteSessionReset(state: CommandPaletteSessionState) {
   return (
     state.search === "" &&
+    state.agentQuery === "" &&
     state.agentIntent === null &&
     state.agentCourseSearchText === "" &&
     state.agentActions.length === 0 &&
@@ -399,6 +314,7 @@ function clearCommandAgentSession(
   return {
     ...state,
     search,
+    agentQuery: "",
     agentIntent: null,
     agentCourseSearchText: "",
     agentActions: [],
@@ -455,6 +371,8 @@ function commandCatalogReducer(
       };
     case "failed":
       return { ...state, status: "error" };
+    case "retryAfterFailure":
+      return state.status === "error" ? { ...state, status: "idle" } : state;
     default:
       return state;
   }
@@ -478,6 +396,7 @@ function commandPaletteSessionReducer(
     case "intentResolved":
       return {
         ...state,
+        agentQuery: action.query,
         agentIntent: action.payload.intent,
         agentCourseSearchText: action.payload.courseQuery?.trim() ?? "",
         agentActions: action.payload.actions ?? [],
@@ -487,6 +406,7 @@ function commandPaletteSessionReducer(
     case "intentFailed":
       return {
         ...state,
+        agentQuery: action.query,
         agentIntent: null,
         agentCourseSearchText: "",
         agentActions: [],
@@ -504,10 +424,6 @@ function commandPaletteSessionReducer(
     default:
       return state;
   }
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string) {
@@ -546,56 +462,6 @@ async function rememberPreferenceWithServerFallback(
     courseTitle: input.courseTitle,
     resource: input.resource,
   });
-}
-
-function getCourseSearchText(query: string) {
-  let normalized = normalizeCommandSearch(query);
-
-  for (const pattern of COMMAND_PHRASE_PATTERNS) {
-    normalized = ` ${normalized} `.replace(pattern, " ");
-  }
-
-  return normalized
-    .split(" ")
-    .filter((term) => {
-      if (!term) return false;
-      if (COURSE_QUERY_STOP_TERMS.has(term)) return false;
-      if (COMMAND_QUERY_TERMS.has(term)) return false;
-      if (isCommandResourceQueryTerm(term)) return false;
-      if (/^\d+$/.test(term)) return false;
-      return true;
-    })
-    .join(" ")
-    .trim();
-}
-
-function scoreCourse(course: CommandCourse, query: string, aliasCodes: Set<string>) {
-  const trimmed = query.trim();
-  if (!trimmed) return Number.POSITIVE_INFINITY;
-
-  const normalizedCode = normalizeCourseCode(trimmed);
-  const code = course.code.toUpperCase();
-  const normalizedQuery = normalizeCommandSearch(trimmed);
-  const haystack = normalizeCommandSearch(
-    [
-      course.code,
-      course.title,
-      course.aliases.join(" "),
-    ].join(" "),
-  );
-  const normalizedTitle = normalizeCommandSearch(course.title);
-  const terms = normalizedQuery.split(" ").filter(Boolean);
-  const matchesAllTerms = terms.every((term) => haystack.includes(term));
-
-  if (code === normalizedCode) return 0;
-  if (code.startsWith(normalizedCode)) return 1;
-  if (aliasCodes.has(code)) return 2;
-  if (normalizedTitle === normalizedQuery) return 3;
-  if (normalizedTitle.startsWith(normalizedQuery)) return 4;
-  if (matchesAllTerms) return 4;
-  if (haystack.includes(normalizedQuery)) return 5;
-
-  return Number.POSITIVE_INFINITY;
 }
 
 function getPreferenceWeight(
@@ -920,7 +786,7 @@ function PaperRow({
 }) {
   const meta = [
     paper.courseCode,
-    paper.examType?.replaceAll("_", " "),
+    paper.examType ? examTypeLabel(paper.examType) : null,
     paper.slot,
     paper.year,
   ]
@@ -1092,12 +958,16 @@ function CommandPaletteSession({
     useState<CommandUserContextResponse | null>(null);
   const {
     search,
-    agentIntent,
-    agentCourseSearchText,
-    agentActions,
+    agentQuery,
     commandPreferences,
     intentStatus,
   } = sessionState;
+  // Agent answers belong to the query they were asked for. While the next
+  // query is resolving, fall back to local matching instead of showing them.
+  const agentAnswersSearch = agentQuery !== "" && agentQuery === search.trim();
+  const agentIntent = agentAnswersSearch ? sessionState.agentIntent : null;
+  const agentCourseSearchText = agentAnswersSearch ? sessionState.agentCourseSearchText : "";
+  const agentActions = agentAnswersSearch ? sessionState.agentActions : NO_AGENT_ACTIONS;
   const {
     courses,
     recentPapers,
@@ -1105,9 +975,11 @@ function CommandPaletteSession({
   } = catalogState;
 
   useEffect(() => {
-    if (open) return;
-
-    dispatchSession({ type: "reset" });
+    // A failed catalog load is retried the next time the palette opens. It is
+    // reset on opening as well as closing, because a load can fail after the
+    // palette was closed.
+    dispatchCatalog({ type: "retryAfterFailure" });
+    if (!open) dispatchSession({ type: "reset" });
   }, [open]);
 
   useEffect(() => {
@@ -1203,11 +1075,11 @@ function CommandPaletteSession({
       void intentRequest
         .then((payload) => {
           if (cancelled) return;
-          dispatchSession({ type: "intentResolved", payload });
+          dispatchSession({ type: "intentResolved", query: trimmedSearch, payload });
         })
         .catch(() => {
           if (cancelled) return;
-          dispatchSession({ type: "intentFailed" });
+          dispatchSession({ type: "intentFailed", query: trimmedSearch });
         });
     }, 140);
 

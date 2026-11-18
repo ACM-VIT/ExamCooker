@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/app/auth";
 import { updateTag } from "next/cache";
@@ -47,7 +47,7 @@ export async function updatePastPaperPageEdits(input: z.input<typeof schema>) {
       pageEdits,
       ...clearedModerationReview,
     })
-    .where(eq(pastPaper.id, parsed.id))
+    .where(and(eq(pastPaper.id, parsed.id), isNull(pastPaper.moderationArchivedAt)))
     .returning({ id: pastPaper.id });
   if (updatedRows.length === 0) {
     throw new Error("Past paper not found.");

@@ -17,12 +17,16 @@ export function shouldArmStuckLoadTimeout(
   return status === "loading" && hasPlaybackIntent;
 }
 
+// Retries stop growing the budget here, so a viewer who keeps retrying is
+// never left waiting minutes for the watchdog.
+export const STUCK_TIMEOUT_MAX_MS = STUCK_TIMEOUT_BASE_MS * 4;
+
 // Each retry gets a longer budget instead of replaying the same 20s over a slow
 // connection. Attempt 0 (the first play) waits the base budget; every retry
-// after that adds another base budget, so the watchdog backs off rather than
-// failing the same way in a loop.
+// after that adds another base budget, up to the cap, so the watchdog backs
+// off rather than failing the same way in a loop.
 export function getStuckTimeoutMs(attempt: number) {
   const safeAttempt =
     Number.isFinite(attempt) && attempt > 0 ? Math.floor(attempt) : 0;
-  return STUCK_TIMEOUT_BASE_MS * (safeAttempt + 1);
+  return Math.min(STUCK_TIMEOUT_BASE_MS * (safeAttempt + 1), STUCK_TIMEOUT_MAX_MS);
 }

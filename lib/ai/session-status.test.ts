@@ -45,3 +45,33 @@ test("adding a voice key preserves the selected text provider and model", () => 
   assert.equal(status.voiceReady, true);
   assert.equal(environment.AI_GATEWAY_API_KEY, undefined);
 });
+
+test("a session's model choice never selects the moderation or correction model", () => {
+  const settings = {
+    userId: "account-a",
+    provider: "anthropic" as const,
+    model: "claude-tiny",
+    keys: { anthropic: "text-key" },
+    expiresAt: Date.now() + 1000,
+  };
+  const environment = createAiSessionEnvironment(
+    {
+      AI_PROVIDER: "openai",
+      AI_MODERATION_MODEL: "anthropic/claude-opus-5-5",
+      AI_CONTENT_CORRECTION_MODEL: "gpt-6-luna",
+    },
+    settings,
+    true,
+  );
+
+  // The server's override applies when it is for the session's provider...
+  const moderation = createAiSessionStatus(environment, settings, "moderation");
+  assert.equal(moderation.model, "claude-opus-5-5");
+  assert.equal(moderation.textReady, true);
+  // ...and otherwise the provider's default is used, not the session model.
+  const correction = createAiSessionStatus(environment, settings, "contentCorrection");
+  assert.equal(correction.provider, "anthropic");
+  assert.equal(correction.model, "claude-sonnet-5-5");
+  // Other features still follow the session's selection.
+  assert.equal(createAiSessionStatus(environment, settings, "pdfMarkdown").model, "claude-tiny");
+});

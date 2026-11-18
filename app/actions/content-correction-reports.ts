@@ -9,6 +9,7 @@ import { contentCorrectionReport, course, db, note, pastPaper } from "@/db";
 import {
   correctionReportCategories,
   type CorrectionReportDecision,
+  type CorrectionReportStatus,
 } from "@/lib/ai/content-correction-types";
 import {
   applyCorrectionSuggestion,
@@ -54,7 +55,7 @@ export type ModerationCorrectionReport = {
   category: string;
   description: string;
   suggestedValue: string | null;
-  status: string;
+  status: CorrectionReportStatus;
   aiDecision: CorrectionReportDecision | null;
   canApply: boolean;
   canConvertType: boolean;
@@ -143,35 +144,40 @@ export async function submitContentCorrectionReport(input: z.input<typeof Submit
     throw new Error("This published resource is no longer available.");
   }
 
-  const [existing] = await db
-    .select({ id: contentCorrectionReport.id })
-    .from(contentCorrectionReport)
-    .where(
-      and(
-        eq(contentCorrectionReport.reporterId, session.user.id),
-        data.resourceType === "note"
-          ? eq(contentCorrectionReport.noteId, data.resourceId)
-          : eq(contentCorrectionReport.pastPaperId, data.resourceId),
-        inArray(contentCorrectionReport.status, ["pending", "needs_review"]),
-      ),
-    )
-    .limit(1);
-  if (existing) {
-    throw new Error("You already have an open report for this resource.");
-  }
+  // The database runs transactions serializably, so two submissions racing
+  // past this check cannot both open a report for the same resource.
+  const created = await db.transaction(async (transaction) => {
+    const [existing] = await transaction
+      .select({ id: contentCorrectionReport.id })
+      .from(contentCorrectionReport)
+      .where(
+        and(
+          eq(contentCorrectionReport.reporterId, session.user.id),
+          data.resourceType === "note"
+            ? eq(contentCorrectionReport.noteId, data.resourceId)
+            : eq(contentCorrectionReport.pastPaperId, data.resourceId),
+          inArray(contentCorrectionReport.status, ["pending", "needs_review"]),
+        ),
+      )
+      .limit(1);
+    if (existing) {
+      throw new Error("You already have an open report for this resource.");
+    }
 
-  const [created] = await db
-    .insert(contentCorrectionReport)
-    .values({
-      resourceType: data.resourceType,
-      noteId: data.resourceType === "note" ? data.resourceId : null,
-      pastPaperId: data.resourceType === "pastPaper" ? data.resourceId : null,
-      reporterId: session.user.id,
-      category: data.category,
-      description: data.description,
-      suggestedValue: data.suggestedValue || null,
-    })
-    .returning({ id: contentCorrectionReport.id });
+    const [report] = await transaction
+      .insert(contentCorrectionReport)
+      .values({
+        resourceType: data.resourceType,
+        noteId: data.resourceType === "note" ? data.resourceId : null,
+        pastPaperId: data.resourceType === "pastPaper" ? data.resourceId : null,
+        reporterId: session.user.id,
+        category: data.category,
+        description: data.description,
+        suggestedValue: data.suggestedValue || null,
+      })
+      .returning({ id: contentCorrectionReport.id });
+    return report;
+  });
   if (!created) throw new Error("Could not create the report.");
 
   await scheduleContentCorrectionReview(created.id);
@@ -211,6 +217,7 @@ export async function fetchModerationCorrectionReports(): Promise<ModerationCorr
             title: pastPaper.title,
             courseCode: course.code,
             hasAnswerKey: pastPaper.hasAnswerKey,
+            questionPaperId: pastPaper.questionPaperId,
             updatedAt: pastPaper.updatedAt,
           })
           .from(pastPaper)
@@ -272,14 +279,13 @@ export async function fetchModerationCorrectionReports(): Promise<ModerationCorr
     const changesLinkedAnswerKeyCourse =
       resourceType === "pastPaper" &&
       report.aiDecision?.proposedFields.includes("courseId") === true &&
-      ((paperResourcesById.get(resourceId)?.hasAnswerKey === true &&
+      // Only an answer key linked to a question paper must keep its course;
+      // a paper that includes its own answers can move freely.
+      ((Boolean(paperResourcesById.get(resourceId)?.questionPaperId) &&
         report.aiDecision.review.suggestion.hasAnswerKey !== false) ||
         (linkedAnswerKeyCourseByQuestionPaperId.has(resourceId) &&
           linkedAnswerKeyCourseByQuestionPaperId.get(resourceId) !==
             report.aiDecision.review.suggestion.courseId));
-    const wouldCreateUnlinkedAnswerKey =
-      resourceType === "note" &&
-      report.aiDecision?.review.suggestion.hasAnswerKey === true;
     const wouldBreakAnswerKeyLink =
       resourceType === "pastPaper" &&
       questionPaperIdsWithAnswerKeys.has(resourceId);
@@ -304,7 +310,6 @@ export async function fetchModerationCorrectionReports(): Promise<ModerationCorr
         : false,
       canConvertType:
         !isStale &&
-        !wouldCreateUnlinkedAnswerKey &&
         !wouldBreakAnswerKeyLink &&
         report.category === "wrong_resource_type" &&
         isOppositeDocumentKind,
@@ -516,11 +521,6 @@ export async function resolveContentCorrectionReport(
         if (report.aiDecision.review.documentKind !== "past_paper") {
           throw new Error("The agent did not verify this note as a past paper.");
         }
-        if (suggestion.hasAnswerKey === true) {
-          throw new Error(
-            "Move this manually so the answer key can be linked to its question paper.",
-          );
-        }
         const [source] = await transaction
           .update(note)
           .set({
@@ -556,6 +556,9 @@ export async function resolveContentCorrectionReport(
             thumbNailUrl: source.thumbNailUrl,
             title: suggestion.title.trim() || source.title,
             contentHash: source.contentHash,
+            // Unpublished until reviewed. An answer key without a linked
+            // question paper is never auto-approved, so a moderator confirms
+            // the PDF includes its questions or links it before it goes live.
             isClear: false,
             ...(suggestion.examType ? { examType: suggestion.examType } : {}),
             ...(suggestion.slot ? { slot: suggestion.slot } : {}),
@@ -646,10 +649,19 @@ export async function resolveContentCorrectionReport(
         resolvedAt: new Date(),
         resolvedById: session.user.id,
       })
-      .where(reclaimableReportCondition(reportId, staleBefore))
+      .where(
+        and(
+          reclaimableReportCondition(reportId, staleBefore),
+          // The resolution applies the decision read above; a recheck or a
+          // newer AI decision in the meantime must not be overwritten by it.
+          eq(contentCorrectionReport.updatedAt, report.updatedAt),
+        ),
+      )
       .returning({ id: contentCorrectionReport.id });
     if (!resolvedReport) {
-      throw new Error("This report was resolved by another moderator.");
+      throw new Error(
+        "This report changed or was resolved by another moderator. Reload and try again.",
+      );
     }
   });
   if (convertedResource) {

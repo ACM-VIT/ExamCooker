@@ -1363,6 +1363,9 @@ async function runAuthLogin(args: string[]) {
     verificationUriComplete: string;
     interval: number;
     expiresIn: number;
+    // Seconds a delivered token stays collectable by repeat polls. Servers
+    // that predate this field use three poll intervals.
+    redeliveryGrace?: number;
   }>(runtimeConfig.baseUrl, "/api/cli/device/start", {
     method: "POST",
     json: { deviceName },
@@ -1398,8 +1401,17 @@ async function runAuthLogin(args: string[]) {
   let pollFailureMessage = "Approval failed";
   try {
     const deadline = Date.now() + startResponse.expiresIn * 1000;
+    const redeliveryGraceMs =
+      (startResponse.redeliveryGrace ?? startResponse.interval * 3) * 1000;
+    // A poll whose answer went missing may have collected the token, which
+    // the server hands out again for a grace period. Such a poll keeps the
+    // login polling until that grace ends, even past the deadline; polls made
+    // during that recovery do not extend it again.
+    let recoveryDeadline = 0;
     for (;;) {
-      if (Date.now() >= deadline) {
+      const checkedAt = Date.now();
+      const recovering = checkedAt >= deadline;
+      if (recovering && checkedAt >= recoveryDeadline) {
         pollFailureMessage = "Login timed out";
         throw new Error(
           "This device login expired. Run `examcooker auth login` again.",
@@ -1407,16 +1419,38 @@ async function runAuthLogin(args: string[]) {
       }
 
       await sleep(startResponse.interval * 1000);
-      const response = await requestRaw(
-        runtimeConfig.baseUrl,
-        "/api/cli/device/poll",
-        {
-          method: "POST",
-          json: { deviceCode: startResponse.deviceCode },
-        },
-      );
+      const sentAt = Date.now();
+      const awaitRedelivery = () => {
+        if (!recovering) {
+          recoveryDeadline = Math.max(
+            recoveryDeadline,
+            sentAt + redeliveryGraceMs,
+          );
+        }
+      };
+      let response: Response;
+      try {
+        response = await requestRaw(
+          runtimeConfig.baseUrl,
+          "/api/cli/device/poll",
+          {
+            method: "POST",
+            json: { deviceCode: startResponse.deviceCode },
+          },
+        );
+      } catch {
+        // A dropped connection says nothing about the approval; keep waiting.
+        awaitRedelivery();
+        continue;
+      }
 
-      if (response.status === 202) {
+      // Pending, rate limited or temporarily unavailable: the browser
+      // approval may already be stored, so poll again until the deadline.
+      if (
+        response.status === 202 ||
+        response.status === 429 ||
+        response.status >= 500
+      ) {
         continue;
       }
 
@@ -1467,6 +1501,13 @@ async function runAuthLogin(args: string[]) {
           `Signed in as ${pc.bold(payload.user?.email ?? "your account")}.\nConfig: ${pc.dim(getConfigPath())}`,
         );
         return;
+      }
+
+      // A success whose body was cut off: the server repeats the delivery
+      // for a short while, so ask again rather than abandon the login.
+      if (response.ok) {
+        awaitRedelivery();
+        continue;
       }
 
       const error =
@@ -1860,12 +1901,31 @@ async function runPaperUpload(args: string[]) {
     campus: { type: "string" },
     title: { alias: "t", type: "string" },
     answerKey: { type: "boolean" },
+    aiReview: { type: "string" },
     json: { type: "boolean" },
     interactive: { type: "boolean" },
   });
   const jsonOutput = getBooleanFlag(values, "json");
   const interactive = shouldUseInteractive(values, jsonOutput);
   const runtimeConfig = await requireAuthContext(getStringFlag(values, "baseUrl"));
+  const aiReviewProvider = getStringFlag(values, "aiReview");
+  let aiReviewApiKey: string | undefined;
+  if (aiReviewProvider !== undefined) {
+    if (aiReviewProvider !== "openai" && aiReviewProvider !== "anthropic") {
+      throw new Error("--ai-review must be openai or anthropic.");
+    }
+    aiReviewApiKey = process.env.EXAMCOOKER_AI_API_KEY?.trim();
+    if (!aiReviewApiKey) {
+      throw new Error("Set EXAMCOOKER_AI_API_KEY to use --ai-review.");
+    }
+    const uploadUrl = new URL(runtimeConfig.baseUrl);
+    if (
+      uploadUrl.protocol !== "https:" &&
+      !["localhost", "127.0.0.1", "[::1]"].includes(uploadUrl.hostname)
+    ) {
+      throw new Error("AI review requires an HTTPS upload URL.");
+    }
+  }
 
   let filePath = positionals[0]?.trim() ?? "";
   if (!filePath && interactive) {
@@ -2051,6 +2111,10 @@ async function runPaperUpload(args: string[]) {
   if (answerKey) {
     formData.append("answerKey", "true");
   }
+  if (aiReviewProvider && aiReviewApiKey) {
+    formData.append("aiReviewProvider", aiReviewProvider);
+    formData.append("aiReviewApiKey", aiReviewApiKey);
+  }
 
   const spinner = createSpinner();
   spinner.start("Uploading paper...");
@@ -2058,6 +2122,7 @@ async function runPaperUpload(args: string[]) {
     method: "POST",
     token: runtimeConfig.token,
     body: formData,
+    redirect: aiReviewApiKey ? "error" : undefined,
   });
   const payload = (await response.json().catch(() => null)) as
     | {

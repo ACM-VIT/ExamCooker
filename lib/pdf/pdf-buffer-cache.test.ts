@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { invalidatePdfBuffer, loadPdfBuffer } from "./pdf-buffer-cache";
+import { invalidatePdfBuffer, loadPdfBuffer, preloadPdfBuffer } from "./pdf-buffer-cache";
 
 const realFetch = globalThis.fetch;
 const originalAssetBase = process.env.NEXT_PUBLIC_ASSET_BASE_URL;
@@ -121,4 +121,61 @@ test("fallback failure stops after two requests and cancellation never starts it
   globalThis.fetch = async () => { requests++; throw new DOMException("Cancelled", "AbortError"); };
   await assert.rejects(loadPdfBuffer(url).promise, /Cancelled/);
   assert.equal(requests, 3);
+});
+
+function pendingUntilAborted(signals: AbortSignal[]) {
+  return (_url: RequestInfo | URL, options?: RequestInit) => new Promise<Response>((_, reject) => {
+    const signal = options?.signal as AbortSignal;
+    signals.push(signal);
+    signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+  });
+}
+
+test("evicting an awaited download lets it finish; an unawaited preload is cancelled", async () => {
+  const signals: AbortSignal[] = [];
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith("/awaited.pdf")) {
+      signals.push(options?.signal as AbortSignal);
+      await gate;
+      return pdf();
+    }
+    return pendingUntilAborted(signals)(url, options);
+  };
+  const awaited = loadPdfBuffer("https://example.test/evict/awaited.pdf");
+  preloadPdfBuffer("https://example.test/evict/preload.pdf");
+  const fillers = Array.from({ length: 8 }, (_, index) => `https://example.test/evict/filler-${index}.pdf`);
+  fillers.forEach(preloadPdfBuffer);
+  assert.equal(signals[0].aborted, false, "a consumer is still waiting for this download");
+  assert.equal(signals[1].aborted, true, "nobody waits for the evicted preload");
+  release();
+  assert.ok((await awaited.promise).byteLength > 0);
+  fillers.forEach(invalidatePdfBuffer);
+  assert.ok(signals.every((signal, index) => index === 0 || signal.aborted));
+});
+
+test("invalidating cancels an abandoned download but not one still awaited", async () => {
+  const signals: AbortSignal[] = [];
+  globalThis.fetch = pendingUntilAborted(signals);
+  const url = "https://example.test/invalidate/shared.pdf";
+  const first = loadPdfBuffer(url);
+  const second = loadPdfBuffer(url);
+  first.unsubscribe();
+  invalidatePdfBuffer(url);
+  assert.equal(signals[0].aborted, false, "the second consumer still waits");
+  second.unsubscribe();
+  assert.equal(signals[0].aborted, true, "the detached download has no consumers left");
+  await assert.rejects(second.promise, { name: "AbortError" });
+});
+
+test("a PDF larger than the byte budget stays cached while it is the latest", async () => {
+  let requests = 0;
+  const large = new Uint8Array(33 * 1024 * 1024);
+  large.set(new TextEncoder().encode("%PDF-1.7"));
+  globalThis.fetch = async () => { requests++; return new Response(large, { headers: { "content-type": "application/pdf" } }); };
+  const url = "https://example.test/budget/large.pdf";
+  await loadPdfBuffer(url).promise;
+  await loadPdfBuffer(url).promise;
+  assert.equal(requests, 1);
 });

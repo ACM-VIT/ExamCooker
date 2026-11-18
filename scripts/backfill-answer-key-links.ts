@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { createScriptDb } from "./lib/db";
 import { course, pastPaper } from "../db";
 
@@ -91,6 +91,7 @@ async function main() {
       .where(
         and(
           eq(pastPaper.isClear, true),
+          isNull(pastPaper.moderationArchivedAt),
           isNotNull(pastPaper.courseId),
           isNotNull(pastPaper.examType),
           isNotNull(pastPaper.slot),
@@ -190,18 +191,51 @@ async function main() {
       return;
     }
 
+    // Papers can be edited, archived or linked between planning and writing.
+    // Each write applies only if both papers are still in the planned state;
+    // otherwise it is skipped rather than linking an answer key to a paper
+    // that is no longer a published question paper.
+    let linked = 0;
     await db.transaction(async (tx) => {
       for (const link of plannedLinks) {
-        await tx
+        const updated = await tx
           .update(pastPaper)
           .set({
             questionPaperId: link.questionPaperId,
           })
-          .where(eq(pastPaper.id, link.answerKeyPaperId));
+          .where(
+            and(
+              eq(pastPaper.id, link.answerKeyPaperId),
+              eq(pastPaper.isClear, true),
+              eq(pastPaper.hasAnswerKey, true),
+              isNull(pastPaper.moderationArchivedAt),
+              link.previousQuestionPaperId === null
+                ? isNull(pastPaper.questionPaperId)
+                : eq(pastPaper.questionPaperId, link.previousQuestionPaperId),
+              sql`exists (
+                select 1 from "PastPaper" question_paper
+                where question_paper."id" = ${link.questionPaperId}
+                  and question_paper."isClear" = true
+                  and question_paper."hasAnswerKey" = false
+                  and question_paper."moderationArchivedAt" is null
+              )`,
+              sql`not exists (
+                select 1 from "PastPaper" linked_paper
+                where linked_paper."questionPaperId" = ${link.questionPaperId}
+                  and linked_paper."id" <> ${link.answerKeyPaperId}
+              )`,
+            ),
+          )
+          .returning({ id: pastPaper.id });
+        linked += updated.length;
       }
     });
 
-    console.log(`Linked ${plannedLinks.length} answer-key row(s).`);
+    console.log(
+      `Linked ${linked} answer-key row(s); skipped ${
+        plannedLinks.length - linked
+      } that changed since planning.`,
+    );
   } finally {
     await close();
   }

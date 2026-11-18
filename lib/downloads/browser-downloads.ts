@@ -153,25 +153,41 @@ function makeEndOfCentralDirectory(input: {
     return bytes;
 }
 
-const PDF_FETCH_TIMEOUT_MS = 30_000;
-
+// Downloads rely on fetchPdfResource's stall watchdog, which aborts a transfer
+// that stops making progress in the foreground. A wall-clock limit would fail
+// large files on slow connections that are still advancing.
 async function fetchPdfBlob(
     fileUrl: string,
     pageEdits?: PdfPageEdits | null,
-    timeoutMs: number = PDF_FETCH_TIMEOUT_MS,
+    signal?: AbortSignal,
 ) {
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+    const buffer = await fetchPdfResource(fileUrl, { kind: "pdf", signal });
+    return await preparePdfDownloadBlob(new Blob([buffer], { type: "application/pdf" }), pageEdits);
+}
 
-    try {
-        const buffer = await fetchPdfResource(fileUrl, {
-            kind: "pdf",
-            signal: controller.signal,
-        });
-        return await preparePdfDownloadBlob(new Blob([buffer], { type: "application/pdf" }), pageEdits);
-    } finally {
-        window.clearTimeout(timeoutId);
-    }
+const ZIP_FETCH_CONCURRENCY = 4;
+
+/** Runs `task` over `items` with at most `limit` in flight, keeping input order. */
+export async function settleWithConcurrency<T, R>(
+    items: readonly T[],
+    limit: number,
+    task: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+    const results = new Array<PromiseSettledResult<R>>(items.length);
+    let next = 0;
+    const worker = async () => {
+        while (next < items.length) {
+            const index = next++;
+            try {
+                results[index] = { status: "fulfilled", value: await task(items[index]) };
+            } catch (reason) {
+                results[index] = { status: "rejected", reason };
+            }
+        }
+    };
+    const workers = Math.min(Math.max(1, Math.floor(limit)), items.length);
+    await Promise.all(Array.from({ length: workers }, worker));
+    return results;
 }
 
 export async function preparePdfDownloadBlob(
@@ -304,6 +320,8 @@ export type ZipDownloadResult = {
 export async function downloadPdfZip(input: {
     files: DownloadablePdf[];
     zipFileName: string;
+    /** Cancels pending downloads; the zip is not saved. */
+    signal?: AbortSignal;
 }): Promise<ZipDownloadResult> {
     if (!input.files.length) {
         return { requested: 0, succeeded: 0, failed: [] };
@@ -311,12 +329,16 @@ export async function downloadPdfZip(input: {
 
     const dedupedNames = dedupeFileNames(input.files.map((file) => file.fileName));
 
-    // Settle every fetch independently so a single failed/hanging request can't
-    // abort the whole batch. A timeout guarantees stalled fetches reject instead
-    // of leaving the zip — and the caller's "Zipping..." state — pending forever.
-    const settled = await Promise.allSettled(
-        input.files.map((file) => fetchPdfBlob(file.fileUrl, file.pageEdits)),
+    // Settle every fetch independently so a single failed request can't abort
+    // the whole batch. The stall watchdog makes a stuck fetch reject instead of
+    // leaving the caller's "Zipping..." state pending forever. A few fetches at
+    // a time keep each one progressing on slow connections.
+    const settled = await settleWithConcurrency(
+        input.files,
+        ZIP_FETCH_CONCURRENCY,
+        (file) => fetchPdfBlob(file.fileUrl, file.pageEdits, input.signal),
     );
+    input.signal?.throwIfAborted();
 
     const entries: ZipEntry[] = [];
     const failed: string[] = [];

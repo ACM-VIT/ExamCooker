@@ -2,7 +2,6 @@
 
 import { auth } from "@/app/auth";
 import { sql } from "drizzle-orm";
-import { revalidateTag } from "next/cache";
 import { db, viewHistory } from "@/db";
 
 export type ViewableItemType = "pastpaper" | "note" | "forumpost" | "subject" | "syllabus";
@@ -80,7 +79,5 @@ export async function recordViewAction(type: ViewableItemType, itemId: string) {
         return { success: false };
     }
 
-    revalidateTag("home", "minutes");
-    revalidateTag(`home:${userId}`, "minutes");
     return { success: true };
 }

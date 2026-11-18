@@ -271,6 +271,10 @@ async function subscribeAndroidBackButton(
   };
 }
 
+// The web tab bar's own fallback waits 1.2s; give the native bar a little
+// longer before giving up on it.
+const NATIVE_TABS_INIT_TIMEOUT_MS = 4_000;
+
 async function subscribePushRegistration(
   pushNotifications: PushNotificationsBridge,
   onRegistration: (token: { value: string }) => void | Promise<void>,
@@ -348,15 +352,33 @@ export default function CapacitorBridge() {
       };
 
       if (platform === "ios" || platform === "android") {
+        let initialization: Promise<void> | null = null;
+        let initializationTimedOut = false;
         try {
           const { NativeTabs } = await import("capacitor-native-tab");
+          if (cancelled) return;
           const tabs = buildIosNativeTabConfigs(currentNativeTabTheme());
           const pathname = window.location.pathname;
           const idx = APP_NAV_LINKS.findIndex((link) =>
             link.matches ? link.matches(pathname) : pathname === link.href,
           );
           const selectedIndex = idx >= 0 ? idx : 0;
-          await NativeTabs.initialize({ tabs, selectedIndex });
+          initialization = NativeTabs.initialize({ tabs, selectedIndex });
+          // A rejection that lands after the timeout is expected, not unhandled.
+          initialization.catch(() => undefined);
+          // While tabs are pending the web bar is hidden by CSS, so a hung
+          // initialization would leave the app with no navigation at all.
+          let timeoutId: number | undefined;
+          await Promise.race([
+            initialization,
+            new Promise<never>((_, reject) => {
+              timeoutId = window.setTimeout(() => {
+                initializationTimedOut = true;
+                reject(new Error("Native tabs did not initialize in time"));
+              }, NATIVE_TABS_INIT_TIMEOUT_MS);
+            }),
+          ]).finally(() => window.clearTimeout(timeoutId));
+          if (cancelled) return;
           document.documentElement.setAttribute("data-native-tabs", "true");
           document.documentElement.setAttribute(
             platform === "ios" ? "data-native-ios-tabs" : "data-native-android-tabs",
@@ -369,6 +391,10 @@ export default function CapacitorBridge() {
             NativeTabs,
             navigateToNativePath,
           );
+          if (cancelled) {
+            cleanupNativeTabs();
+            return;
+          }
           let nativeTabsTheme = currentNativeTabTheme();
           const updateNativeTabsTheme = () => {
             const nextTheme = currentNativeTabTheme();
@@ -398,6 +424,7 @@ export default function CapacitorBridge() {
           };
           await NativeTabs.showTabBar().catch(() => undefined);
         } catch {
+          if (cancelled) return;
           document.documentElement.removeAttribute("data-native-tabs");
           document.documentElement.removeAttribute("data-native-ios-tabs");
           document.documentElement.removeAttribute("data-native-android-tabs");
@@ -405,10 +432,20 @@ export default function CapacitorBridge() {
           document.documentElement.removeAttribute("data-native-ios-tabs-pending");
           document.documentElement.removeAttribute("data-native-android-tabs-pending");
           window.dispatchEvent(new Event("examcooker:use-web-tab-bar"));
+          if (initializationTimedOut && initialization) {
+            // The web bar has taken over; keep a late native bar from
+            // appearing on top of it.
+            void Promise.all([initialization, import("capacitor-native-tab")])
+              .then(([, { NativeTabs }]) => {
+                if (!cancelled) return NativeTabs.hideTabBar();
+              })
+              .catch(() => undefined);
+          }
         }
       }
 
       const launchUrl = await App.getLaunchUrl().catch(() => ({ url: "" }));
+      if (cancelled) return;
       if (launchUrl?.url) {
         navigateFromDeepLink(launchUrl.url, navigateToNativePath);
       }
@@ -421,6 +458,10 @@ export default function CapacitorBridge() {
         }
         navigateFromDeepLink(url, navigateToNativePath);
       });
+      if (cancelled) {
+        cleanupDeepLinks();
+        return;
+      }
 
       if (platform === "android") {
         cleanupNativeBridge = await subscribeAndroidBackButton(App, async ({ canGoBack }) => {
@@ -440,6 +481,10 @@ export default function CapacitorBridge() {
 
           await App.minimizeApp().catch(() => App.exitApp().catch(() => undefined));
         });
+        if (cancelled) {
+          cleanupNativeBridge();
+          return;
+        }
       }
 
       const hideSplash = () => {
@@ -470,6 +515,10 @@ export default function CapacitorBridge() {
             }
           }),
         ]);
+        if (cancelled) {
+          cleanupPushRegistration?.();
+          return;
+        }
         cleanupPushNotifications = cleanupPushRegistration;
         await PushNotifications.register().catch(() => undefined);
       }

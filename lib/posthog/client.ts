@@ -140,7 +140,10 @@ function getQueryMetrics(query: string) {
 }
 
 const COURSE_SEARCH_NO_RESULTS_DEDUPE_MS = 5_000;
-const recentCourseSearchNoResults = new Map<string, number>();
+// One storage entry holding only the markers still inside the dedupe window,
+// instead of one key per query that lives for the whole session.
+const COURSE_SEARCH_NO_RESULTS_STORAGE_KEY = "examcooker:course-search-no-results";
+let recentCourseSearchNoResults = new Map<string, number>();
 
 function getCourseSearchNoResultsKey(
     context: CourseSearchContext,
@@ -149,21 +152,36 @@ function getCourseSearchNoResultsKey(
     return `${context}:${query.toLocaleLowerCase()}`;
 }
 
+function pruneCourseSearchNoResults(markers: Map<string, number>, now: number) {
+    for (const [key, capturedAt] of markers) {
+        if (now - capturedAt >= COURSE_SEARCH_NO_RESULTS_DEDUPE_MS) markers.delete(key);
+    }
+    return markers;
+}
+
+function readStoredCourseSearchNoResults(now: number) {
+    const markers = new Map<string, number>();
+    try {
+        const stored = JSON.parse(
+            window.sessionStorage.getItem(COURSE_SEARCH_NO_RESULTS_STORAGE_KEY) ?? "{}",
+        ) as Record<string, unknown>;
+        for (const [key, capturedAt] of Object.entries(stored ?? {})) {
+            if (typeof capturedAt === "number") markers.set(key, capturedAt);
+        }
+    } catch {
+        // Unreadable or unavailable storage: rely on the in-memory markers.
+    }
+    return pruneCourseSearchNoResults(markers, now);
+}
+
 function readLastCourseSearchNoResultsAt(key: string) {
+    const now = Date.now();
+    recentCourseSearchNoResults = pruneCourseSearchNoResults(recentCourseSearchNoResults, now);
     const inMemory = recentCourseSearchNoResults.get(key);
     if (typeof window === "undefined") return inMemory;
 
-    try {
-        const stored = window.sessionStorage.getItem(
-            `examcooker:course-search-no-results:${key}`,
-        );
-        const parsed = stored ? Number(stored) : Number.NaN;
-        return Number.isFinite(parsed)
-            ? Math.max(inMemory ?? 0, parsed)
-            : inMemory;
-    } catch {
-        return inMemory;
-    }
+    const stored = readStoredCourseSearchNoResults(now).get(key);
+    return stored === undefined ? inMemory : Math.max(inMemory ?? 0, stored);
 }
 
 function recordCourseSearchNoResultsAt(key: string, capturedAt: number) {
@@ -171,9 +189,10 @@ function recordCourseSearchNoResultsAt(key: string, capturedAt: number) {
     if (typeof window === "undefined") return;
 
     try {
+        const markers = readStoredCourseSearchNoResults(capturedAt).set(key, capturedAt);
         window.sessionStorage.setItem(
-            `examcooker:course-search-no-results:${key}`,
-            String(capturedAt),
+            COURSE_SEARCH_NO_RESULTS_STORAGE_KEY,
+            JSON.stringify(Object.fromEntries(markers)),
         );
     } catch {
         // Storage can be unavailable in private browsing. The in-memory marker

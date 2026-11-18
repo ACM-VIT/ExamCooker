@@ -21,7 +21,9 @@ The server-side text and PDF features use the task map in
 `AI_PROVIDER=anthropic` with `ANTHROPIC_API_KEY` for a shared server credential.
 When the selected credential is absent, signed-in users are prompted at the
 first AI feature they invoke. They can supply their own OpenAI or Anthropic
-key and choose a model for the current browser session. Settings are encrypted
+key and choose a model for the current browser session. Upload moderation and
+correction review decide what is published, so they ignore that choice and use
+the server's model for the selected provider. Settings are encrypted
 in an HTTP-only cookie, bound to their account, and cleared on sign-out or
 when the browser session ends. The key is never saved in the database. A configured
 `AI_GATEWAY_API_KEY` can route a provider-qualified model for system requests
