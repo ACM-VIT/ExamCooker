@@ -426,6 +426,8 @@ async function copyNotes(systemUserId) {
           'base."aiReview"',
           'base."aiReviewedAt"',
           'base."moderationArchivedAt"',
+          // Kept as is: a copied AI review is current only while it matches.
+          'base."updatedAt"',
           '(SELECT c.code FROM "Course" c WHERE c.id = base."courseId") AS "courseCode"',
         ],
         cursor,
@@ -441,7 +443,7 @@ async function copyNotes(systemUserId) {
               )
               VALUES (
                 $1, $2, $3, $4, $5, $6, $7, (SELECT id FROM "Course" WHERE code = $8),
-                $9, $10, $11, NOW(), NOW()
+                $9, $10, $11, NOW(), $12
               )
               ON CONFLICT (id)
               DO UPDATE SET
@@ -455,7 +457,7 @@ async function copyNotes(systemUserId) {
                 "aiReview" = EXCLUDED."aiReview",
                 "aiReviewedAt" = EXCLUDED."aiReviewedAt",
                 "moderationArchivedAt" = EXCLUDED."moderationArchivedAt",
-                "updatedAt" = NOW()
+                "updatedAt" = EXCLUDED."updatedAt"
             `,
             [
               note.id,
@@ -469,6 +471,7 @@ async function copyNotes(systemUserId) {
               note.aiReview,
               note.aiReviewedAt,
               note.moderationArchivedAt,
+              note.updatedAt,
             ],
           );
           await syncTagLinks(client, '_NoteToTag', note.id, note.tags);
@@ -495,6 +498,8 @@ async function copyPastPapers(systemUserId) {
           'base."aiReview"',
           'base."aiReviewedAt"',
           'base."moderationArchivedAt"',
+          // Kept as is: a copied AI review is current only while it matches.
+          'base."updatedAt"',
           '(SELECT c.code FROM "Course" c WHERE c.id = base."courseId") AS "courseCode"',
           'base."examType"',
           'base.slot',
@@ -520,7 +525,7 @@ async function copyPastPapers(systemUserId) {
               VALUES (
                 $1, $2, $3, $4, $5, $6,
                 $7, (SELECT id FROM "Course" WHERE code = $8), $9, $10, $11, $12, $13,
-                $14, $15, $16, $17, $18, NOW(), NOW()
+                $14, $15, $16, $17, $18, NOW(), $19
               )
               ON CONFLICT (id)
               DO UPDATE SET
@@ -542,7 +547,7 @@ async function copyPastPapers(systemUserId) {
                 "aiReview" = EXCLUDED."aiReview",
                 "aiReviewedAt" = EXCLUDED."aiReviewedAt",
                 "moderationArchivedAt" = EXCLUDED."moderationArchivedAt",
-                "updatedAt" = NOW()
+                "updatedAt" = EXCLUDED."updatedAt"
             `,
             [
               paper.id,
@@ -563,6 +568,7 @@ async function copyPastPapers(systemUserId) {
               paper.aiReview,
               paper.aiReviewedAt,
               paper.moderationArchivedAt,
+              paper.updatedAt,
             ],
           );
           await syncTagLinks(client, '_PastPaperToTag', paper.id, paper.tags);
@@ -592,7 +598,7 @@ async function copyPastPaperLinks() {
       const result = await client.query(
         `
           UPDATE "PastPaper"
-          SET "questionPaperId" = $2, "updatedAt" = NOW()
+          SET "questionPaperId" = $2
           WHERE id = $1
             AND EXISTS (SELECT 1 FROM "PastPaper" question WHERE question.id = $2)
         `,
