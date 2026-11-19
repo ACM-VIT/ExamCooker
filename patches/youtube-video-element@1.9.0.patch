@@ -2,7 +2,66 @@ diff --git a/dist/cjs/youtube-video-element.js b/dist/cjs/youtube-video-element.
 index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca2882942b 100644
 --- a/dist/cjs/youtube-video-element.js
 +++ b/dist/cjs/youtube-video-element.js
-@@ -181,7 +181,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+@@ -142,9 +142,50 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+   #seekComplete;
+   isLoaded = false;
+   #error = null;
+   #config = null;
+   #textTracksVideo = null;
+   #initialVolume = 1;
++  #stateInterval;
++  #progressInterval;
++  #lastCurrentTime = 0;
++  #clearIntervals() {
++    clearInterval(this.#stateInterval);
++    clearInterval(this.#progressInterval);
++    this.#stateInterval = void 0;
++    this.#progressInterval = void 0;
++  }
++  #startIntervals() {
++    this.#clearIntervals();
++    if (!this.isConnected || !this.isLoaded) return;
++    this.#lastCurrentTime = this.currentTime;
++    this.#stateInterval = setInterval(() => {
++      var _a;
++      const diff = Math.abs(this.currentTime - this.#lastCurrentTime);
++      const bufferedEnd = this.buffered.end(this.buffered.length - 1);
++      if (this.seeking && bufferedEnd > 0.1) {
++        this.#seeking = false;
++        (_a = this.#seekComplete) == null ? void 0 : _a.resolve();
++        this.dispatchEvent(new Event("seeked"));
++      } else if (!this.seeking && diff > 0.1) {
++        this.#seeking = true;
++        this.dispatchEvent(new Event("seeking"));
++      }
++      this.#lastCurrentTime = this.currentTime;
++    }, 50);
++    let lastBufferedEnd;
++    this.#progressInterval = setInterval(() => {
++      const bufferedEnd = this.buffered.end(this.buffered.length - 1);
++      if (bufferedEnd >= this.duration) {
++        clearInterval(this.#progressInterval);
++        this.#progressInterval = void 0;
++        this.#readyState = 4;
++      }
++      if (lastBufferedEnd != bufferedEnd) {
++        lastBufferedEnd = bufferedEnd;
++        this.dispatchEvent(new Event("progress"));
++      }
++    }, 100);
++  }
+   constructor() {
+     super();
+     this.#upgradeProperty("config");
+@@ -155,6 +196,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+   }
+   async load() {
+     if (this.#loadRequested) return;
++    this.#clearIntervals();
+     if (!this.shadowRoot) {
+       this.attachShadow({ mode: "open" });
+     }
+@@ -181,7 +223,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
      this.textTracks.addEventListener("change", () => {
        var _a;
        const active = Array.from(this.textTracks).find((t) => t.mode === "showing");
@@ -11,7 +70,7 @@ index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca
      });
      this.dispatchEvent(new Event("loadstart"));
      let iframe = this.shadowRoot.querySelector("iframe");
-@@ -202,7 +202,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+@@ -202,7 +244,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
            this.dispatchEvent(new Event("loadedmetadata"));
            this.dispatchEvent(new Event("durationchange"));
            if (this.#initialVolume !== 1) {
@@ -20,7 +79,16 @@ index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca
            }
            this.dispatchEvent(new Event("volumechange"));
            this.dispatchEvent(new Event("loadcomplete"));
-@@ -268,7 +268,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+@@ -247,7 +289,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+         this.#readyState = 3;
+         this.dispatchEvent(new Event("playing"));
+       } else if (state === YT.PlayerState.PAUSED) {
+-        const diff = Math.abs(this.currentTime - lastCurrentTime);
++        const diff = Math.abs(this.currentTime - this.#lastCurrentTime);
+         if (!this.seeking && diff > 0.1) {
+           this.#seeking = true;
+           this.dispatchEvent(new Event("seeking"));
+@@ -268,7 +310,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
      });
      this.api.addEventListener("onVolumeChange", () => {
        var _a;
@@ -29,7 +97,52 @@ index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca
        this.#initialVolume = apiVolume;
        this.dispatchEvent(new Event("volumechange"));
      });
-@@ -320,13 +320,13 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+@@ -275,35 +317,17 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+     this.api.addEventListener("onVideoProgress", () => {
+       this.dispatchEvent(new Event("timeupdate"));
+     });
+     await this.loadComplete;
+-    let lastCurrentTime = 0;
+-    setInterval(() => {
+-      var _a;
+-      const diff = Math.abs(this.currentTime - lastCurrentTime);
+-      const bufferedEnd = this.buffered.end(this.buffered.length - 1);
+-      if (this.seeking && bufferedEnd > 0.1) {
+-        this.#seeking = false;
+-        (_a = this.#seekComplete) == null ? void 0 : _a.resolve();
+-        this.dispatchEvent(new Event("seeked"));
+-      } else if (!this.seeking && diff > 0.1) {
+-        this.#seeking = true;
+-        this.dispatchEvent(new Event("seeking"));
+-      }
+-      lastCurrentTime = this.currentTime;
+-    }, 50);
+-    let lastBufferedEnd;
+-    const progressInterval = setInterval(() => {
+-      const bufferedEnd = this.buffered.end(this.buffered.length - 1);
+-      if (bufferedEnd >= this.duration) {
+-        clearInterval(progressInterval);
+-        this.#readyState = 4;
+-      }
+-      if (lastBufferedEnd != bufferedEnd) {
+-        lastBufferedEnd = bufferedEnd;
+-        this.dispatchEvent(new Event("progress"));
+-      }
+-    }, 100);
++    this.#startIntervals();
+   }
++  connectedCallback() {
++    super.connectedCallback?.();
++    if (this.isLoaded) this.#startIntervals();
++  }
++  disconnectedCallback() {
++    super.disconnectedCallback?.();
++    this.#clearIntervals();
++  }
+   async attributeChangedCallback(attrName, oldValue, newValue) {
+     if (oldValue === newValue) return;
+     switch (attrName) {
+@@ -320,13 +344,13 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
      var _a;
      this.#seekComplete = null;
      await this.loadComplete;
@@ -45,7 +158,7 @@ index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca
    }
    get seeking() {
      return this.#seeking;
-@@ -371,7 +371,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+@@ -371,7 +395,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
    get buffered() {
      var _a, _b;
      if (!this.isLoaded) return createTimeRanges();
@@ -54,7 +167,7 @@ index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca
      if (progress > 0) {
        return createTimeRanges(0, progress);
      }
-@@ -393,12 +393,12 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+@@ -393,12 +417,12 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
      this.#seekComplete = new PublicPromise();
      this.loadComplete.then(() => {
        var _a, _b;
@@ -69,7 +182,7 @@ index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca
          });
        }
      });
-@@ -421,7 +421,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+@@ -421,7 +445,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
      if (this.muted == val) return;
      this.loadComplete.then(() => {
        var _a, _b;
@@ -78,7 +191,7 @@ index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca
      });
    }
    get muted() {
-@@ -437,7 +437,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+@@ -437,7 +461,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
      if (this.playbackRate == val) return;
      this.loadComplete.then(() => {
        var _a;
@@ -87,7 +200,7 @@ index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca
      });
    }
    get playsInline() {
-@@ -459,7 +459,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+@@ -459,7 +483,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
      this.#initialVolume = val;
      this.loadComplete.then(() => {
        var _a;
@@ -96,7 +209,7 @@ index 5b53c2b4b6aff9659744208c9dffa3ef054f475c..b2d2e205b248ed1296abc05cad224cca
      });
    }
    get volume() {
-@@ -467,7 +467,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
+@@ -467,7 +491,7 @@ class YoutubeVideoElement extends (0, import_media_played_ranges_mixin.MediaPlay
      if (!this.isLoaded) {
        return this.#initialVolume;
      }
@@ -109,7 +222,66 @@ diff --git a/dist/youtube-video-element.js b/dist/youtube-video-element.js
 index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201e9c2a59a 100644
 --- a/dist/youtube-video-element.js
 +++ b/dist/youtube-video-element.js
-@@ -159,7 +159,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+@@ -120,9 +120,50 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+   #seekComplete;
+   isLoaded = false;
+   #error = null;
+   #config = null;
+   #textTracksVideo = null;
+   #initialVolume = 1;
++  #stateInterval;
++  #progressInterval;
++  #lastCurrentTime = 0;
++  #clearIntervals() {
++    clearInterval(this.#stateInterval);
++    clearInterval(this.#progressInterval);
++    this.#stateInterval = void 0;
++    this.#progressInterval = void 0;
++  }
++  #startIntervals() {
++    this.#clearIntervals();
++    if (!this.isConnected || !this.isLoaded) return;
++    this.#lastCurrentTime = this.currentTime;
++    this.#stateInterval = setInterval(() => {
++      var _a;
++      const diff = Math.abs(this.currentTime - this.#lastCurrentTime);
++      const bufferedEnd = this.buffered.end(this.buffered.length - 1);
++      if (this.seeking && bufferedEnd > 0.1) {
++        this.#seeking = false;
++        (_a = this.#seekComplete) == null ? void 0 : _a.resolve();
++        this.dispatchEvent(new Event("seeked"));
++      } else if (!this.seeking && diff > 0.1) {
++        this.#seeking = true;
++        this.dispatchEvent(new Event("seeking"));
++      }
++      this.#lastCurrentTime = this.currentTime;
++    }, 50);
++    let lastBufferedEnd;
++    this.#progressInterval = setInterval(() => {
++      const bufferedEnd = this.buffered.end(this.buffered.length - 1);
++      if (bufferedEnd >= this.duration) {
++        clearInterval(this.#progressInterval);
++        this.#progressInterval = void 0;
++        this.#readyState = 4;
++      }
++      if (lastBufferedEnd != bufferedEnd) {
++        lastBufferedEnd = bufferedEnd;
++        this.dispatchEvent(new Event("progress"));
++      }
++    }, 100);
++  }
+   constructor() {
+     super();
+     this.#upgradeProperty("config");
+@@ -133,6 +174,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+   }
+   async load() {
+     if (this.#loadRequested) return;
++    this.#clearIntervals();
+     if (!this.shadowRoot) {
+       this.attachShadow({ mode: "open" });
+     }
+@@ -159,7 +201,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
      this.textTracks.addEventListener("change", () => {
        var _a;
        const active = Array.from(this.textTracks).find((t) => t.mode === "showing");
@@ -118,7 +290,7 @@ index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201
      });
      this.dispatchEvent(new Event("loadstart"));
      let iframe = this.shadowRoot.querySelector("iframe");
-@@ -180,7 +180,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+@@ -180,7 +222,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
            this.dispatchEvent(new Event("loadedmetadata"));
            this.dispatchEvent(new Event("durationchange"));
            if (this.#initialVolume !== 1) {
@@ -127,7 +299,16 @@ index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201
            }
            this.dispatchEvent(new Event("volumechange"));
            this.dispatchEvent(new Event("loadcomplete"));
-@@ -246,7 +246,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+@@ -225,7 +267,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+         this.#readyState = 3;
+         this.dispatchEvent(new Event("playing"));
+       } else if (state === YT.PlayerState.PAUSED) {
+-        const diff = Math.abs(this.currentTime - lastCurrentTime);
++        const diff = Math.abs(this.currentTime - this.#lastCurrentTime);
+         if (!this.seeking && diff > 0.1) {
+           this.#seeking = true;
+           this.dispatchEvent(new Event("seeking"));
+@@ -246,7 +288,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
      });
      this.api.addEventListener("onVolumeChange", () => {
        var _a;
@@ -136,7 +317,52 @@ index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201
        this.#initialVolume = apiVolume;
        this.dispatchEvent(new Event("volumechange"));
      });
-@@ -298,13 +298,13 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+@@ -253,35 +295,17 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+     this.api.addEventListener("onVideoProgress", () => {
+       this.dispatchEvent(new Event("timeupdate"));
+     });
+     await this.loadComplete;
+-    let lastCurrentTime = 0;
+-    setInterval(() => {
+-      var _a;
+-      const diff = Math.abs(this.currentTime - lastCurrentTime);
+-      const bufferedEnd = this.buffered.end(this.buffered.length - 1);
+-      if (this.seeking && bufferedEnd > 0.1) {
+-        this.#seeking = false;
+-        (_a = this.#seekComplete) == null ? void 0 : _a.resolve();
+-        this.dispatchEvent(new Event("seeked"));
+-      } else if (!this.seeking && diff > 0.1) {
+-        this.#seeking = true;
+-        this.dispatchEvent(new Event("seeking"));
+-      }
+-      lastCurrentTime = this.currentTime;
+-    }, 50);
+-    let lastBufferedEnd;
+-    const progressInterval = setInterval(() => {
+-      const bufferedEnd = this.buffered.end(this.buffered.length - 1);
+-      if (bufferedEnd >= this.duration) {
+-        clearInterval(progressInterval);
+-        this.#readyState = 4;
+-      }
+-      if (lastBufferedEnd != bufferedEnd) {
+-        lastBufferedEnd = bufferedEnd;
+-        this.dispatchEvent(new Event("progress"));
+-      }
+-    }, 100);
++    this.#startIntervals();
+   }
++  connectedCallback() {
++    super.connectedCallback?.();
++    if (this.isLoaded) this.#startIntervals();
++  }
++  disconnectedCallback() {
++    super.disconnectedCallback?.();
++    this.#clearIntervals();
++  }
+   async attributeChangedCallback(attrName, oldValue, newValue) {
+     if (oldValue === newValue) return;
+     switch (attrName) {
+@@ -298,13 +322,13 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
      var _a;
      this.#seekComplete = null;
      await this.loadComplete;
@@ -152,7 +378,7 @@ index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201
    }
    get seeking() {
      return this.#seeking;
-@@ -349,7 +349,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+@@ -349,7 +373,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
    get buffered() {
      var _a, _b;
      if (!this.isLoaded) return createTimeRanges();
@@ -161,7 +387,7 @@ index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201
      if (progress > 0) {
        return createTimeRanges(0, progress);
      }
-@@ -371,12 +371,12 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+@@ -371,12 +395,12 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
      this.#seekComplete = new PublicPromise();
      this.loadComplete.then(() => {
        var _a, _b;
@@ -176,7 +402,7 @@ index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201
          });
        }
      });
-@@ -399,7 +399,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+@@ -399,7 +423,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
      if (this.muted == val) return;
      this.loadComplete.then(() => {
        var _a, _b;
@@ -185,7 +411,7 @@ index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201
      });
    }
    get muted() {
-@@ -415,7 +415,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+@@ -415,7 +439,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
      if (this.playbackRate == val) return;
      this.loadComplete.then(() => {
        var _a;
@@ -194,7 +420,7 @@ index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201
      });
    }
    get playsInline() {
-@@ -437,7 +437,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+@@ -437,7 +461,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
      this.#initialVolume = val;
      this.loadComplete.then(() => {
        var _a;
@@ -203,7 +429,7 @@ index 4d1370170e9d3c03d397d60007375c1adb00db42..9294c4a12cd3022e34e7c0367e2d9201
      });
    }
    get volume() {
-@@ -445,7 +445,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
+@@ -445,7 +469,7 @@ class YoutubeVideoElement extends MediaPlayedRangesMixin(globalThis.HTMLElement
      if (!this.isLoaded) {
        return this.#initialVolume;
      }
